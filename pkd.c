@@ -71,6 +71,8 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	pkd->nDark = nDark;
 	pkd->nGas = nGas;
 	pkd->nStar = nStar;
+	pkd->nMaxOrderGas = nGas - 1;
+	pkd->nMaxOrderDark = nGas + nDark - 1;
 	pkd->nRejects = 0;
 	for (j=0;j<3;++j) {
 		pkd->fPeriod[j] = fPeriod[j];
@@ -429,7 +431,7 @@ int pkdWeight(PKD pkd,int d,float fSplit,int iSplitSide,int iFrom,int iTo,
 int pkdOrdWeight(PKD pkd,int iOrdSplit,int iSplitSide,int iFrom,int iTo,
 				 int *pnLow,int *pnHigh)
 {
-	int i,iPart;
+	int iPart;
 	
 	/*
 	 ** First partition the memory about fSplit for particles iFrom to iTo.
@@ -1814,7 +1816,8 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo, double dvPredFacOne,
 	}
 
 
-void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
+void
+pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 				  int nStart,int nLocal)
 {
 	FILE *fp;
@@ -2177,6 +2180,92 @@ int pkdRungParticles(PKD pkd,int iRung)
 	return n;
 	}
 
+void
+pkdDeleteParticle(PKD pkd, int i)
+{
+    pkd->pStore[i].iOrder = -2 - pkd->pStore[i].iOrder;
+    }
+
+void
+pkdNewParticle(PKD pkd, PARTICLE p)
+{
+    assert(pkd->nLocal < pkd->nStore);
+    pkd->pStore[pkd->nLocal] = p;
+    pkd->pStore[pkd->nLocal].iOrder = -1;
+    pkd->nLocal++;
+    }
+
+void
+pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
+	     int *nDeltaStar)
+{
+    int pi, pj;
+    int nNew;
+    int ndGas;
+    int ndDark;
+    int ndStar;
+    int newnLocal;
+    PARTICLE *p;
+    
+    nNew = 0;
+    ndGas = 0;
+    ndDark = 0;
+    ndStar = 0;
+    newnLocal = pkdLocal(pkd);
+    for(pi = 0, pj = 0; pi < pkdLocal(pkd); pi++) {
+	if(pj < pi)
+	    pkd->pStore[pj] = pkd->pStore[pi];
+	p = &pkd->pStore[pi];
+	if(p->iOrder == -1) {
+	    ++pj;
+	    ++nNew;
+#ifdef GASOLINE
+	    ++ndStar;
+#else
+	    ++ndDark;
+#endif
+	    continue;
+	    }
+	else if(p->iOrder < -1){
+	    --newnLocal;
+	    p->iOrder = 2 - p->iOrder;
+	    if(pkdIsGas(pkd, p))
+		--ndGas;
+	    else if(pkdIsDark(pkd, p))
+		--ndDark;
+	    else
+		--ndStar;
+	    }
+	}
+    *pnNew = nNew;
+    *nDeltaGas = ndGas;
+    *nDeltaDark = ndDark;
+    *nDeltaStar = ndStar;
+    pkd->nLocal = newnLocal;
+    }
+
+void
+pkdNewOrder(PKD pkd, int nStart)
+{
+    int pi;
+    
+    for(pi = 0; pi < pkdLocal(pkd); pi++) {
+	if(pkd->pStore[pi].iOrder == -1) {
+	    pkd->pStore[pi].iOrder = nStart++;
+	    }
+	}
+    }
+
+void
+pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int nMaxOrderGas,
+	     int nMaxOrderDark)
+{
+    pkd->nGas = nGas;
+    pkd->nDark = nDark;
+    pkd->nStar = nStar;
+    pkd->nMaxOrderGas = nMaxOrderGas;
+    pkd->nMaxOrderDark = nMaxOrderDark;
+}
 
 void pkdCoolVelocity(PKD pkd,int nSuperCool,double dCoolFac,
 					 double dCoolDens,double dCoolMaxDens)
@@ -2229,17 +2318,18 @@ void pkdInitAccel(PKD pkd)
     }
 
 int pkdIsGas(PKD pkd,PARTICLE *p) {
-	if (p->iOrder < pkd->nGas) return 1;
+	if (p->iOrder <= pkd->nMaxOrderGas) return 1;
 	else return 0;
 	}
 
 int pkdIsDark(PKD pkd,PARTICLE *p) {
-	if (p->iOrder >= pkd->nGas && p->iOrder < pkd->nGas+pkd->nDark) return 1;
+	if (p->iOrder > pkd->nMaxOrderGas && p->iOrder <= pkd->nMaxOrderDark)
+	    return 1;
 	else return 0;
 	}
 
 int pkdIsStar(PKD pkd,PARTICLE *p) {
-	if (p->iOrder >= pkd->nGas+pkd->nDark) return 1;
+	if (p->iOrder > pkd->nMaxOrderDark) return 1;
 	else return 0;
 	}
 

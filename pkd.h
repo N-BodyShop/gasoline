@@ -146,6 +146,8 @@ typedef struct pkdContext {
 	int nDark;
 	int nGas;
 	int nStar;
+	int nMaxOrderDark;
+	int nMaxOrderGas;
 	int nBucket;
 	int nLevels;
 	int nSplit;
@@ -314,9 +316,16 @@ void pkdCoolVelocity(PKD,int,double,double,double);
 void pkdActiveCool(PKD,int);
 void pkdInitAccel(PKD);
 int pkdOrdWeight(PKD,int,int,int,int,int *,int *);
+void pkdDeleteParticle(PKD pkd, int i);
+void pkdNewParticle(PKD pkd, PARTICLE p);
 int pkdIsGas(PKD,PARTICLE *);
 int pkdIsDark(PKD,PARTICLE *);
 int pkdIsStar(PKD,PARTICLE *);
+void pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
+		  int *nDeltaStar);
+void pkdNewOrder(PKD pkd, int nStart);
+void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int nMaxOrderGas,
+		  int nMaxOrderDark);
 
 #ifdef GASOLINE
 

@@ -37,6 +37,9 @@ typedef struct msrContext {
 	int nDark;
 	int nGas;
 	int nStar;
+        int nMaxOrder;		/* Order number of last particle */
+	int nMaxOrderGas;
+	int nMaxOrderDark;
 	int iCurrMaxRung;
 	int bOpenSpec;	/* was an opening parameter specified (used by +restart) */
 	int iOpenType;
@@ -118,6 +121,7 @@ void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime,
 		     int bAll);
 void msrCoolVelocity(MSR,double,double);
 void msrCalcWriteStart(MSR);
+void msrAddDelParticles(MSR msr);
 /*
  ** Interface functions.
  */
@@ -132,9 +136,11 @@ int msrComove(MSR);
 int msrKDK(MSR);
 double msrSoft(MSR);
 int msrDoDensity(MSR);
+int msrDoGravity(MSR msr);
 void msrInitStep(MSR msr);
 void msrInitAccel(MSR msr);
 void msrSwitchTheta(MSR msr,double);
+int msrMaxOrder(MSR msr);
 
 #ifdef GASOLINE
 

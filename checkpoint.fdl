@@ -18,6 +18,15 @@ FDL checkpoint_4 (
 		ELEMENT number_of_star_particles (
 			TYPE int
 			)
+		ELEMENT max_order (
+			TYPE int
+			)
+		ELEMENT max_order_gas (
+			TYPE int
+			)
+		ELEMENT max_order_dark (
+			TYPE int
+			)
 		ELEMENT current_timestep (
 			TYPE int
 			)

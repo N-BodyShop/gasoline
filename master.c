@@ -862,7 +862,6 @@ double msrReadTipsy(MSR msr)
 	struct dump h;
 	struct inReadTipsy in;
 	char achInFile[PST_FILENAME_SIZE];
-	int j;
 	LCL *plcl = msr->pst->plcl;
 	double dTime,aTo,tTo,z;
 	
@@ -913,6 +912,9 @@ double msrReadTipsy(MSR msr)
 	msr->nDark = h.ndark;
 	msr->nGas = h.nsph;
 	msr->nStar = h.nstar;
+	msr->nMaxOrder = msr->N - 1;
+	msr->nMaxOrderGas = msr->nGas - 1;
+	msr->nMaxOrderDark = msr->nDark - 1;
 #ifdef GASOLINE
 	assert(msr->N == msr->nDark+msr->nGas+msr->nStar);
 #else
@@ -1526,11 +1528,13 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.iSmoothType = iSmoothType;
 	in.smf.H = msrTime2Hub(msr,dTime);
 	in.smf.a = msrTime2Exp(msr,dTime);
+#ifdef GASOLINE
 	in.smf.alpha = msr->param.dConstAlpha;
 	in.smf.beta = msr->param.dConstBeta;
 	in.smf.gamma = msr->param.dConstGamma;
 	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
 	in.smf.bGeometric = msr->param.bGeometric;
+#endif
 #ifdef PLANETS /*DEBUG*/
 	in.smf.dStart = 0;
 	in.smf.dEnd = msr->param.dDelta;
@@ -1953,15 +1957,15 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
     strcat(achInFile,in->achInFile);
 
     nStart = nParts[0];
-	assert(msr->pMap[0] == 0);
+    assert(msr->pMap[0] == 0);
     for (i=1;i<msr->nThreads;++i) {
 		id = msr->pMap[i];
 		/* 
 		 * Read particles into the local storage.
 		 */
 		assert(plcl->pkd->nStore >= nParts[id]);
-		pkdReadCheck(plcl->pkd,achInFile,in->iVersion,in->iOffset,
-					 nStart,nParts[id]);
+		pkdReadCheck(plcl->pkd,achInFile,in->iVersion,
+				 in->iOffset, nStart, nParts[id]);
 		nStart += nParts[id];
 		/* 
 		 * Now shove them over to the remote processor.
@@ -1981,8 +1985,9 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
 double msrReadCheck(MSR msr,int *piStep)
 {
 	struct inReadCheck in;
+	struct inSetNParts inset;
 	char achInFile[PST_FILENAME_SIZE];
-	int i,j;
+	int i;
 	LCL *plcl = msr->pst->plcl;
 	double dTime;
 	int iVersion,iNotCorrupt;
@@ -2117,6 +2122,17 @@ double msrReadCheck(MSR msr,int *piStep)
 		if (!prmSpecified(msr->prm,"dTheta2"))
 			msr->param.dTheta2 = msr->dCrit;
 		}
+	if (iVersion > 3) {
+	    FDL_read(fdl, "max_order", &msr->nMaxOrder);
+	    FDL_read(fdl, "max_order_gas", &msr->nMaxOrderGas);
+	    FDL_read(fdl, "max_order_dark", &msr->nMaxOrderDark);
+	    }
+	else {
+	    msr->nMaxOrder = msr->N - 1;
+	    msr->nMaxOrderGas = -1;
+	    msr->nMaxOrderDark = msr->nMaxOrder;
+	    }
+	
 	if (msr->param.bVerbose) {
 		printf("Reading checkpoint file...\nN:%d Time:%g\n",msr->N,dTime);
 		}
@@ -2147,6 +2163,12 @@ double msrReadCheck(MSR msr,int *piStep)
 	else
 	    msrOneNodeReadCheck(msr, &in);
 	if (msr->param.bVerbose) puts("Checkpoint file has been successfully read.");
+	inset.nGas = msr->nGas;
+	inset.nDark = msr->nDark;
+	inset.nStar = msr->nStar;
+	inset.nMaxOrderGas = msr->nMaxOrderGas;
+	inset.nMaxOrderDark = msr->nMaxOrderDark;
+	pstSetNParts(msr->pst, &inset, sizeof(inset), NULL, NULL);
 	/*
 	 ** Set up the output counter.
 	 */
@@ -2214,7 +2236,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 {
 	struct inWriteCheck in;
 	char achOutFile[PST_FILENAME_SIZE];
-	int iDum,i;
+	int i;
 	LCL *plcl = msr->pst->plcl;
 	FDL_CTX *fdl;
 	char *pszFdl;
@@ -2258,6 +2280,9 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"number_of_gas_particles",&msr->nGas);
 	FDL_write(fdl,"number_of_dark_particles",&msr->nDark);
 	FDL_write(fdl,"number_of_star_particles",&msr->nStar);
+	FDL_write(fdl, "max_order", &msr->nMaxOrder);
+	FDL_write(fdl, "max_order_gas", &msr->nMaxOrderGas);
+	FDL_write(fdl, "max_order_dark", &msr->nMaxOrderDark);
 	FDL_write(fdl,"current_timestep",&iStep);
 	FDL_write(fdl,"current_time",&dTime);
 	FDL_write(fdl,"current_ecosmo",&msr->dEcosmo);
@@ -2873,6 +2898,56 @@ void msrTopStepKDK(MSR msr,
     msrKickKDKClose(msr, dTime, 0.5*dDelta);
 }
 
+int
+msrMaxOrder(MSR msr)
+{
+    return msr->nMaxOrder;
+    }
+
+void
+msrAddDelParticles(MSR msr)
+{
+    struct outColNParts *pColNParts;
+    int *pNewOrder;
+    struct inSetNParts in;
+    int iOut;
+    int i;
+    
+    if(msr->param.bVerbose) {
+	printf("Changing Particle number\n");
+	}
+    pColNParts = malloc(msr->nThreads*sizeof(*pColNParts));
+    pstColNParts(msr->pst, NULL, 0, pColNParts, &iOut);
+    /*
+     * Assign starting numbers for new particles in each processor.
+     */
+    pNewOrder = malloc(msr->nThreads*sizeof(*pNewOrder));
+    for(i = 0; i < msr->nThreads; i++) {
+	pNewOrder[i] = msr->nMaxOrder + 1;
+	msr->nMaxOrder += pColNParts[i].nNew;
+	msr->nGas += pColNParts[i].nDeltaGas;
+	msr->nDark += pColNParts[i].nDeltaDark;
+	msr->nStar += pColNParts[i].nDeltaStar;
+	}
+    msr->N = msr->nGas + msr->nDark + msr->nStar;
+#ifndef GASOLINE
+    msr->nMaxOrderDark = msr->nMaxOrder;
+#endif
+
+    pstNewOrder(msr->pst, pNewOrder, sizeof(*pNewOrder)*msr->nThreads,
+		NULL, NULL);
+
+    in.nGas = msr->nGas;
+    in.nDark = msr->nDark;
+    in.nStar = msr->nStar;
+    in.nMaxOrderGas = msr->nMaxOrderGas;
+    in.nMaxOrderDark = msr->nMaxOrderDark;
+    pstSetNParts(msr->pst, &in, sizeof(in), NULL, NULL);
+    
+    free(pNewOrder);
+    free(pColNParts);
+    }
+
 int msrDoDensity(MSR msr)
 {
 	return(msr->param.bDoDensity);
@@ -2887,7 +2962,6 @@ void msrInitAccel(MSR msr)
 {
 	pstInitAccel(msr->pst,NULL,0,NULL,NULL);
 	}
-
 
 #ifdef GASOLINE
 

@@ -63,7 +63,7 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_KICK,pst,pstKick,
 				  sizeof(struct inKick),0);
 	mdlAddService(mdl,PST_READCHECK,pst,pstReadCheck,
-				  sizeof(struct inReadCheck),0);
+		      sizeof(struct inReadCheck), 0);
 	mdlAddService(mdl,PST_WRITECHECK,pst,pstWriteCheck,
 				  sizeof(struct inWriteCheck),0);
 	mdlAddService(mdl,PST_SETSOFT,pst,pstSetSoft,
@@ -133,6 +133,12 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_KICKVPRED,pst,pstKickVpred, 
 		      sizeof(struct inKickVpred),0);
 #endif
+	mdlAddService(mdl,PST_COLNPARTS,pst,pstColNParts, 0,
+		      nThreads*sizeof(struct outColNParts));
+	mdlAddService(mdl,PST_NEWORDER,pst,pstNewOrder,
+		      nThreads*sizeof(int), 0);
+	mdlAddService(mdl,PST_SETNPARTS,pst,pstSetNParts,
+		      sizeof(struct inSetNParts), 0);
 	}
 
 
@@ -1789,7 +1795,7 @@ void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	int nFileStart,nFileEnd,nFileTotal,nFileSplit,nStore;
 
 	assert(nIn == sizeof(struct inReadCheck));
-    nFileStart = in->nFileStart;
+	nFileStart = in->nFileStart;
 	nFileEnd = in->nFileEnd;
 	nFileTotal = nFileEnd - nFileStart + 1;
 	if (pst->nLeaves > 1) {
@@ -1798,9 +1804,9 @@ void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlReqService(pst->mdl,pst->idUpper,PST_READCHECK,in,nIn);
 		in->nFileStart = nFileStart;
 		in->nFileEnd = nFileSplit - 1;
-		pstReadCheck(pst->pstLower,in,nIn,NULL,NULL);
+		pstReadCheck(pst->pstLower,in,nIn,vout,pnOut);
 		in->nFileEnd = nFileEnd;
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
 		}
 	else {
 		/*
@@ -1818,8 +1824,8 @@ void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		nStore = nFileTotal + (int)ceil(nFileTotal*in->fExtraStore);
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
 					  in->fPeriod,in->nDark,in->nGas,in->nStar);
-		pkdReadCheck(plcl->pkd,achInFile,in->iVersion,in->iOffset,
-					 nFileStart,nFileTotal);
+		pkdReadCheck(plcl->pkd,achInFile, in->iVersion,in->iOffset,
+					       nFileStart,nFileTotal);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2454,7 +2460,68 @@ pstSphCurrRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 #endif
 
+void
+pstColNParts(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+    LCL *plcl = pst->plcl;
+    struct outColNParts *out = vout;
+    struct outColNParts *ptmp;
+    int i;
+    
+    for(i = 0; i < pst->mdl->nThreads; i++)
+	out[i].nNew = -1;
+    if(pst->nLeaves > 1) {
+	mdlReqService(pst->mdl,pst->idUpper,PST_COLNPARTS,vin,nIn);
+	pstColNParts(pst->pstLower, vin, nIn, vout, pnOut);
+	ptmp = malloc(pst->mdl->nThreads*sizeof(*ptmp));
+	assert(ptmp != NULL);
+	mdlGetReply(pst->mdl, pst->idUpper, ptmp, pnOut);
+	for(i = 0; i < pst->mdl->nThreads; i++) {
+	    if(ptmp[i].nNew != -1)
+		out[i] = ptmp[i];
+	    }
+	free(ptmp);
+	}
+    else {
+	pkdColNParts(plcl->pkd, &out[pst->idSelf].nNew,
+		     &out[pst->idSelf].nDeltaGas,
+		     &out[pst->idSelf].nDeltaDark,
+		     &out[pst->idSelf].nDeltaStar);
+	}
+    if(pnOut) *pnOut = pst->mdl->nThreads*sizeof(*out);
+    }
 
+void
+pstNewOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+    LCL *plcl = pst->plcl;
+    int *in = vin;
+    
+    if(pst->nLeaves > 1) {
+	mdlReqService(pst->mdl,pst->idUpper,PST_NEWORDER,vin,nIn);
+	pstNewOrder(pst->pstLower, vin, nIn, vout, pnOut);
+	mdlGetReply(pst->mdl, pst->idUpper, vout, pnOut);
+	}
+    else {
+	pkdNewOrder(plcl->pkd, in[pst->idSelf]);
+	}
+    if(pnOut) *pnOut = 0;
+    }
 
-
+void
+pstSetNParts(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+    struct inSetNParts *in = vin;
+    
+    if(pst->nLeaves > 1) {
+	mdlReqService(pst->mdl,pst->idUpper,PST_SETNPARTS,vin,nIn);
+	pstSetNParts(pst->pstLower, vin, nIn, vout, pnOut);
+	mdlGetReply(pst->mdl, pst->idUpper, vout, pnOut);
+	}
+    else {
+	pkdSetNParts(pst->plcl->pkd, in->nGas, in->nDark, in->nStar,
+		     in->nMaxOrderGas, in->nMaxOrderDark);
+	}
+    if(pnOut) *pnOut = 0;
+    }
 

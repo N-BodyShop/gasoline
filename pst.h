@@ -461,22 +461,44 @@ struct inSetWriteStart {
 	};
 void pstSetWriteStart(PST,void *,int,void *,int *);
 
+#define PST_COLNPARTS			54
+struct outColNParts {
+    int nNew;
+    int nDeltaGas;
+    int nDeltaDark;
+    int nDeltaStar;
+    };
+void pstColNParts(PST, void *, int, void *, int *);
+
+#define PST_NEWORDER			55
+void pstNewOrder(PST, void *, int, void *, int *);
+
+#define PST_SETNPARTS			56
+struct inSetNParts {
+    int nGas;
+    int nDark;
+    int nStar;
+    int nMaxOrderGas;
+    int nMaxOrderDark;
+    };
+void pstSetNParts(PST, void *, int, void *, int *);
+
 #ifdef GASOLINE
 
-#define PST_ACTIVEGAS			54
+#define PST_ACTIVEGAS			57
 void pstActiveGas(PST,void *,int,void *,int *);
 
-#define PST_CALCETHDOT			55
+#define PST_CALCETHDOT			58
 void pstCalcEthdot(PST,void *,int,void *,int *);
 
-#define PST_KICKVPRED			56
+#define PST_KICKVPRED			59
 struct inKickVpred {
 	double dvFacOne;
 	double dvFacTwo;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
 
-#define PST_SPHCURRRUNG			57
+#define PST_SPHCURRRUNG			60
 struct inSphCurrRung {
     int iRung;
     };
