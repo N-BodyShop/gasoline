@@ -1545,7 +1545,9 @@ void pstColRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	int nLower,nUpper,iUpper;
 	
 	assert(nIn == sizeof(struct inColRejects));
+	/*
 	pkdStartTimer(plcl->pkd,9);
+	*/
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_COLREJECTS,in,nIn);
 		pstColRejects(pst->pstLower,in,nIn,&pOutRej[0],&nLower);
@@ -1562,7 +1564,9 @@ void pstColRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pOutRej->nLocal = pkdLocal(plcl->pkd);
 		if (pnOut) *pnOut = sizeof(OREJ);
 		}
+	/*
 	pkdStopTimer(plcl->pkd,9);
+	*/
 	}
 
 
