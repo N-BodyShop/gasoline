@@ -8,7 +8,6 @@
 #define CID_PARTICLE	0
 #define CID_CELL		1
 
-
 #define ROOT		1
 #define LOWER(i)	(i<<1)
 #define UPPER(i)	((i<<1)+1)
@@ -43,12 +42,17 @@ typedef struct particle {
 	float fColor;
 #endif
 #ifdef GASOLINE
-	float fTemp;
+	float vPred[3];		/* predicted velocity (time centered) */
+	float fHsmDivv;		/* 0.5*sqrt(fBall2)*div(vPred) */
+	float fRhoDivv;		/* <fDensity*div(vPred)_j> */
+	float fCutVisc;
+	float u;			/* New thermal energy */ 
+	float du;			/* time derivative of thermal energy */
+	float uOld;			/* Old thermal energy */ 
+	float A;			/* sqrt(uNew_i) prefactor in duNew/dt */
+	float B;			/* constant term in duNew/dt */
 	float fMetals;
 	float fTimeForm;
-	float fDivv;
-	float fCurlv;
-	float fTmp[3];
 #endif
 	} PARTICLE;
 
@@ -251,7 +255,7 @@ void pkdStartTimer(PKD,int);
 void pkdStopTimer(PKD,int);
 void pkdInitialize(PKD *,MDL,int,int,int,float *,int,int,int);
 void pkdFinish(PKD);
-void pkdReadTipsy(PKD,char *,int,int,int,double);
+void pkdReadTipsy(PKD,char *,int,int,int,double,double);
 void pkdSetSoft(PKD pkd,double dSoft);
 void pkdCalcBound(PKD,BND *,BND *);
 int pkdWeight(PKD,int,float,int,int,int,int *,int *,float *,float *);
@@ -271,7 +275,7 @@ int pkdNodes(PKD);
 void pkdDomainColor(PKD);
 int pkdColOrdRejects(PKD,int,int);
 void pkdLocalOrder(PKD,int);
-void pkdWriteTipsy(PKD,char *,int,int,int,double);
+void pkdWriteTipsy(PKD,char *,int,int,int,double,double);
 void pkdCombine(KDN *,KDN *,KDN *);
 void pkdCalcCell(PKD,KDN *,float *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);
@@ -297,7 +301,18 @@ int pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta,
 int pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta,
 		    int iMaxRung, double dVelFac, double dAccFac, int bAll);
 int pkdRungParticles(PKD,int);
-void pkdCoolVelocity(PKD,int,double,double);
+void pkdCoolVelocity(PKD,int,double,double,double);
 void pkdActiveCool(PKD,int);
 
+#ifdef GASOLINE
+
+int pkdIsGas(PKD,PARTICLE *);
+int pkdIsDark(PKD,PARTICLE *);
+int pkdIsStar(PKD,PARTICLE *);
+void pkdActiveGas(PKD);
+void pkdCalcEthdot(PKD);
+
 #endif
+
+#endif
+

@@ -54,7 +54,7 @@ void main(int argc,char **argv)
 		assert(fpLog != NULL);
 		if(msrKDK(msr) || msr->param.bEpsVel) {
 			msrBuildTree(msr,0,dMass,0);
-			msrMassCheck(msr,dMass,"After msrBuildTree");
+			msrMassCheck(msr,dMass,"After msrBuildTree");\
 			msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			}
 		goto Restart;
@@ -65,6 +65,24 @@ void main(int argc,char **argv)
 	 */
 	dTime = msrReadTipsy(msr);
 	msrInitStep(msr);
+#ifdef GASOLINE
+	/*
+	 ** Output u as a test.
+	 */
+	msrReorder(msr);
+	sprintf(achFile,"%s.u",msrOutName(msr));
+	msrOutArray(msr,achFile,OUT_U_ARRAY);
+	puts("before msrInitSph");
+	msrInitSph(msr,dTime);
+	puts("after msrInitSph");
+	/*
+	 ** Output du/dt as a test.
+	 */
+	msrReorder(msr);
+	sprintf(achFile,"%s.du",msrOutName(msr));
+	msrOutArray(msr,achFile,OUT_UDOT_ARRAY);
+	exit(0);
+#endif
 	dMass = msrMassCheck(msr,-1.0,"Initial");
 	if (prmSpecified(msr->prm,"dSoft")) msrSetSoft(msr,msrSoft(msr));
 	msrMassCheck(msr,dMass,"After msrSetSoft");

@@ -76,6 +76,7 @@ struct inReadTipsy {
 	float fPeriod[3];
 	int bStandard;
 	double dvFac;
+	double dTuFac;
 	char achInFile[PST_FILENAME_SIZE];
 	};
 void pstReadTipsy(PST,void *,int,void *,int *);
@@ -169,6 +170,7 @@ void pstOutVector(PST,void *,int,void *,int *);
 struct inWriteTipsy {
 	int bStandard;
 	double dvFac;
+	double duTFac;
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteTipsy(PST,void *,int,void *,int *);
@@ -409,6 +411,7 @@ struct inCoolVelocity {
 	int nSuperCool;
 	double dCoolFac;
 	double dCoolDens;
+	double dCoolMaxDens;
 	};
 void pstCoolVelocity(PST,void *,int,void *,int *);
 
@@ -427,6 +430,16 @@ struct inReSmooth {
 	SMF smf;
 	};
 void pstReSmooth(PST,void *,int,void *,int *);
+
+#ifdef GASOLINE
+
+#define PST_ACTIVEGAS			49
+void pstActiveGas(PST,void *,int,void *,int *);
+
+#define PST_CALCETHDOT			50
+void pstCalcEthdot(PST,void *,int,void *,int *);
+
+#endif
 
 #endif
 

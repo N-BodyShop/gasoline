@@ -3,6 +3,9 @@
 
 
 struct parameters {
+	/*
+	 ** Parameters for PKDGRAV.
+	 */
 	int nThreads;
 	int bDiag;
 	int bVerbose;
@@ -15,6 +18,10 @@ struct parameters {
 	int bStandard;
 	int bKDK;
 	int bBinary;
+	int bEpsVel;
+	int bNonSymp;
+	int bDoDensity;
+	int bSymCool;
 	int nBucket;
 	int iOutInterval;
 	int iLogInterval;
@@ -25,9 +32,6 @@ struct parameters {
 	int nSteps;
 	int nSmooth;
 	int iMaxRung;
-	int bEpsVel;
-	int bNonSymp;
-	int bDoDensity;
 	int nSuperCool;
 	double dEta;
 	double dExtraStore;
@@ -44,11 +48,21 @@ struct parameters {
 	double dHubble0;
 	double dOmega0;
 	double dRedTo;
-	double dCoolFac;
-	double dCoolDens;
 	char achInFile[256];
 	char achOutName[256];
 	char achDataSubPath[256];
+	double dCoolFac;
+	double dCoolDens;
+	double dCoolMaxDens;
+	/*
+	 ** Additional parameters for GASOLINE.
+	 */
+	int bGeometric;
+	double dConstAlpha;
+	double dConstBeta;
+	double dConstGamma;
+	double dMeanMolWeight;
+	double dGasConst;
 	};
 
 

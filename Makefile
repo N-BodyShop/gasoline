@@ -1,10 +1,10 @@
 #
 # Makefile for pkdgrav or gasoline (specify below)
 #
-EXE = pkdgrav
-CODEDEF = -DSUPERCOOL
-#EXE = gasoline
-#CODEDEF = -DSUPERCOOL -DGASOLINE
+#EXE = pkdgrav
+#CODEDEF = -DSUPERCOOL
+EXE = gasoline
+CODEDEF = -DGASOLINE
 #
 # PVM defines
 #
@@ -23,9 +23,18 @@ PVM_LIBMDL	=	v_sqrt1.o $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) /local/
 #
 NULL_MDL = ../mdl/null
 
-NULL_CFLAGS = -O3 -I$(NULL_MDL) $(CODEDEF)
+NULL_CFLAGS = -O3 -g -malign-double -I$(NULL_MDL) $(CODEDEF)
 NULL_LD_FLAGS = 
 NULL_LIBMDL = erf.o v_sqrt1.o $(NULL_MDL)/mdl.o -lm
+
+#
+#       PTHREAD defines
+#
+PTHREAD_MDL = ../mdl/pthread
+
+PTHREAD_CFLAGS = -O3 -malign-double -D_REENTRANT -I$(PTHREAD_MDL) $(CODEDEF)
+PTHREAD_LD_FLAGS =
+PTHREAD_LIBMDL = erf.o v_sqrt1.o $(PTHREAD_MDL)/mdl.o -lm -lpthread
 
 #
 #       KSR1 defines
@@ -87,7 +96,7 @@ EXTRA_OBJ = 	erf.o v_sqrt1.o v_sqrt1.ksr.o hyperlib.o
 
 default:	
 	@echo "Please tell me what architecture to make."
-	@echo "Choices are pvm, ksr, spx, t3d and t3dmpi."
+	@echo "Choices are pvm, null, pthread, ksr, spx, t3d and t3dmpi."
 
 $(XDIR):
 	- mkdir $(BDIR)
@@ -103,7 +112,11 @@ pvm:
 
 null:
 	cd $(NULL_MDL); make
-	make pkdgrav "CFLAGS=$(NULL_CFLAGS)" "LD_FLAGS=$(NULL_LD_FLAGS)" "MDL=$(NULL_MDL)" "LIBMDL=$(NULL_LIBMDL)"
+	make $(EXE) "CFLAGS=$(NULL_CFLAGS)" "LD_FLAGS=$(NULL_LD_FLAGS)" "MDL=$(NULL_MDL)" "LIBMDL=$(NULL_LIBMDL)"
+
+pthread:
+	cd $(PTHREAD_MDL); make
+	make $(EXE) "CFLAGS=$(PTHREAD_CFLAGS)" "LD_FLAGS=$(PTHREAD_LD_FLAGS)" "MDL=$(PTHREAD_MDL)" "LIBMDL=$(PTHREAD_LIBMDL)"
 
 ksr:
 	cd $(KSR_MDL); make

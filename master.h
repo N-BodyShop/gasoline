@@ -128,6 +128,12 @@ double msrSoft(MSR);
 int msrDoDensity(MSR);
 void msrInitStep(MSR msr);
 
+#ifdef GASOLINE
+
+void msrInitSph(MSR,double);
+
+#endif
+
 #endif
 
 

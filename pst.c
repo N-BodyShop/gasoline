@@ -121,6 +121,10 @@ void pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inActiveCool),0);
 	mdlAddService(mdl,PST_RESMOOTH,pst,pstReSmooth,
 				  sizeof(struct inReSmooth),0);
+#ifdef GASOLINE
+	mdlAddService(mdl,PST_ACTIVECOOL,pst,pstActiveCool,0,0);
+	mdlAddService(mdl,PST_CALCETHDOT,pst,pstCalcEthdot,0,0);
+#endif
 	}
 
 
@@ -315,7 +319,7 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
 					  in->fPeriod,in->nDark,in->nGas,in->nStar);
 		pkdReadTipsy(plcl->pkd,achInFile,pst->nStart,nTotal,in->bStandard,
-					 in->dvFac);
+					 in->dvFac,in->dTuFac);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -1411,7 +1415,7 @@ void pstWriteTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 		strcat(achOutFile,in->achOutFile);
 		pkdWriteTipsy(plcl->pkd,achOutFile,pst->nStart,pst->nEnd,
-					  in->bStandard,in->dvFac);
+					  in->bStandard,in->dvFac,in->duTFac);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -1510,7 +1514,7 @@ void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bPeriodic,in->bSymmetric,
 					 in->iSmoothType,1);
 		smSmooth(smx,&in->smf);
-		smFinish(smx);
+		smFinish(smx,&in->smf);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -1533,7 +1537,7 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bPeriodic,in->bSymmetric,
 					 in->iSmoothType,0);
 		smReSmooth(smx,&in->smf);
-		smFinish(smx);
+		smFinish(smx,&in->smf);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2176,7 +2180,8 @@ void pstCoolVelocity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdCoolVelocity(plcl->pkd,in->nSuperCool,in->dCoolFac,in->dCoolDens);
+		pkdCoolVelocity(plcl->pkd,in->nSuperCool,in->dCoolFac,
+						in->dCoolDens,in->dCoolMaxDens);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2200,7 +2205,42 @@ void pstActiveCool(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+#ifdef GASOLINE
 
+void pstActiveGas(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVEGAS,vin,nIn);
+		pstActiveGas(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdActiveGas(plcl->pkd);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstCalcEthdot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_CALCETHDOT,vin,nIn);
+		pstCalcEthdot(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdCalcEthdot(plcl->pkd);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+#endif
 
 
 

@@ -19,6 +19,14 @@ float ArrType(PARTICLE *p,int iType)
 		return(sqrt(p->a[0]*p->a[0] + p->a[1]*p->a[1] + p->a[2]*p->a[2]));
 	case OUT_RUNG_ARRAY:
 		return(p->iRung);
+#ifdef GASOLINE
+	case OUT_U_ARRAY:
+		return(p->u);
+	case OUT_UDOT_ARRAY:
+		return(p->du);
+	case OUT_HSMDIVV_ARRAY:
+		return(p->fHsmDivv);
+#endif
 	default:
 		return(0.0);
 		}
@@ -34,6 +42,10 @@ float VecType(PARTICLE *p,int iDim,int iType)
 		return(p->v[iDim]);
 	case OUT_ACCEL_VECTOR:
 		return(p->a[iDim]);
+#ifdef GASOLINE
+	case OUT_VPRED_VECTOR:
+		return(p->vPred[iDim]);
+#endif
 	default:
 		return(0.0);
 		}

@@ -65,3 +65,16 @@ az -= dz*Qta;\
 #define QEVAL_FLOP	{10,10,41,120,277}
 
 #endif
+
+
+
+
+
+
+
+
+
+
+
+
+

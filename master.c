@@ -216,6 +216,33 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dCoolDens = 50.0;
 	prmAddParam(msr->prm,"dCoolDens",2,&msr->param.dCoolDens,sizeof(double),
 				"scd","<Velocity Cooling Critical Density> = 50");
+	msr->param.dCoolMaxDens = 1e8;
+	prmAddParam(msr->prm,"dCoolMaxDens",2,&msr->param.dCoolMaxDens,
+				sizeof(double),"scmd",
+				"<Velocity Cooling Maximum Density> = 1e8");
+	msr->param.bSymCool = 0;
+	prmAddParam(msr->prm,"bSymCool",0,&msr->param.bSymCool,sizeof(int),NULL,
+				NULL);
+#ifdef GASOLINE
+	msr->param.bGeometric = 1;
+	prmAddParam(msr->prm,"bGeometric",0,&msr->param.bGeometric,sizeof(int),
+				"geo","geometric/arithmetic mean to calc Grad(P/rho) = +geo");
+	msr->param.dConstAlpha = 1.0;
+	prmAddParam(msr->prm,"dConstAlpha",2,&msr->param.dConstAlpha,
+				sizeof(double),NULL,NULL);
+	msr->param.dConstBeta = 2.0;
+	prmAddParam(msr->prm,"dConstBeta",2,&msr->param.dConstBeta,
+				sizeof(double),NULL,NULL);
+	msr->param.dConstGamma = 5.0/3.0;
+	prmAddParam(msr->prm,"dConstGamma",2,&msr->param.dConstGamma,
+				sizeof(double),NULL,NULL);
+	msr->param.dMeanMolWeight = 1.0;
+	prmAddParam(msr->prm,"dMeanMolWeight",2,&msr->param.dMeanMolWeight,
+				sizeof(double),NULL,NULL);
+	msr->param.dGasConst = 8.31451e7 * 1e5 / 4.3e4 / 6.94e16;
+	prmAddParam(msr->prm,"dGasConst",2,&msr->param.dGasConst,
+				sizeof(double),NULL,NULL);
+#endif
 	/*
 	 ** Set the box center to (0,0,0) for now!
 	 */
@@ -715,7 +742,7 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
 		 */
 		assert(plcl->pkd->nStore >= nParts[id]);
 		pkdReadTipsy(plcl->pkd,achInFile,nStart,nParts[id],
-					 in->bStandard,in->dvFac);
+					 in->bStandard,in->dvFac,in->dTuFac);
 		nStart += nParts[id];
 		/* 
 		 * Now shove them over to the remote processor.
@@ -729,7 +756,8 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
     /* 
      * Now read our own particles.
      */
-    pkdReadTipsy(plcl->pkd,achInFile,0,nParts[0],in->bStandard,in->dvFac);
+    pkdReadTipsy(plcl->pkd,achInFile,0,nParts[0],in->bStandard,in->dvFac,
+				 in->dTuFac);
     }
 
 int xdrHeader(XDR *pxdrs,struct dump *ph)
@@ -906,6 +934,12 @@ double msrReadTipsy(MSR msr)
 	in.nStar = msr->nStar;
 	in.iOrder = msr->param.iOrder;
 	in.bStandard = msr->param.bStandard;
+#ifdef GASOLINE
+	in.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
+		msr->param.dMeanMolWeight;
+#else
+	in.dTuFac = 1.0;
+#endif
 	/*
 	 ** Since pstReadTipsy causes the allocation of the local particle
 	 ** store, we need to tell it the percentage of extra storage it
@@ -966,7 +1000,7 @@ void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
      * First write our own particles.
      */
     pkdWriteTipsy(plcl->pkd,achOutFile,0,plcl->pkd->nLocal - 1,in->bStandard,
-				  in->dvFac); 
+				  in->dvFac,in->duTFac); 
     nStart = plcl->pkd->nLocal;
 	assert(msr->pMap[0] == 0);
     for (i=1;i<msr->nThreads;++i) {
@@ -983,7 +1017,7 @@ void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
 		 */
 		pkdWriteTipsy(plcl->pkd,achOutFile,nStart,
 					  nStart + plcl->pkd->nLocal - 1,
-					  in->bStandard, in->dvFac); 
+					  in->bStandard, in->dvFac, in->duTFac); 
 		nStart += plcl->pkd->nLocal;
 		/* 
 		 * Swap them back again.
@@ -1028,13 +1062,19 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		_msrExit(msr);
 		}
 	in.bStandard = msr->param.bStandard;
+#ifdef GASOLINE
+	in.duTFac = (msr->param.dConstGamma - 1)*msr->param.dMeanMolWeight/
+		msr->param.dGasConst;
+#else
+	in.duTFac = 1.0;
+#endif
 	/*
-	 ** Assume tipsy format for now, and dark matter only.
+	 ** Assume tipsy format for now.
 	 */
 	h.nbodies = msr->N;
-	h.ndark = msr->N;
-	h.nsph = 0;
-	h.nstar = 0;
+	h.ndark = msr->nDark;
+	h.nsph = msr->nGas;
+	h.nstar = msr->nStar;
 	if (msr->param.bComove) {
 		h.time = msrTime2Exp(msr,dTime);
 		if (msr->param.bCannonical) {
@@ -1379,6 +1419,11 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.iSmoothType = iSmoothType;
 	in.smf.H = msrTime2Hub(msr,dTime);
 	in.smf.a = msrTime2Exp(msr,dTime);
+	in.smf.alpha = msr->param.dConstAlpha;
+	in.smf.beta = msr->param.dConstBeta;
+	in.smf.gamma = msr->param.dConstGamma;
+	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
+	in.smf.bGeometric = msr->param.bGeometric;
 	if (msr->param.bVerbose) printf("Smoothing...\n");
 	sec = time(0);
 	pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
@@ -1402,6 +1447,11 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.iSmoothType = iSmoothType;
 	in.smf.H = msrTime2Hub(msr,dTime);
 	in.smf.a = msrTime2Exp(msr,dTime);
+	in.smf.alpha = msr->param.dConstAlpha;
+	in.smf.beta = msr->param.dConstBeta;
+	in.smf.gamma = msr->param.dConstGamma;
+	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
+	in.smf.bGeometric = msr->param.bGeometric;
 	if (msr->param.bVerbose) printf("ReSmoothing...\n");
 	sec = time(0);
 	pstReSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
@@ -1545,19 +1595,38 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 	struct inCoolVelocity in;
 	
 	if (msr->param.nSuperCool > 0) {
+#ifdef SUPERCOOL
+		/*
+		 ** Activate all for densities if bSymCool == 0
+		 */
+		if (msr->param.bSymCool) {
+			ina.nSuperCool = msr->param.nSuperCool;
+			pstActiveCool(msr->pst,&ina,sizeof(ina),NULL,NULL);
+			msrBuildTree(msr,1,dMass,1);
+			msrSmooth(msr,dTime,SMX_DENSITY,1);
+			msrReSmooth(msr,dTime,SMX_MEANVEL,1);
+			}
+		else {
+			/*
+			 ** Note, here we need to calculate the densities of all
+			 ** the particles so that the mean velocity can be 
+			 ** calculated.
+			 */
+			msrActiveRung(msr,0,1); /* activate all */
+			msrBuildTree(msr,0,SMX_DENSITY,1);
+			msrSmooth(msr,dTime,SMX_DENSITY,0);
+			ina.nSuperCool = msr->param.nSuperCool;
+			pstActiveCool(msr->pst,&ina,sizeof(ina),NULL,NULL);
+			msrReSmooth(msr,dTime,SMX_MEANVEL,0);
+			}
+#else
 		/*
 		 ** First calculate densities for the supercool particles.
 		 */
 		ina.nSuperCool = msr->param.nSuperCool;
 		pstActiveCool(msr->pst,&ina,sizeof(ina),NULL,NULL);
-		/*
-		 ** Build the tree, but with active only particles, just like 
-		 ** sph see!
-		 */
-		msrBuildTree(msr,1,dMass,1);
-		msrSmooth(msr,dTime,SMX_DENSITY,1);
-#ifdef SUPERCOOL
-		msrReSmooth(msr,dTime,SMX_MEANVEL,1);
+		msrBuildTree(msr,msr->param.bSymCool,dMass,1);
+		msrSmooth(msr,dTime,SMX_DENSITY,msr->param.bSymCool);
 #endif
 		/*
 		 ** Now cool them.
@@ -1565,6 +1634,7 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 		in.nSuperCool = msr->param.nSuperCool;
 		in.dCoolFac = msr->param.dCoolFac;
 		in.dCoolDens = msr->param.dCoolDens;
+		in.dCoolMaxDens = msr->param.dCoolMaxDens;
 		pstCoolVelocity(msr->pst,&in,sizeof(in),NULL,NULL);
 		}
 	}
@@ -2162,8 +2232,12 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 #endif
 		printf("ERROR: Mass not conserved (%s): %.15f != %.15f!\n",
 			   pszWhere,dMass,out.dMass);
+#if 0
 		_msrExit(msr);
 		return(0.0);
+#else
+		return(out.dMass);
+#endif
 		}
 	else return(out.dMass);
 	}
@@ -2514,3 +2588,21 @@ int msrDoDensity(MSR msr)
 	return(msr->param.bDoDensity);
 	}
 
+
+#ifdef GASOLINE
+
+void msrInitSph(MSR msr,double dTime)
+{
+	pstActiveGas(msr->pst,NULL,0,NULL,NULL);
+	msrBuildTree(msr,1,-1.0,1);
+	msrSmooth(msr,dTime,SMX_DENSITY,1);
+	msrReSmooth(msr,dTime,SMX_HSMDIVV,1);
+#if (1)
+	msrReSmooth(msr,dTime,SMX_GEOMBV,1);
+	pstCalcEthdot(msr->pst,NULL,0,NULL,NULL);
+#else
+	msrReSmooth(msr,dTime,SMX_ETHDOTBV,1);
+#endif
+	}
+
+#endif

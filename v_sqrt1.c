@@ -99,7 +99,7 @@ void v_sqrt1(int n,double *r2,double *a)
 	g4 = sg4;
 	g5 = sg5;
 	bLittleEndian = sbLittleEndian;
-#if 1
+#ifndef UNROLLED_VSQRT
 	/*
 	 ** Actual Calculation. Rolled loop.
 	 */

@@ -6,6 +6,11 @@
 typedef struct smfParameters {
 	double H;
 	double a;
+	double alpha;
+	double beta;
+	double gamma;
+	double algam;
+	int bGeometric;
 	} SMF;
 
 
@@ -31,12 +36,29 @@ void MeanVelSym(PARTICLE *,int,NN *,SMF *);
 
 #ifdef GASOLINE
 
-#define SMX_DENDIVV		3
-void initDendivv(void *);
-void combDendivv(void *,void *);
-void postDendivv(PARTICLE *);
-void Dendivv(PARTICLE *,int,NN *,SMF *);
-void DendivvSym(PARTICLE *,int,NN *,SMF *);
+#define SMX_HSMDIVV		3
+void initHsmDivv(void *);
+void combHsmDivv(void *,void *);
+void postHsmDivv(PARTICLE *,SMF *);
+void HsmDivv(PARTICLE *,int,NN *,SMF *);
+void HsmDivvSym(PARTICLE *,int,NN *,SMF *);
+
+#define SMX_GEOMBV		4
+void initGeomBV(void *);
+void combGeomBV(void *,void *);
+void postGeomBV(PARTICLE *,SMF *);
+void GeomBVSym(PARTICLE *,int,NN *,SMF *);
+
+#define SMX_ETHDOTBV	5
+void initEthdotBV(void *);
+void combEthdotBV(void *,void *);
+void EthdotBVSym(PARTICLE *,int,NN *,SMF *);
+
+void initAccsph(void *);
+void combAccsph(void *,void *);
+
+#define SMX_ACCSPHBV	6
+void AccsphBVSym(PARTICLE *,int,NN *,SMF *);
 
 #endif
 

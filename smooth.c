@@ -13,6 +13,7 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 				 int iSmoothType,int bSmooth)
 {
 	SMX smx;
+	void (*initParticle)(void *);
 	void (*init)(void *);
 	void (*comb)(void *,void *);
 	int pi;
@@ -26,6 +27,7 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 	switch (iSmoothType) {
 	case SMX_DENSITY:
 		smx->fcnSmooth = bSymmetric?DensitySym:Density;
+		initParticle = initDensity;
 		init = initDensity;
 		comb = combDensity;
 		smx->fcnPost = NULL;
@@ -33,17 +35,43 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 #ifdef SUPERCOOL
 	case SMX_MEANVEL:
 		smx->fcnSmooth = bSymmetric?MeanVelSym:MeanVel;
+		initParticle = initMeanVel;
 		init = initMeanVel;
 		comb = combMeanVel;
 		smx->fcnPost = NULL;
 		break;
 #endif
 #ifdef GASOLINE
-	case SMX_DENDIVV:
-		smx->fcnSmooth = bSymmetric?DendivvSym:Dendivv;
-		init = initDendivv;
-		comb = combDendivv;
-		smx->fcnPost = postDendivv;
+	case SMX_HSMDIVV:
+		smx->fcnSmooth = bSymmetric?HsmDivvSym:HsmDivv;
+		initParticle = initHsmDivv;
+		init = initHsmDivv;
+		comb = combHsmDivv;
+		smx->fcnPost = postHsmDivv;
+		break;
+	case SMX_GEOMBV:
+		assert(bSymmetric != 0);
+		smx->fcnSmooth = GeomBVSym;
+		initParticle = initGeomBV;
+		init = initGeomBV;
+		comb = combGeomBV;
+		smx->fcnPost = postGeomBV;
+		break;
+	case SMX_ETHDOTBV:
+		assert(bSymmetric != 0);
+		smx->fcnSmooth = EthdotBVSym;
+		initParticle = initEthdotBV;
+		init = initEthdotBV;
+		comb = combEthdotBV;
+		smx->fcnPost = NULL;
+		break;		
+	case SMX_ACCSPHBV:
+		assert(bSymmetric != 0);
+		smx->fcnSmooth = AccsphBVSym;
+		initParticle = NULL;		/* Don't zero accelerations */
+		init = initAccsph;
+		comb = combAccsph;
+		smx->fcnPost = NULL;
 		break;
 #endif
 	default:
@@ -55,7 +83,9 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 	for (pi=0;pi<pkd->nActive;++pi) {
 		if (pkd->pStore[pi].iActive) {
 			if (bSmooth) pkd->pStore[pi].fBall2 = -1.0;
-			init(&pkd->pStore[pi]);
+			if (initParticle != NULL) {
+				initParticle(&pkd->pStore[pi]);
+				}
 			}
 		else {
 			assert(bSymmetric == 0);
@@ -106,7 +136,7 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 	}
 
 
-void smFinish(SMX smx)
+void smFinish(SMX smx,SMF *smf)
 {
 	PKD pkd = smx->pkd;
 	int pi;
@@ -154,7 +184,7 @@ void smFinish(SMX smx)
 	if (smx->fcnPost != NULL) {
 		for (pi=0;pi<pkd->nActive;++pi) {
 			if (pkd->pStore[pi].iActive) {
-				smx->fcnPost(&pkd->pStore[pi]);
+				smx->fcnPost(&pkd->pStore[pi],smf);
 				}
 			}
 		}

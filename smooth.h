@@ -33,7 +33,7 @@ typedef struct smContext {
 	int nSmooth;
 	int bPeriodic;
 	void (*fcnSmooth)(PARTICLE *,int,NN *,SMF *);
-	void (*fcnPost)(PARTICLE *);
+	void (*fcnPost)(PARTICLE *,SMF *);
 	int *piMark;
 	int nListSize;
 	NN *nnList;
@@ -262,7 +262,7 @@ typedef struct smContext {
 
 
 int smInitialize(SMX *,PKD,int,int,int,int,int);
-void smFinish(SMX);
+void smFinish(SMX,SMF *);
 void smSmooth(SMX,SMF *);
 void smReSmooth(SMX,SMF *);
 

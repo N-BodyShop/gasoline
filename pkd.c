@@ -170,7 +170,7 @@ void pkdSeek(PKD pkd,FILE *fp,int nStart,int bStandard)
 
 
 void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
-				  int bStandard,double dvFac)
+				  int bStandard,double dvFac,double dTuFac)
 {
 	FILE *fp;
 	int i,j;
@@ -190,7 +190,17 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		pkd->pStore[i].fDensity = 0.0;
 		pkd->pStore[i].fBall2 = 0.0;
 #ifdef GASOLINE
-		pkd->pStore[i].fTemp = 0.0;
+		for (j=0;j<3;++j) {
+			pkd->pStore[i].vPred[j] = 0.0;
+			}
+		pkd->pStore[i].fHsmDivv = 0.0;
+		pkd->pStore[i].fRhoDivv = 0.0;
+		pkd->pStore[i].fCutVisc = 0.0;
+		pkd->pStore[i].u = 0.0;
+		pkd->pStore[i].du = 0.0;
+		pkd->pStore[i].uOld = 0.0;
+		pkd->pStore[i].A = 0.0;
+		pkd->pStore[i].B = 0.0;		
 		pkd->pStore[i].fMetals = 0.0;
 		pkd->pStore[i].fTimeForm = 0.0;
 #endif
@@ -219,10 +229,17 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 			for (j=0;j<3;++j) {
 				xdr_float(&xdrs,&vTemp);
 				pkd->pStore[i].v[j] = dvFac*vTemp;			
-				}
-			xdr_float(&xdrs,&vTemp);
 #ifdef GASOLINE
-			xdr_float(&xdrs,&pkd->pStore[i].fTemp);
+				pkd->pStore[i].vPred[j] = dvFac*vTemp;
+#endif
+				}
+			xdr_float(&xdrs,&pkd->pStore[i].fDensity);
+#ifdef GASOLINE
+			/*
+			 ** Convert Temperature to Thermal energy.
+			 */
+			xdr_float(&xdrs,&vTemp);
+			pkd->pStore[i].u = dTuFac*vTemp;
 			xdr_float(&xdrs,&pkd->pStore[i].fSoft);
 			xdr_float(&xdrs,&pkd->pStore[i].fMetals);
 #else
@@ -274,11 +291,15 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 			for (j=0;j<3;++j) {
 				pkd->pStore[i].r[j] = gp.pos[j];
 				pkd->pStore[i].v[j] = dvFac*gp.vel[j];
+#ifdef GASOLINE
+				pkd->pStore[i].vPred[j] = dvFac*gp.vel[j];
+#endif
 				}
 			pkd->pStore[i].fMass = gp.mass;
 			pkd->pStore[i].fSoft = gp.hsmooth;
 #ifdef GASOLINE
-			pkd->pStore[i].fTemp = gp.temp;
+			pkd->pStore[i].fDensity = gp.rho;
+			pkd->pStore[i].u = dTuFac*gp.temp;
 			pkd->pStore[i].fMetals = gp.metals;
 #endif
 			pkd->pStore[i].iOrder = nStart + i;
@@ -695,7 +716,7 @@ void pkdLocalOrder(PKD pkd,int nStart)
 
 
 void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
-				   int bStandard,double dvFac)
+				   int bStandard,double dvFac,double duTFac)
 {
 	FILE *fp;
 	int i,j;
@@ -739,7 +760,11 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 				}
 			xdr_float(&xdrs,&pkd->pStore[i].fDensity);
 #ifdef GASOLINE
-			xdr_float(&xdrs,&pkd->pStore[i].fTemp);
+			/*
+			 ** Convert thermal energy to tempertature.
+			 */
+			vTemp = duTFac*pkd->pStore[i].u;
+			xdr_float(&xdrs,&vTemp);
 			xdr_float(&xdrs,&pkd->pStore[i].fSoft);
 			xdr_float(&xdrs,&pkd->pStore[i].fMetals);
 #else
@@ -798,7 +823,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 			gp.phi = pkd->pStore[i].fPot;
 			gp.rho = pkd->pStore[i].fDensity;
 #ifdef GASOLINE
-			gp.temp = pkd->pStore[i].fTemp;
+			gp.temp = duTFac*pkd->pStore[i].u;
 			gp.metals = pkd->pStore[i].fMetals;
 #else
 			gp.temp = 0.0;
@@ -1642,6 +1667,12 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	pkdClearTimer(pkd,2);
 	pkdClearTimer(pkd,3);
 	/*
+	 ** Set up Ewald tables and stuff.
+	 */
+	if (bPeriodic) {
+	    pkdEwaldInit(pkd,fEwhCut,iEwOrder);		/* ignored in Flop count! */
+		}
+	/*
 	 ** Start particle caching space (cell cache already active).
 	 */
 	mdlROcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
@@ -1676,6 +1707,14 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			pkdStartTimer(pkd,2);
 			*pdFlop += pkdBucketInteract(pkd,iCell,iOrder);
 			pkdStopTimer(pkd,2);
+			/*
+			 * Now do Ewald part.
+			 */
+			if (bPeriodic) {
+				pkdStartTimer(pkd,3);
+				*pdFlop += pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
+				pkdStopTimer(pkd,3);
+				}
 			fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 
 				1.0*(pkd->nPart + (n-1)/2.0);
 			/*
@@ -1703,27 +1742,6 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	 ** Stop particle caching space.
 	 */
 	mdlFinishCache(pkd->mdl,CID_PARTICLE);
-	/*
-	 * Now do Ewald part.
-	 */
-	if (bPeriodic) {
-	    pkdStartTimer(pkd,3);
-	    pkdEwaldInit(pkd,fEwhCut,iEwOrder);		/* ignored in Flop count! */
-	    iCell = pkd->iRoot;
-	    while (iCell != -1) {
-		    if (c[iCell].iLower != -1) {
-			    iCell = c[iCell].iLower;
-			    continue;
-			    }
-			/*
-			 ** Calculate Ewald on this bucket.
-			 ** Note, it will only affect the active particles.
-			 */
-			*pdFlop += pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
-		    iCell = c[iCell].iUpper;
-		    }
-	    pkdStopTimer(pkd,3);
-	    }
 	}
 
 
@@ -1777,11 +1795,11 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo)
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
 	    if(p[i].iActive) {
-		for (j=0;j<3;++j) {
-			p[i].v[j] = p[i].v[j]*dvFacOne + p[i].a[j]*dvFacTwo;
+			for (j=0;j<3;++j) {
+				p[i].v[j] = p[i].v[j]*dvFacOne + p[i].a[j]*dvFacTwo;
+				}
 			}
 		}
-	    }
 	}
 
 
@@ -2152,7 +2170,8 @@ int pkdRungParticles(PKD pkd,int iRung)
 	}
 
 
-void pkdCoolVelocity(PKD pkd,int nSuperCool,double dCoolFac,double dCoolDens)
+void pkdCoolVelocity(PKD pkd,int nSuperCool,double dCoolFac,
+					 double dCoolDens,double dCoolMaxDens)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -2160,7 +2179,8 @@ void pkdCoolVelocity(PKD pkd,int nSuperCool,double dCoolFac,double dCoolDens)
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
-		if (p[i].iOrder < nSuperCool && p[i].fDensity >= dCoolDens) {
+		if (p[i].iOrder < nSuperCool && p[i].fDensity >= dCoolDens &&
+			p[i].fDensity < dCoolMaxDens) {
 			for (j=0;j<3;++j) {
 #ifdef SUPERCOOL
 				p[i].v[j] = p[i].vMean[j] + (p[i].v[j]-p[i].vMean[j])*dCoolFac;
@@ -2187,4 +2207,48 @@ void pkdActiveCool(PKD pkd,int nSuperCool)
 		}
     }
 
+#ifdef GASOLINE
 
+int pkdIsGas(PKD pkd,PARTICLE *p) {
+	if (p->iOrder < pkd->nGas) return 1;
+	else return 0;
+	}
+
+int pkdIsDark(PKD pkd,PARTICLE *p) {
+	if (p->iOrder >= pkd->nGas && p->iOrder < pkd->nGas+pkd->nDark) return 1;
+	else return 0;
+	}
+
+int pkdIsStar(PKD pkd,PARTICLE *p) {
+	if (p->iOrder >= pkd->nGas+pkd->nDark) return 1;
+	else return 0;
+	}
+
+void pkdActiveGas(PKD pkd)
+{
+    int i;
+    
+    for(i=0;i<pkdLocal(pkd);++i) {
+		if (pkdIsGas(pkd,&pkd->pStore[i])) {
+			pkd->pStore[i].iActive = 1;
+			}
+		else {
+			pkd->pStore[i].iActive = 0;
+			}
+		}
+    }
+
+void pkdCalcEthdot(PKD pkd)
+{
+	PARTICLE *p;
+    int i;
+    
+    for(i=0;i<pkdLocal(pkd);++i) {
+		p = &pkd->pStore[i];
+		if (p->iActive) {
+			p->du = p->A*sqrt(p->u) + p->B;
+			}
+		}
+    }
+
+#endif

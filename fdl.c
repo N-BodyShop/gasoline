@@ -153,7 +153,7 @@ void FDL_finish(FDL_CTX *CTX)
 {
     int i;
     
-    fclose(CTX->fdlp);
+    if (CTX->fdlp) fclose(CTX->fdlp);
     fclose(CTX->fileptr);
     for (i=0;i<NUM_COMMANDS;++i) free(CTX->command[i]);
     FDL_killtree(CTX->ast);
