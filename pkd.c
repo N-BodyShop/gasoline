@@ -303,6 +303,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					}
 				p->fMass = dp.mass;
 				p->fSoft = dp.eps;
+				p->fPot = dp.phi;
 				}
 			else if (pkdIsGas(pkd,p)) {
 				fread(&gp,sizeof(struct gas_particle),1,fp);
@@ -315,6 +316,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					}
 				p->fMass = gp.mass;
 				p->fSoft = gp.hsmooth;
+				p->fPot = gp.phi;
 #ifdef GASOLINE
 				p->fDensity = gp.rho;
 				p->u = dTuFac*gp.temp;
@@ -329,6 +331,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					}
 				p->fMass = sp.mass;
 				p->fSoft = sp.eps;
+				p->fPot = sp.phi;
 #ifdef GASOLINE
 				p->fMetals = sp.metals;
 				p->fTimeForm = sp.tform;		
