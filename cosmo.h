@@ -18,6 +18,6 @@ double csmComoveDriftInt(CSM csm, double dIExp);
 double csmComoveKickInt(CSM csm, double dIExp);
 double csmComoveDriftFac(CSM csm,double dTime,double dDelta);
 double csmComoveKickFac(CSM csm,double dTime,double dDelta);
-
+double csmComoveLookbackTime2Exp(CSM csm,double dComoveTime);
      
 #endif

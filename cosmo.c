@@ -156,6 +156,9 @@ double csmComoveDriftInt(CSM csm, double dIExp)
     return -dIExp/(csmExp2Hub(csm, 1.0/dIExp));
     }
 
+/*
+ ** Make the substitution y = 1/a to integrate da/(a^2*H(a))
+ */
 double csmComoveKickInt(CSM csm, double dIExp)
 {
     return -1.0/(csmExp2Hub(csm, 1.0/dIExp));
@@ -288,3 +291,34 @@ double csmComoveKickFac(CSM csm,double dTime,double dDelta)
 	    }
 	}
 
+double csmComoveLookbackTime2Exp(CSM csm,double dComoveTime)
+{
+	double dHubble0 = csm->dHubble0;
+
+	if (!csm->bComove) return(1.0);
+	else {
+	    double dExpOld = 0.0;
+	    double dT0 = csmExp2Time(csm, 1.0);
+	    double dTime = dT0 - dComoveTime;
+	    double dExpNew;
+	    int it = 0;
+	    
+	    if(dTime < EPSCOSMO) dTime = EPSCOSMO;
+	    dExpNew = csmTime2Exp(csm, dTime);
+	    /*
+	     * Root find with Newton's method.
+	     */
+	    do {
+		double dTimeNew = csmExp2Time(csm, dExpNew);
+	    	double f = dComoveTime
+		    - csmComoveKickFac(csm, dTimeNew, dT0 - dTimeNew);
+		double fprime = -1.0/(dExpNew*dExpNew*csmExp2Hub(csm, dExpNew));
+		dExpOld = dExpNew;
+		dExpNew += f/fprime;
+		it++;
+		assert(it < 20);
+		}
+	    while (fabs(dExpNew - dExpOld)/dExpNew > EPSCOSMO);
+	    return dExpNew;
+	    }
+	}
