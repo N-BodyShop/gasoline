@@ -182,12 +182,14 @@ struct outBuildTree {
 	};
 void pstBuildTree(PST,void *,int,void *,int *);
 
-#define PST_DENSITY			20
-struct inDensity {
+#define PST_SMOOTH			20
+struct inSmooth {
 	int nSmooth;
     int bPeriodic;
+	int bSymmetric;
+	int iSmoothType;
 	};
-void pstDensity(PST,void *,int,void *,int *);
+void pstSmooth(PST,void *,int,void *,int *);
 
 #define PST_GRAVITY			21
 struct inGravity {
@@ -391,5 +393,29 @@ struct outVelocityRung {
     int iMaxRung;
     };
 void pstVelocityRung(PST,void *,int,void *,int *);
+
+#define PST_COOLVELOCITY		46
+struct inCoolVelocity {
+	int nSuperCool;
+	double dCoolFac;
+	double dCoolDens;
+	};
+void pstCoolVelocity(PST,void *,int,void *,int *);
+
+#define PST_ACTIVECOOL			47
+struct inActiveCool {
+	int nSuperCool;
+	};
+void pstActiveCool(PST,void *,int,void *,int *);
+
+#define PST_RESMOOTH			48
+struct inReSmooth {
+	int nSmooth;
+    int bPeriodic;
+	int bSymmetric;
+	int iSmoothType;
+	};
+void pstReSmooth(PST,void *,int,void *,int *);
+
 #endif
 

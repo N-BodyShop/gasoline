@@ -19,11 +19,15 @@
 #include "opentype.h"
 #include "fdl.h"
 #include "outtype.h"
-
+#include "smoothfcn.h"
 
 void _msrLeader(void)
 {
-    puts("USAGE: main [SETTINGS | FLAGS] [SIM_FILE]");
+#ifdef GASOLINE
+    puts("USAGE: gasoline [SETTINGS | FLAGS] [SIM_FILE]");
+#else
+    puts("USAGE: pkdgrav [SETTINGS | FLAGS] [SIM_FILE]");
+#endif
     puts("SIM_FILE: Configuration file of a particular simulation, which");
     puts("          includes desired settings and relevant input and");
     puts("          output files. Settings specified in this file override");
@@ -50,7 +54,7 @@ void _msrExit(MSR msr)
 	}
 
 
-void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
+void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 {
 	MSR msr;
 	int j,ret;
@@ -170,9 +174,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.achInFile[0] = 0;
 	prmAddParam(msr->prm,"achInFile",3,msr->param.achInFile,256,"I",
 				"<input file name> (file in TIPSY binary format)");
-	strcpy(msr->param.achOutName,pszDefaultName); 
+#ifdef GASOLINE
+	strcpy(msr->param.achOutName,"gasoline");
+	prmAddParam(msr->prm,"achOutName",3,&msr->param.achOutName,256,"o",
+				"<output name for snapshots and logfile> = \"gasoline\"");
+#else
+	strcpy(msr->param.achOutName,"pkdgrav");
 	prmAddParam(msr->prm,"achOutName",3,&msr->param.achOutName,256,"o",
 				"<output name for snapshots and logfile> = \"pkdgrav\"");
+#endif
 	msr->param.bComove = 0;
 	prmAddParam(msr->prm,"bComove",0,&msr->param.bComove,sizeof(int),"cm",
 				"enable/disable comoving coordinates = -cm");
@@ -197,6 +207,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.dRedTo = 0.0;	
 	prmAddParam(msr->prm,"dRedTo",2,&msr->param.dRedTo,sizeof(double),"zto",
 				"specifies final redshift for the simulation");
+	msr->param.nSuperCool = 0;
+	prmAddParam(msr->prm,"nSuperCool",1,&msr->param.nSuperCool,sizeof(int),
+				"scn","<number of supercooled particles> = 0");
+	msr->param.dCoolFac = 0.95;
+	prmAddParam(msr->prm,"dCoolFac",2,&msr->param.dCoolFac,sizeof(double),
+				"scf","<Velocity Cooling factor> = 0.95 (no cool = 1.0)");
+	msr->param.dCoolDens = 50.0;
+	prmAddParam(msr->prm,"dCoolDens",2,&msr->param.dCoolDens,sizeof(double),
+				"scd","<Velocity Cooling Critical Density> = 50");
 	/*
 	 ** Set the box center to (0,0,0) for now!
 	 */
@@ -216,7 +235,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 		msr->param.nReplicas = 1;
 		}
 	if (!msr->param.achInFile[0] && !msr->param.bRestart) {
-		printf("pkdgrav ERROR: no input file specified\n");
+		printf("ERROR: no input file specified\n");
 		_msrExit(msr);
 		}
 	/*
@@ -1319,9 +1338,9 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	}
 
 
-void msrDensity(MSR msr)
+void msrSmooth(MSR msr,int iSmoothType,int bSymmetric)
 {
-	struct inDensity in;
+	struct inSmooth in;
 	int sec,dsec;
 
 	/*
@@ -1330,11 +1349,34 @@ void msrDensity(MSR msr)
 	assert(msr->iTreeType == MSR_TREE_DENSITY);
 	in.nSmooth = msr->param.nSmooth;
 	in.bPeriodic = msr->param.bPeriodic;
-	if (msr->param.bVerbose) printf("Calculating Densities...\n");
+	in.bSymmetric = bSymmetric;
+	in.iSmoothType = iSmoothType;
+	if (msr->param.bVerbose) printf("Smoothing...\n");
 	sec = time(0);
-	pstDensity(msr->pst,&in,sizeof(in),NULL,NULL);
+	pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
 	dsec = time(0) - sec;
-	printf("Densities Calculated, Wallclock:%d secs\n\n",dsec);
+	printf("Smooth Calculated, Wallclock:%d secs\n\n",dsec);
+	}
+
+
+void msrReSmooth(MSR msr,int iSmoothType,int bSymmetric)
+{
+	struct inReSmooth in;
+	int sec,dsec;
+
+	/*
+	 ** Make sure that the type of tree is a density binary tree!
+	 */
+	assert(msr->iTreeType == MSR_TREE_DENSITY);
+	in.nSmooth = msr->param.nSmooth;
+	in.bPeriodic = msr->param.bPeriodic;
+	in.bSymmetric = bSymmetric;
+	in.iSmoothType = iSmoothType;
+	if (msr->param.bVerbose) printf("ReSmoothing...\n");
+	sec = time(0);
+	pstReSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
+	dsec = time(0) - sec;
+	printf("ReSmooth Calculated, Wallclock:%d secs\n\n",dsec);
 	}
 
 
@@ -1451,6 +1493,33 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	 ** valid.
 	 */
 	msr->iTreeType = MSR_TREE_NONE;
+	}
+
+
+void msrCoolVelocity(MSR msr,double dMass)
+{
+	struct inActiveCool ina;
+	struct inCoolVelocity in;
+	
+	if (msr->param.nSuperCool > 0) {
+		/*
+		 ** First calculate densities for the supercool particles.
+		 */
+		ina.nSuperCool = msr->param.nSuperCool;
+		pstActiveCool(msr->pst,&ina,sizeof(ina),NULL,NULL);
+		msrBuildTree(msr,0,dMass,1);
+		msrSmooth(msr,SMX_DENSITY,0);
+#ifdef SUPERCOOL
+		msrReSmooth(msr,SMX_MEANVEL,0);
+#endif
+		/*
+		 ** Now cool them.
+		 */
+		in.nSuperCool = msr->param.nSuperCool;
+		in.dCoolFac = msr->param.dCoolFac;
+		in.dCoolDens = msr->param.dCoolDens;
+		pstCoolVelocity(msr->pst,&in,sizeof(in),NULL,NULL);
+		}
 	}
 
 
@@ -2083,14 +2152,16 @@ void msrDensityRung(MSR msr, int iRung, double dDelta, double dTime,
     struct inDensityRung in;
     struct outDensityRung out;
     double expand;
-    struct inDensity inden;
+    struct inSmooth inden;
     int sec,dsec;
 
     inden.nSmooth = msr->param.nSmooth;
     inden.bPeriodic = msr->param.bPeriodic;
+	inden.bSymmetric = 0;
+	inden.iSmoothType = SMX_DENSITY;
     if (msr->param.bVerbose) printf("Calculating Rung Densities...\n");
     sec = time(0);
-    pstDensity(msr->pst,&inden,sizeof(inden),NULL,NULL);
+    pstSmooth(msr->pst,&inden,sizeof(inden),NULL,NULL);
     dsec = time(0) - sec;
     printf("Rung Densities Calculated, Wallclock:%d secs\n\n",dsec);
     in.iRung = iRung;

@@ -10,7 +10,9 @@ float ArrType(PARTICLE *p,int iType)
 	case OUT_DENSITY_ARRAY:
 		return(p->fDensity);
 	case OUT_COLOR_ARRAY:
+#ifdef COLORCODE
 		return(p->fColor);
+#endif
 	case OUT_POT_ARRAY:
 		return(p->fPot);
 	case OUT_AMAG_ARRAY:

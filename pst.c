@@ -50,8 +50,8 @@ void pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inWriteTipsy),0);
 	mdlAddService(mdl,PST_BUILDTREE,pst,pstBuildTree,
 				  sizeof(struct inBuildTree),sizeof(struct outBuildTree));
-	mdlAddService(mdl,PST_DENSITY,pst,pstDensity,
-				  sizeof(struct inDensity),0);
+	mdlAddService(mdl,PST_SMOOTH,pst,pstSmooth,
+				  sizeof(struct inSmooth),0);
 	mdlAddService(mdl,PST_GRAVITY,pst,pstGravity,
 				  sizeof(struct inGravity),sizeof(struct outGravity));
 	mdlAddService(mdl,PST_CALCE,pst,pstCalcE,
@@ -115,6 +115,12 @@ void pstAddServices(PST pst,MDL mdl)
 		      (void (*)(void *,void *,int,void *,int *))pstVelocityRung,
 		      sizeof(struct inVelocityRung),
 		      sizeof(struct outVelocityRung));
+	mdlAddService(mdl,PST_COOLVELOCITY,pst,pstCoolVelocity,
+				  sizeof(struct inCoolVelocity),0);
+	mdlAddService(mdl,PST_ACTIVECOOL,pst,pstActiveCool,
+				  sizeof(struct inActiveCool),0);
+	mdlAddService(mdl,PST_RESMOOTH,pst,pstReSmooth,
+				  sizeof(struct inReSmooth),0);
 	}
 
 
@@ -473,7 +479,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	 ** Now start the ROOT finder based on balancing active weight ALONE!
 	 */
 	ittr = 0;
-	while (fl < fmm && fmm < fu) {
+	while (fl < fmm && fmm < fu && ittr < 32) {
 		fm = fmm;
 		inWt.iSplitDim = d;
 		inWt.fSplit = fm;
@@ -521,7 +527,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		fu = fm;
 		fmm = (fl + fu)/2;
 		ittr = 0;
-	    while (fl < fmm && fmm < fu) {
+	    while (fl < fmm && fmm < fu && ittr < 32) {
 			fm = fmm;
 			inWt.iSplitDim = d;
 			inWt.fSplit = fm;
@@ -559,7 +565,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		fu = pst->bnd.fMax[d];
 		fmm = (fl + fu)/2;
 		ittr = 0;
-	    while (fl < fmm && fmm < fu) {
+	    while (fl < fmm && fmm < fu && ittr < 32) {
 			fm = fmm;
 			inWt.iSplitDim = d;
 			inWt.fSplit = fm;
@@ -621,7 +627,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		    fu = fm;
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
-		while (fl < fmm && fmm < fu) {
+		while (fl < fmm && fmm < fu && ittr < 32) {
 			    fm = fmm;
 			    inWt.iSplitDim = d;
 			    inWt.fSplit = fm;
@@ -659,7 +665,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		    fu = pst->bnd.fMax[d];
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
-		while (fl < fmm && fmm < fu) {
+		while (fl < fmm && fmm < fu && ittr < 32) {
 			    fm = fmm;
 			    inWt.iSplitDim = d;
 			    inWt.fSplit = fm;
@@ -702,7 +708,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		    fu = pst->bnd.fMax[d];
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
-		while (fl < fmm && fmm < fu) {
+		while (fl < fmm && fmm < fu && ittr < 32) {
 			    fm = fmm;
 			    inWt.iSplitDim = d;
 			    inWt.fSplit = fm;
@@ -738,7 +744,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		    fu = fm;
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
-		while (fl < fmm && fmm < fu) {
+		while (fl < fmm && fmm < fu && ittr < 32) {
 			    fm = fmm;
 			    inWt.iSplitDim = d;
 			    inWt.fSplit = fm;
@@ -1467,22 +1473,46 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
-void pstDensity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
-	struct inDensity *in = vin;
+	struct inSmooth *in = vin;
 
-	assert(nIn == sizeof(struct inDensity));
+	assert(nIn == sizeof(struct inSmooth));
 	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_DENSITY,in,nIn);
-		pstDensity(pst->pstLower,in,nIn,NULL,NULL);
+		mdlReqService(pst->mdl,pst->idUpper,PST_SMOOTH,in,nIn);
+		pstSmooth(pst->pstLower,in,nIn,NULL,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
 		LCL *plcl = pst->plcl;
 		SMX smx;
 
-		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bPeriodic);
+		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bPeriodic,in->bSymmetric,
+					 in->iSmoothType,1);
 		smSmooth(smx);
+		smFinish(smx);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inReSmooth *in = vin;
+
+	assert(nIn == sizeof(struct inReSmooth));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_RESMOOTH,in,nIn);
+		pstReSmooth(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		LCL *plcl = pst->plcl;
+		SMX smx;
+
+		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bPeriodic,in->bSymmetric,
+					 in->iSmoothType,0);
+		smReSmooth(smx);
 		smFinish(smx);
 		}
 	if (pnOut) *pnOut = 0;
@@ -2112,6 +2142,41 @@ void pstRungStats(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = sizeof(struct outRungStats);
 	}
 
+
+void pstCoolVelocity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inCoolVelocity *in = vin;
+
+	assert(nIn == sizeof(struct inCoolVelocity));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_COOLVELOCITY,in,nIn);
+		pstCoolVelocity(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdCoolVelocity(plcl->pkd,in->nSuperCool,in->dCoolFac,in->dCoolDens);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstActiveCool(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inActiveCool *in = vin;
+	
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVECOOL,vin,nIn);
+		pstActiveCool(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdActiveCool(plcl->pkd,in->nSuperCool);
+		}
+	if (pnOut) *pnOut = 0;
+	}
 
 
 

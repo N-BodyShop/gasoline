@@ -28,6 +28,7 @@ struct parameters {
 	int bEpsVel;
 	int bNonSymp;
 	int bDoDensity;
+	int nSuperCool;
 	double dEta;
 	double dExtraStore;
 	double dSoft;
@@ -43,6 +44,8 @@ struct parameters {
 	double dHubble0;
 	double dOmega0;
 	double dRedTo;
+	double dCoolFac;
+	double dCoolDens;
 	char achInFile[256];
 	char achOutName[256];
 	char achDataSubPath[256];

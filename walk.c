@@ -356,6 +356,9 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
 	int iCell,id,ix,iy,iz,bRep,bIntersect,pj;
 	float x,y,z,rOffset[3],fSoftMax,twoh2;
 	
+	pkd->nPart = 0;
+	pkd->nCellSoft = 0;
+	pkd->nCellNewt = 0;
 	pbuc = &pkd->kdNodes[iBucket];
 	/*
 	 ** Find the maximum softening for particles in the bucket.
@@ -366,9 +369,6 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
 			fSoftMax = pkd->pStore[pj].fSoft;
 			}
 		}
-	pkd->nPart = 0;
-	pkd->nCellSoft = 0;
-	pkd->nCellNewt = 0;
 	for (ix=-nReps;ix<=nReps;++ix) {
 		rOffset[0] = ix*pkd->fPeriod[0];
 		for (iy=-nReps;iy<=nReps;++iy) {

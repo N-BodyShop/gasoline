@@ -66,7 +66,7 @@ typedef struct msrContext {
 
 
 
-void msrInitialize(MSR *,MDL,int,char **,char *);
+void msrInitialize(MSR *,MDL,int,char **);
 void msrLogParams(MSR msr, FILE *fp);
 void msrFinish(MSR);
 double msrTime2Exp(MSR,double);
@@ -82,7 +82,8 @@ void msrDomainColor(MSR);
 void msrReorder(MSR);
 void msrOutArray(MSR,char *,int);
 void msrOutVector(MSR,char *,int);
-void msrDensity(MSR);
+void msrSmooth(MSR,int,int);
+void msrReSmooth(MSR,int,int);
 void msrGravity(MSR,double,int *,double *,double *,double *,int *);
 void msrCalcE(MSR,int,double,double *,double *,double *);
 void msrDrift(MSR,double,double);
@@ -98,6 +99,7 @@ void msrRungStats(MSR);
 void msrActiveRung(MSR msr, int iRung, int bGreater);
 void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime,
 		     int bAll);
+void msrCoolVelocity(MSR,double);
 /*
  ** Interface functions.
  */

@@ -111,7 +111,13 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 
 void pkdFinish(PKD pkd)
 {
-	if (pkd->kdNodes) mdlFree(pkd->mdl,pkd->kdNodes);
+	if (pkd->kdNodes) {
+		/*
+		 ** Close caching space and free up nodes.
+		 */
+		mdlFinishCache(pkd->mdl,CID_CELL);
+		mdlFree(pkd->mdl,pkd->kdNodes);
+		}
 	if (pkd->kdTop) free(pkd->kdTop);
 	if (pkd->piLeaf) free(pkd->piLeaf);
 	free(pkd->ilp);
@@ -471,7 +477,7 @@ int pkdNodes(PKD pkd)
 
 void pkdDomainColor(PKD pkd)
 {
-#if (0)
+#ifdef COLORCODE
 	int i;
 	
 	for (i=0;i<pkd->nLocal;++i) {
@@ -1219,7 +1225,13 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	 ** Make sure the particles are in Active/Inactive order.
 	 */
 	pkdActiveOrder(pkd);
-	if (pkd->kdNodes) mdlFree(pkd->mdl,pkd->kdNodes);
+	if (pkd->kdNodes) {
+		/*
+		 ** Close caching space and free up nodes.
+		 */
+		mdlFinishCache(pkd->mdl,CID_CELL);
+		mdlFree(pkd->mdl,pkd->kdNodes);
+		}
 	/*
 	 ** First problem is to figure out how many cells we need to
 	 ** allocate. We need to do this in advance because we need to
@@ -1256,6 +1268,10 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	 */
 	pkdThreadTree(pkd,pkd->iRoot,-1);
 	*pRoot = pkd->kdNodes[pkd->iRoot];
+	/*
+	 ** Finally activate a read only cache for remote access.
+	 */
+	mdlROcache(pkd->mdl,CID_CELL,pkd->kdNodes,sizeof(KDN),pkdNodes(pkd));
 	}
 
 
@@ -1283,7 +1299,13 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		}
 	pkd->nSplit = l;
 	pkd->nNodes = l<<1;
-	if (pkd->kdNodes) mdlFree(pkd->mdl,pkd->kdNodes);
+	if (pkd->kdNodes) {
+		/*
+		 ** Close caching space and free up nodes.
+		 */
+		mdlFinishCache(pkd->mdl,CID_CELL);
+		mdlFree(pkd->mdl,pkd->kdNodes);
+		}
 	if(n == 0) {
 	    pkd->kdNodes = NULL;
 	    return;
@@ -1355,6 +1377,10 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	 */
 	pkdThreadTree(pkd,pkd->iRoot,-1);
 	*pRoot = c[pkd->iRoot];
+	/*
+	 ** Finally activate a read only cache for remote access.
+	 */
+	mdlROcache(pkd->mdl,CID_CELL,pkd->kdNodes,sizeof(KDN),pkdNodes(pkd));
 	}
 
 
@@ -1373,6 +1399,7 @@ void pkdBucketWeight(PKD pkd,int iBucket,float fWeight)
 
 void pkdColorCell(PKD pkd,int iCell,float fColor)
 {
+#ifdef COLORCODE
 	KDN *pkdn;
 	int pj;
 	
@@ -1380,7 +1407,7 @@ void pkdColorCell(PKD pkd,int iCell,float fColor)
 	for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
 		pkd->pStore[pj].fColor = fColor;
 		}
-	
+#endif	
 	}
 
 
@@ -1397,11 +1424,10 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	pkdClearTimer(pkd,2);
 	pkdClearTimer(pkd,3);
 	/*
-	 ** Start caching spaces.
+	 ** Start particle caching space (cell cache already active).
 	 */
 	mdlROcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
 			   pkdLocal(pkd));
-	mdlROcache(pkd->mdl,CID_CELL,pkd->kdNodes,sizeof(KDN),pkdNodes(pkd));
 	/*
 	 ** Walk over the local buckets!
 	 */
@@ -1456,9 +1482,8 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	pcs->dpCollRatio = mdlCollRatio(pkd->mdl,CID_PARTICLE);
 	pcs->dpMinRatio = mdlMinRatio(pkd->mdl,CID_PARTICLE);
 	/*
-	 ** Stop caching spaces.
+	 ** Stop particle caching space.
 	 */
-	mdlFinishCache(pkd->mdl,CID_CELL);
 	mdlFinishCache(pkd->mdl,CID_PARTICLE);
 	/*
 	 * Now do Ewald part.
@@ -1907,3 +1932,41 @@ int pkdRungParticles(PKD pkd,int iRung)
 		}
 	return n;
 	}
+
+
+void pkdCoolVelocity(PKD pkd,int nSuperCool,double dCoolFac,double dCoolDens)
+{
+	PARTICLE *p;
+	int i,j,n;
+
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i) {
+		if (p[i].iOrder < nSuperCool && p[i].fDensity >= dCoolDens) {
+			for (j=0;j<3;++j) {
+#ifdef SUPERCOOL
+				p[i].v[j] = p[i].vMean[j] + (p[i].v[j]-p[i].vMean[j])*dCoolFac;
+#else
+				p[i].v[j] *= dCoolFac;
+#endif
+				}
+			}
+		}
+	}
+
+
+void pkdActiveCool(PKD pkd,int nSuperCool)
+{
+    int i;
+    
+    for(i=0;i<pkdLocal(pkd);++i) {
+		if (pkd->pStore[i].iOrder < nSuperCool) {
+			pkd->pStore[i].iActive = 1;
+			}
+		else {
+			pkd->pStore[i].iActive = 0;
+			}
+		}
+    }
+
+

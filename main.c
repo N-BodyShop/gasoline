@@ -7,6 +7,7 @@
 #include "pst.h"
 #include "master.h"
 #include "outtype.h"
+#include "smoothfcn.h"
 
 void main_ch(MDL mdl)
 {
@@ -38,7 +39,7 @@ void main(int argc,char **argv)
 
 	mdlInitialize(&mdl,argv,main_ch);
 	for(argc = 0; argv[argc]; argc++); /* some MDLs can trash argv */
-	msrInitialize(&msr,mdl,argc,argv,"pkdgrav");
+	msrInitialize(&msr,mdl,argc,argv);
 	/*
 	 ** Check if a restart has been requested.
 	 ** Or if it might be required.
@@ -124,6 +125,8 @@ void main(int argc,char **argv)
 				msrMassCheck(msr,dMass,"After msrGravity in KDK");
 				msrKick(msr,dTime+0.5*msrDelta(msr),0.5*msrDelta(msr));
 				msrMassCheck(msr,dMass,"After msrKick-2 in KDK");
+				msrCoolVelocity(msr,dMass);	/* Supercooling if specified */
+				msrMassCheck(msr,dMass,"After CoolVelocity in KDK");
 				dTime += msrDelta(msr);
 				/*
 				 ** Output a log file line at each step.
@@ -139,6 +142,8 @@ void main(int argc,char **argv)
 			else {
 				msrTopStep(msr,iStep-1,dTime,msrDelta(msr),&dMultiEff);
 				msrRungStats(msr);
+				msrCoolVelocity(msr,dMass);	/* Supercooling if specified */
+				msrMassCheck(msr,dMass,"After CoolVelocity in DKD");
 				dTime += msrDelta(msr);
 				if (iStep%msrLogInterval(msr) == 0) {
 					/*
@@ -163,8 +168,8 @@ void main(int argc,char **argv)
 					msrActiveRung(msr,0,1);
 					msrBuildTree(msr,0,dMass,1);
 					msrMassCheck(msr,dMass,"After msrBuildTree in OutTime");
-					msrDensity(msr);
-					msrMassCheck(msr,dMass,"After msrDensity in OutTime");
+					msrSmooth(msr,SMX_DENSITY,1);
+					msrMassCheck(msr,dMass,"After msrSmooth in OutTime");
 					}
 				msrReorder(msr);
 				msrMassCheck(msr,dMass,"After msrReorder in OutTime");
@@ -189,8 +194,8 @@ void main(int argc,char **argv)
 					msrActiveRung(msr,0,1);
 					msrBuildTree(msr,0,dMass,1);
 					msrMassCheck(msr,dMass,"After msrBuildTree in OutFinal");
-					msrDensity(msr);
-					msrMassCheck(msr,dMass,"After msrDensity in OutFinal");
+					msrSmooth(msr,SMX_DENSITY,1);
+					msrMassCheck(msr,dMass,"After msrSmooth in OutFinal");
 					}
 				msrReorder(msr);
 				msrMassCheck(msr,dMass,"After msrReorder in OutFinal");
@@ -209,8 +214,8 @@ void main(int argc,char **argv)
 						msrActiveRung(msr,0,1);
 						msrBuildTree(msr,0,dMass,1);
 						msrMassCheck(msr,dMass,"After msrBuildTree in OutInt");
-						msrDensity(msr);
-						msrMassCheck(msr,dMass,"After msrDensity in OutInt");
+						msrSmooth(msr,SMX_DENSITY,1);
+						msrMassCheck(msr,dMass,"After msrSmooth in OutInt");
 						}
 					msrReorder(msr);
 					msrMassCheck(msr,dMass,"After msrReorder in OutInt");
@@ -244,8 +249,8 @@ void main(int argc,char **argv)
 			msrActiveRung(msr,0,1);
 			msrBuildTree(msr,0,dMass,1);
 			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Density");
-			msrDensity(msr);
-			msrMassCheck(msr,dMass,"After msrDensity in OutSingle Density");
+			msrSmooth(msr,SMX_DENSITY,1);
+			msrMassCheck(msr,dMass,"After msrSmooth in OutSingle Density");
 			msrReorder(msr);
 			msrMassCheck(msr,dMass,"After msrReorder in OutSingle Density");
 			sprintf(achFile,"%s.den",msrOutName(msr));

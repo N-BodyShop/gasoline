@@ -12,6 +12,7 @@ void v_sqrt1(int n,double *r2,double *a)
 	static int bInit = 0;
 	static double u[2048],t[2048];
 	static double g0,g1,g2,g3,g4,g5;
+	static int bLittleEndian;
 	int i,it;
 	float x,s;
 
@@ -20,6 +21,16 @@ void v_sqrt1(int n,double *r2,double *a)
 		double c[NCHEB],f[NCHEB+1],z[NCHEB+1];
 		double d0,d1,d2,d3,d4,d5;
 		int j,k;
+		union
+			{
+			short s;
+			char c[sizeof (short)];
+			} ue;
+		/*
+		 ** Determine the Endian'ness of the architecture.
+		 */
+		ue.s = 1;
+		bLittleEndian = (ue.c[sizeof(short) - 1] == 1)?0:1;
 		/*
 		 ** Initialize exponent tables.
 		 */
@@ -80,49 +91,49 @@ void v_sqrt1(int n,double *r2,double *a)
 	i = 0;
 	switch (n&7) {
 	loop:
-		it = (((int *)r2)[i<<1])>>20;
+		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
 		x = r2[i]*u[it];
 		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
 		s *= 1.5 - 0.5*x*s*s;
 		a[i++] = s*t[it];
 	case 7:
-		it = (((int *)r2)[i<<1])>>20;
+		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
 		x = r2[i]*u[it];
 		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
 		s *= 1.5 - 0.5*x*s*s;
 		a[i++] = s*t[it];
 	case 6:
-		it = (((int *)r2)[i<<1])>>20;
+		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
 		x = r2[i]*u[it];
 		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
 		s *= 1.5 - 0.5*x*s*s;
 		a[i++] = s*t[it];
 	case 5:
-		it = (((int *)r2)[i<<1])>>20;
+		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
 		x = r2[i]*u[it];
 		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
 		s *= 1.5 - 0.5*x*s*s;
 		a[i++] = s*t[it];
 	case 4:
-		it = (((int *)r2)[i<<1])>>20;
+		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
 		x = r2[i]*u[it];
 		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
 		s *= 1.5 - 0.5*x*s*s;
 		a[i++] = s*t[it];
 	case 3:
-		it = (((int *)r2)[i<<1])>>20;
+		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
 		x = r2[i]*u[it];
 		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
 		s *= 1.5 - 0.5*x*s*s;
 		a[i++] = s*t[it];
 	case 2:
-		it = (((int *)r2)[i<<1])>>20;
+		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
 		x = r2[i]*u[it];
 		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
 		s *= 1.5 - 0.5*x*s*s;
 		a[i++] = s*t[it];
 	case 1:
-		it = (((int *)r2)[i<<1])>>20;
+		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
 		x = r2[i]*u[it];
 		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
 		s *= 1.5 - 0.5*x*s*s;

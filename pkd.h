@@ -26,6 +26,7 @@ typedef struct particle {
 	int iOrder;
 	int iActive;
 	int iRung;
+	int cpStart;
 	float fWeight;
 	float fMass;
 	float fSoft;
@@ -35,7 +36,12 @@ typedef struct particle {
 	float fPot;
 	float fBall2;
 	float fDensity;
+#ifdef SUPERCOOL
+	float vMean[3];
+#endif
+#ifdef COLORCODE
 	float fColor;
+#endif
 	} PARTICLE;
 
 
@@ -280,5 +286,7 @@ int pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta,
 int pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta,
 		    int iMaxRung, double dVelFac, double dAccFac, int bAll);
 int pkdRungParticles(PKD,int);
+void pkdCoolVelocity(PKD,int,double,double);
+void pkdActiveCool(PKD,int);
 
 #endif

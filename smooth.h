@@ -32,10 +32,12 @@ typedef struct nNeighbor {
 typedef struct smContext {
 	PKD pkd;
 	int nSmooth;
-        int bPeriodic;
+	int bPeriodic;
+	void (*fcnSmooth)(PARTICLE *,int,NN *);
 	int *piMark;
 	int nListSize;
 	NN *nnList;
+	int *pbRelease;
 	PQ *pq;
 	PQ *pqHead;
 	int nHash;
@@ -135,12 +137,134 @@ typedef struct smContext {
 		}\
 	}
 
-int smInitialize(SMX *,PKD,int,int);
+#define INTERSECTNP(pkdn,fBall2,x,y,z,label)\
+{\
+	float INTRSCT_dx,INTRSCT_dy,INTRSCT_dz;\
+	float INTRSCT_dx1,INTRSCT_dy1,INTRSCT_dz1;\
+    float INTRSCT_fDist2;\
+	INTRSCT_dx = (pkdn)->bnd.fMin[0]-x;\
+	INTRSCT_dx1 = x-(pkdn)->bnd.fMax[0];\
+	INTRSCT_dy = (pkdn)->bnd.fMin[1]-y;\
+	INTRSCT_dy1 = y-(pkdn)->bnd.fMax[1];\
+	INTRSCT_dz = (pkdn)->bnd.fMin[2]-z;\
+	INTRSCT_dz1 = z-(pkdn)->bnd.fMax[2];\
+	if (INTRSCT_dx > 0.0) INTRSCT_fDist2 = INTRSCT_dx*INTRSCT_dx;\
+	else if (INTRSCT_dx1 > 0.0) INTRSCT_fDist2 = INTRSCT_dx1*INTRSCT_dx1;\
+	else INTRSCT_fDist2 = 0.0;\
+	if (INTRSCT_dy > 0.0) INTRSCT_fDist2 += INTRSCT_dy*INTRSCT_dy;\
+	else if (INTRSCT_dy1 > 0.0) INTRSCT_fDist2 += INTRSCT_dy1*INTRSCT_dy1;\
+	if (INTRSCT_dz > 0.0) INTRSCT_fDist2 += INTRSCT_dz*INTRSCT_dz;\
+	else if (INTRSCT_dz1 > 0.0) INTRSCT_fDist2 += INTRSCT_dz1*INTRSCT_dz1;\
+    if (INTRSCT_fDist2 > fBall2) goto label;\
+	}
+
+
+#define INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,bPeriodic,label)\
+{\
+	float INTRSCT_dx,INTRSCT_dy,INTRSCT_dz;\
+	float INTRSCT_dx1,INTRSCT_dy1,INTRSCT_dz1;\
+    float INTRSCT_fDist2;\
+	INTRSCT_dx = (pkdn)->bnd.fMin[0]-x;\
+	INTRSCT_dx1 = x-(pkdn)->bnd.fMax[0];\
+	INTRSCT_dy = (pkdn)->bnd.fMin[1]-y;\
+	INTRSCT_dy1 = y-(pkdn)->bnd.fMax[1];\
+	INTRSCT_dz = (pkdn)->bnd.fMin[2]-z;\
+	INTRSCT_dz1 = z-(pkdn)->bnd.fMax[2];\
+	if (INTRSCT_dx > 0.0) {\
+		INTRSCT_dx1 += lx;\
+		if (INTRSCT_dx1 < INTRSCT_dx) {\
+			INTRSCT_fDist2 = INTRSCT_dx1*INTRSCT_dx1;\
+			sx = x+lx;\
+			bPeriodic = 1;\
+			}\
+		else {\
+			INTRSCT_fDist2 = INTRSCT_dx*INTRSCT_dx;\
+			sx = x;\
+			}\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
+		}\
+	else if (INTRSCT_dx1 > 0.0) {\
+		INTRSCT_dx += lx;\
+		if (INTRSCT_dx < INTRSCT_dx1) {\
+			INTRSCT_fDist2 = INTRSCT_dx*INTRSCT_dx;\
+			sx = x-lx;\
+			bPeriodic = 1;\
+			}\
+		else {\
+			INTRSCT_fDist2 = INTRSCT_dx1*INTRSCT_dx1;\
+			sx = x;\
+			}\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
+		}\
+	else {\
+		INTRSCT_fDist2 = 0.0;\
+		sx = x;\
+		}\
+	if (INTRSCT_dy > 0.0) {\
+		INTRSCT_dy1 += ly;\
+		if (INTRSCT_dy1 < INTRSCT_dy) {\
+			INTRSCT_fDist2 += INTRSCT_dy1*INTRSCT_dy1;\
+			sy = y+ly;\
+			bPeriodic = 1;\
+			}\
+		else {\
+			INTRSCT_fDist2 += INTRSCT_dy*INTRSCT_dy;\
+			sy = y;\
+			}\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
+		}\
+	else if (INTRSCT_dy1 > 0.0) {\
+		INTRSCT_dy += ly;\
+		if (INTRSCT_dy < INTRSCT_dy1) {\
+			INTRSCT_fDist2 += INTRSCT_dy*INTRSCT_dy;\
+			sy = y-ly;\
+			bPeriodic = 1;\
+			}\
+		else {\
+			INTRSCT_fDist2 += INTRSCT_dy1*INTRSCT_dy1;\
+			sy = y;\
+			}\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
+		}\
+	else {\
+		sy = y;\
+		}\
+	if (INTRSCT_dz > 0.0) {\
+		INTRSCT_dz1 += lz;\
+		if (INTRSCT_dz1 < INTRSCT_dz) {\
+			INTRSCT_fDist2 += INTRSCT_dz1*INTRSCT_dz1;\
+			sz = z+lz;\
+			bPeriodic = 1;\
+			}\
+		else {\
+			INTRSCT_fDist2 += INTRSCT_dz*INTRSCT_dz;\
+			sz = z;\
+			}\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
+		}\
+	else if (INTRSCT_dz1 > 0.0) {\
+		INTRSCT_dz += lz;\
+		if (INTRSCT_dz < INTRSCT_dz1) {\
+			INTRSCT_fDist2 += INTRSCT_dz*INTRSCT_dz;\
+			sz = z-lz;\
+			bPeriodic = 1;\
+			}\
+		else {\
+			INTRSCT_fDist2 += INTRSCT_dz1*INTRSCT_dz1;\
+			sz = z;\
+			}\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
+		}\
+	else {\
+		sz = z;\
+		}\
+	}
+
+
+int smInitialize(SMX *,PKD,int,int,int,int,int);
 void smFinish(SMX);
 void smSmooth(SMX);
-/*
- ** Smoothing functions.
- */
+void smReSmooth(SMX);
 
 #endif
 
