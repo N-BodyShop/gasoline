@@ -2538,6 +2538,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef GASOLINE
 		pkd->pStore[i].u = cp.u;
 		pkd->pStore[i].uPred = cp.u;
+		pkd->pStore[i].fMetals = cp.fMetals;
 #endif
 #ifdef COLLISIONS
 		for (j=0;j<3;++j)
@@ -2582,6 +2583,7 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 			}
 #ifdef GASOLINE
 		cp.u = pkd->pStore[i].u;
+		cp.fMetals = pkd->pStore[i].fMetals;
 #endif
 #ifdef COLLISIONS
 		for (j=0;j<3;++j)

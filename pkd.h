@@ -150,6 +150,7 @@ typedef struct chkParticle {
 	FLOAT v[3];
 #ifdef GASOLINE
 	FLOAT u;
+	FLOAT fMetals;
 #endif
 #ifdef COLLISIONS
 	FLOAT w[3];
