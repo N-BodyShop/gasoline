@@ -108,7 +108,6 @@ struct parameters {
         int    bBulkViscosity;
         int    bDoGas;
         int    bUV;
-        int    bSN;
 #ifdef GLASS
 	/*
 	 ** Additional parameters for GLASS.

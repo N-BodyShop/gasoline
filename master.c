@@ -359,9 +359,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bUV = 1;
 	prmAddParam(msr->prm,"bUV",0,&msr->param.bUV,sizeof(int),"UV",
 				"read in an Ultra Violet file = +UV");
-	msr->param.bSN = 0;
-	prmAddParam(msr->prm,"bSN",0,&msr->param.bSN,sizeof(int),"SN",
-				"read in a Supernova file = +SN");
 	msr->param.bFandG = 0;
 	prmAddParam(msr->prm,"bFandG",0,&msr->param.bFandG,sizeof(int),"fg",
 				"use/don't use Kepler orbit drifts = -fg");
@@ -3931,13 +3928,6 @@ void msrSphViscosityLimiter(MSR msr, int bOn, double dTime)
     in.bOn = bOn;
     pstSphViscosityLimiter(msr->pst, &in, sizeof(in), NULL, NULL);
     }
-
-#ifdef PREHEAT
-/* Fabulous SN preheating */
-void msrInitSN(MSR msr) 
-{
-}
-#endif
 
 void msrInitCooling(MSR msr)
 {

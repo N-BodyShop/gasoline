@@ -137,9 +137,6 @@ int main(int argc,char **argv)
 	dTime = msrReadTipsy(msr);
 #endif /* !COLLISIONS */
 #ifdef GASOLINE
-#ifdef PREHEAT
-	if (msr->param.bSN) msrInitSN(msr);
-#endif
 	if (msr->param.iGasModel == GASMODEL_COOLING || msr->param.iGasModel == GASMODEL_COOLING_NONEQM) 
 	        msrInitCooling(msr);
 #endif
