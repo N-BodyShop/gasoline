@@ -27,9 +27,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	double x,y,z,dx,dy,dz,dir,d2,h,twoh,a,b,c,d;
 	double dir2,qirx,qiry,qirz,qir,tr,qir3;
 	double gam[6];
-#if !(NATIVE_SQRT)
-	double *sqrttmp,*d2a;
-#endif
 	int nFlop;
 	int nActive = 0;
 #ifdef COMPLETE_LOCAL
