@@ -1,4 +1,3 @@
-/*#include <fenv.h>*/
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -47,9 +46,6 @@ int main(int argc,char **argv)
 	int i,iStep,iSec=0,iStop=0,nActive;
 
 	char achBaseMask[256];
-
-	/* code to make gasoline core dump if there is a floating point exception 
-	feenableexcept(FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);*/
 
 #ifdef TINY_PTHREAD_STACK
 	static int first = 1;
