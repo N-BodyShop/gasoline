@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <values.h>
 #include <assert.h>
 
 #define MAXLEV 13

@@ -2,6 +2,7 @@
 #define FLOATTYPE_INCLUDED
 
 #include <limits.h>
+#include <values.h>
 
 #ifndef SINGLE
 
