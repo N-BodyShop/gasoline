@@ -114,7 +114,7 @@ double clEdotInstant( COOL *cl, double E, double T, double rho, double rFactor )
 {
 	double Edot;
 
-	Edot = -E*rFactor;
+	Edot = (T < cl->Tmin ? 0 : -E*rFactor);
 
 	return Edot;
 	}
@@ -220,6 +220,10 @@ void clIntegrateEnergy(COOL *cl, double *E,
 
   d->E = *E;
   d->T = clTemperature( d->Y_Total, d->E );
+  if (d->T < cl->Tmin ) {
+	  d->T = cl->Tmin;
+	  *E = clThermalEnergy( d->Y_Total, d->T );
+	  }
 }
 
 /* Module Interface routines */
@@ -245,7 +249,7 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 	prmAddParam(prm,"dY_Total",2,&CoolParam->Y_Total,
 				sizeof(double),"Y_Total",
 				"<Y_Total> = 2");
-	CoolParam->dCoolingTmin = 1;
+	CoolParam->dCoolingTmin = 10;
 	prmAddParam(prm,"dCoolingTmin",2,&CoolParam->dCoolingTmin,
 				sizeof(double),"ctmin",
 				"<Minimum Temperature for Cooling> = 10K");

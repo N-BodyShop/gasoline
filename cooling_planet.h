@@ -5,7 +5,6 @@
 #if defined(COOLDEBUG) || defined(STARFORM)
 #include "mdl.h"
 #else
-#define mdlDiag
 #endif
 #include "floattype.h"
 #include "param.h"
