@@ -1,0 +1,15 @@
+#
+# Makefile build template for pvm mdl
+#
+
+VPATH	= ..
+CC	= BUILD_CC
+CFLAGS	= BUILD_CFLAGS -I/local/lib/pvm3/include
+
+default: mdl.o
+
+clean:
+	-rm -f $(OBJ)
+
+mdl.o: ../Makefile.tmpl ../../pkdgrav/build
+

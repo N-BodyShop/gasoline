@@ -1,0 +1,31 @@
+#
+# Makefile build template for pvm pkdgrav
+#
+
+VPATH	= ../..
+MDL	= $(VPATH)/../mdl/pvm
+OS	= BUILD_OS
+MAKE	= BUILD_MAKE
+EXE	= BUILD_EXE
+CC	= BUILD_CC
+CFLAGS	= BUILD_CFLAGS BUILD_CODEDEF -I/local/lib/pvm3/include -I$(MDL)
+LDFLAGS	= BUILD_LDFLAGS
+MDLOBJ	= $(MDL)/$(OS)/mdl.o
+XOBJ	= v_sqrt1.o
+XLIB	= BUILD_XLIB
+
+OBJ	= BUILD_OBJ
+
+default:	
+	cd $(MDL)/$(OS); $(MAKE)
+	$(MAKE) $(EXE)
+
+clean:
+	cd $(MDL)/$(OS); $(MAKE) clean
+	-rm -f $(OBJ) $(XOBJ)
+
+$(EXE): $(MDLOBJ) $(OBJ) $(XOBJ)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(MDLOBJ) $(OBJ) $(XOBJ) $(XLIB) -lm
+
+$(OBJ) $(XOBJ): ../Makefile.tmpl ../../build
+
