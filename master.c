@@ -940,8 +940,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->nOuts = 0;
 
 	/*
-	 ** Check timestepping schemes.
+	 ** Check timestepping.
 	 */
+
+	if (msr->param.iMaxRung < 1) {
+		msr->param.iMaxRung = 1;
+		if (msr->param.bVWarnings)
+			(void) fprintf(stderr,"WARNING: iMaxRung set to 1\n");
+		}
 
 	if (msr->param.bGravStep && !msr->param.bDoGravity) {
 		puts("ERROR: need gravity to use gravity stepping...");
@@ -995,7 +1001,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #endif /* GASOLINE */
 
 #ifdef ROT_FRAME
-	if (!msr->param.bRotFrame) {
+	if (msr->param.bVWarnings && !msr->param.bRotFrame) {
 		puts("WARNING: ROT_FRAME set without bRotFrame");
 		}
 #else
@@ -2787,7 +2793,7 @@ void msrCalcEandL(MSR msr,int bFirst,double dTime,double *E,double *T,
 		dRxV[1] = dSunPos[2]*dSunVel[0] - dSunPos[0]*dSunVel[2];
 		dRxV[2] = dSunPos[0]*dSunVel[1] - dSunPos[1]*dSunVel[0];
 		*T -= 0.5*dTotMass*dSunVel2;
-		*U -= msr->param.dCentMass*outExt.dPot;
+		*U -= 0.5*msr->param.dCentMass*outExt.dPot;
 		for (k=0;k<3;k++) L[k] -= dTotMass*dRxV[k];
 		}
 	/*

@@ -3363,9 +3363,9 @@ pkdSetRung(PKD pkd, int iRung)
 {
     int i;
     
-    for(i = 0; i < pkdLocal(pkd); ++i) {
-	pkd->pStore[i].iRung = iRung;
-	}
+    for(i=0;i<pkdLocal(pkd);++i) {
+		pkd->pStore[i].iRung = iRung;
+		}
     }
 
 void
