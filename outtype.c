@@ -49,6 +49,8 @@ FLOAT VecType(PARTICLE *p,int iDim,int iType)
 		return(p->v[iDim]);
 	case OUT_ACCEL_VECTOR:
 		return(p->a[iDim]);
+	case OUT_ADOT_VECTOR:
+		return(p->adot[iDim]);
 #ifdef GASOLINE
 	case OUT_VPRED_VECTOR:
 		return(p->vPred[iDim]);

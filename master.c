@@ -142,6 +142,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bEpsVel = 1;
 	prmAddParam(msr->prm,"bEpsVel",0,&msr->param.bEpsVel,sizeof(int),
 		    "ev", "<Epsilon on V timestepping>");
+	msr->param.bAAdot = 0;
+	prmAddParam(msr->prm,"bAAdot",0,&msr->param.bAAdot,sizeof(int),
+		    "aad", "<A on Adot timestepping>");
 	msr->param.bNonSymp = 0;
 	prmAddParam(msr->prm,"bNonSymp",0,&msr->param.bNonSymp,sizeof(int),
 		    "ns", "<Non-symplectic density stepping>");
@@ -459,6 +462,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dEta: %g",msr->param.dEta);
 	fprintf(fp," iMaxRung: %d",msr->param.iMaxRung);
 	fprintf(fp," bEpsVel: %d",msr->param.bEpsVel);
+	fprintf(fp," bAAdot: %d",msr->param.bAAdot);
 	fprintf(fp," bNonSymp: %d",msr->param.bNonSymp);
 #ifdef GASOLINE
 	fprintf(fp,"\n# SPH: bGeometric: %d",msr->param.bGeometric);
@@ -2620,9 +2624,32 @@ void msrAccelStep(MSR msr, double dTime)
     double a;
 
     in.dEta = msrEta(msr);
-    in.a = msrTime2Exp(msr,dTime);
-	in.H = msrTime2Hub(msr,dTime);
+    a = msrTime2Exp(msr,dTime);
+    if(msr->param.bCannonical) {
+	in.dVelFac = 1.0/(a*a);
+	}
+    else {
+	in.dVelFac = 1.0;
+	}
+    in.dAccFac = 1.0/(a*a*a);
     pstAccelStep(msr->pst, &in, sizeof(in), NULL, NULL);
+    }
+
+void
+msrAdotStep(MSR msr, double dTime)
+{
+    struct inAdotStep in;
+    double a;
+
+    in.dEta = msrEta(msr);
+    a = msrTime2Exp(msr,dTime);
+    if(msr->param.bCannonical) {
+	in.dVelFac = 1.0/(a*a);
+	}
+    else {
+	in.dVelFac = 1.0;
+	}
+    pstAdotStep(msr->pst, &in, sizeof(in), NULL, NULL);
     }
 
 void
@@ -2748,6 +2775,9 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 
 			msrActiveRung(msr, iRung, 1);
 			msrInitDt(msr);
+			if(msr->param.bAAdot) {
+			    msrAdotStep(msr, dTime);
+			    }
 			if(msr->param.bEpsVel) {
 			    msrAccelStep(msr, dTime);
 			    }
@@ -2756,9 +2786,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			    msrDensityStep(msr, dTime);
 			    }
 #ifdef PLANETS
-			if(msr->param.bEpsVel) {
-			    msrBuildTree(msr,0,dMass,1);
-			    }
+			msrBuildTree(msr,0,dMass,1);
 			msrSmooth(msr,dTime,SMX_TIMESTEP,0);
 #endif
 			msrDtToRung(msr, iRung, dDelta, 1);
@@ -2841,7 +2869,10 @@ void msrTopStepKDK(MSR msr,
 
 		msrActiveRung(msr, iRung, 1);
 		msrInitDt(msr);
-		msrAccelStep(msr, dTime);
+		if(msr->param.bEpsVel)
+		    msrAccelStep(msr, dTime);
+		if(msr->param.bAAdot)
+		    msrAdotStep(msr, dTime);
 #ifdef PLANETS
 		msrBuildTree(msr,0,dMass,1);
 		msrSmooth(msr,dTime,SMX_TIMESTEP,0);

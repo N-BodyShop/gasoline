@@ -393,8 +393,8 @@ void pstGetMap(PST,void *,int,void *,int *);
 #define PST_ACCELSTEP		45
 struct inAccelStep {
     double dEta;
-    double a;
-    double H;
+    double dVelFac;
+    double dAccFac;
     };
 void pstAccelStep(PST,void *,int,void *,int *);
 
@@ -509,6 +509,13 @@ struct outSphCurrRung {
 void pstSphCurrRung(PST,void *,int,void *,int *);
 
 #endif
+
+#define PST_ADOTSTEP			61
+struct inAdotStep {
+    double dEta;
+    double dVelFac;
+    };
+void pstAdotStep(PST,void *,int,void *,int *);
 
 #endif
 

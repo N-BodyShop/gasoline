@@ -33,6 +33,7 @@ typedef struct particle {
 	FLOAT r[3];
 	FLOAT v[3];
 	FLOAT a[3];
+	FLOAT adot[3];
 	FLOAT fPot;
 	FLOAT fBall2;
 	FLOAT fDensity;
@@ -102,6 +103,7 @@ typedef struct kdNode {
 	double fMass;
 	double fSoft;
 	FLOAT r[3];
+	FLOAT v[3];
 	struct pkdCalcCellStruct mom;
 	double fOpen2;
 	} KDN;
@@ -109,11 +111,13 @@ typedef struct kdNode {
 typedef struct ilPart {
 	double m,h;
 	double x,y,z;
+	double vx,vy,vz;
 	} ILP;
 
 typedef struct ilCellSoft {
 	double m,h;
 	double x,y,z;
+	double vx,vy,vz;
 	double xx,yy,zz,xy,xz,yz;
 	} ILCS;
 
@@ -123,6 +127,7 @@ typedef struct ilCellSoft {
 typedef struct ilCellNewt {
 	double m;
 	double x,y,z;
+	double vx,vy,vz;
 	double xx,yy,xy,xz,yz;
 	double zz;
 	double xxx,xyy,xxy,yyy,xxz,yyz,xyz;
@@ -306,7 +311,9 @@ void pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
 void pkdDensityStep(PKD pkd, double dEta, double
 		    dRhoFac);
-void pkdAccelStep(PKD pkd,double dEta,double a, double H);
+void pkdAccelStep(PKD pkd, double dEta, double dVelFac, double
+		     dAccFac);
+void pkdAdotStep(PKD pkd, double dEta, double dVelFac);
 int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int
 		bAll);
 void pkdInitDt(PKD pkd, double dDelta);

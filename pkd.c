@@ -949,6 +949,7 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 	pOut->fSoft = (p1->fMass*p1->fSoft + p2->fMass*p2->fSoft)/pOut->fMass;
 	for (j=0;j<3;++j) {
 		pOut->r[j] = (p1->fMass*p1->r[j] + p2->fMass*p2->r[j])/pOut->fMass;
+		pOut->v[j] = (p1->fMass*p1->v[j] + p2->fMass*p2->v[j])/pOut->fMass;
 		}
 	}
 
@@ -1226,6 +1227,7 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,int iOrder)
 			c[iCell].bnd.fMin[j] = p[u].r[j];
 			c[iCell].bnd.fMax[j] = p[u].r[j];
 			c[iCell].r[j] = 0.0;
+			c[iCell].v[j] = 0.0;
 			}
 		for (pj=l;pj<=u;++pj) {
 			for (j=0;j<3;++j) {
@@ -1241,9 +1243,13 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,int iOrder)
 			c[iCell].fSoft += p[pj].fMass*p[pj].fSoft;
 			for (j=0;j<3;++j) {
 				c[iCell].r[j] += p[pj].fMass*p[pj].r[j];
+				c[iCell].v[j] += p[pj].fMass*p[pj].v[j];
 				}
 			}
-		for (j=0;j<3;++j) c[iCell].r[j] /= c[iCell].fMass;
+		for (j=0;j<3;++j) {
+		    c[iCell].r[j] /= c[iCell].fMass;
+		    c[iCell].v[j] /= c[iCell].fMass;
+		    }
 		c[iCell].fSoft /= c[iCell].fMass;
 		}
 	/*
@@ -1413,6 +1419,7 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 			pkdn->fSoft = 0.0;
 			for (j=0;j<3;++j) {
 				pkdn->r[j] = 0.0;
+				pkdn->v[j] = 0.0;
 				}
 			if (pkdn->iLower != -1) {
 				fm = pkd->kdNodes[pkdn->iLower].fMass;
@@ -1420,6 +1427,7 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 				pkdn->fSoft += fm*pkd->kdNodes[pkdn->iLower].fSoft;
 				for (j=0;j<3;++j) {
 					pkdn->r[j] += fm*pkd->kdNodes[pkdn->iLower].r[j];
+					pkdn->v[j] += fm*pkd->kdNodes[pkdn->iLower].v[j];
 					}
 				}
 			if (pkdn->iUpper != -1) {
@@ -1428,11 +1436,13 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 				pkdn->fSoft += fm*pkd->kdNodes[pkdn->iUpper].fSoft;
 				for (j=0;j<3;++j) {
 					pkdn->r[j] += fm*pkd->kdNodes[pkdn->iUpper].r[j];
+					pkdn->v[j] += fm*pkd->kdNodes[pkdn->iUpper].v[j];
 					}
 				}
 			pkdn->fSoft /= pkdn->fMass;
 			for (j=0;j<3;++j) {
 				pkdn->r[j] /= pkdn->fMass;
+				pkdn->v[j] /= pkdn->fMass;
 				}
 			}
 		else {
@@ -1448,6 +1458,7 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 			pkdn->fSoft = fm*pkd->pStore[pkdn->pLower].fSoft;
 			for (j=0;j<3;++j) {
 				pkdn->r[j] = fm*pkd->pStore[pLower].r[j];
+				pkdn->v[j] = fm*pkd->pStore[pLower].v[j];
 				}
 			for (i=pkdn->pLower+1;i<=pkdn->pUpper;++i) {
 				fm = pkd->pStore[i].fMass;
@@ -1455,11 +1466,13 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 				pkdn->fSoft += fm*pkd->pStore[i].fSoft;
 				for (j=0;j<3;++j) {
 					pkdn->r[j] += fm*pkd->pStore[i].r[j];
+					pkdn->v[j] += fm*pkd->pStore[i].v[j];
 					}
 				}
 			pkdn->fSoft /= pkdn->fMass;
 			for (j=0;j<3;++j) {
 				pkdn->r[j] /= pkdn->fMass;
+				pkdn->v[j] /= pkdn->fMass;
 				}
 			}
 		/*
@@ -2142,34 +2155,60 @@ pkdDensityStep(PKD pkd, double dEta, double dRhoFac)
 		}
     }
 
-
-
-#define DT_ITER		1
-
-void pkdAccelStep(PKD pkd, double dEta, double a, double H)
+void
+pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac)
 {
-    int i,j,iter;
+    int i;
+    double vel;
     double acc;
-    double dt0,dt;
+    int j;
+    double dT;
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
-		if(pkd->pStore[i].iActive) {
+	if(pkd->pStore[i].iActive) {
+	    vel = 0;
             acc = 0;
-			for(j=0;j<3;++j) {
-				acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
-				}
-			dt0 = dEta*sqrt(pkd->pStore[i].fSoft*a*a*a/acc);
-			dt = dt0;
-#ifdef CORRECT_DT
-			for (iter=0;iter<DT_ITER;++iter) {
-				if (1.5*H*dt >= 1) break;
-				dt = dt0/sqrt((1 - 1.5*H*dt));
-				}
-#endif
-			if(dt < pkd->pStore[i].dt)
-				pkd->pStore[i].dt = dt;
-			}
+	    for(j = 0; j < 3; j++) {
+		vel += pkd->pStore[i].v[j]*pkd->pStore[i].v[j];
+                acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
 		}
+	    vel = sqrt(vel)*dVelFac;
+	    acc = sqrt(acc)*dAccFac;
+	    dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
+	    if(dT < pkd->pStore[i].dt)
+		pkd->pStore[i].dt = dT;
+	    }
+	}
+    }
+
+void
+pkdAdotStep(PKD pkd, double dEta, double dVelFac)
+{
+    int i;
+    double acc;
+    double adot;
+    int j;
+    double dT;
+    
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+	if(pkd->pStore[i].iActive) {
+	    adot = 0;
+            acc = 0;
+	    for(j = 0; j < 3; j++) {
+		adot += pkd->pStore[i].adot[j]*pkd->pStore[i].adot[j];
+                acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
+		}
+	    /*
+	     * Note use of dVelfac, since adot is calculated as
+	     * v*da/dx.
+	     */
+	    adot = sqrt(adot)*dVelFac;
+	    acc = sqrt(acc);
+	    dT = dEta*acc/adot;
+	    if(dT < pkd->pStore[i].dt)
+		pkd->pStore[i].dt = dT;
+	    }
+	}
     }
 
 #define STEP_EPS 1e-6
@@ -2377,6 +2416,7 @@ void pkdInitAccel(PKD pkd)
 		if (pkd->pStore[i].iActive) {
 			for (j=0;j<3;++j) {
 				pkd->pStore[i].a[j] = 0;
+				pkd->pStore[i].adot[j] = 0;
 				}
 			}
 		}

@@ -331,6 +331,17 @@ int main(int argc,char **argv)
 			sprintf(achFile,"%s.pot",msrOutName(msr));
 			msrOutArray(msr,achFile,OUT_POT_ARRAY);
 			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Gravity");
+
+			msrInitDt(msr);
+			if(msr->param.bAAdot)
+			    msrAdotStep(msr, dTime);
+			else
+			    msrAccelStep(msr, dTime);
+			sprintf(achFile,"%s.adot",msrOutName(msr));
+			msrOutVector(msr,achFile,OUT_ADOT_VECTOR);
+			msrDtToRung(msr, 0, msrDelta(msr), 1);
+			sprintf(achFile,"%s.dt",msrOutName(msr));
+			msrOutArray(msr,achFile,OUT_DT_ARRAY);
 			}
 		}
 	msrFinish(msr);

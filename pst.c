@@ -2264,7 +2264,24 @@ void pstAccelStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
               mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
               }
       else {
-              pkdAccelStep(plcl->pkd,in->dEta,in->a,in->H);
+              pkdAccelStep(plcl->pkd, in->dEta, in->dVelFac, in->dAccFac);
+              }
+      if (pnOut) *pnOut = 0;
+      }
+
+void pstAdotStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+      LCL *plcl = pst->plcl;
+      struct inAdotStep *in = vin;
+
+      assert(nIn == sizeof(*in));
+      if (pst->nLeaves > 1) {
+              mdlReqService(pst->mdl,pst->idUpper,PST_ADOTSTEP,vin,nIn);
+              pstAdotStep(pst->pstLower,vin,nIn,vout,pnOut);
+              mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+              }
+      else {
+              pkdAdotStep(plcl->pkd, in->dEta, in->dVelFac);
               }
       if (pnOut) *pnOut = 0;
       }
