@@ -312,6 +312,7 @@ void pstLocalOrder(PST,void *,int,void *,int *);
 struct inOutArray {
 	char achOutFile[PST_FILENAME_SIZE];
 	int iType;
+	int iBinaryOutput;
 	};
 void pstOutArray(PST,void *,int,void *,int *);
 
@@ -320,6 +321,7 @@ struct inOutVector {
 	char achOutFile[PST_FILENAME_SIZE];
 	int iDim;
 	int iType;
+	int iBinaryOutput;
 	};
 void pstOutVector(PST,void *,int,void *,int *);
 

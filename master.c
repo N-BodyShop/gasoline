@@ -375,6 +375,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bBinary = 1;
 	prmAddParam(msr->prm,"bBinary",0,&msr->param.bBinary,sizeof(int),"bb",
 				"spatial/density binary trees = +bb");
+	msr->param.iBinaryOutput = 0;
+	prmAddParam(msr->prm,"iBinaryOutput",1,&msr->param.iBinaryOutput,sizeof(int),
+				"binout","<array outputs 0 ascii, 1 float, 2 double, 3 FLOAT(internal)> = 0");
+	msr->param.bPackedVector = 0;
+	prmAddParam(msr->prm,"bPackedVector",0,&msr->param.bPackedVector,sizeof(int),
+				"pvec","enable/disable packed vector outputs = +pvec");
 	msr->param.bDoDensity = 1;
 	prmAddParam(msr->prm,"bDoDensity",0,&msr->param.bDoDensity,sizeof(int),
 				"den","enable/disable density outputs = +den");
@@ -1621,7 +1627,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bStandard: %d",msr->param.bStandard);
 	fprintf(fp,"\n# bKDK: %d",msr->param.bKDK);
 	fprintf(fp," nBucket: %d",msr->param.nBucket);
-	fprintf(fp," iOutInterval: %d",msr->param.iOutInterval);
+	fprintf(fp," iOutInterval(%d,%d): %d",msr->param.iBinaryOutput,msr->param.bPackedVector,msr->param.iOutInterval);
 	fprintf(fp," dDumpFrameStep: %g",msr->param.dDumpFrameStep);
 	fprintf(fp," dDumpFrameTime: %g",msr->param.dDumpFrameTime);
 	fprintf(fp," iLogInterval: %d",msr->param.iLogInterval);
@@ -2659,13 +2665,18 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 	/*
 	 ** Write the Header information and close the file again.
 	 */
-	fprintf(fp,"%d\n",msr->N);
+	if (msr->param.iBinaryOutput) {
+		fwrite(&msr->N,sizeof(int),1,fp);
+		}
+	else {
+		fprintf(fp,"%d\n",msr->N);
+		}
 	fclose(fp);
 	/* 
 	 * First write our own particles.
 	 */
 	assert(msr->pMap[0] == 0);
-	pkdOutArray(plcl->pkd,achOutFile,iType); 
+	pkdOutArray(plcl->pkd,achOutFile,iType,msr->param.iBinaryOutput); 
 	for (i=1;i<msr->nThreads;++i) {
 		id = msr->pMap[i];
 	    /* 
@@ -2678,7 +2689,7 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 	    /* 
 	     * Write the swapped particles.
 	     */
-	    pkdOutArray(plcl->pkd,achOutFile,iType); 
+	    pkdOutArray(plcl->pkd,achOutFile,iType,msr->param.iBinaryOutput); 
 	    /* 
 	     * Swap them back again.
 	     */
@@ -2729,14 +2740,21 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	/*
 	 ** Write the Header information and close the file again.
 	 */
-	fprintf(fp,"%d\n",msr->N);
+	if (msr->param.iBinaryOutput) {
+		fwrite(&msr->N,sizeof(int),1,fp);
+		}
+	else {
+		fprintf(fp,"%d\n",msr->N);
+		}
 	fclose(fp);
+
 	/* 
 	 * First write our own particles.
 	 */
 	assert(msr->pMap[0] == 0);
-	for (iDim=0;iDim<3;++iDim) {
-		pkdOutVector(plcl->pkd,achOutFile,iDim,iType); 
+	
+	if (msr->param.bPackedVector) {
+		pkdOutVector(plcl->pkd,achOutFile,-3,iType,msr->param.iBinaryOutput); 
 		for (i=1;i<msr->nThreads;++i) {
 			id = msr->pMap[i];
 			/* 
@@ -2749,7 +2767,7 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 			/* 
 			 * Write the swapped particles.
 			 */
-			pkdOutVector(plcl->pkd,achOutFile,iDim,iType); 
+			pkdOutVector(plcl->pkd,achOutFile,-3,iType,msr->param.iBinaryOutput); 
 			/* 
 			 * Swap them back again.
 			 */
@@ -2757,6 +2775,32 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 			mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
 			pkdSwapAll(plcl->pkd,id);
 			mdlGetReply(pst0->mdl,id,NULL,NULL);
+			}
+		}
+	else {
+		for (iDim=0;iDim<3;++iDim) {
+			pkdOutVector(plcl->pkd,achOutFile,iDim,iType,msr->param.iBinaryOutput); 
+			for (i=1;i<msr->nThreads;++i) {
+				id = msr->pMap[i];
+				/* 
+				 * Swap particles with the remote processor.
+				 */
+				inswap = 0;
+				mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+				pkdSwapAll(plcl->pkd, id);
+				mdlGetReply(pst0->mdl,id,NULL,NULL);
+			/* 
+			 * Write the swapped particles.
+			 */
+				pkdOutVector(plcl->pkd,achOutFile,iDim,iType,msr->param.iBinaryOutput); 
+				/* 
+				 * Swap them back again.
+				 */
+				inswap = 0;
+				mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+				pkdSwapAll(plcl->pkd,id);
+				mdlGetReply(pst0->mdl,id,NULL,NULL);
+				}
 			}
 		}
 	}

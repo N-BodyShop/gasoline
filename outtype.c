@@ -113,10 +113,12 @@ FLOAT VecType(PARTICLE *p,int iDim,int iType)
 	}
 
 
-void pkdOutArray(PKD pkd,char *pszFileName,int iArrType)
+void pkdOutArray(PKD pkd,char *pszFileName,int iArrType, int iBinaryOutput)
 {
 	FILE *fp;
 	FLOAT fOut;
+	float FloatOut;
+	double DoubleOut;
 	int i;
 
 	fp = fopen(pszFileName,"a");
@@ -124,10 +126,33 @@ void pkdOutArray(PKD pkd,char *pszFileName,int iArrType)
 	/*
 	 ** Write Array Elements!
 	 */
-	for (i=0;i<pkd->nLocal;++i) {
-		fOut = ArrType(&pkd->pStore[i],iArrType);
-		fprintf(fp,"%.14g\n",fOut);
+	switch (iBinaryOutput) {
+	case 0:
+		for (i=0;i<pkd->nLocal;++i) {
+			fOut = ArrType(&pkd->pStore[i],iArrType);
+			fprintf(fp,"%.14g\n",fOut);
+			}
+		break;
+	case 1:
+		for (i=0;i<pkd->nLocal;++i) {
+			FloatOut = ArrType(&pkd->pStore[i],iArrType);
+			fwrite(&FloatOut, sizeof(float), 1, fp );
+			}
+		break;
+	case 2:
+		for (i=0;i<pkd->nLocal;++i) {
+			DoubleOut = ArrType(&pkd->pStore[i],iArrType);
+			fwrite(&DoubleOut, sizeof(double), 1, fp );
+			}
+		break;
+	case 3:
+		for (i=0;i<pkd->nLocal;++i) {
+			fOut = ArrType(&pkd->pStore[i],iArrType);
+			fwrite(&fOut, sizeof(FLOAT), 1, fp );
+			}
+		break;
 		}
+
 	i = fclose(fp);
 	if (i != 0) {
 		perror("pkdOutArray: could not close file");
@@ -136,10 +161,12 @@ void pkdOutArray(PKD pkd,char *pszFileName,int iArrType)
 	}
 
 
-void pkdOutVector(PKD pkd,char *pszFileName,int iDim,int iVecType)
+void pkdOutVector(PKD pkd,char *pszFileName,int iDim,int iVecType,int iBinaryOutput)
 {
 	FILE *fp;
 	FLOAT fOut;
+	float FloatOut;
+	double DoubleOut;
 	int i;
 
 	fp = fopen(pszFileName,"a");
@@ -147,10 +174,85 @@ void pkdOutVector(PKD pkd,char *pszFileName,int iDim,int iVecType)
 	/*
 	 ** Write Vector Elements!
 	 */
-	for (i=0;i<pkd->nLocal;++i) {
-		fOut = VecType(&pkd->pStore[i],iDim,iVecType);
-		fprintf(fp,"%.14g\n",fOut);
+	switch (iBinaryOutput) {
+	case 0:
+		if (iDim < 0) {
+			for (i=0;i<pkd->nLocal;++i) {
+				fOut = VecType(&pkd->pStore[i],0,iVecType);
+				fprintf(fp,"%.14g\n",fOut);
+				fOut = VecType(&pkd->pStore[i],1,iVecType);
+				fprintf(fp,"%.14g\n",fOut);
+				fOut = VecType(&pkd->pStore[i],2,iVecType);
+				fprintf(fp,"%.14g\n",fOut);
+				}
+			
+			}
+		else {
+			for (i=0;i<pkd->nLocal;++i) {
+				fOut = VecType(&pkd->pStore[i],iDim,iVecType);
+				fprintf(fp,"%.14g\n",fOut);
+				}
+			}
+		break;
+	case 1:
+		if (iDim < 0) {
+			for (i=0;i<pkd->nLocal;++i) {
+				FloatOut = VecType(&pkd->pStore[i],0,iVecType);
+				fwrite(&FloatOut, sizeof(float), 1, fp );
+				FloatOut = VecType(&pkd->pStore[i],1,iVecType);
+				fwrite(&FloatOut, sizeof(float), 1, fp );
+				FloatOut = VecType(&pkd->pStore[i],2,iVecType);
+				fwrite(&FloatOut, sizeof(float), 1, fp );
+				}
+			
+			}
+		else {
+			for (i=0;i<pkd->nLocal;++i) {
+				FloatOut = VecType(&pkd->pStore[i],iDim,iVecType);
+				fwrite(&FloatOut, sizeof(float), 1, fp );
+				}
+			}
+		break;
+	case 2:
+		if (iDim < 0) {
+			for (i=0;i<pkd->nLocal;++i) {
+				DoubleOut = VecType(&pkd->pStore[i],0,iVecType);
+				fwrite(&DoubleOut, sizeof(double), 1, fp );
+				DoubleOut = VecType(&pkd->pStore[i],1,iVecType);
+				fwrite(&DoubleOut, sizeof(double), 1, fp );
+				DoubleOut = VecType(&pkd->pStore[i],2,iVecType);
+				fwrite(&DoubleOut, sizeof(double), 1, fp );
+				}
+			
+			}
+		else {
+			for (i=0;i<pkd->nLocal;++i) {
+				DoubleOut = VecType(&pkd->pStore[i],iDim,iVecType);
+				fwrite(&DoubleOut, sizeof(double), 1, fp );
+				}
+			}
+		break;
+	case 3:
+		if (iDim < 0) {
+			for (i=0;i<pkd->nLocal;++i) {
+				fOut = VecType(&pkd->pStore[i],0,iVecType);
+				fwrite(&fOut, sizeof(FLOAT), 1, fp );
+				fOut = VecType(&pkd->pStore[i],1,iVecType);
+				fwrite(&fOut, sizeof(FLOAT), 1, fp );
+				fOut = VecType(&pkd->pStore[i],2,iVecType);
+				fwrite(&fOut, sizeof(FLOAT), 1, fp );
+				}
+			
+			}
+		else {
+			for (i=0;i<pkd->nLocal;++i) {
+				fOut = VecType(&pkd->pStore[i],iDim,iVecType);
+				fwrite(&fOut, sizeof(FLOAT), 1, fp );
+				}
+			}
+		break;
 		}
+
 	i = fclose(fp);
 	if (i != 0) {
 		perror("pkdOutVector: could not close file");

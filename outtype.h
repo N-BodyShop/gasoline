@@ -52,7 +52,7 @@
 #define OUT_ACCELPRES_VECTOR	6
 #endif
 
-void pkdOutArray(PKD,char *,int);
-void pkdOutVector(PKD,char *,int,int);
+void pkdOutArray(PKD,char *,int,int);
+void pkdOutVector(PKD,char *,int,int,int);
 
 #endif

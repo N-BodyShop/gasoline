@@ -30,6 +30,8 @@ struct parameters {
 	int bDensityStep;
 	int nTruncateRung;
 	int bNonSymp;
+    int iBinaryOutput;
+    int bPackedVector;
 	int bDoDensity;
  	int bDoIOrderOutput;
  	int bDohOutput;
