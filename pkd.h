@@ -25,7 +25,7 @@
 typedef struct particle {
 	int iOrder;
 	int iActive;
-        int iRung;
+	int iRung;
 	float fWeight;
 	float fMass;
 	float fSoft;
@@ -33,11 +33,9 @@ typedef struct particle {
 	float v[3];
 	float a[3];
 	float fPot;
-	float fColor;
-#ifdef SMOOTH_CODE
 	float fBall2;
 	float fDensity;
-#endif
+	float fColor;
 	} PARTICLE;
 
 
@@ -77,9 +75,15 @@ typedef struct kdNode {
 	int pUpper;
 	int iLower;
 	int iUpper;
-        int iSibling;
-        int iParent;
+	/*
+	 ** We shouldn't really need ALL of these. Why is there an iNext when
+	 ** I had thought that iUpper serves that purpose once the tree is 
+	 ** threaded?
+	 */
+	int iSibling;
+	int iParent;
 	int iNext;
+
 	double fMass;
 	double fSoft;
 	float r[3];
@@ -308,8 +312,9 @@ void pkdCalcRoot(PKD,struct ilCellNewt *);
 void pkdDistribRoot(PKD,struct ilCellNewt *);
 void pkdSwapAll(PKD pkd, int idSwap);
 double pkdMassCheck(PKD pkd);
+void pkdSqueeze(PKD,int,BND *);
 void pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
 int pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta,
-		  double dRhoFac);
+				   double dRhoFac);
 #endif

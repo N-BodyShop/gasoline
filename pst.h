@@ -326,6 +326,15 @@ void pstMassCheck(PST,void *,int,void *,int *);
 #define PST_ACTIVEORDER		38
 void pstActiveOrder(PST,void *,int,void *,int *);
 
+#define PST_SQUEEZE			39
+struct inSqueeze {
+	int bActiveOnly;
+	};
+struct outSqueeze {
+	BND bnd;
+	};
+void pstSqueeze(PST,void *,int,void *,int *);
+
 #define PST_SETRUNG		40
 struct inSetRung {
     int iRung;

@@ -9,8 +9,8 @@ BDIR	=	$(HOME)/pvm3/bin
 XDIR	=	$(BDIR)/$(PVM_ARCH)
 
 PVM_MDL		=	../mdl/pvm
-PVM_CFLAGS	=	-DSMOOTH_CODE -mips4 -O3 -I$(PVMDIR)/include -I$(PVM_MDL)
-#PVM_CFLAGS	=	-DSMOOTH_CODE -mips4 -g -I$(PVMDIR)/include -I$(PVM_MDL)
+PVM_CFLAGS	=	-mips4 -O3 -I$(PVMDIR)/include -I$(PVM_MDL)
+#PVM_CFLAGS	=	-mips4 -g -I$(PVMDIR)/include -I$(PVM_MDL)
 PVM_LIBMDL	=	v_sqrt1.o $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) /local/lib/libmalloc.a -lm
 
 #

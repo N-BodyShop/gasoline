@@ -7,10 +7,8 @@
 float ArrType(PARTICLE *p,int iType)
 {
 	switch (iType) {
-#ifdef SMOOTH_CODE
 	case OUT_DENSITY_ARRAY:
 		return(p->fDensity);
-#endif
 	case OUT_COLOR_ARRAY:
 		return(p->fColor);
 	case OUT_POT_ARRAY:

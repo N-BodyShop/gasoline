@@ -1394,8 +1394,76 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	}
 
 
-void pkdSqueezeBounds(PKD pkd) {
+void Squeeze(PKD pkd,int iCell,int bActiveOnly)
+{
+	KDN *pkdn;
+	int i,j,l,u,bFirst;
+
+	if (iCell == -1) return;
+	else if (pkd->kdNodes[iCell].iDim != -1) {
+		l = pkd->kdNodes[iCell].iLower;
+		u = pkd->kdNodes[iCell].iUpper;
+		if (u == -1) {
+			assert(l != -1);
+			Squeeze(pkd,l,bActiveOnly);
+			pkd->kdNodes[iCell].bnd = pkd->kdNodes[l].bnd;
+			}
+		else if (l == -1) {
+			assert(u != -1);
+			Squeeze(pkd,u,bActiveOnly);
+			pkd->kdNodes[iCell].bnd = pkd->kdNodes[u].bnd;
+			}
+		else {
+			Squeeze(pkd,l,bActiveOnly);
+			Squeeze(pkd,u,bActiveOnly);
+			/*
+			 ** Combine the bounds.
+			 */
+			pkdCombine(&pkd->kdNodes[l],&pkd->kdNodes[u],&pkd->kdNodes[iCell]);
+			}
+		}
+	else {
+		/*
+		 ** It is a bucket, find the bounds of the particles or of the 
+		 ** active particles only depending on the flag.
+		 */
+		pkdn = &pkd->kdNodes[iCell];
+		for (j=0;j<3;++j) {
+			pkdn->bnd.fMin[j] = 0.0;
+			pkdn->bnd.fMax[j] = 0.0;
+			}
+		/*
+		 ** Calculate Bounds.
+		 */
+		bFirst = 1;
+		for (i=pkdn->pLower;i<=pkdn->pUpper;++i) {
+			if (pkd->pStore[i].iActive || !bActiveOnly) {
+				if (bFirst) {
+					bFirst = 0;
+					for (j=0;j<3;++j) {
+						pkdn->bnd.fMin[j] = pkd->pStore[i].r[j];
+						pkdn->bnd.fMax[j] = pkd->pStore[i].r[j];
+						}
+					}
+				else {
+					for (j=0;j<3;++j) {
+						if (pkd->pStore[i].r[j] < pkdn->bnd.fMin[j]) 
+							pkdn->bnd.fMin[j] = pkd->pStore[i].r[j];
+						else if (pkd->pStore[i].r[j] > pkdn->bnd.fMax[j])
+							pkdn->bnd.fMax[j] = pkd->pStore[i].r[j];
+						}
+					}			
+				}
+			}
+		}
+	}
+
+
+void pkdSqueeze(PKD pkd,int bActiveOnly,BND *pbnd)
+{
 	int iCell = pkd->iRoot;
+
+	Squeeze(pkd,iCell,bActiveOnly);
 	}
 
 

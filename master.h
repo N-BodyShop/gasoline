@@ -57,6 +57,7 @@ double msrReadTipsy(MSR);
 void msrWriteTipsy(MSR,char *,double);
 void msrSetSoft(MSR msr,double);
 void msrBuildTree(MSR,int,double);
+void msrSqueeze(MSR,int);
 void msrDomainColor(MSR);
 void msrReorder(MSR);
 void msrOutArray(MSR,char *,int);

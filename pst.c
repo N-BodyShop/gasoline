@@ -90,6 +90,8 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_MASSCHECK,pst,
 		      (void (*)(void *,void *,int,void *,int *))pstMassCheck,
 				  0,sizeof(struct outMassCheck));
+	mdlAddService(mdl,PST_SQUEEZE,pst,pstSqueeze,
+				  sizeof(struct inSqueeze),0);
 	mdlAddService(mdl,PST_ACTIVEORDER,pst,
 		      (void (*)(void *,void *,int,void *,int *))pstActiveOrder,
 		      0,0);
@@ -1263,6 +1265,41 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+void pstSqueeze(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inSqueeze *in = vin;
+	struct outSqueeze *out = vout;
+	struct outSqueeze out1,out2;
+	int j;
+
+	assert(nIn == sizeof(struct inSqueeze));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_SQUEEZE,in,nIn);
+		pstSqueeze(pst->pstLower,in,nIn,&out1,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&out2,NULL);
+		/*
+		 ** Combine the bounds of out1 and out2.
+		 */
+		for (j=0;j<3;++j) {
+			if (out2.bnd.fMin[j] < out1.bnd.fMin[j])
+				out->bnd.fMin[j] = out2.bnd.fMin[j];
+			else
+				out->bnd.fMin[j] = out1.bnd.fMin[j];
+			if (out2.bnd.fMax[j] > out1.bnd.fMax[j])
+				out->bnd.fMax[j] = out2.bnd.fMax[j];
+			else
+				out->bnd.fMax[j] = out1.bnd.fMax[j];
+			}
+		}
+	else {
+		pkdSqueeze(plcl->pkd,in->bActiveOnly,&out->bnd);
+		}
+	pst->kdn.bnd = out->bnd;
+	if (pnOut) *pnOut = sizeof(struct outSqueeze);
+	}
+
+
 void pstDensity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	struct inDensity *in = vin;
@@ -1275,7 +1312,6 @@ void pstDensity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-#ifdef SMOOTH_CODE
 		LCL *plcl = pst->plcl;
 		SMX smx;
 
@@ -1291,7 +1327,6 @@ void pstDensity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
                 fprintf(stderr,"Before smFinish\n");
 		smFinish(smx);
                 fprintf(stderr,"After smFinish\n");
-#endif
 		}
 	if (pnOut) *pnOut = 0;
 	}

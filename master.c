@@ -1093,6 +1093,15 @@ void msrBuildTree(MSR msr,int bActiveOnly,double dMass)
 	}
 
 
+void msrSqueeze(MSR msr,int bActiveOnly)
+{
+	struct inSqueeze in;
+  
+	in.bActiveOnly = bActiveOnly;
+	pstSqueeze(msr->pst,&in,sizeof(in),NULL,NULL);
+	}
+
+
 void msrDomainColor(MSR msr)
 {
 	pstDomainColor(msr->pst,NULL,0,NULL,NULL);
@@ -1899,25 +1908,26 @@ msrInitStep(MSR msr)
     msr->iCurrMaxRung = in.iRung;
     }
 
-int
-msrMaxRung(MSR msr)
+
+int msrMaxRung(MSR msr)
 {
     return msr->param.iMaxRung;
     }
+
 
 int msrCurrMaxRung(MSR msr)
 {
     return msr->iCurrMaxRung;
     }
 
-double
-msrEta(MSR msr)
+
+double msrEta(MSR msr)
 {
     return msr->param.dEta;
     }
 
-void
-msrActiveRung(MSR msr, int iRung, int bGreater)
+
+void msrActiveRung(MSR msr, int iRung, int bGreater)
 {
     struct inActiveRung in;
 
@@ -1926,8 +1936,8 @@ msrActiveRung(MSR msr, int iRung, int bGreater)
     pstActiveRung(msr->pst, &in, sizeof(in), NULL, NULL);
     }
 
-int
-msrCurrRung(MSR msr, int iRung)
+
+int msrCurrRung(MSR msr, int iRung)
 {
     struct inCurrRung in;
     struct outCurrRung out;
@@ -1937,8 +1947,8 @@ msrCurrRung(MSR msr, int iRung)
     return out.iCurrent;
     }
 
-void
-msrDensityRung(MSR msr, int iRung, double dDelta, double dTime)
+
+void msrDensityRung(MSR msr, int iRung, double dDelta, double dTime)
 {
     struct inDensityRung in;
     struct outDensityRung out;
@@ -1954,7 +1964,8 @@ msrDensityRung(MSR msr, int iRung, double dDelta, double dTime)
     msr->iCurrMaxRung = out.iMaxRung;
     }
 
-msrTopStep(MSR msr, double dTime, double dDelta, int iRung)
+
+void msrTopStep(MSR msr, double dTime, double dDelta, int iRung)
 {
     double dMass = -1.0;
     int iSec;
@@ -1994,3 +2005,13 @@ msrTopStep(MSR msr, double dTime, double dDelta, int iRung)
 		msrDrift(msr,dTime,dDelta);
 		}
 	}
+
+
+
+
+
+
+
+
+
+
