@@ -320,8 +320,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	assert(msr != NULL);
 
 	msr->bDumpFrame = 0;
-	msr->df = (struct DumpFrameContext *) malloc(sizeof(struct DumpFrameContext));
-	assert( msr->df != NULL );
+	msr->df = NULL;
 
 	msr->mdl = mdl;
 	msr->pst = NULL;
