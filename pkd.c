@@ -3788,7 +3788,7 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 #endif
 			        dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
 			        }
-			if (bSqrtPhi) {
+			if (bSqrtPhi && acc>0) {
 				/*
 				 ** NOTE: The factor of 3.5 keeps this criterion in sync
 				 ** with DensityStep. The nominal value of dEta for both
