@@ -1,13 +1,16 @@
 #
-#       KSR1 makefile for pkdgrav-0.1
+#       KSR1 makefile for pkdgrav-0.2
 #
-MDL = $(HOME)/../stadel/ptools/mdl/mdl-0.2/ksr
+MDL = ../mdl/ksr
 
 CC_FLAGS = -O2 -w2 -I$(MDL)
 LD_FLAGS = -para
 LD_LIBS = $(MDL)/mdl.o -lm 
 
-default: pkdgrav
+default: mdl pkdgrav
+
+mdl:
+	cd $(MDL); make
 
 pkdgrav : main.o master.o param.o pst.o pkd.o outtype.o smooth.o \
 	grav.o ewald.o erf.o walk.o $(LD_MDL)
