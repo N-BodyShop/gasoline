@@ -3115,6 +3115,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 			printf("\n");
 			}
 		}
+	  }
 	}
 
 

@@ -8,7 +8,7 @@ endif
 #
 set template = Makefile.tmpl
 #
-set OBJ = ({collision,cooling,cosmo,eccanom,ewald,fdl,grav,htable,hypanom,main,master,millerscalo,outtype,param,pkd,pst,qqsmooth,romberg,smooth,smoothfcn,special,ssio,starform,walk}.o)
+set OBJ = ({collision,cooling,cosmo,eccanom,ewald,fdl,grav,htable,hypanom,main,master,millerscalo,outtype,param,pkd,pst,qqsmooth,romberg,runge,smooth,smoothfcn,special,ssio,starform,walk}.o)
 #
 set mdl = ../mdl
 #
