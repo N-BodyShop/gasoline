@@ -34,6 +34,9 @@ typedef struct msrContext {
 	 */
 	int nThreads;
 	int N;
+	int nDark;
+	int nGas;
+	int nStar;
 	int iCurrMaxRung;
 	int bOpenSpec;	/* was an opening parameter specified (used by +restart) */
 	int iOpenType;
@@ -82,8 +85,8 @@ void msrDomainColor(MSR);
 void msrReorder(MSR);
 void msrOutArray(MSR,char *,int);
 void msrOutVector(MSR,char *,int);
-void msrSmooth(MSR,int,int);
-void msrReSmooth(MSR,int,int);
+void msrSmooth(MSR,double,int,int);
+void msrReSmooth(MSR,double,int,int);
 void msrGravity(MSR,double,int *,double *,double *,double *,int *);
 void msrCalcE(MSR,int,double,double *,double *,double *);
 void msrDrift(MSR,double,double);
@@ -99,7 +102,7 @@ void msrRungStats(MSR);
 void msrActiveRung(MSR msr, int iRung, int bGreater);
 void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime,
 		     int bAll);
-void msrCoolVelocity(MSR,double);
+void msrCoolVelocity(MSR,double,double);
 /*
  ** Interface functions.
  */

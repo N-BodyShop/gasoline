@@ -125,7 +125,7 @@ void main(int argc,char **argv)
 				msrMassCheck(msr,dMass,"After msrGravity in KDK");
 				msrKick(msr,dTime+0.5*msrDelta(msr),0.5*msrDelta(msr));
 				msrMassCheck(msr,dMass,"After msrKick-2 in KDK");
-				msrCoolVelocity(msr,dMass);	/* Supercooling if specified */
+				msrCoolVelocity(msr,dTime,dMass);	/* Supercooling if specified */
 				msrMassCheck(msr,dMass,"After CoolVelocity in KDK");
 				dTime += msrDelta(msr);
 				/*
@@ -142,7 +142,7 @@ void main(int argc,char **argv)
 			else {
 				msrTopStep(msr,iStep-1,dTime,msrDelta(msr),&dMultiEff);
 				msrRungStats(msr);
-				msrCoolVelocity(msr,dMass);	/* Supercooling if specified */
+				msrCoolVelocity(msr,dTime,dMass);	/* Supercooling if specified */
 				msrMassCheck(msr,dMass,"After CoolVelocity in DKD");
 				dTime += msrDelta(msr);
 				if (iStep%msrLogInterval(msr) == 0) {
@@ -168,7 +168,7 @@ void main(int argc,char **argv)
 					msrActiveRung(msr,0,1);
 					msrBuildTree(msr,0,dMass,1);
 					msrMassCheck(msr,dMass,"After msrBuildTree in OutTime");
-					msrSmooth(msr,SMX_DENSITY,1);
+					msrSmooth(msr,dTime,SMX_DENSITY,1);
 					msrMassCheck(msr,dMass,"After msrSmooth in OutTime");
 					}
 				msrReorder(msr);
@@ -194,7 +194,7 @@ void main(int argc,char **argv)
 					msrActiveRung(msr,0,1);
 					msrBuildTree(msr,0,dMass,1);
 					msrMassCheck(msr,dMass,"After msrBuildTree in OutFinal");
-					msrSmooth(msr,SMX_DENSITY,1);
+					msrSmooth(msr,dTime,SMX_DENSITY,1);
 					msrMassCheck(msr,dMass,"After msrSmooth in OutFinal");
 					}
 				msrReorder(msr);
@@ -214,7 +214,7 @@ void main(int argc,char **argv)
 						msrActiveRung(msr,0,1);
 						msrBuildTree(msr,0,dMass,1);
 						msrMassCheck(msr,dMass,"After msrBuildTree in OutInt");
-						msrSmooth(msr,SMX_DENSITY,1);
+						msrSmooth(msr,dTime,SMX_DENSITY,1);
 						msrMassCheck(msr,dMass,"After msrSmooth in OutInt");
 						}
 					msrReorder(msr);
@@ -249,7 +249,7 @@ void main(int argc,char **argv)
 			msrActiveRung(msr,0,1);
 			msrBuildTree(msr,0,dMass,1);
 			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Density");
-			msrSmooth(msr,SMX_DENSITY,1);
+			msrSmooth(msr,dTime,SMX_DENSITY,1);
 			msrMassCheck(msr,dMass,"After msrSmooth in OutSingle Density");
 			msrReorder(msr);
 			msrMassCheck(msr,dMass,"After msrReorder in OutSingle Density");

@@ -270,7 +270,7 @@ void pstOneNodeReadInit(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		nStore = nTotal + (int)ceil(nTotal*in->fExtraStore);
 		
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,
-		    plcl->nPstLvl, in->fPeriod);
+		    plcl->nPstLvl, in->fPeriod,in->nDark,in->nGas,in->nStar);
 		pout[pst->idSelf] = nTotal;
 		}
 	if (pnOut) *pnOut = pst->mdl->nThreads*sizeof(*pout);
@@ -313,8 +313,9 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 */
 		nStore = nTotal + (int)ceil(nTotal*in->fExtraStore);
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
-					  in->fPeriod);
-		pkdReadTipsy(plcl->pkd,achInFile,pst->nStart,nTotal,in->dvFac);
+					  in->fPeriod,in->nDark,in->nGas,in->nStar);
+		pkdReadTipsy(plcl->pkd,achInFile,pst->nStart,nTotal,in->bStandard,
+					 in->dvFac);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -703,7 +704,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	     ** processor.  If not, redistribute the INACTIVE particles so
 	     ** every processor has at least one.
 	     */
-	    if (nLowTot < NUM_SAFETY*pst->nLower) {
+ 	    if (nLowTot < NUM_SAFETY*pst->nLower) {
 		    fl = fm;
 				/* Try to catch highest particle if needed. */
 		    fu = pst->bnd.fMax[d]
@@ -729,8 +730,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			    /*
 			    printf("Inactive Fit ittr:%d u:%d\n",ittr,nHighTot);
 			    */
-			    if (nLowTot > NUM_SAFETY*pst->nLower) fu = fm;
-			    else if (nLowTot < NUM_SAFETY*pst->nLower) fl = fm;
+ 			    if (nLowTot > NUM_SAFETY*pst->nLower) fu = fm;
+ 			    else if (nLowTot < NUM_SAFETY*pst->nLower) fl = fm;
 			    else {
 				    fu = fm;
 				    break;
@@ -1491,7 +1492,7 @@ void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bPeriodic,in->bSymmetric,
 					 in->iSmoothType,1);
-		smSmooth(smx);
+		smSmooth(smx,&in->smf);
 		smFinish(smx);
 		}
 	if (pnOut) *pnOut = 0;
@@ -1514,7 +1515,7 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bPeriodic,in->bSymmetric,
 					 in->iSmoothType,0);
-		smReSmooth(smx);
+		smReSmooth(smx,&in->smf);
 		smFinish(smx);
 		}
 	if (pnOut) *pnOut = 0;
@@ -1682,7 +1683,7 @@ void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 */
 		nStore = nTotal + (int)ceil(nTotal*in->fExtraStore);
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
-					  in->fPeriod);
+					  in->fPeriod,in->nDark,in->nGas,in->nStar);
 		pkdReadCheck(plcl->pkd,achInFile,in->iVersion,in->iOffset,
 					 pst->nStart,nTotal);
 		}

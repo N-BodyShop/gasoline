@@ -42,10 +42,18 @@ typedef struct particle {
 #ifdef COLORCODE
 	float fColor;
 #endif
+#ifdef GASOLINE
+	float fTemp;
+	float fMetals;
+	float fTimeForm;
+	float fDivv;
+	float fCurlv;
+	float fTmp[3];
+#endif
 	} PARTICLE;
 
 
-#define CHECKPOINT_VERSION		2
+#define CHECKPOINT_VERSION		3
 
 typedef struct chkParticle {
 	int iOrder;
@@ -126,6 +134,9 @@ typedef struct pkdContext {
 	int nRejects;
 	int nLocal;
 	int nActive;
+	int nDark;
+	int nGas;
+	int nStar;
 	int nBucket;
 	int nLevels;
 	int nSplit;
@@ -238,9 +249,9 @@ double pkdGetTimer(PKD,int);
 void pkdClearTimer(PKD,int);
 void pkdStartTimer(PKD,int);
 void pkdStopTimer(PKD,int);
-void pkdInitialize(PKD *,MDL,int,int,int,float *);
+void pkdInitialize(PKD *,MDL,int,int,int,float *,int,int,int);
 void pkdFinish(PKD);
-void pkdReadTipsy(PKD,char *,int,int,double);
+void pkdReadTipsy(PKD,char *,int,int,int,double);
 void pkdSetSoft(PKD pkd,double dSoft);
 void pkdCalcBound(PKD,BND *,BND *);
 int pkdWeight(PKD,int,float,int,int,int,int *,int *,float *,float *);

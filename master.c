@@ -714,7 +714,8 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
 		 * Read particles into the local storage.
 		 */
 		assert(plcl->pkd->nStore >= nParts[id]);
-		pkdReadTipsy(plcl->pkd,achInFile,nStart,nParts[id],in->dvFac);
+		pkdReadTipsy(plcl->pkd,achInFile,nStart,nParts[id],
+					 in->bStandard,in->dvFac);
 		nStart += nParts[id];
 		/* 
 		 * Now shove them over to the remote processor.
@@ -728,8 +729,22 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
     /* 
      * Now read our own particles.
      */
-    pkdReadTipsy(plcl->pkd,achInFile,0,nParts[0],in->dvFac);
+    pkdReadTipsy(plcl->pkd,achInFile,0,nParts[0],in->bStandard,in->dvFac);
     }
+
+int xdrHeader(XDR *pxdrs,struct dump *ph)
+{
+	int pad = 0;
+	
+	if (!xdr_double(pxdrs,&ph->time)) return 0;
+	if (!xdr_int(pxdrs,&ph->nbodies)) return 0;
+	if (!xdr_int(pxdrs,&ph->ndim)) return 0;
+	if (!xdr_int(pxdrs,&ph->nsph)) return 0;
+	if (!xdr_int(pxdrs,&ph->ndark)) return 0;
+	if (!xdr_int(pxdrs,&ph->nstar)) return 0;
+	if (!xdr_int(pxdrs,&pad)) return 0;
+	return 1;
+	}
 
 double msrReadTipsy(MSR msr)
 {
@@ -773,10 +788,28 @@ double msrReadTipsy(MSR msr)
 	/*
 	 ** Assume tipsy format for now, and dark matter only.
 	 */
-	fread(&h,sizeof(struct dump),1,fp);
+	if (msr->param.bStandard) {
+		XDR xdrs;
+
+		xdrstdio_create(&xdrs,fp,XDR_DECODE);
+		xdrHeader(&xdrs,&h);
+		xdr_destroy(&xdrs);
+		}
+	else {
+		fread(&h,sizeof(struct dump),1,fp);
+		}
 	fclose(fp);
 	msr->N = h.nbodies;
-	assert(msr->N == h.ndark);
+	msr->nDark = h.ndark;
+	msr->nGas = h.nsph;
+	msr->nStar = h.nstar;
+#ifdef GASOLINE
+	assert(msr->N == msr->nDark+msr->nGas+msr->nStar);
+#else
+	assert(msr->N == msr->nDark);
+	assert(msr->nGas == 0);
+	assert(msr->nStar == 0);
+#endif
 	if (msr->param.bComove) {
 		if(msr->param.dHubble0 == 0.0) {
 			printf("No hubble constant specified\n");
@@ -848,7 +881,8 @@ double msrReadTipsy(MSR msr)
 			printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
 				   tTo,1.0/aTo-1.0,aTo);
 			}
-		printf("Reading file...\nN:%d\n",msr->N);
+		printf("Reading file...\nN:%d nDark:%d nGas:%d nStar:%d\n",msr->N,
+			   msr->nDark,msr->nGas,msr->nStar);
 		if (msr->param.bCannonical) {
 			in.dvFac = h.time*h.time;
 			}
@@ -861,12 +895,17 @@ double msrReadTipsy(MSR msr)
 		printf("Input file, Time:%g\n",dTime);
 		tTo = dTime + msr->param.nSteps*msr->param.dDelta;
 		printf("Simulation to Time:%g\n",tTo);
-		printf("Reading file...\nN:%d Time:%g\n",msr->N,dTime);
+		printf("Reading file...\nN:%d nDark:%d nGas:%d nStar:%d Time:%g\n",
+			   msr->N,msr->nDark,msr->nGas,msr->nStar,dTime);
 		in.dvFac = 1.0;
 		}
 	in.nStart = 0;
 	in.nEnd = msr->N - 1;
+	in.nDark = msr->nDark;
+	in.nGas = msr->nGas;
+	in.nStar = msr->nStar;
 	in.iOrder = msr->param.iOrder;
+	in.bStandard = msr->param.bStandard;
 	/*
 	 ** Since pstReadTipsy causes the allocation of the local particle
 	 ** store, we need to tell it the percentage of extra storage it
@@ -899,20 +938,6 @@ double msrReadTipsy(MSR msr)
 	return(dTime);
 	}
 
-
-int xdrWriteHeader(XDR *pxdrs,struct dump *ph)
-{
-	int pad = 0;
-	
-	if (!xdr_double(pxdrs,&ph->time)) return 0;
-	if (!xdr_int(pxdrs,&ph->nbodies)) return 0;
-	if (!xdr_int(pxdrs,&ph->ndim)) return 0;
-	if (!xdr_int(pxdrs,&ph->nsph)) return 0;
-	if (!xdr_int(pxdrs,&ph->ndark)) return 0;
-	if (!xdr_int(pxdrs,&ph->nstar)) return 0;
-	if (!xdr_int(pxdrs,&pad)) return 0;
-	return 1;
-	}
 
 void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
 {
@@ -1037,7 +1062,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		XDR xdrs;
 
 		xdrstdio_create(&xdrs,fp,XDR_ENCODE);
-		xdrWriteHeader(&xdrs,&h);
+		xdrHeader(&xdrs,&h);
 		xdr_destroy(&xdrs);
 		}
 	else {
@@ -1338,7 +1363,7 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	}
 
 
-void msrSmooth(MSR msr,int iSmoothType,int bSymmetric)
+void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 {
 	struct inSmooth in;
 	int sec,dsec;
@@ -1351,6 +1376,8 @@ void msrSmooth(MSR msr,int iSmoothType,int bSymmetric)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
+	in.smf.H = msrTime2Hub(msr,dTime);
+	in.smf.a = msrTime2Exp(msr,dTime);
 	if (msr->param.bVerbose) printf("Smoothing...\n");
 	sec = time(0);
 	pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
@@ -1359,7 +1386,7 @@ void msrSmooth(MSR msr,int iSmoothType,int bSymmetric)
 	}
 
 
-void msrReSmooth(MSR msr,int iSmoothType,int bSymmetric)
+void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 {
 	struct inReSmooth in;
 	int sec,dsec;
@@ -1372,6 +1399,8 @@ void msrReSmooth(MSR msr,int iSmoothType,int bSymmetric)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
+	in.smf.H = msrTime2Hub(msr,dTime);
+	in.smf.a = msrTime2Exp(msr,dTime);
 	if (msr->param.bVerbose) printf("ReSmoothing...\n");
 	sec = time(0);
 	pstReSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
@@ -1407,15 +1436,14 @@ void msrGravity(MSR msr,double dStep,
 	sec = time(0);
 	pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
 	dsec = time(0) - sec;
-	if(dsec > 0.0) {
-	    dMFlops = out.dFlop/dsec*1e-6;
+ 	if(dsec > 0.0) {
+ 	    dMFlops = out.dFlop/dsec*1e-6;
 	    printf("Gravity Calculated, Wallclock:%d secs, MFlops:%.1f, Flop:%.3g\n",
-		   dsec,dMFlops,out.dFlop);
-	    }
-	else {
-	    printf("Gravity Calculated, Wallclock:%d secs, MFlops:unknown, Flop:%.3g\n",
-		   dsec,out.dFlop);
-	    }
+ 	    }
+ 	else {
+ 	    printf("Gravity Calculated, Wallclock:%d secs, MFlops:unknown, Flop:%.3g\n",
+ 		   dsec,out.dFlop);
+ 	    }
 	*piSec = dsec;
 	dPartAvg = out.dPartSum/out.nActive;
 	dCellAvg = out.dCellSum/out.nActive;
@@ -1505,7 +1533,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	}
 
 
-void msrCoolVelocity(MSR msr,double dMass)
+void msrCoolVelocity(MSR msr,double dTime,double dMass)
 {
 	struct inActiveCool ina;
 	struct inCoolVelocity in;
@@ -1521,9 +1549,9 @@ void msrCoolVelocity(MSR msr,double dMass)
 		 ** sph see!
 		 */
 		msrBuildTree(msr,1,dMass,1);
-		msrSmooth(msr,SMX_DENSITY,1);
+		msrSmooth(msr,dTime,SMX_DENSITY,1);
 #ifdef SUPERCOOL
-		msrReSmooth(msr,SMX_MEANVEL,1);
+		msrReSmooth(msr,dTime,SMX_MEANVEL,1);
 #endif
 		/*
 		 ** Now cool them.
@@ -1664,6 +1692,21 @@ double msrReadCheck(MSR msr,int *piStep)
 		_msrExit(msr);
 		}
 	FDL_read(fdl,"number_of_particles",&msr->N);
+	/*
+	 ** As of checkpoint version 3 we include numbers of dark gas and star 
+	 ** particles to support GASOLINE.
+	 */
+	if (iVersion > 2) {
+		FDL_read(fdl,"number_of_dark_particles",&msr->nDark);
+		FDL_read(fdl,"number_of_gas_particles",&msr->nGas);
+		FDL_read(fdl,"number_of_star_particles",&msr->nStar);
+		assert(msr->N == msr->nDark+msr->nGas+msr->nStar);
+		}
+	else {
+		msr->nDark = msr->N;
+		msr->nGas = 0;
+		msr->nStar = 0;
+		}
 	FDL_read(fdl,"current_timestep",piStep);
 	FDL_read(fdl,"current_time",&dTime);
 	FDL_read(fdl,"current_ecosmo",&msr->dEcosmo);
@@ -1739,6 +1782,9 @@ double msrReadCheck(MSR msr,int *piStep)
 		}
 	in.nStart = 0;
 	in.nEnd = msr->N - 1;
+	in.nDark = msr->nDark;
+	in.nGas = msr->nGas;
+	in.nStar = msr->nStar;
 	in.iOrder = msr->param.iOrder;
 	/*
 	 ** Since pstReadCheck causes the allocation of the local particle
@@ -1870,6 +1916,9 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	 ** Checkpoint header.
 	 */
 	FDL_write(fdl,"number_of_particles",&msr->N);
+	FDL_write(fdl,"number_of_dark_particles",&msr->nDark);
+	FDL_write(fdl,"number_of_gas_particles",&msr->nGas);
+	FDL_write(fdl,"number_of_star_particles",&msr->nStar);
 	FDL_write(fdl,"current_timestep",&iStep);
 	FDL_write(fdl,"current_time",&dTime);
 	FDL_write(fdl,"current_ecosmo",&msr->dEcosmo);

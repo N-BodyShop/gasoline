@@ -28,12 +28,22 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 		smx->fcnSmooth = bSymmetric?DensitySym:Density;
 		init = initDensity;
 		comb = combDensity;
+		smx->fcnPost = NULL;
 		break;
 #ifdef SUPERCOOL
 	case SMX_MEANVEL:
 		smx->fcnSmooth = bSymmetric?MeanVelSym:MeanVel;
 		init = initMeanVel;
 		comb = combMeanVel;
+		smx->fcnPost = NULL;
+		break;
+#endif
+#ifdef GASOLINE
+	case SMX_DENDIVV:
+		smx->fcnSmooth = bSymmetric?DendivvSym:Dendivv;
+		init = initDendivv;
+		comb = combDendivv;
+		smx->fcnPost = postDendivv;
 		break;
 #endif
 	default:
@@ -98,6 +108,8 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 
 void smFinish(SMX smx)
 {
+	PKD pkd = smx->pkd;
+	int pi;
     char achOut[128];
 
 	/*
@@ -132,6 +144,20 @@ void smFinish(SMX smx)
 	 ** Stop particle caching space.
 	 */
 	mdlFinishCache(smx->pkd->mdl,CID_PARTICLE);
+	/*
+	 ** Now do any post calculations, these ususlly involve some sort of
+	 ** normalizations of the smoothed quantities, usually division by
+	 ** the local density! Do NOT put kernel normalizations in here as
+	 ** these do not depend purely on local properties in the case of
+	 ** "Gather-Scatter" kernel.
+	 */
+	if (smx->fcnPost != NULL) {
+		for (pi=0;pi<pkd->nActive;++pi) {
+			if (pkd->pStore[pi].iActive) {
+				smx->fcnPost(&pkd->pStore[pi]);
+				}
+			}
+		}
 	/*
 	 ** Free up context storage.
 	 */
@@ -195,6 +221,9 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int *cpStart)
 				}
 			smx->piMark[pj] = 1;
 			pq->fKey = fDist2;
+			pq->dx = dx;
+			pq->dy = dy;
+			pq->dz = dz;
 			pq->p = pj;
 			pq->pPart = &p[pj];
 			pq->ax = 0.0;
@@ -233,6 +262,9 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int *cpStart)
 							}
 						smx->piMark[pj] = 1;
 						pq->fKey = fDist2;
+						pq->dx = dx;
+						pq->dy = dy;
+						pq->dz = dz;
 						pq->p = pj;
 						pq->pPart = &p[pj];
 						pq->ax = sx - x;
@@ -294,6 +326,9 @@ PQ *smBallSearchNP(SMX smx,PQ *pq,float *ri,int *cpStart)
 				}
 			smx->piMark[pj] = 1;
 			pq->fKey = fDist2;
+			pq->dx = dx;
+			pq->dy = dy;
+			pq->dz = dz;
 			pq->p = pj;
 			pq->pPart = &p[pj];
 			PQ_REPLACE(pq);
@@ -328,6 +363,9 @@ PQ *smBallSearchNP(SMX smx,PQ *pq,float *ri,int *cpStart)
 							}
 						smx->piMark[pj] = 1;
 						pq->fKey = fDist2;
+						pq->dx = dx;
+						pq->dy = dy;
+						pq->dz = dz;
 						pq->p = pj;
 						pq->pPart = &p[pj];
 						PQ_REPLACE(pq);
@@ -386,6 +424,9 @@ int smBallGather(SMX smx,float fBall2,float *ri)
 				fDist2 = dx*dx + dy*dy + dz*dz;
 				if (fDist2 < fBall2) {
 					smx->nnList[nCnt].fDist2 = fDist2;
+					smx->nnList[nCnt].dx = dx;
+					smx->nnList[nCnt].dy = dy;
+					smx->nnList[nCnt].dz = dz;
 					smx->nnList[nCnt].pPart = &p[pj];
 					smx->pbRelease[nCnt++] = 0;
 					}
@@ -429,6 +470,9 @@ int smBallGatherNP(SMX smx,float fBall2,float *ri,int cp)
 				fDist2 = dx*dx + dy*dy + dz*dz;
 				if (fDist2 < fBall2) {
 					smx->nnList[nCnt].fDist2 = fDist2;
+					smx->nnList[nCnt].dx = dx;
+					smx->nnList[nCnt].dy = dy;
+					smx->nnList[nCnt].dz = dz;
 					smx->nnList[nCnt].pPart = &p[pj];
 					smx->pbRelease[nCnt++] = 0;
 					}
@@ -443,7 +487,7 @@ int smBallGatherNP(SMX smx,float fBall2,float *ri,int cp)
 	}
 
 
-void smSmooth(SMX smx)
+void smSmooth(SMX smx,SMF *smf)
 {
 	PKD pkd = smx->pkd;
 	MDL mdl = smx->pkd->mdl;
@@ -503,6 +547,9 @@ void smSmooth(SMX smx)
 		dy = y - p[pj].r[1];
 		dz = z - p[pj].r[2];
 		pqi->fKey = dx*dx + dy*dy + dz*dz;
+		pqi->dx = dx;
+		pqi->dy = dy;
+		pqi->dz = dz;
 		pqi->p = pj;
 		pqi->id = pkd->idSelf;
 		pqi->pPart = &p[pj];
@@ -564,6 +611,9 @@ void smSmooth(SMX smx)
 						PQ_HASHDEL(smx->pqHash,smx->nHash,pq);
 						}
 					pq->fKey = fDist2;
+					pq->dx = dx;
+					pq->dy = dy;
+					pq->dz = dz;
 					pq->p = pj;
 					pq->id = id;
 					pq->pPart = pPart;
@@ -606,6 +656,9 @@ void smSmooth(SMX smx)
 		 */
 		smx->nnList[nCnt].pPart = pqi->pPart;
 		smx->nnList[nCnt].fDist2 = pqi->fKey;
+		smx->nnList[nCnt].dx = pqi->dx;
+		smx->nnList[nCnt].dy = pqi->dy;
+		smx->nnList[nCnt].dz = pqi->dz;
 		++nCnt;
 		if (pqi->id != pkd->idSelf) continue;
 		if (pkd->pStore[pqi->p].fBall2 >= 0) continue;
@@ -614,7 +667,7 @@ void smSmooth(SMX smx)
 			h2 = pqn->fKey;
 			}
 		}
-	(*smx->fcnSmooth)(&p[pi],nCnt,smx->nnList);
+	smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
 	if (!pqn) {
 		/*
 		 ** Clean up piMark array, pqHash, and release all aquired
@@ -642,10 +695,13 @@ void smSmooth(SMX smx)
 		pqi->ax -= pqn->ax;
 		pqi->ay -= pqn->ay;
 		pqi->az -= pqn->az;
-		dx = x + pqi->ax - pqi->pPart->r[0];
-		dy = y + pqi->ay - pqi->pPart->r[1];
-		dz = z + pqi->az - pqi->pPart->r[2];
+		dx = x - pqi->pPart->r[0] + pqi->ax;
+		dy = y - pqi->pPart->r[1] + pqi->ay;
+		dz = z - pqi->pPart->r[2] + pqi->az;
 		pqi->fKey = dx*dx + dy*dy + dz*dz;
+		pqi->dx = dx;
+		pqi->dy = dy;
+		pqi->dz = dz;
 		}
 	pqn->fKey = 0.0;
 	pqn->ax = 0.0;
@@ -663,7 +719,7 @@ void smSmooth(SMX smx)
 	}
 
 
-void smReSmooth(SMX smx)
+void smReSmooth(SMX smx,SMF *smf)
 {
 	PKD pkd = smx->pkd;
 	MDL mdl = smx->pkd->mdl;
@@ -694,7 +750,7 @@ void smReSmooth(SMX smx)
 		cp = p[pi].cpStart;
 		if (cp) {
 			nCnt = smBallGatherNP(smx,fBall2,p[pi].r,cp);
-			(*smx->fcnSmooth)(&p[pi],nCnt,smx->nnList);
+			smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
 			}
 		else {
 			if (smx->bPeriodic) {
@@ -730,6 +786,9 @@ void smReSmooth(SMX smx)
 					fDist2 = dx*dx + dy*dy + dz*dz;
 					if (fDist2 < fBall2) {
 						smx->nnList[nCnt].fDist2 = fDist2;
+						smx->nnList[nCnt].dx = dx;
+						smx->nnList[nCnt].dy = dy;
+						smx->nnList[nCnt].dz = dz;
 						smx->nnList[nCnt].pPart = pPart;
 						smx->pbRelease[nCnt++] = 1;
 						continue;
@@ -742,7 +801,7 @@ void smReSmooth(SMX smx)
 				pkdNext(pkd,cp,id);
 				if (pkdIsRoot(cp,id)) break;
 				}
-			(*smx->fcnSmooth)(&p[pi],nCnt,smx->nnList);
+			smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
 			/*
 			 ** Release non-local particle pointers.
 			 */

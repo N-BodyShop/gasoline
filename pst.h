@@ -3,6 +3,7 @@
 
 #include "pkd.h"
 #include "mdl.h"
+#include "smoothfcn.h"
 
 typedef struct lclBlock {
 	char *pszDataPath;
@@ -67,9 +68,13 @@ void pstLevelize(PST,void *,int,void *,int *);
 struct inReadTipsy {
 	int nStart;
 	int nEnd;
+	int nDark;	
+	int nGas;
+	int nStar;
 	int iOrder;
 	float fExtraStore;
 	float fPeriod[3];
+	int bStandard;
 	double dvFac;
 	char achInFile[PST_FILENAME_SIZE];
 	};
@@ -188,6 +193,7 @@ struct inSmooth {
     int bPeriodic;
 	int bSymmetric;
 	int iSmoothType;
+	SMF smf;
 	};
 void pstSmooth(PST,void *,int,void *,int *);
 
@@ -259,6 +265,9 @@ struct inReadCheck {
 	int iOffset;
 	int nStart;
 	int nEnd;
+	int nDark;
+	int nGas;
+	int nStar;
 	int iOrder;
 	float fExtraStore;
 	float fPeriod[3];
@@ -415,6 +424,7 @@ struct inReSmooth {
     int bPeriodic;
 	int bSymmetric;
 	int iSmoothType;
+	SMF smf;
 	};
 void pstReSmooth(PST,void *,int,void *,int *);
 

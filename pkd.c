@@ -55,7 +55,7 @@ void pkdStopTimer(PKD pkd,int iTimer)
 
 
 void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
-				   float *fPeriod)
+				   float *fPeriod,int nDark,int nGas,int nStar)
 {
 	PKD pkd;
 	int j;
@@ -68,6 +68,9 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	pkd->nThreads = mdlThreads(mdl);
 	pkd->nStore = nStore;
 	pkd->nLocal = 0;
+	pkd->nDark = nDark;
+	pkd->nGas = nGas;
+	pkd->nStar = nStar;
 	pkd->nRejects = 0;
 	for (j=0;j<3;++j) {
 		pkd->fPeriod[j] = fPeriod[j];
@@ -131,39 +134,179 @@ void pkdFinish(PKD pkd)
 	}
 
 
-void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,double dvFac)
+void pkdSeek(PKD pkd,FILE *fp,int nStart,int bStandard)
+{
+	long lStart;
+
+	/*
+	 ** Seek according to true XDR size structures when bStandard is true.
+	 ** This may be a bit dicey, but it should work as long
+	 ** as no one changes the tipsy binary format!
+	 */
+	if (bStandard) lStart = 32;
+	else lStart = sizeof(struct dump);
+	if (nStart > pkd->nGas) {
+		if (bStandard) lStart += pkd->nGas*48;
+		else lStart += pkd->nGas*sizeof(struct gas_particle);
+		nStart -= pkd->nGas;
+		if (nStart > pkd->nDark) {
+			if (bStandard) lStart += pkd->nDark*36;
+			else lStart += pkd->nDark*sizeof(struct dark_particle);
+			nStart -= pkd->nDark;
+			if (bStandard) lStart += nStart*44;
+			lStart += nStart*sizeof(struct star_particle);
+			}
+		else {
+			if (bStandard) lStart += nStart*36;
+			else lStart += nStart*sizeof(struct dark_particle);
+			}
+		}
+	else {
+		if (bStandard) lStart += nStart*48;
+		else lStart += nStart*sizeof(struct gas_particle);
+		}
+	fseek(fp,lStart,0);
+	}
+
+
+void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
+				  int bStandard,double dvFac)
 {
 	FILE *fp;
 	int i,j;
 	struct dark_particle dp;
-	long lStart;
+	struct gas_particle gp;
+	struct star_particle sp;
 
 	pkd->nLocal = nLocal;
 	pkd->nActive = nLocal;
 	/*
-	 ** Seek past the header and up to nStart.
-	 */
-	fp = fopen(pszFileName,"r");
-	assert(fp != NULL);
-	lStart = sizeof(struct dump)+nStart*sizeof(struct dark_particle);
-	fseek(fp,lStart,0);
-	/*
-	 ** Read Stuff!
+	 ** General initialization.
 	 */
 	for (i=0;i<nLocal;++i) {
-		fread(&dp,sizeof(struct dark_particle),1,fp);
-		for (j=0;j<3;++j) {
-			pkd->pStore[i].r[j] = dp.pos[j];
-			pkd->pStore[i].v[j] = dvFac*dp.vel[j];
-			}
-		pkd->pStore[i].fMass = dp.mass;
-		pkd->pStore[i].fSoft = dp.eps;
-		pkd->pStore[i].iOrder = nStart + i;
 		pkd->pStore[i].iActive = 1;
 		pkd->pStore[i].iRung = 0;
 		pkd->pStore[i].fWeight = 1.0;
 		pkd->pStore[i].fDensity = 0.0;
 		pkd->pStore[i].fBall2 = 0.0;
+#ifdef GASOLINE
+		pkd->pStore[i].fTemp = 0.0;
+		pkd->pStore[i].fMetals = 0.0;
+		pkd->pStore[i].fTimeForm = 0.0;
+#endif
+		}
+	/*
+	 ** Seek past the header and up to nStart.
+	 */
+	fp = fopen(pszFileName,"r");
+	assert(fp != NULL);
+	/*
+	 ** Seek to right place in file.
+	 */
+	pkdSeek(pkd,fp,nStart,bStandard);
+	/*
+	 ** Read Stuff!
+	 */
+	if (bStandard) {
+		float vTemp;
+		XDR xdrs;
+		xdrstdio_create(&xdrs,fp,XDR_DECODE);
+		for (i=0;i+nStart < pkd->nGas && i < nLocal;++i) {
+			xdr_float(&xdrs,&pkd->pStore[i].fMass);
+			for (j=0;j<3;++j) {
+				xdr_float(&xdrs,&pkd->pStore[i].r[j]);
+				}
+			for (j=0;j<3;++j) {
+				xdr_float(&xdrs,&vTemp);
+				pkd->pStore[i].v[j] = dvFac*vTemp;			
+				}
+			xdr_float(&xdrs,&vTemp);
+#ifdef GASOLINE
+			xdr_float(&xdrs,&pkd->pStore[i].fTemp);
+			xdr_float(&xdrs,&pkd->pStore[i].fSoft);
+			xdr_float(&xdrs,&pkd->pStore[i].fMetals);
+#else
+			xdr_float(&xdrs,&vTemp);
+			xdr_float(&xdrs,&pkd->pStore[i].fSoft);
+			xdr_float(&xdrs,&vTemp);
+#endif
+			xdr_float(&xdrs,&pkd->pStore[i].fPot);
+			pkd->pStore[i].iOrder = nStart + i;
+			}
+		for (;i+nStart < pkd->nGas+pkd->nDark && i < nLocal;++i) {
+			xdr_float(&xdrs,&pkd->pStore[i].fMass);
+			for (j=0;j<3;++j) {
+				xdr_float(&xdrs,&pkd->pStore[i].r[j]);
+				}
+			for (j=0;j<3;++j) {
+				xdr_float(&xdrs,&vTemp);
+				pkd->pStore[i].v[j] = dvFac*vTemp;			
+				}
+			xdr_float(&xdrs,&pkd->pStore[i].fSoft);
+			xdr_float(&xdrs,&pkd->pStore[i].fPot);
+			pkd->pStore[i].iOrder = nStart + i;
+			}
+		for (;i+nStart < pkd->nGas+pkd->nDark+pkd->nStar && i < nLocal;++i) {
+			xdr_float(&xdrs,&pkd->pStore[i].fMass);
+			for (j=0;j<3;++j) {
+				xdr_float(&xdrs,&pkd->pStore[i].r[j]);
+				}
+			for (j=0;j<3;++j) {
+				xdr_float(&xdrs,&vTemp);
+				pkd->pStore[i].v[j] = dvFac*vTemp;			
+				}
+#ifdef GASOLINE
+			xdr_float(&xdrs,&pkd->pStore[i].fMetals);
+			xdr_float(&xdrs,&pkd->pStore[i].fTimeForm);
+#else
+			xdr_float(&xdrs,&vTemp);
+			xdr_float(&xdrs,&vTemp);
+#endif
+			xdr_float(&xdrs,&pkd->pStore[i].fSoft);
+			xdr_float(&xdrs,&pkd->pStore[i].fPot);
+			pkd->pStore[i].iOrder = nStart + i;
+			}
+		xdr_destroy(&xdrs);
+		}
+	else {
+		for (i=0;i+nStart < pkd->nGas && i < nLocal;++i) {
+			fread(&gp,sizeof(struct gas_particle),1,fp);
+			for (j=0;j<3;++j) {
+				pkd->pStore[i].r[j] = gp.pos[j];
+				pkd->pStore[i].v[j] = dvFac*gp.vel[j];
+				}
+			pkd->pStore[i].fMass = gp.mass;
+			pkd->pStore[i].fSoft = gp.hsmooth;
+#ifdef GASOLINE
+			pkd->pStore[i].fTemp = gp.temp;
+			pkd->pStore[i].fMetals = gp.metals;
+#endif
+			pkd->pStore[i].iOrder = nStart + i;
+			}
+		for (;i+nStart < pkd->nGas+pkd->nDark && i < nLocal;++i) {
+			fread(&dp,sizeof(struct dark_particle),1,fp);
+			for (j=0;j<3;++j) {
+				pkd->pStore[i].r[j] = dp.pos[j];
+				pkd->pStore[i].v[j] = dvFac*dp.vel[j];
+				}
+			pkd->pStore[i].fMass = dp.mass;
+			pkd->pStore[i].fSoft = dp.eps;
+			pkd->pStore[i].iOrder = nStart + i;
+			}
+		for (;i+nStart < pkd->nGas+pkd->nDark+pkd->nStar && i < nLocal;++i) {
+			fread(&sp,sizeof(struct star_particle),1,fp);
+			for (j=0;j<3;++j) {
+				pkd->pStore[i].r[j] = sp.pos[j];
+				pkd->pStore[i].v[j] = dvFac*sp.vel[j];
+				}
+			pkd->pStore[i].fMass = sp.mass;
+			pkd->pStore[i].fSoft = sp.eps;
+#ifdef GASOLINE
+			pkd->pStore[i].fMetals = sp.metals;
+			pkd->pStore[i].fTimeForm = sp.tform;		
+#endif
+			pkd->pStore[i].iOrder = nStart + i;
+			}
 		}
 	fclose(fp);
 	}
@@ -557,6 +700,8 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 	FILE *fp;
 	int i,j;
 	struct dark_particle dp;
+	struct gas_particle gp;
+	struct star_particle sp;
 	long lStart;
 	int nout;
 
@@ -575,21 +720,37 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 	 */
 	fp = fopen(pszFileName,"r+");
 	assert(fp != NULL);
+	pkdSeek(pkd,fp,nStart,bStandard);
 	if (bStandard) {
 		float vTemp;
 		XDR xdrs;
-		/*
-		 ** Seek according to true XDR size structures!
-		 ** This may be a bit dicey, but it should work as long
-		 ** as no one changes the tipsy binary format!
-		 */
-		lStart = 32 + nStart*36;
-		fseek(fp,lStart,0);
 		/* 
 		 ** Write Stuff!
 		 */
 		xdrstdio_create(&xdrs,fp,XDR_ENCODE);
-		for (i=0;i<pkd->nLocal;++i) {
+		for (i=0;i+nStart < pkd->nGas && i < pkd->nLocal;++i) {
+			xdr_float(&xdrs,&pkd->pStore[i].fMass);
+			for (j=0;j<3;++j) {
+				xdr_float(&xdrs,&pkd->pStore[i].r[j]);
+				}
+			for (j=0;j<3;++j) {
+				vTemp = dvFac*pkd->pStore[i].v[j];			
+				xdr_float(&xdrs,&vTemp);
+				}
+			xdr_float(&xdrs,&pkd->pStore[i].fDensity);
+#ifdef GASOLINE
+			xdr_float(&xdrs,&pkd->pStore[i].fTemp);
+			xdr_float(&xdrs,&pkd->pStore[i].fSoft);
+			xdr_float(&xdrs,&pkd->pStore[i].fMetals);
+#else
+			vTemp = 0.0;
+			xdr_float(&xdrs,&vTemp);
+			xdr_float(&xdrs,&pkd->pStore[i].fSoft);
+			xdr_float(&xdrs,&vTemp);
+#endif
+			xdr_float(&xdrs,&pkd->pStore[i].fPot);
+			}
+		for (;i+nStart < pkd->nGas+pkd->nDark && i < pkd->nLocal;++i) {
 			xdr_float(&xdrs,&pkd->pStore[i].fMass);
 			for (j=0;j<3;++j) {
 				xdr_float(&xdrs,&pkd->pStore[i].r[j]);
@@ -601,15 +762,52 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 			xdr_float(&xdrs,&pkd->pStore[i].fSoft);
 			xdr_float(&xdrs,&pkd->pStore[i].fPot);
 			}
+		for (;i+nStart < pkd->nGas+pkd->nDark+pkd->nStar && i < pkd->nLocal;++i) {
+			xdr_float(&xdrs,&pkd->pStore[i].fMass);
+			for (j=0;j<3;++j) {
+				xdr_float(&xdrs,&pkd->pStore[i].r[j]);
+				}
+			for (j=0;j<3;++j) {
+				vTemp = dvFac*pkd->pStore[i].v[j];			
+				xdr_float(&xdrs,&vTemp);
+				}
+#ifdef GASOLINE
+			xdr_float(&xdrs,&pkd->pStore[i].fMetals);
+			xdr_float(&xdrs,&pkd->pStore[i].fTimeForm);
+#else
+			vTemp = 0.0;
+			xdr_float(&xdrs,&vTemp);
+			xdr_float(&xdrs,&vTemp);			
+#endif
+			xdr_float(&xdrs,&pkd->pStore[i].fSoft);
+			xdr_float(&xdrs,&pkd->pStore[i].fPot);
+			}
 		xdr_destroy(&xdrs);
 		}
 	else {
-		lStart = sizeof(struct dump)+nStart*sizeof(struct dark_particle);
-		fseek(fp,lStart,0);
 		/* 
 		 ** Write Stuff!
 		 */
-		for (i=0;i<pkd->nLocal;++i) {
+		for (i=0;i+nStart < pkd->nGas && i < pkd->nLocal;++i) {
+			for (j=0;j<3;++j) {
+				gp.pos[j] = pkd->pStore[i].r[j];
+				gp.vel[j] = dvFac*pkd->pStore[i].v[j];
+				}
+			gp.mass = pkd->pStore[i].fMass;
+			gp.hsmooth = pkd->pStore[i].fSoft;
+			gp.phi = pkd->pStore[i].fPot;
+			gp.rho = pkd->pStore[i].fDensity;
+#ifdef GASOLINE
+			gp.temp = pkd->pStore[i].fTemp;
+			gp.metals = pkd->pStore[i].fMetals;
+#else
+			gp.temp = 0.0;
+			gp.metals = 0.0;
+#endif
+			nout = fwrite(&gp,sizeof(struct gas_particle),1,fp);
+			assert(nout == 1);
+			}
+		for (;i+nStart < pkd->nGas+pkd->nDark && i < pkd->nLocal;++i) {
 			for (j=0;j<3;++j) {
 				dp.pos[j] = pkd->pStore[i].r[j];
 				dp.vel[j] = dvFac*pkd->pStore[i].v[j];
@@ -618,7 +816,25 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 			dp.eps = pkd->pStore[i].fSoft;
 			dp.phi = pkd->pStore[i].fPot;
 			nout = fwrite(&dp,sizeof(struct dark_particle),1,fp);
-		        assert(nout == 1);
+			assert(nout == 1);
+			}
+		for (;i+nStart < pkd->nGas+pkd->nDark+pkd->nStar && i < pkd->nLocal;++i) {
+			for (j=0;j<3;++j) {
+				sp.pos[j] = pkd->pStore[i].r[j];
+				sp.vel[j] = dvFac*pkd->pStore[i].v[j];
+				}
+			sp.mass = pkd->pStore[i].fMass;
+			sp.eps = pkd->pStore[i].fSoft;
+			sp.phi = pkd->pStore[i].fPot;
+#ifdef GASOLINE
+			sp.metals = pkd->pStore[i].fMetals;
+			sp.tform = pkd->pStore[i].fTimeForm;
+#else
+			sp.metals = 0.0;
+			sp.tform = 0.0;
+#endif
+			nout = fwrite(&sp,sizeof(struct dark_particle),1,fp);
+			assert(nout == 1);
 			}
 		}
 	nout = fclose(fp);

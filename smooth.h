@@ -2,6 +2,7 @@
 #define SMOOTH_HINCLUDED
 
 #include "pkd.h"
+#include "smoothfcn.h"
 
 #define RESMOOTH_SAFE  10
 #define PQ_LOAD_FACTOR 0.50
@@ -18,22 +19,21 @@ typedef struct pqNode {
 	int p;
 	int id;
 	PARTICLE *pPart;
+	float dx;
+	float dy;
+	float dz;
 	float ax;
 	float ay;
 	float az;
 	} PQ;
 
 
-typedef struct nNeighbor {
-	PARTICLE *pPart;
-	float fDist2;
-	} NN;
-
 typedef struct smContext {
 	PKD pkd;
 	int nSmooth;
 	int bPeriodic;
-	void (*fcnSmooth)(PARTICLE *,int,NN *);
+	void (*fcnSmooth)(PARTICLE *,int,NN *,SMF *);
+	void (*fcnPost)(PARTICLE *);
 	int *piMark;
 	int nListSize;
 	NN *nnList;
@@ -263,8 +263,8 @@ typedef struct smContext {
 
 int smInitialize(SMX *,PKD,int,int,int,int,int);
 void smFinish(SMX);
-void smSmooth(SMX);
-void smReSmooth(SMX);
+void smSmooth(SMX,SMF *);
+void smReSmooth(SMX,SMF *);
 
 #endif
 
