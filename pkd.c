@@ -2670,6 +2670,7 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 		for (j=0;j<3;++j) {
 			pkd->pStore[iDummy].r[j] = 0.0;
 			pkd->pStore[iDummy].a[j] = 0.0;
+			pkd->pStore[iDummy].fSoft = 0.0;
 			c[pkd->iFreeCell].bnd.fMin[j] = -dTinyBox;
 			c[pkd->iFreeCell].bnd.fMax[j] = dTinyBox;
 			}
