@@ -80,8 +80,11 @@ int main(int argc,char **argv)
 		assert(fpLog != NULL);
 		if(msrKDK(msr) || msr->param.bEpsVel) {
 			msrBuildTree(msr,0,dMass,0);
-			msrMassCheck(msr,dMass,"After msrBuildTree");\
-			msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+			msrMassCheck(msr,dMass,"After msrBuildTree");
+			msrInitAccel(msr);
+			if (msrDoGravity(msr)) {
+				msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+				}
 			}
 		goto Restart;
 		}
@@ -92,22 +95,7 @@ int main(int argc,char **argv)
 	dTime = msrReadTipsy(msr);
 	msrInitStep(msr);
 #ifdef GASOLINE
-	/*
-	 ** Output u as a test.
-	 */
-	msrReorder(msr);
-	sprintf(achFile,"%s.u",msrOutName(msr));
-	msrOutArray(msr,achFile,OUT_U_ARRAY);
-	puts("before msrInitSph");
 	msrInitSph(msr,dTime);
-	puts("after msrInitSph");
-	/*
-	 ** Output du/dt as a test.
-	 */
-	msrReorder(msr);
-	sprintf(achFile,"%s.du",msrOutName(msr));
-	msrOutArray(msr,achFile,OUT_UDOT_ARRAY);
-	exit(0);
 #endif
 	dMass = msrMassCheck(msr,-1.0,"Initial");
 	if (prmSpecified(msr->prm,"dSoft")) msrSetSoft(msr,msrSoft(msr));
@@ -124,6 +112,9 @@ int main(int argc,char **argv)
 		 ** Now we have all the parameters for the simulation we can make a 
 		 ** log file entry.
 		 */
+		if (msrComove(msr)) {
+			msrSwitchTheta(msr,dTime);
+			}
 		sprintf(achFile,"%s.log",msrOutName(msr));
 		fpLog = fopen(achFile,"w");
 		assert(fpLog != NULL);
@@ -144,18 +135,23 @@ int main(int argc,char **argv)
 		msrBuildTree(msr,0,dMass,0);
 		msrMassCheck(msr,dMass,"After msrBuildTree");
 
-		msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
-		msrMassCheck(msr,dMass,"After msrGravity");
-		msrCalcE(msr,MSR_INIT_ECOSMO,dTime,&E,&T,&U);
-		msrMassCheck(msr,dMass,"After msrCalcE");
-
-		dMultiEff = 1.0;
-		fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f %.2f\n",
-				dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,dWMax,dIMax,
-				dEMax,dMultiEff);
-		fflush(fpLog);
+		msrInitAccel(msr);
+		if (msrDoGravity(msr)) {
+			msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+			msrMassCheck(msr,dMass,"After msrGravity");
+			msrCalcE(msr,MSR_INIT_ECOSMO,dTime,&E,&T,&U);
+			msrMassCheck(msr,dMass,"After msrCalcE");
+			dMultiEff = 1.0;
+			fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f %.2f\n",
+					dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,dWMax,dIMax,
+					dEMax,dMultiEff);
+			fflush(fpLog);
+			}
 
 		for (iStep=1;iStep<=msrSteps(msr);++iStep) {
+			if (msrComove(msr)) {
+				msrSwitchTheta(msr,dTime);
+				}
 			if (msrKDK(msr)) {
 #ifdef PLANETS
 				/***DEBUG: diagnostic test***/
@@ -212,14 +208,17 @@ int main(int argc,char **argv)
 					msrActiveRung(msr,0,1);
 					msrBuildTree(msr,0,dMass,0);
 					msrMassCheck(msr,dMass,"After msrBuildTree in DKD-log");
-					msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
-					msrMassCheck(msr,dMass,"After msrGravity in DKD-log");
-					msrCalcE(msr,MSR_STEP_ECOSMO,dTime,&E,&T,&U);
-					msrMassCheck(msr,dMass,"After msrCalcE in DKD-log");
-					fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f %.2f\n",
-							dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,
-							dWMax,dIMax,dEMax,dMultiEff);
-					fflush(fpLog);		
+					msrInitAccel(msr);
+					if (msrDoGravity(msr)) {
+						msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+						msrMassCheck(msr,dMass,"After msrGravity in DKD-log");
+						msrCalcE(msr,MSR_STEP_ECOSMO,dTime,&E,&T,&U);
+						msrMassCheck(msr,dMass,"After msrCalcE in DKD-log");
+						fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f %.2f\n",
+								dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,
+								dWMax,dIMax,dEMax,dMultiEff);
+						fflush(fpLog);
+						}
 					}
 				}
 			if (msrOutTime(msr,dTime)) {
@@ -316,10 +315,11 @@ int main(int argc,char **argv)
 			msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
 			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Density");
 			}
-		else {
+		else if (msrDoGravity(msr)) {
 			msrActiveRung(msr,0,1);
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Gravity");
+			msrInitAccel(msr);
 			msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			msrMassCheck(msr,dMass,"After msrGravity in OutSingle Gravity");
 			msrReorder(msr);
