@@ -131,9 +131,12 @@ typedef struct pkdContext {
 	int nPart;
 	int nCellSoft;
 	int nCellNewt;
+	int nSqrtTmp;
 	ILP *ilp;
 	ILCS *ilcs;
 	ILCN *ilcn;
+	double *sqrttmp;
+	double *d2a;
 	/*
 	 ** Ewald summation setup.
 	 */

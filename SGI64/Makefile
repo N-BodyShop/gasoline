@@ -21,7 +21,7 @@ XDIR	=	$(BDIR)/$(PVM_ARCH)
 
 MDL		=	$(SDIR)/../mdl/pvm
 CFLAGS	=	-O3 -mips4 -I$(PVMDIR)/include -I$(MDL)
-LIBS	=	$(MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
+LIBS	=	$(MDL)/$(PVM_ARCH)/mdl-lru.o $(PVMLIB) $(ARCHLIB) -lm
 
 default:	mdl pkdgrav
 
@@ -36,9 +36,9 @@ mdl:
 	cd $(MDL); aimk
 
 pkdgrav: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
-	ewald.o walk.o
+	ewald.o walk.o v_sqrt1.o
 	$(CC) $(CFLAGS) -o pkdgrav main.o master.o param.o outtype.o pkd.o \
-	 pst.o grav.o ewald.o walk.o $(LIBS)
+	 pst.o grav.o ewald.o walk.o v_sqrt1.o $(LIBS)
 	mv -f pkdgrav $(XDIR)
 
 main.o: $(SDIR)/main.c
@@ -67,6 +67,9 @@ ewald.o: $(SDIR)/ewald.c
 
 walk.o: $(SDIR)/walk.c
 	$(CC) $(CFLAGS) -c $(SDIR)/walk.c
+
+v_sqrt1.o: $(SDIR)/v_sqrt1.c
+	$(CC) $(CFLAGS) -c $(SDIR)/v_sqrt1.c
 
 
 

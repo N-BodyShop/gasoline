@@ -5,9 +5,12 @@
 #include <math.h>
 #include <assert.h>
 #include <sys/time.h>
-#include <sys/resource.h>
+
+#ifndef CRAY_T3D
 #include <rpc/types.h>
 #include <rpc/xdr.h>
+#endif
+
 #include "pkd.h"
 #include "ewald.h"
 #include "grav.h"
@@ -83,12 +86,17 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	pkd->nMaxPart = 500;
 	pkd->nMaxCellSoft = 500;
 	pkd->nMaxCellNewt = 500;
+	pkd->nSqrtTmp = 500;
 	pkd->ilp = malloc(pkd->nMaxPart*sizeof(ILP));
 	assert(pkd->ilp != NULL);
 	pkd->ilcs = malloc(pkd->nMaxCellSoft*sizeof(ILCS));
 	assert(pkd->ilcs != NULL);
 	pkd->ilcn = malloc(pkd->nMaxCellNewt*sizeof(ILCN));
 	assert(pkd->ilcn != NULL);
+	pkd->sqrttmp = malloc(pkd->nSqrtTmp*sizeof(double));
+	assert(pkd->sqrttmp != NULL);
+	pkd->d2a = malloc(pkd->nSqrtTmp*sizeof(double));
+	assert(pkd->d2a != NULL);
 	/*
 	 ** Ewald stuff!
 	 */
@@ -105,6 +113,8 @@ void pkdFinish(PKD pkd)
 	free(pkd->ilp);
 	free(pkd->ilcs);
 	free(pkd->ilcn);
+	free(pkd->sqrttmp);
+	free(pkd->d2a);
 	free(pkd->ewt);
 	free(pkd->pStore);
 	free(pkd);
@@ -444,6 +454,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 	fp = fopen(pszFileName,"r+");
 	assert(fp != NULL);
 	if (bStandard) {
+#ifndef CRAY_T3D
 		XDR xdrs;
 		/*
 		 ** Seek according to true XDR size structures!
@@ -470,6 +481,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 			xdr_float(&xdrs,&pkd->pStore[i].fPot);
 			}
 		xdr_destroy(&xdrs);
+#endif
 		}
 	else {
 		lStart = sizeof(struct dump)+nStart*sizeof(struct dark_particle);

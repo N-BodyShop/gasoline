@@ -12,9 +12,9 @@ mdl :
 	cd $(MDL); make
 
 pkdgrav : main.o master.o param.o pst.o pkd.o outtype.o \
-	grav.o ewald.o erf.o walk.o $(LD_MDL) $(MDL)/mdl.c $(MDL)/mdl.h
+	grav.o ewald.o walk.o v_sqrt1.o $(LD_MDL) $(MDL)/mdl.c $(MDL)/mdl.h
 	mpcc $(LD_FLAGS) -o pkdgrav main.o master.o param.o pst.o pkd.o \
-    	outtype.o grav.o ewald.o erf.o walk.o $(LD_LIBS)
+    	outtype.o grav.o ewald.o walk.o v_sqrt1.o $(LD_LIBS)
 
 main.o: main.c $(MDL)/mdl.h
 	mpcc $(CC_FLAGS) -c main.c
@@ -40,9 +40,14 @@ grav.o: grav.c
 ewald.o: ewald.c
 	mpcc $(CC_FLAGS) -c ewald.c
 
-erf.o: erf.c
-	mpcc $(CC_FLAGS) -c erf.c
-
 walk.o: walk.c $(MDL)/mdl.h
 	mpcc $(CC_FLAGS) -c walk.c
+
+v_sqrt1.o: v_sqrt1.c
+	mpcc $(CC_FLAGS) -c v_sqrt1.c
+
+
+
+
+
 

@@ -25,7 +25,7 @@ LIBRND	=	$(MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
 LIBLRU	=	$(MDL)/$(PVM_ARCH)/mdl-lru.o $(PVMLIB) $(ARCHLIB) -lm
 LIBPLR	=	$(MDL)/$(PVM_ARCH)/mdl-plr.o $(PVMLIB) $(ARCHLIB) -lm
 
-default:	mdl pkdgrav-rnd pkdgrav-lru pkdgrav-plr
+default:	mdl pkdgrav
 
 $(XDIR):
 	- mkdir $(BDIR)
@@ -37,23 +37,11 @@ clean:
 mdl:
 	cd $(MDL); aimk
 
-pkdgrav-rnd: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
-	ewald.o walk.o
-	$(CC) $(CFLAGS) -o pkdgrav-rnd main.o master.o param.o outtype.o pkd.o \
-	 pst.o grav.o ewald.o walk.o $(LIBRND)
-	mv -f pkdgrav-rnd $(XDIR)
-
-pkdgrav-lru: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
-	ewald.o walk.o
-	$(CC) $(CFLAGS) -o pkdgrav-lru main.o master.o param.o outtype.o pkd.o \
-	 pst.o grav.o ewald.o walk.o $(LIBLRU)
-	mv -f pkdgrav-lru $(XDIR)
-
-pkdgrav-plr: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
-	ewald.o walk.o
-	$(CC) $(CFLAGS) -o pkdgrav-plr main.o master.o param.o outtype.o pkd.o \
-	 pst.o grav.o ewald.o walk.o $(LIBPLR)
-	mv -f pkdgrav-plr $(XDIR)
+pkdgrav: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
+	ewald.o walk.o v_sqrt1.o
+	$(CC) $(CFLAGS) -o pkdgrav main.o master.o param.o outtype.o pkd.o \
+	 pst.o grav.o ewald.o walk.o v_sqrt1.o $(LIBLRU)
+	mv -f pkdgrav $(XDIR)
 
 main.o: $(SDIR)/main.c
 	$(CC) $(CFLAGS) -c $(SDIR)/main.c
@@ -82,7 +70,8 @@ ewald.o: $(SDIR)/ewald.c
 walk.o: $(SDIR)/walk.c
 	$(CC) $(CFLAGS) -c $(SDIR)/walk.c
 
-
+v_sqrt1.o: $(SDIR)/v_sqrt1.c
+	$(CC) $(CFLAGS) -c $(SDIR)/v_sqrt1.c
 
 
 

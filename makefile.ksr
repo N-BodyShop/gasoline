@@ -13,9 +13,9 @@ mdl:
 	cd $(MDL); make
 
 pkdgrav : main.o master.o param.o pst.o pkd.o outtype.o \
-	grav.o ewald.o erf.o walk.o $(LD_MDL) $(MDL)/mdl.c $(MDL)/mdl.h
+	grav.o ewald.o erf.o walk.o v_sqrt1.o $(LD_MDL) $(MDL)/mdl.c $(MDL)/mdl.h
 	cc $(LD_FLAGS) -o pkdgrav main.o master.o param.o pst.o pkd.o \
-    	outtype.o grav.o ewald.o erf.o walk.o $(LD_LIBS)
+    	outtype.o grav.o ewald.o erf.o walk.o v_sqrt1.o $(LD_LIBS)
 
 main.o: main.c $(MDL)/mdl.h
 	cc $(CC_FLAGS) -c main.c
@@ -41,65 +41,14 @@ grav.o: grav.c
 ewald.o: ewald.c
 	cc $(CC_FLAGS) -c ewald.c
 
-erf.o: erf.c
-	cc $(CC_FLAGS) -c erf.c
-
 walk.o: walk.c $(MDL)/mdl.h
 	cc $(CC_FLAGS) -c walk.c
 
+erf.o: erf.c
+	cc $(CC_FLAGS) -c erf.c
 
+v_sqrt1.o: v_sqrt1.c
+	cc $(CC_FLAGS) -c v_sqrt1.c
 
-# DO NOT DELETE THIS LINE -- make depend depends on it.
-
-ewald.o: /usr/include/stdio.h /usr/include/standards.h /usr/include/malloc.h
-ewald.o: /usr/include/stdlib.h /usr/include/math.h
-ewald.o: /usr/include/machine/math.h /usr/include/assert.h ewald.h pkd.h
-ewald.o: /usr/include/sys/resource.h /usr/include/sys/time.h
-ewald.o: /usr/include/sys/types.h /usr/include/machine/types.h
-ewald.o: /usr/include/sys/time.h
-grav.o: /usr/include/stdio.h /usr/include/standards.h /usr/include/math.h
-grav.o: /usr/include/machine/math.h pkd.h /usr/include/sys/resource.h
-grav.o: /usr/include/sys/time.h /usr/include/sys/types.h
-grav.o: /usr/include/machine/types.h /usr/include/sys/time.h grav.h
-main.o: /usr/include/stdio.h /usr/include/standards.h /usr/include/stdlib.h
-main.o: /usr/include/string.h /usr/include/assert.h master.h param.h pst.h
-main.o: pkd.h /usr/include/sys/resource.h /usr/include/sys/time.h
-main.o: /usr/include/sys/types.h /usr/include/machine/types.h
-main.o: /usr/include/sys/time.h parameters.h outtype.h
-master.o: /usr/include/stdio.h /usr/include/standards.h /usr/include/stdlib.h
-master.o: /usr/include/stddef.h /usr/include/string.h /usr/include/malloc.h
-master.o: /usr/include/assert.h /usr/include/sys/time.h /usr/include/math.h
-master.o: /usr/include/machine/math.h master.h param.h pst.h pkd.h
-master.o: /usr/include/sys/resource.h /usr/include/sys/time.h
-master.o: /usr/include/sys/types.h /usr/include/machine/types.h parameters.h
-master.o: tipsydefs.h opentype.h checkdefs.h
-outtype.o: /usr/include/stdio.h /usr/include/standards.h /usr/include/math.h
-outtype.o: /usr/include/machine/math.h /usr/include/assert.h pkd.h
-outtype.o: /usr/include/sys/resource.h /usr/include/sys/time.h
-outtype.o: /usr/include/sys/types.h /usr/include/machine/types.h
-outtype.o: /usr/include/sys/time.h outtype.h
-param.o: /usr/include/stdio.h /usr/include/standards.h /usr/include/stdlib.h
-param.o: /usr/include/stddef.h /usr/include/malloc.h /usr/include/string.h
-param.o: /usr/include/assert.h /usr/include/ctype.h param.h
-pkd.o: /usr/include/stdio.h /usr/include/standards.h /usr/include/stdlib.h
-pkd.o: /usr/include/stddef.h /usr/include/malloc.h /usr/include/math.h
-pkd.o: /usr/include/machine/math.h /usr/include/assert.h
-pkd.o: /usr/include/sys/time.h /usr/include/sys/types.h
-pkd.o: /usr/include/machine/types.h /usr/include/sys/time.h
-pkd.o: /usr/include/sys/resource.h pkd.h ewald.h grav.h walk.h opentype.h
-pkd.o: tipsydefs.h checkdefs.h parameters.h
-pst.o: /usr/include/math.h /usr/include/standards.h
-pst.o: /usr/include/machine/math.h /usr/include/stdlib.h
-pst.o: /usr/include/stddef.h /usr/include/string.h /usr/include/malloc.h
-pst.o: /usr/include/assert.h pst.h pkd.h /usr/include/sys/resource.h
-pst.o: /usr/include/sys/time.h /usr/include/sys/types.h
-pst.o: /usr/include/machine/types.h /usr/include/sys/time.h outtype.h
-pst.o: smooth.h
-walk.o: /usr/include/math.h /usr/include/standards.h
-walk.o: /usr/include/machine/math.h /usr/include/stdlib.h
-walk.o: /usr/include/stddef.h /usr/include/malloc.h walk.h pkd.h
-walk.o: /usr/include/sys/resource.h /usr/include/sys/time.h
-walk.o: /usr/include/sys/types.h /usr/include/machine/types.h
-walk.o: /usr/include/sys/time.h
 
 

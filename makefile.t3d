@@ -10,7 +10,7 @@ RPCOBJS = $(RPC)/xdr.o $(RPC)/xdr_mem.o $(RPC)/xdr_rec.o \
 
 #CC_FLAGS = -g -I$(MDL) -I$(HOME)
 #LD_LIBS = $(MDL)/mdl.o $(RPCOBJS) -lm
-CC_FLAGS = -O3 -DCRAY-T3D -I$(MDL) -I$(V_SQRT)
+CC_FLAGS = -O3 -DCRAY_T3D -I$(MDL) -I$(V_SQRT)
 LD_LIBS = -O3 -L $(V_SQRT) -L $(V_SQRT1) $(MDL)/mdl.o -lv_sqrtc -lv_sqrtc1 -lm
 LD_FLAGS = 
 
@@ -56,4 +56,10 @@ walk.o: walk.c
 
 
 
-# DO NOT DELETE THIS LINE -- make depend depends on it.
+
+
+
+
+
+
+

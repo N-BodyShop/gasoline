@@ -13,11 +13,13 @@
  ** of the passed variables to the macro has the same name. It looks pretty
  ** unreadable now, oh well. (Joachim Stadel, Jan. 95)
  */
-#define SPLINE(r2,twoh,a,b,c,d)\
+#define SPLINE(invr,r2,twoh,a,b,c,d)\
 {\
-	double SPLINE_r,SPLINE_u,SPLINE_dih,SPLINE_dir;\
-	SPLINE_r = sqrt(r2);\
-	if (SPLINE_r < twoh) {\
+	double SPLINE_invr,SPLINE_r2,SPLINE_r,SPLINE_u,SPLINE_dih,SPLINE_dir;\
+	SPLINE_invr = invr;\
+	SPLINE_r2 = r2;\
+	if (SPLINE_r2 < twoh*twoh) {\
+                SPLINE_r=sqrt(SPLINE_r2);\
 		SPLINE_dih = 2.0/twoh;\
 		SPLINE_u = SPLINE_r*SPLINE_dih;\
 		if (SPLINE_u < 1.0) {\
@@ -41,7 +43,7 @@
 			}\
 		}\
 	else {\
-		a = 1.0/SPLINE_r;\
+		a = SPLINE_invr;\
 		b = a*a*a;\
 		c = 3.0*b*a*a;\
 		d = 5.0*c*a*a;\

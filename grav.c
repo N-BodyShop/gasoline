@@ -16,6 +16,7 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 	double fPot,ax,ay,az;
 	double x,y,z,dx,dy,dz,d2,h,twoh,a,b,c,d;
 	double qirx,qiry,qirz,qir,tr,qir3;
+	double *sqrttmp,*d2a;
 
 	/*
 	 ** Now process the two interaction lists for each particle.
@@ -39,9 +40,15 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 			dx = x - ilp[j].x;
 			dy = y - ilp[j].y;
 			dz = z - ilp[j].z;
-			d2 = dx*dx + dy*dy + dz*dz;
+			pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
+			}
+		if (pkd->nPart>0) v_sqrt1(pkd->nPart,pkd->d2a,pkd->sqrttmp);
+		for (j=0;j<pkd->nPart;++j) {
+			dx = x - ilp[j].x;
+			dy = y - ilp[j].y;
+			dz = z - ilp[j].z;
 			twoh = h + ilp[j].h;
-			SPLINE(d2,twoh,a,b,c,d);
+			SPLINE(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b,c,d);
 			a *= ilp[j].m;
 			b *= ilp[j].m;
 			fPot -= a;
@@ -57,9 +64,15 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 				dx = x - ilcs[j].x;
 				dy = y - ilcs[j].y;
 				dz = z - ilcs[j].z;
-				d2 = dx*dx + dy*dy + dz*dz;
+				pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
+				}
+		    if (pkd->nCellSoft>0) v_sqrt1(pkd->nCellSoft,pkd->d2a,pkd->sqrttmp);
+			for (j=0;j<pkd->nCellSoft;++j) {
+				dx = x - ilcs[j].x;
+				dy = y - ilcs[j].y;
+				dz = z - ilcs[j].z;
 				twoh = h + ilcs[j].h;
-				SPLINE(d2,twoh,a,b,c,d);
+				SPLINE(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b,c,d);
 				qirx = ilcs[j].xx*dx + ilcs[j].xy*dy + ilcs[j].xz*dz;
 				qiry = ilcs[j].xy*dx + ilcs[j].yy*dy + ilcs[j].yz*dz;
 				qirz = ilcs[j].xz*dx + ilcs[j].yz*dy + ilcs[j].zz*dz;
@@ -75,8 +88,15 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 				dx = x - ilcn[j].x;
 				dy = y - ilcn[j].y;
 				dz = z - ilcn[j].z;
-				b = 1.0/(dx*dx + dy*dy + dz*dz);
-				a = sqrt(b);
+				pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
+				}
+		    if (pkd->nCellNewt>0) v_sqrt1(pkd->nCellNewt,pkd->d2a,pkd->sqrttmp);
+			for (j=0;j<pkd->nCellNewt;++j) {
+				dx = x - ilcn[j].x;
+				dy = y - ilcn[j].y;
+				dz = z - ilcn[j].z;
+				a = pkd->sqrttmp[j];
+				b = a*a;
 				c = b*b*a;
 				a *= ilcn[j].m;
 				/*
@@ -102,9 +122,15 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 				dx = x - ilcs[j].x;
 				dy = y - ilcs[j].y;
 				dz = z - ilcs[j].z;
-				d2 = dx*dx + dy*dy + dz*dz;
+				pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
+				}
+		    if (pkd->nCellSoft>0) v_sqrt1(pkd->nCellSoft,pkd->d2a,pkd->sqrttmp);
+			for (j=0;j<pkd->nCellSoft;++j) {
+				dx = x - ilcs[j].x;
+				dy = y - ilcs[j].y;
+				dz = z - ilcs[j].z;
 				twoh = h + ilcs[j].h;
-				SPLINE(d2,twoh,a,b,c,d);
+				SPLINE(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b,c,d);
 				b *= ilcs[j].m;
 				fPot -= ilcs[j].m*a;
 				ax -= dx*b;
@@ -115,7 +141,14 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 				dx = x - ilcn[j].x;
 				dy = y - ilcn[j].y;
 				dz = z - ilcn[j].z;
-				a = 1.0/sqrt(dx*dx + dy*dy + dz*dz);
+				pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
+				}
+		    if (pkd->nCellNewt>0) v_sqrt1(pkd->nCellNewt,pkd->d2a,pkd->sqrttmp);
+			for (j=0;j<pkd->nCellNewt;++j) {
+				dx = x - ilcn[j].x;
+				dy = y - ilcn[j].y;
+				dz = z - ilcn[j].z;
+				a = pkd->sqrttmp[j];
 				b = ilcn[j].m*a*a*a;
 				fPot -= ilcn[j].m*a;
 				ax -= dx*b;
@@ -142,7 +175,7 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 			dz = p[j].r[2] - p[i].r[2];
 			d2 = dx*dx + dy*dy + dz*dz;
 			twoh = p[i].fSoft + p[j].fSoft;
-			SPLINE(d2,twoh,a,b,c,d);
+			SPLINE(1.0/sqrt(d2),d2,twoh,a,b,c,d);
 			p[j].fPot -= a*p[i].fMass;
 			p[j].a[0] -= dx*b*p[i].fMass;
 			p[j].a[1] -= dy*b*p[i].fMass;

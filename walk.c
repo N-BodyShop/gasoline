@@ -42,6 +42,11 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3])
 					if (nPart + n > pkd->nMaxPart) {
 						pkd->nMaxPart += pkd->nMaxPart + n;
 						pkd->ilp = realloc(pkd->ilp,pkd->nMaxPart*sizeof(ILP));
+						if (pkd->nMaxPart > pkd->nSqrtTmp) {
+						    pkd->nSqrtTmp = pkd->nMaxPart;
+						    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+						    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+						}
 						}
 					for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj,++nPart) {
 						pkd->ilp[nPart].x = p[pj].r[0] + rOffset[0];
@@ -70,6 +75,11 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3])
 					pkd->nMaxCellSoft *= 2;
 					pkd->ilcs = realloc(pkd->ilcs,pkd->nMaxCellSoft*
 										sizeof(ILCS));
+					if (pkd->nMaxCellSoft > pkd->nSqrtTmp) {
+					    pkd->nSqrtTmp = pkd->nMaxCellSoft;
+					    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+						}
 					}
 				pkd->ilcs[nCellSoft].m = pkdn->fMass;
 				pkd->ilcs[nCellSoft].h = pkdn->fSoft;
@@ -89,6 +99,11 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3])
 					pkd->nMaxCellNewt *= 2;
 					pkd->ilcn = realloc(pkd->ilcn,pkd->nMaxCellNewt*
 										sizeof(ILCN));
+					if (pkd->nMaxCellNewt > pkd->nSqrtTmp) {
+					    pkd->nSqrtTmp = pkd->nMaxCellNewt;
+					    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+						}
 					}
 				pkd->ilcn[nCellNewt].m = pkdn->fMass;
 				pkd->ilcn[nCellNewt].x = x;
@@ -147,6 +162,11 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3])
 				if (nPart + n > pkd->nMaxPart) {
 					pkd->nMaxPart += pkd->nMaxPart + n;
 					pkd->ilp = realloc(pkd->ilp,pkd->nMaxPart*sizeof(ILP));
+					if (pkd->nMaxPart > pkd->nSqrtTmp) {
+					    pkd->nSqrtTmp = pkd->nMaxPart;
+					    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+						}
 					}
 				for (j=0;j<n;++j,++nPart) {
 					p = mdlAquire(pkd->mdl,CID_PARTICLE,pkdn->pLower+j,id);
@@ -177,6 +197,11 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3])
 					pkd->nMaxCellSoft *= 2;
 					pkd->ilcs = realloc(pkd->ilcs,pkd->nMaxCellSoft*
 										sizeof(ILCS));
+					if (pkd->nMaxCellSoft > pkd->nSqrtTmp) {
+					    pkd->nSqrtTmp = pkd->nMaxCellSoft;
+					    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+						}
 					}
 				pkd->ilcs[nCellSoft].m = pkdn->fMass;
 				pkd->ilcs[nCellSoft].h = pkdn->fSoft;
@@ -296,6 +321,11 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps)
 									pkd->ilcs = realloc(pkd->ilcs,
 														pkd->nMaxCellSoft*
 														sizeof(ILCS));
+									if (pkd->nMaxCellSoft > pkd->nSqrtTmp) {
+									    pkd->nSqrtTmp = pkd->nMaxCellSoft;
+									    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+									    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+										}
 									}
 								pkd->ilcs[pkd->nCellSoft].m = pkdn->fMass;
 								pkd->ilcs[pkd->nCellSoft].h = pkdn->fSoft;
@@ -319,6 +349,11 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps)
 									pkd->ilcn = realloc(pkd->ilcn,
 														pkd->nMaxCellNewt*
 														sizeof(ILCN));
+									if (pkd->nMaxCellNewt > pkd->nSqrtTmp) {
+									    pkd->nSqrtTmp = pkd->nMaxCellNewt;
+									    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+									    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+										}
 									}
 								pkd->ilcn[pkd->nCellNewt].m = pkdn->fMass;
 								pkd->ilcn[pkd->nCellNewt].x = x;

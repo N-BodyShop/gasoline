@@ -114,7 +114,7 @@ void main(int argc,char **argv)
 	fprintf(fpLog,"\n");
 	fflush(fpLog);
 
-        msrLogParams(msr, fpLog);
+	msrLogParams(msr, fpLog);
 
 	dTime = msrReadTipsy(msr);
 	if (msrComove(msr)) msrStepCosmo(msr,dTime);
@@ -173,17 +173,13 @@ void main(int argc,char **argv)
 		msrReorder(msr);
 		sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
 		msrWriteTipsy(msr,achFile,dTime);
-		}
+		} 
 	else {
 		msrReorder(msr);
 		sprintf(achFile,"%s.acc",msrOutName(msr));
 		msrOutVector(msr,achFile,OUT_ACCEL_VECTOR);
 		sprintf(achFile,"%s.pot",msrOutName(msr));
 		msrOutArray(msr,achFile,OUT_POT_ARRAY);
-#if 0
-		sprintf(achFile,"%s.imass",msrOutName(msr));
-		msrOutArray(msr,achFile,OUT_IMASS_ARRAY);
-#endif
 		}
 	msrFinish(msr);
 	mdlFinish(mdl);

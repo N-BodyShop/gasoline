@@ -6,8 +6,12 @@
 #include <assert.h>
 #include <time.h>
 #include <math.h>
+
+#ifndef CRAY_T3D
 #include <rpc/types.h>
 #include <rpc/xdr.h>
+#endif
+
 #include "master.h"
 #include "tipsydefs.h"
 #include "opentype.h"
@@ -308,6 +312,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fflush(fp);
 	}
 
+
 void msrFinish(MSR msr)
 {
 	int id;
@@ -328,13 +333,15 @@ void msrFinish(MSR msr)
 
 double Expand2Time(double dExpansion,double dHubble0)
 {
-	return(2.0/(3.0*dHubble0)*pow(dExpansion,1.5));
+    if (dHubble0==0.0) return(0.0);
+    else return(2.0/(3.0*dHubble0)*pow(dExpansion,1.5));
 	}
 
 
 double Time2Expand(double dTime,double dHubble0)
 {
-	return(pow(3.0*dHubble0*dTime/2.0,2.0/3.0));
+	if (dHubble0==0.0 || dTime==0.0) return(1.0);
+	else return(pow(3.0*dHubble0*dTime/2.0,2.0/3.0));
 	}
 
 
@@ -438,6 +445,7 @@ double msrReadTipsy(MSR msr)
 	}
 
 
+#ifndef CRAY_T3D
 int xdrWriteHeader(XDR *pxdrs,struct dump *ph)
 {
 	int pad = 0;
@@ -451,6 +459,7 @@ int xdrWriteHeader(XDR *pxdrs,struct dump *ph)
 	if (!xdr_int(pxdrs,&pad)) return 0;
 	return 1;
 	}
+#endif
 
 
 void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
@@ -509,12 +518,14 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 			}
 		}
 	if (in.bStandard) {
+#ifndef CRAY_T3D
 		XDR xdrs;
 
 		assert(sizeof(struct dump) == sizeof(double)+6*sizeof(int));
 		xdrstdio_create(&xdrs,fp,XDR_ENCODE);
 		xdrWriteHeader(&xdrs,&h);
 		xdr_destroy(&xdrs);
+#endif
 		}
 	else {
 		fwrite(&h,sizeof(struct dump),1,fp);
