@@ -150,6 +150,7 @@ void pkdOutArray(PKD pkd,char *pszFileName,int iArrType, int iBinaryOutput)
 	case 1:
 		for (i=0;i<pkd->nLocal;++i) {
 			switch (iArrType) {
+			case OUT_IGASORDER_ARRAY:
 			case OUT_IORDER_ARRAY:
 				IntOut = pkd->pStore[i].iOrder;
 				fwrite(&IntOut, sizeof(IntOut), 1, fp );
@@ -163,6 +164,7 @@ void pkdOutArray(PKD pkd,char *pszFileName,int iArrType, int iBinaryOutput)
 	case 2:
 		for (i=0;i<pkd->nLocal;++i) {
 			switch (iArrType) {
+			case OUT_IGASORDER_ARRAY:
 			case OUT_IORDER_ARRAY:
 				LongOut = pkd->pStore[i].iOrder;
 				fwrite(&LongOut, sizeof(LongOut), 1, fp );
@@ -177,6 +179,7 @@ void pkdOutArray(PKD pkd,char *pszFileName,int iArrType, int iBinaryOutput)
 	case 3:
 		for (i=0;i<pkd->nLocal;++i) {
 			switch (iArrType) {
+			case OUT_IGASORDER_ARRAY:
 			case OUT_IORDER_ARRAY:
 				fwrite(&(pkd->pStore[i].iOrder), sizeof(pkd->pStore[i].iOrder), 1, fp );
 				break;
