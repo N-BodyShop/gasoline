@@ -20,7 +20,8 @@ BDIR	=	$(HOME)/pvm3/bin
 XDIR	=	$(BDIR)/$(PVM_ARCH)
 
 MDL		=	$(SDIR)/../mdl/pvm
-CFLAGS	=	-32 -O2 -I$(PVMDIR)/include -I$(MDL)
+CC=gcc
+CFLAGS	=	-g -DSMOOTH_CODE -O2 -I$(PVMDIR)/include -I$(MDL)
 LIB	=	$(MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
 
 default:	mdl pkdgrav
@@ -36,10 +37,10 @@ mdl:
 	cd $(MDL); aimk
 
 pkdgrav: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
-	ewald.o walk.o v_sqrt1.o eccanom.o hypanom.o fdl.o htable.o
+	ewald.o walk.o v_sqrt1.o eccanom.o hypanom.o fdl.o htable.o smooth.o
 	$(CC) $(CFLAGS) -o pkdgrav main.o master.o param.o outtype.o pkd.o \
 	 pst.o grav.o ewald.o walk.o v_sqrt1.o eccanom.o hypanom.o fdl.o \
-	htable.o $(LIB)
+	htable.o smooth.o $(LIB)
 	mv -f pkdgrav $(XDIR)
 
 main.o: $(SDIR)/main.c
@@ -84,6 +85,8 @@ fdl.o: $(SDIR)/fdl.c
 htable.o: $(SDIR)/htable.c
 	$(CC) $(CFLAGS) -c $(SDIR)/htable.c
 
+smooth.o: $(SDIR)/smooth.c
+	$(CC) $(CFLAGS) -c $(SDIR)/smooth.c
 
 
 
