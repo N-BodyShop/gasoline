@@ -1033,7 +1033,7 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
 		}
 	
     pstOneNodeReadInit(msr->pst, in, sizeof(*in), nParts, &nid);
-    assert(nid/sizeof(*nParts) == msr->nThreads);
+    assert(nid == msr->nThreads*sizeof(*nParts));
     for (id=0;id<msr->nThreads;++id) {
 		assert(nParts[id] > 0);
 		}
@@ -2499,7 +2499,7 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
 		tin.fPeriod[j] = in->fPeriod[j];
 
     pstOneNodeReadInit(msr->pst, &tin, sizeof(tin), nParts, &nid);
-    assert(nid == msr->nThreads);
+    assert(nid == msr->nThreads*sizeof(*nParts));
     for (id=0;id<msr->nThreads;++id) {
 		assert(nParts[id] > 0);
 		}
