@@ -73,15 +73,23 @@ struct inDumpFrame {
 	double z[3];
 	double zClipNear,zClipFar,zEye;
 	int bPeriodic; /* Is it periodic? */
-    int nxRepNeg,nxRepPos; /* Replicas for Periodic */
-    int nyRepNeg,nyRepPos;
-    int nzRepNeg,nzRepPos;
+	int nxRepNeg,nxRepPos; /* Replicas for Periodic */
+	int nyRepNeg,nyRepPos;
+	int nzRepNeg,nzRepPos;
 	int nxPix,nyPix;    /* Pixmap dimensions */
 	int iProject;      /* Projection */
 
 	/* Other info */
+	double pScale1,pScale2;
+	DFIMAGE ColStar,ColGas,ColDark;
+	int bLogScale;
+	int bGasSoftening;
 	int iRender;       /* Rendering */
 	
+	double dMassGasMin, dMassGasMax;
+	double dMassDarkMin,dMassDarkMax;
+	double dMassStarMin,dMassStarMax;
+
 	int bNonLocal; /* Is this data going non-local? */
 	int bVDetails;
     };
@@ -102,7 +110,16 @@ struct dfFrameSetup {
 	int nxPix,nyPix;    /* Pixmap dimensions */
 	int bPeriodic; /* Is it periodic? */
 	int iProject;      /* Projection */
+
+	/* Rendering controllers */
+	double pScale1,pScale2;
+	DFIMAGE ColStar,ColGas,ColDark;
+	int bLogScale;
+	int bGasSoftening;
 	int iRender;       /* Rendering */
+        
+
+
 	int bNonLocal; /* Is this data going non-local? */
     };
 

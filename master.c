@@ -1251,7 +1251,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
                 msr->param.stfm->dMinMassFrac < 1);
 		if (msr->param.stfm->dInitStarMass > 0) {
 			if (msr->param.stfm->dMinGasMass <= 0) 
-				msr->param.stfm->dMinGasMass = 0.1*msr->param.stfm->dInitStarMass;
+ 			  /* Only allow 10% underweight star particles */
+				msr->param.stfm->dMinGasMass = 0.9*msr->param.stfm->dInitStarMass;
 			}
 		else
 			assert(msr->param.stfm->dMinGasMass > 0);

@@ -6,7 +6,6 @@
 #include "ssdefs.h"
 #include "collision.h"
 #endif /* COLLISIONS */
-
 /*
  Change the way the Balsara Switch is applied:
 */
@@ -1895,13 +1894,12 @@ void combDistDeletedGas(void *p1,void *p2)
 
 void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {	PARTICLE *q;
-	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u;
+	FLOAT fNorm,ih2,r2,rs,rstot,delta_m,m_new,f1,f2;
 	int i;
 
 	assert(TYPETest(p, TYPE_GAS));
 	ih2 = 4.0/BALL2(p);
         rstot = 0;        
-        fNorm_u = 0;
 	for (i=0;i<nSmooth;++i) {
             q = nnList[i].pPart;
 	    if(TYPETest(q, TYPE_DELETED))
@@ -1910,11 +1908,9 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             r2 = nnList[i].fDist2*ih2;            
             KERNEL(rs,r2);
             rstot += rs;
-            fNorm_u += q->fMass*rs;
         }
 	assert(rstot > 0.0);
         fNorm = 1./rstot;
-        fNorm_u = p->fMass/fNorm_u;        
 	for (i=0;i<nSmooth;++i) {
             q = nnList[i].pPart;
 	    if(TYPETest(q, TYPE_DELETED))
@@ -1924,15 +1920,20 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             KERNEL(rs,r2);
 	    /*
 	     * All these quantities are per unit mass.
+	     * Exact if only one gas particle being distributed or in serial
+	     * Approximate in parallel (small error).
 	     */
-            q->u += rs*fNorm_u*p->u;
-            q->v[0] += rs*fNorm_u*p->v[0];            
-            q->v[1] += rs*fNorm_u*p->v[1];
-            q->v[2] += rs*fNorm_u*p->v[2];
-            q->fMetals += rs*fNorm_u*p->fMetals;
+	    delta_m = rs*fNorm*p->fMass;
+	    m_new = q->fMass + delta_m;
+	    f1 = q->fMass /m_new;
+	    f2 = delta_m  /m_new;
+            q->fMass = m_new;
 
-            rs *= fNorm;
-            q->fMass += rs*p->fMass;
+            q->u = f1*q->u+f2*p->u;
+            q->v[0] = f1*q->v[0]+f2*p->v[0];            
+            q->v[1] = f1*q->v[1]+f2*p->v[1];            
+            q->v[2] = f1*q->v[2]+f2*p->v[2];            
+            q->fMetals = f1*q->fMetals + f2*p->fMetals;
         }
 }
 
@@ -1995,7 +1996,6 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	assert(TYPETest(p, TYPE_STAR));
 	ih2 = 4.0/BALL2(p);
         rstot = 0;        
-        fNorm_u = 0;
 	
 	for (i=0;i<nSmooth;++i) {
             r2 = nnList[i].fDist2*ih2;            
@@ -2003,10 +2003,9 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             rstot += rs;
             q = nnList[i].pPart;
 	    assert(TYPETest(q, TYPE_GAS));
-            fNorm_u += q->fMass*rs;
         }
         fNorm = 1./rstot;
-        fNorm_u = p->fMSN/fNorm_u;
+        fNorm_u = fNorm*p->fMSN/q->fMass;
 	for (i=0;i<nSmooth;++i) {
             q = nnList[i].pPart;
             r2 = nnList[i].fDist2*ih2;            

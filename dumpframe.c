@@ -126,6 +126,13 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 	in->nyPix = fs->nyPix;
 	in->bPeriodic = fs->bPeriodic;
 	in->iProject = fs->iProject;
+	in->pScale1 = fs->pScale1;
+	in->pScale2 = fs->pScale2;
+	in->ColStar = fs->ColStar;
+	in->ColGas = fs->ColGas;
+	in->ColDark = fs->ColDark;
+	in->bLogScale = fs->bLogScale;
+	in->bGasSoftening = fs->bGasSoftening;
 	in->iRender = fs->iRender;
 	
 	DIFF( fs->eye, in->r, in->z );
@@ -397,6 +404,20 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 	fs.bzClipFrac = 1;
     fs.bPeriodic = 0;  /* Periodic? */
 	fs.iProject = DF_PROJECT_PERSPECTIVE;
+	/* Render */
+	fs.ColDark.r = 1.0;
+	fs.ColDark.g = 0.7;
+	fs.ColDark.b = 0.5;
+	fs.ColGas.r = 0.5;
+	fs.ColGas.g = 1.0;
+	fs.ColGas.b = 0.7;
+	fs.ColStar.r = 0.5;
+	fs.ColStar.g = 0.7;
+	fs.ColStar.b = 1.0;
+	fs.bLogScale = 0;
+	fs.bGasSoftening = 1;
+	
+
 	fs.iRender = DF_RENDER_POINT;
 
 	fp = fopen( filename, "r" );
@@ -566,6 +587,12 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
 	vin->dTime = dTime;
 	vin->dStep = dStep;
 	vin->bVDetails = df->bVDetails;
+	vin->dMassStarMin = df->dMassStarMin;
+	vin->dMassStarMax = df->dMassStarMax;
+	vin->dMassGasMin  = df->dMassGasMin;
+	vin->dMassGasMax  = df->dMassGasMax;
+	vin->dMassDarkMin = df->dMassDarkMin;
+	vin->dMassDarkMax = df->dMassDarkMax;
 
 	if (df->bLoop) {
 		dTime -= df->dTimeMod;
@@ -683,16 +710,34 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage, int *nImage )
 	else if (in->iRender == DF_RENDER_TSC) {
 		double hmul = 4*sqrt(in->x[0]*in->x[0] + in->x[1]*in->x[1] + in->x[2]*in->x[2]),h;
 		int hint;
+		DFIMAGE col;
+		
 
 		for (i=0;i<pkd->nLocal;i++) {
-			if (!TYPETest( &p[i], TYPE_STAR )) continue;
+			if (TYPETest( &p[i], TYPE_GAS )) {
+				if (p[i].fMass < in->dMassGasMin || p[i].fMass > in->dMassGasMax) continue;
+				if (in->bGasSoftening) h = sqrt(p[i].fBall2)*0.5;
+				else h = p[i].fSoft;
+				col = in->ColGas;
+				}
+			if (TYPETest( &p[i], TYPE_DARK )) {
+				if (p[i].fMass < in->dMassDarkMin || p[i].fMass > in->dMassDarkMax) continue;
+				h = p[i].fSoft;
+				col = in->ColDark;
+				}
+			if (TYPETest( &p[i], TYPE_STAR )) {
+				if (p[i].fMass < in->dMassStarMin || p[i].fMass > in->dMassStarMax) continue;
+				h = p[i].fSoft;
+				col = in->ColStar;
+				}
+
 			for (j=0;j<3;j++) {
 				dr[j] = p[i].r[j]-in->r[j];
 				}
 			z = dr[0]*in->z[0] + dr[1]*in->z[1] + dr[2]*in->z[2] + in->zEye;
 			if (z >= in->zClipNear && z <= in->zClipFar) {
-				if (in->iProject == DF_PROJECT_PERSPECTIVE) h = (p[i].fSoft*hmul/z);
-				else h = (p[i].fSoft*hmul);
+				if (in->iProject == DF_PROJECT_PERSPECTIVE) h = h*hmul/z;
+				else h = h*hmul;
 				hint = h;
 				x = dr[0]*in->x[0] + dr[1]*in->x[1] + dr[2]*in->x[2];
 				if (in->iProject == DF_PROJECT_PERSPECTIVE) x/=z;
@@ -704,16 +749,9 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage, int *nImage )
 						yp = ylim-y; /* standard screen convention */
 						if (hint < 1) {
 							double br = 0.523599*h*h; /* integral of TSC to h */
-							if (p[i].iOrder < IORDER_BLUETOORANGE) {
-								Image[ xp + yp*in->nxPix ].r += br*0.5;
-								Image[ xp + yp*in->nxPix ].g += br*0.7;
-								Image[ xp + yp*in->nxPix ].b += br*1.0;
-								}
-							else {
-								Image[ xp + yp*in->nxPix ].r += br*1.0;
-								Image[ xp + yp*in->nxPix ].g += br*0.7;
-								Image[ xp + yp*in->nxPix ].b += br*0.5;
-								}
+							Image[ xp + yp*in->nxPix ].r += br*col.r;
+							Image[ xp + yp*in->nxPix ].g += br*col.g;
+							Image[ xp + yp*in->nxPix ].b += br*col.b;
 							}
 						else {
 							int xpmin,xpmax,ypmin,ypmax,ix,iy;
@@ -724,38 +762,19 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage, int *nImage )
 							xpmax = xp + hint; if (xpmax>=in->nxPix) xpmax=in->nxPix-1;
 							ypmin = yp - hint; if (ypmin<0) ypmin=0;
 							ypmax = yp + hint; if (ypmax>=in->nyPix) ypmax=in->nyPix-1;
-							if (p[i].iOrder < IORDER_BLUETOORANGE) {
-								for (iy=ypmin,Imagey = Image + iy*in->nxPix;iy<=ypmax;iy++,Imagey += in->nxPix) {
-									for (ix=xpmin;ix<=xpmax;ix++) {
-										if (ix==xp && iy==yp) {
-											br = 1.57080-1.04720/h; /* Integral of TSC to r=1 */
-											}
-										else {
-											r2 = ((ix-xp)*(ix-xp)+(iy-yp)*(iy-yp))*ih2;
-											if (r2 > 1) continue;
-											br = 1.0-sqrt(r2);
-											}
-										Imagey[ ix ].r += 0.5*br;
-										Imagey[ ix ].g += br*.7;
-										Imagey[ ix ].b += br;
+							for (iy=ypmin,Imagey = Image + iy*in->nxPix;iy<=ypmax;iy++,Imagey += in->nxPix) {
+								for (ix=xpmin;ix<=xpmax;ix++) {
+									if (ix==xp && iy==yp) {
+										br = 1.57080-1.04720/h; /* Integral of TSC to r=1 */
 										}
-									}
-								}
-							else {
-								for (iy=ypmin,Imagey = Image + iy*in->nxPix;iy<=ypmax;iy++,Imagey += in->nxPix) {
-									for (ix=xpmin;ix<=xpmax;ix++) {
-										if (ix==xp && iy==yp) {
-											br = 1.57080-1.04720/h; /* Integral of TSC to r=1 */
-											}
-										else {
-											r2 = ((ix-xp)*(ix-xp)+(iy-yp)*(iy-yp))*ih2;
-											if (r2 > 1) continue;
-											br = 1.0-sqrt(r2);
-											}
-										Imagey[ ix ].r += br;
-										Imagey[ ix ].g += br*.7;
-										Imagey[ ix ].b += br*.5;
+									else {
+										r2 = ((ix-xp)*(ix-xp)+(iy-yp)*(iy-yp))*ih2;
+										if (r2 > 1) continue;
+										br = 1.0-sqrt(r2);
 										}
+									Imagey[ ix ].r += br*col.r;
+									Imagey[ ix ].g += br*col.g;
+									Imagey[ ix ].b += br*col.b;
 									}
 								}
 							}

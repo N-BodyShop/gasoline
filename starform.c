@@ -150,11 +150,6 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     else 
 		dDeltaM = p->fMass*stfm->dStarEff;
 
-    /*
-     * JW: If gas particle is to be destroyed -- take all the mass
-     */
-	if (p->fMass - dDeltaM < stfm->dMinGasMass) dDeltaM = p->fMass;
-
     p->fMass -= dDeltaM;
 
     /* 
