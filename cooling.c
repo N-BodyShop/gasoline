@@ -509,8 +509,8 @@ void clAbunds( CL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
     yHeI = yHe * rfHe;
     yHeII = yHe * fHeI * rfHe;
 
-    //    fprintf(stderr,"Abund %g %g %g %g\n",yHI,yHeI,yHeII,ye);
-    //    fprintf(stderr,"  Rates %g %g %g \n",rcirrHI,rcirrHeI,rcirrHeII);
+    /*    fprintf(stderr,"Abund %g %g %g %g\n",yHI,yHeI,yHeII,ye);
+        fprintf(stderr,"  Rates %g %g %g \n",rcirrHI,rcirrHeI,rcirrHeII); */
     if ( fabs(yHeII_old-yHeII) < EPS * yHeII && fabs(yHI_old-yHI) < EPS * yHI ) break;
   }
 
@@ -987,7 +987,6 @@ void clTempIteration( clDerivsData *d )
  d->its++;
  clRates( d->cl, &d->Rate, T );
  clAbunds( d->cl, &d->Y, &d->Rate, d->rho );
- // fprintf(stderr,"Getting T from E: %g T: %g %g %g %g(its %i)\n",d->E,T,TA,TB,d->E/T,d->its);
 }
 #else
 void clTempIteration( clDerivsData *d )
@@ -1018,7 +1017,6 @@ void clTempIteration( clDerivsData *d )
      d->its++;
    }
  }
- // fprintf(stderr,"Getting T from E: %g T: %g %g %g %g(its %i)\n",d->E,T,TA,TB,d->E/T,d->its);
 }
 #endif
 
@@ -1045,7 +1043,6 @@ void clJacobn(void *Data, double x, double y[], double dfdx[], double **dfdy) {
   clTempIteration( d );
   dE -= clEdotInstant( d->cl, &d->Y, &d->Rate, d->rho );
 
-  //  fprintf(stderr,"Getting jacobn: %f %f %f\n",x,E,dE/(E*d->dlnE));
   dfdy[1][1] = dE/(E*d->dlnE);
 }
 
@@ -1096,7 +1093,6 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
 	if (dtnext > 0.5*dtEst) dtnext = 0.5*dtEst;
       }
       if (dtnext >= tStep-t) dtnext = tStep-t;
-      //      fprintf(stderr,"Taking a step: %g %g %g  %g %g %g %g\n",t,dtnext,dtused,  *E,d->Rate.T,dEdt,Eold);
       StiffStep( sbs, (E-1), (&dEdt)-1,  &t, dtnext, (&Ein)-1, &dtused, &dtnext );
       Eold = *E;
 #ifdef ASSERTENEG      
@@ -1118,8 +1114,8 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
   d->E = *E;
   clTempIteration( d );
   *Y = d->Y;
-  //  printf("Abunds:  e %e HI %e HII %e\nHeI %e HeII %e HeIII %e\n",
-  //	 d->Y.e,d->Y.HI,d->Y.HII,d->Y.HeI,d->Y.HeII,d->Y.HeIII);
+  /*  printf("Abunds:  e %e HI %e HII %e\nHeI %e HeII %e HeIII %e\n",
+  	 d->Y.e,d->Y.HI,d->Y.HII,d->Y.HeI,d->Y.HeII,d->Y.HeIII); */
 }
 #else  /* NEWINTEG */
 

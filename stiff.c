@@ -116,8 +116,6 @@ void StiffFinalize( STIFF *s )
   free(s);
 }
 
-// double **d,*x;
-
 void StiffStep(STIFF *s, double y[], double dydx[], double *xx, double htry, 
 		double yscal[], double *hdid, double *hnext )
 {
@@ -138,7 +136,7 @@ void StiffStep(STIFF *s, double y[], double dydx[], double *xx, double htry,
   for (;;) {
     for (k=1;k<=s->kmax;k++) {
       s->xnew=(*xx)+h;
-      if (s->xnew == (*xx)) assert(0); // nrerror("step size underflow in stifbs");
+      if (s->xnew == (*xx)) assert(0); /* nrerror("step size underflow in stifbs"); */
       simpr(s,ysav,dydx,s->dfdx,s->dfdy,*xx,h,s->nseq[k],yseq);
       xest=SQR(h/s->nseq[k]);
       pzextr(s,k,xest,yseq,y,yerr);
@@ -340,8 +338,6 @@ void lubksb(double **a, int n, int *indx, double b[])
 /* 
  * Pzextr
  */
-
-// extern double **d,*x;
 
 void pzextr(STIFF *s, int iest, double xest, double yest[], double yz[], double dy[])
 {

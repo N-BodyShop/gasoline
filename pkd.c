@@ -2791,7 +2791,6 @@ void pkdHomogSpheroid(PKD pkd)
 			double Mr,A;
 			Mr = (r < r_s ? pow(r/r_s,3.)*M_s : M_s);
 			A = Mr/(r*r*r);
-			//			fprintf(stderr,"%i: %f %f %f  %f %f %f\n",p[i].iOrder,x,y,z,r,Mr,A);
 			p[i].a[0] -= A*x;
 			p[i].a[1] -= A*y;
 			p[i].a[2] -= A*z;
