@@ -43,7 +43,7 @@ pkdgrav: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	htable.o smooth.o $(LIB)
 	mv -f pkdgrav $(XDIR)
 
-main.o: $(SDIR)/main.c
+main.o: $(SDIR)/main.c $(SDIR)/master.h
 	$(CC) $(CFLAGS) -c $(SDIR)/main.c
 
 master.o: $(SDIR)/master.c
