@@ -181,9 +181,9 @@ void clRatesRedshift( CL *cl, double z ) {
        cl->R.Rate_Phot_HeI = UV0->Rate_Phot_HeI;
        cl->R.Rate_Phot_HeII = UV0->Rate_Phot_HeII;
 
-       cl->R.Heat_Phot_HI = UV0->Heat_Phot_HI;
-       cl->R.Heat_Phot_HeI = UV0->Heat_Phot_HeI;
-       cl->R.Heat_Phot_HeII = UV0->Heat_Phot_HeII;
+       cl->R.Heat_Phot_HI = UV0->Heat_Phot_HI*CL_B_gm;
+       cl->R.Heat_Phot_HeI = UV0->Heat_Phot_HeI*CL_B_gm;
+       cl->R.Heat_Phot_HeII = UV0->Heat_Phot_HeII*CL_B_gm;
   }
   else {
        xx = log((1+z)/(1+UV0->z))/log((1+UV->z)/(1+UV0->z));
@@ -191,9 +191,9 @@ void clRatesRedshift( CL *cl, double z ) {
        cl->R.Rate_Phot_HeI = pow(UV0->Rate_Phot_HeI,1-xx)*pow(UV->Rate_Phot_HeI,xx);
        cl->R.Rate_Phot_HeII = pow(UV0->Rate_Phot_HeII,1-xx)*pow(UV->Rate_Phot_HeII,xx);
 
-       cl->R.Heat_Phot_HI = pow(UV0->Heat_Phot_HI,1-xx)*pow(UV->Heat_Phot_HI,xx);
-       cl->R.Heat_Phot_HeI = pow(UV0->Heat_Phot_HeI,1-xx)*pow(UV->Heat_Phot_HeI,xx);
-       cl->R.Heat_Phot_HeII = pow(UV0->Heat_Phot_HeII,1-xx)*pow(UV->Heat_Phot_HeII,xx);
+       cl->R.Heat_Phot_HI = pow(UV0->Heat_Phot_HI,1-xx)*pow(UV->Heat_Phot_HI,xx)*CL_B_gm;
+       cl->R.Heat_Phot_HeI = pow(UV0->Heat_Phot_HeI,1-xx)*pow(UV->Heat_Phot_HeI,xx)*CL_B_gm;
+       cl->R.Heat_Phot_HeII = pow(UV0->Heat_Phot_HeII,1-xx)*pow(UV->Heat_Phot_HeII,xx)*CL_B_gm;
   }
   if (cl->R.Rate_Phot_HI < CL_RT_MIN) cl->R.Rate_Phot_HI = CL_RT_MIN;
   if (cl->R.Rate_Phot_HeI < CL_RT_MIN) cl->R.Rate_Phot_HeI = CL_RT_MIN;

@@ -37,7 +37,7 @@ int main(int argc,char **argv)
 	long lSec,lStart;
 	int i,iStep,iSec,nActive,iStop = 0;
 
-	char achDenMask[256];
+	char achDenMask[256],achdtMask[256];
 #ifdef GASOLINE
 	char achHMask[256],achHIMask[256],achHeIMask[256],achHeIIMask[256];
 #endif
@@ -186,6 +186,8 @@ int main(int argc,char **argv)
 
 	(void) strncpy(achDenMask,msr->param.achDigitMask,256);
 	(void) strncat(achDenMask,".den",256);
+	(void) strncpy(achdtMask,msr->param.achDigitMask,256);
+	(void) strncat(achdtMask,".dt",256);
 #ifdef GASOLINE
 	(void) strncpy(achHMask,msr->param.achDigitMask,256);
 	(void) strncat(achHMask,".H",256);
@@ -364,6 +366,12 @@ int main(int argc,char **argv)
 					msrReorder(msr);
 					msrOutArray(msr,achFile,OUT_H_ARRAY);
 					}
+				if (msr->param.bDodtOutput) {
+					msrReorder(msr);
+					sprintf(achFile,achdtMask,msrOutName(msr),iStep);
+					msrReorder(msr);
+					msrOutArray(msr,achFile,OUT_DT_ARRAY);
+					}
 				if (msr->param.bDoIonOutput) {
 					msrReorder(msr);
 					sprintf(achFile,achHIMask,msrOutName(msr),iStep);
@@ -487,6 +495,12 @@ int main(int argc,char **argv)
 			msrReorder(msr);
 			msrOutArray(msr,achFile,OUT_H_ARRAY);
 			}
+		if (msr->param.bDodtOutput) {
+		        msrReorder(msr);
+			sprintf(achFile,achdtMask,msrOutName(msr),iStep);
+			msrReorder(msr);
+			msrOutArray(msr,achFile,OUT_DT_ARRAY);
+		        }
 		if (msr->param.bDoIonOutput) {
 			msrReorder(msr);
 			sprintf(achFile,achHIMask,msrOutName(msr),iStep);

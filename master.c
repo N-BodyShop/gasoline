@@ -245,6 +245,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDohOutput = 1;
 	prmAddParam(msr->prm,"bDohOutput",0,&msr->param.bDohOutput,sizeof(int),
 				"hout","enable/disable h outputs = +hout");
+	msr->param.bDodtOutput = 0;
+	prmAddParam(msr->prm,"bDodtOutput",0,&msr->param.bDodtOutput,sizeof(int),
+				"dtout","enable/disable dt outputs = -dtout");
 	msr->param.bDoIonOutput = 1;
 	prmAddParam(msr->prm,"bDoIonOutput",0,&msr->param.bDoIonOutput,sizeof(int),
 				"Iout","enable/disable Ion outputs (cooling only) = +Iout");
@@ -449,9 +452,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoGravity = 1;
 	prmAddParam(msr->prm,"bDoGravity",0,&msr->param.bDoGravity,sizeof(int),"g",
 				"enable/disable interparticle gravity = +g");
-	msr->param.bUV = 1;
-	prmAddParam(msr->prm,"bUV",0,&msr->param.bUV,sizeof(int),"UV",
-				"read in an Ultra Violet file = +UV");
+	msr->param.bRungDD = 0;
+	prmAddParam(msr->prm,"bRungDomainDecomp",0,&msr->param.bRungDD,sizeof(int),
+				"RungDD","<Rung Domain Decomp> = 0");
+	msr->param.dRungDDWeight = 1.0;
+	prmAddParam(msr->prm,"dRungDDWeight",2,&msr->param.dRungDDWeight,sizeof(int),
+				"RungDDWeight","<Rung Domain Decomp Weight> = 1.0");
 	msr->param.bFandG = 0;
 	prmAddParam(msr->prm,"bFandG",0,&msr->param.bFandG,sizeof(int),"fg",
 				"use/don't use Kepler orbit drifts = -fg");
@@ -499,6 +505,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"iGasModel",0,&msr->param.iGasModel,
 				sizeof(int),"GasModel",
 				"<Gas model employed> = 0 (Adiabatic)");
+	msr->param.bUV = 1;
+	prmAddParam(msr->prm,"bUV",0,&msr->param.bUV,sizeof(int),"UV",
+				"read in an Ultra Violet file = +UV");
 	msr->param.dConstAlpha = 1.0; 	/* Default changed to 0.5 later if bBulkViscosity */
 	prmAddParam(msr->prm,"dConstAlpha",2,&msr->param.dConstAlpha,
 				sizeof(double),"alpha",
@@ -1124,6 +1133,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
 	fprintf(fp," bFastGas: %d",msr->param.bFastGas);
 	fprintf(fp," dFracFastGas: %g",msr->param.dFracFastGas);
+        fprintf(fp," bRungDD: %d",msr->param.bRungDD);
+        fprintf(fp," dRungDDWeight: %g ",msr->param.dRungDDWeight);
 #ifdef GROWMASS
 	fprintf(fp,"\n# GROWMASS: nGrowMass: %d",msr->param.nGrowMass);
 	fprintf(fp," dGrowDeltaM: %g",msr->param.dGrowDeltaM);
@@ -1796,6 +1807,7 @@ void msrDomainDecomp(MSR msr)
 		}
 #endif
 
+	/*
 	inCT.iTimer=4;
 	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
 	inCT.iTimer=5;
@@ -1808,6 +1820,7 @@ void msrDomainDecomp(MSR msr)
 	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
 	inCT.iTimer=9;
 	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
+        */
 
 	in.bDoRootFind = 1;
 	
@@ -1817,8 +1830,14 @@ void msrDomainDecomp(MSR msr)
 		}
 
 	if (msr->param.bGasDomainDecomp) {
-		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE);
 		pstGasWeight(msr->pst,NULL,0,NULL,NULL);
+		}
+
+	if (msr->param.bRungDD) {
+	        struct inRungDDWeight inRDD;
+		inRDD.iMaxRung = msr->iCurrMaxRung;
+                inRDD.dWeight = msr->param.dRungDDWeight;
+		pstRungDDWeight(msr->pst,&inRDD,sizeof(struct inRungDDWeight),NULL,NULL);
 		}
 
 	if (msr->param.bVDetails) {
@@ -4539,6 +4558,8 @@ void msrInitCooling(MSR msr)
 			UVData = malloc(sizeof(UVSPECTRUM)*nUV);
 			nUV = msrReadASCII(msr,"UV",7,(double *) UVData);
 			assert( sizeof(UVSPECTRUM)*nUV <= CL_NMAXBYTETABLE );
+			/* Make sure the heating is in units of ergs per ionization */
+			assert( UVData->Heat_Phot_HI>1e-15 && UVData->Heat_Phot_HI<1e-10);
 			pstInitUV(msr->pst,UVData,sizeof(UVSPECTRUM)*nUV,NULL,NULL);
 			}
 		}

@@ -62,6 +62,7 @@ enum pst_service {
       PST_DOMAINDECOMP,
       PST_CALCBOUND,
       PST_GASWEIGHT,
+      PST_RUNGDDWEIGHT,
       PST_WEIGHT,
       PST_FREESTORE,
       PST_COLREJECTS,
@@ -206,6 +207,13 @@ struct outCalcBound {
 void pstCalcBound(PST,void *,int,void *,int *);
 
 void pstGasWeight(PST,void *,int,void *,int *);
+
+struct inRungDDWeight {
+	int iMaxRung;
+        double dWeight; 
+        };
+
+void pstRungDDWeight(PST,void *,int,void *,int *);
 
 /* PST_WEIGHT */
 struct inWeight {

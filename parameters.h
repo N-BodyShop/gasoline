@@ -29,6 +29,7 @@ struct parameters {
 	int bNonSymp;
 	int bDoDensity;
 	int bDohOutput;
+	int bDodtOutput;
 	int bDoIonOutput;
 	int bSymCool;
 	int bDoGravity;
@@ -83,7 +84,8 @@ struct parameters {
 	double dGrowStartT;
 	double dGrowEndT;
 	double dFracNoDomainDecomp;
-	double dFracFastGas;
+        int    bRungDD;
+        double dRungDDWeight;
 	/*
 	 ** Additional parameters for GASOLINE.
 	 */
@@ -112,6 +114,7 @@ struct parameters {
         int    bBulkViscosity;
         int    bGasDomainDecomp;
         int    bFastGas;
+	double dFracFastGas;
         int    bDoGas;
         int    bUV;
         int    bSN;

@@ -33,6 +33,9 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_GASWEIGHT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGasWeight,
 				  0,0);
+	mdlAddService(mdl,PST_RUNGDDWEIGHT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstRungDDWeight,
+				  sizeof(struct inRungDDWeight),0);
 	mdlAddService(mdl,PST_WEIGHT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstWeight,
 				  sizeof(struct inWeight),sizeof(struct outWeight));
@@ -1208,8 +1211,9 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct inDomainDecomp *in = vin;
 	
 	char ach[256]; /* debug */
-
+	/*
 	pkdStartTimer(pst->plcl->pkd,6);
+	*/
 	assert(nIn == sizeof(struct inDomainDecomp));
 
 	if (pst->nLeaves > 1) {
@@ -1265,6 +1269,7 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 	if (pnOut) *pnOut = 0;
 
+	/*
 	pkdStopTimer(pst->plcl->pkd,6);
 	sprintf(ach,"id: %d DD: %g %g %g  Weight: %g %g %g  SwapRej: %g %g %g  ColRej: %g %g %g  AO: %g %g %g  FS: %g %g %g\n",pst->mdl->idSelf,
 			pkdGetTimer(pst->plcl->pkd,6),pkdGetSystemTimer(pst->plcl->pkd,6),pkdGetWallClockTimer(pst->plcl->pkd,6),
@@ -1274,6 +1279,7 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			pkdGetTimer(pst->plcl->pkd,4),pkdGetSystemTimer(pst->plcl->pkd,4),pkdGetWallClockTimer(pst->plcl->pkd,4), 
 			pkdGetTimer(pst->plcl->pkd,5),pkdGetSystemTimer(pst->plcl->pkd,5),pkdGetWallClockTimer(pst->plcl->pkd,5) );
 	mdlDiag(pst->mdl,ach);
+	*/
 	}
 
 
@@ -1339,6 +1345,24 @@ void pstGasWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+void pstRungDDWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inRungDDWeight *in = vin;
+	
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_RUNGDDWEIGHT,vin,nIn);
+		pstRungDDWeight(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdRungDDWeight(plcl->pkd,in->iMaxRung,in->dWeight);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
 /*
  ** Make sure that the local particles are split into active and inactive
  ** when passing pFlag != 0.
@@ -1356,7 +1380,9 @@ void pstWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	int iSplitSide;
 
 	assert(nIn == sizeof(struct inWeight));
+	/*
 	pkdStartTimer(plcl->pkd,7);
+	*/
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,in,nIn);
 		pstWeight(pst->pstLower,in,nIn,out,NULL);
@@ -1428,7 +1454,9 @@ void pstWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		    }
 		}
 	if (pnOut) *pnOut = sizeof(struct outWeight); 
+	/*
 	pkdStopTimer(plcl->pkd,7);
+	*/
 	}
 
 
@@ -1488,7 +1516,9 @@ void pstFreeStore(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	int nLowerStore,nUpperStore;
 
 	assert(nIn == 0);
+	/*
 	pkdStartTimer(plcl->pkd,4);
+	*/
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_FREESTORE,NULL,0);
 		pstFreeStore(pst->pstLower,NULL,0,out,NULL);
@@ -1501,7 +1531,9 @@ void pstFreeStore(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->nFreeStore = pkdFreeStore(plcl->pkd);
 		}
 	if (pnOut) *pnOut = sizeof(struct outFreeStore);
+	/*
 	pkdStopTimer(plcl->pkd,4);
+	*/
 	}
 
 
@@ -1566,7 +1598,7 @@ void pstSwapRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	OREJ *pOutRej = vout;
 	int nLower,nUpper,iUpper,idSwap;
 	
-	pkdStartTimer(plcl->pkd,8);
+	/*	pkdStartTimer(plcl->pkd,8);*/
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_SWAPREJECTS,vin,nIn);
 		pstSwapRejects(pst->pstLower,vin,nIn,&pOutRej[0],&nLower);
@@ -1581,7 +1613,7 @@ void pstSwapRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pOutRej->id = pst->idSelf;
 		if (pnOut) *pnOut = sizeof(OREJ);
 		}
-	pkdStopTimer(plcl->pkd,8);
+	/*	pkdStopTimer(plcl->pkd,8); */
 	}
 
 /*
@@ -1783,7 +1815,9 @@ void pstActiveOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	int *pnActive = vout;
 
 	assert(nIn == 0);
+	/*
 	pkdStartTimer(pst->plcl->pkd,5);
+	*/
 	if (pst->nLeaves > 1) {
 		int nActiveLeaf;
 		mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVEORDER,NULL,0);
@@ -1795,7 +1829,9 @@ void pstActiveOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		*pnActive = pkdActiveOrder(plcl->pkd);
 		}
 	if (pnOut) *pnOut = sizeof(int);
+	/*
 	pkdStopTimer(pst->plcl->pkd,5);
+	*/
 	}
 
 
