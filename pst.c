@@ -703,7 +703,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	     ** processor.  If not, redistribute the INACTIVE particles so
 	     ** every processor has at least one.
 	     */
-	    if (nLowTot < pst->nLower) {
+	    if (nLowTot < NUM_SAFETY*pst->nLower) {
 		    fl = fm;
 				/* Try to catch highest particle if needed. */
 		    fu = pst->bnd.fMax[d]
@@ -729,8 +729,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			    /*
 			    printf("Inactive Fit ittr:%d u:%d\n",ittr,nHighTot);
 			    */
-			    if (nLowTot > pst->nLower) fu = fm;
-			    else if (nLowTot < pst->nLower) fl = fm;
+			    if (nLowTot > NUM_SAFETY*pst->nLower) fu = fm;
+			    else if (nLowTot < NUM_SAFETY*pst->nLower) fl = fm;
 			    else {
 				    fu = fm;
 				    break;
@@ -739,7 +739,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			    ++ittr;
 			    }
 		    }
-	    else if (nHighTot < pst->nUpper) {
+	    else if (nHighTot < NUM_SAFETY*pst->nUpper) {
 				/* Try to catch lowest particle if needed. */
 		    fl = pst->bnd.fMin[d]
 			- EPS_BOUND*(pst->bnd.fMax[d] - pst->bnd.fMin[d]);
@@ -765,8 +765,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			    /*
 			    printf("Inactive Fit ittr:%d l:%d\n",ittr,nLowTot);
 			    */
-			    if (nHighTot > pst->nUpper) fl = fm;
-			    else if (nHighTot < pst->nUpper) fu = fm;
+			    if (nHighTot > NUM_SAFETY*pst->nUpper) fl = fm;
+			    else if (nHighTot < NUM_SAFETY*pst->nUpper) fu = fm;
 			    else {
 				    fl = fm;
 				    break;
