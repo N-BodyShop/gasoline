@@ -27,6 +27,8 @@ FLOAT ArrType(PARTICLE *p,int iType)
 		return(p->iRung);
 	case OUT_DT_ARRAY:
 		return(p->dt);
+	case OUT_SOFT_ARRAY:
+	        return(p->fSoft);
 #ifdef GASOLINE
 	case OUT_U_ARRAY:
 		return(p->u);
@@ -64,7 +66,12 @@ FLOAT ArrType(PARTICLE *p,int iType)
 	case OUT_DIVRHOV_ARRAY:
 	        return(p->divrhov);
 #endif
-
+#ifdef SUPERNOVA
+	case OUT_PDVSN_ARRAY:
+                return(p->PdVSN);
+	case OUT_USN_ARRAY:
+                return(p->uSN);
+#endif
 #endif
 	case OUT_H_ARRAY:
 		return(sqrt(p->fBall2*0.25));

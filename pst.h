@@ -86,6 +86,9 @@ enum pst_service {
       PST_READCHECK,
       PST_WRITECHECK,
       PST_SETSOFT,
+      PST_PHYSICALSOFT,
+      PST_PREVARIABLESOFT,
+      PST_POSTVARIABLESOFT,
       PST_SETTOTAL,
       PST_CALCCELL,
       PST_COLCELLS,
@@ -313,7 +316,7 @@ struct inWriteTipsy {
 	int bStandard;
 	double dvFac;
 	double duTFac;
-	double iGasModel;
+	int iGasModel;
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteTipsy(PST,void *,int,void *,int *);
@@ -519,6 +522,26 @@ struct inSetSoft {
 	double dSoft;
 	};
 void pstSetSoft(PST,void *,int,void *,int *);
+
+#ifdef CHANGESOFT
+/* PST_PHYSICALSOFT */
+struct inPhysicalSoft {
+        double dSoftMax;
+        double dFac;
+        int bSoftMaxMul;
+        };
+void pstPhysicalSoft(PST,void *,int,void *,int *);
+
+/* PST_PREVARIABLESOFT */
+void pstPreVariableSoft(PST,void *,int,void *,int *);
+
+/* PST_POSTVARIABLESOFT */
+struct inPostVariableSoft {
+        double dSoftMax;
+        int bSoftMaxMul;
+        };
+void pstPostVariableSoft(PST,void *,int,void *,int *);
+#endif
 
 /* PST_SETTOTAL */
 struct outSetTotal {
@@ -782,6 +805,10 @@ void pstSetNParts(PST, void *, int, void *, int *);
 struct inCountSupernova {
         double dMetal;
         double dRhoCut;
+        double dTMin;
+        double dTMax;
+        double dTuFac;
+        int iGasModel;
 };
 
 /* Defined in pkd.h 
@@ -798,6 +825,10 @@ void pstCountSupernova(PST, void *,int,void *,int *);
 struct inAddSupernova {
         double dMetal;
         double dRhoCut;
+        double dTMin;
+        double dTMax;
+        double dTuFac;
+        int iGasModel;
         double dPdVMetal;
         double dPdVNonMetal;
         };

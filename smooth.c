@@ -33,6 +33,13 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 #endif
 
 	switch (iSmoothType) {
+	case SMX_NULL:
+		smx->fcnSmooth = NullSmooth;
+		initParticle = NULL; /* Original Particle */
+		init = NULL; /* Cached copies */
+		comb = NULL;
+		smx->fcnPost = NULL;
+		break;
 	case SMX_DENSITY:
 		smx->fcnSmooth = bSymmetric?DensitySym:Density;
 		initParticle = initDensity; /* Original Particle */

@@ -115,6 +115,7 @@ void msrLowerSoundSpeed(MSR);
 void msrSmooth(MSR,double,int,int);
 void msrReSmooth(MSR,double,int,int);
 void msrMarkSmooth(MSR,double,int,int);
+void msrUpdateSoft(MSR,double);
 void msrGravity(MSR,double,int,int *,double *,double *,double *,int *);
 void msrCalcEandL(MSR,int,double,double *,double *,double *,double *,double *);
 void msrDrift(MSR,double,double);

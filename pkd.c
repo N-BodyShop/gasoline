@@ -277,6 +277,10 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef GASOLINE
 		p->u = 0.0;
 		p->uPred = 0.0;
+#ifdef SUPERNOVA
+                p->uSN = 0.0;
+	        p->PdVSN = 0.0;
+#endif
 #ifdef SHOCKTRACK
 		p->ShockTracker = 0.0;
 #endif
@@ -329,6 +333,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					}
 				xdr_float(&xdrs,&fTmp);
 				p->fSoft = fTmp;
+#ifdef CHANGESOFT				
+				p->fSoft0 = fTmp;
+#endif
 				xdr_float(&xdrs,&fTmp);
 				p->fPot = fTmp;
 				}
@@ -359,6 +366,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->uPred = dTuFac*vTemp;
 				xdr_float(&xdrs,&fTmp);
 				p->fSoft = fTmp;
+#ifdef CHANGESOFT
+				p->fSoft0 = fTmp;
+#endif
 				xdr_float(&xdrs,&fTmp);
 				p->fMetals = fTmp;
 #else
@@ -366,6 +376,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				xdr_float(&xdrs,&fTmp);
 				xdr_float(&xdrs,&fTmp);
 				p->fSoft = fTmp;
+#ifdef CHANGESOFT
+				p->fSoft0 = fTmp;
+#endif
 				xdr_float(&xdrs,&fTmp);
 #endif
 				xdr_float(&xdrs,&fTmp);
@@ -394,6 +407,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
 				xdr_float(&xdrs,&fTmp);
 				p->fSoft = fTmp;
+#ifdef CHANGESOFT
+				p->fSoft0 = fTmp;
+#endif
 				xdr_float(&xdrs,&fTmp);
 				p->fPot = fTmp;
 				}
@@ -413,6 +429,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					}
 				p->fMass = dp.mass;
 				p->fSoft = dp.eps;
+#ifdef CHANGESOFT
+				p->fSoft0 = dp.eps;
+#endif
 				p->fPot = dp.phi;
 				}
 			else if (pkdIsGas(pkd,p)) {
@@ -426,6 +445,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					}
 				p->fMass = gp.mass;
 				p->fSoft = gp.hsmooth;
+#ifdef CHANGESOFT
+				p->fSoft0 = gp.hsmooth;
+#endif
 				p->fPot = gp.phi;
 #ifdef GASOLINE
 				p->fDensity = gp.rho;
@@ -442,6 +464,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					}
 				p->fMass = sp.mass;
 				p->fSoft = sp.eps;
+#ifdef CHANGESOFT
+				p->fSoft0 = sp.eps;
+#endif
 				p->fPot = sp.phi;
 #ifdef GASOLINE
 				p->fMetals = sp.metals;
@@ -1347,7 +1372,11 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 					fTmp = vTemp;
 					xdr_float(&xdrs,&fTmp);
 					}
+#ifdef CHANGESOFT
+				fTmp = p->fSoft0;
+#else
 				fTmp = p->fSoft;
+#endif
 				xdr_float(&xdrs,&fTmp);
 				fTmp = p->fPot;
 				xdr_float(&xdrs,&fTmp);
@@ -1387,7 +1416,11 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 				fTmp = vTemp;
 				xdr_float(&xdrs,&fTmp);
 				/* fTmp = sqrt(0.25*p->fBall2);  Write softening in tipsy outputs */
+#ifdef CHANGESOFT
+				fTmp = p->fSoft0;
+#else
 				fTmp = p->fSoft;
+#endif
 				xdr_float(&xdrs,&fTmp);
 #ifdef DEBUG
 				/* Store divv in metals for now */
@@ -1396,10 +1429,14 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 				fTmp = p->fMetals;
 #endif
 				xdr_float(&xdrs,&fTmp);
-#else
+#else /* not gasoline */
 				fTmp = 0.0;
 				xdr_float(&xdrs,&fTmp);
+#ifdef CHANGESOFT
+				fTmp = p->fSoft0;
+#else
 				fTmp = p->fSoft;
+#endif
 				xdr_float(&xdrs,&fTmp);
 				fTmp = 0.0;
 				xdr_float(&xdrs,&fTmp);
@@ -1429,7 +1466,11 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 				xdr_float(&xdrs,&fTmp);
 				xdr_float(&xdrs,&fTmp);			
 #endif
+#ifdef CHANGESOFT
+				fTmp = p->fSoft0;
+#else
 				fTmp = p->fSoft;
+#endif
 				xdr_float(&xdrs,&fTmp);
 				fTmp = p->fPot;
 				xdr_float(&xdrs,&fTmp);
@@ -1450,7 +1491,11 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 					dp.vel[j] = dvFac*p->v[j];
 					}
 				dp.mass = p->fMass;
-				dp.eps = p->fSoft;
+#ifdef CHANGESOFT
+ 				dp.eps = p->fSoft0;
+#else
+ 				dp.eps = p->fSoft;
+#endif
 				dp.phi = p->fPot;
 				nout = fwrite(&dp,sizeof(struct dark_particle),1,fp);
 				mdlassert(pkd->mdl,nout == 1);
@@ -1461,7 +1506,11 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 					gp.vel[j] = dvFac*p->v[j];
 					}
 				gp.mass = p->fMass;
+#ifdef CHANGESOFT
+				gp.hsmooth = p->fSoft0;
+#else
 				gp.hsmooth = p->fSoft;
+#endif
 				gp.phi = p->fPot;
 				gp.rho = p->fDensity;
 #ifdef GASOLINE
@@ -1480,7 +1529,11 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 					sp.vel[j] = dvFac*p->v[j];
 					}
 				sp.mass = p->fMass;
+#ifdef CHANGESOFT
+				sp.eps = p->fSoft0;
+#else
 				sp.eps = p->fSoft;
+#endif
 				sp.phi = p->fPot;
 #ifdef GASOLINE
 				sp.metals = p->fMetals;
@@ -1508,10 +1561,78 @@ void pkdSetSoft(PKD pkd,double dSoft)
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
+#ifdef CHANGESOFT
+		p[i].fSoft0 = dSoft;
+#else
 		p[i].fSoft = dSoft;
+#endif
 		}
 	}
 
+#ifdef CHANGESOFT
+void pkdPhysicalSoft(PKD pkd,double dSoftMax,double dFac,int bSoftMaxMul)
+{
+	PARTICLE *p;
+	int i,n;
+
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	
+	if (bSoftMaxMul) {
+	        for (i=0;i<n;++i) {
+	                p[i].fSoft = p[i].fSoft0*dFac;
+		        }
+	        }
+	else {
+	        for (i=0;i<n;++i) {
+	                p[i].fSoft = p[i].fSoft0*dFac;
+	                if (p[i].fSoft > dSoftMax) p[i].fSoft = dSoftMax;
+		        }
+	        }
+	}
+
+void pkdPreVariableSoft(PKD pkd)
+{
+	PARTICLE *p;
+	int i,n;
+
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	
+	for (i=0;i<n;++i) {
+	        if (TYPEQueryACTIVE(&(p[i]))) p[i].fSoft = p[i].fBall2;
+	        }
+	}
+
+void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul)
+{
+	PARTICLE *p;
+	int i,n;
+	double dTmp;
+
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	
+	if (bSoftMaxMul) {
+	        for (i=0;i<n;++i) {
+	                if (TYPEQueryACTIVE(&(p[i]))) {
+		                  dTmp = sqrt(p[i].fBall2*.25);
+	                          p[i].fBall2 = p[i].fSoft;
+	                          p[i].fSoft = (dTmp <= p[i].fSoft0*dSoftMax ? dTmp : p[i].fSoft0*dSoftMax);
+                                  }
+		        }
+	        }
+	else {
+	        for (i=0;i<n;++i) {
+	                if (TYPEQueryACTIVE(&(p[i]))) {
+		                  dTmp = sqrt(p[i].fBall2*.25);
+	                          p[i].fBall2 = p[i].fSoft;
+	                          p[i].fSoft = (dTmp <= dSoftMax ? dTmp : dSoftMax);
+                                  }
+		        }
+	        }
+	}
+#endif
 
 void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 {
@@ -2957,6 +3078,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				p->uPred = p->u + p->PdV*duPredDelta;
 				p->u = p->u + p->PdV*duDelta;
 #endif
+#ifdef SUPERNOVA
+                                p->uSN += p->PdVSN*duDelta;	  
+#endif
 				}
 #else
 			for (j=0;j<3;++j) {
@@ -3000,7 +3124,11 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		fread(&cp,sizeof(CHKPART),1,fp);
 		p->iOrder = cp.iOrder;
 		p->fMass = cp.fMass;
+#ifdef CHANGESOFT
+		p->fSoft0 = cp.fSoft;
+#else
 		p->fSoft = cp.fSoft;
+#endif
 		for (j=0;j<3;++j) {
 			p->r[j] = cp.r[j];
 			p->v[j] = cp.v[j];
@@ -3011,6 +3139,10 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef GASOLINE
 		p->u = cp.u;
 		p->uPred = cp.u;
+#ifdef SUPERNOVA
+                p->uSN = 0.0;
+                p->PdVSN = 0.0;
+#endif
 		p->fMetals = cp.fMetals;
 		p->fTimeForm = 0.0;
 		mdlassert(pkd->mdl, !pkdIsStar(pkd, p));
@@ -3059,7 +3191,11 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 	for (i=0;i<nLocal;++i) {
 		cp.iOrder = pkd->pStore[i].iOrder;
 		cp.fMass = pkd->pStore[i].fMass;
+#ifdef CHANGESOFT
+		cp.fSoft = pkd->pStore[i].fSoft0;
+#else
 		cp.fSoft = pkd->pStore[i].fSoft;
+#endif
 		for (j=0;j<3;++j) {
 			cp.r[j] = pkd->pStore[i].r[j];
 			cp.v[j] = pkd->pStore[i].v[j];
@@ -3800,11 +3936,13 @@ int pkdIsStar(PKD pkd,PARTICLE *p) {
 #ifdef GASOLINE
 #ifdef SUPERNOVA
 
-struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCut)
+struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, double dTMax,
+					   double duTFac,int iGasModel)
 {
     PARTICLE *p;
     int i;
     struct outCountSupernova ret;
+    double Temp;
 
     ret.dMassMetalRhoCut=0;
     ret.dMassMetalTotal=0;
@@ -3813,47 +3951,117 @@ struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCu
     ret.dMassTotal=0;
 
     p = pkd->pStore;
-    for(i=0;i<pkdLocal(pkd);++i,++p) {
-                ret.dMassTotal += p->fMass;
-                if (pkdIsGas(pkd,p)) {
-		        if (p->fMetals > dMetal) {
-			        ret.dMassMetalTotal += p->fMass;
-			        if (p->fDensity > dRhoCut)
-				       ret.dMassMetalRhoCut += p->fMass;
-			        }
-			else {
-			        ret.dMassNonMetalTotal += p->fMass;
-			        if (p->fDensity > dRhoCut)
-				       ret.dMassNonMetalRhoCut += p->fMass;
-			        }
-		        }
-                }
-    return ret;
-    }
 
-void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dPdVMetal, double dPdVNonMetal)
+    if (dTMin>0 || dTMax < 1e20) {
+      for(i=0;i<pkdLocal(pkd);++i,++p) {
+	ret.dMassTotal += p->fMass;
+	if (pkdIsGas(pkd,p)) {
+	  switch (iGasModel) {
+	  case GASMODEL_COOLING:
+	  case GASMODEL_COOLING_NONEQM:
+#ifndef NOCOOLING
+	    Temp = clTemperature(2*(pkd->cl).Y_H - p->Y_HI + 
+			    3*(pkd->cl).Y_He - 2*p->Y_HeI - p->Y_HeII,
+			    p->u*(pkd->cl).dErgPerGmUnit);
+#endif
+	    break;
+	  default:
+	    Temp = duTFac*p->u;
+	  }
+	  if (p->fMetals > dMetal) {
+	    ret.dMassMetalTotal += p->fMass;
+	    if (p->fDensity > dRhoCut && Temp > dTMin && Temp <= dTMax)
+	      ret.dMassMetalRhoCut += p->fMass;
+	  }
+	  else {
+	    ret.dMassNonMetalTotal += p->fMass;
+	    if (p->fDensity > dRhoCut && Temp > dTMin && Temp <= dTMax)
+	      ret.dMassNonMetalRhoCut += p->fMass;
+	  }
+	}
+      }
+    }
+    else {
+      for(i=0;i<pkdLocal(pkd);++i,++p) {
+	ret.dMassTotal += p->fMass;
+	if (pkdIsGas(pkd,p)) {
+	  if (p->fMetals > dMetal) {
+	    ret.dMassMetalTotal += p->fMass;
+	    if (p->fDensity > dRhoCut && Temp > dTMin && Temp <= dTMax)
+	      ret.dMassMetalRhoCut += p->fMass;
+	  }
+	  else {
+	    ret.dMassNonMetalTotal += p->fMass;
+	    if (p->fDensity > dRhoCut && Temp > dTMin && Temp <= dTMax)
+	      ret.dMassNonMetalRhoCut += p->fMass;
+	  }
+	}
+      }
+    }
+}
+
+void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, double dTMax, 
+		     double duTFac,int iGasModel, double dPdVMetal, double dPdVNonMetal)
 {
     PARTICLE *p;
     int i;
+    double Temp;
 
     p = pkd->pStore;
-    for(i=0;i<pkdLocal(pkd);++i,++p) {
-                if (TYPEQueryACTIVE(p) && pkdIsGas(pkd,p)) {
-		        if (p->fMetals > dMetal) {
-			        if (p->fDensity > dRhoCut) {
-                                       if ((p->iOrder%1000)==0) printf("Cluster: %i fDensity %g u %g PdV %g SN_PdV %g\n",p->iOrder,p->fDensity,p->u,p->PdV, dPdVMetal);
-				       p->PdV += dPdVMetal;
-				       }
-			        }
-			else {
-			        if (p->fDensity > dRhoCut) {
-                                       if ((p->iOrder%1000)==0) printf("Non-Cluster: %i fDensity %g u %g PdV %g SN_PdV %g\n",p->iOrder,p->fDensity,p->u,p->PdV, dPdVNonMetal);
-				       p->PdV += dPdVNonMetal;
-				       }
-			        }
-		        }
-                }
+
+    if (dTMin>0 || dTMax < 1e20) {
+      for(i=0;i<pkdLocal(pkd);++i,++p) {
+	if (TYPEQueryACTIVE(p) && pkdIsGas(pkd,p)) {
+	  switch (iGasModel) {
+	  case GASMODEL_COOLING:
+	  case GASMODEL_COOLING_NONEQM:
+#ifndef NOCOOLING
+	    Temp = clTemperature(2*(pkd->cl).Y_H - p->Y_HI + 
+			    3*(pkd->cl).Y_He - 2*p->Y_HeI - p->Y_HeII,
+			    p->u*(pkd->cl).dErgPerGmUnit);
+#endif
+	    break;
+	  default:
+	    Temp = duTFac*p->u;
+	  }
+	  if (p->fMetals > dMetal) {
+	    if (p->fDensity > dRhoCut && Temp > dTMin && Temp <= dTMax) {
+	      if ((p->iOrder%1000)==0) printf("Cluster: %i fDensity %g u %g PdV %g SN_PdV %g\n",p->iOrder,p->fDensity,p->u,p->PdV, dPdVMetal);
+	      p->PdV += dPdVMetal;
+	      p->PdVSN = dPdVMetal;
+	    }
+	  }
+	  else {
+	    if (p->fDensity > dRhoCut && Temp > dTMin && Temp <= dTMax) {
+	      if ((p->iOrder%1000)==0) printf("Non-Cluster: %i fDensity %g u %g PdV %g SN_PdV %g\n",p->iOrder,p->fDensity,p->u,p->PdV, dPdVNonMetal);
+	      p->PdV += dPdVNonMetal;
+	      p->PdVSN = dPdVNonMetal;
+	    }
+	  }
+	}
+      }
     }
+    else {
+      for(i=0;i<pkdLocal(pkd);++i,++p) {
+	if (TYPEQueryACTIVE(p) && pkdIsGas(pkd,p)) {
+	  if (p->fMetals > dMetal) {
+	    if (p->fDensity > dRhoCut) {
+	      if ((p->iOrder%1000)==0) printf("Cluster: %i fDensity %g u %g PdV %g SN_PdV %g\n",p->iOrder,p->fDensity,p->u,p->PdV, dPdVMetal);
+	      p->PdV += dPdVMetal;
+	      p->PdVSN = dPdVMetal;
+	    }
+	  }
+	  else {
+	    if (p->fDensity > dRhoCut) {
+	      if ((p->iOrder%1000)==0) printf("Non-Cluster: %i fDensity %g u %g PdV %g SN_PdV %g\n",p->iOrder,p->fDensity,p->u,p->PdV, dPdVNonMetal);
+	      p->PdV += dPdVNonMetal;
+	      p->PdVSN = dPdVNonMetal;
+	    }
+	  }
+	}
+      }
+    }
+}
 
 
 #endif
@@ -4468,6 +4676,10 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 		if (!pkdIsDark(pkd,p)) mdlassert(pkd->mdl,0);
 		xdr_double(&xdrs,&dDum); p->fMass = dDum; /* SS format always double */
 		xdr_double(&xdrs,&dDum); p->fSoft = 0.5*dDum;
+
+#ifdef CHANGESOFT 
+ 		p->fSoft0 = 0.5*dDum;
+#endif
 		for (j=0;j<3;++j)
 			{xdr_double(&xdrs,&dDum); p->r[j] = dDum;}
 		for (j=0;j<3;++j)
@@ -4507,7 +4719,12 @@ pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
 		p = &pkd->pStore[i];
 		if (!pkdIsDark(pkd,p)) mdlassert(pkd->mdl,0);
 		dDum = p->fMass; xdr_double(&xdrs,&dDum); /* SS format always double */
-		dDum = 2*p->fSoft; xdr_double(&xdrs,&dDum);
+#ifdef CHANGESOFT
+		dDum = 2*p->fSoft0; 
+#else
+		dDum = 2*p->fSoft; 
+#endif
+		xdr_double(&xdrs,&dDum);
 		for (j=0;j<3;++j)
 			{dDum = p->r[j]; xdr_double(&xdrs,&dDum);}
 		for (j=0;j<3;++j)

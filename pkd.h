@@ -40,6 +40,9 @@ typedef struct particle {
 	FLOAT fWeight;
 	FLOAT fMass;
 	FLOAT fSoft;
+#ifdef CHANGESOFT
+	FLOAT fSoft0;
+#endif
 	FLOAT r[3];
 	FLOAT v[3];
 	FLOAT a[3];
@@ -79,6 +82,10 @@ typedef struct particle {
 #ifndef NOCOOLING
 	FLOAT uDot;			/* Rate of change of u -- for predicting */
 	FLOAT Y_HI,Y_HeI,Y_HeII;	/* Abundance of ions */
+#endif
+#ifdef SUPERNOVA
+        FLOAT PdVSN;
+        FLOAT uSN;
 #endif
 	FLOAT fMetals;
 	FLOAT fTimeForm;
@@ -405,6 +412,10 @@ void pkdInitialize(PKD *,MDL,int,int,int,FLOAT *,int,int,int);
 void pkdFinish(PKD);
 void pkdReadTipsy(PKD,char *,int,int,int,double,double);
 void pkdSetSoft(PKD pkd,double dSoft);
+#ifdef CHANGESOFT
+void pkdPhysicalSoft(PKD pkd,double, double, int);
+void pkdVariableSoft(PKD pkd,double, double, int);
+#endif
 void pkdCalcBound(PKD,BND *,BND *,BND *,BND *);
 void pkdGasWeight(PKD);
 void pkdRungDDWeight(PKD, int, double);
@@ -503,8 +514,10 @@ struct outCountSupernova {
         double dMassNonMetalTotal;
         double dMassTotal;
 };
-struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCut);
-void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dPdVMetal, double dPdVNonMetal);
+struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, double dTMax,
+					   double duTFac,int iGasModel);
+void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, double dTMax,
+		     double duTFac,int iGasModel, double dPdVMetal, double dPdVNonMetal );
 #endif
 void pkdUpdateuDot(PKD,double,double,int,int);
 void pkdUpdateShockTracker(PKD,double, double, double);

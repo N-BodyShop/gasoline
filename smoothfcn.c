@@ -104,6 +104,9 @@
 #endif
 #endif
 
+void NullSmooth(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf) {
+}
+
 void initDensity(void *p)
 {
 	((PARTICLE *)p)->fDensity = 0.0;

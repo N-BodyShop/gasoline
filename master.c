@@ -316,6 +316,27 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dSoft = 0.0;
 	prmAddParam(msr->prm,"dSoft",2,&msr->param.dSoft,sizeof(double),"e",
 				"<gravitational softening length> = 0.0");
+	msr->param.dSoftMax = 0.0;
+	prmAddParam(msr->prm,"dSoftMax",2,&msr->param.dSoftMax,sizeof(double),"eMax",
+				"<maximum comoving gravitational softening length (abs or multiplier)> = 0.0");
+	msr->param.bPhysicalSoft = 0;
+	prmAddParam(msr->prm,"bPhysicalSoft",0,&msr->param.bPhysicalSoft,sizeof(int),"PhysSoft",
+				"<Physical gravitational softening length> -PhysSoft");
+	msr->param.bSoftMaxMul = 1;
+	prmAddParam(msr->prm,"bSoftMaxMul",0,&msr->param.bSoftMaxMul,sizeof(int),"SMM",
+				"<Use maximum comoving gravitational softening length as a multiplier> +SMM");
+	msr->param.bVariableSoft = 0;
+	prmAddParam(msr->prm,"bVariableSoft",0,&msr->param.bVariableSoft,sizeof(int),"VarSoft",
+				"<Variable gravitational softening length> -VarSoft");
+	msr->param.nSoftNbr = 32;
+	prmAddParam(msr->prm,"nSoftNbr",1,&msr->param.nSoftNbr,sizeof(int),"VarSoft",
+				"<Neighbours for Variable gravitational softening length> 32");
+	msr->param.bSoftByType = 1;
+	prmAddParam(msr->prm,"bSoftByType",0,&msr->param.bSoftByType,sizeof(int),"SBT",
+				"<Variable gravitational softening length by Type> +SBT");
+	msr->param.bDoSoftOutput = 0;
+	prmAddParam(msr->prm,"bDoSoftOutput",0,&msr->param.bDoSoftOutput,sizeof(int),
+				"softout","enable/disable soft outputs = -softout");
 	msr->param.dDelta = 0.0;
 	prmAddParam(msr->prm,"dDelta",2,&msr->param.dDelta,sizeof(double),"dt",
 				"<time step>");
@@ -546,6 +567,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dSNRhoCut = 50.0;
 	prmAddParam(msr->prm,"dSNRhoCut",2,&msr->param.dSNRhoCut,
 				sizeof(double),"SNRho", "<SNRhoCut> = 50.0");
+	msr->param.dSNTMin = 0;
+	prmAddParam(msr->prm,"dSNTMin",2,&msr->param.dSNTMin,
+				sizeof(double),"SNTMin", "<SNTMin> = 0");
+	msr->param.dSNTMax = 1e20;
+	prmAddParam(msr->prm,"dSNTMax",2,&msr->param.dSNTMax,
+				sizeof(double),"SNRho", "<SNTMax> = 1e20");
 	msr->param.dSNMetalCut = 0.5;
 	prmAddParam(msr->prm,"dSNMetalCut",2,&msr->param.dSNMetalCut,
 				sizeof(double),"SNMetal", "<SNMetalCut> = 0.5");
@@ -790,7 +817,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		}
 
 	msr->nThreads = mdlThreads(mdl);
-
+	
 	/*
 	 ** Always set bCannonical = 1 if bComove == 0
 	 */
@@ -799,6 +826,27 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			printf("WARNING: bCannonical reset to 1 for non-comoving (bComove == 0)\n");
 		msr->param.bCannonical = 1;
 		} 
+	/* 
+	 * Softening 
+	 */
+	
+	if (msr->param.bPhysicalSoft || msr->param.bVariableSoft) {
+	  if (msr->param.bPhysicalSoft && !msrComove(msr)) {
+	    printf("WARNING: bPhysicalSoft reset to 0 for non-comoving (bComove == 0)\n");
+	    msr->param.bPhysicalSoft = 0;
+	  }
+#ifndef CHANGESOFT
+	  fprintf(stderr,"ERROR: You must compile with -DCHANGESOFT to use changing softening options\n");
+	  _msrExit(msr,1);
+#endif
+	  if (msr->param.bVariableSoft && !prmSpecified(msr->prm,"bDoSoftOutput")) msr->param.bDoSoftOutput=1;
+  
+	  if (msr->param.bPhysicalSoft && msr->param.bVariableSoft) {
+	    fprintf(stderr,"ERROR: You may only choose one of Physical or Variable softening\n");
+	    _msrExit(msr,1);
+	  }
+	}
+
 	/*
 	 ** Determine the period of the box that we are using.
 	 ** Set the new d[xyz]Period parameters which are now used instead
@@ -1174,6 +1222,15 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef GASOLINE
 	fprintf(fp," GASOLINE");
 #endif
+#ifdef SHOCKTRACK
+	fprintf(fp," SHOCKTRACK");
+#endif
+#ifdef CHANGESOFT
+ 	fprintf(fp," CHANGESOFT");
+#endif
+#ifdef NOCOOLING
+ 	fprintf(fp," NOCOOLING");
+#endif
 #ifdef GLASS
 	fprintf(fp," GLASS");
 #endif
@@ -1257,6 +1314,13 @@ void msrLogParams(MSR msr,FILE *fp)
 		fprintf(fp," dSoft: %g",msr->param.dSoft);
 	else
 		fprintf(fp," dSoft: input");
+	fprintf(fp,"\n# bPhysicalSoft: %d",msr->param.bPhysicalSoft);
+	fprintf(fp," bVariableSoft: %d",msr->param.bVariableSoft);
+	fprintf(fp," nSoftNbr: %d",msr->param.nSoftNbr);
+	fprintf(fp," bSoftByType: %d",msr->param.bSoftByType);
+	fprintf(fp," bSoftMaxMul: %d",msr->param.bSoftMaxMul);
+	fprintf(fp," dSoftMax: %g",msr->param.dSoftMax);
+	fprintf(fp," bDoSoftOutput: %d",msr->param.bDoSoftOutput);
 	fprintf(fp,"\n# dDelta: %g",msr->param.dDelta);
 	fprintf(fp," dEta: %g",msr->param.dEta);
 	fprintf(fp," dEtaCourant: %g",msr->param.dEtaCourant);
@@ -1308,6 +1372,12 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bBulkViscosity: %d",msr->param.bBulkViscosity);
 	fprintf(fp," bGasDomainDecomp: %d",msr->param.bGasDomainDecomp);
 	fprintf(fp," bSphStep: %d",msr->param.bSphStep);
+	fprintf(fp,"\n#bSN: %d",msr->param.bSN);
+	fprintf(fp," dSNRhoCut: %g",msr->param.dSNRhoCut);
+ 	fprintf(fp," dSNTMin: %g",msr->param.dSNTMin);
+        fprintf(fp," dSNTMax: %g",msr->param.dSNTMax);
+	fprintf(fp," dSNMetalCut: %g",msr->param.dSNMetalCut);
+	fprintf(fp," dSNHeatFraction: %g",msr->param.dSNHeatFraction);
 #endif
 	fprintf(fp,"\n# bPatch: %d",msr->param.bPatch);
 	fprintf(fp," dOrbFreq: %g",msr->param.dOrbFreq);
@@ -2464,6 +2534,56 @@ void msrMarkSmooth(MSR msr,double dTime,int bSymmetric,int iMarkType)
 		pstMarkSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
 		}
 	}
+
+void msrUpdateSoft(MSR msr,double dTime) {
+#ifdef CHANGESOFT
+       if (!(msr->param.bPhysicalSoft || msr->param.bVariableSoft)) return;
+       if (msr->param.bPhysicalSoft) {
+	 struct inPhysicalSoft in;
+
+	 in.dFac = 1./csmTime2Exp(msr->param.csm,dTime);
+	 in.bSoftMaxMul = msr->param.bSoftMaxMul;
+	 in.dSoftMax = msr->param.dSoftMax;
+
+	 if (msr->param.bSoftMaxMul && in.dFac > in.dSoftMax) in.dFac = in.dSoftMax;
+
+	 pstPhysicalSoft(msr->pst,&in,sizeof(in),NULL,NULL);
+       }
+       else {
+	 struct inPostVariableSoft inPost;
+
+	 pstPreVariableSoft(msr->pst,NULL,0,NULL,NULL);
+
+	 if (msr->param.bSoftByType) {
+	   if (msr->nDark) {
+	     msrActiveType(msr,TYPE_DARK,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+	     msrBuildTree(msr,1,-1.0,1);
+	     msrSmooth(msr,dTime,SMX_NULL,0);
+	   }
+	   if (msr->nGas) {
+	     msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+	     msrBuildTree(msr,1,-1.0,1);
+	     msrSmooth(msr,dTime,SMX_NULL,0);
+	   }
+	   if (msr->nStar) {
+	     msrActiveType(msr,TYPE_STAR,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+	     msrBuildTree(msr,1,-1.0,1);
+	     msrSmooth(msr,dTime,SMX_NULL,0);
+	   }
+	 }
+	 else {
+	   msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+	   msrBuildTree(msr,1,-1.0,1);
+	   msrSmooth(msr,dTime,SMX_NULL,0);
+	 }
+
+	 inPost.dSoftMax = msr->param.dSoftMax;
+	 inPost.bSoftMaxMul = msr->param.bSoftMaxMul;
+	 pstPostVariableSoft(msr->pst,&inPost,sizeof(inPost),NULL,NULL);
+       }
+#endif
+}
+
 
 void msrGravity(MSR msr,double dStep,int bDoSun,
 				int *piSec,double *pdWMax,double *pdIMax,double *pdEMax,
@@ -4067,6 +4187,7 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 			    msrInitAccel(msr);
 			    msrDomainDecomp(msr,iRung,1);
 			    msrActiveRung(msr,iRung,1);
+			    msrUpdateSoft(msr,dTime);
 			    msrBuildTree(msr,0,dMass,0);
 			    msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 				if (msr->param.bGravStep) {
@@ -4126,6 +4247,7 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
    		        if (msr->param.bVDetails) printf("Gravity, iRung: %d\n", iRung);
                         msrDomainDecomp(msr,iRung,0);
 			msrActiveRung(msr, iRung, 0);
+			msrUpdateSoft(msr,dTime);
 			msrBuildTree(msr,0,dMass,0);
 			msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
@@ -4233,6 +4355,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 		    if(msrDoGravity(msr)) {
 				if (msr->param.bVDetails) printf("Gravity, iRung: %d\n", iRung);
 				msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
+				msrUpdateSoft(msr,dTime);
 				msrBuildTree(msr,0,dMass,0);
 				msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,
 						   &nActive);
@@ -4365,6 +4488,7 @@ void msrTopStepKDK(MSR msr,
 
 		if(msrDoGravity(msr)) {
 			msrActiveRung(msr,iKickRung,1);
+			msrUpdateSoft(msr,dTime);
 			msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
 			if (msr->param.bVDetails)
 				printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
@@ -4767,6 +4891,11 @@ void msrInitSupernova(MSR msr)
          }
     else {
          in.dRhoCut = msr->param.dSNRhoCut;
+         in.dTMin = msr->param.dSNTMin;
+         in.dTMax = msr->param.dSNTMax;
+	 in.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
+		msr->param.dMeanMolWeight;
+	 in.iGasModel = msr->param.iGasModel;
          in.dMetal = msr->param.dSNMetalCut;
          pstCountSupernova(msr->pst,&in,sizeof(struct inCountSupernova),&out,NULL);
 	 printf("Setup SN: Cluster: (%g/%g)  Non-Cluster: (%g/%g)  Total: %g\n",
@@ -4824,6 +4953,11 @@ void msrAddSupernova(MSR msr, double dTime)
     int i;
 
     in.dRhoCut = msr->param.dSNRhoCut;
+    in.dTMin = msr->param.dSNTMin;
+    in.dTMax = msr->param.dSNTMax;
+    in.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
+		msr->param.dMeanMolWeight;
+    in.iGasModel = msr->param.iGasModel;
     in.dMetal = msr->param.dSNMetalCut;
     pstCountSupernova(msr->pst,&in,sizeof(struct inCountSupernova),&out,NULL);
     printf("Add SN: Cluster: (%g/%g)  Non-Cluster: (%g/%g)  Total: %g\n",
@@ -4844,6 +4978,11 @@ void msrAddSupernova(MSR msr, double dTime)
     if (i == 0 || i == msr->nSN) return;
 
     inAdd.dRhoCut = msr->param.dSNRhoCut;
+    inAdd.dTMin = msr->param.dSNTMin;
+    inAdd.dTMax = msr->param.dSNTMax;
+    inAdd.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
+		msr->param.dMeanMolWeight;
+    inAdd.iGasModel = msr->param.iGasModel;
     inAdd.dMetal = msr->param.dSNMetalCut;
 
     xx = log((1+z)/(1+(SNd-1)->z))/log((1+SNd->z)/(1+(SNd-1)->z));
@@ -5137,6 +5276,7 @@ msrPlanetsKDK(MSR msr,double dStep,double dTime,double dDelta,double *pdWMax,
 		if (msr->param.bVDetails) printf("Planets Gravity\n");
 		msrDomainDecomp(msr,0,1);
 		msrActiveRung(msr,0,1);
+		msrUpdateSoft(msr,dTime);
 		msrBuildTree(msr,0,-1.0,0);
 		msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nDum);
 		}
@@ -5249,6 +5389,7 @@ msrLinearKDK(MSR msr,double dStep,double dTime,double dDelta)
 		int iDum;
 		if (msr->param.bVDetails) printf("Linear Gravity\n");
 		msrDomainDecomp(msr,0,1);
+		msrUpdateSoft(msr,dTime);
 		msrBuildTree(msr,0,-1.0,0);
 		msrGravity(msr,dStep,msrDoSun(msr),&iDum,&dDum,&dDum,&dDum,&iDum);
 		}

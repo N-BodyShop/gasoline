@@ -121,6 +121,8 @@ int main(int argc,char **argv)
 			msrInitAccel(msr);
 
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
+			msrUpdateSoft(msr,dTime);
+			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree");
 			if (msrDoGravity(msr)) {
@@ -211,6 +213,8 @@ int main(int argc,char **argv)
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE);
 		msrInitAccel(msr);
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
+		msrUpdateSoft(msr,dTime);
+		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
 		msrBuildTree(msr,0,dMass,0);
 		msrMassCheck(msr,dMass,"After msrBuildTree");
 		if (msrDoGravity(msr)) {
@@ -284,6 +288,8 @@ int main(int argc,char **argv)
 						msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
 						msrDomainDecomp(msr,0,1);
 						msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
+						msrUpdateSoft(msr,dTime);
+						msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
 						msrBuildTree(msr,0,dMass,0);
 						msrMassCheck(msr,dMass,"After msrBuildTree in DKD-log");
 						msrInitAccel(msr);
@@ -336,6 +342,12 @@ int main(int argc,char **argv)
 					strncat(achFile,".den",256);
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
 				        }
+				if (msr->param.bDoSoftOutput) {
+				        msrReorder(msr);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".soft",256);
+					msrOutArray(msr,achFile,OUT_SOFT_ARRAY);
+				        }
 				if (msr->param.bDohOutput) {
 					msrReorder(msr);
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
@@ -381,7 +393,16 @@ int main(int argc,char **argv)
 					strncat(achFile,".gradrho",256);
 					msrOutVector(msr,achFile,OUT_GRADRHO_VECTOR);
 
-					}
+				}
+				if (msr->param.bSN) {
+					msrReorder(msr);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".PdVSN",256);
+					msrOutArray(msr,achFile,OUT_PDVSN_ARRAY);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".uSN",256);
+					msrOutArray(msr,achFile,OUT_USN_ARRAY);
+				        }
 				if (msr->param.bDoIonOutput) {
 					msrReorder(msr);
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
@@ -445,6 +466,8 @@ int main(int argc,char **argv)
 		if (msrDoGravity(msr)) {
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 			msrDomainDecomp(msr,0,1);
+			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+			msrUpdateSoft(msr,dTime);
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Gravity");

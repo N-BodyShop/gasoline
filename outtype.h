@@ -28,7 +28,10 @@
 #define OUT_PDV_ARRAY           27
 #define OUT_PDVPRES_ARRAY       28
 #define OUT_PDVVISC_ARRAY       29
+#define OUT_PDVSN_ARRAY         30
+#define OUT_USN_ARRAY           31
 #endif
+#define OUT_SOFT_ARRAY          32
 
 #define OUT_H_ARRAY			19
 

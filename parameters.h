@@ -62,9 +62,16 @@ struct parameters {
 	int nSuperCool;
 	int nGrowMass;
 	int iWallRunTime;
+        int bPhysicalSoft;  
+        int bSoftMaxMul;
+        int bVariableSoft;
+        int nSoftNbr;
+        int bSoftByType;
+        int bDoSoftOutput;
 	double dEta;
 	double dExtraStore;
 	double dSoft;
+        double dSoftMax;
 	double dDelta;
 	double dEwCut;
 	double dEwhCut;
@@ -132,12 +139,14 @@ struct parameters {
 	double dFracFastGas;
 	double dhMinOverSoft;
 	int    bDoGas;
+	int    bSphStep;
 	int    bUV;
 	int    bSN;
 	double dSNRhoCut;
+ 	double dSNTMin;
+        double dSNTMax;
 	double dSNMetalCut;
 	double dSNHeatFraction;
-	int    bSphStep;
 #ifdef GLASS
 	/*
 	 ** Additional parameters for GLASS.

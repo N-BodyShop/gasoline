@@ -109,6 +109,17 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_SETSOFT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetSoft,
 				  sizeof(struct inSetSoft),0);
+#ifdef CHANGESOFT
+	mdlAddService(mdl,PST_PHYSICALSOFT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstPhysicalSoft,
+				  sizeof(struct inPhysicalSoft),0);
+	mdlAddService(mdl,PST_PREVARIABLESOFT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstPreVariableSoft,
+				  0,0);
+	mdlAddService(mdl,PST_POSTVARIABLESOFT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstPostVariableSoft,
+				  sizeof(struct inPostVariableSoft),0);
+#endif
 	mdlAddService(mdl,PST_SETTOTAL,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetTotal,
 				  0,sizeof(struct outSetTotal));
@@ -2329,7 +2340,7 @@ void pstSwapRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 /*
- * Routine to swap all particles.  Note that this does not walk the
+ * Routine to swap all particles.  Note that this does not walk the pst
  * but simply works with one other processor.
  */
 void pstSwapAll(PST pst,void *vin,int nIn,void *vout,int *pnOut)
@@ -2655,6 +2666,58 @@ void pstSetSoft(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
+#ifdef CHANGESOFT
+void pstPhysicalSoft(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inPhysicalSoft *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inPhysicalSoft));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_PHYSICALSOFT,in,nIn);
+		pstPhysicalSoft(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdPhysicalSoft(plcl->pkd,in->dSoftMax,in->dFac,in->bSoftMaxMul);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstPreVariableSoft(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+
+	mdlassert(pst->mdl,nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_PREVARIABLESOFT,vin,nIn);
+		pstPreVariableSoft(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdPreVariableSoft(plcl->pkd);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void pstPostVariableSoft(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inPostVariableSoft *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inPostVariableSoft));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_POSTVARIABLESOFT,in,nIn);
+		pstPostVariableSoft(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdPostVariableSoft(plcl->pkd,in->dSoftMax,in->bSoftMaxMul);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+#endif
 
 void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -3867,7 +3930,8 @@ void pstCountSupernova(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		(*out).dMassTotal          += outleaf.dMassTotal;
 		}
 	else {
-	        (*out) = pkdCountSupernova(plcl->pkd,in->dMetal,in->dRhoCut);
+	        (*out) = pkdCountSupernova(plcl->pkd,in->dMetal,in->dRhoCut,in->dTMin,in->dTMax,
+					   in->dTuFac,in->iGasModel);
 		}
 	if (pnOut) *pnOut = sizeof(struct outCountSupernova);
 	}
@@ -3884,7 +3948,8 @@ void pstAddSupernova(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-	        pkdAddSupernova(plcl->pkd,in->dMetal,in->dRhoCut,in->dPdVMetal,in->dPdVNonMetal);
+	        pkdAddSupernova(plcl->pkd,in->dMetal,in->dRhoCut,in->dTMin,in->dTMax,
+				in->dTuFac,in->iGasModel,in->dPdVMetal,in->dPdVNonMetal);
 		}
 	if (pnOut) *pnOut = 0;
 	}

@@ -49,6 +49,9 @@ typedef struct nNeighbor {
 	FLOAT dz;
 	} NN;
 
+#define SMX_NULL                            0
+void NullSmooth(PARTICLE *,int,NN *,SMF *);
+
 #define SMX_DENSITY				1
 void initDensity(void *);
 void combDensity(void *,void *);
