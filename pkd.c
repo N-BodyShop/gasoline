@@ -195,8 +195,6 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 #ifdef GASOLINE
 #ifndef NOCOOLING
 	pkd->cl = clInit();
-#else
-	pkd->cl = NULL;
 #endif	
 #endif	
 
