@@ -255,39 +255,23 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	}
 
 
-void smFinish(SMX smx,SMF *smf)
+void smFinish(SMX smx,SMF *smf, CASTAT *pcs)
 {
 	PKD pkd = smx->pkd;
 	int pi;
     char achOut[128];
 
 	/*
-	 * Output statistics.
+	 ** Get caching statistics.
 	 */
-	sprintf(achOut, "Cell Accesses: %g\n",
-			mdlNumAccess(smx->pkd->mdl,CID_CELL));
-	mdlDiag(smx->pkd->mdl, achOut);
-	sprintf(achOut, "    Miss ratio: %g\n",
-			mdlMissRatio(smx->pkd->mdl,CID_CELL));
-	mdlDiag(smx->pkd->mdl, achOut);
-	sprintf(achOut, "    Min ratio: %g\n",
-			mdlMinRatio(smx->pkd->mdl,CID_CELL));
-	mdlDiag(smx->pkd->mdl, achOut);
-	sprintf(achOut, "    Coll ratio: %g\n",
-			mdlCollRatio(smx->pkd->mdl,CID_CELL));
-	mdlDiag(smx->pkd->mdl, achOut);
-	sprintf(achOut, "Particle Accesses: %g\n",
-			mdlNumAccess(smx->pkd->mdl,CID_PARTICLE));
-	mdlDiag(smx->pkd->mdl, achOut);
-	sprintf(achOut, "    Miss ratio: %g\n",
-			mdlMissRatio(smx->pkd->mdl,CID_PARTICLE));
-	mdlDiag(smx->pkd->mdl, achOut);
-	sprintf(achOut, "    Min ratio: %g\n",
-			mdlMinRatio(smx->pkd->mdl,CID_PARTICLE));
-	mdlDiag(smx->pkd->mdl, achOut);
-	sprintf(achOut, "    Coll ratio: %g\n",
-			mdlCollRatio(smx->pkd->mdl,CID_PARTICLE));
-	mdlDiag(smx->pkd->mdl, achOut);
+	pcs->dcNumAccess = mdlNumAccess(pkd->mdl,CID_CELL);
+	pcs->dcMissRatio = mdlMissRatio(pkd->mdl,CID_CELL);
+	pcs->dcCollRatio = mdlCollRatio(pkd->mdl,CID_CELL);
+	pcs->dcMinRatio = mdlMinRatio(pkd->mdl,CID_CELL);
+	pcs->dpNumAccess = mdlNumAccess(pkd->mdl,CID_PARTICLE);
+	pcs->dpMissRatio = mdlMissRatio(pkd->mdl,CID_PARTICLE);
+	pcs->dpCollRatio = mdlCollRatio(pkd->mdl,CID_PARTICLE);
+	pcs->dpMinRatio = mdlMinRatio(pkd->mdl,CID_PARTICLE);
 	/*
 	 ** Stop particle caching space.
 	 */

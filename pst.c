@@ -80,7 +80,7 @@ pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inBuildTree),sizeof(struct outBuildTree));
 	mdlAddService(mdl,PST_SMOOTH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSmooth,
-				  sizeof(struct inSmooth),0);
+				  sizeof(struct inSmooth),sizeof(struct outSmooth));
 	mdlAddService(mdl,PST_GRAVITY,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGravity,
 				  sizeof(struct inGravity),sizeof(struct outGravity));
@@ -223,7 +223,7 @@ pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inMarkSmooth),0);
 	mdlAddService(mdl,PST_RESMOOTH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstReSmooth,
-				  sizeof(struct inReSmooth),0);
+				  sizeof(struct inReSmooth),sizeof(struct outReSmooth));
 	mdlAddService(mdl,PST_INITACCEL,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstInitAccel,0,0);
 	mdlAddService(mdl,PST_DTTORUNG,pst,
@@ -2762,12 +2762,26 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	struct inSmooth *in = vin;
+	struct outSmooth *out = vout;
+	struct outSmooth outUp;
+	CASTAT cs;
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inSmooth));
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_SMOOTH,in,nIn);
-		pstSmooth(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		pstSmooth(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+		/*
+		 ** Cache statistics sums.
+		 */
+		out->dpASum += outUp.dpASum;
+		out->dpMSum += outUp.dpMSum;
+		out->dpCSum += outUp.dpCSum;
+		out->dpTSum += outUp.dpTSum;
+		out->dcASum += outUp.dcASum;
+		out->dcMSum += outUp.dcMSum;
+		out->dcCSum += outUp.dcCSum;
+		out->dcTSum += outUp.dcTSum;
 		}
 	else {
 		LCL *plcl = pst->plcl;
@@ -2777,15 +2791,27 @@ void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
 					 in->bSymmetric,in->iSmoothType,1,in->dfBall2OverSoft2);
 		smSmooth(smx,&in->smf);
-		smFinish(smx,&in->smf);
+		smFinish(smx,&in->smf, &cs);
+		/*
+		 ** Cache statistics
+		 */
+		out->dpASum = cs.dpNumAccess;
+		out->dpMSum = cs.dpMissRatio;
+		out->dpCSum = cs.dpCollRatio;
+		out->dpTSum = cs.dpMinRatio;
+		out->dcASum = cs.dcNumAccess;
+		out->dcMSum = cs.dcMissRatio;
+		out->dcCSum = cs.dcCollRatio;
+		out->dcTSum = cs.dcMinRatio;
 		}
-	if (pnOut) *pnOut = 0;
+	if (pnOut) *pnOut = sizeof(struct outSmooth);
 	}
 
 
 void pstMarkSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	struct inMarkSmooth *in = vin;
+	CASTAT cs;
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inMarkSmooth));
 	if (pst->nLeaves > 1) {
@@ -2801,7 +2827,7 @@ void pstMarkSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
 					 in->bSymmetric,in->iSmoothType,0,0.0);
 		smMarkSmooth(smx,&in->smf,in->iMarkType);
-		smFinish(smx,&in->smf);
+		smFinish(smx,&in->smf, &cs);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2810,12 +2836,26 @@ void pstMarkSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	struct inReSmooth *in = vin;
+	struct outReSmooth *out = vout;
+	struct outReSmooth outUp;
+	CASTAT cs;
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inReSmooth));
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_RESMOOTH,in,nIn);
-		pstReSmooth(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		pstReSmooth(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+		/*
+		 ** Cache statistics sums.
+		 */
+		out->dpASum += outUp.dpASum;
+		out->dpMSum += outUp.dpMSum;
+		out->dpCSum += outUp.dpCSum;
+		out->dpTSum += outUp.dpTSum;
+		out->dcASum += outUp.dcASum;
+		out->dcMSum += outUp.dcMSum;
+		out->dcCSum += outUp.dcCSum;
+		out->dcTSum += outUp.dcTSum;
 		}
 	else {
 		LCL *plcl = pst->plcl;
@@ -2825,9 +2865,20 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
 					 in->bSymmetric,in->iSmoothType,0,in->dfBall2OverSoft2);
 		smReSmooth(smx,&in->smf);
-		smFinish(smx,&in->smf);
+		/*
+		 ** Cache statistics
+		 */
+		out->dpASum = cs.dpNumAccess;
+		out->dpMSum = cs.dpMissRatio;
+		out->dpCSum = cs.dpCollRatio;
+		out->dpTSum = cs.dpMinRatio;
+		out->dcASum = cs.dcNumAccess;
+		out->dcMSum = cs.dcMissRatio;
+		out->dcCSum = cs.dcCollRatio;
+		out->dcTSum = cs.dcMinRatio;
+		smFinish(smx,&in->smf, &cs);
 		}
-	if (pnOut) *pnOut = 0;
+	if (pnOut) *pnOut = sizeof(struct outReSmooth);
 	}
 
 

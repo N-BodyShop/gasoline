@@ -2918,6 +2918,7 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 {
 	struct inSmooth in;
+	struct outSmooth out;
 
 	/*
 	 ** Make sure that the type of tree is a density binary tree!
@@ -2961,12 +2962,26 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 		double sec,dsec;
 		printf("Smoothing...\n");
 		sec = msrTime();
-		pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
+		pstSmooth(msr->pst,&in,sizeof(in),&out,NULL);
 		dsec = msrTime() - sec;
 		printf("Smooth Calculated, Wallclock: %f secs\n\n",dsec);
+		if (msr->nThreads > 1) {
+		    double iP = 1.0/msr->nThreads;
+		    printf("Particle Cache Statistics (average per processor):\n");
+		    printf("    Accesses:    %10g\n",out.dpASum*iP);
+		    printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
+		    printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
+		    printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
+		    printf("Cell Cache Statistics (average per processor):\n");
+		    printf("    Accesses:    %10g\n",out.dcASum*iP);
+		    printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
+		    printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
+		    printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
+		    printf("\n");
+		    }
 		}
 	else {
-		pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
+		pstSmooth(msr->pst,&in,sizeof(in),&out,NULL);
 		}
 	}
 
@@ -3004,11 +3019,27 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 #endif
 	if (msr->param.bVStep) {
 		double sec,dsec;
+		struct outSmooth out;
+
 		printf("ReSmoothing...\n");
 		sec = msrTime();
-		pstReSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
+		pstReSmooth(msr->pst,&in,sizeof(in),&out,NULL);
 		dsec = msrTime() - sec;
 		printf("ReSmooth Calculated, Wallclock: %f secs\n\n",dsec);
+		if (msr->nThreads > 1) {
+		    double iP = 1.0/msr->nThreads;
+		    printf("Particle Cache Statistics (average per processor):\n");
+		    printf("    Accesses:    %10g\n",out.dpASum*iP);
+		    printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
+		    printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
+		    printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
+		    printf("Cell Cache Statistics (average per processor):\n");
+		    printf("    Accesses:    %10g\n",out.dcASum*iP);
+		    printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
+		    printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
+		    printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
+		    printf("\n");
+		    }
 		}
 	else {
 		pstReSmooth(msr->pst,&in,sizeof(in),NULL,NULL);

@@ -382,6 +382,19 @@ struct inSmooth {
         double dfBall2OverSoft2;
 	SMF smf;
 	};
+struct outSmooth {
+	/*
+	 ** Cache Statistics.
+	 */
+	double dpASum;
+	double dpMSum;
+	double dpCSum;
+	double dpTSum;
+	double dcASum;
+	double dcMSum;
+	double dcCSum;
+	double dcTSum;
+	};
 void pstSmooth(PST,void *,int,void *,int *);
 
 /* PST_GRAVITY */
@@ -780,6 +793,19 @@ struct inReSmooth {
 	int iSmoothType;
         double dfBall2OverSoft2;
 	SMF smf;
+	};
+struct outReSmooth {
+	/*
+	 ** Cache Statistics.
+	 */
+	double dpASum;
+	double dpMSum;
+	double dpCSum;
+	double dpTSum;
+	double dcASum;
+	double dcMSum;
+	double dcCSum;
+	double dcTSum;
 	};
 void pstReSmooth(PST,void *,int,void *,int *);
 
