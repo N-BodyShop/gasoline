@@ -1273,14 +1273,7 @@ void smMarkSmooth(SMX smx,SMF *smf,int iMarkType)
 		 ** which is smSmooth sets in p[pi].fBall2.
 		 */
 		TYPESet(&p[pi],TYPE_SMOOTHDONE);
-		/*
-		   cp = p[pi].cpStart;
-		   if (cp) {
-		   smBallScatterNP(smx,p[pi].r,iMarkType,cp);
-		   mdlCacheCheck(mdl);
-		   } else */ 
-		/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: before local smBallSacatter\n" ); */
-		{
+
 		if (smx->bPeriodic) {
 			smBallScatter(smx,p[pi].r,iMarkType);
 			}
@@ -1290,7 +1283,6 @@ void smMarkSmooth(SMX smx,SMF *smf,int iMarkType)
 		/*
 		 ** Start non-local search.
 		 */
-		/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: after local before nonlocal\n" );*/
 		x = p[pi].r[0];
 		y = p[pi].r[1];
 		z = p[pi].r[2];
@@ -1298,35 +1290,25 @@ void smMarkSmooth(SMX smx,SMF *smf,int iMarkType)
 		id = -1;	/* We are in the LTT now ! */
 		while (1) {
 			if (id == pkd->idSelf) goto SkipLocal;
-			/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 0\n" );*/
 			if (id >= 0) pkdn = mdlAquire(mdl,CID_CELL,cp,id);
 			else pkdn = &pkd->kdTop[cp];
 			if (pkdn->pUpper < 0) goto GetNextCell;
-			/*mdlDiag(smx->pkd->mdl, "smINTERSECTSCATTER: Before\n" );*/
 			INTERSECTSCATTER(pkdn,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNextCell);
-			/*mdlDiag(smx->pkd->mdl, "smINTERSECTSCATTER: After\n" );*/
 			if (pkdn->iDim >= 0 || id == -1) {
 				if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
 				pkdLower(pkd,cp,id);
 				continue;
 				}
-			/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2\n" );*/
 			for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
-				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2a\n" );*/
 				pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
-				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2b\n" );*/
 				dx = sx - pPart->r[0];
 				dy = sy - pPart->r[1];
 				dz = sz - pPart->r[2];
 				fDist2 = dx*dx + dy*dy + dz*dz;
-				if (fDist2 <= pPart->fBallMax*pPart->fBallMax) {
-					TYPESet(pPart, iMarkType);	
-					}
-				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2c\n" );*/
+				if (fDist2 <= pPart->fBallMax*pPart->fBallMax) 
+				  TYPESet(pPart, iMarkType);	
 				mdlRelease(mdl,CID_PARTICLE,pPart);
-				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2d\n" );*/
 				}
-			/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 3\n" );*/
 		GetNextCell:
 			if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
 		SkipLocal:
@@ -1334,7 +1316,28 @@ void smMarkSmooth(SMX smx,SMF *smf,int iMarkType)
 			if (pkdIsRoot(cp,id)) break;
 			}
 		}
-		/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: after nonlocal\n" );*/
-		}
-	/*mdlDiag(smx->pkd->mdl, "smMarkSmooth:End\n" );*/
-	}
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

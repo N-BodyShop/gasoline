@@ -845,9 +845,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 	    
 	    margin = nSafeTot/pst->nLeaves/20;
 	    if (margin < NUM_SAFETY/2) margin = NUM_SAFETY/2;
-	    /*
-	    margin = NUM_SAFETY;
-	    */
+
 	    mdlprintf(pst->mdl,"id: %d  %d Low %d/%d   %d High %d/%d  NUM_SAFETY %d margin %d\n",
 		      pst->mdl->idSelf, pst->nLower,nLowTot, nLowerStore, pst->nUpper,nHighTot, nUpperStore,NUM_SAFETY,margin);
 	    
@@ -3447,7 +3445,7 @@ pstGravStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	mdlassert(pst->mdl,nIn == sizeof(struct inGravStep));
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_GRAVSTEP,vin,nIn);
-		pstAccelStep(pst->pstLower,vin,nIn,vout,pnOut);
+		pstGravStep(pst->pstLower,vin,nIn,vout,pnOut);
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
 		}
 	else {
