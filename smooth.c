@@ -11,7 +11,7 @@
 
 
 int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
-				 int bSymmetric,int iSmoothType,int bSmooth)
+				 int bSymmetric,int iSmoothType,int bSmooth, double dfBall2OverSoft2 )
 {
 	SMX smx;
 	void (*initParticle)(void *) = NULL;
@@ -25,6 +25,8 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	smx->pkd = smf->pkd = pkd;
 	smx->nSmooth = nSmooth;
 	smx->bPeriodic = bPeriodic;
+	smx->dfBall2OverSoft2 = dfBall2OverSoft2;
+	smx->bLowhFix = ( dfBall2OverSoft2 > 0.0 ? 1 : 0 );
 #ifdef SLIDING_PATCH
 	smx->dOrbFreq = smf->dOrbFreq;
 	smx->dTime = smf->dTime;
@@ -689,7 +691,7 @@ void smSmooth(SMX smx,SMF *smf)
 	PQ *pq,*pqi,*pqn;
 	int iDum;
 	int nTree,nQueue,iLoad;
-	int nSmoothed = 0, nLoop = 1;
+	int nSmoothed = 0;
 	int idSelf;
 #ifdef SLIDING_PATCH
 	KDN dpkdn; /* dummy node */
@@ -913,51 +915,78 @@ void smSmooth(SMX smx,SMF *smf)
 	h2 = 2.0*pq->fKey;   /* arbitrarily bigger than pq->fKey! */
 
 	fBall2 = pq->fKey;
-	/* Limit fBall2 growth to help stability and neighbour finding */
-	if (p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)
-		fBall2=p[pi].fBallMax*p[pi].fBallMax;
-	p[pi].fBall2 = fBall2;
+	/* 
+	** If desired reject fBall2 below a minimum 
+	** We may get many more than nSmooth neighbours here -- resort to a ReSmooth
+	*/
+	if (smx->bLowhFix && fBall2 < smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft) {
+ 	     /* We ReSmooth for this guy later */
+             p[pi].fBall2 = 0;
+	     TYPESet(&p[pi],TYPE_SMOOTHDONE);
 
-	TYPESet(&p[pi],TYPE_SMOOTHDONE);
-	for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
-		/*
-		 ** There are cases like in collisions where we do want to include the
-		 ** single nearest neighbor. So include the most distant particle.
-		 **
-		if (pqi == pq) continue;
-		 */
-		/*
-		 ** Move relevant data into Nearest Neighbor array.
-		 */
-	        if (pqi->fKey < fBall2) {
-		        smx->nnList[nCnt].iPid = pqi->id;
-				smx->nnList[nCnt].iIndex = pqi->p;
-				smx->nnList[nCnt].pPart = pqi->pPart;
-				smx->nnList[nCnt].fDist2 = pqi->fKey;
-				smx->nnList[nCnt].dx = pqi->dx;
-				smx->nnList[nCnt].dy = pqi->dy;
-				smx->nnList[nCnt].dz = pqi->dz;
-				++nCnt;
-		        }
-			if (pqi->id != pkd->idSelf) continue;
-			if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
-			/*pkd->pStore[pqi->p].fBall2 >= 0) continue; */
-			if (pqi->fKey < h2) {
-				pqn = pqi;
-				h2 = pqn->fKey;
-				}
-			}
-	/*
-	 ** For periodic boundary conditions, make sure search ball has not
-	 ** exceeded half the spatial period. If it has, this probably means
-	 ** nSmooth is too large.
-	 */
-	assert(!smx->bPeriodic ||
-		   ((lx == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lx*lx) &&
-			(ly == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*ly*ly) &&
-			(lz == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lz*lz)));
-	nSmoothed++;
-	smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
+	     /* Get the next in line */
+	     for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
+		  if (pqi->id != pkd->idSelf) continue;
+		  if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
+		  /*pkd->pStore[pqi->p].fBall2 >= 0) continue; */
+		  if (pqi->fKey < h2) {
+		         pqn = pqi;
+			 h2 = pqn->fKey;
+		         }
+	          }
+		
+	     }
+        else {
+	     /* Limit fBall2 growth to help stability and neighbour finding */
+	     if (p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)
+	       fBall2=p[pi].fBallMax*p[pi].fBallMax;
+
+	     p[pi].fBall2 = fBall2;
+	     TYPESet(&p[pi],TYPE_SMOOTHDONE);
+
+	     for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
+	          /*
+		  ** There are cases like in collisions where we do want to include the
+		  ** single nearest neighbor. So include the most distant particle.
+		  **
+		  if (pqi == pq) continue;
+		  */
+	          /*
+	          ** Move relevant data into Nearest Neighbor array.
+	          */
+	          if (pqi->fKey < fBall2) {
+		         smx->nnList[nCnt].iPid = pqi->id;
+			 smx->nnList[nCnt].iIndex = pqi->p;
+			 smx->nnList[nCnt].pPart = pqi->pPart;
+			 smx->nnList[nCnt].fDist2 = pqi->fKey;
+			 smx->nnList[nCnt].dx = pqi->dx;
+			 smx->nnList[nCnt].dy = pqi->dy;
+			 smx->nnList[nCnt].dz = pqi->dz;
+			 ++nCnt;
+		         } 
+		  if (pqi->id != pkd->idSelf) continue;
+		  if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
+		  /*pkd->pStore[pqi->p].fBall2 >= 0) continue; */
+		  if (pqi->fKey < h2) {
+		         pqn = pqi;
+			 h2 = pqn->fKey;
+		         }
+	          }
+		
+	     /*
+	     ** For periodic boundary conditions, make sure search ball has not
+	     ** exceeded half the spatial period. If it has, this probably means
+	     ** nSmooth is too large.
+	     */
+	     assert(!smx->bPeriodic ||
+		    ((lx == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lx*lx) &&
+		     (ly == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*ly*ly) &&
+		     (lz == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lz*lz)));
+	
+	     nSmoothed++;
+	     smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
+	     }
+	
 	/*
 	 ** Need to do a CACHE recombine (ie. finish up Smooth)
 	 ** to deliver info to particles on other processors.
@@ -1013,11 +1042,89 @@ void smSmooth(SMX smx,SMF *smf)
 	goto PrioqBuilt;
 
  DoneSmooth:
-	{
-	char debug[256];
-	sprintf(debug,"nSmoothed: %d, nLoop: %d\n",nSmoothed,nLoop);
-	mdlDiag(smx->pkd->mdl, debug);
-	}
+	for (pi=0;pi<nTree;++pi) {
+	        if (!TYPETest(&(p[pi]),TYPE_SMOOTHACTIVE) || p[pi].fBall2 > 0) continue;
+		/*
+		 ** Do a Ball Gather at r^2 = fBall2
+		 */
+ 	        fBall2 = smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft;
+		p[pi].fBall2 = fBall2;
+		p[pi].cpStart = 0;
+		cp = 0;
+		if (cp) {
+			nCnt = smBallGatherNP(smx,fBall2,p[pi].r,cp);
+			smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
+			/*
+			** Try a cache check to improve responsiveness.
+			*/
+			mdlCacheCheck(mdl);
+			}
+		else {
+			if (smx->bPeriodic) {
+				nCnt = smBallGather(smx,fBall2,p[pi].r);
+				}
+			else {
+				nCnt = smBallGatherNP(smx,fBall2,p[pi].r,ROOT);
+				}
+			/*
+			 ** Start non-local search.
+			 */
+			x = p[pi].r[0];
+			y = p[pi].r[1];
+			z = p[pi].r[2];
+			cp = ROOT;
+			id = -1;	/* We are in the LTT now ! */
+			while (1) {
+				if (id == pkd->idSelf) goto SkipLocal;
+				if (id >= 0) pkdn = mdlAquire(mdl,CID_CELL,cp,id);
+				else pkdn = &pkd->kdTop[cp];
+				if (pkdn->pUpper < 0) goto GetNextCell;
+				INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNextCell);
+				if (pkdn->iDim >= 0 || id == -1) {
+					if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
+					pkdLower(pkd,cp,id);
+					continue;
+					}
+				for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
+					pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
+					dx = sx - pPart->r[0];
+					dy = sy - pPart->r[1];
+					dz = sz - pPart->r[2];
+					fDist2 = dx*dx + dy*dy + dz*dz;
+					if (fDist2 <= fBall2) {
+						if(nCnt >= smx->nListSize)
+						    smGrowList(smx);
+						smx->nnList[nCnt].fDist2 = fDist2;
+						smx->nnList[nCnt].dx = dx;
+						smx->nnList[nCnt].dy = dy;
+						smx->nnList[nCnt].dz = dz;
+						smx->nnList[nCnt].pPart = pPart;
+						smx->nnList[nCnt].iIndex = pj;
+						smx->nnList[nCnt].iPid = id;
+						smx->pbRelease[nCnt++] = 1;
+						continue;
+						}
+					mdlRelease(mdl,CID_PARTICLE,pPart);
+					}
+			GetNextCell:
+				if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
+			SkipLocal:
+				pkdNext(pkd,cp,id);
+				if (pkdIsRoot(cp,id)) break;
+				}
+
+			smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
+			/*
+			 ** Release non-local particle pointers.
+			 */
+			for (i=0;i<nCnt;++i) {
+				if (smx->pbRelease[i]) {
+					mdlRelease(mdl,CID_PARTICLE,smx->nnList[i].pPart);
+					}
+				}
+			}
+		}
+	printf("nSmoothed: %d\n",nSmoothed);
 	}
 
 
@@ -1045,8 +1152,9 @@ void smReSmooth(SMX smx,SMF *smf)
 	    }
 	nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
 	for (pi=0;pi<nTree;++pi) {
-		if (!TYPEFilter(&(p[pi]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,
-						TYPE_SMOOTHACTIVE)) continue;
+	        if (!TYPEFilter(&(p[pi]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,
+				     TYPE_SMOOTHACTIVE)) continue;
+
 		/*
 		 ** Do a Ball Gather at the radius of the most distant particle
 		 ** which smSmooth sets in p[pi].fBall2.

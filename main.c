@@ -242,18 +242,7 @@ int main(int argc,char **argv)
 							   E,T,U,Eth,iSec,dWMax,dIMax,dEMax,dMultiEff);
 				}
 			}
-#ifdef TOUCHRUNG
-#ifdef GASOLINE
-		/* Setup initial information about who touches what rung */
-		if (msrFastGas(msr)) {
-			msrInitTimeSteps(msr,dTime,msrDelta(msr));
-			assert(msr->param.iMaxRung < 32);
-			msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_DensACTIVE );
-			msrBuildTree(msr,1,-1.0,1);
-			msrSmooth(msr,dTime,SMX_MARKDENSITY,1);
-			}
-#endif
-#endif
+
 		for (iStep=msr->param.iStartStep+1;iStep<=msrSteps(msr);++iStep) {
 			if (msrComove(msr)) {
 				msrSwitchTheta(msr,dTime);
@@ -474,26 +463,27 @@ int main(int argc,char **argv)
 			msrOutArray(msr,achFile,OUT_POT_ARRAY);
 			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Gravity");
 			msrInitDt(msr);
+			fprintf(stderr,"Initialized dt\n");
 			if (msr->param.bGravStep) {
+			        fprintf(stderr,"Adding GravStep dt\n");
 				msrGravStep(msr,dTime);
 				}
 			if (msr->param.bAccelStep) {
+			        fprintf(stderr,"Adding AccelStep dt\n");
 				msrAccelStep(msr,dTime);
 				}
-			msrDtToRung(msr,0,msrDelta(msr),1);
-			msrRungStats(msr);
 			}
 		if (msr->param.bDodtOutput) {
 			msrReorder(msr);
 			sprintf(achFile,achdtMask,msrOutName(msr),0);
-			msrReorder(msr);
 			msrOutArray(msr,achFile,OUT_DT_ARRAY);
+			msrDtToRung(msr,0,msrDelta(msr),1);
+			msrRungStats(msr);
 			}
 #ifdef GASOLINE				
 		if (msr->param.bDohOutput) {
 			msrReorder(msr);
 			sprintf(achFile,achHMask,msrOutName(msr),0);
-			msrReorder(msr);
 			msrOutArray(msr,achFile,OUT_H_ARRAY);
 			}
 		if (msr->param.bDoIonOutput) {

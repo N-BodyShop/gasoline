@@ -32,6 +32,8 @@ typedef struct smContext {
 	PKD pkd;
 	int nSmooth;
 	int bPeriodic;
+        int bLowhFix;
+        double dfBall2OverSoft2;
 	void (*fcnSmooth)(PARTICLE *,int,NN *,SMF *);
 	void (*fcnPost)(PARTICLE *,SMF *);
 	int *piMark;
@@ -432,7 +434,7 @@ typedef struct smContext {
 	}
 
 
-int smInitialize(SMX *,PKD,SMF *,int,int,int,int,int);
+int smInitialize(SMX *,PKD,SMF *,int,int,int,int,int,double);
 void smFinish(SMX,SMF *);
 void smSmooth(SMX,SMF *);
 void smMarkSmooth(SMX,SMF *, int);

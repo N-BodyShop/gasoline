@@ -1830,20 +1830,17 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pst->bndActive = outBnd.bndActive;
 		pst->bndTreeActive = outBnd.bndTreeActive;
 		/*
-		 ** Next determine the longest axis based on the active bounds.
+		 ** Next determine the longest axis 
 		 */
 		if (in->bDoSplitDimFind) {
 		  d = pst->iSplitDim;
 		  if (d==-1) dimsize = -1;
 		  else dimsize = (pst->bnd.fMax[d]-pst->bnd.fMin[d])*NEWSPLITDIMCUT;
-		  if(pst->bndActive.fMax[0] > pst->bndActive.fMin[0]) {
-		    for (j=0;j<3;++j) {
-			    if ((pst->bnd.fMax[j]-pst->bnd.fMin[j]) > dimsize) {
-			        d=j;
-				dimsize = (pst->bnd.fMax[d]-pst->bnd.fMin[d]);
-			        }
-			    }
-			
+		  for (j=0;j<3;++j) {
+		    if ((pst->bnd.fMax[j]-pst->bnd.fMin[j]) > dimsize) {
+		      d=j;
+		      dimsize = (pst->bnd.fMax[d]-pst->bnd.fMin[d]);
+		      }
 		    }
 		  }
 
@@ -2732,7 +2729,7 @@ void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 		(&in->smf)->pkd = pst->plcl->pkd;
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
-					 in->bSymmetric,in->iSmoothType,1);
+					 in->bSymmetric,in->iSmoothType,1,in->dfBall2OverSoft2);
 		smSmooth(smx,&in->smf);
 		smFinish(smx,&in->smf);
 		}
@@ -2756,7 +2753,7 @@ void pstMarkSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 		(&in->smf)->pkd = pst->plcl->pkd;
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
-					 in->bSymmetric,in->iSmoothType,0);
+					 in->bSymmetric,in->iSmoothType,0,0.0);
 		smMarkSmooth(smx,&in->smf,in->iMarkType);
 		smFinish(smx,&in->smf);
 		}
@@ -2780,7 +2777,7 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 		(&in->smf)->pkd = pst->plcl->pkd;
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
-					 in->bSymmetric,in->iSmoothType,0);
+					 in->bSymmetric,in->iSmoothType,0,in->dfBall2OverSoft2);
 		smReSmooth(smx,&in->smf);
 		smFinish(smx,&in->smf);
 		}
@@ -4558,7 +4555,7 @@ pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		SMX smx;
 
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
-					 in->bSymmetric,in->iSmoothType,0);
+					 in->bSymmetric,in->iSmoothType,0,0.0);
 		smQQSmooth(smx,&in->smf);
 		smFinish(smx,&in->smf);
 		}

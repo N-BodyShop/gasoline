@@ -118,6 +118,7 @@ struct parameters {
 	int    bGasDomainDecomp;
 	int    bFastGas;
 	double dFracFastGas;
+	double dhMinOverSoft;
 	int    bDoGas;
 	int    bUV;
 	int    bSN;

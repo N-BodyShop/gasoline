@@ -441,6 +441,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dFracFastGas",2,&msr->param.dFracFastGas,
 				sizeof(double),"fndd",
 				"<Fraction of Active Particles for Fast Gas> = 0.01");
+	msr->param.dhMinOverSoft = 0.0;
+	prmAddParam(msr->prm,"dhMinOverSoft",2,&msr->param.dhMinOverSoft,
+				sizeof(double),"hmin",
+				"<Minimum h as a fraction of Softening> = 0.0");
 	msr->param.dMassFracHelium = 0.25;
 	prmAddParam(msr->prm,"dMassFracHelium",2,&msr->param.dMassFracHelium,
 				sizeof(double),"hmf",
@@ -1164,7 +1168,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dFracNoDomainDimChoice: %g",msr->param.dFracNoDomainDimChoice);
 	fprintf(fp," bFastGas: %d",msr->param.bFastGas);
 	fprintf(fp," dFracFastGas: %g",msr->param.dFracFastGas);
-	fprintf(fp," bRungDD: %d",msr->param.bRungDD);
+        fprintf(fp," dhMinOverSoft: %g",msr->param.dhMinOverSoft);
+        fprintf(fp," bRungDD: %d",msr->param.bRungDD);
 	fprintf(fp," dRungDDWeight: %g ",msr->param.dRungDDWeight);
 #ifdef GROWMASS
 	fprintf(fp,"\n# GROWMASS: nGrowMass: %d",msr->param.nGrowMass);
@@ -2209,6 +2214,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
+	in.dfBall2OverSoft2 = 4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft;
 	if (msrComove(msr)) {
 		in.smf.H = csmTime2Hub(msr->param.csm,dTime);
 		in.smf.a = csmTime2Exp(msr->param.csm,dTime);
@@ -2260,6 +2266,7 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
+	in.dfBall2OverSoft2 = 4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft;
 	if (msrComove(msr)) {
 		in.smf.H = csmTime2Hub(msr->param.csm,dTime);
 		in.smf.a = csmTime2Exp(msr->param.csm,dTime);
@@ -4112,7 +4119,14 @@ void msrTopStepKDK(MSR msr,
 			}
 #endif
 		msrDtToRung(msr,iRung,dDelta,1);
-		if (iRung == 0) msrRungStats(msr);
+		if (iRung == 0) {
+		  /*
+		  msrReorder(msr);
+		  msrOutArray(msr,"test.dt",OUT_DT_ARRAY);
+		  msrActiveOrder(msr);
+		  */
+		  msrRungStats(msr);
+		  }
 		}
     if (msr->param.bVDetails) printf("Kick, iRung: %d\n", iRung);
     msrActiveRung(msr,iRung,0);
@@ -4140,7 +4154,6 @@ void msrTopStepKDK(MSR msr,
 		/* This Drifts everybody */
 		if (msr->param.bVDetails) printf("Drift, iRung: %d\n", iRung);
 		msrDrift(msr,dTime,0.5*dDelta);
-		/* JW: Changed this to be consistent (was dTime += 0.5*dDelta) */
 		dTime += 0.5*dDelta;
 		dStep += 1.0/(2 << iRung);
 		msrActiveRung(msr,iRung,0);

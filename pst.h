@@ -334,9 +334,10 @@ void pstBuildTree(PST,void *,int,void *,int *);
 /* PST_SMOOTH */
 struct inSmooth {
 	int nSmooth;
-    int bPeriodic;
+        int bPeriodic;
 	int bSymmetric;
 	int iSmoothType;
+        double dfBall2OverSoft2;
 	SMF smf;
 	};
 void pstSmooth(PST,void *,int,void *,int *);
@@ -665,6 +666,7 @@ struct inReSmooth {
 	int bPeriodic;
 	int bSymmetric;
 	int iSmoothType;
+        double dfBall2OverSoft2;
 	SMF smf;
 	};
 void pstReSmooth(PST,void *,int,void *,int *);

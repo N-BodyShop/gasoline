@@ -6,8 +6,8 @@
 CC = pgcc
 CC = gcc
 CC = cc
-EXE = pkdgrav
-#EXE = gasoline
+#EXE = pkdgrav
+EXE = gasoline
 #CODEDEF = -DCOLLISIONS -DSLIDING_PATCH
 #CODEDEF = -DSUPERCOOL
 #CODEDEF = -DGROWMAS
