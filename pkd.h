@@ -341,7 +341,7 @@ int pkdCurrRung(PKD pkd, int iRung);
 void pkdDensityStep(PKD pkd, double dEta, double
 		    dRhoFac);
 void pkdAccelStep(PKD pkd, double dEta, double dVelFac, double
-		     dAccFac);
+		     dAccFac, int bEpsVel, int bSqrtPhi);
 int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int
 		bAll);
 void pkdInitDt(PKD pkd, double dDelta);

@@ -2499,7 +2499,8 @@ pkdDensityStep(PKD pkd, double dEta, double dRhoFac)
 
 
 void
-pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac)
+pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac, int
+	     bEpsVel, int bSqrtPhi)
 {
     int i;
     double vel;
@@ -2508,20 +2509,28 @@ pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac)
     double dT;
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
-		if(pkd->pStore[i].iActive) {
-			vel = 0;
+	if(pkd->pStore[i].iActive) {
+	    vel = 0;
             acc = 0;
-			for(j = 0; j < 3; j++) {
-				vel += pkd->pStore[i].v[j]*pkd->pStore[i].v[j];
+	    for(j = 0; j < 3; j++) {
+		vel += pkd->pStore[i].v[j]*pkd->pStore[i].v[j];
                 acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
-				}
-			vel = sqrt(vel)*dVelFac;
-			acc = sqrt(acc)*dAccFac;
-			dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
-			if(dT < pkd->pStore[i].dt)
-				pkd->pStore[i].dt = dT;
-			}
 		}
+	    vel = sqrt(vel)*dVelFac;
+	    acc = sqrt(acc)*dAccFac;
+	    dT = FLOAT_MAXVAL;
+	    if(bEpsVel)
+		dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
+	    if(bSqrtPhi) {
+		double dtemp =
+		    dEta*3.5*sqrt(dAccFac*fabs(pkd->pStore[i].fPot))/acc;
+		if(dtemp < dT)
+		    dT = dtemp;
+		}
+	    if(dT < pkd->pStore[i].dt)
+		pkd->pStore[i].dt = dT;
+	    }
+	}
     }
 
 int

@@ -404,6 +404,8 @@ struct inAccelStep {
     double dEta;
     double dVelFac;
     double dAccFac;
+    int bEpsVel;
+    int bSqrtPhi;
     };
 void pstAccelStep(PST,void *,int,void *,int *);
 

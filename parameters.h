@@ -24,6 +24,8 @@ struct parameters {
 	int bKDK;
 	int bBinary;
 	int bEpsVel;
+	int bSqrtPhi;
+	int bISqrtRho;
 	int bNonSymp;
 	int bDoDensity;
 	int bSymCool;

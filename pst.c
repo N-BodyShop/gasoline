@@ -2392,7 +2392,8 @@ void pstAccelStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
 		}
 	else {
-		pkdAccelStep(plcl->pkd, in->dEta, in->dVelFac, in->dAccFac);
+		pkdAccelStep(plcl->pkd, in->dEta, in->dVelFac,
+			     in->dAccFac, in->bEpsVel, in->bSqrtPhi);
 		}
 	if (pnOut) *pnOut = 0;
 	}

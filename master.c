@@ -186,7 +186,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"<time step criterion>");
 	msr->param.bEpsVel = 1;
 	prmAddParam(msr->prm,"bEpsVel",0,&msr->param.bEpsVel,sizeof(int),
-				"ev", "<Epsilon on V timestepping>");
+				"ev", "<Epsilon on V (or sqrt(Eps/a)) timestepping>");
+	msr->param.bSqrtPhi = 0;
+	prmAddParam(msr->prm,"bSqrtPhi",0,&msr->param.bSqrtPhi,sizeof(int),
+				"sphi", "<Sqrt(Phi) on a timestepping>");
+	msr->param.bISqrtRho = 0;
+	prmAddParam(msr->prm,"bISqrtRho",0,&msr->param.bISqrtRho,sizeof(int),
+				"isrho", "<Sqrt(1/Rho) timestepping>");
 	msr->param.bNonSymp = 1;
 	prmAddParam(msr->prm,"bNonSymp",0,&msr->param.bNonSymp,sizeof(int),
 				"ns", "<Non-symplectic density stepping>");
@@ -661,6 +667,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dEta: %g",msr->param.dEta);
 	fprintf(fp," iMaxRung: %d",msr->param.iMaxRung);
 	fprintf(fp," bEpsVel: %d",msr->param.bEpsVel);
+	fprintf(fp," bSqrtPhi: %d",msr->param.bSqrtPhi);
+	fprintf(fp," bISqrtRho: %d",msr->param.bISqrtRho);
 	fprintf(fp," bNonSymp: %d",msr->param.bNonSymp);
 	fprintf(fp,"\n# bDoGravity: %d",msr->param.bDoGravity);
 	fprintf(fp," bFandG: %d",msr->param.bFandG);
@@ -2984,6 +2992,8 @@ void msrAccelStep(MSR msr, double dTime)
 	in.dVelFac = 1.0;
 	}
     in.dAccFac = 1.0/(a*a*a);
+    in.bEpsVel = msr->param.bEpsVel;
+    in.bSqrtPhi = msr->param.bSqrtPhi;
     pstAccelStep(msr->pst, &in, sizeof(in), NULL, NULL);
     }
 
@@ -3027,13 +3037,13 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 #ifdef COLLISIONS
 			assert(0); /* DKD multi-stepping unsupported for COLLISIONS */
 #endif
-			if(msr->param.bEpsVel) {
+			if(msr->param.bEpsVel || msr->param.bSqrtPhi) {
 			    msrInitAccel(msr);
 			    msrBuildTree(msr,0,dMass,0);
 			    msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			    msrAccelStep(msr, dTime);
 			    }
-			else {
+			if(msr->param.bISqrtRho) {
 			    msrBuildTree(msr,0,dMass,1);
 			    msrDensityStep(msr, dTime);
 			    }
@@ -3109,10 +3119,10 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 #ifdef HILL_STEP
 			msrHillStep(msr);
 #else
-			if(msr->param.bEpsVel) {
+			if(msr->param.bEpsVel || msr->param.bSqrtPhi) {
 			    msrAccelStep(msr, dTime);
 			    }
-			else {
+			if(msr->param.bISqrtRho) {
 			    msrBuildTree(msr,0,dMass,1);
 			    msrDensityStep(msr, dTime);
 			    }
@@ -3199,9 +3209,9 @@ void msrTopStepKDK(MSR msr,
 #ifdef HILL_STEP
 		msrHillStep(msr);
 #else
-		if(msr->param.bEpsVel)
+		if(msr->param.bEpsVel || msr->param.bSqrtPhi)
 		    msrAccelStep(msr, dTime);
-		else {
+		if(msr->param.bISqrtRho) {
 		    msrBuildTree(msr,0,dMass,1);
 		    msrDensityStep(msr, dTime);
 		    }
