@@ -215,6 +215,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_ACTIVETYPERUNG,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstActiveTypeRung,
 				  sizeof(struct inActiveType),sizeof(int));
+	mdlAddService(mdl,PST_SETTYPEFROMFILE,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSetTypeFromFile,
+				  sizeof(struct inSetTypeFromFile),sizeof(struct outSetTypeFromFile));
 	mdlAddService(mdl,PST_SETPARTICLETYPES,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetParticleTypes,
 				  sizeof(struct inSetParticleTypes),0);
@@ -411,6 +414,18 @@ pstAddServices(PST pst,MDL mdl)
 		      (void (*)(void *,void *,int,void *,int *))
 		      pstDumpFrame, sizeof(struct inDumpFrame),
 		      DF_NBYTEDUMPFRAME );
+	mdlAddService(mdl,PST_COM,pst,
+		      (void (*)(void *,void *,int,void *,int *))
+		      pstCOM, 0,
+		      sizeof(double)*12 );
+	mdlAddService(mdl,PST_COMBYTYPE,pst,
+		      (void (*)(void *,void *,int,void *,int *))
+		      pstCOMByType, sizeof(int),
+		      sizeof(double)*4 );
+	mdlAddService(mdl,PST_OLDESTSTAR,pst,
+		      (void (*)(void *,void *,int,void *,int *))
+		      pstOldestStar, 0,
+		      sizeof(double)*4 );
 #ifdef VOXEL
 	mdlAddService(mdl,PST_DUMPVOXEL,pst,
 		      (void (*)(void *,void *,int,void *,int *))
@@ -3912,6 +3927,27 @@ void pstActiveTypeRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = sizeof(int);
 	}
 
+void pstSetTypeFromFile(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inSetTypeFromFile *in = vin;
+	struct outSetTypeFromFile *out = vout, outtmp;
+	
+	mdlassert(pst->mdl,nIn == sizeof(struct inSetTypeFromFile));
+
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_SETTYPEFROMFILE,vin,nIn);
+		pstSetTypeFromFile(pst->pstLower,vin,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,&outtmp,pnOut);
+		assert(out->niOrder == outtmp.niOrder);
+		out->nSet += outtmp.nSet;
+		}
+	else {
+		pkdSetTypeFromFile(plcl->pkd,in->iSetMask,in->file,&out->niOrder,&out->nSet);
+		}
+
+	if (pnOut) *pnOut = sizeof(out);
+	}
 
 void pstSetParticleTypes(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -5184,6 +5220,82 @@ pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		dfRenderParticles( in, vout, p, pst->plcl->pkd->nLocal );
 		}
 	}
+
+void
+pstCOM(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+  double *com = vout;
+  int nOut = 0;
+
+        if (pst->nLeaves > 1) {
+		  double comtmp[12]; 
+		  int i;
+		  
+		  mdlReqService(pst->mdl,pst->idUpper,PST_COM,vin,nIn);
+		  
+		  pstCOM(pst->pstLower, vin,nIn, vout, pnOut);
+		  
+		  mdlGetReply(pst->mdl,pst->idUpper, &comtmp[0], &nOut);
+		  
+		  for (i=0;i<12;i++) com[i] += comtmp[i];
+		  }
+        else {
+                pkdCOM( pst->plcl->pkd, &com[0] );
+                if (pnOut) *pnOut = sizeof(double)*12;
+                }
+        }
+
+
+void
+pstCOMByType(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+  double *com = vout;
+  int *type = vin;
+  int nOut = 0;
+
+        if (pst->nLeaves > 1) {
+		  double comtmp[4]; 
+		  int i;
+		  
+		  mdlReqService(pst->mdl,pst->idUpper,PST_COMBYTYPE,vin,nIn);
+		  
+		  pstCOMByType(pst->pstLower, vin,nIn, vout, pnOut);
+		  
+		  mdlGetReply(pst->mdl,pst->idUpper, &comtmp[0], &nOut);
+		  
+		  for (i=0;i<4;i++) com[i] += comtmp[i];
+		  }
+        else {
+                pkdCOMByType( pst->plcl->pkd, *type, &com[0] );
+                if (pnOut) *pnOut = sizeof(double)*4;
+                }
+        }
+
+
+void
+pstOldestStar(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+  double *com = vout;
+  int nOut = 0;
+
+        if (pst->nLeaves > 1) {
+		  double comtmp[12]; 
+		  int i;
+		  
+		  mdlReqService(pst->mdl,pst->idUpper,PST_OLDESTSTAR,vin,nIn);
+		  
+		  pstOldestStar(pst->pstLower, vin,nIn, vout, pnOut);
+		  
+		  mdlGetReply(pst->mdl,pst->idUpper, &comtmp[0], &nOut);
+		  
+		  if (comtmp[3] < com[3]) for (i=0;i<4;i++) com[i] = comtmp[i];
+		  }
+        else {
+                pkdOldestStar( pst->plcl->pkd, &com[0] );
+                if (pnOut) *pnOut = sizeof(double)*4;
+                }
+        }
+
 
 #ifdef VOXEL
 void

@@ -164,6 +164,8 @@ typedef struct particle {
    msrAddDelParticles(); */
 #define TYPE_DELETED           (1<<12)
 
+#define TYPE_PHOTOGENIC        (1<<13)
+
 /* Combination Masks */
 #define TYPE_ALLACTIVE			(TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
 #define TYPE_ALL				(TYPE_GAS|TYPE_DARK|TYPE_STAR)
@@ -561,6 +563,7 @@ int pkdResetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask);
 int pkdCountType(PKD pkd, unsigned int iFilterMask, unsigned int iTestMask);
 int pkdActiveMaskRung(PKD pkd, unsigned int iSetMask, int iRung, int bGreater );
 int pkdActiveTypeRung(PKD pkd, unsigned int iTestMask, unsigned int iSetMask, int iRung, int bGreater);
+int pkdSetTypeFromFile(PKD pkd, int iSetMask, char *file, int *niOrder, int *nSet);
 
 void pkdSetParticleTypes(PKD pkd, int nSuperCool);
 void pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
@@ -649,3 +652,6 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
 #endif
 
 #endif
+void pkdCOM(PKD pkd, double *com);
+void pkdCOMByType(PKD pkd, int type, double *com);
+void pkdOldestStar(PKD pkd, double *com);

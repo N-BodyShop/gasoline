@@ -130,6 +130,7 @@ enum pst_service {
       PST_ACTIVEMASKRUNG,
       PST_ACTIVETYPERUNG,
       PST_SETPARTICLETYPES,
+	  PST_SETTYPEFROMFILE,
       PST_MARKSMOOTH,
       PST_RESMOOTH,
       PST_INITACCEL,
@@ -195,7 +196,10 @@ enum pst_service {
       PST_SIMPLESTARFORM,
 	  PST_SSFCREATESTARS,
       PST_DUMPFRAME,
-      PST_DUMPVOXEL
+      PST_DUMPVOXEL,
+      PST_COM,
+	  PST_COMBYTYPE,
+	  PST_OLDESTSTAR
       };
 
 void pstAddServices(PST,MDL);
@@ -778,6 +782,19 @@ void pstCountType(PST,void *,int,void *,int *);
 void pstActiveMaskRung(PST,void *,int,void *,int *);
 void pstActiveTypeRung(PST,void *,int,void *,int *);
 
+#define PST_SETTYPEFROMFILEMAXLEN 160
+struct inSetTypeFromFile {
+  int iSetMask;
+  char file[PST_SETTYPEFROMFILEMAXLEN];
+};
+
+struct outSetTypeFromFile {
+  int niOrder;
+  int nSet;
+};
+
+void pstSetTypeFromFile(PST,void *,int,void *,int *);
+
 struct inSetParticleTypes {
 	int nSuperCool;
 	};
@@ -1285,6 +1302,12 @@ void pstSimpleStarForm(PST,void *,int,void *,int *);
 
 /* Return is pixmap */
 void pstDumpFrame(PST,void *,int,void *,int *);
+
+void pstCOM(PST,void *,int,void *,int *);
+
+void pstCOMByType(PST,void *,int,void *,int *);
+
+void pstOldestStar(PST,void *,int,void *,int *);
 
 /* Return is pixmap */
 void pstDumpVoxel(PST,void *,int,void *,int *);

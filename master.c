@@ -5827,6 +5827,14 @@ int msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart) {
 					 msr->param.iMaxRung, msr->param.bVDetails,
 					 achFile );
 
+		/* Read in photogenic particle list */
+		if (msr->df->bGetPhotogenic) {
+		  achFile[0] = 0;
+		  sprintf(achFile,"%s/%s.photogenic",msr->param.achDataSubPath,
+				msr->param.achOutName);
+		  msrSetTypeFromFile( msr, achFile, TYPE_PHOTOGENIC );
+		}
+
 		if(!bRestart)
 			msrDumpFrame( msr, dTime, dStep );
                 return 1;
@@ -5860,12 +5868,26 @@ void msrDumpFrame(MSR msr, double dTime, double dStep)
 		}
 	else {
 		/* 2D Projection */
-		struct inDumpFrame in;
+	    struct inDumpFrame in;
 		void *Image; 
 		int nImage;
+		double com[12];
 
-		dfSetupFrame( msr->df, dTime, dStep, &in );
-		
+		if (msr->df->bGetCentreOfMass) {
+		  pstCOM(msr->pst, NULL, 0, &com[0], NULL);
+		  }
+
+		if (msr->df->bGetPhotogenic) {
+		  int type = TYPE_PHOTOGENIC;
+		  pstCOMByType(msr->pst, &type, sizeof(int), &com[0], NULL);
+		  }
+
+		if (msr->df->bGetOldestStar) {
+		  pstOldestStar(msr->pst, NULL, 0, &com[0], NULL);
+		  }
+
+		dfSetupFrame( msr->df, dTime, dStep, &com[0], &in );
+
 		Image = dfAllocateImage( in.nxPix, in.nyPix );
 		
 		pstDumpFrame(msr->pst, &in, sizeof(struct inDumpFrame), Image, &nImage );
@@ -7371,4 +7393,27 @@ int msrReadASCII(MSR msr, char *extension, int nDataPerLine, double *dDataOut)
 	if (dDataOut != NULL && msr->param.bVDetails) printf("Read %i lines from %s\n",i,achFile);
 	if (dDataOut == NULL) free(dData);
 	return i;
+	}
+
+/* Returns number set */
+int msrSetTypeFromFile(MSR msr, char *file, int iSetMask)
+{
+	FILE *fp;
+	struct inSetTypeFromFile in;
+	struct outSetTypeFromFile out;
+
+	in.iSetMask = iSetMask;
+	assert(strlen(file) < PST_SETTYPEFROMFILEMAXLEN);
+	strcpy( &(in.file[0]), file );
+
+	fp = fopen( file, "r" );
+	if (!fp) {
+	  fprintf(stderr,"ERROR: Could not open photogenic particle list file:%s\n",file);
+	  assert(0);
+	  }
+	fclose(fp);
+
+	pstSetTypeFromFile(msr->pst,&in,sizeof(in),&out,NULL);
+	
+	if (msr->param.bVDetails) printf("%d iOrder numbers read.  %d photogenic particles seleected.",out.niOrder,out.nSet);
 	}

@@ -1,8 +1,8 @@
 #ifndef DUMPFRAME_HINCLUDED
 #define DUMPFRAME_HINCLUDED
 
-#define DF_NXPIXMAX 1024
-#define DF_NYPIXMAX 1024
+#define DF_NXPIXMAX 1280
+#define DF_NYPIXMAX 1280
 /* PST */
 
 #ifdef USE_PNG
@@ -63,6 +63,16 @@ enum df_numbering {
 	DF_NUMBERING_TIME
 	};
 
+enum df_target {
+    DF_TARGET_USER,
+	DF_TARGET_COM_GAS,
+	DF_TARGET_COM_DARK,
+	DF_TARGET_COM_STAR,
+	DF_TARGET_COM_ALL,
+	DF_TARGET_OLDEST_STAR,
+	DF_TARGET_PHOTOGENIC
+    };
+
 /* PST */
 /* There is a common subset with framesetup that needs it's own structure -- parent class even */
 struct inDumpFrame {
@@ -89,6 +99,7 @@ struct inDumpFrame {
 	int bColMassWeight;
 	int bLogScale;
 	int bGasSph;
+    int iTarget;
 	int iRender;       
 	/* Render Particle interface */
 	int offsetp_r,offsetp_fMass,offsetp_fSoft,offsetp_fBall2,offsetp_iActive;
@@ -130,6 +141,7 @@ struct dfFrameSetup {
 	int bColMassWeight;
 	int bLogScale;
 	int bGasSph;
+    int iTarget;
 	double dGasSoftMul,dDarkSoftMul,dStarSoftMul;
 	int iRender;       /* Rendering */
         
@@ -167,6 +179,9 @@ struct DumpFrameContext {
 	double dTimeMod;
 	double dTimeLoop,dPeriodLoop;
 	int bLoop;
+    int bGetCentreOfMass;
+    int bGetOldestStar;
+    int bGetPhotogenic;
 
 	int iDimension; /* 2D Pixel or 3D Voxel */
 	int iEncode;
@@ -187,7 +202,7 @@ void dfParseOptions( struct DumpFrameContext *df, char * filename );
 
 void dfParseCameraDirections( struct DumpFrameContext *df, char * filename );
 
-void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, struct inDumpFrame *in );
+void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, double *com, struct inDumpFrame *in );
 
 void dfMergeImage( struct inDumpFrame *in, void *Image1, int *nImage1, void *Image2, int *nImage2 );
 void dfClearImage( struct inDumpFrame *in, void *Image, int *nImage );

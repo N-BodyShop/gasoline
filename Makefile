@@ -27,11 +27,11 @@ BASE_LD_FLAGS = $(PNG_LIB)
 
 
 #CC = ecc
-#CC = icc
+CC = icc
 #CC = gcc -Wall
 #CC = pgcc 
 #CC = gcc
-CC = cc
+#CC = cc
 EXE = pkdgrav
 #EXE = gasoline
 
@@ -53,12 +53,12 @@ CODE_DEF = -DGROWMASS
 #CODE_DEF = -DGASOLINE -DSTARFORM -DCHANGESOFT 
 #CODE_DEF = -DGASOLINE -DLARGEFBALL
 #CODE_DEF = -DGASOLINE -DSIMPLESF
-#CODE_DEF = -DGASOLINE
-#EXE = gasoline
+CODE_DEF = -DGASOLINE
+EXE = gasoline
 
-#CODE_DEF = 
+CODE_DEF = 
 EXE = pkdgrav
-	
+
 BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 
 #
@@ -69,9 +69,9 @@ NULL_MDL		= ../mdl/null
 
 #ev6 flags:
 #NULL_CFLAGS		= -O3 -g3 -fast -arch ev6 -I$(NULL_MDL) $(BASE_DEF)
-#NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(BASE_DEF)
+NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(BASE_DEF)
 #NULL_CFLAGS            = -fast -I$(NULL_MDL) $(BASE_DEF)
-NULL_CFLAGS		= -O -I$(NULL_MDL) $(BASE_DEF)
+NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(BASE_DEF)
 #NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF)
 #NULL_LD_FLAGS	= -Wl,-s
 NULL_LD_FLAGS	= $(BASE_LD_FLAGS)

@@ -105,6 +105,7 @@ int msrGetLock(MSR msr);
 int msrCheckForStop(MSR msr);
 void msrFinish(MSR);
 int msrReadASCII(MSR, char *, int, double *);
+int msrSetTypeFromFile(MSR msr, char *file, int type);
 double msrReadTipsy(MSR);
 void msrWriteTipsy(MSR,char *,double);
 void msrSetSoft(MSR msr,double);

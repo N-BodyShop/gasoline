@@ -194,7 +194,10 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     starp.u = T;
     starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in
 				       NewParticle() */
-    
+
+	/* NB: It is important that the star inherit special properties of the gas
+	   particle such as being a target for movies or other tracing
+	   Thus: Do not remove all the TYPE properties -- just the gas specific ones */
     TYPEReset(&starp, TYPE_GAS|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
     TYPESet(&starp, TYPE_STAR);
     TYPEReset(&starp, TYPE_NbrOfACTIVE); /* just a precaution */
@@ -300,6 +303,9 @@ void pkdSimpleStarForm(PKD pkd, double dRateCoeff, double dTMax, double dDenMin,
 				starp.fTimeForm = dTime;
 				starp.fBallMax = 0.0;
     
+				/* NB: It is important that the star inherit special properties of the gas
+				   particle such as being a target for movies or other tracing
+				   Thus: Do not remove all the TYPE properties -- just gas specific ones */
 				TYPEReset(&starp, TYPE_GAS);
 				TYPESet(&starp, TYPE_STAR);
 

@@ -134,9 +134,9 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 	double vec[3];
 	double norm[3];
 
-    in->r[0] = fs->target[0];
-    in->r[1] = fs->target[1];
-    in->r[2] = fs->target[2];
+	in->r[0] = fs->target[0];
+	in->r[1] = fs->target[1];
+	in->r[2] = fs->target[2];
 	in->nxPix = fs->nxPix;
 	in->nyPix = fs->nyPix;
 	in->bPeriodic = fs->bPeriodic;
@@ -149,6 +149,7 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 	in->bColMassWeight = fs->bColMassWeight;
 	in->bLogScale = fs->bLogScale;
 	in->bGasSph = fs->bGasSph;
+	in->iTarget = fs->iTarget;
 	in->dGasSoftMul = fs->dGasSoftMul;
 	in->dDarkSoftMul = fs->dDarkSoftMul;
 	in->dStarSoftMul = fs->dStarSoftMul;
@@ -265,6 +266,8 @@ void dfParseOptions( struct DumpFrameContext *df, char * filename ) {
 	df->dMassStarMin = 0;
 	df->dMassStarMax = DBL_MAX;
 	df->nFrame = 0;
+	df->bGetCentreOfMass = 0;
+	df->bGetOldestStar = 0;
 
 	fp = fopen( filename, "r" );
 	if (fp==NULL) return;
@@ -481,6 +484,7 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 	fs.bColMassWeight = 0;
 	fs.bLogScale = 0;
 	fs.bGasSph = 1;
+	fs.iTarget = DF_TARGET_USER;
 	fs.dGasSoftMul = 1;
 	fs.dDarkSoftMul = 1;
 	fs.dStarSoftMul = 1;
@@ -535,8 +539,38 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 			}
 		else if (!strcmp( command, "target") ) {
 			nitem = sscanf( line, "%s %lf %lf %lf", command, &fs.target[0], &fs.target[1], &fs.target[2] );
-			assert( nitem == 4 );
-			}
+			if (nitem != 4) {
+			  nitem = sscanf( line, "%s %s", command, word );
+			  assert( nitem == 2);
+			  if (!strcmp( word, "gas") ) {
+				fs.iTarget = DF_TARGET_COM_GAS;
+ 			    df->bGetCentreOfMass = 1;
+  			    }
+			  else if (!strcmp( word, "dark") ) {
+				fs.iTarget = DF_TARGET_COM_DARK;
+			    df->bGetCentreOfMass = 1;
+			    }
+			  else if (!strcmp( word, "star") ) {
+				fs.iTarget = DF_TARGET_COM_STAR;
+			    df->bGetCentreOfMass = 1;
+			    }
+              else if (!strcmp( word, "all") ) {
+				fs.iTarget = DF_TARGET_COM_ALL;
+			    df->bGetCentreOfMass = 1;
+			    }
+			  else if (!strcmp( word, "oldeststar" ) ) {
+				fs.iTarget = DF_TARGET_OLDEST_STAR;
+			    df->bGetOldestStar = 1;
+			    }
+			  else if (!strcmp( word, "photogenic" ) ) {
+				fs.iTarget = DF_TARGET_PHOTOGENIC;
+			    df->bGetPhotogenic = 1;
+			    }
+			  else {
+				assert(0);
+			    }
+		      }
+		    }
 		else if (!strcmp( command, "eye") || !strcmp( command, "eye1") ) {
 			nitem = sscanf( line, "%s %lf %lf %lf", command, &fs.eye[0], &fs.eye[1], &fs.eye[2] );
 			if ( nitem != 4 ) {
@@ -735,7 +769,7 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 	fclose(fp);
 	}
 
-void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, struct inDumpFrame *vin ) {
+void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, double *com, struct inDumpFrame *vin ) {
 	struct dfFrameSetup fs;
 
 	int ifs = df->iFrameSetup;
@@ -795,19 +829,61 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
 	
 	if (df->bVDetails) printf("DF Interpolating at t=%g Setups: %i (t=%g) %i (t=%g)\n",dTime,ifs,df->fs[ifs].dTime,ifs+1,df->fs[ifs+1].dTime);
 
-	/* Nothing to interpolate? */
-	if (!ifs) {
-		dfProjection( vin, &df->fs[0] ); 
-		return;
-		}
+	fs = df->fs[ifs];
 
+	/* Nothing to interpolate? */
+	if (ifs) {
 	/* 
 	   Interpolate Eye position, FOV etc... 
 	   from df->fs[ifs].dTime <= dTime <= df->fs[ifs+1].dTime
 	   */
-	fs = df->fs[ifs];
+	  dfInterp( df, &fs, (dTime-fs.dTime)*df->rdt );
+	  }
 
-	dfInterp( df, &fs, (dTime-fs.dTime)*df->rdt );
+	switch (fs.iTarget) {
+	case DF_TARGET_COM_GAS:
+	  if (com[3]>0) {
+		fs.target[0] = com[0]/com[3];
+		fs.target[1] = com[1]/com[3];
+		fs.target[2] = com[2]/com[3];
+	  }
+	  break;
+	case DF_TARGET_COM_DARK:
+	  if (com[7]>0) {
+		fs.target[0] = com[4]/com[7];
+		fs.target[1] = com[5]/com[7];
+		fs.target[2] = com[6]/com[7];
+	  }
+	  break;
+	case DF_TARGET_COM_STAR:
+	  if (com[11]>0) {
+		fs.target[0] = com[8]/com[11];
+		fs.target[1] = com[9]/com[11];
+		fs.target[2] = com[10]/com[11];
+	  }
+	  break;
+	case DF_TARGET_COM_ALL:
+	  if (com[3]+com[7]+com[11]>0) {
+		fs.target[0] = (com[0]+com[4]+com[8])/(com[3]+com[7]+com[11]);
+		fs.target[1] = (com[1]+com[5]+com[9])/(com[3]+com[7]+com[11]);
+		fs.target[2] = (com[2]+com[6]+com[10])/(com[3]+com[7]+com[11]);
+	  }
+	  break;
+	case DF_TARGET_OLDEST_STAR:
+	  if (com[3] < FLT_MAX) {
+		fs.target[0] = com[0];
+		fs.target[1] = com[1];
+		fs.target[2] = com[2];
+	  }
+	  break;
+	case DF_TARGET_PHOTOGENIC:
+	  if (com[3] < FLT_MAX) {
+		fs.target[0] = com[0]/com[3];
+		fs.target[1] = com[1]/com[3];
+		fs.target[2] = com[2]/com[3];
+	  }
+	  break;
+	}
 
     dfProjection( vin, &fs ); 
     }
@@ -1621,3 +1697,4 @@ void dfFinishFrame( struct DumpFrameContext *df, double dTime, double dStep, str
         df->dStep = df->dStep + df->dDumpFrameStep;
 
 	}
+  

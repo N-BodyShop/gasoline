@@ -4431,6 +4431,35 @@ pkdActiveTypeRung(PKD pkd, unsigned iTestMask, unsigned iSetMask, int iRung, int
     return nActive;
     }
 
+int pkdSetTypeFromFile(PKD pkd, int iSetMask, char *file, int *pniOrder, int *pnSet)
+{
+  PARTICLE *p;
+  int niOrder = 0, nSet = 0;
+  int iOrder, nRet, i;
+  FILE *fp;
+
+  fp = fopen( file, "r" );
+  assert( fp != NULL );
+
+  while ( (nRet=fscanf( fp, "%d\n", &iOrder )) == 1 ) {
+	niOrder++;
+	for(i=0;i<pkdLocal(pkd);++i) {
+	  p = &pkd->pStore[i];
+	  if (p->iOrder == iOrder) {
+		TYPESet(p,iSetMask);
+		nSet++;
+	  }
+	}
+  }
+
+  *pniOrder = niOrder;
+  *pnSet = nSet;
+
+  fclose(fp);
+  return nSet;
+}
+
+
 void pkdSetParticleTypes(PKD pkd, int nSuperCool)
 {
     PARTICLE *p;
@@ -5432,3 +5461,94 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo)
 	}
 #endif
 #endif /* NEED_VPRED */
+
+void
+pkdCOM(PKD pkd, double *com)
+{
+    int i;
+    int nLocal = pkdLocal(pkd);
+	double m;
+    
+	com[0] = 0;
+	com[1] = 0;
+	com[2] = 0;
+	com[3] = 0;
+	com[4] = 0;
+	com[5] = 0;
+	com[6] = 0;
+	com[7] = 0;
+	com[8] = 0;
+	com[9] = 0;
+	com[10] = 0;
+	com[11] = 0;
+
+    for (i=0;i<nLocal;++i) {
+	  m = pkd->pStore[i].fMass;
+	  if ( TYPETest(&pkd->pStore[i], TYPE_GAS) ) {
+		com[0] += m*pkd->pStore[i].r[0];
+		com[1] += m*pkd->pStore[i].r[1];
+		com[2] += m*pkd->pStore[i].r[2];
+		com[3] += m;
+		}
+	  else if ( TYPETest(&pkd->pStore[i], TYPE_DARK) ) {
+		com[4] += m*pkd->pStore[i].r[0];
+		com[5] += m*pkd->pStore[i].r[1];
+		com[6] += m*pkd->pStore[i].r[2];
+		com[7] += m;
+		}
+	  else if ( TYPETest(&pkd->pStore[i], TYPE_STAR) ) {
+		com[8] += m*pkd->pStore[i].r[0];
+		com[9] += m*pkd->pStore[i].r[1];
+		com[10] += m*pkd->pStore[i].r[2];
+		com[11] += m;
+		}
+  	  }
+    }
+
+void
+pkdCOMByType(PKD pkd, int type, double *com)
+{
+    int i;
+    int nLocal = pkdLocal(pkd);
+	double m;
+    
+	com[0] = 0;
+	com[1] = 0;
+	com[2] = 0;
+	com[3] = 0;
+
+    for (i=0;i<nLocal;++i) {
+	  if ( TYPETest(&pkd->pStore[i], type) ) {
+		printf("COM iOrder: %d\n",pkd->pStore[i].iOrder);
+		m = pkd->pStore[i].fMass;
+		com[0] += m*pkd->pStore[i].r[0];
+		com[1] += m*pkd->pStore[i].r[1];
+		com[2] += m*pkd->pStore[i].r[2];
+		com[3] += m;
+		}
+  	  }
+    }
+
+void
+pkdOldestStar(PKD pkd, double *com)
+{
+    int i;
+    int nLocal = pkdLocal(pkd);
+   
+	com[0] = 0;
+	com[1] = 0;
+	com[2] = 0;
+	com[3] = FLT_MAX;
+
+#if defined(STARFORM) || defined (SIMPLESF)
+    for (i=0;i<nLocal;++i) {
+	  if ( TYPETest(&pkd->pStore[i], TYPE_STAR) && pkd->pStore[i].fTimeForm < com[3]) {
+		com[0] = pkd->pStore[i].r[0];
+		com[1] = pkd->pStore[i].r[1];
+		com[2] = pkd->pStore[i].r[2];
+		com[3] = pkd->pStore[i].fTimeForm;
+		}
+  	  }
+#endif
+   }
+
