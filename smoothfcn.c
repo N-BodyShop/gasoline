@@ -1328,7 +1328,7 @@ void DivVort(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q = nnList[i].pPart;
 		r2 = nnList[i].fDist2*ih2;
 		DKERNEL(rs1,r2);
-		rs1 *= q->fMass/q->fDensity;
+		rs1 *= q->fMass/pDensity;
 
 		dx = nnList[i].dx;
 		dy = nnList[i].dy;
@@ -1375,7 +1375,7 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	        r2 = nnList[i].fDist2*ih2;
 			DKERNEL(rs1,r2);
 			rs1 *= fNorm;
-			rq = rs1 * q->fMass/q->fDensity;
+			rq = rs1 * q->fMass/pDensity;
 
 			dx = nnList[i].dx;
 			dy = nnList[i].dy;
@@ -1388,7 +1388,7 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 			if (TYPEQueryACTIVE(q)) {
 				/* q active */
-		        rp = rs1 * pMass/pDensity;
+				rp = rs1 * pMass/q->fDensity;
 				p->divv -= rq*dvdotdr;
 				q->divv -= rp*dvdotdr;
 				dv=vFac*(dvz*dy - dvy*dz);
@@ -1438,10 +1438,10 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		mdlassert(smf->pkd->mdl, TYPETest(q,TYPE_GAS));
 			if (!TYPEQueryACTIVE(q)) continue; /* neither active */
 
-	        r2 = nnList[i].fDist2*ih2;
+			r2 = nnList[i].fDist2*ih2;
 			DKERNEL(rs1,r2);
 			rs1 *=fNorm;
-			rp = rs1*pMass/pDensity;
+			rp = rs1*pMass/q->fDensity;
 
 			dx = nnList[i].dx;
 			dy = nnList[i].dy;
