@@ -584,6 +584,10 @@ double clTemperature( double Y_Total, double E ) {
   return E/(Y_Total*CL_Eerg_gm_degK3_2);
 }
 
+double clTemperaturePrimordial( CL *cl, double Y_HI, double Y_HeI, double Y_HeII, double E ) {
+	return clTemperature( 2*cl->Y_H - Y_HI + 3*cl->Y_He - 2*Y_HeI - Y_HeII,  E );
+	}
+
 /*-----------------------------------------------------------------
  *     Collisional Ionization rates
  *-----------------------------------------------------------------*/

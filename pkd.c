@@ -3008,6 +3008,27 @@ void pkdHomogSpheroid(PKD pkd)
 		}
 	}
 
+void pkdBodyForce(PKD pkd)
+{
+	PARTICLE *p;
+	int i,n;
+
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i) {
+		if (TYPEQueryACTIVE(&(p[i]))) {
+			if (p[i].r[2]>0) {
+				p[i].a[2] -= 1;
+				p[i].fPot += p[i].r[2];
+				}
+			else {
+				p[i].a[2] += 1;
+				p[i].fPot -= p[i].r[2];
+				}
+			}
+		}
+	}
+
 void pkdMiyamotoDisk(PKD pkd)
 {
 	PARTICLE *p;

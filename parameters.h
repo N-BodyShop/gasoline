@@ -53,6 +53,7 @@ struct parameters {
 	int bHernquistSpheroid;
 	int bNFWSpheroid;
 	int bHomogSpheroid;
+    int bBodyForce;
 	int bMiyamotoDisk;
 	int bRotFrame;
 	double dOmega;

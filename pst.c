@@ -2939,6 +2939,9 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (in->bHomogSpheroid) {
 			pkdHomogSpheroid(plcl->pkd);
 			}
+		if (in->bBodyForce) {
+			pkdBodyForce(plcl->pkd);
+			}
 		if (in->bMiyamotoDisk) {
 			pkdMiyamotoDisk(plcl->pkd);
 			}

@@ -686,6 +686,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bHomogSpheroid = 0;
 	prmAddParam(msr->prm,"bHomogSpheroid",0,&msr->param.bHomogSpheroid,
 				sizeof(int),"hspher","use/don't use galaxy Homog Spheroid = -homogspher");
+	msr->param.bBodyForce = 0;
+	prmAddParam(msr->prm,"bBodyForce",0,&msr->param.bBodyForce,
+				sizeof(int),"bodyforce","use/don't use body force = -bf");
 	msr->param.bMiyamotoDisk = 0;
 	prmAddParam(msr->prm,"bMiyamotoDisk",0,&msr->param.bMiyamotoDisk,
 				sizeof(int),"mdisk","use/don't use galaxy Miyamoto Disk = -mdisk");
@@ -1702,6 +1705,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bHernquistSpheroid: %d",msr->param.bHernquistSpheroid );
 	fprintf(fp," bNFWSpheroid: %d",msr->param.bNFWSpheroid );
 	fprintf(fp," bHomogSpheroid: %d",msr->param.bHomogSpheroid );
+	fprintf(fp," bBodyForce: %d",msr->param.bBodyForce );
 	fprintf(fp," bMiyamotoDisk: %d",msr->param.bMiyamotoDisk );
 	fprintf(fp,"\n# bRotFrame: %d",msr->param.bRotFrame);
 	fprintf(fp," dOmega: %g",msr->param.dOmega);
@@ -3161,7 +3165,8 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	 */
 	if (msr->param.bHeliocentric || msr->param.bLogHalo ||
 		msr->param.bHernquistSpheroid || msr->param.bNFWSpheroid ||
-		msr->param.bHomogSpheroid || msr->param.bMiyamotoDisk) {
+		msr->param.bHomogSpheroid || msr->param.bBodyForce ||
+        msr->param.bMiyamotoDisk) {
 		/*
 		 ** Only allow inclusion of solar terms if we are in Heliocentric 
 		 ** coordinates.
@@ -3175,6 +3180,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bHernquistSpheroid = msr->param.bHernquistSpheroid;
 		inExt.bNFWSpheroid = msr->param.bNFWSpheroid;
 		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
+		inExt.bBodyForce = msr->param.bBodyForce;
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
 		}
@@ -3194,6 +3200,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	if (msr->param.bPatch || msr->param.bSimpleGasDrag) {
 		inExt.bIndirect = inExt.bDoSun = inExt.bLogHalo =
 			inExt.bNFWSpheroid = inExt.bHernquistSpheroid =
+				inExt.bBodyForce =
 				inExt.bMiyamotoDisk = 0;
 #ifdef SLIDING_PATCH
 		if (msr->param.bPatch) {

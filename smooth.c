@@ -1043,10 +1043,12 @@ void smSmooth(SMX smx,SMF *smf)
 	     ** exceeded half the spatial period. If it has, this probably means
 	     ** nSmooth is too large.
 	     */
+#ifndef LARGEFBALL
 		assert(!smx->bPeriodic ||
 			   ((lx == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lx*lx) &&
 				(ly == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*ly*ly) &&
 				(lz == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lz*lz)));
+#endif
 
 		nSmoothed++;
 		smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);

@@ -444,6 +444,7 @@ struct inGravExternal {
 	int bHernquistSpheroid;
         int bNFWSpheroid;
 	int bHomogSpheroid;
+	int bBodyForce;
 	int bMiyamotoDisk;
 #ifdef ROT_FRAME
 	int bRotFrame;

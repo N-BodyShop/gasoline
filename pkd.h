@@ -566,6 +566,7 @@ void pkdLogHalo(PKD);
 void pkdHernquistSpheroid(PKD pkd);
 void pkdNFWSpheroid(PKD pkd);
 void pkdHomogSpheroid(PKD pkd);
+void pkdBodyForce(PKD pkd);
 void pkdMiyamotoDisk(PKD pkd);
 #ifdef ROT_FRAME
 void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);
