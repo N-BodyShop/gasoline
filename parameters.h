@@ -181,6 +181,10 @@ struct parameters {
 #ifdef STARFORM
 	STFM   stfm;
 	FB     fb;
+        SN sn;
+        double dtCoolingShutoff;
+        double dDeltaStarForm;
+        int iStarFormRung;
 #endif
 #ifdef GLASS
 	/*

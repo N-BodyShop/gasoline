@@ -9,6 +9,8 @@
 #include <math.h>
 #include <sys/stat.h>
 
+#define max(A,B) ((A) > (B) ? (A) : (B))
+
 #include <sys/param.h> /* for MAXPATHLEN and MAXHOSTNAMELEN, if available */
 #ifndef MAXPATHLEN
 #define MAXPATHLEN 256
@@ -695,26 +697,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bSphStep = 1;
 	prmAddParam(msr->prm,"bSphStep",0,&msr->param.bSphStep,sizeof(int),
 				"ss","<SPH timestepping>");
-#ifdef SUPERNOVA
-	msr->param.bSN = 0;
-	prmAddParam(msr->prm,"bSN",0,&msr->param.bSN,sizeof(int),"SN",
-				"read in a Supernova file = +SN");
-	msr->param.dSNRhoCut = 50.0;
-	prmAddParam(msr->prm,"dSNRhoCut",2,&msr->param.dSNRhoCut,
-				sizeof(double),"SNRho", "<SNRhoCut> = 50.0");
-	msr->param.dSNTMin = 0;
-	prmAddParam(msr->prm,"dSNTMin",2,&msr->param.dSNTMin,
-				sizeof(double),"SNTMin", "<SNTMin> = 0");
-	msr->param.dSNTMax = 1e20;
-	prmAddParam(msr->prm,"dSNTMax",2,&msr->param.dSNTMax,
-				sizeof(double),"SNRho", "<SNTMax> = 1e20");
-	msr->param.dSNMetalCut = 0.5;
-	prmAddParam(msr->prm,"dSNMetalCut",2,&msr->param.dSNMetalCut,
-				sizeof(double),"SNMetal", "<SNMetalCut> = 0.5");
-	msr->param.dSNHeatFraction = 0.1;
-	prmAddParam(msr->prm,"dSNHeatFraction",2,&msr->param.dSNHeatFraction,
-				sizeof(double),"SNHeat", "<SNHeatFraction> = 0.1");
-#endif
 	msr->param.bDoGas = 1;
 	prmAddParam(msr->prm,"bDoGas",0,&msr->param.bDoGas,sizeof(int),"gas",
 				"calculate gas/don't calculate gas = +gas");
@@ -871,9 +853,39 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dMaxStarMass", 2, &msr->param.stfm->dMaxStarMass,
 		    sizeof(double), "stMaxStarMass",
 		    "<Maximum amount of star mass a hybrid particle can contain = 0.0");
+	msr->param.stfm->dCStar = 0.1;
+	prmAddParam(msr->prm,"dCStar", 2, &msr->param.stfm->dCStar,
+		    sizeof(double), "stCStar",
+		    "<Star formation coefficient> = 0.1");
+	msr->param.stfm->dTempMax = 3.0e4;
+	prmAddParam(msr->prm,"dTempMax", 2, &msr->param.stfm->dTempMax,
+		    sizeof(double), "stTempMax",
+		    "<Maximum temperature at which star formation occurs> = 0.0");
+	msr->param.stfm->dSoftMin = 1.0;
+	prmAddParam(msr->prm,"dSoftMin", 2, &msr->param.stfm->dSoftMin,
+		    sizeof(double), "stSoftMin",
+		    "<Minimum softening for star formation> = 0.0");
+	msr->param.dtCoolingShutoff = 0.0;
+	prmAddParam(msr->prm,"dtCoolingShutoff", 2, &msr->param.dtCoolingShutoff,
+		    sizeof(double), "stTimeCoolIsOff",
+		    "<The time in years that cooling is shutoff because SN have ionized everything> = 30e6");
+	msr->param.dDeltaStarForm = msr->param.dDelta;
+	prmAddParam(msr->prm,"dDeltaStarForm", 2, &msr->param.dDeltaStarForm,
+		    sizeof(double), "dDeltaStarForm",
+		    "<Minimum SF timestep in years> = dDelta");
+	msr->param.iStarFormRung = 0;
+	prmAddParam(msr->prm,"iStarFormRung", 2, &msr->param.iStarFormRung,
+		    sizeof(double), "iStarFormRung",
+		    "<Star Formation Rung> = 0");
 
 /* supernova constants */
 	fbInitialize(&msr->param.fb);
+        snInitialize(&msr->param.sn);
+        snInitConstants(msr->param.sn);
+	msr->param.sn->dESN = 1e51;
+	prmAddParam(msr->prm,"dESN", 2, &msr->param.sn->dESN,
+		    sizeof(double), "snESN",
+		    "<Energy of supernova in ergs> = 1e51");
 
 #endif /* STARFORM */
 #endif /* GASOLINE */
@@ -1292,8 +1304,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.stfm->dDeltaT = msr->param.dDelta;
 	    /* convert to system units */
 	    msr->param.stfm->dPhysDenMin *= MHYDR/msr->param.stfm->dGmPerCcUnit;
+#define SECONDSPERYEAR   31557600.
+            msr->param.dtCoolingShutoff *= SECONDSPERYEAR/msr->param.dSecUnit;
+            if( prmSpecified(msr->prm, "dDeltaStarForm") )
+                msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
 
-	    stfmInitConstants(msr->param.stfm) ;
 
 	    msr->param.fb->dSecUnit = msr->param.dSecUnit;
 	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
@@ -1560,7 +1575,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 
 void msrLogParams(MSR msr,FILE *fp)
 {
-	double z;
+	double z, testDelta;
 	int i;
 
 #ifdef __DATE__
@@ -1778,10 +1793,39 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# Star Formation: bStarForm: %d",msr->param.bStarForm);
 	fprintf(fp," bFeedBack: %d",msr->param.bFeedBack);	
 	fprintf(fp," dOverDenMin: %g",msr->param.stfm->dOverDenMin);
+	fprintf(fp," dPhysDenMin: %g",msr->param.stfm->dPhysDenMin);
 	fprintf(fp," dStarEff: %g",msr->param.stfm->dStarEff);
+	fprintf(fp," dCStar: %g",msr->param.stfm->dCStar);
+	fprintf(fp," dTempMax: %g",msr->param.stfm->dTempMax);
+	fprintf(fp," dSoftMin: %g",msr->param.stfm->dSoftMin);
 	fprintf(fp," dMinMassFrac: %g",msr->param.stfm->dMinMassFrac);
 	fprintf(fp," dMinGasMass: %g",msr->param.stfm->dMinGasMass);
 	fprintf(fp," dMaxStarMass: %g",msr->param.stfm->dMaxStarMass);
+	fprintf(fp," dESN: %g",msr->param.sn->dESN);
+	fprintf(fp," dtCoolingShutoff: %g = %g yrs",
+                msr->param.dtCoolingShutoff,
+                msr->param.dSecUnit*msr->param.dtCoolingShutoff/SECONDSPERYEAR);
+        for ( testDelta = msr->param.dDelta; 
+            testDelta >= msr->param.dDeltaStarForm && 
+            msr->param.dDeltaStarForm != 0.0; testDelta *= 0.5 ){
+                    if ( !(prmSpecified(msr->prm,"iStarFormRung")) )
+                        msr->param.iStarFormRung++;
+                    }
+        if ( testDelta <= msr->param.dDelta ){ 
+            fprintf(fp," dDeltaStarForm (set): %g, effectively: %g = %g yrs, iStarFormRung: %i",
+                    msr->param.dDeltaStarForm, testDelta,
+                    testDelta*msr->param.dSecUnit/SECONDSPERYEAR,
+                    msr->param.iStarFormRung );
+            msr->param.dDeltaStarForm = testDelta;
+            }
+        else if ( msr->param.dDeltaStarForm == 0.0 ) {
+            fprintf(fp," dDeltaStarForm (set): %g, effectively: 0.0 = 0.0 yrs, iStarFormRung: maxRung",
+                    msr->param.dDeltaStarForm );
+            msr->param.iStarFormRung = msr->param.iMaxRung;
+            }
+        else {
+            fprintf(fp," dDeltaStarForm (set): %g, effectively:  NO STARS WILL FORM", msr->param.dDeltaStarForm);
+            }
 #endif
 #ifdef SIMPLESF
 	fprintf(fp,"\n# SSF: bStarForm: %d",msr->param.bStarForm);
@@ -2949,6 +2993,8 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 #endif
 #ifdef STARFORM
         in.smf.dMinMassFrac = msr->param.stfm->dMinMassFrac;
+        in.smf.dtCoolingShutoff = msr->param.dtCoolingShutoff;
+	in.smf.dTime = dTime;
 #endif
 #ifdef COLLISIONS
 	in.smf.dCentMass = msr->param.dCentMass; /* for Hill sphere checks */
@@ -4620,6 +4666,44 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 	return(out.dMass);
 	}
 
+void msrMassMetalsEnergyCheck(MSR msr,double *dTotMass, 
+        double *dTotMetals, double *dTotEnergy,char *pszWhere)
+{
+	struct outMassMetalsEnergyCheck out;
+	
+#ifdef GROWMASS
+	out.dTotMass = 0.0;
+#else
+#ifndef SUPPRESSMASSCHECKREPORT      
+	if (msr->param.bVDetails) puts("doing mass check...");
+#endif
+	pstMassMetalsEnergyCheck(msr->pst,NULL,0,&out,NULL);
+	if (*dTotMass < 0.0) {}
+	else {
+            if ( fabs(*dTotMass - out.dTotMass) > 1e-12*(*dTotMass) ) {
+		printf("ERROR: Mass not conserved (%s): %.15e != %.15e!\n",
+			   pszWhere,*dTotMass,out.dTotMass);
+		}
+            /* Commented out because metals are almost conserved.  Error
+             * comes because some of the gas mass gets converted into stars
+             * so conservation error is reported as a net loss in metals
+             * Remaining metals are in stars
+            if ( fabs(*dTotMetals - out.dTotMetals) > 1e-12*(*dTotMetals) ) {
+		printf("ERROR: Metal mass not conserved (%s): %.15e != %.15e!\n",
+			   pszWhere,*dTotMetals,out.dTotMetals);
+		}*/
+            if ( fabs(*dTotEnergy - out.dTotEnergy*msr->param.dDeltaStarForm) > 1e-12*(*dTotEnergy) ) {
+		printf("ERROR: SN Energy not conserved (%s): %.15e != %.15e!\n",
+			   pszWhere,*dTotEnergy,out.dTotEnergy*msr->param.dDeltaStarForm);
+		}
+            }
+#endif
+        *dTotMass = out.dTotMass;
+        *dTotMetals = out.dTotMetals;
+        *dTotEnergy = out.dTotEnergy;
+        return;
+	}
+
 void
 msrInitStep(MSR msr)
 {
@@ -4987,7 +5071,6 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 			    msrActiveRung(msr, iRung, 0);
 			    msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
                             }
-			  if (msr->param.bSN) msrAddSupernova(msr, dTime);
 			  }
 			}
 #endif
@@ -5098,7 +5181,6 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			       msrSphViscosityLimiter(msr, dTime);
 			       msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
 			       }
-  		           if (msr->param.bSN) msrAddSupernova(msr, dTime);
 			   }
 		}
 #endif
@@ -5235,6 +5317,10 @@ void msrTopStepKDK(MSR msr,
 #ifdef SIMPLESF
 		msrSimpleStarForm(msr, dTime, dDelta);
 #endif
+                /* only form stars at user defined intervals */
+                if ( iKickRung <= msr->param.iStarFormRung )
+                    msrFormStars(msr, dTime, max(dDelta,msr->param.dDeltaStarForm));
+
 		/* 
 		 ** Dump Frame
 		 */
@@ -5246,6 +5332,7 @@ void msrTopStepKDK(MSR msr,
 		/* 
 		 ** Calculate Forces (if required)
 		 */
+                msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 		msrActiveMaskRung(msr,TYPE_ACTIVE,iKickRung,1);
 		if (msr->nActive) {
 			msrDomainDecomp(msr,iKickRung,1);
@@ -5351,7 +5438,6 @@ void msrTopStepKDK(MSR msr,
 			        }
 
 				msrBallMax(msr,iKickRung,1);
-				if (msr->param.bSN) msrAddSupernova(msr, dTime);
 				}
 #endif /* GASOLINE */
 			}
@@ -5620,8 +5706,6 @@ void msrInitSph(MSR msr,double dTime)
 				msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1); 
 		        }
 
-                if (msr->param.bSN) msrAddSupernova(msr, dTime);
-
    	        msrUpdateuDot(msr,dTime,0.5*msr->param.dDelta,0);
 		}
 
@@ -5642,7 +5726,7 @@ void msrInitCooling(MSR msr)
 	in.dSecUnit = msr->param.dSecUnit;
 	in.dKpcUnit = msr->param.dKpcUnit;
 	in.z = 60.0; /*dummy value*/
-	in.dTime = 0; /* dummy value */
+	in.dTime = 0.0; /* dummy value */
 	in.CoolParam = msr->param.CoolParam;
 
 	pstInitCooling(msr->pst,&in,sizeof(struct inInitCooling),NULL,NULL);
@@ -5701,141 +5785,9 @@ void msrSphViscosityLimiter(MSR msr, double dTime)
     pstSphViscosityLimiter(msr->pst,&in,sizeof(in),NULL,NULL);
     }
 
-#ifdef SUPERNOVA
-/* Fabulous SN heating */
-void msrInitSupernova(MSR msr) 
-{
-  /* Old structure */
-  /*    struct { double z; double t; double dt; double Ecl; double EVol; double EclVol; } *data; */
-  /* New Menci files structure */
-    struct { double z; double t; double junk; double Msun_yr_Vol_Total; double Msun_yr_Vol_Ext; double Msun_yr_Vol_Int; } *data;
-    struct inCountSupernova in;
-    struct outCountSupernova out;
-    int i;
-    double fac;
-
-    msr->SNdata = NULL;
-    msr->nSN = msrReadASCII(msr, "SN", 6, NULL);
-    if (!msr->nSN) {
-         msr->param.bSN = 0;
-         }
-    else {
-         in.dRhoCut = msr->param.dSNRhoCut;
-         in.dTMin = msr->param.dSNTMin;
-         in.dTMax = msr->param.dSNTMax;
-	 in.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
-		msr->param.dMeanMolWeight;
-	 in.iGasModel = msr->param.iGasModel;
-         in.dMetal = msr->param.dSNMetalCut;
-         pstCountSupernova(msr->pst,&in,sizeof(struct inCountSupernova),&out,NULL);
-	 printf("Setup SN: Cluster: (%g/%g)  Non-Cluster: (%g/%g)  Total: %g\n",
-		out.dMassMetalRhoCut* msr->param.dMsolUnit,
-		out.dMassMetalTotal* msr->param.dMsolUnit,
-		out.dMassNonMetalRhoCut* msr->param.dMsolUnit,
-		out.dMassNonMetalTotal* msr->param.dMsolUnit,
-		out.dMassTotal* msr->param.dMsolUnit);
-
-	 /* Msun (baryons) per Mpc^3 comoving */
-	 assert(msr->param.csm->dOmegab>0.0);
-	 fac = msr->param.csm->dOmegab * 2.77536627e11 * pow(msr->param.csm->dHubble0,2.0);
-
-         data = malloc(sizeof(*data)*msr->nSN);
-  	 msr->nSN = msrReadASCII(msr, "SN", 6, (double *) data);
-         msr->SNdata = malloc(sizeof(struct SNDATA)*msr->nSN);
-
-	 for (i=0;i<msr->nSN;i++) {
-                msr->SNdata[i].z = data[i].z;
-
-		/* SFR M_sun per year per Mpc^3 comoving */
-		msr->SNdata[i].ECl = data[i].Msun_yr_Vol_Int
-		  /* -> Ergs per second per Mpc^3 (comoving) */
-		  * 1e51/31536000.0
-		  /* -> Ergs per second per Msun (baryons) */
-		  / fac
-		  /* -> Ergs per second (into baryons external to clusters) */
-		  * out.dMassNonMetalTotal * msr->param.dMsolUnit
-		  /* -> code units */
-		  / (msr->param.dErgPerGmUnit*(msr->param.dMsolUnit*MSOLG)/(msr->param.dSecUnit));
-
-		/* SFR M_sun per year per Mpc^3 comoving */
-		msr->SNdata[i].ENonCl = data[i].Msun_yr_Vol_Ext
-		  /* -> Ergs per second per Mpc^3 (comoving) */
-		  * 1e51/31536000.0
-		  /* -> Ergs per second per Msun (baryons) */
-		  / fac
-		  /* -> Ergs per second (into baryons external to clusters) */
-		  * out.dMassNonMetalTotal * msr->param.dMsolUnit
-		  /* -> code units */
-		  / (msr->param.dErgPerGmUnit*(msr->param.dMsolUnit*MSOLG)/(msr->param.dSecUnit));
-	        }
-
-         free(data);
-         }
-}
-
-void msrAddSupernova(MSR msr, double dTime) 
-{
-    struct SNDATA *SNd;
-    struct inCountSupernova in;
-    struct outCountSupernova out;
-    struct inAddSupernova inAdd;
-    double xx,a,z,ECl,ENonCl;
-    int i;
-
-    in.dRhoCut = msr->param.dSNRhoCut;
-    in.dTMin = msr->param.dSNTMin;
-    in.dTMax = msr->param.dSNTMax;
-    in.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
-		msr->param.dMeanMolWeight;
-    in.iGasModel = msr->param.iGasModel;
-    in.dMetal = msr->param.dSNMetalCut;
-    pstCountSupernova(msr->pst,&in,sizeof(struct inCountSupernova),&out,NULL);
-    printf("Add SN: Cluster: (%g/%g)  Non-Cluster: (%g/%g)  Total: %g\n",
-		out.dMassMetalRhoCut* msr->param.dMsolUnit,
-		out.dMassMetalTotal* msr->param.dMsolUnit,
-		out.dMassNonMetalRhoCut* msr->param.dMsolUnit,
-		out.dMassNonMetalTotal* msr->param.dMsolUnit,
-		out.dMassTotal* msr->param.dMsolUnit);
-
-    if (out.dMassMetalRhoCut == 0 || out.dMassNonMetalRhoCut==0) return;
-
-    a = csmTime2Exp(msr->param.csm,dTime);
-    z = 1/a - 1;
-
-    SNd = msr->SNdata;
-    for ( i=0; i < msr->nSN && z <= SNd->z ; i++,SNd++ );
-    
-    if (i == 0 || i == msr->nSN) return;
-
-    inAdd.dRhoCut = msr->param.dSNRhoCut;
-    inAdd.dTMin = msr->param.dSNTMin;
-    inAdd.dTMax = msr->param.dSNTMax;
-    inAdd.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
-		msr->param.dMeanMolWeight;
-    inAdd.iGasModel = msr->param.iGasModel;
-    inAdd.dMetal = msr->param.dSNMetalCut;
-
-    xx = log((1+z)/(1+(SNd-1)->z))/log((1+SNd->z)/(1+(SNd-1)->z));
-    ECl = pow((SNd-1)->ECl,1-xx)*pow(SNd->ECl,xx)* msr->param.dSNHeatFraction;
-    ENonCl = pow((SNd-1)->ENonCl,1-xx)*pow(SNd->ENonCl,xx)* msr->param.dSNHeatFraction;
-
-    inAdd.dPdVMetal = (1/out.dMassMetalRhoCut)*ECl;
-    inAdd.dPdVNonMetal = (1/out.dMassNonMetalRhoCut)*ENonCl;
-
-    printf("SN Energy (erg per s)  Cluster: %g Non-Cluster: %g\n", 
-	   ECl*(msr->param.dErgPerGmUnit*(msr->param.dMsolUnit * MSOLG)/(msr->param.dSecUnit)),
-	   ENonCl*(msr->param.dErgPerGmUnit*(msr->param.dMsolUnit * MSOLG)/(msr->param.dSecUnit)));
-
-    pstAddSupernova(msr->pst,&inAdd,sizeof(struct inAddSupernova),NULL,NULL);
-}
-#else
-void msrInitSupernova(MSR msr) { }
-void msrAddSupernova(MSR msr, double dTime) { }
-#endif
-
 #endif /* GASOLINE */
 
-void msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart) {
+int msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart) {
 	LCL *plcl = &msr->lcl;
 	char achFile[160];
 	
@@ -5855,7 +5807,8 @@ void msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart) {
 
 		if(!bRestart)
 			msrDumpFrame( msr, dTime, dStep );
-		}
+                return 1;
+		} else { return 0; }
 	}
 
 void msrDumpFrame(MSR msr, double dTime, double dStep)
@@ -5907,14 +5860,15 @@ void msrDumpFrame(MSR msr, double dTime, double dStep)
 		}
 	}
 
-void msrFormStars(MSR msr, double dTime)
+void msrFormStars(MSR msr, double dTime, double dDelta)
 {
 #ifdef STARFORM
     struct inFormStars in;
     struct outFormStars outFS;
     struct inFeedback inFB;
     struct outFeedback outFB;
-    double dMass = -1.0;
+    double dTotMass = -1.0, dTotMetals = -1.0, dTotEnergy = -1.0;
+    double dTotSNEnergy = 0.0;
     int i;
     int iDum;
 
@@ -5928,16 +5882,17 @@ void msrFormStars(MSR msr, double dTime)
     in.dTime = dTime;
     in.stfm = *msr->param.stfm;
     inFB.dTime = dTime;
-    inFB.dDelta = msr->param.dDelta;
+    inFB.dDelta = dDelta;
     inFB.fb  = *msr->param.fb;
+    inFB.sn  = *msr->param.sn;
     
     if (msr->param.bVDetails) printf("Form Stars ... ");
 
-    dMass = msrMassCheck(msr, -1.0, "Form Stars");
+    msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, &dTotEnergy, "Form Stars");
     
-    msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE);
+    msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
     msrDomainDecomp(msr, 0, 1);
-    msrBuildTree(msr,1,dMass,1);
+    msrBuildTree(msr,1,dTotMass,1);
     pstFormStars(msr->pst, &in, sizeof(in), &outFS, NULL);
     if (msr->param.bVDetails)
 		printf("%d Stars formed with mass %g, %d gas deleted\n",
@@ -5975,7 +5930,7 @@ void msrFormStars(MSR msr, double dTime)
      * adjust particle numbers
      */
     msrAddDelParticles(msr);
-    msrMassCheck(msr, dMass, "Form stars: after particle adjustment");
+    msrMassCheck(msr, dTotMass, "Form stars: after particle adjustment");
 
 	dsec = msrTime() - sec;
 	printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
@@ -5992,13 +5947,16 @@ void msrFormStars(MSR msr, double dTime)
 					&outFB, &iDum);
 		if(msr->param.bVDetails) {
 			printf("Feedback totals: mass, energy, metalicity\n");
-			for(i = 0; i < FB_NFEEDBACKS; i++)
+			for(i = 0; i < FB_NFEEDBACKS; i++){
 				printf("feedback %d: %g %g %g\n", i,
 					   outFB.fbTotals[i].dMassLoss,
 					   outFB.fbTotals[i].dEnergy,
 					   outFB.fbTotals[i].dMassLoss != 0.0 ?
 					   outFB.fbTotals[i].dMetals
 					   /outFB.fbTotals[i].dMassLoss : 0.0);
+                                dTotMetals += outFB.fbTotals[i].dMetals;
+                                dTotSNEnergy += outFB.fbTotals[i].dEnergy;
+                                }
 			}
 
 
@@ -6014,7 +5972,8 @@ void msrFormStars(MSR msr, double dTime)
 		msrActiveType(msr, TYPE_STAR, TYPE_SMOOTHACTIVE);
 		assert(msr->nSmoothActive == msr->nStar);
 		msrSmooth(msr, dTime, SMX_DIST_SN_ENERGY, 1);
-		msrMassCheck(msr, dMass, "Form stars: after feedback");
+		msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, 
+                            &dTotSNEnergy, "Form stars: after feedback");
 
 		dsec = msrTime() - sec;
 		printf("Feedback Calculated, Wallclock: %f secs\n\n",dsec);

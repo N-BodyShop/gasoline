@@ -14,6 +14,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 {
 	SMX smx;
 	void (*initParticle)(void *) = NULL;
+	void (*initTreeParticle)(void *) = NULL;
 	void (*init)(void *) = NULL;
 	void (*comb)(void *,void *) = NULL;
 	int pi;
@@ -35,6 +36,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_NULL:
 		smx->fcnSmooth = NullSmooth;
 		initParticle = NULL; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
 		init = NULL; /* Cached copies */
 		comb = NULL;
 		smx->fcnPost = NULL;
@@ -42,6 +44,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_DENSITY:
 		smx->fcnSmooth = bSymmetric?DensitySym:Density;
 		initParticle = initDensity; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
 		init = initDensity; /* Cached copies */
 		comb = combDensity;
 		smx->fcnPost = NULL;
@@ -49,6 +52,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_MARKDENSITY:
 		smx->fcnSmooth = bSymmetric?MarkDensitySym:MarkDensity;
 		initParticle = initParticleMarkDensity; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
 		init = initMarkDensity; /* Cached copies */
 		comb = combMarkDensity;
 		smx->fcnPost = NULL;
@@ -56,6 +60,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_MARKIIDENSITY:
 		smx->fcnSmooth = bSymmetric?MarkIIDensitySym:MarkIIDensity;
 		initParticle = initParticleMarkIIDensity; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
 		init = initMarkIIDensity; /* Cached copies */
 		comb = combMarkIIDensity;
 		smx->fcnPost = NULL;
@@ -63,6 +68,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_MARK:
 		smx->fcnSmooth = NULL;
 		initParticle = NULL;
+		initTreeParticle = NULL;
 		init = initMark;
 		comb = combMark;
 		smx->fcnPost = NULL;
@@ -71,6 +77,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_MEANVEL:
 		smx->fcnSmooth = bSymmetric?MeanVelSym:MeanVel;
 		initParticle = initMeanVel;
+		initTreeParticle = NULL;
 		init = initMeanVel;
 		comb = combMeanVel;
 		smx->fcnPost = NULL;
@@ -80,6 +87,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_SPHPRESSURETERMS:
 		smx->fcnSmooth = bSymmetric?SphPressureTermsSym:SphPressureTerms;
 		initParticle = initSphPressureTermsParticle; /* Original Particle */
+		initTreeParticle = NULL;
 		init = initSphPressureTerms; /* Cached copies */
 		comb = combSphPressureTerms;
 		smx->fcnPost = NULL;
@@ -87,6 +95,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_DIVVORT:
 		smx->fcnSmooth = bSymmetric?DivVortSym:DivVort;
 		initParticle = initDivVort;
+		initTreeParticle = NULL;
 		init = initDivVort;
 		comb = combDivVort;
 		smx->fcnPost = NULL;
@@ -94,6 +103,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_SHOCKTRACK:
 		smx->fcnSmooth = bSymmetric?ShockTrackSym:ShockTrack;
 		initParticle = initShockTrack;
+		initTreeParticle = NULL;
 		init = initShockTrack;
 		comb = combShockTrack;
 		smx->fcnPost = NULL;
@@ -101,6 +111,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_HKPRESSURETERMS:
 		smx->fcnSmooth = bSymmetric?HKPressureTermsSym:HKPressureTerms;
 		initParticle = initHKPressureTermsParticle; /* Original Particle */
+		initTreeParticle = NULL;
 		init = initHKPressureTerms; /* Cached copies */
 		comb = combHKPressureTerms;
 		smx->fcnPost = NULL;
@@ -115,6 +126,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_SPHVISCOSITY:
 		smx->fcnSmooth = bSymmetric?SphViscositySym:SphViscosity;
 		initParticle = initSphViscosityParticle; /* Original Particle */
+		initTreeParticle = NULL;
 		init = initSphViscosity; /* Cached copies */
 		comb = combSphViscosity;
 		smx->fcnPost = NULL;
@@ -122,6 +134,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_HKVISCOSITY:
 		smx->fcnSmooth = bSymmetric?HKViscositySym:HKViscosity;
 		initParticle = initHKViscosityParticle; /* Original Particle */
+		initTreeParticle = NULL;
 		init = initHKViscosity; /* Cached copies */
 		comb = combHKViscosity;
 		smx->fcnPost = NULL;
@@ -131,6 +144,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
                 assert(bSymmetric == 0);
 	        smx->fcnSmooth = DeleteGas;
 		initParticle = NULL;
+		initTreeParticle = NULL;
 		init = NULL;
 		comb = NULL;
 		smx->fcnPost = NULL;
@@ -139,6 +153,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
                 assert(bSymmetric != 0);
 	        smx->fcnSmooth = DistDeletedGas;
 		initParticle = NULL;
+		initTreeParticle = NULL;
 		init = initDistDeletedGas;
 		comb = combDistDeletedGas;
 		smx->fcnPost = NULL;
@@ -147,9 +162,10 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
                 assert(bSymmetric != 0);
 	        smx->fcnSmooth = DistSNEnergy;
 		initParticle = NULL;
+		initTreeParticle = initTreeParticleDistSNEnergy;
 		init = initDistSNEnergy;
 		comb = combDistSNEnergy;
-		smx->fcnPost = NULL;
+		smx->fcnPost = postDistSNEnergy;
 		break;
 #endif
 #ifdef SIMPLESF
@@ -157,6 +173,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		assert(bSymmetric != 0);
 		smx->fcnSmooth = SimpleSF_Feedback;
 		initParticle = NULL;
+		initTreeParticle = NULL;
 		init = initSimpleSF_Feedback;
 		comb = combSimpleSF_Feedback;
 		smx->fcnPost = NULL;
@@ -169,6 +186,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		assert(bSymmetric != 0);
 		smx->fcnSmooth = FindRejects;
 		initParticle = initFindRejects;
+		initTreeParticle = NULL;
 		init = initFindRejects;
 		comb = combFindRejects;
 		smx->fcnPost = NULL;
@@ -178,6 +196,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		assert(bSymmetric == 0);
 		smx->fcnSmooth = CheckForEncounter;
 		initParticle = NULL;
+		initTreeParticle = NULL;
 		init = NULL;
 		comb = NULL;
 		smx->fcnPost = NULL;
@@ -187,6 +206,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		assert(bSymmetric == 0);
 		smx->fcnSmooth = CheckForCollision;
 		initParticle = NULL;
+		initTreeParticle = NULL;
 		init = NULL;
 		comb = NULL;
 		smx->fcnPost = NULL;
@@ -206,6 +226,13 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 			/*			if (bSmooth) pkd->pStore[pi].fBall2 = -1.0;*/
 			if (initParticle != NULL) {
 				initParticle(&pkd->pStore[pi]);
+				}
+			}
+                else if (TYPEQueryTREEACTIVE(&(pkd->pStore[pi]))) {
+			/*TYPEReset( &(pkd->pStore[pi]),TYPE_SMOOTHDONE );*/
+			/*			if (bSmooth) pkd->pStore[pi].fBall2 = -1.0;*/
+			if (initTreeParticle != NULL) {
+				initTreeParticle(&pkd->pStore[pi]);
 				}
 			}
 		}
@@ -285,9 +312,7 @@ void smFinish(SMX smx,SMF *smf, CASTAT *pcs)
 	 */
 	if (smx->fcnPost != NULL) {
 		for (pi=0;pi<pkd->nTreeActive;++pi) {
-			if (TYPEQuerySMOOTHACTIVE(&(pkd->pStore[pi]))) {
-				smx->fcnPost(&pkd->pStore[pi],smf);
-				}
+                        smx->fcnPost(&pkd->pStore[pi],smf);	
 			}
 		}
 	/*

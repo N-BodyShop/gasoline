@@ -310,12 +310,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef GASOLINE
 		p->u = 0.0;
 		p->uPred = 0.0;
-#ifdef SUPERNOVA
-		p->uSN = 0.0;
-		p->PdVSN = 0.0;
-#endif
 #ifdef STARFORM
 		p->fESNrate = 0.0;
+                p->fTimeCoolIsOffUntil = 0.0;
 #endif
 #ifdef SIMPLESF
 		p->fMassStar = 0;
@@ -491,6 +488,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				iSetMask = TYPE_STAR;
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
+				p->fMassForm = fTmp;
 				assert(p->fMass >= 0);
 				for (j=0;j<3;++j) {
 					xdr_float(&xdrs,&fTmp);
@@ -608,6 +606,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					p->v[j] = dvFac*sp.vel[j];
 					}
 				p->fMass = sp.mass;
+				p->fMassForm = sp.mass;
 				assert(p->fMass >= 0);
 				p->fSoft = sp.eps;
 #ifdef CHANGESOFT
@@ -2970,15 +2969,15 @@ void pkdNFWSpheroid(PKD pkd)
 	PARTICLE *p;
 	int i,n;
 
-	const double M_200 = 2.;	/* Units 1e12 Solar masses */
-	const double r_200 = 200;       /* Units kpc */
+	const double M_200 = 5.379e-6;	/* Units 1e12 Solar masses */
+	const double r_200 = .00153;       /* Units kpc */
 	const double G = 1;
 	/* Assuming G = 1 (this sets a timescale) */
 	/* TimeUnit = sqrt(kpc^3/(G*1e12 Msun)) = 1.1285945e+09 yr */
         /* Vunit = 2073.8081 km/s */
 
-        const double c = 11; /* NFW concentration (cf. Lucio) */
-	const double dSoft = 0.5; /* kpc */
+        const double c = 20.648; /* NFW concentration (cf. Lucio) */
+	const double dSoft = 5.379e-6; /* kpc */
 	const double eps = c*dSoft/r_200; 
 
 	/* r=r_200 (x=1, cx=c), M=M_200 */
@@ -3429,9 +3428,6 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				  if (p->uPred < 0) p->uPred = 0;
 				  if (p->u < 0) p->u = 0;
 #endif
-#ifdef SUPERNOVA
-				  p->uSN += p->PdVSN*duDelta;	  
-#endif
 				  }
 				}
 #else
@@ -3491,23 +3487,21 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef GASOLINE
 		p->u = cp.u;
 		p->uPred = cp.u;
+		assert(p->u >= 0);
 #ifdef COOLDEBUG
 		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
-		assert(p->u >= 0);
-#endif
-#ifdef SUPERNOVA
-                p->uSN = 0.0;
-                p->PdVSN = 0.0;
 #endif
 #ifdef STARFORM 
 		p->fESNrate = 0.0;
 		p->fTimeForm = cp.fTimeForm;
+		p->fMassForm = cp.fMassForm;
 		for (j=0;j<3;++j) {
 			p->rForm[j] = cp.rForm[j];
 			p->vForm[j] = cp.vForm[j];
 			}
 		p->fDensity = cp.fDenForm;
 		p->iGasOrder = cp.iGasOrder;
+                p->fTimeCoolIsOffUntil = cp.fTimeCoolIsOffUntil;
 #endif
 #ifdef SIMPLESF
 		p->fMassStar = cp.fMassStar;
@@ -3581,12 +3575,14 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 #endif
 #ifdef STARFORM
 		cp.fTimeForm = pkd->pStore[i].fTimeForm;
+		cp.fMassForm = pkd->pStore[i].fMassForm;
 		for (j=0;j<3;++j) {
 			cp.rForm[j] = pkd->pStore[i].rForm[j];
 			cp.vForm[j] = pkd->pStore[i].vForm[j];
 			}
 		cp.fDenForm = pkd->pStore[i].fDensity;
 		cp.iGasOrder = pkd->pStore[i].iGasOrder;
+                cp.fTimeCoolIsOffUntil = pkd->pStore[i].fTimeCoolIsOffUntil;
 #endif
 #ifdef SIMPLESF
 		cp.fMassStar = pkd->pStore[i].fMassStar;
@@ -3755,6 +3751,24 @@ double pkdMassCheck(PKD pkd)
 		}
 	return(dMass);
 	}
+
+void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, 
+                    double *dTotMetals, double *dTotEnergy) 
+{
+	int i;
+	*dTotMass=0.0;
+	*dTotMetals=0.0;
+	*dTotEnergy=0.0;
+
+	for (i=0;i<pkdLocal(pkd);++i) {
+		*dTotMass += pkd->pStore[i].fMass;
+                if ( TYPETest(&pkd->pStore[i], TYPE_GAS) ){
+                    *dTotMetals += pkd->pStore[i].fMass*pkd->pStore[i].fMetals;
+                    *dTotEnergy += pkd->pStore[i].fMass*pkd->pStore[i].fESNrate;
+                    }
+		}
+	}
+
 
 void
 pkdSetRung(PKD pkd, int iRung)
@@ -4412,132 +4426,6 @@ int pkdIsStarByOrder(PKD pkd,PARTICLE *p) {
 	}
 
 #ifdef GASOLINE
-#ifdef SUPERNOVA
-
-struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, double dTMax,
-					   double duTFac,int iGasModel)
-{
-    PARTICLE *p;
-    int i;
-    struct outCountSupernova ret;
-    double Temp;
-
-    ret.dMassMetalRhoCut=0;
-    ret.dMassMetalTotal=0;
-    ret.dMassNonMetalRhoCut=0;
-    ret.dMassNonMetalTotal=0;
-    ret.dMassTotal=0;
-
-    p = pkd->pStore;
-
-    if (dTMin>0 || dTMax < 1e20) {
-      for(i=0;i<pkdLocal(pkd);++i,++p) {
-	ret.dMassTotal += p->fMass;
-	if (pkdIsGas(pkd,p)) {
-	  switch (iGasModel) {
-	  case GASMODEL_COOLING:
-#ifndef NOCOOLING
-		  Temp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u );
-#endif
-	    break;
-	  default:
-	    Temp = duTFac*p->u;
-	  }
-	  if (p->fMetals > dMetal) {
-	    ret.dMassMetalTotal += p->fMass;
-	    if (p->fDensity > dRhoCut && Temp > dTMin && Temp <= dTMax)
-	      ret.dMassMetalRhoCut += p->fMass;
-	  }
-	  else {
-	    ret.dMassNonMetalTotal += p->fMass;
-	    if (p->fDensity > dRhoCut && Temp > dTMin && Temp <= dTMax)
-	      ret.dMassNonMetalRhoCut += p->fMass;
-	  }
-	}
-      }
-    }
-    else {
-      for(i=0;i<pkdLocal(pkd);++i,++p) {
-	ret.dMassTotal += p->fMass;
-	if (pkdIsGas(pkd,p)) {
-	  if (p->fMetals > dMetal) {
-	    ret.dMassMetalTotal += p->fMass;
-	    if (p->fDensity > dRhoCut)
-	      ret.dMassMetalRhoCut += p->fMass;
-	  }
-	  else {
-	    ret.dMassNonMetalTotal += p->fMass;
-	    if (p->fDensity > dRhoCut)
-	      ret.dMassNonMetalRhoCut += p->fMass;
-	  }
-	}
-      }
-    }
-    return ret;
-}
-
-void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, double dTMax, 
-		     double duTFac,int iGasModel, double dPdVMetal, double dPdVNonMetal)
-{
-    PARTICLE *p;
-    int i;
-    double Temp;
-
-    p = pkd->pStore;
-
-    if (dTMin>0 || dTMax < 1e20) {
-      for(i=0;i<pkdLocal(pkd);++i,++p) {
-	if (TYPEQueryACTIVE(p) && pkdIsGas(pkd,p)) {
-	  switch (iGasModel) {
-	  case GASMODEL_COOLING:
-#ifndef NOCOOLING
-		  Temp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u );
-#endif
-	    break;
-	  default:
-	    Temp = duTFac*p->u;
-	  }
-	  if (p->fMetals > dMetal) {
-	    if (p->fDensity > dRhoCut && Temp > dTMin && Temp <= dTMax) {
-	      if ((p->iOrder%1000)==0) printf("Cluster: %i fDensity %g u %g PdV %g SN_PdV %g\n",p->iOrder,p->fDensity,p->u,p->PdV, dPdVMetal);
-	      p->PdV += dPdVMetal;
-	      p->PdVSN = dPdVMetal;
-	    }
-	  }
-	  else {
-	    if (p->fDensity > dRhoCut && Temp > dTMin && Temp <= dTMax) {
-	      if ((p->iOrder%1000)==0) printf("Non-Cluster: %i fDensity %g u %g PdV %g SN_PdV %g\n",p->iOrder,p->fDensity,p->u,p->PdV, dPdVNonMetal);
-	      p->PdV += dPdVNonMetal;
-	      p->PdVSN = dPdVNonMetal;
-	    }
-	  }
-	}
-      }
-    }
-    else {
-      for(i=0;i<pkdLocal(pkd);++i,++p) {
-	if (TYPEQueryACTIVE(p) && pkdIsGas(pkd,p)) {
-	  if (p->fMetals > dMetal) {
-	    if (p->fDensity > dRhoCut) {
-	      if ((p->iOrder%1000)==0) printf("Cluster: %i fDensity %g u %g PdV %g SN_PdV %g\n",p->iOrder,p->fDensity,p->u,p->PdV, dPdVMetal);
-	      p->PdV += dPdVMetal;
-	      p->PdVSN = dPdVMetal;
-	    }
-	  }
-	  else {
-	    if (p->fDensity > dRhoCut) {
-	      if ((p->iOrder%1000)==0) printf("Non-Cluster: %i fDensity %g u %g PdV %g SN_PdV %g\n",p->iOrder,p->fDensity,p->u,p->PdV, dPdVNonMetal);
-	      p->PdV += dPdVNonMetal;
-	      p->PdVSN = dPdVNonMetal;
-	    }
-	  }
-	}
-      }
-    }
-}
-#endif
-
-
 
 void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasModel, int bUpdateY )
 {
@@ -4567,7 +4455,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i,++p) {
 		if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
-			if (bCool) {
+			if ( bCool  ) {
 				cp = p->CoolParticle;
 				E = p->u;
 #ifdef STARFORM
@@ -4576,25 +4464,21 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 #else
 				CoolIntegrateEnergyEPDRCode(cl, &cp, &E, p->PdV, p->fDensity, p->r, dt);
 #endif
-
+				mdlassert(pkd->mdl,E > 0);
 
 				p->uDot = (E - p->u)/duDelta;
-#ifdef SSFDEBUG
-			    if (p->iOrder==5514) printf("udot %i: %f %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta,p->PdV);
+#ifdef STARFORM
+                                if ((p->uDot < (p->fESNrate + p->PdV)) 
+                                    && (dTime < p->fTimeCoolIsOffUntil)) {
+                                        p->uDot = p->fESNrate + p->PdV;
+                                        }
 #endif
 #ifdef SIMPLESF 
 				if (dTime < p->fTimeForm) {
 					if (p->uDot<p->PdV) p->uDot = p->PdV;
-#ifdef SSFDEBUG
-					if (p->iOrder==5514) printf("reset udot %i: %f %f %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta,(E*cl->diErgPerGmUnit - p->u)/duDelta,p->PdV);
-#endif
 					}
 #endif
 
-#ifdef COOLDEBUG
-				if (E*cl->diErgPerGmUnit<1e-6*p->u || p->iOrder == 784461 || p->iOrder == 602270 || p->iOrder == 96299 || p->iOrder == 722701) 
-					fprintf(stderr,"udot error? %i: %g %g %g -> %g %i\n",p->iOrder,p->uPred,p->uDot,duDelta,p->u + p->uDot*duDelta,p->iRung);
-#endif
 				if (bUpdateY) p->CoolParticle = cp;
 				}
 			else { 

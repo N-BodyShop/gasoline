@@ -1,3 +1,4 @@
+/*#include <fenv.h>*/
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -46,6 +47,9 @@ int main(int argc,char **argv)
 	int i,iStep,iSec=0,iStop=0,nActive;
 
 	char achBaseMask[256];
+
+	/* code to make gasoline core dump if there is a floating point exception 
+	feenableexcept(FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);*/
 
 #ifdef TINY_PTHREAD_STACK
 	static int first = 1;
@@ -111,9 +115,6 @@ int main(int argc,char **argv)
 			|| msr->param.bStarForm) 
 		    msrInitCooling(msr);
 #endif
-#ifdef SUPERNOVA
-		if (msr->param.bSN) msrInitSupernova(msr);
-#endif
 #ifdef STARFORM
 		if (msr->param.bStarForm) /* dDelta is now determined */
 			msr->param.stfm->dDeltaT = msr->param.dDelta;
@@ -165,9 +166,9 @@ int main(int argc,char **argv)
 		/* 
 		 ** Dump Frame Initialization
 		 */
-		msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep, 1 );
 		/* Bring frame count up to correct place for restart. */
-		if(msr->df->dDumpFrameStep > 0) {
+		if( msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep, 1 )
+                    && msr->df->dDumpFrameStep > 0) {
 			while(msr->df->dStep + msr->df->dDumpFrameStep < iStep) {
 				msr->df->dStep += msr->df->dDumpFrameStep;
 				msr->df->nFrame++;
@@ -219,9 +220,6 @@ int main(int argc,char **argv)
 	if (msr->param.iGasModel == GASMODEL_COOLING ||
 		msr->param.bStarForm)
 		msrInitCooling(msr);
-#endif
-#ifdef SUPERNOVA
-	if (msr->param.bSN) msrInitSupernova(msr);
 #endif
 #ifdef STARFORM
 	if (msr->param.bStarForm) /* dDelta is now determined */
@@ -321,7 +319,6 @@ int main(int argc,char **argv)
 				else
 #endif
 				{
-				    msrFormStars(msr, dTime);
 				    msrTopStepKDK(msr,iStep-1,dTime,
 						  msrDelta(msr),0,0,1,
 						  &dMultiEff,&dWMax,&dIMax,
@@ -351,7 +348,6 @@ int main(int argc,char **argv)
 			else {
 				lSec = time(0);
 				msr->bDoneDomainDecomp = 0;
-				msrFormStars(msr, dTime);
 				msrTopStepDKD(msr,iStep-1,dTime,msrDelta(msr),&dMultiEff);
 				msrRungStats(msr);
 				msrCoolVelocity(msr,dTime,dMass); /* Supercooling if specified */
@@ -521,6 +517,10 @@ int main(int argc,char **argv)
 					strncat(achFile,".igasorder",256);
 					msrOutArray(msr,achFile,OUT_IGASORDER_ARRAY);
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".massform",256);
+					
+					msrOutArray(msr,achFile,OUT_MASSFORM_ARRAY);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
 					strncat(achFile,".rhoform",256);
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
@@ -682,7 +682,6 @@ int main(int argc,char **argv)
 			  sprintf(achFile,"%s.PdVvisc",msrOutName(msr));
 			  msrOutArray(msr,achFile,OUT_PDVVISC_ARRAY);
 			  }
-			if (msr->param.bSN) msrAddSupernova(msr, dTime);
 
 			if (msr->param.bSphStep) {
 		          fprintf(stderr,"Adding SphStep dt\n");

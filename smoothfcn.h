@@ -41,6 +41,8 @@ typedef struct smfParameters {
 #endif
 #ifdef STARFORM
         double dMinMassFrac;
+        double dtCoolingShutoff;
+	double dTime;
 #endif    
 #ifdef COLLISIONS
 	double dTime;
@@ -200,9 +202,11 @@ void DistDeletedGas(PARTICLE *, int, NN *, SMF *);
 void DeleteGas(PARTICLE *, int, NN *, SMF *);
 
 /* SMX_DIST_SN_ENERGY */
+void initTreeParticleDistSNEnergy(void *p1);
 void initDistSNEnergy(void *p1);
 void combDistSNEnergy(void *p1,void *p2);
-void DistSNEnergy(PARTICLE *, int, NN *, SMF *);
+void DistSNEnergy(PARTICLE *p, int, NN *, SMF *);
+void postDistSNEnergy(PARTICLE *p1, SMF *smf);
 
 #endif
 

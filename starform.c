@@ -28,7 +28,6 @@ void stfmInitialize(STFM *pstfm)
     stfm = (STFM) malloc(sizeof(struct stfmContext));
     assert(stfm != NULL);
     
-    stfm->bInitialized = 0;
     stfm->dPhysDenMin = 0;
     stfm->dOverDenMin = 0;
     stfm->dTempMax = 0;
@@ -45,7 +44,6 @@ void stfmInitialize(STFM *pstfm)
     }
 
 /*
-     Subroutine to initialize parameters dealing with star formation
      taken from TREESPH and modified greatly.
      Uses the following formula for the star formation rate:
 
@@ -53,18 +51,6 @@ void stfmInitialize(STFM *pstfm)
 
 */
 
-void stfmInitConstants(STFM stfm) 
-{
-    assert(stfm->dSecUnit != 0.0);
-    assert(stfm->dGmPerCcUnit != 0.0);
-    assert(stfm->dGmUnit != 0.0);
-    
-    stfm->dCStar = 0.1;
-    stfm->dTempMax = 3.0e4;
-    stfm->dSoftMin = 1.0;
-    
-    stfm->bInitialized = 1;
-    }
 
 void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 		   double dTime, /* current time */
@@ -86,6 +72,14 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     double l_jeans2;
     int small_jeans = 0;
     int j;
+    
+    /*  This version of the code has only three conditions unless 
+	-D SFCONDITIONS is set:
+	  converging flow (p->divv < 0)
+	  T < dTempMax
+	  density > dOverdenmin && density > dPhysDenMin
+	Anil - Nov. 2003
+    */
 
     /*
      * Is particle in convergent part of flow?
@@ -112,7 +106,11 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 
 	tcool = CoolSecondsToCodeTime( cl, tcool ); 
 
+#ifdef SFCONDITIONS
     if(tcool < 0.0 && T > stfm->dTempMax) return;
+#else
+    if(T > stfm->dTempMax) return;
+#endif /*SFCONDITIONS*/
     /*
      * Determine sound crossing time.
      */
@@ -122,12 +120,14 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * criteria that stars form if the Jean's length is less than the
      * softening
      */
+#ifdef SFCONDITIONS
     l_jeans2 = M_PI*p->c*p->c/p->fDensity*dCosmoFac;
     if (l_jeans2 < p->fSoft*p->fSoft*stfm->dSoftMin*stfm->dSoftMin) 
         small_jeans = 1;
 
     if (!small_jeans && tsound <= tdyn)
-        return;
+        return;*/
+#endif /*SFCONDITIONS*/
 
     /*
      * Determine if this particle satisfies all conditions.
@@ -182,6 +182,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 
     starp.fMass = dDeltaM;
     starp.fTimeForm = dTime;
+    starp.fMassForm = dDeltaM;
     starp.fBallMax = 0.0;
     /*
      * Save quantities
@@ -194,7 +195,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in
 				       NewParticle() */
     
-    TYPEReset(&starp, TYPE_GAS);
+    TYPEReset(&starp, TYPE_GAS|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
     TYPESet(&starp, TYPE_STAR);
     TYPEReset(&starp, TYPE_NbrOfACTIVE); /* just a precaution */
     

@@ -16,8 +16,8 @@ PNG_DEF =
 COOLING_OBJ = cooling_cosmo.o
 COOLING_DEF = -DCOOLING_COSMO
 
-COOLING_OBJ = cooling_planet.o
-COOLING_DEF = -DCOOLING_PLANET
+#COOLING_OBJ = cooling_planet.o
+#COOLING_DEF = -DCOOLING_PLANET
 
 #COOLING_OBJ = 
 #COOLING_DEF = -DNOCOOLING
@@ -26,11 +26,12 @@ COOLING_DEF = -DCOOLING_PLANET
 BASE_LD_FLAGS = $(PNG_LIB)
 
 
-CC = cc
+#CC = ecc
+#CC = icc
 #CC = gcc -Wall
 #CC = pgcc 
 #CC = gcc
-#CC = cc
+CC = cc
 #EXE = pkdgrav
 EXE = gasoline
 
@@ -51,8 +52,8 @@ CC_DEF =
 CODE_DEF = -DGASOLINE -DSTARFORM -DCHANGESOFT 
 #CODE_DEF = -DGASOLINE -DLARGEFBALL
 #CODE_DEF = -DGASOLINE -DSIMPLESF
-CODE_DEF = -DGASOLINE
-EXE = gasoline
+#CODE_DEF = -DGASOLINE
+#EXE = gasoline
 
 #CODE_DEF = 
 #EXE = pkdgrav
@@ -69,8 +70,8 @@ NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(BASE_DEF)
 #NULL_CFLAGS		= -O3 -g3 -fast -arch ev6 -I$(NULL_MDL) $(BASE_DEF)
 #NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(BASE_DEF)
 #NULL_CFLAGS            = -fast -I$(NULL_MDL) $(BASE_DEF)
-NULL_CFLAGS		= -O -I$(NULL_MDL) $(BASE_DEF)
-NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF)
+#NULL_CFLAGS		= -O -I$(NULL_MDL) $(BASE_DEF)
+#NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF)
 #NULL_LD_FLAGS	= -Wl,-s
 NULL_LD_FLAGS	= $(BASE_LD_FLAGS)
 NULL_XOBJ		= erf.o v_sqrt1.o
@@ -268,8 +269,8 @@ pvm:
 	mv -f $(EXE) $(XDIR)
 
 pthread:
-	cd $(PTHREAD_MDL); make "CC=$(CC)" "CFLAGS=$(CFLAGS)"
-	make $(EXE) "CFLAGS=$(PTHREAD_CFLAGS)" "LD_FLAGS=$(PTHREAD_LD_FLAGS)"\
+	cd $(PTHREAD_MDL); make "CC=$(CC)" "CFLAGS=$(PTHREAD_CFLAGS)"
+	make $(EXE).pthread "EXE=$(EXE).pthread" "CFLAGS=$(PTHREAD_CFLAGS)" "LD_FLAGS=$(PTHREAD_LD_FLAGS)"\
 		"MDL=$(PTHREAD_MDL)" "XOBJ=$(PTHREAD_XOBJ)" "LIBMDL=$(PTHREAD_LIBMDL)"
 
 pthread_dec:

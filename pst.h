@@ -18,6 +18,7 @@
 #ifdef STARFORM
 #include "starform.h"
 #include "feedback.h"
+#include "supernova.h"
 #endif
 
 typedef struct lclBlock {
@@ -108,6 +109,7 @@ enum pst_service {
       PST_ONENODEREADINIT,
       PST_SWAPALL,
       PST_MASSCHECK,
+      PST_MASSMETALSENERGYCHECK,
       PST_ACTIVETYPEORDER,
       PST_ACTIVEORDER,
       PST_SETRUNG,
@@ -186,8 +188,6 @@ enum pst_service {
       PST_INITCOOLING,
       PST_COOLTABLEREAD,
       PST_GROWMASS,
-      PST_COUNTSUPERNOVA,
-      PST_ADDSUPERNOVA,
       PST_CLEARTIMER,
       PST_BALLMAX,
       PST_FORMSTARS,
@@ -650,6 +650,13 @@ struct outMassCheck {
 	};
 void pstMassCheck(PST,void *,int,void *,int *);
 
+struct outMassMetalsEnergyCheck {
+	double dTotMass;
+        double dTotMetals;
+        double dTotEnergy;
+	};
+void pstMassMetalsEnergyCheck(PST,void *,int,void *,int *);
+
 struct inActiveTypeOrder {
         unsigned int iTestMask;
         };
@@ -888,43 +895,6 @@ struct inSetNParts {
 void pstSetNParts(PST, void *, int, void *, int *);
 
 #ifdef GASOLINE
-
-#ifdef SUPERNOVA
-
-struct inCountSupernova {
-        double dMetal;
-        double dRhoCut;
-        double dTMin;
-        double dTMax;
-        double dTuFac;
-        int iGasModel;
-};
-
-/* Defined in pkd.h 
-struct outCountSupernova {
-        double dMassMetalRhoCut;
-        double dMassMetalTotal;
-        double dMassNonMetalRhoCut;
-        double dMassNonMetalTotal;
-	double dMassTotal;
-	};*/
-
-void pstCountSupernova(PST, void *,int,void *,int *);
-
-struct inAddSupernova {
-        double dMetal;
-        double dRhoCut;
-        double dTMin;
-        double dTMax;
-        double dTuFac;
-        int iGasModel;
-        double dPdVMetal;
-        double dPdVNonMetal;
-        };
-
-void pstAddSupernova(PST, void *,int,void *,int *);
-
-#endif
 
 struct inGetGasPressure {
 	enum GasModel iGasModel; 
@@ -1269,6 +1239,7 @@ void pstFormStars(PST,void *,int,void *,int *);
 struct inFeedback
 {
     struct fbContext fb;
+    struct snContext sn;
     double dTime;
     double dDelta;
     };

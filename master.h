@@ -1,8 +1,8 @@
 #ifndef MASTER_HINCLUDED
 #define MASTER_HINCLUDED
 
-#include "param.h"
 #include "pst.h"
+#include "param.h"
 #include "mdl.h"
 #include "parameters.h"
 #include "floattype.h"
@@ -97,14 +97,7 @@ typedef struct msrContext {
         int nActive;
         int nTreeActive;
         int nSmoothActive;
-#ifdef SUPERNOVA
-        int nSN;
-        struct SNDATA { double z; double ECl; double ENonCl; } *SNdata;
-#endif
 	} * MSR;
-
-void msrInitSupernova(MSR msr);
-void msrAddSupernova(MSR msr, double);
 
 void msrInitialize(MSR *,MDL,int,char **);
 void msrLogParams(MSR msr, FILE *fp);
@@ -137,6 +130,7 @@ void msrWriteCheck(MSR,double,int);
 int msrOutTime(MSR,double);
 void msrReadOuts(MSR,double);
 double msrMassCheck(MSR,double,char *);
+void msrMassMetalsEnergyCheck(MSR,double *, double *, double *,char *);
 void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta, 
 				   double *pdMultiEff);
 void msrTopStepKDK(MSR msr,
@@ -246,7 +240,7 @@ void msrInitCooling(MSR msr);
 #endif
 #endif
 
-void msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart);
+int msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart);
 void msrDumpFrame(MSR msr, double, double);
 
 
@@ -277,7 +271,7 @@ void msrAggsGravity(MSR msr);
 void msrAggsActivate(MSR msr);
 void msrAggsDeactivate(MSR msr);
 #endif
-void msrFormStars(MSR msr, double dTime);
+void msrFormStars(MSR msr, double dTime, double dDelta);
 void msrSimpleStarForm(MSR msr, double dTime, double dDelta);
 
 #endif

@@ -138,11 +138,12 @@ void StiffStep(STIFF *s, double y[], double dydx[], double *xx, double htry,
       s->xnew=(*xx)+h;
       if (s->xnew == (*xx)) assert(0); /* nrerror("step size underflow in stifbs"); */
       simpr(s,ysav,dydx,s->dfdx,s->dfdy,*xx,h,s->nseq[k],yseq);
-      xest=SQR(h/s->nseq[k]);
+      xest=h*h/(s->nseq[k]*s->nseq[k]);
+      assert(xest != 0.0 );
       pzextr(s,k,xest,yseq,y,yerr);
       if (k != 1) {
         errmax=TINY;
-        for (i=1;i<=nv;i++) errmax=FMAX(errmax,fabs(yerr[i]/yscal[i]));
+        for (i=1;i<=nv;i++) errmax=MAX(errmax,fabs(yerr[i]/yscal[i]));
         errmax /= s->eps;
         km=k-1;
         err[km]=pow(errmax/SAFE1,1.0/(2*km+1));
@@ -176,8 +177,8 @@ void StiffStep(STIFF *s, double y[], double dydx[], double *xx, double htry,
       }
     }
     if (exitflag) break;
-    red=FMIN(red,REDMIN);
-    red=FMAX(red,REDMAX);
+    red=MIN(red,REDMIN);
+    red=MAX(red,REDMAX);
     h *= red;
     reduct=1;
   }
@@ -186,7 +187,7 @@ void StiffStep(STIFF *s, double y[], double dydx[], double *xx, double htry,
   s->first=0;
   wrkmin=1.0e35;
   for (kk=1;kk<=km;kk++) {
-    fact=FMAX(err[kk],SCALMX);
+    fact=MAX(err[kk],SCALMX);
     work=fact*s->a[kk+1];
     if (work < wrkmin) {
       scale=fact;
@@ -196,7 +197,7 @@ void StiffStep(STIFF *s, double y[], double dydx[], double *xx, double htry,
   }
   *hnext=h/scale;
   if (s->kopt >= k && s->kopt != s->kmax && !reduct) {
-    fact=FMAX(scale/s->alf[s->kopt-1][s->kopt],SCALMX);
+    fact=MAX(scale/s->alf[s->kopt-1][s->kopt],SCALMX);
     if (s->a[s->kopt+1]*fact <= wrkmin) {
       *hnext=h/fact;
       s->kopt++;

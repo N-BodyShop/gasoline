@@ -26,12 +26,10 @@ typedef struct stfmContext
 				   the particle. */
     double dMaxStarMass;	/* maximum mass star particle to form */
 
-    int bInitialized;
 } * STFM;
 	
 void stfmInitialize(STFM *pstfm);
 
-void stfmInitConstants(STFM stfm);
 
 void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 		   double dTime, /* current time */

@@ -38,15 +38,13 @@ void snInitialize(SN *psn)
     sn->dMOxconst = 0.0;
     sn->dMOxexp = 0.0;
     sn->dSNIaMetals = 0.0;
-    sn->MSparam = NULL;
-    sn->ppdva = NULL;
     *psn = sn;
     }
 
 void snFree(SN sn)
 {
-    free(sn->MSparam);
-    free(sn->ppdva);
+/*    free(sn->MSparam);
+    free(sn->ppdva);*/
     
     free(sn);
     }
@@ -56,9 +54,12 @@ void snFree(SN sn)
    */
 void snInitConstants(SN sn) 
 {
+    MSPARAM tempMS;
+    PDVAPARAM tempPDVA;
+    
     sn->dMSNrem = 1.4;			/* mass of supernova remnant in solar masses */
     
-    sn->dESN = 1e51;			/* Energy of Supernovae in ergs. */
+    /*sn->dESN = 1e51;		*/	/* Energy of Supernovae in ergs. */
     sn->dMSNIImin = 8.0;		/* Mass above which stars
 								   supernova in solar
 								   masses */
@@ -83,8 +84,14 @@ void snInitConstants(SN sn)
     sn->dMOxexp = 2.721;    
     sn->dMOxconst = 4.586e-4; 
     sn->dSNIaMetals = 0.76;
-    MSInitialize(&sn->MSparam);
-    PadovaInitialize(&sn->ppdva);
+    
+    MSInitialize(&tempMS);
+    sn->MSparam = *tempMS;
+    free(tempMS);
+    
+    PadovaInitialize(&tempPDVA);
+    sn->ppdva = *tempPDVA;
+    free(tempPDVA);
 
     sn->bInitialized = 1;
     }
@@ -111,10 +118,10 @@ void snCalcSNIIFeedback(SN sn, SFEvent sfEvent,
     dStarLtimeMin = dTime - sfEvent.dTimeForm; 
     dStarLtimeMax = dStarLtimeMin + dDelta;
 
-    dMStarMin = dSTMStarLtime(sn->ppdva, dStarLtimeMax, sfEvent.dMetals); 
-    dMStarMax = dSTMStarLtime(sn->ppdva, dStarLtimeMin, sfEvent.dMetals); 
+    dMStarMin = dSTMStarLtime(&sn->ppdva, dStarLtimeMax, sfEvent.dMetals); 
+    dMStarMax = dSTMStarLtime(&sn->ppdva, dStarLtimeMin, sfEvent.dMetals); 
 
-    dMtot = dMSCumMass(sn->MSparam, 0.0); /* total mass in stars integrated over IMF */
+    dMtot = dMSCumMass(&sn->MSparam, 0.0); /* total mass in stars integrated over IMF */
 
 	/* masses corresponding to these stellar lifetimes in solar masses */
     if (dMStarMin > sn->dMSNIImax || dMStarMax < sn->dMSNIImin) {
@@ -130,15 +137,15 @@ void snCalcSNIIFeedback(SN sn, SFEvent sfEvent,
 
 			/* cumulative mass of stars with mass greater than dMStarMinII and dMStarMaxII
 			   in solar masses */
-			dCumMMin = dMSCumMass (sn->MSparam, dMStarMinII);
-			dCumMMax = dMSCumMass (sn->MSparam, dMStarMaxII);
+			dCumMMin = dMSCumMass (&sn->MSparam, dMStarMinII);
+			dCumMMax = dMSCumMass (&sn->MSparam, dMStarMaxII);
 
 			dMSNTypeII = dCumMMin - dCumMMax; /* total mass of stars that go SN II
 												 in this timestep in solar masses */
 			/* cumulative number of stars with mass greater than dMStarMinII and
 			   dMstarMaxII in solar masses */
-			dCumNMinII = dMSCumNumber (sn->MSparam, dMStarMinII); 
-			dCumNMaxII = dMSCumNumber (sn->MSparam, dMStarMaxII);
+			dCumNMinII = dMSCumNumber (&sn->MSparam, dMStarMinII); 
+			dCumNMaxII = dMSCumNumber (&sn->MSparam, dMStarMaxII);
 
 			dMSNTypeII /= dMtot; /* convert to mass fraction of stars */
 			dMSNTypeII *= sfEvent.dMass; /* convert to mass of stars that go SNIa */
@@ -185,7 +192,7 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
     double dMtot;
     double  dDeltaMSNrem;
 
-    mssn.ms = *sn->MSparam;		/* needed by SN Ia functions */
+    mssn.ms = sn->MSparam;		/* needed by SN Ia functions */
     mssn.sn = *sn;				/* needed by SN Ia functions */
 
 	/* stellar lifetimes corresponding to beginning and end of 
@@ -193,10 +200,10 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
     dStarLtimeMin = dTime - sfEvent.dTimeForm; 
     dStarLtimeMax = dStarLtimeMin + dDelta;
 
-    dMStarMin = dSTMStarLtime(sn->ppdva, dStarLtimeMax, sfEvent.dMetals); 
-    dMStarMax = dSTMStarLtime(sn->ppdva, dStarLtimeMin, sfEvent.dMetals); 
+    dMStarMin = dSTMStarLtime(&sn->ppdva, dStarLtimeMax, sfEvent.dMetals); 
+    dMStarMax = dSTMStarLtime(&sn->ppdva, dStarLtimeMin, sfEvent.dMetals); 
 
-    dMtot = dMSCumMass(sn->MSparam, 0.0); /* total mass in stars
+    dMtot = dMSCumMass(&sn->MSparam, 0.0); /* total mass in stars
 											 integrated over IMF */
 
     if (dMStarMin > sn->dMBmin && dMStarMax < sn->dMBmax/2.) {

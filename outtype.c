@@ -68,15 +68,11 @@ FLOAT ArrType(PARTICLE *p,int iType)
 	case OUT_DIVRHOV_ARRAY:
 	        return(p->divrhov);
 #endif
-#ifdef SUPERNOVA
-	case OUT_PDVSN_ARRAY:
-                return(p->PdVSN);
-	case OUT_USN_ARRAY:
-                return(p->uSN);
-#endif
 #ifdef STARFORM
 	case OUT_IGASORDER_ARRAY:
 	    return((FLOAT) p->iGasOrder);
+	case OUT_MASSFORM_ARRAY:
+	    return((FLOAT) p->fMassForm);
 #endif
 #ifdef SIMPLESF
 	case OUT_TCOOLAGAIN_ARRAY:

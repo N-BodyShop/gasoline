@@ -86,10 +86,6 @@ typedef struct particle {
 	FLOAT uDot;			/* Rate of change of u -- for predicting u */
 	COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
 #endif
-#ifdef SUPERNOVA
-    FLOAT PdVSN;
-	FLOAT uSN;
-#endif
 	FLOAT fMetals;
 	FLOAT fTimeForm;
 #ifdef SIMPLESF
@@ -103,8 +99,10 @@ typedef struct particle {
 	FLOAT fESNrate;
 	FLOAT fMSN;
 	FLOAT fSNMetals;
+        FLOAT fTimeCoolIsOffUntil;
 	FLOAT rForm[3];		/* record pos and vel of star formation */
 	FLOAT vForm[3];
+	FLOAT fMassForm;	/* record original mass of star */
 	int iGasOrder;		/* gas from which star formed */
 #endif
 #endif
@@ -209,9 +207,11 @@ typedef struct chkParticle {
 	COOLPARTICLE CoolParticle;
 #endif
 #ifdef STARFORM
+        FLOAT fTimeCoolIsOffUntil;
 	FLOAT fTimeForm;
 	FLOAT rForm[3];		/* record pos and vel of star formation */
 	FLOAT vForm[3];
+	FLOAT fMassForm;	/* record original mass of star */
 	FLOAT fDenForm;
 	int iGasOrder;
 #endif
@@ -531,6 +531,8 @@ void pkdCalcRoot(PKD,struct ilCellNewt *);
 void pkdDistribRoot(PKD,struct ilCellNewt *);
 void pkdSwapAll(PKD pkd, int idSwap);
 double pkdMassCheck(PKD pkd);
+void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, 
+                    double *dTotMetals, double *dTotEnergy);
 void pkdSetRung(PKD pkd, int iRung);
 void pkdBallMax(PKD pkd, int iRung, int bGreater, double ddHonHLimit);
 int pkdActiveRung(PKD pkd, int iRung, int bGreater);
@@ -589,19 +591,6 @@ void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);
 #endif
 
 #ifdef GASOLINE
-#ifdef SUPERNOVA
-struct outCountSupernova {
-        double dMassMetalRhoCut;
-        double dMassMetalTotal;
-        double dMassNonMetalRhoCut;
-        double dMassNonMetalTotal;
-        double dMassTotal;
-};
-struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, double dTMax,
-					   double duTFac,int iGasModel);
-void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, double dTMax,
-		     double duTFac,int iGasModel, double dPdVMetal, double dPdVNonMetal );
-#endif
 
 void pkdUpdateuDot(PKD,double,double,double,int,int);
 void pkdUpdateShockTracker(PKD,double, double, double);

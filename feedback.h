@@ -2,6 +2,8 @@
 #define FEEDBACK_HINCLUDED
 #include "pkd.h"
 
+struct snContext;
+
 /*
  * Structure to Characterize Star Formation event.  This is input
  * needed for all feedback effects.
@@ -40,7 +42,7 @@ typedef struct fbContext
 
 void fbInitialize(FB *pfb);
 
-void pkdFeedback(PKD pkd, FB fb, double dTime, double dDelta,
+void pkdFeedback(PKD pkd, FB fb, struct snContext * sn, double dTime, double dDelta,
 		 FBEffects *fbTotals);
 
 	/* solar mass in grams */

@@ -8,16 +8,16 @@
 #include "feedback.h"
 #include "supernova.h"
 
+
 void snCalcWindFeedback(SN sn, SFEvent sfEvent,
-						double dTime, /* current time in years */
-						double dDelta, /* length of timestep (years) */
-						FBEffects *fbEffects);
+                        double dTime, /* current time in years */
+                        double dDelta, /* length of timestep (years) */
+                        FBEffects *fbEffects);
 
 void snCalcUVFeedback(SN sn, SFEvent sfEvent,
 					  double dTime, /* current time in years */
 					  double dDelta, /* length of timestep (years) */
 					  FBEffects *fbEffects);
-
 
 /*
  * Feedback module for GASOLINE
@@ -36,7 +36,7 @@ void fbInitialize(FB *pfb)
     *pfb = fb;
     }
 
-void pkdFeedback(PKD pkd, FB fb, double dTime, double dDelta,
+void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 				 FBEffects *fbTotals)
 {
     int i;
@@ -47,12 +47,9 @@ void pkdFeedback(PKD pkd, FB fb, double dTime, double dDelta,
     double dTotMassLoss;
     double dTotMetals;
     double dDeltaYr;
-    SN sn;
+    double dSNIaMassStore;
     int j;
-    
-    snInitialize(&sn);
-    snInitConstants(sn);
-    
+        
     for(i = 0; i < FB_NFEEDBACKS; i++) {
 		fbTotals[i].dMassLoss = 0.0;
 		fbTotals[i].dEnergy = 0.0;
@@ -85,6 +82,10 @@ void pkdFeedback(PKD pkd, FB fb, double dTime, double dDelta,
 			/*
 			 * Call all the effects in order and accumulate them.
 			 */
+			dSNIaMassStore=0.0;  /* Stores mass loss of Ia so as
+						not to double count it in 
+						wind feedback */
+						
 			for(j = 0; j < FB_NFEEDBACKS; j++) {
 				switch (j) {
 				case FB_SNII:
@@ -94,10 +95,15 @@ void pkdFeedback(PKD pkd, FB fb, double dTime, double dDelta,
 				case FB_SNIA:
 					snCalcSNIaFeedback(sn, sfEvent, dTime,
 									   dDeltaYr, &fbEffects);
+					dSNIaMassStore=fbEffects.dMassLoss;
+
 					break;
 				case FB_WIND:
 					snCalcWindFeedback(sn, sfEvent, dTime,
 									   dDeltaYr, &fbEffects);
+					fbEffects.dMassLoss -= dSNIaMassStore;
+					/*				printf("Wind, SNaI Mass Loss: %d   %d\n",fbEffects.dMassLoss,dSNIaMassStore); */
+					
 					break;
 				case FB_UV:
 					snCalcUVFeedback(sn, sfEvent, dTime, dDeltaYr,
@@ -126,23 +132,24 @@ void pkdFeedback(PKD pkd, FB fb, double dTime, double dDelta,
 	    
 			p->fMass -= dTotMassLoss;
 			p->fMSN = dTotMassLoss;
-			if(dTotMassLoss != 0.0) {
-				p->fSNMetals = dTotMetals/dTotMassLoss;
-				p->fESNrate /= dTotMassLoss*dDelta; /* convert to rate */
-				}
-			else {
-				p->fSNMetals = 0.0;
-				p->fESNrate = 0.0;
-				}
+                        /* The SNMetals and ESNrate used to be specific
+                           quantities, but we are making them totals as
+                           they leave the stars so that they are easier
+                           to divvy up among the gas particles in 
+                           distSNEnergy in smoothfcn.c.  These quantities
+                           will be converted back to specific quantities when
+                           they are parts of gas particles. */
+                        p->fSNMetals = dTotMetals;
+                        p->fESNrate /= dDelta; /* convert to rate */
 			}
 	    
 	
-		else if(pkdIsGas(pkd, p))
-			assert(p->u >= 0);
-		    assert(p->uPred >= 0);
-			p->fESNrate = 0;	/* reset SN heating rate of gas to zero */
+		else if(pkdIsGas(pkd, p)){
+                        assert(p->u >= 0.0);
+                        assert(p->uPred >= 0.0);
+			p->fESNrate = 0.0;	/* reset SN heating rate of gas to zero */
+                        }
 		}
-    snFree(sn);
 
 #ifdef COOLDEBUG
     for(i=0;i<pkdLocal(pkd);++i) {
@@ -154,16 +161,63 @@ void pkdFeedback(PKD pkd, FB fb, double dTime, double dDelta,
 #endif
 	}
 
-void snCalcWindFeedback(SN sn, SFEvent sfEvent,
-						double dTime, /* current time in years */
-						double dDelta, /* length of timestep (years) */
-						FBEffects *fbEffects)
-{
-    fbEffects->dMassLoss = 0.0;
-    fbEffects->dEnergy = 0.0;
-    fbEffects->dMetals = 0.0;
-    }
 
+void snCalcWindFeedback(SN sn, SFEvent sfEvent,
+                        double dTime, /* current time in years */
+                        double dDelta, /* length of timestep (years) */
+                        FBEffects *fbEffects)
+{
+  double dMStarMin, dMStarMax;
+  double dStarLtimeMin, dStarLtimeMax;
+  double dMCumMin, dMCumMax,dMTot;
+  double dMmin, dMmax;
+  double dMassFracReturned;
+  double dMDying;
+
+  /* First determine if dying stars are between 1-8 Msolar
+
+  /* stellar lifetimes corresponding to beginning and end of 
+   * current timestep with respect to starbirth time in yrs */
+  dMmin=1.0;
+  dMmax=8.0;
+  dStarLtimeMin = dTime - sfEvent.dTimeForm; 
+  dStarLtimeMax = dStarLtimeMin + dDelta;
+
+  dMStarMin = dSTMStarLtime(&sn->ppdva, dStarLtimeMax, sfEvent.dMetals); 
+  dMStarMax = dSTMStarLtime(&sn->ppdva, dStarLtimeMin, sfEvent.dMetals); 
+  assert(dMStarMax >= dMStarMin);
+
+  if (((dMStarMin < dMmax) && (dMStarMax > dMmin)) && dMStarMax > dMStarMin) {
+  //printf(""); /* Intel optimizer needs this to avoid floating point exception on sharks. */
+
+    /* Mass Fraction returned to ISM taken from Weidermann, 1987, A&A 188 74 
+     then fit to function: MFreturned = 0.86 - exp(-Mass/1.1) */
+    dMassFracReturned=0.86-exp(-((dMStarMax+dMStarMin)/2.)/1.1);
+
+    dMCumMin = dMSCumMass(&sn->MSparam, dMStarMin);
+    dMCumMax = dMSCumMass(&sn->MSparam, dMStarMax);
+    dMTot = dMSCumMass(&sn->MSparam,0.0);
+    /* Find out mass fraction of dying stars, then multiply by the original
+       mass of the star particle */
+    if (dMTot == 0.0){
+            dMDying = 0.0;
+        } else { 
+            dMDying = (dMCumMin - dMCumMax)/dMTot;
+        }
+    dMDying *= sfEvent.dMass;
+
+    /* Figure out feedback effects */
+    fbEffects->dMassLoss = dMDying * dMassFracReturned;
+    fbEffects->dEnergy = 0.0;    
+    /* Use stars metallicity for gas returned */
+    fbEffects->dMetals = sfEvent.dMetals; 
+
+  } else {
+    fbEffects->dMassLoss = 0.0;
+    fbEffects->dEnergy = 0.0;    
+    fbEffects->dMetals = 0.0; 
+  }
+}
 void snCalcUVFeedback(SN sn, SFEvent sfEvent,
 					  double dTime, /* current time in years */
 					  double dDelta, /* length of timestep (years) */

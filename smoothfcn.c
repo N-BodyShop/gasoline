@@ -1,6 +1,7 @@
 #include <math.h>
 #include <assert.h>
 #include "smoothfcn.h"
+#define max(A,B) ((A) > (B) ? (A) : (B))
 
 #ifdef COLLISIONS
 #include "ssdefs.h"
@@ -916,11 +917,13 @@ void combSphPressure(void *p1,void *p2)
 
 void postSphPressure(PARTICLE *p, SMF *smf)
 {
-	if (TYPEQueryACTIVE((PARTICLE *) p)) {
-		ACCEL_COMB_PRES(p,0);
-		ACCEL_COMB_PRES(p,1);
-		ACCEL_COMB_PRES(p,2);
-		}
+        if ( TYPEQuerySMOOTHACTIVE((PARTICLE *)p) ) {
+            if ( TYPEQueryACTIVE((PARTICLE *)p) ) {
+                    ACCEL_COMB_PRES(p,0);
+                    ACCEL_COMB_PRES(p,1);
+                    ACCEL_COMB_PRES(p,2);
+                    }
+            }
 	}
 
 /* Gather only version -- untested */
@@ -1942,7 +1945,8 @@ void initDistDeletedGas(void *p1)
 void combDistDeletedGas(void *p1,void *p2)
 {
     /*
-     * See kudgery notice above.
+     * Distribute u, v, and fMetals for particles returning from cache
+     * so that everything is conserved nicely.  
      */
 	if(!TYPETest(((PARTICLE *) p1), TYPE_DELETED)) {
 		FLOAT delta_m = ((PARTICLE *)p2)->fMass;
@@ -2013,6 +2017,11 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		f2 = delta_m  /m_new;
 		q->fMass = m_new;
 		
+                /* Only distribute the properties
+                 * to the other particles on the "home" machine.
+                 * u, v, and fMetals will be distributed to particles
+                 * that come through the cache in the comb function.
+                 */
 		q->u = f1*q->u+f2*p->u;
 		q->uPred = f1*q->uPred+f2*p->uPred;
 #ifdef COOLDEBUG
@@ -2055,12 +2064,25 @@ void DeleteGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         
 }
 
+void initTreeParticleDistSNEnergy(void *p1)
+{
+    /* Convert energy and metals to non-specific quantities (not per mass)
+     * to make it easier to divvy up SN energy and metals.  
+     */
+    
+    if(TYPETest((PARTICLE *)p1, TYPE_GAS)){
+        ((PARTICLE *)p1)->fESNrate *= ((PARTICLE *)p1)->fMass;
+        ((PARTICLE *)p1)->fMetals *= ((PARTICLE *)p1)->fMass;    
+        }
+    
+    }
+
 void initDistSNEnergy(void *p1)
 {
     /*
      * Warning: kludgery.  We need to accumulate mass in the cached
      * particle, but we also need to keep the original mass around.
-     * Lets us another (hopefully unused) field to hold the original
+     * Let's use another (hopefully unused) field to hold the original
      * mass.
      */
     ((PARTICLE *)p1)->PdV = ((PARTICLE *)p1)->fMass;
@@ -2075,45 +2097,82 @@ void initDistSNEnergy(void *p1)
 void combDistSNEnergy(void *p1,void *p2)
 {
     /*
-     * See kudgery notice above.
+     * See kludgery notice above.
      */
     FLOAT fAddedMass = ((PARTICLE *)p2)->fMass - ((PARTICLE *)p2)->PdV;
     
     ((PARTICLE *)p1)->fMass += fAddedMass;
     ((PARTICLE *)p1)->fESNrate += ((PARTICLE *)p2)->fESNrate;
     ((PARTICLE *)p1)->fMetals += ((PARTICLE *)p2)->fMetals;
+    ((PARTICLE *)p1)->fTimeCoolIsOffUntil = max( ((PARTICLE *)p1)->fTimeCoolIsOffUntil,
+                ((PARTICLE *)p2)->fTimeCoolIsOffUntil );
     }
 
 void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u;
+	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,delta_m,m_new,f1,f2;
 	int i;
 
 	assert(TYPETest(p, TYPE_STAR));
 	ih2 = 4.0/BALL2(p);
-        rstot = 0;        
+        rstot = 0.0;  
+        fNorm_u = 0.0;      
 	
 	for (i=0;i<nSmooth;++i) {
             r2 = nnList[i].fDist2*ih2;            
             KERNEL(rs,r2);
             rstot += rs;
             q = nnList[i].pPart;
+            fNorm_u += q->fMass*rs;
 	    assert(TYPETest(q, TYPE_GAS));
         }
         fNorm = 1./rstot;
-        fNorm_u = fNorm*p->fMSN/q->fMass;
+        fNorm_u = 1./fNorm_u;
 	for (i=0;i<nSmooth;++i) {
             q = nnList[i].pPart;
             r2 = nnList[i].fDist2*ih2;            
             KERNEL(rs,r2);
-            q->fESNrate += rs*fNorm_u*p->fESNrate;
-            q->fMetals += rs*fNorm_u*p->fSNMetals;
-	    
-            rs *= fNorm;            
-            q->fMass += rs*p->fMSN;
-        }
+            
+            /* Remember: We are dealing with total energy rate and total metal
+               mass, not energy/gram or metals per gram.  */
+            q->fESNrate += rs*fNorm_u*q->fMass*p->fESNrate;
+            q->fMetals += rs*fNorm_u*q->fMass*p->fSNMetals;
+            
+            /*	The normalization factor "rs" is one of three possibilities:
+                1) scale time with rs so that cooling is turned off shorter
+                    further you are away from the star forming particle because
+                    it will be harder for the SN to ionize stuff further away.
+                2) scale more severely with rs*fNorm so that time quantity is
+                    "conserved" (not very physically intuitive)
+                3) Don't scale at all because ionization will happen over
+                    every smoothed particle.
+                We (Anil, Greg, TRQ) chose rs because it seemed the most
+                physically plausible.
+            */
+            if ( p->fESNrate != 0.0 ){
+                q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
+                    smf->dTime + rs*smf->dtCoolingShutoff);
+                }
+
+            /*	update mass after everything else so that distribution
+                is based entirely upon initial mass of gas particle */
+            q->fMass += rs*fNorm_u*q->fMass*p->fMSN;
+            }
 }
+
+void postDistSNEnergy(PARTICLE *p1, SMF *smf)
+{
+    /* Convert energy and metals back to specific quantities (per mass)
+       because we are done with our conservative calculations */
+    
+    if(TYPETest(p1, TYPE_GAS)){
+        p1->fESNrate /= p1->fMass;
+        p1->fMetals /= p1->fMass;    
+        }
+    
+    }
+
 #endif /* STARFORM */
 
 #ifdef SIMPLESF
