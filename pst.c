@@ -700,6 +700,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 	fl = pst->bnd.fMin[dBnd];
 	fu = pst->bnd.fMax[dBnd];
 	fm = pst->fSplit;
+	ittr = -1;
+	
         if (bDoRootFind || fm<fl || fm>fu ) {
 	     fmm = (fl + fu)/2;
 	     /*
@@ -777,8 +779,13 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 	pst->fSplit = fm;
 
  DoneRootFind:
-	mdlprintf(pst->mdl, "id: %d (%d) Chose split: %f (%f,%f) %d Low %d %f,  %d High %d %f\n",
-		pst->mdl->idSelf, pst->iLvl, fm, pst->bnd.fMin[dBnd], pst->bnd.fMax[dBnd],pst->nLower,nLow,outWtLow.fLow + outWtHigh.fLow,pst->nUpper,nHigh,outWtLow.fHigh + outWtHigh.fHigh);
+	mdlprintf(pst->mdl, "id: %d (%d) Chose split: %f (%f,%f) %d %d\n",
+		  pst->mdl->idSelf, pst->iLvl, fm, pst->bnd.fMin[dBnd],
+		  pst->bnd.fMax[dBnd], pst->nLower, pst->nUpper);
+	if(ittr != -1)
+	    mdlprintf(pst->mdl, "  Low %d %f,  High %d %f\n",
+		      nLow,outWtLow.fLow + outWtHigh.fLow, nHigh,
+		      outWtLow.fHigh + outWtHigh.fHigh);
 	nLow = 0;
 	nHigh = 0;
 	fLow = 0.0;
@@ -837,7 +844,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 	    }
 	    
 	    margin = nSafeTot/pst->nLeaves/20;
-	    if (margin < NUM_SAFETY) margin = NUM_SAFETY;
+	    if (margin < NUM_SAFETY/2) margin = NUM_SAFETY/2;
 	    /*
 	    margin = NUM_SAFETY;
 	    */
