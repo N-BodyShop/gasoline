@@ -30,7 +30,7 @@ void main_ch(MDL mdl)
 #ifdef AMPI
 #define printf CmiPrintf
 /* Charm MPI requires this name as "main" */
-int AMPI_Main(int argc,char **argv)
+int MPI_Main(int argc,char **argv)
 #else
 int main(int argc,char **argv)
 #endif
