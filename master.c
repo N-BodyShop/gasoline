@@ -154,8 +154,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dEwhCut",2,&msr->param.dEwhCut,sizeof(double),"ewh",
 				"<dEwhCut> = 2.8");
 	msr->param.dTheta = 0.8;
+	msr->param.dTheta2 = msr->param.dTheta;
 	prmAddParam(msr->prm,"dTheta",2,&msr->param.dTheta,sizeof(double),"theta",
 				"<Barnes opening criterion> = 0.8");
+	prmAddParam(msr->prm,"dTheta2",2,&msr->param.dTheta2,sizeof(double),
+				"theta2","<Barnes opening criterion after a Redshift of 2> = 0.8");
 	msr->param.dAbsPartial = 0.0;
 	prmAddParam(msr->prm,"dAbsPartial",2,&msr->param.dAbsPartial,sizeof(double),"ap",
 				"<absolute partial error opening criterion>");
@@ -171,6 +174,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dPeriod = 1.0;
 	prmAddParam(msr->prm,"dPeriod",2,&msr->param.dPeriod,sizeof(double),"L",
 				"<periodic box length> = 1.0");
+	msr->param.dxPeriod = 1.0;
+	prmAddParam(msr->prm,"dxPeriod",2,&msr->param.dxPeriod,sizeof(double),"Lx",
+				"<periodic box length in x-dimension> = 1.0");
+	msr->param.dyPeriod = 1.0;
+	prmAddParam(msr->prm,"dyPeriod",2,&msr->param.dyPeriod,sizeof(double),"Ly",
+				"<periodic box length in y-dimension> = 1.0");
+	msr->param.dzPeriod = 1.0;
+	prmAddParam(msr->prm,"dzPeriod",2,&msr->param.dzPeriod,sizeof(double),"Lz",
+				"<periodic box length in z-dimension> = 1.0");
 	msr->param.achInFile[0] = 0;
 	prmAddParam(msr->prm,"achInFile",3,msr->param.achInFile,256,"I",
 				"<input file name> (file in TIPSY binary format)");
@@ -223,6 +235,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bSymCool = 0;
 	prmAddParam(msr->prm,"bSymCool",0,&msr->param.bSymCool,sizeof(int),NULL,
 				NULL);
+	msr->param.bDoGravity = 1;
+	prmAddParam(msr->prm,"bDoGravity",0,&msr->param.bDoGravity,sizeof(int),"g",
+				"calculate gravity/don't calculate gravity = +g");
 #ifdef GASOLINE
 	msr->param.bGeometric = 1;
 	prmAddParam(msr->prm,"bGeometric",0,&msr->param.bGeometric,sizeof(int),
@@ -285,6 +300,24 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		}
 	msr->nThreads = mdlThreads(mdl);
 	/*
+	 ** Determine the period of the box that we are using.
+	 ** Set the new d[xyz]Period parameters which are now used instead
+	 ** od a single dPeriod, but we still want to have compatibility
+	 ** with the old method of setting dPeriod.
+	 */
+	if (prmSpecified(msr->prm,"dPeriod") && 
+		!prmSpecified(msr->prm,"dxPeriod")) {
+		msr->param.dxPeriod = msr->param.dPeriod;
+		}
+	if (prmSpecified(msr->prm,"dPeriod") && 
+		!prmSpecified(msr->prm,"dyPeriod")) {
+		msr->param.dyPeriod = msr->param.dPeriod;
+		}
+	if (prmSpecified(msr->prm,"dPeriod") && 
+		!prmSpecified(msr->prm,"dzPeriod")) {
+		msr->param.dzPeriod = msr->param.dPeriod;
+		}
+	/*
 	 ** Determine opening type.
 	 */
 	msr->iOpenType = 0;
@@ -305,6 +338,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	switch (msr->iOpenType) {
 	case OPEN_JOSH:
 		msr->dCrit = msr->param.dTheta;
+		if (!prmSpecified(msr->prm,"dTheta2")) 
+			msr->param.dTheta2 = msr->param.dTheta;
 		break;
 	case OPEN_ABSPAR:
 		msr->dCrit = msr->param.dAbsPartial;
@@ -320,6 +355,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		break;
 	default:
 		msr->dCrit = msr->param.dTheta;
+		if (!prmSpecified(msr->prm,"dTheta2")) 
+			msr->param.dTheta2 = msr->param.dTheta;
 		}
 	/*
 	 ** Initialize comove variables.
@@ -972,8 +1009,8 @@ double msrReadTipsy(MSR msr)
 			   msr->N,msr->nDark,msr->nGas,msr->nStar,dTime);
 		in.dvFac = 1.0;
 		}
-	in.nStart = 0;
-	in.nEnd = msr->N - 1;
+	in.nFileStart = 0;
+	in.nFileEnd = msr->N - 1;
 	in.nDark = msr->nDark;
 	in.nGas = msr->nGas;
 	in.nStar = msr->nStar;
@@ -995,9 +1032,10 @@ double msrReadTipsy(MSR msr)
 	/*
 	 ** Provide the period.
 	 */
-	for (j=0;j<3;++j) {
-		in.fPeriod[j] = msr->param.dPeriod;
-		}
+	in.fPeriod[0] = msr->param.dxPeriod;
+	in.fPeriod[1] = msr->param.dyPeriod;
+	in.fPeriod[2] = msr->param.dzPeriod;
+
 	if(msr->param.bParaRead)
 	    pstReadTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
@@ -1018,6 +1056,11 @@ double msrReadTipsy(MSR msr)
 	}
 
 
+/*
+ ** This function makes some DANGEROUS assumptions!!!
+ ** Main problem is that it calls pkd level routines, bypassing the
+ ** pst level. It uses plcl pointer which is not desirable.
+ */
 void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
 {
     int i,id;
@@ -1044,7 +1087,7 @@ void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
     /* 
      * First write our own particles.
      */
-    pkdWriteTipsy(plcl->pkd,achOutFile,0,plcl->pkd->nLocal - 1,in->bStandard,
+    pkdWriteTipsy(plcl->pkd,achOutFile,plcl->nWriteStart,in->bStandard,
 				  in->dvFac,in->duTFac); 
     nStart = plcl->pkd->nLocal;
 	assert(msr->pMap[0] == 0);
@@ -1061,7 +1104,6 @@ void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
 		 * Write the swapped particles.
 		 */
 		pkdWriteTipsy(plcl->pkd,achOutFile,nStart,
-					  nStart + plcl->pkd->nLocal - 1,
 					  in->bStandard, in->dvFac, in->duTFac); 
 		nStart += plcl->pkd->nLocal;
 		/* 
@@ -1075,6 +1117,19 @@ void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
     assert(nStart == msr->N);
     }
 
+
+void msrCalcWriteStart(MSR msr) 
+{
+	struct outSetTotal out;
+	struct inSetWriteStart in;
+
+	pstSetTotal(msr->pst,NULL,0,&out,NULL);
+	assert(out.nTotal == msr->N);
+	in.nWriteStart = 0;
+	pstSetWriteStart(msr->pst,&in,sizeof(in),NULL,NULL);
+	}
+
+
 void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 {
 	FILE *fp;
@@ -1083,6 +1138,11 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	char achOutFile[PST_FILENAME_SIZE];
 	LCL *plcl = msr->pst->plcl;
 	
+	/*
+	 ** Calculate where to start writing.
+	 ** This sets plcl->nWriteStart.
+	 */
+	msrCalcWriteStart(msr);
 	/*
 	 ** Add Data Subpath for local and non-local names.
 	 */
@@ -1275,11 +1335,13 @@ void msrDomainColor(MSR msr)
 
 void msrReorder(MSR msr)
 {
+	struct inDomainOrder in;
 	int sec,dsec;
 
 	if (msr->param.bVerbose) printf("Ordering...\n");
 	sec = time(0);
-	pstDomainOrder(msr->pst,NULL,0,NULL,NULL);
+	in.iMaxOrder = msrMaxOrder(msr);
+	pstDomainOrder(msr->pst,&in,sizeof(in),NULL,NULL);
 	pstLocalOrder(msr->pst,NULL,0,NULL,NULL);
 	dsec = time(0) - sec;
 	if (msr->param.bVerbose) {
@@ -1845,11 +1907,6 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
-void
-msrInitAccel(MSR msr)
-{
-    }
-
 void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
 {
     int i,id;
@@ -1868,8 +1925,8 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
 		nParts[id] = -1;
 		}
 
-    tin.nStart = in->nStart;
-    tin.nEnd = in->nEnd;
+    tin.nFileStart = in->nFileStart;
+    tin.nFileEnd = in->nFileEnd;
     tin.iOrder = in->iOrder;
     tin.fExtraStore = in->fExtraStore;
     for(j = 0; j < 3; j++)
@@ -1903,8 +1960,8 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
 		 * Read particles into the local storage.
 		 */
 		assert(plcl->pkd->nStore >= nParts[id]);
-		pkdReadCheck(plcl->pkd,achInFile,in->iVersion, in->iOffset,
-					 in->nStart, nParts[id]);
+		pkdReadCheck(plcl->pkd,achInFile,in->iVersion,in->iOffset,
+					 nStart,nParts[id]);
 		nStart += nParts[id];
 		/* 
 		 * Now shove them over to the remote processor.
@@ -2036,13 +2093,35 @@ double msrReadCheck(MSR msr,int *piStep)
 	if (!prmSpecified(msr->prm,"dEwhCut"))
 		FDL_read(fdl,"dEwhCut",&msr->param.dEwhCut);
 	FDL_read(fdl,"dPeriod",&msr->param.dPeriod);
+	if (iVersion > 3) {
+		FDL_read(fdl,"dxPeriod",&msr->param.dxPeriod);
+		FDL_read(fdl,"dyPeriod",&msr->param.dyPeriod);
+		FDL_read(fdl,"dzPeriod",&msr->param.dzPeriod);
+		}
+	else {
+		msr->param.dxPeriod = msr->param.dPeriod;
+		msr->param.dyPeriod = msr->param.dPeriod;
+		msr->param.dzPeriod = msr->param.dPeriod;
+		}
 	FDL_read(fdl,"dHubble0",&msr->param.dHubble0);
 	FDL_read(fdl,"dOmega0",&msr->param.dOmega0);
+	if (iVersion > 3) {
+		if (!prmSpecified(msr->prm,"dTheta"))
+			FDL_read(fdl,"dTheta",&msr->param.dTheta);
+		if (!prmSpecified(msr->prm,"dTheta2"))
+			FDL_read(fdl,"dTheta2",&msr->param.dTheta2);
+		}
+	else {
+		if (!prmSpecified(msr->prm,"dTheta"))
+			msr->param.dTheta = msr->dCrit;
+		if (!prmSpecified(msr->prm,"dTheta2"))
+			msr->param.dTheta2 = msr->dCrit;
+		}
 	if (msr->param.bVerbose) {
 		printf("Reading checkpoint file...\nN:%d Time:%g\n",msr->N,dTime);
 		}
-	in.nStart = 0;
-	in.nEnd = msr->N - 1;
+	in.nFileStart = 0;
+	in.nFileEnd = msr->N - 1;
 	in.nDark = msr->nDark;
 	in.nGas = msr->nGas;
 	in.nStar = msr->nStar;
@@ -2057,9 +2136,9 @@ double msrReadCheck(MSR msr,int *piStep)
 	/*
 	 ** Provide the period.
 	 */
-	for (j=0;j<3;++j) {
-		in.fPeriod[j] = msr->param.dPeriod;
-		}
+	in.fPeriod[0] = msr->param.dxPeriod;
+	in.fPeriod[1] = msr->param.dyPeriod;
+	in.fPeriod[2] = msr->param.dzPeriod;
 	in.iVersion = iVersion;
 	in.iOffset = FDL_offset(fdl,"particle_array");
 	FDL_finish(fdl);
@@ -2134,7 +2213,6 @@ void msrOneNodeWriteCheck(MSR msr, struct inWriteCheck *in)
 void msrWriteCheck(MSR msr,double dTime,int iStep)
 {
 	struct inWriteCheck in;
-	struct outSetTotal oute;
 	char achOutFile[PST_FILENAME_SIZE];
 	int iDum,i;
 	LCL *plcl = msr->pst->plcl;
@@ -2219,17 +2297,21 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"dEwCut",&msr->param.dEwCut);
 	FDL_write(fdl,"dEwhCut",&msr->param.dEwhCut);
 	FDL_write(fdl,"dPeriod",&msr->param.dPeriod);
+	FDL_write(fdl,"dxPeriod",&msr->param.dxPeriod);
+	FDL_write(fdl,"dyPeriod",&msr->param.dyPeriod);
+	FDL_write(fdl,"dzPeriod",&msr->param.dzPeriod);
 	FDL_write(fdl,"dHubble0",&msr->param.dHubble0);
 	FDL_write(fdl,"dOmega0",&msr->param.dOmega0);
+	FDL_write(fdl,"dTheta",&msr->param.dTheta);
+	FDL_write(fdl,"dTheta2",&msr->param.dTheta2);
 	if (msr->param.bVerbose) {
 		printf("Writing checkpoint file...\nTime:%g\n",dTime);
 		}
 	/*
 	 ** Do a parallel or serial write to the output file.
 	 */
-	pstSetTotal(msr->pst,NULL,0,&oute,&iDum);
+	msrCalcWriteStart(msr);
 	in.iOffset = FDL_offset(fdl,"particle_array");
-	in.nStart = 0;
 	if(msr->param.bParaWrite)
 	    pstWriteCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
@@ -2400,6 +2482,15 @@ int msrKDK(MSR msr)
 double msrSoft(MSR msr)
 {
 	return(msr->param.dSoft);
+	}
+
+
+void msrSwitchTheta(MSR msr,double dTime)
+{
+	double a;
+
+	a = msrTime2Exp(msr,dTime);
+	if (a >= 1.0/3.0) msr->dCrit = msr->param.dTheta2; 
 	}
 
 
@@ -2787,6 +2878,16 @@ int msrDoDensity(MSR msr)
 	return(msr->param.bDoDensity);
 	}
 
+int msrDoGravity(MSR msr)
+{
+	return(msr->param.bDoGravity);
+	}
+
+void msrInitAccel(MSR msr)
+{
+	pstInitAccel(msr->pst,NULL,0,NULL,NULL);
+	}
+
 
 #ifdef GASOLINE
 
@@ -2804,6 +2905,7 @@ void msrInitSph(MSR msr,double dTime)
 #endif
 	}
 
+
 void msrStepSph(MSR msr,double dTime, double dDelta)
 {
     }
@@ -2819,3 +2921,8 @@ int msrSphCurrRung(MSR msr, int iRung)
     }
 
 #endif
+
+
+
+
+

@@ -117,6 +117,7 @@ void msrActiveRung(MSR msr, int iRung, int bGreater);
 void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime,
 		     int bAll);
 void msrCoolVelocity(MSR,double,double);
+void msrCalcWriteStart(MSR);
 /*
  ** Interface functions.
  */
@@ -132,6 +133,8 @@ int msrKDK(MSR);
 double msrSoft(MSR);
 int msrDoDensity(MSR);
 void msrInitStep(MSR msr);
+void msrInitAccel(MSR msr);
+void msrSwitchTheta(MSR msr,double);
 
 #ifdef GASOLINE
 
