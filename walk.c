@@ -221,6 +221,11 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3])
 					pkd->nMaxCellNewt *= 2;
 					pkd->ilcn = realloc(pkd->ilcn,pkd->nMaxCellNewt*
 										sizeof(ILCN));
+					if (pkd->nMaxCellNewt > pkd->nSqrtTmp) {
+					    pkd->nSqrtTmp = pkd->nMaxCellNewt;
+					    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+						}
 					}
 				pkd->ilcn[nCellNewt].m = pkdn->fMass;
 				pkd->ilcn[nCellNewt].x = x;
