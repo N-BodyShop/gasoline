@@ -28,6 +28,7 @@ struct parameters {
 	int bSqrtPhiStep;
 	int bAccelStep; /* true if bEpsAccStep or bSqrtPhiStep */
 	int bDensityStep;
+        int nTruncateRung;
 	int bNonSymp;
 	int bDoDensity;
  	int bDohOutput;

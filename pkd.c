@@ -3278,14 +3278,16 @@ pkdDensityStep(PKD pkd,double dEta,double dRhoFac)
     }
 
 int
-pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,int bAll)
+pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,int bAll, int *pnMaxRung)
 {
     int i;
     int iMaxRungOut;
     int iTempRung;
     int iSteps;
+    int nMaxRung;
     
     iMaxRungOut = 0;
+    nMaxRung = 0;
     for(i=0;i<pkdLocal(pkd);++i) {
 		if(pkd->pStore[i].iRung >= iRung) {
 			mdlassert(pkd->mdl,TYPEQueryACTIVE(&(pkd->pStore[i])));
@@ -3315,9 +3317,16 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,int bAll)
 					}
                 }
 			}
-		if(pkd->pStore[i].iRung > iMaxRungOut)
+		if(pkd->pStore[i].iRung > iMaxRungOut) {
 			iMaxRungOut = pkd->pStore[i].iRung;
+		        nMaxRung = 1;
+                        }
+		else if (pkd->pStore[i].iRung == iMaxRungOut) 
+		        nMaxRung ++;
+		        
 		}
+
+    *pnMaxRung = nMaxRung;
     return iMaxRungOut;
     }
 

@@ -314,6 +314,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDensityStep = 0;
 	prmAddParam(msr->prm,"bDensityStep",0,&msr->param.bDensityStep,sizeof(int),
 				"isrho", "<Sqrt(1/Rho) timestepping>");
+	msr->param.nTruncateRung = 0;
+	prmAddParam(msr->prm,"nTruncateRung",1,&msr->param.nTruncateRung,sizeof(int),"nTR",
+				"<number of MaxRung particles to delete MaxRung> = 0");
 	msr->param.bNonSymp = 1;
 	prmAddParam(msr->prm,"bNonSymp",0,&msr->param.bNonSymp,sizeof(int),
 				"ns", "<Non-symplectic density stepping>");
@@ -1162,6 +1165,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bEpsAccStep: %d",msr->param.bEpsAccStep);
 	fprintf(fp," bSqrtPhiStep: %d",msr->param.bSqrtPhiStep);
 	fprintf(fp," bDensityStep: %d",msr->param.bDensityStep);
+	fprintf(fp," nTruncateRung: %d",msr->param.nTruncateRung);
 	fprintf(fp," bNonSymp: %d",msr->param.bNonSymp);
 	fprintf(fp,"\n# bDoGravity: %d",msr->param.bDoGravity);
 	fprintf(fp," bFandG: %d",msr->param.bFandG);
@@ -3851,7 +3855,17 @@ void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
     in.dDelta = dDelta;
     in.iMaxRung = msrMaxRung(msr);
     in.bAll = bAll;
+
     pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
+
+    if (out.nMaxRung <= msr->param.nTruncateRung) {
+      if (msr->param.bVDetails) printf("n_CurrMaxRung = %d  (iCurrMaxRung = %d):  Promoting particles to iCurrMaxrung = %d\n",
+				       out.nMaxRung,out.iMaxRung,out.iMaxRung-1);
+
+      in.iMaxRung = out.iMaxRung; /* Note this is the forbidden rung so no -1 here */
+      pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
+    }
+
     msr->iCurrMaxRung = out.iMaxRung;
     }
 

@@ -3496,20 +3496,26 @@ void pstDtToRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	LCL *plcl = pst->plcl;
 	struct inDtToRung *in = vin;
 	struct outDtToRung *out = vout;
-	int iMaxRung;
+	int iMaxRung, nMaxRung;
 
 	mdlassert(pst->mdl,nIn == sizeof(*in));
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_DTTORUNG,vin,nIn);
 		pstDtToRung(pst->pstLower,vin,nIn,vout,pnOut);
 		iMaxRung = out->iMaxRung;
+		nMaxRung = out->nMaxRung;
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
-		if(iMaxRung > out->iMaxRung)
+		if(iMaxRung > out->iMaxRung) {
 			out->iMaxRung = iMaxRung;
+			out->nMaxRung = nMaxRung;
+		        }
+		else if (iMaxRung == out->iMaxRung) 
+		        out->nMaxRung += nMaxRung;
+		        
 		}
 	else {
 		out->iMaxRung = pkdDtToRung(plcl->pkd, in->iRung,
-									in->dDelta, in->iMaxRung, in->bAll);
+					    in->dDelta, in->iMaxRung, in->bAll, &(out->nMaxRung));
 		}
 	if (pnOut) *pnOut = sizeof(*out);
 	}
