@@ -475,7 +475,7 @@ int main(int argc,char **argv)
 			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Gravity");
 			msrInitDt(msr);
 			if (msr->param.bGravStep) {
-				msrGravStep(msr);
+				msrGravStep(msr,dTime);
 				}
 			if (msr->param.bAccelStep) {
 				msrAccelStep(msr,dTime);

@@ -827,9 +827,6 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 	    nHighTot = outWtLow.nHigh + outWtHigh.nHigh;
 	    
 	    nSafeTot = nLowerStore + nUpperStore - (nLowTot + nHighTot);
-	    mdlprintf(pst->mdl,"id: %d Low %d/%d  High %d/%d\n",
-		      pst->mdl->idSelf, nLowTot, nLowerStore, nHighTot, nUpperStore);
-	    
 	    if(nSafeTot/pst->nLeaves < NUM_SAFETY) {
 	           NUM_SAFETY = nSafeTot/pst->nLeaves;
 		   sprintf(ach,"id: %d tripped inactive NUM_SAFETY %d  Low %d/%d  High %d/%d\n",
@@ -844,6 +841,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 	    /*
 	    margin = NUM_SAFETY;
 	    */
+	    mdlprintf(pst->mdl,"id: %d  %d Low %d/%d   %d High %d/%d  NUM_SAFETY %d margin %d\n",
+		      pst->mdl->idSelf, pst->nLower,nLowTot, nLowerStore, pst->nUpper,nHighTot, nUpperStore,NUM_SAFETY,margin);
+	    
 	    
 	    if (nLowTot > nLowerStore-NUM_SAFETY*pst->nLower) {
 	            sprintf(ach,"id: %d: nLowTot > nLowerStore-NUM_SAFETY*pst->nLower %d %d %d %d\n",

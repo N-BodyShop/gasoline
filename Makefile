@@ -3,8 +3,8 @@
 #
 
 #CC = gcc -Wall
-#CC = pgcc
-CC = cc
+CC = pgcc
+CC = gcc
 #EXE = pkdgrav
 EXE = gasoline
 #CODEDEF = -DCOLLISIONS -DSLIDING_PATCH

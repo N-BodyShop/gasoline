@@ -717,7 +717,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	/*
 	 ** Always set bCannonical = 1 if bComove == 0
 	 */
-	if (!msr->param.csm->bComove) {
+	if (!msrComove(msr)) {
 		if (!msr->param.bCannonical)
 			printf("WARNING: bCannonical reset to 1 for non-comoving (bComove == 0)\n");
 		msr->param.bCannonical = 1;
@@ -1265,7 +1265,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# achInFile: %s",msr->param.achInFile);
 	fprintf(fp,"\n# achOutName: %s",msr->param.achOutName); 
 	fprintf(fp,"\n# achDataSubPath: %s",msr->param.achDataSubPath);
-	if (msr->param.csm->bComove) {
+	if (msrComove(msr)) {
 		fprintf(fp,"\n# RedOut:");
 		if (msr->nOuts == 0) fprintf(fp," none");
 		for (i=0;i<msr->nOuts;i++) {
@@ -1505,7 +1505,7 @@ double msrReadTipsy(MSR msr)
 	if (msr->nGas != 0) fprintf(stderr,"GASOLINE compile flag not set:  Treating %d Gas particles as Dark\n",msr->nGas);
 	assert(msr->nStar == 0);
 #endif
-	if (msr->param.csm->bComove) {
+	if (msrComove(msr)) {
 		if(msr->param.csm->dHubble0 == 0.0) {
 			printf("No hubble constant specified\n");
 			_msrExit(msr,1);
@@ -1767,7 +1767,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	h.ndark = msr->nDark;
 	h.nsph = msr->nGas;
 	h.nstar = msr->nStar;
-	if (msr->param.csm->bComove) {
+	if (msrComove(msr)) {
 		h.time = csmTime2Exp(msr->param.csm,dTime);
 		if (msr->param.bCannonical) {
 			in.dvFac = 1.0/(h.time*h.time);
@@ -1782,7 +1782,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		}
 	h.ndim = 3;
 	if (msr->param.bVDetails) {
-		if (msr->param.csm->bComove) {
+		if (msrComove(msr)) {
 			printf("Writing file...\nTime:%g Redshift:%g\n",
 				   dTime,(1.0/h.time - 1.0));
 			}
@@ -2209,7 +2209,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
-	if (msr->param.csm->bComove) {
+	if (msrComove(msr)) {
 		in.smf.H = csmTime2Hub(msr->param.csm,dTime);
 		in.smf.a = csmTime2Exp(msr->param.csm,dTime);
 		}
@@ -2260,7 +2260,7 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
-	if (msr->param.csm->bComove) {
+	if (msrComove(msr)) {
 		in.smf.H = csmTime2Hub(msr->param.csm,dTime);
 		in.smf.a = csmTime2Exp(msr->param.csm,dTime);
 		}
@@ -2303,7 +2303,7 @@ void msrMarkSmooth(MSR msr,double dTime,int bSymmetric,int iMarkType)
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = SMX_MARK; 
 	in.iMarkType = iMarkType;
-	if (msr->param.csm->bComove) {
+	if (msrComove(msr)) {
 		in.smf.H = csmTime2Hub(msr->param.csm,dTime);
 		in.smf.a = csmTime2Exp(msr->param.csm,dTime);
 		}
@@ -2500,7 +2500,7 @@ void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U,doub
 	 * Note that this is equal to intregral (W*da) and the latter
 	 * is more accurate when a is changing rapidly.
 	 */
-	if (msr->param.csm->bComove && !bFirst) {
+	if (msrComove(msr) && !bFirst) {
 		msr->dEcosmo += 0.5*(a - csmTime2Exp(msr->param.csm, msr->dTimeOld))
 			*((*U) + msr->dUOld);
 		}
@@ -2555,7 +2555,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 #ifdef GASOLINE
 #ifdef PREDRHO
 	if (msr->param.bPredRho == 2) {
-		if (msr->param.bComove) 
+		if (msrComove(msr)) 
 			inRhop.dHubbFac = 3*csmTime2Hub(msr->param.csm, dTime + dDelta/2.0);
 		else
 			inRhop.dHubbFac = 0.0;
@@ -3773,11 +3773,18 @@ int msrCurrRung(MSR msr, int iRung)
     }
 
 void
-msrGravStep(MSR msr)
+msrGravStep(MSR msr, double dTime)
 {
     struct inGravStep in;
+    double a;
 
-    in.dEta = msrEta(msr);
+    if (msrComove(msr)) {
+        a = csmTime2Exp(msr->param.csm,dTime);
+        in.dEta = msrEta(msr)*pow(a,1.5);
+        }
+    else {
+        in.dEta = msrEta(msr);
+        }
     pstGravStep(msr->pst,&in,sizeof(in),NULL,NULL);
     }
 
@@ -3861,7 +3868,7 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 			    msrBuildTree(msr,0,dMass,0);
 			    msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 				if (msr->param.bGravStep) {
-					msrGravStep(msr);
+					msrGravStep(msr,dTime);
 					}
 				if (msr->param.bAccelStep) {
 					msrAccelStep(msr,dTime);
@@ -3968,7 +3975,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
  			msrActiveType(msr,TYPE_ALL,TYPE_SMOOTHACTIVE|TYPE_TREEACTIVE);
 			msrInitDt(msr);
 			if (msr->param.bGravStep) {
-				msrGravStep(msr);
+				msrGravStep(msr,dTime);
 				}
 			if (msr->param.bAccelStep) {
 			    msrAccelStep(msr,dTime);
@@ -4088,7 +4095,7 @@ void msrTopStepKDK(MSR msr,
 		msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 		msrInitDt(msr);
 		if (msr->param.bGravStep) {
-			msrGravStep(msr);
+			msrGravStep(msr,dTime);
 			}
 		if (msr->param.bAccelStep) {
 		    msrAccelStep(msr,dTime);
@@ -4348,7 +4355,7 @@ void msrInitTimeSteps(MSR msr,double dTime,double dDelta)
 	msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 	msrInitDt(msr);
 	if (msr->param.bGravStep) {
-		msrGravStep(msr);
+		msrGravStep(msr,dTime);
 		}
 	if (msr->param.bAccelStep) {
 		msrAccelStep(msr,dTime);
