@@ -104,7 +104,7 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_CURRRUNG,pst,
 		      (void (*)(void *,void *,int,void *,int *))pstCurrRung,
 		      sizeof(struct inCurrRung), sizeof(struct outCurrRung));
-	mdlAddService(mdl,PST_ACTIVERUNG,pst,
+	mdlAddService(mdl,PST_DENSITYRUNG,pst,
 		      (void (*)(void *,void *,int,void *,int *))pstDensityRung,
 		      sizeof(struct inDensityRung),
 		      sizeof(struct outDensityRung));
@@ -536,6 +536,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	 */
 	nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
 	nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
+	printf("Fit stats: Active: %d %d Inactive: %d %d Sum: %d %d\n", nLow, nHigh, outWtLow.nLow + outWtHigh.nLow, outWtLow.nHigh +
+	       outWtHigh.nHigh, nLowTot, nHighTot);
 	if (nLowTot > nLowerStore-NUM_SAFETY) {
 		fl = pst->bnd.fMin[d];
 		fu = fm;
@@ -589,8 +591,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			/*
 			 ** Add lower and Upper subsets numbers of particles
 			 */
-			nLowTot = outWtLow.nLow + outWtHigh.nLow;
-			nHighTot = outWtLow.nHigh + outWtHigh.nHigh;
+			nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
+			nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
 			printf("Inactive Fit ittr:%d u:%d\n",ittr,nHighTot);
 			if (nHighTot > nUpperStore) fl = fm;
 			else if (nHighTot < nUpperStore) fu = fm;
@@ -853,6 +855,10 @@ void pstWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->fHigh = fHigh + plcl->fWtHigh;
 		plcl->fLow = fLow;
 		plcl->fHigh = fHigh;
+		if(in->pFlag > 0) {
+		    if(iSplitSide) out->nLow -= pkdInactive(plcl->pkd);
+		    else out->nHigh -= pkdInactive(plcl->pkd);
+		    }
 		if(in->pFlag < 0) {
 		    if(iSplitSide) out->nHigh -= pkdActive(plcl->pkd);
 		    else out->nLow -= pkdActive(plcl->pkd);

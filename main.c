@@ -123,7 +123,7 @@ void main(int argc,char **argv)
 				fflush(fpLog);			
 				}
 			else {
-			        msrTopStep(msr, dTime, msrDelta(msr), 0);
+			        msrTopStep(msr, iStep-1, dTime, msrDelta(msr), 0);
 
 				dTime += msrDelta(msr);
 				if (iStep%msrLogInterval(msr) == 0) {

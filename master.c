@@ -1248,7 +1248,7 @@ void msrGravity(MSR msr,double dStep,int *piSec,double *pdWMax,double *pdIMax,
 	double dEAvg,dEMax,dEMin;
 	double iP;
 
-	printf("Calculating Gravity, Step:%.1f\n",dStep);
+	printf("Calculating Gravity, Step:%.3f\n",dStep);
 	sec = time(0);
     in.nReps = msr->param.nReplicas;
     in.bPeriodic = msr->param.bPeriodic;
@@ -1953,8 +1953,16 @@ void msrDensityRung(MSR msr, int iRung, double dDelta, double dTime)
     struct inDensityRung in;
     struct outDensityRung out;
     double expand;
+    struct inDensity inden;
+    int sec,dsec;
 
-    msrDensity(msr);
+    inden.nSmooth = msr->param.nSmooth;
+    inden.bGatherScatter = 0;
+    if (msr->param.bVerbose) printf("Calculating Rung Densities...\n");
+    sec = time(0);
+    pstDensity(msr->pst,&inden,sizeof(inden),NULL,NULL);
+    dsec = time(0) - sec;
+    printf("Rung Densities Calculated, Wallclock:%d secs\n\n",dsec);
     in.iRung = iRung;
     in.dDelta = dDelta;
     in.dEta = msrEta(msr);
@@ -1965,7 +1973,7 @@ void msrDensityRung(MSR msr, int iRung, double dDelta, double dTime)
     }
 
 
-void msrTopStep(MSR msr, double dTime, double dDelta, int iRung)
+void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung)
 {
     double dMass = -1.0;
     int iSec;
@@ -1986,17 +1994,17 @@ void msrTopStep(MSR msr, double dTime, double dDelta, int iRung)
 		/*
 		 ** Actual Stepping.
 		 */
-		msrTopStep(msr, dTime, 0.5*dDelta,iRung+1);
+		msrTopStep(msr, dStep, dTime, 0.5*dDelta,iRung+1);
 		if(msrCurrRung(msr, iRung)) {
 			if (msr->param.bVerbose) {
 			    printf("Kick, iRung: %d\n", iRung);
 			    }
 			msrActiveRung(msr, iRung, 0);
 			msrBuildTree(msr,1,dMass);
-			msrGravity(msr,dTime,&iSec,&dWMax,&dIMax,&dEMax);
+			msrGravity(msr,dStep + 1.0/(iRung+1), &iSec,&dWMax,&dIMax,&dEMax);
 			msrKick(msr, dTime, dDelta);
 			}
-		msrTopStep(msr, dTime+0.5*dDelta, 0.5*dDelta,iRung+1);
+		msrTopStep(msr, dStep + 1.0/(iRung+1), dTime+0.5*dDelta, 0.5*dDelta,iRung+1);
 		}
 	else {    
 		if (msr->param.bVerbose) {

@@ -1861,15 +1861,23 @@ void
 pkdActiveRung(PKD pkd, int iRung, int bGreater)
 {
     int i;
+    int nActive;
+    char out[128];
     
+    nActive = 0;
     for(i = 0; i < pkdLocal(pkd); ++i) {
 	if(pkd->pStore[i].iRung == iRung
-	   || (bGreater && pkd->pStore[i].iRung > iRung))
+	   || (bGreater && pkd->pStore[i].iRung > iRung)) {
 	    pkd->pStore[i].iActive = 1;
+	    ++nActive;
+	    }
 	else
 	    pkd->pStore[i].iActive = 0;
 	}
+    sprintf(out, "nActive: %d\n", nActive);
+    mdlDiag(pkd->mdl, out);
     }
+
 
 int
 pkdCurrRung(PKD pkd, int iRung)

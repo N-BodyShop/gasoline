@@ -222,16 +222,16 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int pi)
 		fDist2 = dx*dx + dy*dy + dz*dz;
 		if (fDist2 < fBall2) {
 			if (smx->piMark[pj]) continue;
-			mdlRelease(mdl,CID_PARTICLE,pq->pPart);
 			if (pq->id == idSelf) smx->piMark[pq->p] = 0;
 			else {
+			        mdlRelease(mdl,CID_PARTICLE,pq->pPart);
 				PQ_HASHDEL(smx->pqHash,smx->nHash,pq);
 				pq->id = idSelf;
 				}
 			smx->piMark[pj] = 1;
 			pq->fKey = fDist2;
 			pq->p = pj;
-			pq->pPart = mdlAquire(mdl,CID_PARTICLE,pj,idSelf);
+			pq->pPart = &p[pj];
 			pq->ax = 0.0;
 			pq->ay = 0.0;
 			pq->az = 0.0;
@@ -268,16 +268,16 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int pi)
 					fDist2 = dx*dx + dy*dy + dz*dz;
 					if (fDist2 < fBall2) {
 						if (smx->piMark[pj]) continue;
-						mdlRelease(mdl,CID_PARTICLE,pq->pPart);
 						if (pq->id == idSelf) smx->piMark[pq->p] = 0;
 						else {
+						        mdlRelease(mdl,CID_PARTICLE,pq->pPart);
 							PQ_HASHDEL(smx->pqHash,smx->nHash,pq);
 							pq->id = idSelf;
 							}
 						smx->piMark[pj] = 1;
 						pq->fKey = fDist2;
 						pq->p = pj;
-						pq->pPart = mdlAquire(mdl,CID_PARTICLE,pj,idSelf);
+						pq->pPart = &p[pj];
 						pq->ax = sx - x;
 						pq->ay = sy - y;
 						pq->az = sz - z;
@@ -354,7 +354,7 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 		pqi->fKey = dx*dx + dy*dy + dz*dz;
 		pqi->p = pj;
 		pqi->id = pkd->idSelf;
-		pqi->pPart = mdlAquire(mdl,CID_PARTICLE,pj,pkd->idSelf);
+		pqi->pPart = &p[pj];
 		pqi->ax = 0.0;
 		pqi->ay = 0.0;
 		pqi->az = 0.0;
@@ -406,9 +406,9 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 				fDist2 = dx*dx + dy*dy + dz*dz;
 				if (fDist2 < fBall2) {
 					PQ_INQUEUE(smx->pqHash,smx->nHash,pj,id,NextParticle);
-					mdlRelease(mdl,CID_PARTICLE,pq->pPart);
 					if (pq->id == pkd->idSelf) smx->piMark[pq->p] = 0;
 					else {
+					        mdlRelease(mdl,CID_PARTICLE,pq->pPart);
 						PQ_HASHDEL(smx->pqHash,smx->nHash,pq);
 						}
 					pq->fKey = fDist2;
@@ -465,9 +465,9 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 		 ** pointers!
 		 */
 		for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
-			mdlRelease(mdl,CID_PARTICLE,pqi->pPart);
 			if (pqi->id == pkd->idSelf) smx->piMark[pqi->p] = 0;
 			else {
+			        mdlRelease(mdl,CID_PARTICLE,pqi->pPart);
 				PQ_HASHDEL(smx->pqHash,smx->nHash,pqi);
 				}
 			}

@@ -8,6 +8,7 @@
 #define OUT_POT_ARRAY		3
 #define OUT_AMAG_ARRAY		4
 #define OUT_IMASS_ARRAY		5
+#define OUT_RUNG_ARRAY		6
 
 #define OUT_POS_VECTOR		1
 #define OUT_VEL_VECTOR		2
