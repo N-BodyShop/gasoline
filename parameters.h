@@ -63,6 +63,8 @@ struct parameters {
 	double dConstGamma;
 	double dMeanMolWeight;
 	double dGasConst;
+	double dMsolUnit;
+	double dKpcUnit;
 	};
 
 

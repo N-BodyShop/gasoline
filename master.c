@@ -229,19 +229,32 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"geo","geometric/arithmetic mean to calc Grad(P/rho) = +geo");
 	msr->param.dConstAlpha = 1.0;
 	prmAddParam(msr->prm,"dConstAlpha",2,&msr->param.dConstAlpha,
-				sizeof(double),NULL,NULL);
+				sizeof(double),"alpha",
+		    		"<Alpha constant in viscosity> = 1.0");
 	msr->param.dConstBeta = 2.0;
 	prmAddParam(msr->prm,"dConstBeta",2,&msr->param.dConstBeta,
-				sizeof(double),NULL,NULL);
+				sizeof(double),"beta",
+		    		"<Beta constant in viscosity> = 2.0");
 	msr->param.dConstGamma = 5.0/3.0;
 	prmAddParam(msr->prm,"dConstGamma",2,&msr->param.dConstGamma,
-				sizeof(double),NULL,NULL);
+				sizeof(double),"gamma",
+		    		"<Ratio of specific heats> = 5/3");
 	msr->param.dMeanMolWeight = 1.0;
 	prmAddParam(msr->prm,"dMeanMolWeight",2,&msr->param.dMeanMolWeight,
-				sizeof(double),NULL,NULL);
+				sizeof(double),"mmw",
+		    		"<Mean molecular weight in amu> = 1.0");
 	msr->param.dGasConst = 8.31451e7 * 1e5 / 4.3e4 / 6.94e16;
 	prmAddParam(msr->prm,"dGasConst",2,&msr->param.dGasConst,
-				sizeof(double),NULL,NULL);
+				sizeof(double),"gcnst",
+		    		"<Gas Constant>");
+	msr->param.dMsolUnit = 1.0;
+	prmAddParam(msr->prm,"dMsolUnit",2,&msr->param.dMsolUnit,
+				sizeof(double),"msu",
+		    		"<Solar mass/system mass unit>");
+	msr->param.dKpcUnit = 1000.0;
+	prmAddParam(msr->prm,"dKpcUnit",2,&msr->param.dKpcUnit,
+				sizeof(double),"kpcu",
+		    		"<Kiloparsec/system length unit>");
 #endif
 	/*
 	 ** Set the box center to (0,0,0) for now!
@@ -315,6 +328,28 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->pdOutTime = malloc(msr->nMaxOuts*sizeof(double));
 	assert(msr->pdOutTime != NULL);
 	msr->nOuts = 0;
+
+#ifdef GASOLINE
+/* bolzman constant in cgs */
+#define KBOLTZ	1.38e-16
+/* mass of hydrogen atom in grams */
+#define MHYDR 1.67e-24
+/* solar mass in grams */
+#define MSOLG 1.99e33
+/* G in cgs */
+#define GCGS 6.67e-8
+/* kiloparsec in centimeters */
+#define KPCCM 3.085678e21
+	/*
+	 * Convert kboltz/mhydrogen to system units, assuming that
+	 * G == 1.
+	 */
+	if(prmSpecified(msr->prm, "dMsolUnit")
+	   && prmSpecified(msr->prm, "dKpcUnit")) {
+	      msr->param.dGasConst = msr->param.dKpcUnit*KPCCM*KBOLTZ
+		/MHYDR/GCGS/msr->param.dMsolUnit/MSOLG;
+	      }
+#endif
         
 	pstInitialize(&msr->pst,msr->mdl,&msr->lcl);
 
@@ -387,6 +422,16 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," iMaxRung: %d",msr->param.iMaxRung);
 	fprintf(fp," bEpsVel: %d",msr->param.bEpsVel);
 	fprintf(fp," bNonSymp: %d",msr->param.bNonSymp);
+#ifdef GASOLINE
+	fprintf(fp,"\n# SPH: bGeometric: %d",msr->param.bGeometric);
+	fprintf(fp," dConstAlpha: %g",msr->param.dConstAlpha);
+	fprintf(fp," dConstBeta: %g",msr->param.dConstBeta);
+	fprintf(fp," dConstGamma: %g",msr->param.dConstGamma);
+	fprintf(fp," dMeanMolWeight: %g",msr->param.dMeanMolWeight);
+	fprintf(fp," dGasConst: %g",msr->param.dGasConst);
+	fprintf(fp," dMsolUnit: %g",msr->param.dMsolUnit);
+	fprintf(fp," dKpcUnit: %g",msr->param.dKpcUnit);
+#endif
 	switch (msr->iOpenType) {
 	case OPEN_JOSH:
 		fprintf(fp,"\n# iOpenType: JOSH");
