@@ -1659,6 +1659,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	KDN *c = pkd->kdNodes;
 	int iCell,n;
 	float fWeight;
+	double dFlopI, dFlopE;
 	int i;
 
 	*pdFlop = 0.0;
@@ -1704,18 +1705,19 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 				n*(2*(c[iCell].pUpper-c[iCell].pLower) - n + 1)/2;
 			*pdCellSum += n*(pkd->nCellSoft + pkd->nCellNewt);
 			pkdStartTimer(pkd,2);
-			*pdFlop += pkdBucketInteract(pkd,iCell,iOrder);
+			dFlopI = pkdBucketInteract(pkd,iCell,iOrder);
+			*pdFlop += dFlopI;
 			pkdStopTimer(pkd,2);
 			/*
 			 * Now do Ewald part.
 			 */
 			if (bPeriodic) {
 				pkdStartTimer(pkd,3);
-				*pdFlop += pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
+				dFlopE = pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
+				*pdFlop += dFlopE;
 				pkdStopTimer(pkd,3);
 				}
-			fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 
-				1.0*(pkd->nPart + (n-1)/2.0);
+			fWeight = dFlopI + dFlopE;
 			/*
 			 ** pkdBucketWeight, only updates the weights of the active
 			 ** particles. Although this isn't really a requirement it
