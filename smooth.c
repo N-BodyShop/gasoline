@@ -55,7 +55,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_MARK:
 		smx->fcnSmooth = NULL;
 		initParticle = NULL;
-		init = NULL;
+		init = initMark;
 		comb = combMark;
 		smx->fcnPost = NULL;
 		break;

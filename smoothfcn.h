@@ -70,6 +70,7 @@ void MarkIIDensity(PARTICLE *,int,NN *,SMF *);
 void MarkIIDensitySym(PARTICLE *,int,NN *,SMF *);
 
 #define SMX_MARK				17
+void initMark(void *);
 void combMark(void *,void *);
 
 #define SMX_MEANVEL				2

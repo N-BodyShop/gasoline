@@ -285,6 +285,10 @@ void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	}
 
+void initMark(void *p)
+{
+        }
+
 void combMark(void *p1,void *p2)
 {
 	((PARTICLE *)p1)->iActive |= ((PARTICLE *)p2)->iActive;
