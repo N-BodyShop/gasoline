@@ -80,6 +80,8 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	pkd->pStore = (PARTICLE *)malloc(nStore*sizeof(PARTICLE));
 	assert(pkd->pStore != NULL);
 	pkd->kdNodes = NULL;
+	pkd->piLeaf = NULL;
+	pkd->kdTop = NULL;
 	/*
 	 ** Allocate initial interaction lists
 	 */
@@ -110,6 +112,8 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 void pkdFinish(PKD pkd)
 {
 	if (pkd->kdNodes) free(pkd->kdNodes);
+	if (pkd->kdTop) free(pkd->kdTop);
+	if (pkd->piLeaf) free(pkd->piLeaf);
 	free(pkd->ilp);
 	free(pkd->ilcs);
 	free(pkd->ilcn);
@@ -516,25 +520,13 @@ void pkdSetSoft(PKD pkd,double dSoft)
              }
         }
 
+
 void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 {
 	KDN *p;
 	int j;
 	float dx,dy,dz;	
 
-	/*
-	 ** Combine the bounds.
-	 */
-	for (j=0;j<3;++j) {
-		if (p2->bnd.fMin[j] < p1->bnd.fMin[j])
-			pOut->bnd.fMin[j] = p2->bnd.fMin[j];
-		else
-			pOut->bnd.fMin[j] = p1->bnd.fMin[j];
-		if (p2->bnd.fMax[j] > p1->bnd.fMax[j])
-			pOut->bnd.fMax[j] = p2->bnd.fMax[j];
-		else
-			pOut->bnd.fMax[j] = p1->bnd.fMax[j];
-		}
 	/*
 	 ** Find the center of mass and mass weighted softening.
 	 */
@@ -543,29 +535,106 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 	for (j=0;j<3;++j) {
 		pOut->r[j] = (p1->fMass*p1->r[j] + p2->fMass*p2->r[j])/pOut->fMass;
 		}
+	}
+
+
+void pkdCalcCell(PKD pkd,KDN *pkdn,float *rcm,int iOrder,
+				 struct pkdCalcCellStruct *pcc)
+{
+	int pj;
+	double m,dx,dy,dz,d2,d1;
+
 	/*
-	 ** Calculate the quadrupole moment tensor.
+	 ** Initialize moments.
+	 ** Initialize various B numbers.
 	 */
-	p = p1;
-	dx = p->r[0] - pOut->r[0];
-	dy = p->r[1] - pOut->r[1];
-	dz = p->r[2] - pOut->r[2];
-	pOut->fQxx = p->fQxx + p->fMass*dx*dx;
-	pOut->fQyy = p->fQyy + p->fMass*dy*dy;
-	pOut->fQzz = p->fQzz + p->fMass*dz*dz;
-	pOut->fQxy = p->fQxy + p->fMass*dx*dy;
-	pOut->fQxz = p->fQxz + p->fMass*dx*dz;
-	pOut->fQyz = p->fQyz + p->fMass*dy*dz;
-	p = p2;
-	dx = p->r[0] - pOut->r[0];
-	dy = p->r[1] - pOut->r[1];
-	dz = p->r[2] - pOut->r[2];
-	pOut->fQxx += p->fQxx + p->fMass*dx*dx;
-	pOut->fQyy += p->fQyy + p->fMass*dy*dy;
-	pOut->fQzz += p->fQzz + p->fMass*dz*dz;
-	pOut->fQxy += p->fQxy + p->fMass*dx*dy;
-	pOut->fQxz += p->fQxz + p->fMass*dx*dz;
-	pOut->fQyz += p->fQyz + p->fMass*dy*dz;
+	switch (iOrder) {	
+	case 4:
+		pcc->Hxxxx = 0.0;
+		pcc->Hxyyy = 0.0;
+		pcc->Hxxxy = 0.0;
+		pcc->Hyyyy = 0.0;
+		pcc->Hxxxz = 0.0;
+		pcc->Hyyyz = 0.0;
+		pcc->Hxxyy = 0.0;
+		pcc->Hxxyz = 0.0;
+		pcc->Hxyyz = 0.0;
+		pcc->B6 = 0.0;
+	case 3:
+		pcc->Oxxx = 0.0;
+		pcc->Oxyy = 0.0;
+		pcc->Oxxy = 0.0;
+		pcc->Oyyy = 0.0;
+		pcc->Oxxz = 0.0;
+		pcc->Oyyz = 0.0;
+		pcc->Oxyz = 0.0;
+		pcc->B5 = 0.0;
+	default:
+		pcc->Qxx = 0.0;
+		pcc->Qyy = 0.0;
+		pcc->Qzz = 0.0;
+		pcc->Qxy = 0.0;
+		pcc->Qxz = 0.0;
+		pcc->Qyz = 0.0;
+		pcc->B2 = 0.0;
+		pcc->B3 = 0.0;
+		pcc->B4 = 0.0;
+		}
+	pcc->Bmax = 0.0;
+	/*
+	 ** Calculate moments and B numbers about center-of-mass.
+	 */
+	if (pkdn == NULL) pkdn = &pkd->kdNodes[ROOT];
+	for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
+		m = pkd->pStore[pj].fMass;
+		dx = pkd->pStore[pj].r[0] - rcm[0];
+		dy = pkd->pStore[pj].r[1] - rcm[1];
+		dz = pkd->pStore[pj].r[2] - rcm[2];
+		d2 = dx*dx + dy*dy + dz*dz;
+		d1 = sqrt(d2);
+		if (d1 > pcc->Bmax) pcc->Bmax = d1;
+		switch (iOrder) {
+		case 4:
+			/*
+			 ** Calculate reduced hexadecapole moment...
+			 */
+			pcc->Hxxxx += m*(dx*dx*dx*dx - 6.0/7.0*d2*(dx*dx - 0.1*d2));
+			pcc->Hxyyy += m*(dx*dy*dy*dy - 3.0/7.0*d2*dx*dy);
+			pcc->Hxxxy += m*(dx*dx*dx*dy - 3.0/7.0*d2*dx*dy);
+			pcc->Hyyyy += m*(dy*dy*dy*dy - 6.0/7.0*d2*(dy*dy - 0.1*d2));
+			pcc->Hxxxz += m*(dx*dx*dx*dz - 3.0/7.0*d2*dx*dz);
+			pcc->Hyyyz += m*(dy*dy*dy*dz - 3.0/7.0*d2*dy*dz);
+			pcc->Hxxyy += m*(dx*dx*dy*dy - 1.0/7.0*d2*(dx*dx + dy*dy - 0.2*d2));
+			pcc->Hxxyz += m*(dx*dx*dy*dz - 1.0/7.0*d2*dy*dz);
+			pcc->Hxyyz += m*(dx*dy*dy*dz - 1.0/7.0*d2*dx*dz);
+			pcc->B6 += m*d2*d2*d2;
+		case 3:
+			/*
+			 ** Calculate reduced octopole moment...
+			 */
+			pcc->Oxxx += m*(dx*dx*dx - 0.6*d2*dx);
+			pcc->Oxyy += m*(dx*dy*dy - 0.2*d2*dx);
+			pcc->Oxxy += m*(dx*dx*dy - 0.2*d2*dy);
+			pcc->Oyyy += m*(dy*dy*dy - 0.6*d2*dy);
+			pcc->Oxxz += m*(dx*dx*dz - 0.2*d2*dz);
+			pcc->Oyyz += m*(dy*dy*dz - 0.2*d2*dz);
+			pcc->Oxyz += m*dx*dy*dz;
+			pcc->B5 += m*d2*d2*d1;
+		default:
+			/*
+			 ** Calculate quadrupole moment...
+			 */
+			pcc->Qxx += m*dx*dx;
+			pcc->Qyy += m*dy*dy;
+			pcc->Qzz += m*dz*dz;
+			pcc->Qxy += m*dx*dy;
+			pcc->Qxz += m*dx*dz;
+			pcc->Qyz += m*dy*dz;
+			pcc->B2 += m*d2;
+			pcc->B3 += m*d2*d1;
+			pcc->B4 += m*d2*d2;
+			}
+		}
 	}
 
 
@@ -573,9 +642,9 @@ double fcnAbsMono(KDN *pkdn,double r)
 {
 	double t;
 
-	t = r*(r - pkdn->fBmax);
+	t = r*(r - pkdn->mom.Bmax);
 	t *= t;
-	t = (3.0*pkdn->fB2 - 2.0*pkdn->fB3/r)/t;
+	t = (3.0*pkdn->mom.B2 - 2.0*pkdn->mom.B3/r)/t;
 	return t;
 	}
 
@@ -584,9 +653,9 @@ double fcnRelMono(KDN *pkdn,double r)
 {
 	double t;
 
-	t = (r - pkdn->fBmax);
+	t = (r - pkdn->mom.Bmax);
 	t *= pkdn->fMass*t;
-	t = (3.0*pkdn->fB2 - 2.0*pkdn->fB3/r)/t;
+	t = (3.0*pkdn->mom.B2 - 2.0*pkdn->mom.B3/r)/t;
 	return t;
 	}
 
@@ -595,9 +664,9 @@ double fcnAbsQuad(KDN *pkdn,double r)
 {
 	double t;
 
-	t = r*(r - pkdn->fBmax);
+	t = r*(r - pkdn->mom.Bmax);
 	t *= r*t;
-	t = (4.0*pkdn->fB3 - 3.0*pkdn->fB4/r)/t;
+	t = (4.0*pkdn->mom.B3 - 3.0*pkdn->mom.B4/r)/t;
 	return t;
 	}
 
@@ -606,9 +675,53 @@ double fcnRelQuad(KDN *pkdn,double r)
 {
 	double t;
 
-	t = (r - pkdn->fBmax);
+	t = (r - pkdn->mom.Bmax);
 	t *= pkdn->fMass*r*t;
-	t = (4.0*pkdn->fB3 - 3.0*pkdn->fB4/r)/t;
+	t = (4.0*pkdn->mom.B3 - 3.0*pkdn->mom.B4/r)/t;
+	return t;
+	}
+
+
+double fcnAbsOct(KDN *pkdn,double r)
+{
+	double t;
+
+	t = r*r*(r - pkdn->mom.Bmax);
+	t *= t;
+	t = (5.0*pkdn->mom.B4 - 4.0*pkdn->mom.B5/r)/t;
+	return t;
+	}
+
+
+double fcnRelOct(KDN *pkdn,double r)
+{
+	double t;
+
+	t = r*(r - pkdn->mom.Bmax);
+	t *= pkdn->fMass*t;
+	t = (5.0*pkdn->mom.B4 - 4.0*pkdn->mom.B5/r)/t;
+	return t;
+	}
+
+
+double fcnAbsHex(KDN *pkdn,double r)
+{
+	double t;
+
+	t = r*r*(r - pkdn->mom.Bmax);
+	t *= r*t;
+	t = (6.0*pkdn->mom.B5 - 5.0*pkdn->mom.B6/r)/t;
+	return t;
+	}
+
+
+double fcnRelHex(KDN *pkdn,double r)
+{
+	double t;
+
+	t = r*(r - pkdn->mom.Bmax);
+	t *= pkdn->fMass*r*t;
+	t = (6.0*pkdn->mom.B5 - 5.0*pkdn->mom.B6/r)/t;
 	return t;
 	}
 
@@ -620,7 +733,7 @@ double dRootBracket(KDN *pkdn,double dErrBnd,double (*fcn)(KDN *,double))
 	int iter = 0;
 
 	dErrCrit = 1e-6*dErrBnd;
-	dLower = (1.0 + 1e-6)*pkdn->fBmax;
+	dLower = (1.0 + 1e-6)*pkdn->mom.Bmax;
 	dLowerErr = (*fcn)(pkdn,dLower);
 	if (dLowerErr < dErrBnd) {
 /*
@@ -659,7 +772,76 @@ double dRootBracket(KDN *pkdn,double dErrBnd,double (*fcn)(KDN *,double))
 	}
 
 
-void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit)
+double pkdCalcOpen(KDN *pkdn,int iOpenType,double dCrit,int iOrder)
+{
+	double dOpen;
+
+	if (iOpenType == OPEN_ABSPAR) {
+		switch (iOrder) {
+		case 1:
+			dOpen = dRootBracket(pkdn,dCrit,fcnAbsMono);
+			break;
+		case 2:
+			dOpen = dRootBracket(pkdn,dCrit,fcnAbsQuad);
+			break;
+		case 3:
+			dOpen = dRootBracket(pkdn,dCrit,fcnAbsOct);
+			break;
+		case 4:
+			dOpen = dRootBracket(pkdn,dCrit,fcnAbsHex);
+			break;
+			}
+		}
+	else if (iOpenType == OPEN_RELPAR) {
+		switch (iOrder) {
+		case 1:
+			dOpen = dRootBracket(pkdn,dCrit,fcnRelMono);
+			break;
+		case 2:
+			dOpen = dRootBracket(pkdn,dCrit,fcnRelQuad);
+			break;
+		case 3:
+			dOpen = dRootBracket(pkdn,dCrit,fcnRelOct);
+			break;
+		case 4:
+			dOpen = dRootBracket(pkdn,dCrit,fcnRelHex);
+			break;
+			}
+		}
+	else if (iOpenType == OPEN_JOSH) {
+		/*
+		 ** Set openening criterion to an approximation of Josh's theta.
+		 ** Will be equivalent to Josh's theta for sufficiently cubical
+		 ** cells. The longest side will be chosen.
+		 */
+		int j;
+		double d,Bdel,dx,dy,dz,d2;
+		float rc[3];
+
+		Bdel = 0.0;
+		for (j=0;j<3;++j) {
+			rc[j] = 0.5*(pkdn->bnd.fMin[j] + pkdn->bnd.fMax[j]);
+			d = pkdn->bnd.fMax[j] - pkdn->bnd.fMin[j];
+			if (d > Bdel) Bdel = d;
+			}
+		dx = pkdn->r[0] - rc[0];
+		dy = pkdn->r[1] - rc[1];
+		dz = pkdn->r[2] - rc[2];
+		d2 = dx*dx + dy*dy + dz*dz;
+		dOpen = Bdel/dCrit + sqrt(d2);
+		if (dOpen < pkdn->mom.Bmax) dOpen = pkdn->mom.Bmax;
+		}
+	else {
+		/*
+		 ** Set opening criterion to the minimal, i.e., Bmax.
+		 */
+		dOpen = pkdn->mom.Bmax;
+		}
+	return(dOpen);
+	}
+
+
+void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,int iOrder)
 {
 	KDN *c;
 	PARTICLE *p;
@@ -673,25 +855,15 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit)
 	l = c[iCell].pLower;
 	u = c[iCell].pUpper;
 	if (c[iCell].iDim >= 0) {
-		pkdUpPass(pkd,LOWER(iCell),iOpenType,dCrit);
-		pkdUpPass(pkd,UPPER(iCell),iOpenType,dCrit);
+		pkdUpPass(pkd,LOWER(iCell),iOpenType,dCrit,iOrder);
+		pkdUpPass(pkd,UPPER(iCell),iOpenType,dCrit,iOrder);
 		pkdCombine(&c[LOWER(iCell)],&c[UPPER(iCell)],&c[iCell]);
 		}
 	else {
 		c[iCell].fMass = 0.0;
 		c[iCell].fSoft = 0.0;
-		for (j=0;j<3;++j) {
-			c[iCell].bnd.fMin[j] = p[u].r[j];
-			c[iCell].bnd.fMax[j] = p[u].r[j];
-			c[iCell].r[j] = 0.0;
-			}
+		for (j=0;j<3;++j) c[iCell].r[j] = 0.0;
 		for (pj=l;pj<=u;++pj) {
-			for (j=0;j<3;++j) {
-				if (p[pj].r[j] < c[iCell].bnd.fMin[j])
-					c[iCell].bnd.fMin[j] = p[pj].r[j];
-				if (p[pj].r[j] > c[iCell].bnd.fMax[j])
-					c[iCell].bnd.fMax[j] = p[pj].r[j];
-				}
 			/*
 			 ** Find center of mass and total mass and mass weighted softening.
 			 */
@@ -703,110 +875,12 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit)
 			}
 		for (j=0;j<3;++j) c[iCell].r[j] /= c[iCell].fMass;
 		c[iCell].fSoft /= c[iCell].fMass;
-		/*
-		 ** Initialize moments.
-		 */
-		rx = c[iCell].r[0];
-		ry = c[iCell].r[1];
-		rz = c[iCell].r[2];
-		c[iCell].fQxx = 0.0;
-		c[iCell].fQyy = 0.0;
-		c[iCell].fQzz = 0.0;
-		c[iCell].fQxy = 0.0;
-		c[iCell].fQxz = 0.0;
-		c[iCell].fQyz = 0.0;
-		for (pj=l;pj<=u;++pj) {
-			dx = p[pj].r[0] - rx;
-			dy = p[pj].r[1] - ry;
-			dz = p[pj].r[2] - rz;
-			/*
-			 ** various moments.
-			 */
-			c[iCell].fQxx += p[pj].fMass*dx*dx;
-			c[iCell].fQyy += p[pj].fMass*dy*dy;
-			c[iCell].fQzz += p[pj].fMass*dz*dz;
-			c[iCell].fQxy += p[pj].fMass*dx*dy;
-			c[iCell].fQxz += p[pj].fMass*dx*dz;
-			c[iCell].fQyz += p[pj].fMass*dy*dz;
-			}
 		}
 	/*
-	 ** Calculate various B numbers and moments.
+	 ** Calculate multipole moments.
 	 */
-	c[iCell].fBmax = 0.0;
-	c[iCell].fB2 = 0.0;
-	c[iCell].fB3 = 0.0;
-	c[iCell].fB4 = 0.0;
-	
-	rx = c[iCell].r[0];
-	ry = c[iCell].r[1];
-	rz = c[iCell].r[2];
-	for (pj=l;pj<=u;++pj) {
-		dx = p[pj].r[0] - rx;
-		dy = p[pj].r[1] - ry;
-		dz = p[pj].r[2] - rz;
-		d2 = dx*dx + dy*dy + dz*dz;
-		d1 = sqrt(d2);
-		if (d1 > c[iCell].fBmax) c[iCell].fBmax = d1;
-		c[iCell].fB2 += p[pj].fMass*d2;
-		c[iCell].fB3 += p[pj].fMass*d2*d1;
-		c[iCell].fB4 += p[pj].fMass*d2*d2;
-		}
-	if (iOpenType == OPEN_ABSPAR) {
-		switch (pkd->iOrder) {
-		case 1:
-			dOpen = dRootBracket(&c[iCell],dCrit,fcnAbsMono);
-			break;
-		case 2:
-			dOpen = dRootBracket(&c[iCell],dCrit,fcnAbsQuad);
-			break;
-			}
-		}
-	else if (iOpenType == OPEN_RELPAR) {
-		switch (pkd->iOrder) {
-		case 1:
-			dOpen = dRootBracket(&c[iCell],dCrit,fcnRelMono);
-			break;
-		case 2:
-			dOpen = dRootBracket(&c[iCell],dCrit,fcnRelQuad);
-			break;
-			}
-		}
-	else if (iOpenType == OPEN_JOSH) {
-		/*
-		 ** Set openening criterion to an approximation of Josh's theta.
-		 ** Will be equivalent to Josh's theta for sufficiently cubical
-		 ** cells. Okay, so it's not the greatest approximation!
-		 **
-		 ** Find the center of the cell for the Bdel calculation.
-		 */
-		double d2,d1,Bdel;
-		float rc[3];
-
-		for (j=0;j<3;++j) {
-			rc[j] = (c[iCell].bnd.fMin[j] + c[iCell].bnd.fMax[j])/2.0;
-			}
-		Bdel = 0.0;
-		for (pj=l;pj<=u;++pj) {
-			dx = p[pj].r[0] - rc[0];
-			dy = p[pj].r[1] - rc[1];
-			dz = p[pj].r[2] - rc[2];
-			d2 = dx*dx + dy*dy + dz*dz;
-			d1 = sqrt(d2);
-			if (d1 > Bdel) Bdel = d1;
-			}
-		dx = c[iCell].r[0] - rc[0];
-		dy = c[iCell].r[1] - rc[1];
-		dz = c[iCell].r[2] - rc[2];
-		d2 = dx*dx + dy*dy + dz*dz;
-		dOpen = 2/sqrt(3.0)*Bdel/dCrit + sqrt(d2);
-		}
-	else {
-		/*
-		 ** Set opening criterion to the minimal, i.e., fBmax.
-		 */
-		dOpen = c[iCell].fBmax;
-		}
+	pkdCalcCell(pkd,&c[iCell],c[iCell].r,iOrder,&c[iCell].mom);
+	dOpen = pkdCalcOpen(&c[iCell],iOpenType,dCrit,iOrder);
 	c[iCell].fOpen2 = dOpen*dOpen;
 	}
 
@@ -845,7 +919,8 @@ void pkdSelect(PKD pkd,int d,int k,int l,int r)
 	}
 
 
-void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,KDN *pRoot)
+void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
+				   int iOrder,KDN *pRoot)
 {
 	int l,n,i,d,m,j,diff;
 	KDN *c;
@@ -911,131 +986,8 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,KDN *pRoot)
 			if (i == ROOT) break;
 			}
 		}
-	pkdUpPass(pkd,ROOT,iOpenType,dCrit);
+	pkdUpPass(pkd,ROOT,iOpenType,dCrit,iOrder);
 	*pRoot = c[ROOT];
-	}
-
-
-#define CID_TOP		0
-
-void pkdInitTop(PKD pkd,int cell,int id) 
-{
-	KDN *pkdn;
-	int uid;
-
-	pkdn = mdlAquire(pkd->mdl,CID_TOP,cell,id);
-	if (id != pkd->idSelf) {
-		pkd->kdTop[cell] = *pkdn;
-		}
-	uid = pkdn->pUpper;
-	if (uid >= 0) {
-		mdlRelease(pkd->mdl,CID_TOP,pkdn);
-		pkdInitTop(pkd,LOWER(cell),id);
-		pkdInitTop(pkd,UPPER(cell),uid);
-		}
-	else {
-		pkd->piLeaf[id] = cell;
-		mdlRelease(pkd->mdl,CID_TOP,pkdn);
-		}	
-	}
-
-void pkdUpPassTop(PKD pkd,int iCell,int iOpenType,double dCrit)
-{
-	KDN *c;
-	double dOpen,d1,d2,dx,dy,dz;
-	int j;
-
-	c = pkd->kdTop;
-	if (c[iCell].pUpper >= 0) {
-		c[iCell].pLower = -1;	/* Not a leaf */
-		pkdUpPassTop(pkd,LOWER(iCell),iOpenType,dCrit);
-		pkdUpPassTop(pkd,UPPER(iCell),iOpenType,dCrit);
-		pkdCombine(&c[LOWER(iCell)],&c[UPPER(iCell)],&c[iCell]);
-		}
-	/*
-	 ** Must use approximate B numbers here because we don't have visibility
-	 ** of particles in Top Cells! Note: B2 is exact.
-	 */
-	c[iCell].fBmax = 0.0;
-	for (j=0;j<3;++j) {
-		d1 = c[iCell].bnd.fMax[j] - c[iCell].r[j];
-		d2 = c[iCell].r[j] - c[iCell].bnd.fMin[j];
-		if (d1 < d2) c[iCell].fBmax += d2*d2;
-		else c[iCell].fBmax += d1*d1;
-		}
-	c[iCell].fBmax = sqrt(c[iCell].fBmax);
-	c[iCell].fB2 = (c[iCell].fQxx + c[iCell].fQyy + c[iCell].fQzz);
-	c[iCell].fB3 = sqrt(c[iCell].fB2*c[iCell].fB2*c[iCell].fB2/c[iCell].fMass);
-	c[iCell].fB4 = c[iCell].fB2*c[iCell].fB2/c[iCell].fMass;
-	if (iOpenType == OPEN_ABSPAR) {
-		switch (pkd->iOrder) {
-		case 1:
-			dOpen = dRootBracket(&c[iCell],dCrit,fcnAbsMono);
-			break;
-		case 2:
-			dOpen = dRootBracket(&c[iCell],dCrit,fcnAbsQuad);
-			break;
-			}
-		}
-	else if (iOpenType == OPEN_RELPAR) {
-		switch (pkd->iOrder) {
-		case 1:
-			dOpen = dRootBracket(&c[iCell],dCrit,fcnRelMono);
-			break;
-		case 2:
-			dOpen = dRootBracket(&c[iCell],dCrit,fcnRelQuad);
-			break;
-			}
-		}
-	else if (iOpenType == OPEN_JOSH) {
-		/*
-		 ** Set openening criterion to an approximation of Josh's theta.
-		 ** Will be equivalent to Josh's theta for sufficiently cubical
-		 ** cells. Okay, so it's not the greatest approximation!
-		 **
-		 ** Find the center of the cell for the Bdel calculation.
-		 */
-		double Bdel;
-		float rc[3];
-
-		Bdel = 0.0;
-		for (j=0;j<3;++j) {
-			rc[j] = (c[iCell].bnd.fMin[j] + c[iCell].bnd.fMax[j])/2.0;
-			d1 = (c[iCell].bnd.fMax[j] - c[iCell].bnd.fMin[j])/2.0;
-			Bdel += d1*d1;
-			}
-		Bdel = sqrt(Bdel);
-		dx = c[iCell].r[0] - rc[0];
-		dy = c[iCell].r[1] - rc[1];
-		dz = c[iCell].r[2] - rc[2];
-		d2 = dx*dx + dy*dy + dz*dz;
-		dOpen = 2/sqrt(3)*Bdel/dCrit + sqrt(d2);
-		}
-	else {
-		/*
-		 ** Set opening criterion to the minimal, i.e., fBmax.
-		 */
-		dOpen = c[iCell].fBmax;
-		}
-	c[iCell].fOpen2 = dOpen*dOpen;
-	}
-
-
-void pkdBuildTop(PKD pkd,int iOpenType,double dCrit,
-				 KDN *kdTop,int nTopNodes,int *piLeaf)
-{
-	pkd->kdTop = kdTop;
-	pkd->piLeaf = piLeaf;
-	mdlROcache(pkd->mdl,CID_TOP,pkd->kdTop,sizeof(KDN),nTopNodes);
-	/*
-	 ** Now walk the Top tree, initializing the rest of pkd->c.
-	 */
-	pkdInitTop(pkd,ROOT,0);
-	mdlFinishCache(pkd->mdl,CID_TOP);
-	/*
-	 ** Now do an UpPass on the top tree.
-	 */
-	pkdUpPassTop(pkd,ROOT,iOpenType,dCrit);
 	}
 
 
@@ -1049,6 +1001,7 @@ void pkdBucketWeight(PKD pkd,int iBucket,float fWeight)
 		pkd->pStore[pj].fWeight = fWeight;
 		}
 	}
+
 
 void pkdGravAll(PKD pkd,int nReps,int bPeriodic,float fEwCut,float fEwhCut,
 				double *pdPartSum,double *pdCellSum,CASTAT *pcsPart,
@@ -1268,8 +1221,21 @@ void pkdReadCheckOld(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	}
 
 
+void pkdDistribCells(PKD pkd,int nCell,KDN *pkdn)
+{
+	int i;
 
-
+	if (pkd->kdTop != NULL) free(pkd->kdTop);
+	if (pkd->piLeaf != NULL) free(pkd->piLeaf);
+	pkd->kdTop = malloc(nCell*sizeof(KDN));
+	assert(pkd->kdTop != NULL);
+	pkd->piLeaf = malloc(pkd->nThreads*sizeof(int));
+	assert(pkd->piLeaf != NULL);
+	for (i=1;i<nCell;++i) {
+		pkd->kdTop[i] = pkdn[i];
+		if (pkdn[i].pLower >= 0) pkd->piLeaf[pkdn[i].pLower] = i;
+		}
+	}
 
 
 

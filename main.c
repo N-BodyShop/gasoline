@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -11,7 +12,7 @@ void main_ch(MDL mdl)
 {
 	PST pst;
 	LCL lcl;
-	int nThreads;
+	int nThreads,nCell;
 
 	lcl.pszDataPath = (char *)getenv("PTOOLS_DATA_PATH");
 	pstInitialize(&pst,mdl,&lcl);
@@ -50,7 +51,7 @@ void main_ch(MDL mdl)
 	mdlAddService(mdl,PST_WRITETIPSY,pst,pstWriteTipsy,
 				  sizeof(struct inWriteTipsy),0);
 	mdlAddService(mdl,PST_BUILDTREE,pst,pstBuildTree,
-				  sizeof(struct inBuildTree),0);
+				  sizeof(struct inBuildTree),sizeof(struct outBuildTree));
 	mdlAddService(mdl,PST_DENSITY,pst,pstDensity,
 				  sizeof(struct inDensity),0);
 	mdlAddService(mdl,PST_GRAVITY,pst,pstGravity,
@@ -69,7 +70,17 @@ void main_ch(MDL mdl)
 				  sizeof(struct inSetSoft),0);
 	mdlAddService(mdl,PST_SETTOTAL,pst,pstSetTotal,
 				  0,sizeof(struct outSetTotal));
-
+	mdlAddService(mdl,PST_CALCCELL,pst,pstCalcCell,
+				  sizeof(struct inCalcCell),sizeof(struct outCalcCell));
+	/*
+	 ** Calculate the number of levels in the top tree and use it to 
+	 ** define the size of the messages.
+	 */
+	nCell = 1<<(1+(int)ceil(log(nThreads)/log(2.0)));
+	mdlAddService(mdl,PST_COLCELLS,pst,pstColCells,
+				  sizeof(struct inColCells),nCell*sizeof(KDN));
+	mdlAddService(mdl,PST_DISTRIBCELLS,pst,pstDistribCells,
+				  nCell*sizeof(KDN),0);
 	mdlHandler(mdl);
 
 	pstFinish(pst);

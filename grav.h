@@ -51,6 +51,6 @@
 	}
 
 
-void pkdBucketInteract(PKD,int);
+void pkdBucketInteract(PKD,int,int);
 
 #endif

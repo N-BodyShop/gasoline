@@ -85,9 +85,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.iCheckInterval = 10;
 	prmAddParam(msr->prm,"iCheckInterval",1,&msr->param.iCheckInterval,
 				"oc","<number of timesteps between checkpoints> = 10");
-	msr->param.iOrder = 2;
+	msr->param.iOrder = 4;
 	prmAddParam(msr->prm,"iOrder",1,&msr->param.iOrder,"or",
-				"<multipole expansion order: 1 or 2> = 2");
+				"<multipole expansion order: 1, 2, 3 or 4> = 4");
 	msr->param.nReplicas = 0;
 	prmAddParam(msr->prm,"nReplicas",1,&msr->param.nReplicas,"nrep",
 				"<nReplicas> = 0 for -p, or 1 for +p");
@@ -687,9 +687,12 @@ void msrSetSoft(MSR msr,double dSoft)
 void msrBuildTree(MSR msr)
 {
 	struct inBuildTree in;
-	int sec,dsec;
-	int i;
+	struct outBuildTree out;
+	struct inColCells inc;
 	KDN *pkdn;
+	int sec,dsec;
+	int i,iDum,nCell;
+	struct pkdCalcCellStruct *m;
 
 	if (msr->param.bVerbose) printf("Domain Decomposition...\n");
 	sec = time(0);
@@ -699,27 +702,46 @@ void msrBuildTree(MSR msr)
 		printf("Domain Decomposition complete, Wallclock: %d secs\n\n",dsec);
 		}
 	if (msr->param.bVerbose) printf("Building local trees...\n");
-	in.iCell = 1;	/* ROOT */
 	in.nBucket = msr->param.nBucket;
 	in.iOpenType = msr->iOpenType;
+	in.iOrder = msr->param.iOrder;
 	in.dCrit = msr->dCrit;
 	sec = time(0);
-	pstBuildTree(msr->pst,&in,sizeof(in),NULL,NULL);
+	pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
 	dsec = time(0) - sec;
 	if (msr->param.bVerbose) {
-		printf("Local Trees built, Wallclock: %d secs\n\n",dsec);
+		printf("Tree built, Wallclock: %d secs\n\n",dsec);
 		}
-	if (msr->param.bVerbose) {
-		pkdn = msr->lcl.kdTop;
-		for (i=1;i<msr->lcl.nTopNodes;++i) {
-			printf("LTT:%2d fSplit:(%1d)%f l:%d u:%d\n",i,pkdn[i].iDim,
-				   pkdn[i].fSplit,pkdn[i].pLower,pkdn[i].pUpper);
-			printf("       MIN:%15f %15f %15f\n",pkdn[i].bnd.fMin[0],
-				   pkdn[i].bnd.fMin[1],pkdn[i].bnd.fMin[2]);
-			printf("       MAX:%15f %15f %15f\n",pkdn[i].bnd.fMax[0],
-				   pkdn[i].bnd.fMax[1],pkdn[i].bnd.fMax[2]);
-			}
+	nCell = 1<<(1+(int)ceil(log(msr->nThreads)/log(2.0)));
+	pkdn = malloc(nCell*sizeof(KDN));
+	assert(pkdn != NULL);
+	inc.iCell = ROOT;
+	inc.nCell = nCell;
+	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
+
+	for (i=1;i<nCell;++i) {
+		printf("\nLTT:%d\n",i);
+		printf("    iDim:%1d fSplit:%g pLower:%d pUpper:%d\n",
+			   pkdn[i].iDim,pkdn[i].fSplit,pkdn[i].pLower,pkdn[i].pUpper);
+		printf("    bnd:(%g,%g) (%g,%g) (%g,%g)\n",
+			   pkdn[i].bnd.fMin[0],pkdn[i].bnd.fMax[0],
+			   pkdn[i].bnd.fMin[1],pkdn[i].bnd.fMax[1],
+			   pkdn[i].bnd.fMin[2],pkdn[i].bnd.fMax[2]);
+		printf("    fMass:%g fSoft:%g\n",pkdn[i].fMass,pkdn[i].fSoft);
+		printf("    rcm:%g %g %g fOpen2:%g\n",pkdn[i].r[0],pkdn[i].r[1],
+			   pkdn[i].r[2],pkdn[i].fOpen2);
+		m = &pkdn[i].mom;
+		printf("    xx:%g yy:%g zz:%g xy:%g xz:%g yz:%g\n",
+			   m->Qxx,m->Qyy,m->Qzz,m->Qxy,m->Qxz,m->Qyz);
+		printf("    xxx:%g xyy:%g xxy:%g yyy:%g xxz:%g yyz:%g xyz:%g\n",
+			   m->Oxxx,m->Oxyy,m->Oxxy,m->Oyyy,m->Oxxz,m->Oyyz,m->Oxyz);
+		printf("    xxxx:%g xyyy:%g xxxy:%g yyyy:%g xxxz:%g\n",
+			   m->Hxxxx,m->Hxyyy,m->Hxxxy,m->Hyyyy,m->Hxxxz);
+		printf("    yyyz:%g xxyy:%g xxyz:%g xyyz:%g\n",
+			   m->Hyyyz,m->Hxxyy,m->Hxxyz,m->Hxyyz);
 		}
+
+	pstDistribCells(msr->pst,pkdn,nCell*sizeof(KDN),NULL,NULL);
 	}
 
 

@@ -66,6 +66,16 @@ typedef struct bndBound {
 	float fMax[3];
 	} BND;
 
+struct pkdCalcCellStruct {
+	float Qxx,Qyy,Qzz,Qxy,Qxz,Qyz;
+	/*
+	 ** Reduced multipole moments for l>2 !!!
+	 */
+	float Oxxx,Oxyy,Oxxy,Oyyy,Oxxz,Oyyz,Oxyz;
+	float Hxxxx,Hxyyy,Hxxxy,Hyyyy,Hxxxz,Hyyyz,Hxxyy,Hxxyz,Hxyyz;
+	float Bmax,B2,B3,B4,B5,B6;
+	};
+
 typedef struct kdNode {
 	int iDim;
 	float fSplit;
@@ -75,8 +85,7 @@ typedef struct kdNode {
 	float fMass;
 	float fSoft;
 	float r[3];
-	float fQxx,fQyy,fQzz,fQxy,fQxz,fQyz;
-	float fBmax,fB2,fB3,fB4;
+	struct pkdCalcCellStruct mom;
 	float fOpen2;
 	} KDN;
 
@@ -92,12 +101,14 @@ typedef struct ilCellSoft {
 	} ILCS;
 
 /*
- ** Reduced Quadrupole moment tensor, Q_ij = 3.0*M_ij - delta_ij*tr(M_ij).
+ ** Reduced moment tensor components.
  */
 typedef struct ilCellNewt {
 	float m;
 	float x,y,z;
 	float xx,yy,xy,xz,yz;
+	float xxx,xyy,xxy,yyy,xxz,yyz,xyz;
+	float xxxx,xyyy,xxxy,yyyy,xxxz,yyyz,xxyy,xxyz,xyyz;
 	} ILCN;
 
 typedef struct ewaldTable {
@@ -228,8 +239,10 @@ void pkdDomainColor(PKD);
 int pkdColOrdRejects(PKD,int,int);
 void pkdLocalOrder(PKD,int);
 void pkdWriteTipsy(PKD,char *,int,int,int);
-void pkdBuildLocal(PKD,int,int,double,KDN *);
-void pkdBuildTop(PKD,int,double,KDN *,int,int *);
+void pkdCombine(KDN *,KDN *,KDN *);
+void pkdCalcCell(PKD,KDN *,float *,int,struct pkdCalcCellStruct *);
+double pkdCalcOpen(KDN *,int,double,int);
+void pkdBuildLocal(PKD,int,int,double,int,KDN *);
 void pkdGravAll(PKD,int,int,float,float,double *,double *,CASTAT *,CASTAT *); 
 void pkdCalcE(PKD,double *,double *);
 void pkdDrift(PKD,double,float *);
@@ -237,6 +250,7 @@ void pkdKick(PKD pkd,double,double);
 void pkdReadCheckOld(PKD,char *,int,int);
 void pkdReadCheckNew(PKD,char *,int,int);
 void pkdWriteCheckNew(PKD,char *,int);
+void pkdDistribCells(PKD,int,KDN *);
 
 #endif
 

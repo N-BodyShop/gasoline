@@ -87,57 +87,9 @@ void pstLevelize(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		plcl->nPstLvl = pst->iLvl+1;
-		/*
-		 ** Placing this here is quite a HACK!!!
-		 ** Allocate storage for kdTop.
-		 */
-		l = 1;
-		n = mdlThreads(pst->mdl);
-		while (n > l) {
-			l = l << 1;
-			}
-		plcl->nTopNodes = l << 1;
-		plcl->kdTop = malloc(plcl->nTopNodes*sizeof(KDN));	
-		assert(plcl->kdTop != NULL);
-		plcl->piLeaf = malloc(mdlThreads(pst->mdl)*sizeof(int));
-		assert(plcl->piLeaf != NULL);
 		}
 	if (pnOut) *pnOut = 0;
 	}
-
-
-#if (0)
-/*
- ** This code segment is no longer considered a proper use of the
- ** services primitives of MDL!
- */
-void pstShowPst(PST pst,char *in,int nIn,char *out,int *pnOut)
-{
-	char buf[100000];
-	int i,iLvl,nBytes;
-	
-	iLvl = pst->iLvl;
-	*out = 0;
-	*pnOut = 1;
-	strcpy(buf,"   ");
-	for (i=0;i<iLvl;++i) {
-		strcat(out,buf);
-		*pnOut += strlen(buf);
-		}
-	sprintf(buf,"%d nLeaves:%d iLvl:%d\n",pst->idSelf,pst->nLeaves,pst->iLvl);
-	strcat(out,buf);
-	*pnOut += strlen(buf);
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_SHOWPST,in,nIn);
-		pstShowPst(pst->pstLower,in,nIn,buf,&nBytes);
-		strcat(out,buf);
-		*pnOut += strlen(buf);
-		mdlGetReply(pst->mdl,pst->idUpper,buf,&nBytes);
-		strcat(out,buf);
-		*pnOut += strlen(buf);
-		}
-	}
-#endif
 
 
 void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
@@ -866,31 +818,51 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	struct inBuildTree *in = vin;
-	int iCell;
+	struct outBuildTree *out = vout;
+	struct outBuildTree out1,out2;
+	struct inCalcCell inc;
+	struct outCalcCell outc;
+	int j;
+	float dOpen;
 	
 	assert(nIn == sizeof(struct inBuildTree));
-	iCell = in->iCell;
 	if (pst->nLeaves > 1) {
-		plcl->kdTop[iCell].iDim = pst->iSplitDim;
-		plcl->kdTop[iCell].fSplit = pst->fSplit;
-		plcl->kdTop[iCell].bnd = pst->bnd;
-		plcl->kdTop[iCell].pLower = pst->idSelf;
-		plcl->kdTop[iCell].pUpper = pst->idUpper;
-		in->iCell = UPPER(iCell);
+		pst->kdn.iDim = pst->iSplitDim;
+		pst->kdn.fSplit = pst->fSplit;
+		pst->kdn.bnd = pst->bnd;
+		pst->kdn.pLower = -1;
+		pst->kdn.pUpper = 1;
 		mdlReqService(pst->mdl,pst->idUpper,PST_BUILDTREE,in,nIn);
-		in->iCell = LOWER(iCell);
-		pstBuildTree(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		pstBuildTree(pst->pstLower,in,nIn,&out1,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&out2,NULL);
+		/*
+		 ** Combine to find cell mass, cm, softening.
+		 */
+		pkdCombine(&out1.kdn,&out2.kdn,&pst->kdn);
+		/*
+		 ** Calculate moments and other center-of-mass related quantities.
+		 */
+		for (j=0;j<3;++j) inc.rcm[j] = pst->kdn.r[j];
+		inc.iOrder = in->iOrder;
+		pstCalcCell(pst,&inc,sizeof(struct inCalcCell),&outc,NULL);
+		pst->kdn.mom = outc.mom;
+		/*
+		 ** Calculate an opening radius.
+		 */
+		dOpen = pkdCalcOpen(&pst->kdn,in->iOpenType,in->dCrit,in->iOrder);
+		pst->kdn.fOpen2 = dOpen*dOpen;
 		}
 	else {
 		pkdBuildLocal(plcl->pkd,in->nBucket,in->iOpenType,in->dCrit,
-					  &plcl->kdTop[iCell]);
-		plcl->kdTop[iCell].pLower = pst->idSelf;
-		plcl->kdTop[iCell].pUpper = -1;
-		pkdBuildTop(plcl->pkd,in->iOpenType,in->dCrit,plcl->kdTop,
-					plcl->nTopNodes,plcl->piLeaf);
+					  in->iOrder,&pst->kdn);
+		pst->kdn.pLower = pst->idSelf;
+		pst->kdn.pUpper = 1;
 		}
-	if (pnOut) *pnOut = 0;
+	/*
+	 ** Calculated all cell properties, now pass up this cell info.
+	 */
+	out->kdn = pst->kdn;
+	if (pnOut) *pnOut = sizeof(struct outBuildTree);
 	}
 
 
@@ -1146,7 +1118,144 @@ void pstWriteCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+void pstCalcCell(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inCalcCell *in = vin;
+	struct outCalcCell *out = vout;
+	struct outCalcCell occ;
+	struct pkdCalcCellStruct pcc;
+
+	assert(nIn == sizeof(struct inCalcCell));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_CALCCELL,in,nIn);
+		pstCalcCell(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&occ,NULL);
+		switch (in->iOrder) {
+		case 4:
+			out->mom.Hxxxx += occ.mom.Hxxxx;
+			out->mom.Hxyyy += occ.mom.Hxyyy;
+			out->mom.Hxxxy += occ.mom.Hxxxy;
+			out->mom.Hyyyy += occ.mom.Hyyyy;
+			out->mom.Hxxxz += occ.mom.Hxxxz;
+			out->mom.Hyyyz += occ.mom.Hyyyz;
+			out->mom.Hxxyy += occ.mom.Hxxyy;
+			out->mom.Hxxyz += occ.mom.Hxxyz;
+			out->mom.Hxyyz += occ.mom.Hxyyz;
+			out->mom.B6 += occ.mom.B6;
+		case 3:
+			out->mom.Oxxx += occ.mom.Oxxx;
+			out->mom.Oxyy += occ.mom.Oxyy;
+			out->mom.Oxxy += occ.mom.Oxxy;
+			out->mom.Oyyy += occ.mom.Oyyy;
+			out->mom.Oxxz += occ.mom.Oxxz;
+			out->mom.Oyyz += occ.mom.Oyyz;
+			out->mom.Oxyz += occ.mom.Oxyz;
+			out->mom.B5 += occ.mom.B5;
+		default:
+			out->mom.Qxx += occ.mom.Qxx;
+			out->mom.Qyy += occ.mom.Qyy;
+			out->mom.Qzz += occ.mom.Qzz;
+			out->mom.Qxy += occ.mom.Qxy;
+			out->mom.Qxz += occ.mom.Qxz;
+			out->mom.Qyz += occ.mom.Qyz;
+			out->mom.B2 += occ.mom.B2;
+			out->mom.B3 += occ.mom.B3;
+			out->mom.B4 += occ.mom.B4;
+			}
+		if (occ.mom.Bmax > out->mom.Bmax) out->mom.Bmax = occ.mom.Bmax;
+		}
+	else {
+		pkdCalcCell(plcl->pkd,NULL,in->rcm,in->iOrder,&pcc);
+		switch (in->iOrder) {
+		case 4:
+			out->mom.Hxxxx = pcc.Hxxxx;
+			out->mom.Hxyyy = pcc.Hxyyy;
+			out->mom.Hxxxy = pcc.Hxxxy;
+			out->mom.Hyyyy = pcc.Hyyyy;
+			out->mom.Hxxxz = pcc.Hxxxz;
+			out->mom.Hyyyz = pcc.Hyyyz;
+			out->mom.Hxxyy = pcc.Hxxyy;
+			out->mom.Hxxyz = pcc.Hxxyz;
+			out->mom.Hxyyz = pcc.Hxyyz;
+			out->mom.B6 = pcc.B6;
+		case 3:	
+			out->mom.Oxxx = pcc.Oxxx;
+			out->mom.Oxyy = pcc.Oxyy;
+			out->mom.Oxxy = pcc.Oxxy;
+			out->mom.Oyyy = pcc.Oyyy;
+			out->mom.Oxxz = pcc.Oxxz;
+			out->mom.Oyyz = pcc.Oyyz;
+			out->mom.Oxyz = pcc.Oxyz;
+			out->mom.B5 = pcc.B5;
+		default:
+			out->mom.Qxx = pcc.Qxx;
+			out->mom.Qyy = pcc.Qyy;
+			out->mom.Qzz = pcc.Qzz;
+			out->mom.Qxy = pcc.Qxy;
+			out->mom.Qxz = pcc.Qxz;
+			out->mom.Qyz = pcc.Qyz;
+			out->mom.B2 = pcc.B2;
+			out->mom.B3 = pcc.B3;
+			out->mom.B4 = pcc.B4;
+			}
+		out->mom.Bmax = pcc.Bmax;
+		}
+	if (pnOut) *pnOut = sizeof(struct outCalcCell);
+	}
 
 
+void pstColCells(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inColCells *in = vin;
+	KDN *pkdn = vout;
+	KDN *ptmp;
+	int i,iCell;
 
+	assert(nIn == sizeof(struct inColCells));
+	iCell = in->iCell;
+	if (pst->nLeaves > 1) {
+		in->iCell = UPPER(iCell);
+		mdlReqService(pst->mdl,pst->idUpper,PST_COLCELLS,in,nIn);
+		in->iCell = LOWER(iCell);
+		pstColCells(pst->pstLower,in,nIn,vout,pnOut);
+		in->iCell = iCell;
+		ptmp = malloc(in->nCell*sizeof(KDN));
+		assert(ptmp != NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,ptmp,pnOut);
+		for (i=1;i<in->nCell;++i) {
+			if (ptmp[i].pUpper) {
+				pkdn[i] = ptmp[i];
+				}
+			}
+		free(ptmp);
+		pkdn[iCell] = pst->kdn;
+		assert(pkdn[iCell].pUpper != 0);
+		}
+	else {
+		for (i=1;i<in->nCell;++i) pkdn[i].pUpper = 0; /* used flag = unused */
+		pkdn[iCell] = pst->kdn;
+		assert(pkdn[iCell].pUpper != 0);
+		}
+	if (pnOut) *pnOut = in->nCell*sizeof(KDN);
+	}
+
+
+void pstDistribCells(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	KDN *pkdn = vin;
+	int nCell;
+
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DISTRIBCELLS,vin,nIn);
+		pstDistribCells(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		nCell = nIn/sizeof(KDN);
+		pkdDistribCells(plcl->pkd,nCell,pkdn);
+		}
+	if (pnOut) *pnOut = 0;
+	}
 

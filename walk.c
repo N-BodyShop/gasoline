@@ -7,7 +7,7 @@
 #include "pkd.h"
 
 
-void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3])
+void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3],int iOrder)
 {
 	PARTICLE *p;
 	KDN *pkdn,*pbuc;
@@ -86,12 +86,12 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3])
 				pkd->ilcs[nCellSoft].x = x;
 				pkd->ilcs[nCellSoft].y = y;
 				pkd->ilcs[nCellSoft].z = z;
-				pkd->ilcs[nCellSoft].xx = pkdn->fQxx;
-				pkd->ilcs[nCellSoft].yy = pkdn->fQyy;
-				pkd->ilcs[nCellSoft].zz = pkdn->fQzz;
-				pkd->ilcs[nCellSoft].xy = pkdn->fQxy;
-				pkd->ilcs[nCellSoft].xz = pkdn->fQxz;
-				pkd->ilcs[nCellSoft].yz = pkdn->fQyz;
+				pkd->ilcs[nCellSoft].xx = pkdn->mom.Qxx;
+				pkd->ilcs[nCellSoft].yy = pkdn->mom.Qyy;
+				pkd->ilcs[nCellSoft].zz = pkdn->mom.Qzz;
+				pkd->ilcs[nCellSoft].xy = pkdn->mom.Qxy;
+				pkd->ilcs[nCellSoft].xz = pkdn->mom.Qxz;
+				pkd->ilcs[nCellSoft].yz = pkdn->mom.Qyz;
 				++nCellSoft;
 				}
 			else {
@@ -105,16 +105,39 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3])
 					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
 						}
 					}
-				pkd->ilcn[nCellNewt].m = pkdn->fMass;
-				pkd->ilcn[nCellNewt].x = x;
-				pkd->ilcn[nCellNewt].y = y;
-				pkd->ilcn[nCellNewt].z = z;
-				tr = pkdn->fQxx + pkdn->fQyy + pkdn->fQzz;
-				pkd->ilcn[nCellNewt].xx = 3.0*pkdn->fQxx - tr;
-				pkd->ilcn[nCellNewt].yy = 3.0*pkdn->fQyy - tr;
-				pkd->ilcn[nCellNewt].xy = 3.0*pkdn->fQxy;
-				pkd->ilcn[nCellNewt].xz = 3.0*pkdn->fQxz;
-				pkd->ilcn[nCellNewt].yz = 3.0*pkdn->fQyz;
+				switch (iOrder) {
+				case 4:
+					pkd->ilcn[nCellNewt].xxxx = pkdn->mom.Hxxxx;
+					pkd->ilcn[nCellNewt].xyyy = pkdn->mom.Hxyyy;
+					pkd->ilcn[nCellNewt].xxxy = pkdn->mom.Hxxxy;
+					pkd->ilcn[nCellNewt].yyyy = pkdn->mom.Hyyyy;
+					pkd->ilcn[nCellNewt].xxxz = pkdn->mom.Hxxxz;
+					pkd->ilcn[nCellNewt].yyyz = pkdn->mom.Hyyyz;
+					pkd->ilcn[nCellNewt].xxyy = pkdn->mom.Hxxyy;
+					pkd->ilcn[nCellNewt].xxyz = pkdn->mom.Hxxyz;
+					pkd->ilcn[nCellNewt].xyyz = pkdn->mom.Hxyyz;
+				case 3:
+					pkd->ilcn[nCellNewt].xxx = pkdn->mom.Oxxx;
+					pkd->ilcn[nCellNewt].xyy = pkdn->mom.Oxyy;
+					pkd->ilcn[nCellNewt].xxy = pkdn->mom.Oxxy;
+					pkd->ilcn[nCellNewt].yyy = pkdn->mom.Oyyy;
+					pkd->ilcn[nCellNewt].xxz = pkdn->mom.Oxxz;
+					pkd->ilcn[nCellNewt].yyz = pkdn->mom.Oyyz;
+					pkd->ilcn[nCellNewt].xyz = pkdn->mom.Oxyz;
+				case 2:
+					tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;
+					pkd->ilcn[nCellNewt].xx = pkdn->mom.Qxx - tr/3.0;
+					pkd->ilcn[nCellNewt].yy = pkdn->mom.Qyy - tr/3.0;
+					pkd->ilcn[nCellNewt].xy = pkdn->mom.Qxy;
+					pkd->ilcn[nCellNewt].xz = pkdn->mom.Qxz;
+					pkd->ilcn[nCellNewt].yz = pkdn->mom.Qyz;
+				case 1:
+				default:
+					pkd->ilcn[nCellNewt].m = pkdn->fMass;
+					pkd->ilcn[nCellNewt].x = x;
+					pkd->ilcn[nCellNewt].y = y;
+					pkd->ilcn[nCellNewt].z = z;
+					}
 				++nCellNewt;
 				}
 			SETNEXT(iCell);
@@ -127,7 +150,7 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3])
 	}
 
 
-void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3])
+void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3],int iOrder)
 {
 	PARTICLE *p;
 	KDN *pkdn,*pbuc;
@@ -208,12 +231,12 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3])
 				pkd->ilcs[nCellSoft].x = x;
 				pkd->ilcs[nCellSoft].y = y;
 				pkd->ilcs[nCellSoft].z = z;
-				pkd->ilcs[nCellSoft].xx = pkdn->fQxx;
-				pkd->ilcs[nCellSoft].yy = pkdn->fQyy;
-				pkd->ilcs[nCellSoft].zz = pkdn->fQzz;
-				pkd->ilcs[nCellSoft].xy = pkdn->fQxy;
-				pkd->ilcs[nCellSoft].xz = pkdn->fQxz;
-				pkd->ilcs[nCellSoft].yz = pkdn->fQyz;
+				pkd->ilcs[nCellSoft].xx = pkdn->mom.Qxx;
+				pkd->ilcs[nCellSoft].yy = pkdn->mom.Qyy;
+				pkd->ilcs[nCellSoft].zz = pkdn->mom.Qzz;
+				pkd->ilcs[nCellSoft].xy = pkdn->mom.Qxy;
+				pkd->ilcs[nCellSoft].xz = pkdn->mom.Qxz;
+				pkd->ilcs[nCellSoft].yz = pkdn->mom.Qyz;
 				++nCellSoft;
 				}
 			else {
@@ -227,16 +250,39 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3])
 					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
 						}
 					}
-				pkd->ilcn[nCellNewt].m = pkdn->fMass;
-				pkd->ilcn[nCellNewt].x = x;
-				pkd->ilcn[nCellNewt].y = y;
-				pkd->ilcn[nCellNewt].z = z;
-				tr = pkdn->fQxx + pkdn->fQyy + pkdn->fQzz;
-				pkd->ilcn[nCellNewt].xx = 3.0*pkdn->fQxx - tr;
-				pkd->ilcn[nCellNewt].yy = 3.0*pkdn->fQyy - tr;
-				pkd->ilcn[nCellNewt].xy = 3.0*pkdn->fQxy;
-				pkd->ilcn[nCellNewt].xz = 3.0*pkdn->fQxz;
-				pkd->ilcn[nCellNewt].yz = 3.0*pkdn->fQyz;
+				switch (iOrder) {
+				case 4:
+					pkd->ilcn[nCellNewt].xxxx = pkdn->mom.Hxxxx;
+					pkd->ilcn[nCellNewt].xyyy = pkdn->mom.Hxyyy;
+					pkd->ilcn[nCellNewt].xxxy = pkdn->mom.Hxxxy;
+					pkd->ilcn[nCellNewt].yyyy = pkdn->mom.Hyyyy;
+					pkd->ilcn[nCellNewt].xxxz = pkdn->mom.Hxxxz;
+					pkd->ilcn[nCellNewt].yyyz = pkdn->mom.Hyyyz;
+					pkd->ilcn[nCellNewt].xxyy = pkdn->mom.Hxxyy;
+					pkd->ilcn[nCellNewt].xxyz = pkdn->mom.Hxxyz;
+					pkd->ilcn[nCellNewt].xyyz = pkdn->mom.Hxyyz;
+				case 3:
+					pkd->ilcn[nCellNewt].xxx = pkdn->mom.Oxxx;
+					pkd->ilcn[nCellNewt].xyy = pkdn->mom.Oxyy;
+					pkd->ilcn[nCellNewt].xxy = pkdn->mom.Oxxy;
+					pkd->ilcn[nCellNewt].yyy = pkdn->mom.Oyyy;
+					pkd->ilcn[nCellNewt].xxz = pkdn->mom.Oxxz;
+					pkd->ilcn[nCellNewt].yyz = pkdn->mom.Oyyz;
+					pkd->ilcn[nCellNewt].xyz = pkdn->mom.Oxyz;
+				case 2:
+					tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;
+					pkd->ilcn[nCellNewt].xx = pkdn->mom.Qxx - tr/3.0;
+					pkd->ilcn[nCellNewt].yy = pkdn->mom.Qyy - tr/3.0;
+					pkd->ilcn[nCellNewt].xy = pkdn->mom.Qxy;
+					pkd->ilcn[nCellNewt].xz = pkdn->mom.Qxz;
+					pkd->ilcn[nCellNewt].yz = pkdn->mom.Qyz;
+				case 1:
+				default:
+					pkd->ilcn[nCellNewt].m = pkdn->fMass;
+					pkd->ilcn[nCellNewt].x = x;
+					pkd->ilcn[nCellNewt].y = y;
+					pkd->ilcn[nCellNewt].z = z;
+					}
 				++nCellNewt;
 				}
 			mdlRelease(pkd->mdl,CID_CELL,pkdn);
@@ -250,7 +296,7 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3])
 	}
 
 
-void pkdBucketWalk(PKD pkd,int iBucket,int nReps)
+void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
 {
 	KDN *pbuc,*pkdn;
 	int iCell,id,ix,iy,iz,bRep,bIntersect,pj;
@@ -284,12 +330,12 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps)
 				while (1) {
 					id = pkd->kdTop[iCell].pLower;
 					if (id == pkd->idSelf) {
-						pkdLocalWalk(pkd,iBucket,fSoftMax,bRep,rOffset);
+						pkdLocalWalk(pkd,iBucket,fSoftMax,bRep,rOffset,iOrder);
 						SETNEXT(iCell);
 						if (iCell == ROOT) break;
 						}
 					else if (id >= 0) {
-						pkdRemoteWalk(pkd,iBucket,fSoftMax,id,rOffset);
+						pkdRemoteWalk(pkd,iBucket,fSoftMax,id,rOffset,iOrder);
 						SETNEXT(iCell);
 						if (iCell == ROOT) break;
 						}
@@ -337,12 +383,12 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps)
 								pkd->ilcs[pkd->nCellSoft].x = x;
 								pkd->ilcs[pkd->nCellSoft].y = y;
 								pkd->ilcs[pkd->nCellSoft].z = z;
-								pkd->ilcs[pkd->nCellSoft].xx = pkdn->fQxx;
-								pkd->ilcs[pkd->nCellSoft].yy = pkdn->fQyy;
-								pkd->ilcs[pkd->nCellSoft].zz = pkdn->fQzz;
-								pkd->ilcs[pkd->nCellSoft].xy = pkdn->fQxy;
-								pkd->ilcs[pkd->nCellSoft].xz = pkdn->fQxz;
-								pkd->ilcs[pkd->nCellSoft].yz = pkdn->fQyz;
+								pkd->ilcs[pkd->nCellSoft].xx = pkdn->mom.Qxx;
+								pkd->ilcs[pkd->nCellSoft].yy = pkdn->mom.Qyy;
+								pkd->ilcs[pkd->nCellSoft].zz = pkdn->mom.Qzz;
+								pkd->ilcs[pkd->nCellSoft].xy = pkdn->mom.Qxy;
+								pkd->ilcs[pkd->nCellSoft].xz = pkdn->mom.Qxz;
+								pkd->ilcs[pkd->nCellSoft].yz = pkdn->mom.Qyz;
 								++pkd->nCellSoft;
 								}
 							else {
@@ -360,18 +406,39 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps)
 									    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
 										}
 									}
-								pkd->ilcn[pkd->nCellNewt].m = pkdn->fMass;
-								pkd->ilcn[pkd->nCellNewt].x = x;
-								pkd->ilcn[pkd->nCellNewt].y = y;
-								pkd->ilcn[pkd->nCellNewt].z = z;
-								tr = pkdn->fQxx + pkdn->fQyy + pkdn->fQzz;
-								pkd->ilcn[pkd->nCellNewt].xx = 
-									3.0*pkdn->fQxx - tr;
-								pkd->ilcn[pkd->nCellNewt].yy = 
-									3.0*pkdn->fQyy - tr;
-								pkd->ilcn[pkd->nCellNewt].xy = 3.0*pkdn->fQxy;
-								pkd->ilcn[pkd->nCellNewt].xz = 3.0*pkdn->fQxz;
-								pkd->ilcn[pkd->nCellNewt].yz = 3.0*pkdn->fQyz;
+								switch (iOrder) {
+								case 4:
+									pkd->ilcn[pkd->nCellNewt].xxxx = pkdn->mom.Hxxxx;
+									pkd->ilcn[pkd->nCellNewt].xyyy = pkdn->mom.Hxyyy;
+									pkd->ilcn[pkd->nCellNewt].xxxy = pkdn->mom.Hxxxy;
+									pkd->ilcn[pkd->nCellNewt].yyyy = pkdn->mom.Hyyyy;
+									pkd->ilcn[pkd->nCellNewt].xxxz = pkdn->mom.Hxxxz;
+									pkd->ilcn[pkd->nCellNewt].yyyz = pkdn->mom.Hyyyz;
+									pkd->ilcn[pkd->nCellNewt].xxyy = pkdn->mom.Hxxyy;
+									pkd->ilcn[pkd->nCellNewt].xxyz = pkdn->mom.Hxxyz;
+									pkd->ilcn[pkd->nCellNewt].xyyz = pkdn->mom.Hxyyz;
+								case 3:
+									pkd->ilcn[pkd->nCellNewt].xxx = pkdn->mom.Oxxx;
+									pkd->ilcn[pkd->nCellNewt].xyy = pkdn->mom.Oxyy;
+									pkd->ilcn[pkd->nCellNewt].xxy = pkdn->mom.Oxxy;
+									pkd->ilcn[pkd->nCellNewt].yyy = pkdn->mom.Oyyy;
+									pkd->ilcn[pkd->nCellNewt].xxz = pkdn->mom.Oxxz;
+									pkd->ilcn[pkd->nCellNewt].yyz = pkdn->mom.Oyyz;
+									pkd->ilcn[pkd->nCellNewt].xyz = pkdn->mom.Oxyz;
+								case 2:
+									tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;
+									pkd->ilcn[pkd->nCellNewt].xx = pkdn->mom.Qxx - tr/3.0;
+									pkd->ilcn[pkd->nCellNewt].yy = pkdn->mom.Qyy - tr/3.0;
+									pkd->ilcn[pkd->nCellNewt].xy = pkdn->mom.Qxy;
+									pkd->ilcn[pkd->nCellNewt].xz = pkdn->mom.Qxz;
+									pkd->ilcn[pkd->nCellNewt].yz = pkdn->mom.Qyz;
+								case 1:
+								default:
+									pkd->ilcn[pkd->nCellNewt].m = pkdn->fMass;
+									pkd->ilcn[pkd->nCellNewt].x = x;
+									pkd->ilcn[pkd->nCellNewt].y = y;
+									pkd->ilcn[pkd->nCellNewt].z = z;
+									}
 								++pkd->nCellNewt;
 								}
 							SETNEXT(iCell);

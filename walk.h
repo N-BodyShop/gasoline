@@ -28,6 +28,12 @@
 	}
 
 
-void pkdBucketWalk(PKD,int,int);
+void pkdBucketWalk(PKD,int,int,int);
 
 #endif
+
+
+
+
+
+

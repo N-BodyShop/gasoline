@@ -16,9 +16,6 @@ typedef struct lclBlock {
 	float fWtHigh;
 	float fLow;
 	float fHigh;
-	int nTopNodes;
-	KDN *kdTop;
-	int *piLeaf;
 	} LCL;
 
 typedef struct pstContext {
@@ -38,6 +35,10 @@ typedef struct pstContext {
 	int nEnd;
 	int nOrdSplit;
 	int nTotal;
+	/*
+	 ** The PST node is also a valid cell for the tree.
+	 */
+	KDN kdn;
 	} * PST;
 
 
@@ -160,10 +161,13 @@ void pstWriteTipsy(PST,void *,int,void *,int *);
 
 #define PST_BUILDTREE		19
 struct inBuildTree {
-	int iCell;
 	int nBucket;
 	int iOpenType;
+	int iOrder;
 	double dCrit;
+	};
+struct outBuildTree {
+	KDN kdn;
 	};
 void pstBuildTree(PST,void *,int,void *,int *);
 
@@ -261,6 +265,27 @@ struct outSetTotal {
 	int nTotal;
 	};
 void pstSetTotal(PST,void *,int,void *,int *);
+
+#define PST_CALCCELL		30
+struct inCalcCell {
+	int iOrder;
+	float rcm[3];
+	};
+struct outCalcCell {
+	struct pkdCalcCellStruct mom;
+	};
+void pstCalcCell(PST,void *,int,void *,int *);
+
+#define PST_COLCELLS		31
+struct inColCells {
+	int iCell;
+	int nCell;
+	};
+void pstColCells(PST,void *,int,void *,int *);
+
+#define PST_DISTRIBCELLS	32
+void pstDistribCells(PST,void *,int,void *,int *);
+
 
 #endif
 

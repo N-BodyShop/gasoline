@@ -33,12 +33,12 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,float fEwCut)
 	k1 = M_PI/(alpha2*L*L*L);
 	k6 = 2.0*alpha/sqrt(M_PI);
 	Mass = pbox->fMass;
-	Qxx = pbox->fQxx;
-	Qyy = pbox->fQyy;
-	Qzz = pbox->fQzz;
-	Qxy = pbox->fQxy;
-	Qxz = pbox->fQxz;
-	Qyz = pbox->fQyz;
+	Qxx = pbox->mom.Qxx;
+	Qyy = pbox->mom.Qyy;
+	Qzz = pbox->mom.Qzz;
+	Qxy = pbox->mom.Qxy;
+	Qxz = pbox->mom.Qxz;
+	Qyz = pbox->mom.Qyz;
 	Qtr = 0.5*(Qxx + Qyy + Qzz);
 	for(j=0;j<n;++j) {
 		fPot = Mass*k1;
@@ -144,9 +144,9 @@ void pkdEwaldInit(PKD pkd,float fhCut)
 				pkd->ewt[i].hy = k5*hy;
 				pkd->ewt[i].hz = k5*hz;
 				exph2 = exp(-k4*h2)/h2;
-				qfac = 0.5*(pbox->fQxx*hx*hx + pbox->fQyy*hy*hy + 
-							pbox->fQzz*hz*hz) + pbox->fQxy*hx*hy +
-								pbox->fQxz*hx*hz + pbox->fQyz*hy*hz;
+				qfac = 0.5*(pbox->mom.Qxx*hx*hx + pbox->mom.Qyy*hy*hy + 
+							pbox->mom.Qzz*hz*hz) + pbox->mom.Qxy*hx*hy +
+								pbox->mom.Qxz*hx*hz + pbox->mom.Qyz*hy*hz;
 				dir3 = k3*exph2*(pbox->fMass - k7*qfac);
 				pkd->ewt[i].k2 = k2*exph2*(pbox->fMass - k7*qfac);
 				pkd->ewt[i].k3x = hx*dir3;
