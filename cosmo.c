@@ -37,7 +37,7 @@ double dRombergO(void *CTX, double (*func)(void *, double), double a,
 		 double b, double eps);
 /*
  ** The cosmological equation of state is entirely determined here.  We
- ** will derive all other quantities from this function.
+ ** will derive all other quantities from these two functions.
  */
 
 double csmExp2Hub(CSM csm, double dExp)
@@ -53,6 +53,15 @@ double csmExp2Hub(CSM csm, double dExp)
 	      + csm->dLambda*dExp*dExp*dExp*dExp)/(dExp*dExp);
     }
 
+/*
+ ** Return a double dot over a.
+ */
+double csmExpDot2(CSM csm, double dExp)
+{
+    return csm->dHubble0*csm->dHubble0
+	*(csm->dLambda  - 0.5*csm->dOmega0/(dExp*dExp*dExp)
+	  - 0.5*csm->dOmegaRad/(dExp*dExp*dExp*dExp));
+    }
 
 double csmTime2Hub(CSM csm,double dTime)
 {
@@ -325,3 +334,47 @@ double csmComoveLookbackTime2Exp(CSM csm,double dComoveTime)
 	    return dExpNew;
 	    }
 	}
+
+/*
+ * Code for generating linear growth factors.
+ * This is taken from Carroll, Press & Turner Ann. Rev. (1992)
+ */
+
+double csmGrowthFacInt(CSM csm, double dExp)
+{
+    return pow(dExp*csmExp2Hub(csm, dExp), -3.0);
+    }
+
+double csmGrowthFac(CSM csm, double dExp)
+{
+    return 2.5*csm->dOmega0*csm->dHubble0*csm->dHubble0*csmExp2Hub(csm, dExp)
+	*dRombergO(csm, (double (*)(void *, double)) csmGrowthFacInt,
+		   0.0, dExp, EPSCOSMO);
+    }
+
+/*
+ * Time derivative of the growth factor.
+ */
+
+double csmGrowthFacDot(CSM csm, double dExp)
+{
+    double dHubble = csmExp2Hub(csm, dExp);
+    
+    return 2.5*csm->dOmega0*csm->dHubble0*csm->dHubble0
+	*((csmExpDot2(csm, dExp) - dHubble*dHubble)
+	  *dRombergO(csm, (double (*)(void *, double)) csmGrowthFacInt,
+		     0.0, dExp, EPSCOSMO)
+	  + 1.0/(dExp*dExp*dHubble));
+    }
+    
+/*
+ * expansion dependence of Omega_matter
+ */
+
+double csmExp2Om(CSM csm, double dExp)
+{
+    double dHubble = csmExp2Hub(csm, dExp);
+    
+    return csm->dOmega0*csm->dHubble0*csm->dHubble0
+	/(dExp*dExp*dExp*dHubble*dHubble);
+    }
