@@ -287,18 +287,18 @@ void dfParseOptions( struct DumpFrameContext *df, char * filename ) {
 		    else if (!strcmp( word, "png") ) {
 				df->iEncode = DF_ENCODE_PNG;
 #ifndef USE_PNG
-				fprintf(stderr,"DF PNG encoding support not compiled in\n",word);
+				fprintf(stderr,"DF PNG encoding support not compiled in\n");
 				assert(0);
 #endif				
 			}
 		    else if (!strcmp( word, "rle") ) {
 				df->iEncode = DF_ENCODE_RLE;
-				fprintf(stderr,"DF RLE encoding not supported yet\n",word);
+				fprintf(stderr,"DF RLE encoding not supported yet\n");
 				assert(0);
 			}
 		    else if (!strcmp( word, "treezip") ) {
 				df->iEncode = DF_ENCODE_TREEZIP;
-				fprintf(stderr,"DF Voxel encoding not supported yet\n",word);
+				fprintf(stderr,"DF Voxel encoding not supported yet\n");
 				assert(0);
 			}
 			else {
@@ -330,7 +330,7 @@ void dfParseOptions( struct DumpFrameContext *df, char * filename ) {
 		}
 	
 	if (df->iDimension == DF_3D) {
-		fprintf(stderr,"DF Voxel projection/encoding not supported yet\n",word);
+		fprintf(stderr,"DF Voxel projection/encoding not supported yet\n");
 		assert(0);
 
 		df->iEncode = DF_ENCODE_TREEZIP; /* Encode same thing */

@@ -23,13 +23,13 @@ void dfSetupVoxel( struct DumpFrameContext *df, double dTime, double dStep, stru
 
 	switch( df->iNumbering ) {
 	case DF_NUMBERING_FRAME:
-		snprintf(vin->fileout, 160, df->FileName, df->nFrame );
+		sprintf(vin->fileout, df->FileName, df->nFrame );
 		break;
 	case DF_NUMBERING_STEP:
-		snprintf(vin->fileout, 160, df->FileName, dStep );
+		sprintf(vin->fileout, df->FileName, dStep );
 		break;
 	case DF_NUMBERING_TIME:
-		snprintf(vin->fileout, 160, df->FileName, dTime );
+		sprintf(vin->fileout, df->FileName, dTime );
 		break;
 		}
 
