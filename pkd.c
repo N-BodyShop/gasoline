@@ -271,9 +271,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					p->vPred[j] = dvFac*vTemp;
 #endif
 					}
+#ifdef GASOLINE
 				xdr_float(&xdrs,&fTmp);
 				p->fDensity = fTmp;
-#ifdef GASOLINE
 				/*
 				 ** Convert Temperature to Thermal energy.
 				 */
@@ -285,6 +285,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				xdr_float(&xdrs,&fTmp);
 				p->fMetals = fTmp;
 #else
+				xdr_float(&xdrs,&fTmp);
 				xdr_float(&xdrs,&fTmp);
 				xdr_float(&xdrs,&fTmp);
 				p->fSoft = fTmp;
