@@ -2122,6 +2122,8 @@ pkdVelocityStep(PKD pkd, double dEta, double dVelFac, double dAccFac)
 	}
     }
 
+#define STEP_EPS 1e-6
+
 int
 pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll)
 {
@@ -2135,7 +2137,7 @@ pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll)
 	if(pkd->pStore[i].iRung >= iRung) {
 	    assert(pkd->pStore[i].iActive == 1);
 	    if(bAll) {          /* Assign all rungs at iRung and above */
-		iSteps = dDelta/pkd->pStore[i].dt;
+		iSteps = dDelta/pkd->pStore[i].dt - STEP_EPS;
 		iTempRung = iRung;
 		while(iSteps) {
 		    ++iTempRung;
