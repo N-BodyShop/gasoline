@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <malloc.h>
 #include <math.h>
+#include <limits.h>
 #include <assert.h>
 #include "smooth.h"
 #include "pkd.h"
