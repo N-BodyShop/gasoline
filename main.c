@@ -47,6 +47,11 @@ void main(int argc,char **argv)
 		sprintf(achFile,"%s.log",msrOutName(msr));
 		fpLog = fopen(achFile,"a");
 		assert(fpLog != NULL);
+		if(msrKDK(msr)) {
+			msrBuildTree(msr,dMass);
+			msrMassCheck(msr,dMass,"After msrBuildTree");
+			msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax);
+			}
 		goto Restart;
 		}
 	/*
