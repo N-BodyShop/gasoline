@@ -1753,6 +1753,9 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	FLOAT fWeight;
 	double dFlopI, dFlopE;
 	int i,j;
+	BND bndActive;
+	BND bndTmp;
+	char achDiag[256];
 
 	*pdFlop = 0.0;
 	pkdClearTimer(pkd,1);
@@ -1782,16 +1785,34 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			continue;
 			}
 		n = 0;
+		for(j = 0; j < 3; j++) {
+		    bndActive.fMin[j] = FLOAT_MAXVAL;
+		    bndActive.fMax[j] = -FLOAT_MAXVAL;
+		    }
 		for (i=c[iCell].pLower;i<=c[iCell].pUpper;++i) {
-			if (pkd->pStore[i].iActive) ++n;
+			if (pkd->pStore[i].iActive) {
+			    ++n;
+			    for (j=0;j<3;++j) {
+				if (pkd->pStore[i].r[j] < bndActive.fMin[j]) 
+				    bndActive.fMin[j] = pkd->pStore[i].r[j];
+				if (pkd->pStore[i].r[j] > bndActive.fMax[j])
+				    bndActive.fMax[j] = pkd->pStore[i].r[j];
+				}
+			    }
 			}
 		if (n > 0) {
+			/* 
+			 * set bounds to bounds of active particles.
+			 */
+			bndTmp = c[iCell].bnd;
+			c[iCell].bnd = bndActive;
 			/*
 			 ** Calculate gravity on this bucket.
 			 */
 			pkdStartTimer(pkd,1);
 			pkdBucketWalk(pkd,iCell,nReps,iOrder); /* ignored in Flop count! */
 			pkdStopTimer(pkd,1);
+			c[iCell].bnd = bndTmp;
 			*nActive += n;
 			*pdPartSum += n*pkd->nPart + 
 				n*(2*(c[iCell].pUpper-c[iCell].pLower) - n + 1)/2;
@@ -1875,6 +1896,9 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	 ** Stop particle caching space.
 	 */
 	mdlFinishCache(pkd->mdl,CID_PARTICLE);
+	sprintf(achDiag, "nMaxPart: %d, nMaxSoftCell: %d, nMaxNewtCell: %d\n",
+		pkd->nMaxPart, pkd->nMaxCellSoft, pkd->nMaxCellNewt);
+	mdlDiag(pkd->mdl, achDiag);
 	}
 
 
