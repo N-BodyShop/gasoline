@@ -405,9 +405,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.iOutInterval = 0;
 	prmAddParam(msr->prm,"iOutInterval",1,&msr->param.iOutInterval,sizeof(int),
 				"oi","<number of timesteps between snapshots> = 0");
-	msr->param.dDumpFrameInterval = 0;
-	prmAddParam(msr->prm,"dDumpFrameInterval",2,&msr->param.dDumpFrameInterval,sizeof(double),
-				"dfi","<number of timesteps between dumped frames> = 0");
+	msr->param.dDumpFrameStep = 0;
+	prmAddParam(msr->prm,"dDumpFrameStep",2,&msr->param.dDumpFrameStep,sizeof(double),
+				"dfi","<number of steps between dumped frames> = 0");
+	msr->param.dDumpFrameTime = 0;
+	prmAddParam(msr->prm,"dDumpFrameTime",2,&msr->param.dDumpFrameTime,sizeof(double),
+				"dft","<number of timesteps between dumped frames> = 0");
 	msr->param.iLogInterval = 10;
 	prmAddParam(msr->prm,"iLogInterval",1,&msr->param.iLogInterval,sizeof(int),
 				"ol","<number of timesteps between logfile outputs> = 10");
@@ -822,6 +825,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dStarEff", 2, &msr->param.stfm->dStarEff,
 		    sizeof(double), "stEff",
 		    "<Fraction of gas converted into stars per timestep> = .3333");
+    msr->param.stfm->dInitStarMass = 0;
+    prmAddParam(msr->prm,"dInitStarMass", 2, &msr->param.stfm->dInitStarMass,
+				sizeof(double), "stm0",
+				"<Initial star mass> = 0");
 	msr->param.stfm->dMinMassFrac = .1;
 	prmAddParam(msr->prm,"dMinMassFrac", 2, &msr->param.stfm->dMinMassFrac,
 		    sizeof(double), "stMinFrac",
@@ -1085,7 +1092,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #ifndef SHOCKTRACK
 	if (msr->param.bShockTracker != 0) {
 	        fprintf(stderr,"Compile with -DSHOCKTRACK for Shock Tracking.\n");
-		assert(0);
+			assert(0);
 	        }
 #endif
 #endif
@@ -1231,14 +1238,23 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    assert (prmSpecified(msr->prm, "dMsolUnit") &&
 		    prmSpecified(msr->prm, "dKpcUnit"));
 
-	    assert(msr->param.iGasModel == GASMODEL_COOLING ||
-		   msr->param.iGasModel == GASMODEL_COOLING_NONEQM);
+		if (!(msr->param.iGasModel == GASMODEL_COOLING ||
+		   msr->param.iGasModel == GASMODEL_COOLING_NONEQM)) {
+			fprintf(stderr,"Warning: You are not running a cooling"
+					"EOS with starformation\n");
+			}
 
-	    assert(msr->param.stfm->dStarEff > 0 && 
-                msr->param.stfm->dStarEff < 1);
+	    assert((msr->param.stfm->dStarEff > 0 && 
+                msr->param.stfm->dStarEff < 1) ||
+			   msr->param.stfm->dInitStarMass > 0);
 	    assert(msr->param.stfm->dMinMassFrac > 0 && 
                 msr->param.stfm->dMinMassFrac < 1);
-	    assert(msr->param.stfm->dMinGasMass > 0);
+		if (msr->param.stfm->dInitStarMass > 0) {
+			if (msr->param.stfm->dMinGasMass <= 0) 
+				msr->param.stfm->dMinGasMass = 0.1*msr->param.stfm->dInitStarMass;
+			}
+		else
+			assert(msr->param.stfm->dMinGasMass > 0);
 
 	    msr->param.stfm->dSecUnit = msr->param.dSecUnit;
 	    msr->param.stfm->dGmPerCcUnit = msr->param.dGmPerCcUnit;
@@ -1255,6 +1271,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.fb->dSecUnit = msr->param.dSecUnit;
 	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
 	    msr->param.fb->dErgPerGmUnit = msr->param.dErgPerGmUnit;
+	    msr->param.fb->dInitStarMass = msr->param.stfm->dInitStarMass;
 	    }
 	
 	    
@@ -1600,7 +1617,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# bKDK: %d",msr->param.bKDK);
 	fprintf(fp," nBucket: %d",msr->param.nBucket);
 	fprintf(fp," iOutInterval: %d",msr->param.iOutInterval);
-	fprintf(fp," dDumpFrameInterval: %g",msr->param.dDumpFrameInterval);
+	fprintf(fp," dDumpFrameStep: %g",msr->param.dDumpFrameStep);
+	fprintf(fp," dDumpFrameTime: %g",msr->param.dDumpFrameTime);
 	fprintf(fp," iLogInterval: %d",msr->param.iLogInterval);
 	fprintf(fp,"\n# iCheckInterval: %d",msr->param.iCheckInterval);
 	fprintf(fp," iOrder: %d",msr->param.iOrder);
@@ -4901,8 +4919,10 @@ void msrTopStepKDK(MSR msr,
 		/* 
 		 ** Dump Frame
 		 */
-		if (msr->param.dDumpFrameInterval > 0 && dTime >= msr->df->dTime)  
-			msrDumpFrame( msr, dTime );
+		if (msr->param.dDumpFrameTime > 0 && dTime >= msr->df->dTime)
+			msrDumpFrame( msr, dTime, dStep );
+		else if (msr->param.dDumpFrameStep > 0 && dStep >= msr->df->dStep) 
+			msrDumpFrame( msr, dTime, dStep );
 
 		/* 
 		 ** Calculate Forces (if required)
@@ -5476,11 +5496,11 @@ void msrInitCooling(MSR msr)
 
 #endif /* GASOLINE */
 
-void msrDumpFrameInit(MSR msr, double dTime) {
+void msrDumpFrameInit(MSR msr, double dTime, double dStep) {
 	LCL *plcl = &msr->lcl;
 	char achFile[160];
 	
-	if (msr->param.dDumpFrameInterval > 0) {
+	if (msr->param.dDumpFrameStep > 0) {
 		msr->bDumpFrame = 1;
 		/*
 		 ** Add Data Subpath for local and non-local names.
@@ -5489,35 +5509,60 @@ void msrDumpFrameInit(MSR msr, double dTime) {
 		sprintf(achFile,"%s/%s.director",msr->param.achDataSubPath,
 				msr->param.achOutName);
 		
-		dfInitialize( &msr->df, dTime, msr->param.dDumpFrameInterval, msr->param.dDelta, msr->param.iMaxRung, 
+		dfInitialize( &msr->df, dTime, msr->param.dDumpFrameTime, dStep, 
+					 msr->param.dDumpFrameStep, msr->param.dDelta, 
+					 msr->param.iMaxRung, msr->param.bVDetails,
 					 achFile );
 
-		msrDumpFrame( msr, dTime );
+		msrDumpFrame( msr, dTime, dStep );
 		}
 	}
 
-void msrDumpFrame(MSR msr, double dTime)
+void msrDumpFrame(MSR msr, double dTime, double dStep)
 {
-	struct inDumpFrame in;
-	void *Image; 
-	int nImage;
 	double sec,dsec1,dsec2;
 
 	sec = msrTime();
-	dfSetupFrame( msr->df, dTime, &in );
 
-	Image = dfAllocateImage( in.nxPix, in.nyPix );
+	if (msr->df->iDimension == DF_3D) {
+		/* 3D Voxel Projection */
+		struct inDumpVoxel in;
+		assert(0);
 
-	pstDumpFrame(msr->pst, &in, sizeof(struct inDumpFrame), Image, &nImage );
-	dsec1 = msrTime() - sec;
+		dfSetupVoxel( msr->df, dTime, dStep, &in );
 
-	dfFinishFrame( msr->df, dTime, &in, Image );
-	dsec2 = msrTime() - sec;
+		pstDumpVoxel(msr->pst, &in, sizeof(struct inDumpVoxel), NULL, NULL );
+		dsec1 = msrTime() - sec;
+		
+		dfFinishVoxel( msr->df, dTime, dStep, &in );
+		
+		dsec2 = msrTime() - sec;
+		
+		printf("DF Dumped Voxel %i at %g (Wallclock: Render %f tot %f secs).\n",
+			   msr->df->nFrame-1,dTime,dsec1,dsec2);
+		}
+	else {
+		/* 2D Projection */
+		struct inDumpFrame in;
+		void *Image; 
+		int nImage;
 
-	printf("DF Dumped Image %i at %g (Wallclock: Render %f tot %f secs).\n",
-		   msr->df->nFrame-1,dTime,dsec1,dsec2);
-
-	dfFreeImage( Image );
+		dfSetupFrame( msr->df, dTime, dStep, &in );
+		
+		Image = dfAllocateImage( in.nxPix, in.nyPix );
+		
+		pstDumpFrame(msr->pst, &in, sizeof(struct inDumpFrame), Image, &nImage );
+		dsec1 = msrTime() - sec;
+		
+		dfFinishFrame( msr->df, dTime, dStep, &in, Image );
+		
+		dsec2 = msrTime() - sec;
+		
+		printf("DF Dumped Image %i at %g (Wallclock: Render %f tot %f secs).\n",
+			   msr->df->nFrame-1,dTime,dsec1,dsec2);
+		
+		dfFreeImage( Image );
+		}
 	}
 
 void msrFormStars(MSR msr, double dTime)
@@ -5531,8 +5576,12 @@ void msrFormStars(MSR msr, double dTime)
     int i;
     int iDum;
 
+	double sec,dsec;
+
+	sec = msrTime();
+
     if(msr->param.bStarForm == 0)
-	return;
+		return;
     
     in.dTime = dTime;
     in.stfm = *msr->param.stfm;
@@ -5549,17 +5598,17 @@ void msrFormStars(MSR msr, double dTime)
     msrBuildTree(msr,1,dMass,1);
     pstFormStars(msr->pst, &in, sizeof(in), &outFS, NULL);
     if (msr->param.bVDetails)
-	printf("%d Stars formed with mass %g, %d gas deleted\n",
-	       outFS.nFormed, outFS.dMassFormed, outFS.nDeleted);
+		printf("%d Stars formed with mass %g, %d gas deleted\n",
+			   outFS.nFormed, outFS.dMassFormed, outFS.nDeleted);
     /* there are two gas particle deletion criteria:
-
+	   
        1) in pstFormStars: gas particles with mass less than
        stfm->dMinGasMass are marked for deletion
-
+	   
        2) in DeleteGas (see smoothfcn.c): gas particles with 
        mass less than dMinMassFrac of the average mass of neighbouring
        gas particles are also marked for deletion 
-
+	   
        - eh, Feb 7/01*/
 
     /*
@@ -5584,41 +5633,50 @@ void msrFormStars(MSR msr, double dTime)
      */
     msrAddDelParticles(msr);
     msrMassCheck(msr, dMass, "Form stars: after particle adjustment");
+
+	dsec = msrTime() - sec;
+	printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
+
     /*
      * Calculate energy of SN for any stars for the next timestep.  This
      * requires looking at past star forming events.  Also calculate
      * mass loss.
      */
     if(msr->param.bFeedBack) {
-	if (msr->param.bVDetails) printf("Calculate Feedback ...\n");
-	pstFeedback(msr->pst, &inFB, sizeof(inFB),
-		    &outFB, &iDum);
-	if(msr->param.bVDetails) {
-	    printf("Feedback totals: mass, energy, metalicity\n");
-	    for(i = 0; i < FB_NFEEDBACKS; i++)
-		printf("feedback %d: %g %g %g\n", i,
-		       outFB.fbTotals[i].dMassLoss,
-		       outFB.fbTotals[i].dEnergy,
-		       outFB.fbTotals[i].dMassLoss != 0.0 ?
-		       outFB.fbTotals[i].dMetals
-		       /outFB.fbTotals[i].dMassLoss : 0.0);
-	    }
+		if (msr->param.bVDetails) printf("Calculate Feedback ...\n");
+		sec = msrTime();
+		pstFeedback(msr->pst, &inFB, sizeof(inFB),
+					&outFB, &iDum);
+		if(msr->param.bVDetails) {
+			printf("Feedback totals: mass, energy, metalicity\n");
+			for(i = 0; i < FB_NFEEDBACKS; i++)
+				printf("feedback %d: %g %g %g\n", i,
+					   outFB.fbTotals[i].dMassLoss,
+					   outFB.fbTotals[i].dEnergy,
+					   outFB.fbTotals[i].dMassLoss != 0.0 ?
+					   outFB.fbTotals[i].dMetals
+					   /outFB.fbTotals[i].dMassLoss : 0.0);
+			}
 
 
-	/*
-	 * spread mass lost from SN, (along with energy and metals)
-	 * to neighboring gas particles.
-	 */
-	if (msr->param.bVDetails) printf("Distribute SN Energy ...\n");
-	msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
-	msrBuildTree(msr,1,-1.0,1);
+		/*
+		 * spread mass lost from SN, (along with energy and metals)
+		 * to neighboring gas particles.
+		 */
+		if (msr->param.bVDetails) printf("Distribute SN Energy ...\n");
+		msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
+		msrBuildTree(msr,1,-1.0,1);
 
-	msrResetType(msr, TYPE_STAR, TYPE_SMOOTHDONE);
-	msrActiveType(msr, TYPE_STAR, TYPE_SMOOTHACTIVE);
-	assert(msr->nSmoothActive == msr->nStar);
-	msrSmooth(msr, dTime, SMX_DIST_SN_ENERGY, 1);
-	msrMassCheck(msr, dMass, "Form stars: after feedback");
-	}
+		msrResetType(msr, TYPE_STAR, TYPE_SMOOTHDONE);
+		msrActiveType(msr, TYPE_STAR, TYPE_SMOOTHACTIVE);
+		assert(msr->nSmoothActive == msr->nStar);
+		msrSmooth(msr, dTime, SMX_DIST_SN_ENERGY, 1);
+		msrMassCheck(msr, dMass, "Form stars: after feedback");
+
+		dsec = msrTime() - sec;
+		printf("Feedback Calculated, Wallclock: %f secs\n\n",dsec);
+		}
+
 #endif
     }
 

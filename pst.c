@@ -371,6 +371,9 @@ pstAddServices(PST pst,MDL mdl)
 		      (void (*)(void *,void *,int,void *,int *))
 		      pstDumpFrame, sizeof(struct inDumpFrame),
 		      DF_NBYTEDUMPFRAME );
+	mdlAddService(mdl,PST_DUMPVOXEL,pst,
+		      (void (*)(void *,void *,int,void *,int *))
+		      pstDumpVoxel, sizeof(struct inDumpVoxel), 0);
 	}
 
 void pstInitialize(PST *ppst,MDL mdl,LCL *plcl)
@@ -4808,6 +4811,22 @@ pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		dfRenderImage(pst->plcl->pkd, in, vout, pnOut );
+		}
+	}
+
+void
+pstDumpVoxel(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inDumpVoxel *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inDumpVoxel));
+	if (pst->nLeaves > 1) {
+	    mdlReqService(pst->mdl,pst->idUpper,PST_DUMPFRAME,in,nIn);
+        pstDumpFrame(pst->pstLower,in,nIn, NULL, NULL);
+	    mdlGetReply(pst->mdl,pst->idUpper, NULL, NULL);
+		}
+	else {
+		dfRenderVoxel(pst->plcl->pkd, in );
 		}
 	}
 

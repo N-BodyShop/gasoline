@@ -31,6 +31,7 @@ void stfmInitialize(STFM *pstfm)
     stfm->dGmPerCcUnit = 0;
     stfm->dGmUnit = 0;
     stfm->dStarEff = 0.0;
+	stfm->dInitStarMass = 0.0;
     stfm->dMinGasMass = 0.0;
     stfm->dMinMassFrac = 0.0;
     stfm->dMaxStarMass = 0.0;
@@ -144,8 +145,18 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * Decrement mass of particle.
      */
 
-    dDeltaM = p->fMass*stfm->dStarEff;
+	if (stfm->dInitStarMass > 0) 
+		dDeltaM = stfm->dInitStarMass;
+    else 
+		dDeltaM = p->fMass*stfm->dStarEff;
+
+    /*
+     * JW: If gas particle is to be destroyed -- take all the mass
+     */
+	if (p->fMass - dDeltaM < stfm->dMinGasMass) dDeltaM = p->fMass;
+
     p->fMass -= dDeltaM;
+
     /* 
      * Note on number of stars formed:
      * n = log(dMinGasMass/dInitMass)/log(1-dStarEff) = max no. stars 

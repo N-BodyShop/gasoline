@@ -100,7 +100,8 @@ int main(int argc,char **argv)
 	        if (msr->param.bSN) msrInitSupernova(msr);
 #endif
 		if (msr->param.iGasModel == GASMODEL_COOLING
-		    || msr->param.iGasModel == GASMODEL_COOLING_NONEQM) 
+		    || msr->param.iGasModel == GASMODEL_COOLING_NONEQM
+			|| msr->param.bStarForm) 
 		    msrInitCooling(msr);
 #ifdef STARFORM
 		if(msr->param.bStarForm) /* dDelta is now determined */
@@ -186,7 +187,8 @@ int main(int argc,char **argv)
         if (msr->param.bSN) msrInitSupernova(msr);
 #endif
 	if (msr->param.iGasModel == GASMODEL_COOLING ||
-	    msr->param.iGasModel == GASMODEL_COOLING_NONEQM)
+	    msr->param.iGasModel == GASMODEL_COOLING_NONEQM ||
+		msr->param.bStarForm)
 	        msrInitCooling(msr);
 #ifdef STARFORM
 	if(msr->param.bStarForm) /* dDelta is now determined */
@@ -206,7 +208,7 @@ int main(int argc,char **argv)
 	/* 
 	 ** Dump Frame Initialization
 	 */
-	msrDumpFrameInit( msr, dTime );
+	msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep );
 
 	/*
 	 ** If the simulation is periodic make sure to wrap all particles into

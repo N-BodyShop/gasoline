@@ -35,6 +35,7 @@ typedef struct fbContext
     double dGmUnit;		/* system mass in grams */
     double dSecUnit;		/* system time in seconds */
     double dErgPerGmUnit;	/* system specific energy in ergs/gm */
+	double dInitStarMass; 
     }  * FB;
 
 void fbInitialize(FB *pfb);

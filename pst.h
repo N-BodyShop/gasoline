@@ -173,7 +173,8 @@ enum pst_service {
       PST_BALLMAX,
       PST_FORMSTARS,
       PST_FEEDBACK,
-      PST_DUMPFRAME
+      PST_DUMPFRAME,
+      PST_DUMPVOXEL
       };
 
 void pstAddServices(PST,MDL);
@@ -1143,6 +1144,9 @@ void pstFeedback(PST,void *,int,void *,int *);
 
 /* Return is pixmap */
 void pstDumpFrame(PST,void *,int,void *,int *);
+
+/* Return is pixmap */
+void pstDumpVoxel(PST,void *,int,void *,int *);
 
 /* PST_GROWMASS */
 struct inGrowMass 

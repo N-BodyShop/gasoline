@@ -20,6 +20,7 @@ typedef struct stfmContext
     double dCStar;		/* Star formation constant */
     double dStarEff;		/* Fraction of gas mass converted into
 				 star mass per timestep. */
+	double dInitStarMass;    /* Fixed Initial Star Mass */
     double dMinGasMass;		/* minimum mass gas before we delete
 				   the particle. */
     double dMaxStarMass;	/* maximum mass star particle to form */

@@ -161,7 +161,8 @@ struct parameters {
 	double dSNHeatFraction;
 	int    bStarForm;
 	int    bFeedBack;
-	double dDumpFrameInterval;
+	double dDumpFrameStep;
+	double dDumpFrameTime;
 #ifdef STARFORM
 	STFM   stfm;
 	FB     fb;

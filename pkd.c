@@ -4268,14 +4268,23 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 				E = p->u*cl->dErgPerGmUnit;
 #ifdef STARFORM
 				cl->p = p;
-#endif
+				clIntegrateEnergy(cl, &Y, &E, (p->fESNrate + p->PdV)
+								  *cl->dErgPerGmPerSecUnit, 
+								  p->fDensity*cl->dComovingGmPerCcUnit, dt);
+#else
 				clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
 								  p->fDensity*cl->dComovingGmPerCcUnit, dt);
+#endif
+
 				p->uDot = (E*cl->diErgPerGmUnit - p->u)/duDelta;
 				if (bUpdateY) pkdPERBARYON2PARTICLE(&Y, p);
 				}
 			else { 
+#ifdef STARFORM
+				p->uDot = p->PdV + p->fESNrate;
+#else
 				p->uDot = p->PdV;
+#endif
 				}
 			}
 		}

@@ -236,8 +236,8 @@ void msrSphStep(MSR msr, double dTime);
 void msrSphViscosityLimiter(MSR msr, double dTime);
 void msrInitCooling(MSR msr);
 #endif
-void msrDumpFrameInit(MSR msr, double dTime);
-void msrDumpFrame(MSR msr, double);
+void msrDumpFrameInit(MSR msr, double dTime, double dStep);
+void msrDumpFrame(MSR msr, double, double);
 #ifdef GLASS
 void msrInitGlass(MSR);
 #endif

@@ -34,11 +34,12 @@ CC_DEF =
 #CODE_DEF = -DDEBUG -HSHRINK
 
 #CODE_DEF = -DGASOLINE  -DSTARFORM -DPRES_HK
-CODE_DEF = -DGASOLINE -DSTARFORM
-CODE_DEF = -DGASOLINE 
+CODE_DEF = -DGASOLINE -DSTARFORM -DCHANGESOFT
+#CODE_DEF = -DGASOLINE 
 
 EXE = gasoline
 
+#CODE_DEF = 
 #EXE = pkdgrav
 
 BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF)
@@ -199,7 +200,7 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
 	  smoothfcn.o collision.o qqsmooth.o cooling.o cosmo.o romberg.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
-	  startime.o stiff.o runge.o dumpframe.o dffuncs.o special.o ssio.o $(PNG_OBJ)
+	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o special.o ssio.o $(PNG_OBJ)
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 

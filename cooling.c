@@ -830,7 +830,7 @@ double clEdotInstant( CL *cl, PERBARYON *Y, RATE *Rate, double rho )
     Y->HeI  * cl->R.Heat_Phot_HeI * cl->R.Rate_Phot_HeI +
     Y->HeII * cl->R.Heat_Phot_HeII * cl->R.Rate_Phot_HeII;
 
-#ifdef STARFORM
+#ifdef OLD_STARFORM
   Edot += cl->p->fESNrate * cl->dErgPerGmPerSecUnit;
 #endif
 
@@ -872,7 +872,7 @@ double clEdot( CL *cl, PERBARYON *Y, RATE *Rate, double rho,
 
 /* supernova feedback heating rate.  XXX - this is not clean; cooling
    shouldn't have to dig into the particle structure. */
-#ifdef STARFORM
+#ifdef OLD_STARFORM
   Edot += cl->p->fESNrate * cl->dErgPerGmPerSecUnit;
 #endif
   /* 
