@@ -336,9 +336,10 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		for (i=0;i<nLocal;++i) {
 			p = &pkd->pStore[i];
 			p->iOrder = nStart + i;
-			if (pkdIsDark(pkd,p)) {
+			if (pkdIsDarkByOrder(pkd,p)) {
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
+				assert(p->fMass >= 0);
 				for (j=0;j<3;++j) {
 					xdr_float(&xdrs,&fTmp);
 					p->r[j] = fTmp;
@@ -356,9 +357,10 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				xdr_float(&xdrs,&fTmp);
 				p->fPot = fTmp;
 				}
-			else if (pkdIsGas(pkd,p)) {
+			else if (pkdIsGasByOrder(pkd,p)) {
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
+				assert(p->fMass > 0);
 				for (j=0;j<3;++j) {
 					xdr_float(&xdrs,&fTmp);
 					p->r[j] = fTmp;
@@ -381,6 +383,11 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				vTemp = fTmp;
 				p->u = dTuFac*vTemp;
 				p->uPred = dTuFac*vTemp;
+#ifdef COOLDEBUG
+				if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
+				assert(p->u >= 0);
+				assert(p->uPred >= 0);
+#endif
 				xdr_float(&xdrs,&fTmp);
 				p->fSoft = fTmp;
 #ifdef CHANGESOFT
@@ -401,9 +408,10 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				xdr_float(&xdrs,&fTmp);
 				p->fPot = fTmp;
 				}
-			else if (pkdIsStar(pkd,p)) {
+			else if (pkdIsStarByOrder(pkd,p)) {
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
+				assert(p->fMass >= 0);
 				for (j=0;j<3;++j) {
 					xdr_float(&xdrs,&fTmp);
 					p->r[j] = fTmp;
@@ -438,20 +446,21 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		for (i=0;i<nLocal;++i) {
 			p = &pkd->pStore[i];
 			p->iOrder = nStart + i;
-			if (pkdIsDark(pkd,p)) {
+			if (pkdIsDarkByOrder(pkd,p)) {
 				fread(&dp,sizeof(struct dark_particle),1,fp);
 				for (j=0;j<3;++j) {
 					p->r[j] = dp.pos[j];
 					p->v[j] = dvFac*dp.vel[j];
 					}
 				p->fMass = dp.mass;
+				assert(p->fMass >= 0);
 				p->fSoft = dp.eps;
 #ifdef CHANGESOFT
 				p->fSoft0 = dp.eps;
 #endif
 				p->fPot = dp.phi;
 				}
-			else if (pkdIsGas(pkd,p)) {
+			else if (pkdIsGasByOrder(pkd,p)) {
 				fread(&gp,sizeof(struct gas_particle),1,fp);
 				for (j=0;j<3;++j) {
 					p->r[j] = gp.pos[j];
@@ -461,6 +470,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
 					}
 				p->fMass = gp.mass;
+				assert(p->fMass >= 0);
 				p->fSoft = gp.hsmooth;
 #ifdef CHANGESOFT
 				p->fSoft0 = gp.hsmooth;
@@ -470,16 +480,22 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->fDensity = gp.rho;
 				p->u = dTuFac*gp.temp;
 				p->uPred = dTuFac*gp.temp;
+#ifdef COOLDEBUG
+				if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
+				assert(p->u >= 0);
+				assert(p->uPred >= 0);
+#endif
 				p->fMetals = gp.metals;
 #endif
 				}
-			else if (pkdIsStar(pkd,p)) {
+			else if (pkdIsStarByOrder(pkd,p)) {
 				fread(&sp,sizeof(struct star_particle),1,fp);
 				for (j=0;j<3;++j) {
 					p->r[j] = sp.pos[j];
 					p->v[j] = dvFac*sp.vel[j];
 					}
 				p->fMass = sp.mass;
+				assert(p->fMass >= 0);
 				p->fSoft = sp.eps;
 #ifdef CHANGESOFT
 				p->fSoft0 = sp.eps;
@@ -3229,6 +3245,16 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				  p->uPred = p->u + p->uDot*duPredDelta;
 				  p->u = p->u + p->uDot*duDelta;
 #else
+#ifdef COOLDEBUG
+				if (p->u+p->uDot*duPredDelta < 0) {
+					fprintf(stderr,"upred from u error %i: %g %g %g -> %g %i\n",p->iOrder,p->u,p->uDot,duPredDelta,p->uPred + p->uDot*duPredDelta,p->iRung);
+					assert(0);
+					}
+				if (p->u+p->uDot*duDelta < 0) {
+					fprintf(stderr,"u error %i: %g %g %g -> %g %i\n",p->iOrder,p->u,p->uDot,duDelta,p->uPred + p->uDot*duDelta,p->iRung);
+					assert(0);
+					}
+#endif
 				  p->uPred = p->u + p->PdV*duPredDelta;
 				  p->u = p->u + p->PdV*duDelta;
 #endif
@@ -3283,6 +3309,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		fread(&cp,sizeof(CHKPART),1,fp);
 		p->iOrder = cp.iOrder;
 		p->fMass = cp.fMass;
+		assert(p->fMass >= 0);
 #ifdef CHANGESOFT
 		p->fSoft0 = cp.fSoft;
 #else
@@ -3298,6 +3325,10 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef GASOLINE
 		p->u = cp.u;
 		p->uPred = cp.u;
+#ifdef COOLDEBUG
+		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
+		assert(p->u >= 0);
+#endif
 #ifdef SUPERNOVA
                 p->uSN = 0.0;
                 p->PdVSN = 0.0;
@@ -3558,6 +3589,11 @@ pkdActiveRung(PKD pkd, int iRung, int bGreater)
     
     nActive = 0;
     for (i=0;i<pkdLocal(pkd);++i) {
+#ifdef COOLDEBUG
+		if (pkd->pStore[i].iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i] (Rung)\n",pkd->pStore[i].iOrder, i);
+		assert(pkd->pStore[i].u >= 0);
+		assert(pkd->pStore[i].uPred >= 0);
+#endif
 		if(pkd->pStore[i].iRung == iRung ||
 		   (bGreater && pkd->pStore[i].iRung > iRung)) {
 			TYPESet(&(pkd->pStore[i]),TYPE_ACTIVE);
@@ -3902,6 +3938,11 @@ int pkdSetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
 
     for(i=0;i<pkdLocal(pkd);++i) {
 		p = &pkd->pStore[i];
+#ifdef COOLDEBUG
+		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
+		assert(p->u >= 0);
+		assert(p->uPred >= 0);
+#endif
 		/* DEBUG: Paranoia check */
 		mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
 		if (TYPETest(p,iTestMask)) {
@@ -3966,6 +4007,11 @@ int pkdActiveType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
 
     for(i=0;i<pkdLocal(pkd);++i) {
 		p = &pkd->pStore[i];
+#ifdef COOLDEBUG
+		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i] Active Type\n",p->iOrder,(int) (p-pkd->pStore));
+		assert(p->u >= 0);
+		assert(p->uPred >= 0);
+#endif
 		/* DEBUG: Paranoia check */
 		mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
 		if (TYPETest(p,iTestMask)) {
@@ -4047,9 +4093,9 @@ void pkdSetParticleTypes(PKD pkd, int nSuperCool)
     for(i=0;i<pkdLocal(pkd);++i) {
 		p = &pkd->pStore[i];
 		iSetMask = 0;
-		if (pkdIsGas (pkd,p)) iSetMask |= TYPE_GAS;
-		if (pkdIsDark(pkd,p)) iSetMask |= TYPE_DARK;
-		if (pkdIsStar(pkd,p)) iSetMask |= TYPE_STAR;
+		if (pkdIsGasByOrder(pkd,p)) iSetMask |= TYPE_GAS;
+		if (pkdIsDarkByOrder(pkd,p)) iSetMask |= TYPE_DARK;
+		if (pkdIsStarByOrder(pkd,p)) iSetMask |= TYPE_STAR;
 		if (p->iOrder < nSuperCool) iSetMask |= TYPE_SUPERCOOL;
 
 		TYPESet(p,iSetMask);
@@ -4087,18 +4133,18 @@ void pkdInitAccel(PKD pkd)
 		}
     }
 
-int pkdIsGas(PKD pkd,PARTICLE *p) {
+int pkdIsGasByOrder(PKD pkd,PARTICLE *p) {
 	if (p->iOrder <= pkd->nMaxOrderGas) return 1;
 	else return 0;
 	}
 
-int pkdIsDark(PKD pkd,PARTICLE *p) {
+int pkdIsDarkByOrder(PKD pkd,PARTICLE *p) {
 	if (p->iOrder > pkd->nMaxOrderGas && p->iOrder <= pkd->nMaxOrderDark)
 	    return 1;
 	else return 0;
 	}
 
-int pkdIsStar(PKD pkd,PARTICLE *p) {
+int pkdIsStarByOrder(PKD pkd,PARTICLE *p) {
 	if (p->iOrder > pkd->nMaxOrderDark) return 1;
 	else return 0;
 	}
@@ -4278,6 +4324,10 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 #endif
 
 				p->uDot = (E*cl->diErgPerGmUnit - p->u)/duDelta;
+#ifdef COOLDEBUG
+				if (E*cl->diErgPerGmUnit<1e-6*p->u || p->iOrder == 784461 || p->iOrder == 602270 || p->iOrder == 96299 || p->iOrder == 722701) 
+					fprintf(stderr,"udot error? %i: %g %g %g -> %g %i\n",p->iOrder,p->uPred,p->uDot,duDelta,p->u + p->uDot*duDelta,p->iRung);
+#endif
 				if (bUpdateY) pkdPERBARYON2PARTICLE(&Y, p);
 				}
 			else { 
@@ -4618,6 +4668,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 			   dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(1.6*p->c));
 
 	       if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */
+			    assert(p->u > 0);
 				dTu = dEtauDot*p->u/fabs(p->PdV);
 				if (dTu < dT) 
 					dT = dTu;
@@ -5196,6 +5247,10 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 				}
 			if (iGasModel != GASMODEL_ISOTHERMAL) {
 #ifndef NOCOOLING
+#ifdef COOLDEBUG
+				if (p->uPred+p->uDot*duDelta < 0) 
+					fprintf(stderr,"upred error %i: %g %g %g -> %g %i\n",p->iOrder,p->uPred,p->uDot,duDelta,p->uPred + p->uDot*duDelta,p->iRung);
+#endif
 			  p->uPred = p->uPred + p->uDot*duDelta;
 #else
 			  p->uPred = p->uPred + p->PdV*duDelta;

@@ -81,14 +81,14 @@ struct inDumpFrame {
 	int nxPix,nyPix;    /* Pixmap dimensions */
 	int iProject;      /* Projection */
 
-	/* Other info */
+	/* Rendering */
 	double pScale1,pScale2;
 	DFIMAGE ColStar,ColGas,ColDark;
 	int bColMassWeight;
 	int bLogScale;
 	int bGasSph;
 	double dGasSoftMul,dDarkSoftMul,dStarSoftMul;
-	int iRender;       /* Rendering */
+	int iRender;       
 	
 	double dMassGasMin, dMassGasMax;
 	double dMassDarkMin,dMassDarkMax;
@@ -107,10 +107,13 @@ struct dfFrameSetup {
 	double eye[3]; /* Eye Position */
 	double up[3]; /* up vector */
 	double FOV;
-	double zEye;
+	double zEye1,zEye2,zEye;
 	double zClipNear,zClipFar; /* clipping */
+    double eye2[3]; /* a second vector to add to the eye vector */
+	int bEye2;
 	int bzClipFrac; /* Is z clipping a fraction of eye to target distance? */
-	int bzEye; /* Is zEye a fixed distance? */
+	int bzEye,bzEye1,bzEye2; /* Is zEye a fixed distance? */
+	int bAnchor;
 	int nxPix,nyPix;    /* Pixmap dimensions */
 	int bPeriodic; /* Is it periodic? */
 	int iProject;      /* Projection */
@@ -193,6 +196,8 @@ void dfGetCoeff3R( struct DumpFrameContext *df, int ifs );
 void dfGetCoeff2( struct DumpFrameContext *df, int ifs );
 
 void dfGetCoeff( struct DumpFrameContext *df, int ifs );
+
+void dfInterp( struct DumpFrameContext *df, struct dfFrameSetup *pfs, double x );
 
 #include "dumpvoxel.h"
 

@@ -1859,22 +1859,17 @@ void HKViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef STARFORM
 void initDistDeletedGas(void *p1)
 {
-    /*
-     * Warning: kludgery.  We need to accumulate mass in the cached
-     * particle, but we also need to keep the original mass around.
-     * Lets us another (hopefully unused) field to hold the original
-     * mass.
-     */
-    ((PARTICLE *)p1)->PdV = ((PARTICLE *)p1)->fMass;
-
+	if(!TYPETest(((PARTICLE *)p1), TYPE_DELETED)) {
     /*
      * Zero out accumulated quantities.
      */
-    ((PARTICLE *)p1)->v[0] = 0.0;
-    ((PARTICLE *)p1)->v[1] = 0.0;
-    ((PARTICLE *)p1)->v[2] = 0.0;
-    ((PARTICLE *)p1)->u = 0.0;
-    ((PARTICLE *)p1)->fMetals = 0.0;
+		((PARTICLE *)p1)->fMass = 0;
+		((PARTICLE *)p1)->v[0] = 0;
+		((PARTICLE *)p1)->v[1] = 0;
+		((PARTICLE *)p1)->v[2] = 0;
+		((PARTICLE *)p1)->u = 0;
+		((PARTICLE *)p1)->fMetals = 0;
+		}
     }
 
 void combDistDeletedGas(void *p1,void *p2)
@@ -1882,14 +1877,27 @@ void combDistDeletedGas(void *p1,void *p2)
     /*
      * See kudgery notice above.
      */
-    FLOAT fAddedMass = ((PARTICLE *)p2)->fMass - ((PARTICLE *)p2)->PdV;
-    
-    ((PARTICLE *)p1)->fMass += fAddedMass;
-    ((PARTICLE *)p1)->v[0] += ((PARTICLE *)p2)->v[0];
-    ((PARTICLE *)p1)->v[1] += ((PARTICLE *)p2)->v[1];
-    ((PARTICLE *)p1)->v[2] += ((PARTICLE *)p2)->v[2];
-    ((PARTICLE *)p1)->u += ((PARTICLE *)p2)->u;
-    ((PARTICLE *)p1)->fMetals += ((PARTICLE *)p2)->fMetals;
+	if(!TYPETest(((PARTICLE *) p1), TYPE_DELETED)) {
+		FLOAT delta_m = ((PARTICLE *)p2)->fMass;
+		FLOAT m_new,f1,f2;
+		
+		m_new = ((PARTICLE *) p1)->fMass + delta_m;
+		if (m_new > 0) {
+			f1 = ((PARTICLE *) p1)->fMass /m_new;
+			f2 = delta_m  /m_new;
+			
+			((PARTICLE *) p1)->fMass = m_new;
+			((PARTICLE *) p1)->u = f1*((PARTICLE *) p1)->u+f2*((PARTICLE *) p2)->u;
+			((PARTICLE *) p1)->uPred = f1*((PARTICLE *) p1)->uPred+f2*((PARTICLE *) p2)->uPred;
+#ifdef COOLDEBUG
+			assert(((PARTICLE *) p1)->u >= 0);
+#endif
+			((PARTICLE *) p1)->v[0] = f1*((PARTICLE *) p1)->v[0]+f2*((PARTICLE *) p2)->v[0];            
+			((PARTICLE *) p1)->v[1] = f1*((PARTICLE *) p1)->v[1]+f2*((PARTICLE *) p2)->v[1];            
+			((PARTICLE *) p1)->v[2] = f1*((PARTICLE *) p1)->v[2]+f2*((PARTICLE *) p2)->v[2];            
+			((PARTICLE *) p1)->fMetals = f1*((PARTICLE *) p1)->fMetals + f2*((PARTICLE *) p2)->fMetals;
+			}
+		}
     }
 
 void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
@@ -1902,38 +1910,43 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         rstot = 0;        
 	for (i=0;i<nSmooth;++i) {
             q = nnList[i].pPart;
-	    if(TYPETest(q, TYPE_DELETED))
-		continue;
+	    if(TYPETest(q, TYPE_DELETED)) continue;
 	    assert(TYPETest(q, TYPE_GAS));
             r2 = nnList[i].fDist2*ih2;            
             KERNEL(rs,r2);
             rstot += rs;
         }
 	assert(rstot > 0.0);
-        fNorm = 1./rstot;
+	fNorm = 1./rstot;
+	assert(p->fMass >= 0);
 	for (i=0;i<nSmooth;++i) {
-            q = nnList[i].pPart;
-	    if(TYPETest(q, TYPE_DELETED))
-		continue;
-
-            r2 = nnList[i].fDist2*ih2;            
-            KERNEL(rs,r2);
+		q = nnList[i].pPart;
+		if(TYPETest(q, TYPE_DELETED)) continue;
+		
+		r2 = nnList[i].fDist2*ih2;            
+		KERNEL(rs,r2);
 	    /*
 	     * All these quantities are per unit mass.
 	     * Exact if only one gas particle being distributed or in serial
 	     * Approximate in parallel (small error).
 	     */
-	    delta_m = rs*fNorm*p->fMass;
-	    m_new = q->fMass + delta_m;
-	    f1 = q->fMass /m_new;
-	    f2 = delta_m  /m_new;
-            q->fMass = m_new;
-
-            q->u = f1*q->u+f2*p->u;
-            q->v[0] = f1*q->v[0]+f2*p->v[0];            
-            q->v[1] = f1*q->v[1]+f2*p->v[1];            
-            q->v[2] = f1*q->v[2]+f2*p->v[2];            
-            q->fMetals = f1*q->fMetals + f2*p->fMetals;
+		delta_m = rs*fNorm*p->fMass;
+		m_new = q->fMass + delta_m;
+		/* Cached copies can have zero mass: skip them */
+		if (m_new == 0) continue;
+		f1 = q->fMass /m_new;
+		f2 = delta_m  /m_new;
+		q->fMass = m_new;
+		
+		q->u = f1*q->u+f2*p->u;
+		q->uPred = f1*q->uPred+f2*p->uPred;
+#ifdef COOLDEBUG
+		assert(q->u >= 0);
+#endif
+		q->v[0] = f1*q->v[0]+f2*p->v[0];            
+		q->v[1] = f1*q->v[1]+f2*p->v[1];            
+		q->v[2] = f1*q->v[2]+f2*p->v[2];            
+		q->fMetals = f1*q->fMetals + f2*p->fMetals;
         }
 }
 
@@ -1945,16 +1958,25 @@ void DeleteGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	int i;
 
 	assert(TYPETest(p, TYPE_GAS));
-        fMasstot = 0;
+	fMasstot = 0;
+#ifdef COOLDEBUG
+	assert(p->fMass >= 0);
+#endif
+
 	for (i=0;i<nSmooth;++i) {
-            q = nnList[i].pPart;
+		q = nnList[i].pPart;
 	    assert(TYPETest(q, TYPE_GAS));
-            fMasstot += q->fMass;
+		fMasstot += q->fMass;
         }
-        fMassavg = fMasstot/(FLOAT) nSmooth;
-        if (p->fMass < smf->dMinMassFrac*fMassavg) {
-            pkdDeleteParticle(smf->pkd, p);
+
+	fMassavg = fMasstot/(FLOAT) nSmooth;
+
+	if (p->fMass < smf->dMinMassFrac*fMassavg) {
+		pkdDeleteParticle(smf->pkd, p);
         }
+	else {
+		assert (p->fMass > 0);
+		}
         
 }
 

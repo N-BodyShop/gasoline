@@ -1187,12 +1187,16 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	switch(msr->param.iGasModel) {
 	case GASMODEL_ADIABATIC:
 		msr->param.bGasAdiabatic = 1;	
+		break;
 	case GASMODEL_ISOTHERMAL:
 		msr->param.bGasIsothermal = 1;
+		break;
 	case GASMODEL_COOLING:
 		msr->param.bGasCooling = 1;
+		break;
 	case GASMODEL_COOLING_NONEQM:
 		msr->param.bGasCoolingNonEqm = 1;
+		break;
 		}
 
 	if(msr->param.iGasModel != GASMODEL_COOLING &&
@@ -5103,7 +5107,8 @@ msrAddDelParticles(MSR msr)
     in.nMaxOrderDark = msr->nMaxOrderDark;
     pstSetNParts(msr->pst,&in,sizeof(in),NULL,NULL);
     intype.nSuperCool = msr->param.nSuperCool;
-    pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL);
+	/* This shouldn't really be necessary -- it is undesirable to do a fix-up like this */
+    pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL); 
 
     free(pNewOrder);
     free(pColNParts);
@@ -5614,6 +5619,7 @@ void msrFormStars(MSR msr, double dTime)
 
     /*
      * Find low mass gas particles and mark them for deletion.
+	 * For better numerical treatment
      */
     if (msr->param.bVDetails) printf("Delete Gas ...\n");
     msrSmooth(msr, dTime, SMX_DELETE_GAS, 0);

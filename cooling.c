@@ -304,7 +304,9 @@ void clRatesRedshift( CL *cl, double zIn, double dTimeIn ) {
   if (cl->R.Rate_Phot_HeI < CL_RT_MIN) cl->R.Rate_Phot_HeI = CL_RT_MIN;
   if (cl->R.Rate_Phot_HeII < CL_RT_MIN) cl->R.Rate_Phot_HeII = CL_RT_MIN;
 
+/*
   printf("Cooling Rates for t(%1i)=%g, Z=%g: %g %g %g %g %g %g\n",cl->bUVTableUsesTime,dTimeIn,zIn,cl->R.Rate_Phot_HI,cl->R.Rate_Phot_HeI,cl->R.Rate_Phot_HeII,cl->R.Heat_Phot_HI,cl->R.Heat_Phot_HeI,cl->R.Heat_Phot_HeII);
+*/
 
   return;
   }

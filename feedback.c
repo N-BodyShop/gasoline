@@ -63,6 +63,13 @@ void pkdFeedback(PKD pkd, FB fb, double dTime, double dDelta,
     
     for(i = 0; i < n; ++i) {
         p = &pkd->pStore[i];
+#ifdef COOLDEBUG
+		if (p->iOrder == 842079) {
+			fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
+			}
+		assert(p->u >= 0);
+		assert(p->uPred >= 0);
+#endif
 		if(pkdIsStar(pkd, p)) {
 			dTotMassLoss = 0.0;
 			dTotMetals = 0.0;
@@ -131,9 +138,20 @@ void pkdFeedback(PKD pkd, FB fb, double dTime, double dDelta,
 	    
 	
 		else if(pkdIsGas(pkd, p))
+			assert(p->u >= 0);
+		    assert(p->uPred >= 0);
 			p->fESNrate = 0;	/* reset SN heating rate of gas to zero */
 		}
     snFree(sn);
+
+#ifdef COOLDEBUG
+    for(i=0;i<pkdLocal(pkd);++i) {
+		p = &pkd->pStore[i];
+		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i] after\n",p->iOrder,(int) (p-pkd->pStore));
+		assert(p->u >= 0);
+		assert(p->uPred >= 0);
+		}
+#endif
 	}
 
 void snCalcWindFeedback(SN sn, SFEvent sfEvent,

@@ -177,6 +177,7 @@ int TYPEClear( PARTICLE *a );
 #define TYPEClearACTIVE(a)       ((a)->iActive &= (TYPE_ALL|TYPE_SUPERCOOL))
 #define TYPEClear(a)             ((a)->iActive = 0)
 
+
 #define CHECKPOINT_VERSION 7
 
 typedef struct chkParticle {
@@ -338,6 +339,17 @@ typedef struct pkdContext {
 	double dTime;
 #endif
 	} * PKD;
+
+int pkdIsGas(PKD,PARTICLE *);
+#define pkdIsGas( pkd, pTMP) TYPETest( (pTMP), TYPE_GAS )
+int pkdIsDark(PKD,PARTICLE *);
+#define pkdIsDark( pkd, pTMP) TYPETest( (pTMP), TYPE_DARK )
+int pkdIsStar(PKD,PARTICLE *);
+#define pkdIsStar( pkd, pTMP) TYPETest( (pTMP), TYPE_STAR )
+
+int pkdIsGasByOrder(PKD pkd,PARTICLE *p);
+int pkdIsDarkByOrder(PKD pkd,PARTICLE *p);
+int pkdIsStarByOrder(PKD pkd,PARTICLE *p);
 
 
 typedef struct CacheStatistics {
@@ -509,9 +521,7 @@ int pkdResetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask);
 int pkdCountType(PKD pkd, unsigned int iFilterMask, unsigned int iTestMask);
 int pkdActiveMaskRung(PKD pkd, unsigned int iSetMask, int iRung, int bGreater );
 int pkdActiveTypeRung(PKD pkd, unsigned int iTestMask, unsigned int iSetMask, int iRung, int bGreater);
-int pkdIsGas(PKD,PARTICLE *);
-int pkdIsDark(PKD,PARTICLE *);
-int pkdIsStar(PKD,PARTICLE *);
+
 void pkdSetParticleTypes(PKD pkd, int nSuperCool);
 void pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 				  int *nDeltaStar);

@@ -90,11 +90,21 @@ void dfFreeImage( void *Image ) {
 	}
 
 
+#define SET( a, b ) { \
+							   a[0]=b[0]; \
+							   a[1]=b[1]; \
+						       a[2]=b[2]; \
+} 
+#define ADD( a, b ) { \
+							   a[0]+=b[0]; \
+							   a[1]+=b[1]; \
+						       a[2]+=b[2]; \
+} 
 #define DIFF( a, b, c ) { \
 							   c[0] = b[0]-a[0]; \
 							   c[1] = b[1]-a[1]; \
 							   c[2] = b[2]-a[2]; \
-						   }
+						  }
 #define DOT( a, b ) ( a[0]*b[0] + a[1]*b[1] + a[2]*b[2] )
 #define DIST( a, b ) sqrt( (a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1])+(a[2]-b[2])*(a[2]-b[2]) )
 #define LEN( a ) sqrt( (a[0])*(a[0])+(a[1])*(a[1])+(a[2])*(a[2]) )
@@ -140,6 +150,21 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 	in->iRender = fs->iRender;
 	
 	DIFF( fs->eye, in->r, in->z );
+	fprintf(stderr,"eye2: %i  %lf %lf %lf,  %lf %lf %lf",fs->bEye2,fs->eye2[0],fs->eye2[1],fs->eye2[2], in->z[0],in->z[1],in->z[2] );
+
+	if (fs->bzEye1) SIZE( in->z, fs->zEye1 );
+
+	fprintf(stderr,"eye2: %i  %lf %lf %lf,  %lf %lf %lf",fs->bEye2,fs->eye2[0],fs->eye2[1],fs->eye2[2], in->z[0],in->z[1],in->z[2] );
+
+
+	if (fs->bEye2) {
+		SET( vec, fs->eye2 );
+		if (fs->bzEye2) SIZE( vec, fs->zEye2 );
+		ADD ( in->z, vec );
+		}
+
+	fprintf(stderr,"eye2: %i  %lf %lf %lf,  %lf %lf %lf",fs->bEye2,fs->eye2[0],fs->eye2[1],fs->eye2[2], in->z[0],in->z[1],in->z[2] );
+
 	if (fs->bzEye) {
 		in->zEye = fs->zEye;
 		}
@@ -405,7 +430,15 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 	fs.up[1] = 1;
 	fs.up[2] = 0;
 	fs.zEye = 0.0;
+	fs.zEye1 = 0.0;
+	fs.zEye2 = 0.0;
+	fs.eye2[0] = 0;
+	fs.eye2[1] = 0;
+	fs.eye2[2] = 0;
+	fs.bEye2 = 0;
 	fs.bzEye = 0;
+	fs.bzEye1 = 0;
+	fs.bzEye2 = 0;
 	fs.FOV = 90.;
 	fs.zClipNear = 0.01;
 	fs.zClipFar = 2.0;
@@ -485,6 +518,11 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 			nitem = sscanf( line, "%s %lf %lf %lf", command, &fs.eye[0], &fs.eye[1], &fs.eye[2] );
 			assert( nitem == 4 );
 			}
+		else if (!strcmp( command, "eye2") ) {
+			nitem = sscanf( line, "%s %lf %lf %lf", command, &fs.eye2[0], &fs.eye2[1], &fs.eye2[2] );
+			fs.bEye2 = 1;
+			assert( nitem == 4 );
+			}
 		else if (!strcmp( command, "up") ) {
 			nitem = sscanf( line, "%s %lf %lf %lf", command, &fs.up[0], &fs.up[1], &fs.up[2] );
 			assert( nitem == 4 );
@@ -497,6 +535,16 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 		else if (!strcmp( command, "zeye") ) {
 			fs.bzEye = 1;
 			nitem = sscanf( line, "%s %lf", command, &fs.zEye );
+			assert( nitem == 2 );
+			}
+		else if (!strcmp( command, "zeye1") ) {
+			fs.bzEye1 = 1;
+			nitem = sscanf( line, "%s %lf", command, &fs.zEye1 );
+			assert( nitem == 2 );
+			}
+		else if (!strcmp( command, "zeye2") ) {
+			fs.bzEye2 = 1;
+			nitem = sscanf( line, "%s %lf", command, &fs.zEye2 );
 			assert( nitem == 2 );
 			}
 		else if (!strcmp( command, "fov") || !strcmp( command, "FOV")  ) {
@@ -651,19 +699,8 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 	fclose(fp);
 	}
 
-#define DFINTERP_SCALAR( x, xx, xxx, a, b, c, d, f ) { \
-f = xxx*a + xx*b + x*c + d; \
-}
-
-#define DFINTERP_VEC( x, xx, xxx, a, b, c, d, f ) { \
-DFINTERP_SCALAR( x, xx, xxx, a[0], b[0], c[0], d[0], f[0] ); \
-DFINTERP_SCALAR( x, xx, xxx, a[1], b[1], c[1], d[1], f[1] ); \
-DFINTERP_SCALAR( x, xx, xxx, a[2], b[2], c[2], d[2], f[2] ); \
-}
-
 void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, struct inDumpFrame *vin ) {
 	struct dfFrameSetup fs;
-	double x, xx, xxx;
 
 	int ifs = df->iFrameSetup;
 
@@ -694,7 +731,7 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
 			}
 		else {
 			ifs = 1;
-			while (ifs < df->nFrameSetup && dTime < df->fs[ifs].dTime ) ifs++;
+			while (ifs < df->nFrameSetup && dTime > df->fs[ifs].dTime ) ifs++;
 			if (ifs >= df->nFrameSetup-1) { /* Outside Range */
 				if (dTime == df->fs[df->nFrameSetup-1].dTime && ifs > 1) ifs--;
 				else {
@@ -733,16 +770,7 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
 	   */
 	fs = df->fs[ifs];
 
-	x = (dTime-fs.dTime)*df->rdt;
-	xx = x*x;
-	xxx = x*xx;
-
-	DFINTERP_VEC( x, xx, xxx, df->a.eye, df->b.eye, df->c.eye, df->d.eye, fs.eye );
-	DFINTERP_VEC( x, xx, xxx, df->a.target, df->b.target, df->c.target, df->d.target, fs.target );
-	DFINTERP_VEC( x, xx, xxx, df->a.up, df->b.up, df->c.up, df->d.up, fs.up );
-	DFINTERP_SCALAR( x, xx, xxx, df->a.FOV, df->b.FOV, df->c.FOV, df->d.FOV, fs.FOV );
-	DFINTERP_SCALAR( x, xx, xxx, df->a.zClipNear, df->b.zClipNear, df->c.zClipNear, df->d.zClipNear, fs.zClipNear );
-	DFINTERP_SCALAR( x, xx, xxx, df->a.zClipFar, df->b.zClipFar, df->c.zClipFar, df->d.zClipFar, fs.zClipFar );
+	dfInterp( df, &fs, (dTime-fs.dTime)*df->rdt );
 
     dfProjection( vin, &fs ); 
     }

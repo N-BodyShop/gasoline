@@ -150,7 +150,11 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     else 
 		dDeltaM = p->fMass*stfm->dStarEff;
 
+	/* No negative masses please! */
+	if (dDeltaM > p->fMass) dDeltaM = p->fMass;
+
     p->fMass -= dDeltaM;
+	assert(p->fMass >= 0);
 
     /* 
      * Note on number of stars formed:
@@ -163,9 +167,9 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     starp = *p; 		/* grab copy before possible deletion */
 
     if(p->fMass < stfm->dMinGasMass) {
-	(*nDeleted)++;
-	pkdDeleteParticle(pkd, p);
-	}
+		(*nDeleted)++;
+		pkdDeleteParticle(pkd, p);
+		}
 
     /*
      * form star
@@ -198,9 +202,24 @@ void pkdFormStars(PKD pkd, STFM stfm, double dTime, int *nFormed,
     
     for(i = 0; i < n; ++i) {
         p = &pkd->pStore[i];
-	if(pkdIsGas(pkd, p))
-	    stfmFormStars(stfm, pkd, p, dTime, nFormed, dMassFormed, nDeleted);
-	}
+#ifdef COOLDEBUG
+		assert (pkd->nLocal <= 210897 || pkd->pStore[210897].u > 0);
+
+		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
+		assert(p->u >= 0);
+		assert(p->uPred >= 0);
+#endif
+		if(pkdIsGas(pkd, p))
+			stfmFormStars(stfm, pkd, p, dTime, nFormed, dMassFormed, nDeleted);
+		}
+#ifdef COOLDEBUG
+		assert (pkd->nLocal <= 210897 || pkd->pStore[210897].u > 0);
+
+		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i] (after)\n",p->iOrder,(int) (p-pkd->pStore));
+		assert(p->u >= 0);
+		assert(p->uPred >= 0);
+	    assert(p->fMass >= 0);
+#endif
     }
 
 #endif

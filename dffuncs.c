@@ -31,12 +31,24 @@ void dfGetCoeff4( struct DumpFrameContext *df, int ifs ) {
 	DFGETCOEFF4_VEC( dt, df->a.eye, df->b.eye, df->c.eye, df->d.eye, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, df->fs[ifs+2].dTime,
 			   df->fs[ifs].eye, df->fs[ifs+1].eye, df->fs[ifs-1].eye, df->fs[ifs+2].eye );
+	DFGETCOEFF4_VEC( dt, df->a.eye2, df->b.eye2, df->c.eye2, df->d.eye2, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, df->fs[ifs+2].dTime,
+			   df->fs[ifs].eye2, df->fs[ifs+1].eye2, df->fs[ifs-1].eye2, df->fs[ifs+2].eye2 );
 	DFGETCOEFF4_VEC( dt, df->a.target, df->b.target, df->c.target, df->d.target, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, df->fs[ifs+2].dTime,
 			   df->fs[ifs].target, df->fs[ifs+1].target, df->fs[ifs-1].target, df->fs[ifs+2].target );
 	DFGETCOEFF4_VEC( dt, df->a.up, df->b.up, df->c.up, df->d.up, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, df->fs[ifs+2].dTime, 
 			   df->fs[ifs].up, df->fs[ifs+1].up, df->fs[ifs-1].up, df->fs[ifs+2].up );
+	DFGETCOEFF4_SCALAR( dt, df->a.zEye, df->b.zEye, df->c.zEye, df->d.zEye, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, df->fs[ifs+2].dTime, 
+			   df->fs[ifs].zEye, df->fs[ifs+1].zEye, df->fs[ifs-1].zEye, df->fs[ifs+2].zEye );
+	DFGETCOEFF4_SCALAR( dt, df->a.zEye1, df->b.zEye1, df->c.zEye1, df->d.zEye1, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, df->fs[ifs+2].dTime, 
+			   df->fs[ifs].zEye1, df->fs[ifs+1].zEye1, df->fs[ifs-1].zEye1, df->fs[ifs+2].zEye1 );
+	DFGETCOEFF4_SCALAR( dt, df->a.zEye2, df->b.zEye2, df->c.zEye2, df->d.zEye2, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, df->fs[ifs+2].dTime, 
+			   df->fs[ifs].zEye2, df->fs[ifs+1].zEye2, df->fs[ifs-1].zEye2, df->fs[ifs+2].zEye2 );
 	DFGETCOEFF4_SCALAR( dt, df->a.FOV, df->b.FOV, df->c.FOV, df->d.FOV, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, df->fs[ifs+2].dTime, 
 			   df->fs[ifs].FOV, df->fs[ifs+1].FOV, df->fs[ifs-1].FOV, df->fs[ifs+2].FOV );
@@ -71,12 +83,24 @@ void dfGetCoeff3L( struct DumpFrameContext *df, int ifs ) {
 	DFGETCOEFF3L_VEC( dt, df->a.eye, df->b.eye, df->c.eye, df->d.eye, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime,
 			   df->fs[ifs].eye, df->fs[ifs+1].eye, df->fs[ifs-1].eye );
+	DFGETCOEFF3L_VEC( dt, df->a.eye2, df->b.eye2, df->c.eye2, df->d.eye2, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime,
+			   df->fs[ifs].eye2, df->fs[ifs+1].eye2, df->fs[ifs-1].eye2 );
 	DFGETCOEFF3L_VEC( dt, df->a.target, df->b.target, df->c.target, df->d.target, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime,
 			   df->fs[ifs].target, df->fs[ifs+1].target, df->fs[ifs-1].target );
 	DFGETCOEFF3L_VEC( dt, df->a.up, df->b.up, df->c.up, df->d.up, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, 
 			   df->fs[ifs].up, df->fs[ifs+1].up, df->fs[ifs-1].up );
+	DFGETCOEFF3L_SCALAR( dt, df->a.zEye, df->b.zEye, df->c.zEye, df->d.zEye, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, 
+			   df->fs[ifs].zEye, df->fs[ifs+1].zEye, df->fs[ifs-1].zEye );
+	DFGETCOEFF3L_SCALAR( dt, df->a.zEye1, df->b.zEye1, df->c.zEye1, df->d.zEye1, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, 
+			   df->fs[ifs].zEye1, df->fs[ifs+1].zEye1, df->fs[ifs-1].zEye1 );
+	DFGETCOEFF3L_SCALAR( dt, df->a.zEye2, df->b.zEye2, df->c.zEye2, df->d.zEye2, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, 
+			   df->fs[ifs].zEye2, df->fs[ifs+1].zEye2, df->fs[ifs-1].zEye2 );
 	DFGETCOEFF3L_SCALAR( dt, df->a.FOV, df->b.FOV, df->c.FOV, df->d.FOV, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs-1].dTime, 
 			   df->fs[ifs].FOV, df->fs[ifs+1].FOV, df->fs[ifs-1].FOV );
@@ -111,12 +135,24 @@ void dfGetCoeff3R( struct DumpFrameContext *df, int ifs ) {
 	DFGETCOEFF3R_VEC( dt, df->a.eye, df->b.eye, df->c.eye, df->d.eye, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs+2].dTime,
 			   df->fs[ifs].eye, df->fs[ifs+1].eye, df->fs[ifs+2].eye );
+	DFGETCOEFF3R_VEC( dt, df->a.eye2, df->b.eye2, df->c.eye2, df->d.eye2, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs+2].dTime,
+			   df->fs[ifs].eye2, df->fs[ifs+1].eye2, df->fs[ifs+2].eye2 );
 	DFGETCOEFF3R_VEC( dt, df->a.target, df->b.target, df->c.target, df->d.target, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs+2].dTime,
 			   df->fs[ifs].target, df->fs[ifs+1].target, df->fs[ifs+2].target );
 	DFGETCOEFF3R_VEC( dt, df->a.up, df->b.up, df->c.up, df->d.up, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs+2].dTime, 
 			   df->fs[ifs].up, df->fs[ifs+1].up, df->fs[ifs+2].up );
+	DFGETCOEFF3R_SCALAR( dt, df->a.zEye, df->b.zEye, df->c.zEye, df->d.zEye, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs+2].dTime, 
+			   df->fs[ifs].zEye, df->fs[ifs+1].zEye, df->fs[ifs+2].zEye );
+	DFGETCOEFF3R_SCALAR( dt, df->a.zEye1, df->b.zEye1, df->c.zEye1, df->d.zEye1, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs+2].dTime, 
+			   df->fs[ifs].zEye1, df->fs[ifs+1].zEye1, df->fs[ifs+2].zEye1 );
+	DFGETCOEFF3R_SCALAR( dt, df->a.zEye2, df->b.zEye2, df->c.zEye2, df->d.zEye2, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs+2].dTime, 
+			   df->fs[ifs].zEye2, df->fs[ifs+1].zEye2, df->fs[ifs+2].zEye2 );
 	DFGETCOEFF3R_SCALAR( dt, df->a.FOV, df->b.FOV, df->c.FOV, df->d.FOV, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, df->fs[ifs+2].dTime, 
 			   df->fs[ifs].FOV, df->fs[ifs+1].FOV, df->fs[ifs+2].FOV );
@@ -149,12 +185,24 @@ void dfGetCoeff2( struct DumpFrameContext *df, int ifs ) {
 	DFGETCOEFF2_VEC( dt, df->a.eye, df->b.eye, df->c.eye, df->d.eye, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, 
 			   df->fs[ifs].eye, df->fs[ifs+1].eye );
+	DFGETCOEFF2_VEC( dt, df->a.eye2, df->b.eye2, df->c.eye2, df->d.eye2, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, 
+			   df->fs[ifs].eye2, df->fs[ifs+1].eye2 );
 	DFGETCOEFF2_VEC( dt, df->a.target, df->b.target, df->c.target, df->d.target, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime, 
 			   df->fs[ifs].target, df->fs[ifs+1].target );
 	DFGETCOEFF2_VEC( dt, df->a.up, df->b.up, df->c.up, df->d.up, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime,
 			   df->fs[ifs].up, df->fs[ifs+1].up );
+	DFGETCOEFF2_SCALAR( dt, df->a.zEye, df->b.zEye, df->c.zEye, df->d.zEye, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime,
+			   df->fs[ifs].zEye, df->fs[ifs+1].zEye );
+	DFGETCOEFF2_SCALAR( dt, df->a.zEye1, df->b.zEye1, df->c.zEye1, df->d.zEye1, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime,
+			   df->fs[ifs].zEye1, df->fs[ifs+1].zEye1 );
+	DFGETCOEFF2_SCALAR( dt, df->a.zEye2, df->b.zEye2, df->c.zEye2, df->d.zEye2, 
+			   df->fs[ifs].dTime, df->fs[ifs+1].dTime,
+			   df->fs[ifs].zEye2, df->fs[ifs+1].zEye2 );
 	DFGETCOEFF2_SCALAR( dt, df->a.FOV, df->b.FOV, df->c.FOV, df->d.FOV, 
 			   df->fs[ifs].dTime, df->fs[ifs+1].dTime,
 			   df->fs[ifs].FOV, df->fs[ifs+1].FOV );
@@ -176,3 +224,34 @@ void dfGetCoeff( struct DumpFrameContext *df, int ifs ) {
 	else 
 		dfGetCoeff2( df, ifs );
 	}
+
+#define DFINTERP_SCALAR( x, xx, xxx, a, b, c, d, f ) { \
+f = xxx*a + xx*b + x*c + d; \
+}
+
+#define DFINTERP_VEC( x, xx, xxx, a, b, c, d, f ) { \
+DFINTERP_SCALAR( x, xx, xxx, a[0], b[0], c[0], d[0], f[0] ); \
+DFINTERP_SCALAR( x, xx, xxx, a[1], b[1], c[1], d[1], f[1] ); \
+DFINTERP_SCALAR( x, xx, xxx, a[2], b[2], c[2], d[2], f[2] ); \
+}
+
+void dfInterp( struct DumpFrameContext *df, struct dfFrameSetup *pfs, double x )
+{
+	double xx,xxx;
+
+	xx = x*x;
+	xxx = x*xx;
+
+	DFINTERP_VEC( x, xx, xxx, df->a.eye, df->b.eye, df->c.eye, df->d.eye, pfs->eye );
+	DFINTERP_VEC( x, xx, xxx, df->a.eye2, df->b.eye2, df->c.eye2, df->d.eye2, pfs->eye2 );
+	DFINTERP_VEC( x, xx, xxx, df->a.target, df->b.target, df->c.target, df->d.target, pfs->target );
+	DFINTERP_VEC( x, xx, xxx, df->a.up, df->b.up, df->c.up, df->d.up, pfs->up );
+
+	DFINTERP_SCALAR( x, xx, xxx, df->a.zEye, df->b.zEye, df->c.zEye, df->d.zEye, pfs->zEye );
+	DFINTERP_SCALAR( x, xx, xxx, df->a.zEye1, df->b.zEye1, df->c.zEye1, df->d.zEye1, pfs->zEye1 );
+	DFINTERP_SCALAR( x, xx, xxx, df->a.zEye2, df->b.zEye2, df->c.zEye2, df->d.zEye2, pfs->zEye2 );
+	DFINTERP_SCALAR( x, xx, xxx, df->a.FOV, df->b.FOV, df->c.FOV, df->d.FOV, pfs->FOV );
+	DFINTERP_SCALAR( x, xx, xxx, df->a.zClipNear, df->b.zClipNear, df->c.zClipNear, df->d.zClipNear, pfs->zClipNear );
+	DFINTERP_SCALAR( x, xx, xxx, df->a.zClipFar, df->b.zClipFar, df->c.zClipFar, df->d.zClipFar, pfs->zClipFar );
+	}
+
