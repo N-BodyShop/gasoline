@@ -726,8 +726,12 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 
 void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoSplitDimFind)
 {
+#ifdef STARFORM
+	int NUM_SAFETY = 64; 	/* Larger margin for extra particles */
+#else
 	int NUM_SAFETY = 4; 	/* minimum margin space per processor when
 				   filling up memory */
+#endif
 	int nSafeTot;		/* total slop space we have to play with */
 	int margin;             /* margin of accuracy for filling up memory */
 	int iSloppy = 2;	/* controls whether we are sloppy in filling
