@@ -5,7 +5,6 @@
 #include "smoothfcn.h"
 #include "floattype.h"
 
-#define RESMOOTH_SAFE  10
 #define PQ_LOAD_FACTOR 0.50
 
 
@@ -273,6 +272,7 @@ int smInitialize(SMX *,PKD,SMF *,int,int,int,int,int);
 void smFinish(SMX,SMF *);
 void smSmooth(SMX,SMF *);
 void smReSmooth(SMX,SMF *);
+void smGrowList(SMX smx);
 
 #ifdef PLANETS
 void smQQSmooth(SMX smx,SMF *smf);

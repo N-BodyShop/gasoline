@@ -330,21 +330,6 @@ pkdQQBuild(PKD pkd,int nBucket, int bActiveOnly,KDN *pRoot)
 	if((pkdn)->bnd.fMin[0] > fQ || (pkdn)->bnd.fMax[1] < fq) goto label;\
 	}
 
-/*
- * I don't increase the PQ size here: I assume it isn't in use if we
- * need this function.
- */
-void smGrowList(SMX smx)
-{
-    smx->nListSize *= 1.5;
-    
-    smx->nnList = (NN *) realloc(smx->nnList, smx->nListSize*sizeof(NN));
-    assert(smx->nnList != NULL);
-    smx->pbRelease = (int *) realloc(smx->pbRelease,
-				     smx->nListSize*sizeof(int));
-    assert(smx->pbRelease != NULL);
-}
-
 int smGatherQQ(SMX smx,FLOAT fq,FLOAT fQ,int cp)
 {
 	KDN *c = smx->pkd->kdNodes;
@@ -366,12 +351,12 @@ int smGatherQQ(SMX smx,FLOAT fq,FLOAT fQ,int cp)
 			for (pj=c[cp].pLower;pj<=pUpper;++pj) {
 				if(PARTQQ(&p[pj], 0) < fQ &&
 				   PARTQQ(&p[pj], 1) > fq) {
+					if(nCnt >= smx->nListSize)
+					    smGrowList(smx);
 					smx->nnList[nCnt].pPart = &p[pj];
 					smx->nnList[nCnt].iIndex = pj;
 					smx->nnList[nCnt].iPid = smx->pkd->idSelf;
 					smx->pbRelease[nCnt++] = 0;
-					if(nCnt >= smx->nListSize)
-					    smGrowList(smx);
 					}
 				}
 			}
@@ -423,12 +408,12 @@ void smQQSmooth(SMX smx,SMF *smf)
 				pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
 				if(PARTQQ(pPart, 0) < fQ &&
 				   PARTQQ(pPart, 1) > fq) {
+					if(nCnt >= smx->nListSize)
+					    smGrowList(smx);
 					smx->nnList[nCnt].pPart = pPart;
 					smx->nnList[nCnt].iIndex = pj;
 					smx->nnList[nCnt].iPid = id;
 					smx->pbRelease[nCnt++] = 1;
-					if(nCnt >= smx->nListSize)
-					    smGrowList(smx);
 					continue;
 					}
 				mdlRelease(mdl,CID_PARTICLE,pPart);

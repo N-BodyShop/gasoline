@@ -147,7 +147,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	/*
 	 ** Allocate Nearest-Neighbor List.
 	 */
-	smx->nListSize = smx->nSmooth+RESMOOTH_SAFE;
+	smx->nListSize = smx->nSmooth;
 	smx->nnList = (NN *)malloc(smx->nListSize*sizeof(NN));
 	assert(smx->nnList != NULL);
 	smx->pbRelease = (int *)malloc(smx->nListSize*sizeof(int));
@@ -446,6 +446,21 @@ PQ *smBallSearchNP(SMX smx,PQ *pq,FLOAT *ri,int *cpStart)
 	}
 
 
+/*
+ * I don't increase the PQ size here: I assume it isn't in use if we
+ * need this function.
+ */
+void smGrowList(SMX smx)
+{
+    smx->nListSize *= 1.5;
+    
+    smx->nnList = (NN *) realloc(smx->nnList, smx->nListSize*sizeof(NN));
+    assert(smx->nnList != NULL);
+    smx->pbRelease = (int *) realloc(smx->pbRelease,
+				     smx->nListSize*sizeof(int));
+    assert(smx->pbRelease != NULL);
+}
+
 int smBallGather(SMX smx,FLOAT fBall2,FLOAT *ri)
 {
 	KDN *c = smx->pkd->kdNodes;
@@ -486,6 +501,8 @@ int smBallGather(SMX smx,FLOAT fBall2,FLOAT *ri)
 				dz = sz - p[pj].r[2];
 				fDist2 = dx*dx + dy*dy + dz*dz;
 				if (fDist2 <= fBall2) {
+				        if(nCnt >= smx->nListSize)
+					    smGrowList(smx);
 					smx->nnList[nCnt].fDist2 = fDist2;
 					smx->nnList[nCnt].dx = dx;
 					smx->nnList[nCnt].dy = dy;
@@ -534,6 +551,8 @@ int smBallGatherNP(SMX smx,FLOAT fBall2,FLOAT *ri,int cp)
 				dz = z - p[pj].r[2];
 				fDist2 = dx*dx + dy*dy + dz*dz;
 				if (fDist2 <= fBall2) {
+				        if(nCnt >= smx->nListSize)
+					    smGrowList(smx);
 					smx->nnList[nCnt].fDist2 = fDist2;
 					smx->nnList[nCnt].dx = dx;
 					smx->nnList[nCnt].dy = dy;
@@ -902,6 +921,8 @@ void smReSmooth(SMX smx,SMF *smf)
 					dz = sz - pPart->r[2];
 					fDist2 = dx*dx + dy*dy + dz*dz;
 					if (fDist2 <= fBall2) {
+						if(nCnt >= smx->nListSize)
+						    smGrowList(smx);
 						smx->nnList[nCnt].fDist2 = fDist2;
 						smx->nnList[nCnt].dx = dx;
 						smx->nnList[nCnt].dy = dy;
