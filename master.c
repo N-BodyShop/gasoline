@@ -5604,7 +5604,7 @@ void msrDumpFrameInit(MSR msr, double dTime, double dStep) {
 	LCL *plcl = &msr->lcl;
 	char achFile[160];
 	
-	if (msr->param.dDumpFrameStep > 0) {
+	if (msr->param.dDumpFrameStep > 0 || msr->param.dDumpFrameTime > 0) {
 		msr->bDumpFrame = 1;
 		/*
 		 ** Add Data Subpath for local and non-local names.
