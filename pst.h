@@ -6,6 +6,10 @@
 #include "smoothfcn.h"
 #include "floattype.h"
 
+#ifdef PLANETS
+#include "collision.h"
+#endif
+
 typedef struct lclBlock {
 	char *pszDataPath;
 	PKD	pkd;
@@ -517,6 +521,46 @@ struct inAdotStep {
     };
 void pstAdotStep(PST,void *,int,void *,int *);
 
+#ifdef PLANETS
+
+#define PST_READSS			62
+struct inReadSS {
+	int nFileStart;
+	int nFileEnd;
+	int nDark;
+	int nGas;			/* always zero */
+	int nStar;			/* always zero */
+	int iOrder;
+	float fExtraStore;
+	FLOAT fPeriod[3];	/* for compatability */
+	char achInFile[PST_FILENAME_SIZE];
+	};
+void pstReadSS(PST,void *,int,void *,int *);
+
+#define PST_WRITESS			63
+struct inWriteSS {
+	char achOutFile[PST_FILENAME_SIZE];
+	};
+void pstWriteSS(PST,void *,int,void *,int *);
+
+#define PST_FINDCOLLISION  	64
+struct outFindCollision {
+	double dImpactTime;
+	COLLIDER Collider1,Collider2;
+	};
+void pstFindCollision(PST,void *,int,void *,int *);
+
+#define PST_DOCOLLISION		65
+struct inDoCollision {
+	int iPid1,iPid2;
+	};
+struct outDoCollision {
+	COLLIDER Collider1,Collider2,Out[MAX_NUM_FRAG];
+	double dImpactEnergy;
+	int nOut;
+	};
+void pstDoCollision(PST,void *,int,void *,int *);
+
+#endif /* PLANETS */
+
 #endif
-
-

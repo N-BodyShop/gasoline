@@ -138,6 +138,14 @@ void pstAddServices(PST pst,MDL mdl)
 		      nThreads*sizeof(int), 0);
 	mdlAddService(mdl,PST_SETNPARTS,pst,pstSetNParts,
 		      sizeof(struct inSetNParts), 0);
+#ifdef PLANETS
+	mdlAddService(mdl,PST_READSS,pst,pstReadSS,sizeof(struct inReadSS),0);
+	mdlAddService(mdl,PST_WRITESS,pst,pstWriteSS,sizeof(struct inWriteSS),0);
+	mdlAddService(mdl,PST_FINDCOLLISION,pst,pstFindCollision,0,
+				  sizeof(struct outFindCollision));
+	mdlAddService(mdl,PST_DOCOLLISION,pst,pstDoCollision,
+				  sizeof(struct inDoCollision),sizeof(struct outDoCollision));
+#endif /* PLANETS */
 	}
 
 
@@ -1630,8 +1638,8 @@ void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		LCL *plcl = pst->plcl;
 		SMX smx;
 
-		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bPeriodic,in->bSymmetric,
-					 in->iSmoothType,1);
+		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
+					 in->bSymmetric,in->iSmoothType,1);
 		smSmooth(smx,&in->smf);
 		smFinish(smx,&in->smf);
 		}
@@ -1653,8 +1661,8 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		LCL *plcl = pst->plcl;
 		SMX smx;
 
-		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bPeriodic,in->bSymmetric,
-					 in->iSmoothType,0);
+		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
+					 in->bSymmetric,in->iSmoothType,0);
 		smReSmooth(smx,&in->smf);
 		smFinish(smx,&in->smf);
 		}
@@ -2475,6 +2483,7 @@ pstSphCurrRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	if (pnOut) *pnOut = sizeof(*out);
 	}
+
 #endif
 
 void
@@ -2542,3 +2551,142 @@ pstSetNParts(PST pst,void *vin,int nIn,void *vout,int *pnOut)
     if(pnOut) *pnOut = 0;
     }
 
+#ifdef PLANETS
+
+void pstReadSS(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inReadSS *in = vin;
+	int nFileStart,nFileEnd,nFileTotal,nFileSplit,nStore;
+	char achInFile[PST_FILENAME_SIZE];
+
+	assert(nIn == sizeof(struct inReadSS));
+	nFileStart = in->nFileStart;
+	nFileEnd = in->nFileEnd;
+	nFileTotal = nFileEnd - nFileStart + 1;
+	if (pst->nLeaves > 1) {
+		nFileSplit = nFileStart + pst->nLower*(nFileTotal/pst->nLeaves);
+		in->nFileStart = nFileSplit;
+		mdlReqService(pst->mdl,pst->idUpper,PST_READSS,in,nIn);
+		in->nFileStart = nFileStart;
+		in->nFileEnd = nFileSplit - 1;
+		pstReadSS(pst->pstLower,in,nIn,NULL,NULL);
+		in->nFileEnd = nFileEnd;
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		/*
+		 ** Add the local Data Path to the provided filename.
+		 */
+		achInFile[0] = 0;
+		if (plcl->pszDataPath) {
+			strcat(achInFile,plcl->pszDataPath);
+			strcat(achInFile,"/");
+			}
+		strcat(achInFile,in->achInFile);
+		/*
+		 ** Determine the size of the local particle store.
+		 */
+		nStore = nFileTotal + (int)ceil(nFileTotal*in->fExtraStore);
+		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
+					  in->fPeriod,in->nDark,in->nGas,in->nStar);
+		pkdReadSS(plcl->pkd,achInFile,nFileStart,nFileTotal);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void pstWriteSS(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inWriteSS *in = vin;
+	char achOutFile[PST_FILENAME_SIZE];
+
+	assert(nIn == sizeof(struct inWriteSS));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_WRITESS,in,nIn);
+		pstWriteSS(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		/*
+		 ** Add the local Data Path to the provided filename.
+		 */
+		achOutFile[0] = 0;
+		if (plcl->pszDataPath) {
+			strcat(achOutFile,plcl->pszDataPath);
+			strcat(achOutFile,"/");
+			}
+		strcat(achOutFile,in->achOutFile);
+		pkdWriteSS(plcl->pkd,achOutFile,plcl->nWriteStart);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void pstFindCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	/*
+	 ** NOTE: If the impact time matches a previous impact time, we check to
+	 ** ensure that the two colliders are not local to the same processor.
+	 ** If they are, then that means two (or more) different collisions
+	 ** occured at the same time, which should be exceedingly rare, so we
+	 ** don't allow it.
+	 */
+
+	LCL *plcl = pst->plcl;
+	struct outFindCollision local,*out = vout;
+
+	assert(nIn == 0);
+	out->dImpactTime = DBL_MAX;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_FINDCOLLISION,NULL,0);
+		pstFindCollision(pst->pstLower,NULL,0,vout,pnOut);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		if (COLLISION(local.dImpactTime) &&
+			local.dImpactTime <= out->dImpactTime) {
+			if (local.dImpactTime == out->dImpactTime)
+				assert(local.Collider1.id.iPid != local.Collider2.id.iPid);
+			*out = local;
+			}
+		}
+	else {
+		PKD pkd = plcl->pkd;
+		if (COLLISION(pkd->dImpactTime) &&
+			pkd->dImpactTime <= out->dImpactTime) {
+			if (pkd->dImpactTime == out->dImpactTime)
+				assert(pkd->Collider1.id.iPid != pkd->Collider2.id.iPid);
+			out->dImpactTime = pkd->dImpactTime;
+			out->Collider1 = pkd->Collider1;
+			out->Collider2 = pkd->Collider2;
+			}
+		}
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+void pstDoCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inDoCollision *in = vin;
+	struct outDoCollision local,*out = vout;
+
+
+	assert(nIn == sizeof(*in));
+	local.nOut = out->nOut = 0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DOCOLLISION,vin,nIn);
+		pstDoCollision(pst->pstLower,vin,nIn,vout,pnOut);
+		if (out->nOut) local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		assert(*pnOut == sizeof(*out));
+		if (local.nOut) *out = local;
+		}
+	else {
+		PKD pkd = plcl->pkd;
+		if (in->iPid1 == pkd->idSelf || in->iPid2 == pkd->idSelf)
+			pkdDoCollision(pkd,&out->Collider1,&out->Collider2,
+						   &out->dImpactEnergy,out->Out,&out->nOut);
+		}
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+#endif /* PLANETS */

@@ -17,6 +17,9 @@
 #include "mdl.h"
 #include "tipsydefs.h"
 
+#ifdef PLANETS
+#include "ssdefs.h"
+#endif
 
 double pkdGetTimer(PKD pkd,int iTimer)
 {
@@ -1711,7 +1714,6 @@ void pkdColorCell(PKD pkd,int iCell,FLOAT fColor)
 #endif	
 	}
 
-
 void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 				double fEwCut,double fEwhCut,int *nActive,
 				double *pdPartSum,double *pdCellSum,CASTAT *pcs,
@@ -1878,8 +1880,7 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo, double dvPredFacOne,
 	}
 
 
-void
-pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
+void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 				  int nStart,int nLocal)
 {
 	FILE *fp;
@@ -1907,6 +1908,11 @@ pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 			pkd->pStore[i].r[j] = cp.r[j];
 			pkd->pStore[i].v[j] = cp.v[j];
 			}
+#ifdef PLANETS
+		for (j=0;j<3;++j)
+			pkd->pStore[i].w[j] = cp.w[j];
+		pkd->pStore[i].iColor = cp.iColor;
+#endif
 		pkd->pStore[i].iActive = 1;
 		pkd->pStore[i].iRung = 0;
 		pkd->pStore[i].fWeight = 1.0;	/* set the initial weight to 1.0 */
@@ -1943,6 +1949,11 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 			cp.r[j] = pkd->pStore[i].r[j];
 			cp.v[j] = pkd->pStore[i].v[j];
 			}
+#ifdef PLANETS
+		for (j=0;j<3;++j)
+			cp.w[j] = pkd->pStore[i].w[j];
+		cp.iColor = pkd->pStore[i].iColor;
+#endif
 		fwrite(&cp,sizeof(CHKPART),1,fp);
 		}
 	fclose(fp);
@@ -2155,6 +2166,7 @@ pkdDensityStep(PKD pkd, double dEta, double dRhoFac)
 		}
     }
 
+
 void
 pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac)
 {
@@ -2165,20 +2177,20 @@ pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac)
     double dT;
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
-	if(pkd->pStore[i].iActive) {
-	    vel = 0;
+		if(pkd->pStore[i].iActive) {
+			vel = 0;
             acc = 0;
-	    for(j = 0; j < 3; j++) {
-		vel += pkd->pStore[i].v[j]*pkd->pStore[i].v[j];
+			for(j = 0; j < 3; j++) {
+				vel += pkd->pStore[i].v[j]*pkd->pStore[i].v[j];
                 acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
+				}
+			vel = sqrt(vel)*dVelFac;
+			acc = sqrt(acc)*dAccFac;
+			dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
+			if(dT < pkd->pStore[i].dt)
+				pkd->pStore[i].dt = dT;
+			}
 		}
-	    vel = sqrt(vel)*dVelFac;
-	    acc = sqrt(acc)*dAccFac;
-	    dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
-	    if(dT < pkd->pStore[i].dt)
-		pkd->pStore[i].dt = dT;
-	    }
-	}
     }
 
 void
@@ -2191,25 +2203,25 @@ pkdAdotStep(PKD pkd, double dEta, double dVelFac)
     double dT;
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
-	if(pkd->pStore[i].iActive) {
-	    adot = 0;
+		if(pkd->pStore[i].iActive) {
+			adot = 0;
             acc = 0;
-	    for(j = 0; j < 3; j++) {
-		adot += pkd->pStore[i].adot[j]*pkd->pStore[i].adot[j];
+			for(j = 0; j < 3; j++) {
+				adot += pkd->pStore[i].adot[j]*pkd->pStore[i].adot[j];
                 acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
+				}
+			/*
+			 * Note use of dVelfac, since adot is calculated as
+			 * v*da/dx.
+			 */
+			adot = sqrt(adot)*dVelFac;
+			acc = sqrt(acc);
+			dT = dEta*acc/adot;
+			if(dT < pkd->pStore[i].dt)
+				pkd->pStore[i].dt = dT;
+			}
 		}
-	    /*
-	     * Note use of dVelfac, since adot is calculated as
-	     * v*da/dx.
-	     */
-	    adot = sqrt(adot)*dVelFac;
-	    acc = sqrt(acc);
-	    dT = dEta*acc/adot;
-	    if(dT < pkd->pStore[i].dt)
-		pkd->pStore[i].dt = dT;
-	    }
 	}
-    }
 
 #define STEP_EPS 1e-6
 
@@ -2565,11 +2577,106 @@ int pkdSphCurrRung(PKD pkd, int iRung)
 
 #endif
 
+#ifdef PLANETS
 
+void pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
+{
+	FILE *fp;
+	XDR xdrs;
+	PARTICLE *p;
+	double dDum;
+	int i,j,iDum;
 
+	pkd->nLocal = nLocal;
+	pkd->nActive = nLocal;
+	/*
+	 ** General initialization.
+	 */
+	for (i=0;i<nLocal;++i) {
+		p = &pkd->pStore[i];
+		p->iActive = 1;
+		p->iRung = 0;
+		p->fWeight = 1.0;
+		p->fDensity = 0.0;
+		p->fBall2 = 0.0;
+		p->fPot = 0.0;	/*DEBUG?*/
+		}
+	/*
+	 ** Seek past the header and up to nStart.
+	 */
+	fp = fopen(pszFileName,"r");
+	assert(fp != NULL);
+	/*
+	 ** Seek to right place in file.
+	 */
+	fseek(fp,sizeof(struct ss_head) + nStart*sizeof(struct ss_data),SEEK_SET);
+	/*
+	 ** Read Stuff!
+	 */
+	xdrstdio_create(&xdrs,fp,XDR_DECODE);
+	for (i=0;i<nLocal;++i) {
+		p = &pkd->pStore[i];
+		p->iOrder = nStart + i;
+		if (!pkdIsDark(pkd,p)) assert(0);
+		xdr_double(&xdrs,&dDum); p->fMass = dDum; /* SS format always double */
+		xdr_double(&xdrs,&dDum); p->fSoft = dDum;
+#ifdef SOFT_HACK
+		p->fSoft *= 0.5;
+#endif
+		for (j=0;j<3;++j)
+			{xdr_double(&xdrs,&dDum); p->r[j] = dDum;}
+		for (j=0;j<3;++j)
+			{xdr_double(&xdrs,&dDum); p->v[j] = dDum;}
+		for (j=0;j<3;++j)
+			{xdr_double(&xdrs,&dDum); p->w[j] = dDum;}
+		xdr_int(&xdrs,&p->iColor);
+		xdr_int(&xdrs,&iDum);
+		}
+	xdr_destroy(&xdrs);
+	fclose(fp);
+	}
 
+void pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
+{
+	FILE *fp;
+	XDR xdrs;
+	PARTICLE *p;
+	double dDum;
+	int i,j,iDum,nout;
 
+	/*
+	 ** Seek past the header and up to nStart.
+	 */
+	fp = fopen(pszFileName,"r+");
+	assert(fp != NULL);
+	fseek(fp,sizeof(struct ss_head) + nStart*sizeof(struct ss_data),SEEK_SET);
+	/* 
+	 ** Write Stuff!
+	 */
+	xdrstdio_create(&xdrs,fp,XDR_ENCODE);
+	for (i=0;i<pkdLocal(pkd);++i) {
+		p = &pkd->pStore[i];
+		if (!pkdIsDark(pkd,p)) assert(0);
+		dDum = p->fMass; xdr_double(&xdrs,&dDum); /* SS format always double */
+#ifdef SOFT_HACK
+		p->fSoft *= 2;
+#endif
+		dDum = p->fSoft; xdr_double(&xdrs,&dDum);
+#ifdef SOFT_HACK
+		p->fSoft *= 0.5;
+#endif
+		for (j=0;j<3;++j)
+			{dDum = p->r[j]; xdr_double(&xdrs,&dDum);}
+		for (j=0;j<3;++j)
+			{dDum = p->v[j]; xdr_double(&xdrs,&dDum);}
+		for (j=0;j<3;++j)
+			{dDum = p->w[j]; xdr_double(&xdrs,&dDum);}
+		xdr_int(&xdrs,&p->iColor);
+		iDum = -1; xdr_int(&xdrs,&iDum);
+		}
+	xdr_destroy(&xdrs);
+	nout = fclose(fp);
+	assert(nout == 0);
+	}
 
-
-
-
+#endif /* PLANETS */

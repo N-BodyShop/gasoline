@@ -9,6 +9,11 @@
 #include "outtype.h"
 #include "smoothfcn.h"
 
+#ifdef FORCE_CORE_DUMPS
+#include <signal.h>
+#include <sys/resource.h>
+#endif
+
 void main_ch(MDL mdl)
 {
 	PST pst;
@@ -33,14 +38,15 @@ int main(int argc,char **argv)
 	int iStep,iSec, i;
 	double dTime,E,T,U,dWMax,dIMax,dEMax;
 	char achFile[256];
-	FILE *fpLog;
+	FILE *fpLog = NULL;
 	double dMass;
 	int nActive;
 	double dMultiEff;
+
 #ifdef TINY_PTHREAD_STACK
 	static int first = 1;
 	static char **save_argv;
-	
+
 	/*
 	 * Hackery to get around SGI's tiny pthread stack.
 	 * Main will be called twice.  The second time, argc and argv
@@ -60,9 +66,22 @@ int main(int argc,char **argv)
 	    }
 	first = 0;
 #endif /* TINY_PTHREAD_STACK */
-#ifdef PLANETS
-	setbuf(stdout, (char *) NULL); /* disable stdout buffering */
-#endif /* PLANETS */
+
+#ifdef FORCE_CORE_DUMPS
+	{
+	/* Force core dumps on segv */
+
+	struct rlimit rlim;
+
+	rlim.rlim_cur = rlim.rlim_max = RLIM_INFINITY;
+	setrlimit(RLIMIT_CORE,&rlim);
+	signal(SIGSEGV,SIG_DFL);
+	}
+#endif
+
+#ifdef NO_STDOUT_BUF
+	setbuf(stdout,(char *)NULL);
+#endif
 
 	mdlInitialize(&mdl,argv,main_ch);
 	for(argc = 0; argv[argc]; argc++); /* some MDLs can trash argv */
@@ -76,9 +95,11 @@ int main(int argc,char **argv)
 		msrInitStep(msr);
 		dMass = msrMassCheck(msr,-1.0,"Initial");
 		printf("Restart Step:%d\n",iStep);
-		sprintf(achFile,"%s.log",msrOutName(msr));
-		fpLog = fopen(achFile,"a");
-		assert(fpLog != NULL);
+		if (msrLogInterval(msr)) {
+			sprintf(achFile,"%s.log",msrOutName(msr));
+			fpLog = fopen(achFile,"a");
+			assert(fpLog != NULL);
+			}
 		if(msrKDK(msr) || msr->param.bEpsVel) {
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree");
@@ -93,7 +114,11 @@ int main(int argc,char **argv)
 	 ** Read in the binary file, this may set the number of timesteps or
 	 ** the size of the timestep when the zto parameter is used.
 	 */
+#ifdef PLANETS
+	dTime = msrReadSS(msr);
+#else
 	dTime = msrReadTipsy(msr);
+#endif
 	msrInitStep(msr);
 #ifdef GASOLINE
 	msrInitSph(msr,dTime);
@@ -105,6 +130,9 @@ int main(int argc,char **argv)
 	 ** If the simulation is periodic make sure to wrap all particles into
 	 ** the "unit" cell. Doing a drift of 0.0 will always take care of this.
 	 */
+#ifdef PLANETS
+	/* This also checks for initial particle overlaps! */
+#endif
 	msrDrift(msr,dTime,0.0);
 	msrMassCheck(msr,dMass,"After initial msrDrift");
 
@@ -116,19 +144,21 @@ int main(int argc,char **argv)
 		if (msrComove(msr)) {
 			msrSwitchTheta(msr,dTime);
 			}
-		sprintf(achFile,"%s.log",msrOutName(msr));
-		fpLog = fopen(achFile,"w");
-		assert(fpLog != NULL);
-		/*
-		 ** Include a comment at the start of the log file showing the
-		 ** command line options.
-		 */
-		fprintf(fpLog,"#");
-		for (i=0;i<argc;++i) fprintf(fpLog,"%s ",argv[i]);
-		fprintf(fpLog,"\n");
-		fflush(fpLog);
-		msrLogParams(msr, fpLog);
-		msrMassCheck(msr,dMass,"After msrLogParams");
+		if (msrLogInterval(msr)) {
+			sprintf(achFile,"%s.log",msrOutName(msr));
+			fpLog = fopen(achFile,"w");
+			assert(fpLog != NULL);
+			/*
+			 ** Include a comment at the start of the log file showing the
+			 ** command line options.
+			 */
+			fprintf(fpLog,"#");
+			for (i=0;i<argc;++i) fprintf(fpLog,"%s ",argv[i]);
+			fprintf(fpLog,"\n");
+			fflush(fpLog);
+			msrLogParams(msr, fpLog);
+			msrMassCheck(msr,dMass,"After msrLogParams");
+			}
 		/*
 		 ** Build tree, activating all particles first (just in case).
 		 */
@@ -143,10 +173,12 @@ int main(int argc,char **argv)
 			msrCalcE(msr,MSR_INIT_ECOSMO,dTime,&E,&T,&U);
 			msrMassCheck(msr,dMass,"After msrCalcE");
 			dMultiEff = 1.0;
-			fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f %.2f\n",
-					dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,dWMax,dIMax,
-					dEMax,dMultiEff);
-			fflush(fpLog);
+			if (msrLogInterval(msr)) {
+				(void) fprintf(fpLog,"%e %e %e %e %e %i %e %e %e %e\n",dTime,
+						1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,dWMax,dIMax,
+						dEMax,dMultiEff);
+				(void) fflush(fpLog);
+				}
 			}
 
 		for (iStep=1;iStep<=msrSteps(msr);++iStep) {
@@ -154,26 +186,6 @@ int main(int argc,char **argv)
 				msrSwitchTheta(msr,dTime);
 				}
 			if (msrKDK(msr)) {
-#ifdef PLANETS
-				/***DEBUG: diagnostic test***/
-				msrActiveRung(msr,0,1);
-				msrBuildTree(msr,0,dMass,1);
-				msrMassCheck(msr,dMass,"After msrBuildTree in Planets Test");
-				(void) puts("before SetTimeStep()");
-				msrSmooth(msr,dTime,SMX_TIMESTEP,0);
-				(void) puts("after SetTimeStep()");
-				msrMassCheck(msr,dMass,"After msrSmooth in Planets Test");
-				(void) puts("before CheckForCollision()");
-				msrSmooth(msr,dTime,SMX_COLLISION,0);
-				(void) puts("after CheckForCollision()");
-				msrMassCheck(msr,dMass,"After msrSmooth in Planets Test");
-				msrReorder(msr);
-				(void) sprintf(achFile,"%s.pl1",msrOutName(msr));
-				msrOutArray(msr,achFile,OUT_DT_ARRAY);
-				(void) sprintf(achFile,"%s.pl2",msrOutName(msr));
-				msrOutArray(msr,achFile,OUT_CT_ARRAY);
-				exit(0);
-#endif /* PLANETS */
 				dMultiEff = 0.0;
 				msrTopStepKDK(msr, iStep-1, dTime,
 					      msrDelta(msr), 0, 0, 1,
@@ -189,10 +201,12 @@ int main(int argc,char **argv)
 				 */
 				msrCalcE(msr,MSR_STEP_ECOSMO,dTime,&E,&T,&U);
 				msrMassCheck(msr,dMass,"After msrCalcE in KDK");
-				fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f %.2f\n",
-						dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,dWMax,
-						dIMax,dEMax,dMultiEff);
-				fflush(fpLog);			
+				if (msrLogInterval(msr) && iStep%msrLogInterval(msr) == 0) {
+					(void) fprintf(fpLog,"%e %e %e %e %e %i %e %e %e %e\n",
+								   dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,
+								   iSec,dWMax,dIMax,dEMax,dMultiEff);
+					(void) fflush(fpLog);
+					}
 				}
 			else {
 				msrTopStepDKD(msr, iStep-1, dTime,
@@ -215,10 +229,12 @@ int main(int argc,char **argv)
 						msrMassCheck(msr,dMass,"After msrGravity in DKD-log");
 						msrCalcE(msr,MSR_STEP_ECOSMO,dTime,&E,&T,&U);
 						msrMassCheck(msr,dMass,"After msrCalcE in DKD-log");
-						fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f %.2f\n",
-								dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,
-								dWMax,dIMax,dEMax,dMultiEff);
-						fflush(fpLog);
+						if (msrLogInterval(msr) && msrLogInterval(msr)%iStep == 0) {
+							(void) fprintf(fpLog,"%e %e %e %e %e %i %e %e %e %e\n",dTime,
+										   1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,
+										   dWMax,dIMax,dEMax,dMultiEff);
+							(void) fflush(fpLog);
+							}
 						}
 					}
 				}
@@ -233,8 +249,13 @@ int main(int argc,char **argv)
 				msrReorder(msr);
 				msrMassCheck(msr,dMass,"After msrReorder in OutTime");
 				sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
+#ifdef PLANETS
+				msrWriteSS(msr,achFile,dTime);
+				msrMassCheck(msr,dMass,"After msrWriteSS in OutTime");
+#else
 				msrWriteTipsy(msr,achFile,dTime);
 				msrMassCheck(msr,dMass,"After msrWriteTipsy in OutTime");
+#endif
 				if (msrDoDensity(msr)) {
 					sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
@@ -259,8 +280,13 @@ int main(int argc,char **argv)
 				msrReorder(msr);
 				msrMassCheck(msr,dMass,"After msrReorder in OutFinal");
 				sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
+#ifdef PLANETS
+				msrWriteSS(msr,achFile,dTime);
+				msrMassCheck(msr,dMass,"After msrWriteSS in OutFinal");
+#else
 				msrWriteTipsy(msr,achFile,dTime);
 				msrMassCheck(msr,dMass,"After msrWriteTipsy in OutFinal");
+#endif
 				if (msrDoDensity(msr)) {
 					sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
@@ -279,8 +305,13 @@ int main(int argc,char **argv)
 					msrReorder(msr);
 					msrMassCheck(msr,dMass,"After msrReorder in OutInt");
 					sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
+#ifdef PLANETS
+					msrWriteSS(msr,achFile,dTime);
+					msrMassCheck(msr,dMass,"After msrWriteSS in OutInt");
+#else
 					msrWriteTipsy(msr,achFile,dTime);
 					msrMassCheck(msr,dMass,"After msrWriteTipsy in OutInt");
+#endif
 					if (msrDoDensity(msr)) {
 						sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
 						msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
@@ -288,7 +319,8 @@ int main(int argc,char **argv)
 						}
 					}
 				}
-			if (iStep%msrCheckInterval(msr) == 0 && iStep != msrSteps(msr)) {
+			if (msrCheckInterval(msr) && iStep%msrCheckInterval(msr) == 0 &&
+				iStep != msrSteps(msr)) {
 				/*
 				 ** Write a checkpoint.
 				 */
@@ -298,7 +330,7 @@ int main(int argc,char **argv)
 				;
 				}
 			}
-		fclose(fpLog);
+		if (msrLogInterval(msr)) (void) fclose(fpLog);
 		} 
 	else {
 		/*

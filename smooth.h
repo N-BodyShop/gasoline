@@ -49,12 +49,18 @@ typedef struct smContext {
 #define PQ_INIT(pq,n)\
 {\
 	int j;\
-	for (j=0;j<(n);++j) {\
-		if (j < 2) (pq)[j].pqFromInt = NULL;\
-		else (pq)[j].pqFromInt = &(pq)[j>>1];\
-		(pq)[j].pqFromExt = &(pq)[(j+(n))>>1];\
+	if ((n) == 1) {\
+		(pq)[0].pqFromInt = NULL;\
+		(pq)[0].pqFromExt = NULL;\
 		}\
-	}
+	else {\
+	    for (j=0;j<(n);++j) {\
+		    if (j < 2) (pq)[j].pqFromInt = NULL;\
+		    else (pq)[j].pqFromInt = &(pq)[j>>1];\
+		    (pq)[j].pqFromExt = &(pq)[(j+(n))>>1];\
+		    }\
+	    }\
+    }
 
 
 #define PQ_BUILD(pq,n,q)\
@@ -77,7 +83,8 @@ typedef struct smContext {
 			(pq)[j].pqWinner = t;\
 			}\
 		}\
-	(q) = (pq)[1].pqWinner;\
+    if ((n) == 1) (q) = (pq);\
+	else (q) = (pq)[1].pqWinner;\
 	}
 
 
@@ -262,7 +269,7 @@ typedef struct smContext {
 	}
 
 
-int smInitialize(SMX *,PKD,int,int,int,int,int);
+int smInitialize(SMX *,PKD,SMF *,int,int,int,int,int);
 void smFinish(SMX,SMF *);
 void smSmooth(SMX,SMF *);
 void smReSmooth(SMX,SMF *);

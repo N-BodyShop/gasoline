@@ -184,13 +184,16 @@ FDL checkpoint_4 (
 					TYPE float
 					)
 				)
+			ARRAY spin_array (
+				INDEX spin_index
+				SIZE 3
+				ELEMENT spin (
+					TYPE float
+					)
+				)
+			ELEMENT iColor (
+				TYPE int
+				)
 			)
 		)
 	)
-
-
-
-
-
-
-

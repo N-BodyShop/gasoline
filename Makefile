@@ -3,8 +3,8 @@
 #
 #CC = gcc -Wall
 EXE = pkdgrav
-CODEDEF = 
-#CODEDEF = -DPLANETS
+CODEDEF =
+#CODEDEF = -DPLANETS -DNO_STDOUT_BUF -DSOFT_HACK
 #CODEDEF = -DSUPERCOOL
 #EXE = gasoline
 #CODEDEF = -DGASOLINE
@@ -17,25 +17,22 @@ BDIR	=	$(HOME)/pvm3/bin
 XDIR	=	$(BDIR)/$(PVM_ARCH)
 
 PVM_MDL		=	../mdl/pvm
-PVM_CFLAGS	=	-mips4 -O3 -I$(PVMDIR)/include -I$(PVM_MDL) $(CODEDEF)
+PVM_CFLAGS	= -O3 -I$(PVMDIR)/include -I$(PVM_MDL) $(CODEDEF)
 #PVM_CFLAGS	=	-mips4 -g -I$(PVMDIR)/include -I$(PVM_MDL)
-PVM_LIBMDL	=	v_sqrt1.o $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) /local/lib/libmalloc.a -lm
+PVM_LIBMDL	=	v_sqrt1.o $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
 
 #
 #       NULL MDL defines
 #
 NULL_MDL = ../mdl/null
-
 NULL_CFLAGS = -O3 -g -I$(NULL_MDL) $(CODEDEF)
-#NULL_CFLAGS = -O3 -g -malign-double -I$(NULL_MDL) $(CODEDEF)
-NULL_LD_FLAGS = 
+#NULL_LD_FLAGS = -Wl,-s
 NULL_LIBMDL = erf.o v_sqrt1.o $(NULL_MDL)/mdl.o -lm
 
 #
 #       PTHREAD defines
 #
 PTHREAD_MDL = ../mdl/pthread
-
 PTHREAD_CFLAGS = -O3 -malign-double -D_REENTRANT -I$(PTHREAD_MDL) $(CODEDEF)
 PTHREAD_LD_FLAGS =
 PTHREAD_LIBMDL = erf.o v_sqrt1.o $(PTHREAD_MDL)/mdl.o -lm -lpthread
@@ -44,7 +41,6 @@ PTHREAD_LIBMDL = erf.o v_sqrt1.o $(PTHREAD_MDL)/mdl.o -lm -lpthread
 #       KSR1 defines
 #
 KSR_MDL = ../mdl/ksr
-
 KSR_CFLAGS = -O2 -w2 -I$(KSR_MDL) $(CODEDEF)
 KSR_LD_FLAGS = -para
 KSR_LIBMDL = erf.o v_sqrt1.ksr.o $(KSR_MDL)/mdl.o -lm -lrpc
@@ -87,7 +83,6 @@ T3DMPI_LD_FLAGS =
 #       T3EMPI MPP defines
 #
 T3EMPI_MDL = ../mdl/t3empi
-
 T3EMPI_CFLAGS = -O3 -DCRAY_T3D -I$(T3EMPI_MDL) -I$(RPC) $(CODEDEF)
 T3EMPI_LIBMDL = hyperlib.o v_sqrt1.t3x.o \
 	$(T3EMPI_MDL)/mdl.o -lmpi -lm
@@ -95,7 +90,8 @@ T3DMPI_LD_FLAGS =
 
 OBJS	= 	main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 		ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
-		smoothfcn.o
+		smoothfcn.o collision.o
+
 EXTRA_OBJ = 	erf.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o hyperlib.o
 
 default:	
@@ -105,6 +101,8 @@ default:
 $(XDIR):
 	- mkdir $(BDIR)
 	- mkdir $(XDIR)
+
+install:
 
 clean:
 	rm -f *.o
@@ -160,17 +158,18 @@ gasoline: $(OBJS) $(EXTRA_OBJ)
 
 # DO NOT DELETE
 
-ewald.o: ewald.h pkd.h meval.h qeval.h
+ewald.o: ewald.h pkd.h floattype.h meval.h qeval.h
 fdl.o: htable.h fdl.h
-grav.o: pkd.h grav.h meval.h qeval.h
+grav.o: pkd.h floattype.h grav.h meval.h qeval.h
 htable.o: htable.h
-main.o: pst.h pkd.h smoothfcn.h master.h param.h parameters.h outtype.h
-master.o: master.h param.h pst.h pkd.h smoothfcn.h parameters.h tipsydefs.h
-master.o: opentype.h fdl.h htable.h outtype.h
-outtype.o: pkd.h outtype.h
+main.o: pst.h pkd.h floattype.h smoothfcn.h master.h param.h parameters.h
+main.o: outtype.h
+master.o: master.h param.h pst.h pkd.h floattype.h smoothfcn.h parameters.h
+master.o: tipsydefs.h opentype.h fdl.h htable.h outtype.h
+outtype.o: pkd.h floattype.h outtype.h
 param.o: param.h
-pkd.o: pkd.h ewald.h grav.h walk.h opentype.h tipsydefs.h
-pst.o: pst.h pkd.h smoothfcn.h outtype.h smooth.h
-smooth.o: smooth.h pkd.h smoothfcn.h
-smoothfcn.o: smoothfcn.h pkd.h
-walk.o: walk.h pkd.h
+pkd.o: pkd.h floattype.h ewald.h grav.h walk.h opentype.h tipsydefs.h
+pst.o: pst.h pkd.h floattype.h smoothfcn.h outtype.h smooth.h
+smooth.o: smooth.h pkd.h floattype.h smoothfcn.h
+smoothfcn.o: smoothfcn.h pkd.h floattype.h
+walk.o: walk.h pkd.h floattype.h

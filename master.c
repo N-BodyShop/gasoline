@@ -21,6 +21,11 @@
 #include "outtype.h"
 #include "smoothfcn.h"
 
+#ifdef PLANETS
+#include "ssdefs.h"
+#include "collision.h"
+#endif
+
 void _msrLeader(void)
 {
 #ifdef GASOLINE
@@ -861,6 +866,7 @@ int xdrHeader(XDR *pxdrs,struct dump *ph)
 	return 1;
 	}
 
+
 double msrReadTipsy(MSR msr)
 {
 	FILE *fp;
@@ -1543,10 +1549,6 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
 	in.smf.bGeometric = msr->param.bGeometric;
 #endif
-#ifdef PLANETS /*DEBUG*/
-	in.smf.dStart = 0;
-	in.smf.dEnd = msr->param.dDelta;
-#endif /* PLANETS */
 	if (msr->param.bVerbose) printf("Smoothing...\n");
 	sec = time(0);
 	pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
@@ -1620,8 +1622,14 @@ void msrGravity(MSR msr,double dStep,
  		   dsec,out.dFlop);
  	    }
 	*piSec = dsec;
-	dPartAvg = out.dPartSum/out.nActive;
-	dCellAvg = out.dCellSum/out.nActive;
+	if (out.nActive > 0) {
+		dPartAvg = out.dPartSum/out.nActive;
+		dCellAvg = out.dCellSum/out.nActive;
+		}
+	else {
+		dPartAvg = dCellAvg = 0;
+		printf("WARNING: no particles found!\n");
+		}
 	*pnActive = out.nActive;
 	iP = 1.0/msr->nThreads;
 	dWAvg = out.dWSum*iP;
@@ -1695,6 +1703,10 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 #ifdef GASOLINE
 	double H,a;
 	struct inKickVpred invpr;
+#endif
+
+#ifdef PLANETS
+	msrDoCollisions(msr,dTime,dDelta);
 #endif
 
 	if (msr->param.bCannonical) {
@@ -2169,7 +2181,7 @@ double msrReadCheck(MSR msr,int *piStep)
 	if(msr->param.bParaRead)
 	    pstReadCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
-	    msrOneNodeReadCheck(msr, &in);
+	    msrOneNodeReadCheck(msr,&in);
 	if (msr->param.bVerbose) puts("Checkpoint file has been successfully read.");
 	inset.nGas = msr->nGas;
 	inset.nDark = msr->nDark;
@@ -2877,6 +2889,15 @@ void msrTopStepKDK(MSR msr,
 		msrBuildTree(msr,0,dMass,1);
 		msrSmooth(msr,dTime,SMX_TIMESTEP,0);
 #endif
+#ifdef PLANETS /*DEBUG -- diagnostic for testing
+		{
+		char achFile[256];
+		msrReorder(msr);
+		(void) sprintf(achFile,"%s.pl1",msrOutName(msr));
+		msrOutArray(msr,achFile,OUT_DT_ARRAY);
+		exit(0);
+		}*/
+#endif
 		msrDtToRung(msr, iRung, dDelta, 1);
 		if (iRung == 0) msrRungStats(msr);
 		}
@@ -3037,7 +3058,245 @@ int msrSphCurrRung(MSR msr, int iRung)
 
 #endif
 
+#ifdef PLANETS
 
+void xdrSSHeader(XDR *pxdrs,struct ss_head *ph)
+{
+	xdr_double(pxdrs,&ph->time);
+	xdr_int(pxdrs,&ph->n_data);
+	xdr_int(pxdrs,&ph->pad);
+	}
 
+double msrReadSS(MSR msr)
+{
+	FILE *fp;
+	XDR xdrs;
+	struct ss_head head;
+	struct inReadSS in;
+	char achInFile[PST_FILENAME_SIZE];
+	LCL *plcl = msr->pst->plcl;
+	double dTime,tTo;
+	
+	if (msr->param.achInFile[0]) {
+		/*
+		 ** Add Data Subpath for local and non-local names.
+		 */
+		achInFile[0] = 0;
+		strcat(achInFile,msr->param.achDataSubPath);
+		strcat(achInFile,"/");
+		strcat(achInFile,msr->param.achInFile);
+		strcpy(in.achInFile,achInFile);
+		/*
+		 ** Add local Data Path.
+		 */
+		achInFile[0] = 0;
+		if (plcl->pszDataPath) {
+			strcat(achInFile,plcl->pszDataPath);
+			strcat(achInFile,"/");
+			}
+		strcat(achInFile,in.achInFile);
 
+		fp = fopen(achInFile,"r");
+		if (!fp) {
+			printf("Could not open InFile:%s\n",achInFile);
+			_msrExit(msr);
+			}
+		}
+	else {
+		printf("No input file specified\n");
+		_msrExit(msr);
+		}
 
+	/* Read header */
+
+	xdrstdio_create(&xdrs,fp,XDR_DECODE);
+	xdrSSHeader(&xdrs,&head);
+	xdr_destroy(&xdrs);
+	fclose(fp);
+
+	msr->N = msr->nDark = head.n_data;
+	msr->nGas = msr->nStar = 0;
+	msr->nMaxOrder = msr->N - 1;
+	msr->nMaxOrderGas = msr->nGas - 1;	/* always -1 */
+	msr->nMaxOrderDark = msr->nDark - 1;
+
+	dTime = head.time;
+	printf("Input file...N=%i,Time=%g\n",msr->N,dTime);
+	tTo = dTime + msr->param.nSteps*msr->param.dDelta;
+	printf("Simulation to Time:%g\n",tTo);
+
+	in.nFileStart = 0;
+	in.nFileEnd = msr->N - 1;
+	in.nDark = msr->nDark;
+	in.nGas = msr->nGas;	/* always zero */
+	in.nStar = msr->nStar;	/* always zero */
+	in.iOrder = msr->param.iOrder;
+	/*
+	 ** Since pstReadSS causes the allocation of the local particle
+	 ** store, we need to tell it the percentage of extra storage it
+	 ** should allocate for load balancing differences in the number of
+	 ** particles.
+	 */
+	in.fExtraStore = msr->param.dExtraStore;
+	/* Following is for compatability only -- not currently used */
+	in.fPeriod[0] = msr->param.dxPeriod;
+	in.fPeriod[1] = msr->param.dyPeriod;
+	in.fPeriod[2] = msr->param.dzPeriod;
+
+	if (msr->param.bParaRead)
+	    pstReadSS(msr->pst,&in,sizeof(in),NULL,NULL);
+	else {
+		printf("Only parallel read supported for PLANETS\n");
+		_msrExit(msr);
+		}
+	if (msr->param.bVerbose) puts("Input file successfully read.");
+	/*
+	 ** Now read in the output points, passing the initial time.
+	 ** We do this only if nSteps is not equal to zero.
+	 */
+	if (msrSteps(msr) > 0) msrReadOuts(msr,dTime);
+	/*
+	 ** Set up the output counter.
+	 */
+	for (msr->iOut=0;msr->iOut<msr->nOuts;++msr->iOut) {
+		if (dTime < msr->pdOutTime[msr->iOut]) break;
+		}
+	return(dTime);
+	}
+
+void msrWriteSS(MSR msr,char *pszFileName,double dTime)
+{
+	FILE *fp;
+	XDR xdrs;
+	struct ss_head head;
+	struct inWriteSS in;
+	char achOutFile[PST_FILENAME_SIZE];
+	LCL *plcl = msr->pst->plcl;
+	
+	/*
+	 ** Calculate where each processor should start writing.
+	 ** This sets plcl->nWriteStart.
+	 */
+	msrCalcWriteStart(msr);
+	/*
+	 ** Add Data Subpath for local and non-local names.
+	 */
+	achOutFile[0] = 0;
+	strcat(achOutFile,msr->param.achDataSubPath);
+	strcat(achOutFile,"/");
+	strcat(achOutFile,pszFileName);
+	strcpy(in.achOutFile,achOutFile);
+	/*
+	 ** Add local Data Path.
+	 */
+	achOutFile[0] = 0;
+	if (plcl->pszDataPath) {
+		strcat(achOutFile,plcl->pszDataPath);
+		strcat(achOutFile,"/");
+		}
+	strcat(achOutFile,in.achOutFile);
+	
+	fp = fopen(achOutFile,"w");
+	if (!fp) {
+		printf("Could not open OutFile:%s\n",achOutFile);
+		_msrExit(msr);
+		}
+
+	/* Write header */
+
+	head.time = dTime;
+	head.n_data = msr->N;
+	head.pad = -1;
+
+	xdrstdio_create(&xdrs,fp,XDR_ENCODE);
+	xdrSSHeader(&xdrs,&head);
+	xdr_destroy(&xdrs);
+	fclose(fp);
+
+	if(msr->param.bParaWrite)
+	    pstWriteSS(msr->pst,&in,sizeof(in),NULL,NULL);
+	else {
+		printf("Only parallel write supported for PLANETS\n");
+		_msrExit(msr);
+		}
+
+	if (msr->param.bVerbose) puts("Output file successfully written.");
+	}
+
+void msrDoCollisions(MSR msr,double dTime,double dDelta)
+{
+	struct inSmooth smooth;
+	struct outFindCollision find;
+	struct inDoCollision inDo;
+	struct outDoCollision outDo;
+	int iDum;
+
+#ifdef VERBOSE_COLLISION
+	int sec,dsec;
+#endif
+
+	msrActiveRung(msr,0,1); /* must consider all particles *//*DEBUG really?*/
+	smooth.nSmooth = msr->param.nSmooth;
+	smooth.bPeriodic = msr->param.bPeriodic;
+	smooth.bSymmetric = 0;
+	smooth.iSmoothType = SMX_COLLISION;
+	smooth.smf.pkd = NULL; /* set in smInitialize() */
+#ifdef VERBOSE_COLLISION
+	(void) printf("Beginning collision search (dTime=%e,dDelta=%e)...\n",dTime,dDelta);
+	sec = time(0);
+#endif
+	smooth.smf.dStart = 0;
+	smooth.smf.dEnd = dDelta;
+	do {
+		if (msr->iTreeType != MSR_TREE_DENSITY)
+			msrBuildTree(msr,0,-1.0,1);
+		pstSmooth(msr->pst,&smooth,sizeof(smooth),NULL,NULL);
+		pstFindCollision(msr->pst,NULL,0,&find,&iDum);
+		if (COLLISION(find.dImpactTime)) {
+			inDo.iPid1 = find.Collider1.id.iPid;
+			inDo.iPid2 = find.Collider2.id.iPid;
+			pstDoCollision(msr->pst,&inDo,sizeof(inDo),&outDo,&iDum);
+			msrAddDelParticles(msr);
+			smooth.smf.dStart = find.dImpactTime;
+#ifdef VERBOSE_COLLISION
+			{
+			FILE *fp = fopen("collision.log","a");/*DEBUG should add DataSubPath, etc.*/
+			COLLIDER *p1=&outDo.Collider1,*p2=&outDo.Collider2,*pOut=outDo.Out;
+			int i;
+
+			(void) fprintf(fp,"#COLLISION#T=%e\n",dTime + find.dImpactTime);
+			(void) fprintf(fp,"#COLLISION#(%i:%i):M=%e,R=%e,r=(%e,%e,%e),"
+						   "v=(%e,%e,%e),w=(%e,%e,%e)\n",p1->id.iPid,
+						   p1->id.iIndex,p1->fMass,p1->fRadius,p1->r[0],
+						   p1->r[1],p1->r[2],p1->v[0],p1->v[1],p1->v[2],
+						   p1->w[0],p1->w[1],p1->w[2]);
+			(void) fprintf(fp,"#COLLISION#(%i:%i):M=%e,R=%e,r=(%e,%e,%e),"
+						   "v=(%e,%e,%e),w=(%e,%e,%e)\n",p2->id.iPid,
+						   p2->id.iIndex,p2->fMass,p2->fRadius,p2->r[0],
+						   p2->r[1],p2->r[2],p2->v[0],p2->v[1],p2->v[2],
+						   p2->w[0],p2->w[1],p2->w[2]);
+			(void) fprintf(fp,"#COLLISION#IMPACT ENERGY=%e==>outcome %s\n",
+						   outDo.dImpactEnergy,
+						   outDo.dImpactEnergy < E_BOUNCE ? "MERGE" :
+						   outDo.dImpactEnergy < E_FRAG ? "BOUNCE" : "FRAG");
+			for (i=0;i<outDo.nOut;++i) {
+				(void) fprintf(fp,"#COLLISION#out%i:M=%e,R=%e,r=(%e,%e,%e),"
+							   "v=(%e,%e,%e),w=(%e,%e,%e)\n",i,pOut[i].fMass,
+							   pOut[i].fRadius,pOut[i].r[0],pOut[i].r[1],
+							   pOut[i].r[2],pOut[i].v[0],pOut[i].v[1],
+							   pOut[i].v[2],pOut[i].w[0],pOut[i].w[1],
+							   pOut[i].w[2]);
+				}
+			(void) fclose(fp);
+			}
+#endif
+			}
+		} while (COLLISION(find.dImpactTime) &&
+				 smooth.smf.dStart < smooth.smf.dEnd);
+#ifdef VERBOSE_COLLISION
+	dsec = time(0) - sec;
+	(void) printf("Collision search completed, time = %i sec\n",dsec);
+#endif
+	}
+
+#endif /* PLANETS */

@@ -151,11 +151,12 @@ int msrSphCurrRung(MSR msr, int iRung);
 
 #endif
 
+#ifdef PLANETS
+
+double msrReadSS(MSR msr);
+void msrWriteSS(MSR msr,char *pszFileName,double dTime);
+void msrDoCollisions(MSR msr,double dTime,double dDelta);
+
+#endif /* PLANETS */
+
 #endif
-
-
-
-
-
-
-

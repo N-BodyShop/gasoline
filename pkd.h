@@ -58,13 +58,13 @@ typedef struct particle {
 	FLOAT fTimeForm;
 #endif
 #ifdef PLANETS
-	FLOAT dCollTime;	/* time to next collision */
-	int	iCollider;		/* iOrder of collider */
+	FLOAT w[3];			/* spin vector */
+	int iColor;			/* handy color tag */
 #endif /* PLANETS */
 	} PARTICLE;
 
 
-#define CHECKPOINT_VERSION		4
+#define CHECKPOINT_VERSION 4
 
 typedef struct chkParticle {
 	int iOrder;
@@ -72,6 +72,10 @@ typedef struct chkParticle {
 	FLOAT fSoft;
 	FLOAT r[3];
 	FLOAT v[3];
+#ifdef PLANETS
+    FLOAT w[3];
+	int iColor;
+#endif
 	} CHKPART;
 
 
@@ -141,6 +145,24 @@ typedef struct ewaldTable {
 	double hCfac,hSfac;
 	} EWT;
 
+#ifdef PLANETS
+
+typedef struct {
+	int iPid;
+	int iIndex;
+	} COLLIDER_ID;
+
+typedef struct {
+	COLLIDER_ID id;
+	FLOAT fMass;
+	FLOAT fRadius;
+	FLOAT r[3];
+	FLOAT v[3];
+	FLOAT w[3];
+	} COLLIDER;
+
+#endif
+
 typedef struct pkdContext {
 	MDL mdl;
 	int idSelf;
@@ -195,6 +217,10 @@ typedef struct pkdContext {
 		double sec;
 		double stamp;
 		} ti[MAX_TIMERS];
+#ifdef PLANETS
+	double dImpactTime;
+	COLLIDER Collider1,Collider2;
+#endif /* PLANETS */
 	} * PKD;
 
 
@@ -350,5 +376,9 @@ int pkdSphCurrRung(PKD pkd, int iRung);
 
 #endif
 
+#ifdef PLANETS
+void pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal);
+void pkdWriteSS(PKD,char *pszFileName,int nStart);
 #endif
 
+#endif

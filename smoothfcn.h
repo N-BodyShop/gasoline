@@ -15,11 +15,14 @@ typedef struct smfParameters {
 #ifdef PLANETS
 	double dStart; /* collision search time interval */
 	double dEnd;
+	PKD pkd; /* pointer to processor's PKD structure */
 #endif /* PLANETS */
 	} SMF;
 
 
 typedef struct nNeighbor {
+	int iPid;
+	int iIndex;
 	PARTICLE *pPart;
 	FLOAT fDist2;
 	FLOAT dx;

@@ -9,8 +9,8 @@
 #include "smoothfcn.h"
 
 
-int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
-				 int iSmoothType,int bSmooth)
+int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
+				 int bSymmetric,int iSmoothType,int bSmooth)
 {
 	SMX smx;
 	void (*initParticle)(void *);
@@ -22,6 +22,9 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 	smx = (SMX)malloc(sizeof(struct smContext));
 	assert(smx != NULL);
 	smx->pkd = pkd;
+#ifdef PLANETS
+	smf->pkd = pkd;
+#endif
 	smx->nSmooth = nSmooth;
 	smx->bPeriodic = bPeriodic;
 
@@ -87,6 +90,7 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 	case SMX_COLLISION:
 		assert(bSymmetric == 0);
 		smx->fcnSmooth = CheckForCollision;
+		/*smf->*/pkd->dImpactTime = DBL_MAX; /*DEBUG initialization kludge!*/
 		initParticle = NULL;
 		init = NULL;
 		comb = NULL;
@@ -478,6 +482,8 @@ int smBallGather(SMX smx,FLOAT fBall2,FLOAT *ri)
 					smx->nnList[nCnt].dy = dy;
 					smx->nnList[nCnt].dz = dz;
 					smx->nnList[nCnt].pPart = &p[pj];
+					smx->nnList[nCnt].iIndex = pj;
+					smx->nnList[nCnt].iPid = smx->pkd->idSelf;
 					smx->pbRelease[nCnt++] = 0;
 					}
 				}
@@ -524,6 +530,8 @@ int smBallGatherNP(SMX smx,FLOAT fBall2,FLOAT *ri,int cp)
 					smx->nnList[nCnt].dy = dy;
 					smx->nnList[nCnt].dz = dz;
 					smx->nnList[nCnt].pPart = &p[pj];
+					smx->nnList[nCnt].iIndex = pj;
+					smx->nnList[nCnt].iPid = smx->pkd->idSelf;
 					smx->pbRelease[nCnt++] = 0;
 					}
 				}
@@ -746,6 +754,8 @@ void smSmooth(SMX smx,SMF *smf)
 		/*
 		 ** Move relevant data into Nearest Neighbor array.
 		 */
+		smx->nnList[nCnt].iPid = pqi->id;
+		smx->nnList[nCnt].iIndex = pqi->p;
 		smx->nnList[nCnt].pPart = pqi->pPart;
 		smx->nnList[nCnt].fDist2 = pqi->fKey;
 		smx->nnList[nCnt].dx = pqi->dx;
@@ -888,6 +898,8 @@ void smReSmooth(SMX smx,SMF *smf)
 						smx->nnList[nCnt].dy = dy;
 						smx->nnList[nCnt].dz = dz;
 						smx->nnList[nCnt].pPart = pPart;
+						smx->nnList[nCnt].iIndex = pj;
+						smx->nnList[nCnt].iPid = id;
 						smx->pbRelease[nCnt++] = 1;
 						continue;
 						}
