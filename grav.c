@@ -37,6 +37,9 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 #if (NATIVE_SQRT)
 	double dir;
 #endif
+	int nPart, nCellSoft, nCellNewt;
+	double *d2a; 
+	double *sqrttmp; 
 
 	/*
 	 ** Now process the two interaction lists for each active particle.
@@ -47,6 +50,11 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	ilp = pkd->ilp;
 	ilcs = pkd->ilcs;
 	ilcn = pkd->ilcn;
+	d2a = pkd->d2a;
+	sqrttmp = pkd->sqrttmp;
+	nPart = pkd->nPart;
+	nCellSoft = pkd->nCellSoft;
+	nCellNewt = pkd->nCellNewt;
 	for (i=0;i<n;++i) {
 		if (!TYPEQueryACTIVE(&(p[i]))) continue;
 		++nActive;
@@ -67,15 +75,15 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 		 **     			 = 38	  for soft = 73
 		 */
 #if !(NATIVE_SQRT)
-		for (j=0;j<pkd->nPart;++j) {
-			dx = x - ilp[j].x;
+		for (j=0;j<nPart;++j) {
+		        dx = x - ilp[j].x;
 			dy = y - ilp[j].y;
 			dz = z - ilp[j].z;
-			pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
+			d2a[j] = dx*dx + dy*dy + dz*dz;
 			}
-		if (pkd->nPart>0) v_sqrt1(pkd->nPart,pkd->d2a,pkd->sqrttmp);
+		if (nPart>0) v_sqrt1(nPart,d2a,sqrttmp);
 #endif
-		for (j=0;j<pkd->nPart;++j) {
+		for (j=0;j<nPart;++j) {
 			dx = x - ilp[j].x;
 			dy = y - ilp[j].y;
 			dz = z - ilp[j].z;
@@ -84,7 +92,7 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			d2 = dx*dx + dy*dy + dz*dz;
 			SPLINE(d2,twoh,a,b);
 #else
-			SPLINEM(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b);
+			SPLINEM(sqrttmp[j],d2a[j],twoh,a,b);
 #endif			
 			idt2 = (p[i].fMass + ilp[j].m)*b;
 			if (idt2 > p[i].dtGrav) p[i].dtGrav = idt2;
@@ -104,15 +112,15 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 		 **     			 = 82	  for soft = 148
 		 */
 #if !(NATIVE_SQRT)
-		for (j=0;j<pkd->nCellSoft;++j) {
+		for (j=0;j<nCellSoft;++j) {
 			dx = x - ilcs[j].x;
 			dy = y - ilcs[j].y;
 			dz = z - ilcs[j].z;
-			pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
+			d2a[j] = dx*dx + dy*dy + dz*dz;
 			}
-		if (pkd->nCellSoft>0) v_sqrt1(pkd->nCellSoft,pkd->d2a,pkd->sqrttmp);
+		if (nCellSoft>0) v_sqrt1(nCellSoft,d2a,sqrttmp);
 #endif
-		for (j=0;j<pkd->nCellSoft;++j) {
+		for (j=0;j<nCellSoft;++j) {
 			dx = x - ilcs[j].x;
 			dy = y - ilcs[j].y;
 			dz = z - ilcs[j].z;
@@ -122,7 +130,7 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dir = 1.0/sqrt(d2);
 			SPLINEQ(dir,d2,twoh,a,b,c,d);
 #else
-			SPLINEQ(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b,c,d);
+			SPLINEQ(sqrttmp[j],d2a[j],twoh,a,b,c,d);
 #endif
 			qirx = ilcs[j].xx*dx + ilcs[j].xy*dy + ilcs[j].xz*dz;
 			qiry = ilcs[j].xy*dx + ilcs[j].yy*dy + ilcs[j].yz*dz;
@@ -150,15 +158,15 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 		 **     Total        = (85,227) = 312 Flops/Newt-Interact
 		 */
 #if !(NATIVE_SQRT)
-		for (j=0;j<pkd->nCellNewt;++j) {
+		for (j=0;j<nCellNewt;++j) {
 			dx = x - ilcn[j].x;
 			dy = y - ilcn[j].y;
 			dz = z - ilcn[j].z;
-			pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
+			d2a[j] = dx*dx + dy*dy + dz*dz;
 			}
-		if (pkd->nCellNewt>0) v_sqrt1(pkd->nCellNewt,pkd->d2a,pkd->sqrttmp);
+		if (nCellNewt>0) v_sqrt1(nCellNewt,d2a,sqrttmp);
 #endif
-		for (j=0;j<pkd->nCellNewt;++j) {
+		for (j=0;j<nCellNewt;++j) {
 			dx = x - ilcn[j].x;
 			dy = y - ilcn[j].y;
 			dz = z - ilcn[j].z;
@@ -166,7 +174,7 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			d2 = dx*dx + dy*dy + dz*dz;
 			gam[0] = 1.0/sqrt(d2);
 #else
-			gam[0] = pkd->sqrttmp[j];
+			gam[0] = sqrttmp[j];
 #endif
 			dir2 = gam[0]*gam[0];
 			gam[1] = gam[0]*dir2;
@@ -231,7 +239,7 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	/*
 	 ** Compute the nFlop estimate.
 	 */
-	nFlop = nActive*((pkd->nPart + n)*38 + pkd->nCellSoft*82 +
-					 pkd->nCellNewt*(35 + nMultiFlop[iOrder]));
+	nFlop = nActive*((nPart + n)*38 + nCellSoft*82 +
+					 nCellNewt*(35 + nMultiFlop[iOrder]));
 	return(nFlop);
 	}
