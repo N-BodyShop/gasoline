@@ -715,6 +715,11 @@ int pkdSwapRejects(PKD pkd,int idSwap)
 	int nOutBytes,nSndBytes,nRcvBytes;
 
 	if (idSwap != -1) {
+	        char ach[256];
+
+		sprintf(ach, "id %d: swap %d parts with %d\n",
+			pkd->mdl->idSelf, pkd->nRejects, idSwap);
+		mdlDiag(pkd->mdl, ach);
 		nBuf = (pkdSwapSpace(pkd))*sizeof(PARTICLE);
 		nOutBytes = pkd->nRejects*sizeof(PARTICLE);
 		assert(pkdLocal(pkd) + pkd->nRejects <= pkdFreeStore(pkd));
