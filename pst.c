@@ -706,17 +706,18 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	assert(nIn == 0);
 	if (pst->nLeaves > 1) {
 		/*
-		 ** First calculate the Bound for the set.
+		 ** First calculate the Bounds for the set.
 		 */
 		pstCalcBound(pst,NULL,0,&outBnd,&nOut);
+		pst->bndActive = outBnd.bndActive;
 		pst->bnd = outBnd.bnd;
 		/*
-		 ** Next determine the longest axis based on the bounds.
+		 ** Next determine the longest axis based on the active bounds.
 		 */
 		d = 0;
 		for (j=1;j<3;++j) {
-			if (pst->bnd.fMax[j]-pst->bnd.fMin[j] > 
-				pst->bnd.fMax[d]-pst->bnd.fMin[d]) d = j;
+			if (pst->bndActive.fMax[j]-pst->bndActive.fMin[j] > 
+				pst->bndActive.fMax[d]-pst->bndActive.fMin[d]) d = j;
 			}
 		pst->iSplitDim = d;
 		
@@ -728,7 +729,6 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			printf("ERROR id:%d lvl:%d:_pstRootSplit mass not cons.\n",
 				   pst->idSelf,pst->iLvl);
 			}
-
 		/*
 		 ** Now go on to DD of next levels.
 		 */
@@ -762,10 +762,16 @@ void pstCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			if (outBnd.bnd.fMax[j] > out->bnd.fMax[j]) {
 				out->bnd.fMax[j] = outBnd.bnd.fMax[j];
 				}
+			if (outBnd.bndActive.fMin[j] < out->bndActive.fMin[j]) {
+				out->bndActive.fMin[j] = outBnd.bndActive.fMin[j];
+				}
+			if (outBnd.bndActive.fMax[j] > out->bndActive.fMax[j]) {
+				out->bndActive.fMax[j] = outBnd.bndActive.fMax[j];
+				}
 			}
 		}
 	else {
-		pkdCalcBound(plcl->pkd,&out->bnd);
+		pkdCalcBound(plcl->pkd,&out->bnd,&out->bndActive);
 		}
 	if (pnOut) *pnOut = sizeof(struct outCalcBound); 
 	}
@@ -1206,7 +1212,12 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pst->nLeaves > 1) {
 		pst->kdn.iDim = pst->iSplitDim;
 		pst->kdn.fSplit = pst->fSplit;
-		pst->kdn.bnd = pst->bnd;
+		if (in->bActiveOnly) {
+			pst->kdn.bnd = pst->bndActive;
+			}
+		else {
+			pst->kdn.bnd = pst->bnd;
+			}
 		pst->kdn.pLower = -1;
 		pst->kdn.pUpper = 1;
 		mdlReqService(pst->mdl,pst->idUpper,PST_BUILDTREE,in,nIn);
@@ -1232,11 +1243,11 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		if (in->bBinary) {
 			pkdBuildBinary(plcl->pkd,in->nBucket,in->iOpenType,in->dCrit,
-						  in->iOrder,&pst->kdn);
+						  in->iOrder,in->bActiveOnly,&pst->kdn);
 			}
 		else {
 			pkdBuildLocal(plcl->pkd,in->nBucket,in->iOpenType,in->dCrit,
-						  in->iOrder,&pst->kdn);
+						  in->iOrder,in->bActiveOnly,&pst->kdn);
 			}
 		pst->kdn.pLower = pst->idSelf;
 		pst->kdn.pUpper = 1;

@@ -48,7 +48,7 @@ void main(int argc,char **argv)
 		fpLog = fopen(achFile,"a");
 		assert(fpLog != NULL);
 		if(msrKDK(msr)) {
-			msrBuildTree(msr,dMass);
+			msrBuildTree(msr,0,dMass);
 			msrMassCheck(msr,dMass,"After msrBuildTree");
 			msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax);
 			}
@@ -86,7 +86,7 @@ void main(int argc,char **argv)
 	msrLogParams(msr, fpLog);
 	msrMassCheck(msr,dMass,"After msrLogParams");
 
-	msrBuildTree(msr,dMass);
+	msrBuildTree(msr,0,dMass);
 	msrMassCheck(msr,dMass,"After msrBuildTree");
 	msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax);
 	msrMassCheck(msr,dMass,"After msrGravity");
@@ -104,7 +104,7 @@ void main(int argc,char **argv)
 				msrMassCheck(msr,dMass,"After msrKick-1 in KDK");
 				msrDrift(msr,dTime,msrDelta(msr));
 				msrMassCheck(msr,dMass,"After msrDrift in KDK");
-				msrBuildTree(msr,dMass);
+				msrBuildTree(msr,0,dMass);
 				msrMassCheck(msr,dMass,"After msrBuildTree in KDK");
 				msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax);
 				msrMassCheck(msr,dMass,"After msrGravity in KDK");
@@ -124,7 +124,7 @@ void main(int argc,char **argv)
 			else {
 				msrDrift(msr,dTime,0.5*msrDelta(msr));
 				msrMassCheck(msr,dMass,"After msrDrift-1 in DKD");
-				msrBuildTree(msr,dMass);
+				msrBuildTree(msr,0,dMass);
 				msrMassCheck(msr,dMass,"After msrBuildTree in DKD");
 				msrGravity(msr,iStep-0.5,&iSec,&dWMax,&dIMax,&dEMax);
 				msrMassCheck(msr,dMass,"After msrGravity in DKD");
@@ -137,7 +137,7 @@ void main(int argc,char **argv)
 					/*
 					 ** Output a log file line.
 					 */
-					msrBuildTree(msr,dMass);
+					msrBuildTree(msr,0,dMass);
 					msrMassCheck(msr,dMass,"After msrBuildTree in DKD-log");
 					msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax);
 					msrMassCheck(msr,dMass,"After msrGravity in DKD-log");

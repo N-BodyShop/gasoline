@@ -29,6 +29,7 @@ typedef struct pstContext {
 	int nUpper;
 	int iLvl;
 	BND	bnd;
+	BND bndActive;
 	int iSplitDim;
 	float fSplit;
 	float fSplitInactive;
@@ -80,6 +81,7 @@ void pstDomainDecomp(PST,void *,int,void *,int *);
 #define PST_CALCBOUND		7
 struct outCalcBound {
 	BND bnd;
+	BND bndActive;
 	};
 void pstCalcBound(PST,void *,int,void *,int *);
 
@@ -173,6 +175,7 @@ struct inBuildTree {
 	int iOrder;
 	double dCrit;
 	int bBinary;
+	int bActiveOnly;
 	};
 struct outBuildTree {
 	KDN kdn;

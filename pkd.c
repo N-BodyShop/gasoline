@@ -160,23 +160,61 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,double dvFac)
 	}
 
 
-void pkdCalcBound(PKD pkd,BND *pbnd)
+void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive)
 {
-	int i,j;
+	int i,j,bFirst;
 
+	/*
+	 ** Initialize the bounds to 0 at the beginning
+	 */
+	for (j=0;j<3;++j) {
+		pbnd->fMin[j] = 0.0;
+		pbnd->fMax[j] = 0.0;
+		pbndActive->fMin[j] = 0.0;
+		pbndActive->fMax[j] = 0.0;
+		}
 	/*
 	 ** Calculate Local Bounds.
 	 */
-	for (j=0;j<3;++j) {
-		pbnd->fMin[j] = pkd->pStore[0].r[j];
-		pbnd->fMax[j] = pkd->pStore[0].r[j];
-		}
-	for (i=1;i<pkd->nLocal;++i) {
-		for (j=0;j<3;++j) {
-			if (pkd->pStore[i].r[j] < pbnd->fMin[j]) 
+	bFirst = 1;
+	for (i=0;i<pkd->nLocal;++i) {
+		if (bFirst) {
+			bFirst = 0;
+			for (j=0;j<3;++j) {
 				pbnd->fMin[j] = pkd->pStore[i].r[j];
-			else if (pkd->pStore[i].r[j] > pbnd->fMax[j])
 				pbnd->fMax[j] = pkd->pStore[i].r[j];
+				}
+			}
+		else {
+			for (j=0;j<3;++j) {
+				if (pkd->pStore[i].r[j] < pbnd->fMin[j]) 
+					pbnd->fMin[j] = pkd->pStore[i].r[j];
+				else if (pkd->pStore[i].r[j] > pbnd->fMax[j])
+					pbnd->fMax[j] = pkd->pStore[i].r[j];
+				}
+			}			
+		}
+	/*
+	 ** Calculate Active Bounds.
+	 */
+	bFirst = 1;
+	for (i=0;i<pkd->nLocal;++i) {
+		if (pkd->pStore[i].iActive) {
+			if (bFirst) {
+				bFirst = 0;
+				for (j=0;j<3;++j) {
+					pbndActive->fMin[j] = pkd->pStore[i].r[j];
+					pbndActive->fMax[j] = pkd->pStore[i].r[j];
+					}
+				}
+			else {
+				for (j=0;j<3;++j) {
+					if (pkd->pStore[i].r[j] < pbndActive->fMin[j]) 
+						pbndActive->fMin[j] = pkd->pStore[i].r[j];
+					else if (pkd->pStore[i].r[j] > pbndActive->fMax[j])
+						pbndActive->fMax[j] = pkd->pStore[i].r[j];
+					}
+				}			
 			}
 		}
 	}
@@ -1184,22 +1222,37 @@ void pkdThreadTree(PKD pkd,int iCell,int iNext)
 
 
 void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
-					int iOrder,KDN *pRoot)
+					int iOrder,int bActiveOnly,KDN *pRoot)
 {
+	/*
+	 ** Make sure the particles are in Active/Inactive order.
+	 */
+	pkdActiveOrder(pkd);
 	if (pkd->kdNodes) mdlFree(pkd->mdl,pkd->kdNodes);
 	/*
 	 ** First problem is to figure out how many cells we need to
 	 ** allocate. We need to do this in advance because we need to
 	 ** synchronize to allocate the memory with mdlMalloc().
 	 */
-	pkd->nNodes = NumBinaryNodes(pkd,nBucket,0,pkd->nLocal-1);
+	if (bActiveOnly) {
+		pkd->nNodes = NumBinaryNodes(pkd,nBucket,0,pkd->nActive-1);
+		}
+	else {
+		pkd->nNodes = NumBinaryNodes(pkd,nBucket,0,pkd->nLocal-1);
+		}
 	pkd->kdNodes = mdlMalloc(pkd->mdl,pkd->nNodes*sizeof(KDN));
 	/*
 	 ** Now we really build the tree.
 	 */
 	pkd->iFreeCell = 0;
-	pkd->iRoot = BuildBinary(pkd,nBucket,0,pkd->nLocal-1,
-							 iOpenType,dCrit,iOrder);
+	if (bActiveOnly) {
+		pkd->iRoot = BuildBinary(pkd,nBucket,0,pkd->nActive-1,
+								 iOpenType,dCrit,iOrder);
+		}
+	else {
+		pkd->iRoot = BuildBinary(pkd,nBucket,0,pkd->nLocal-1,
+								 iOpenType,dCrit,iOrder);
+		}
 	assert(pkd->iFreeCell == pkd->nNodes);
 	/*
 	 ** Thread the tree.
@@ -1210,14 +1263,20 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 
 
 void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
-				   int iOrder,KDN *pRoot)
+				   int iOrder,int bActiveOnly,KDN *pRoot)
 {
 	int l,n,i,d,m,j,diff;
 	KDN *c;
 	char ach[256];
+	BND bndDum;
 
+	/*
+	 ** Make sure the particles are in Active/Inactive order.
+	 */
+	pkdActiveOrder(pkd);
 	pkd->nBucket = nBucket;
-	n = pkd->nLocal;
+	if (bActiveOnly) n = pkd->nActive;
+	else n = pkd->nLocal;
 	pkd->nLevels = 1;
 	l = 1;
 	while (n > nBucket) {
@@ -1239,11 +1298,21 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	c = pkd->kdNodes;
 	pkd->iRoot = ROOT;
 	c[pkd->iRoot].pLower = 0;
-	c[pkd->iRoot].pUpper = pkd->nLocal-1;
+	if (bActiveOnly) {
+		c[pkd->iRoot].pUpper = pkd->nActive-1;
+		}
+	else {
+		c[pkd->iRoot].pUpper = pkd->nLocal-1;
+		}
 	/*
 	 ** determine the local bound of the particles.
 	 */
-	pkdCalcBound(pkd,&c[pkd->iRoot].bnd);
+	if (bActiveOnly) {
+		pkdCalcBound(pkd,&bndDum,&c[pkd->iRoot].bnd);
+		}
+	else {
+		pkdCalcBound(pkd,&c[pkd->iRoot].bnd,&bndDum);
+		}
 	i = pkd->iRoot;
 	while (1) {
 		assert(c[i].pUpper - c[i].pLower + 1 > 0);
@@ -1285,6 +1354,11 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	 */
 	pkdThreadTree(pkd,pkd->iRoot,-1);
 	*pRoot = c[pkd->iRoot];
+	}
+
+
+void pkdSqueezeBounds(PKD pkd) {
+	int iCell = pkd->iRoot;
 	}
 
 

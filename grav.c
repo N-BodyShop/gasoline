@@ -30,7 +30,7 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 #endif
 
 	/*
-	 ** Now process the two interaction lists for each particle.
+	 ** Now process the two interaction lists for each active particle.
 	 */
 	pkdn = &pkd->kdNodes[iBucket];
 	p = &pkd->pStore[pkdn->pLower];
@@ -39,6 +39,7 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	ilcs = pkd->ilcs;
 	ilcn = pkd->ilcn;
 	for (i=0;i<n;++i) {
+		if (!p[i].iActive) continue;
 		ax = 0.0;
 		ay = 0.0;
 		az = 0.0;
@@ -187,20 +188,25 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	 */
 	for (i=0;i<n-1;++i) {
 		for (j=i+1;j<n;++j) {
+			if (!p[i].iActive && !p[j].iActive) continue;
 			dx = p[j].r[0] - p[i].r[0];
 			dy = p[j].r[1] - p[i].r[1];
 			dz = p[j].r[2] - p[i].r[2];
 			d2 = dx*dx + dy*dy + dz*dz;
 			twoh = p[i].fSoft + p[j].fSoft;
 			SPLINE(d2,twoh,a,b);
-			p[j].fPot -= a*p[i].fMass;
-			p[j].a[0] -= dx*b*p[i].fMass;
-			p[j].a[1] -= dy*b*p[i].fMass;
-			p[j].a[2] -= dz*b*p[i].fMass;
-			p[i].fPot -= a*p[j].fMass;
-			p[i].a[0] += dx*b*p[j].fMass;
-			p[i].a[1] += dy*b*p[j].fMass;
-			p[i].a[2] += dz*b*p[j].fMass;
+			if (p[j].iActive) {
+				p[j].fPot -= a*p[i].fMass;
+				p[j].a[0] -= dx*b*p[i].fMass;
+				p[j].a[1] -= dy*b*p[i].fMass;
+				p[j].a[2] -= dz*b*p[i].fMass;
+				}
+			if (p[i].iActive) {
+				p[i].fPot -= a*p[j].fMass;
+				p[i].a[0] += dx*b*p[j].fMass;
+				p[i].a[1] += dy*b*p[j].fMass;
+				p[i].a[2] += dz*b*p[j].fMass;
+				}
 			}
 		}
 	}

@@ -1005,7 +1005,7 @@ void msrSetSoft(MSR msr,double dSoft)
 	}
 
 
-void msrBuildTree(MSR msr,double dMass)
+void msrBuildTree(MSR msr,int bActiveOnly,double dMass)
 {
 	struct inBuildTree in;
 	struct outBuildTree out;
@@ -1024,12 +1024,17 @@ void msrBuildTree(MSR msr,double dMass)
 		printf("Domain Decomposition complete, Wallclock: %d secs\n\n",dsec);
 		}
 	if (msr->param.bVerbose) printf("Building local trees...\n");
+	/*
+	 ** First make sure the particles are in Active/Inactive order.
+	 */
+	pstActiveOrder(msr->pst,NULL,0,NULL,NULL);
 	in.nBucket = msr->param.nBucket;
 	in.iOpenType = msr->iOpenType;
 	in.iOrder = (msr->param.iOrder >= msr->param.iEwOrder)?
 		msr->param.iOrder:msr->param.iEwOrder;
 	in.dCrit = msr->dCrit;
 	in.bBinary = msr->param.bBinary;
+	in.bActiveOnly = bActiveOnly;
 	sec = time(0);
 	pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
 	msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");

@@ -238,7 +238,7 @@ void pkdInitialize(PKD *,MDL,int,int,int,float *);
 void pkdFinish(PKD);
 void pkdReadTipsy(PKD,char *,int,int,double);
 void pkdSetSoft(PKD pkd,double dSoft);
-void pkdCalcBound(PKD,BND *);
+void pkdCalcBound(PKD,BND *,BND *);
 int pkdWeight(PKD,int,float,int,int,int,int *,int *,float *,float *);
 int pkdLowerPart(PKD,int,float,int,int);
 int pkdUpperPart(PKD,int,float,int,int);
@@ -260,7 +260,8 @@ void pkdWriteTipsy(PKD,char *,int,int,int,double);
 void pkdCombine(KDN *,KDN *,KDN *);
 void pkdCalcCell(PKD,KDN *,float *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);
-void pkdBuildLocal(PKD,int,int,double,int,KDN *);
+void pkdBuildLocal(PKD,int,int,double,int,int,KDN *);
+void pkdBuildBinary(PKD,int,int,double,int,int,KDN *);
 void pkdGravAll(PKD,int,int,int,int,double,double,
 				double *,double *,CASTAT *); 
 void pkdCalcE(PKD,double *,double *);
