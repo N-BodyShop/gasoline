@@ -546,9 +546,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bBulkViscosity = 0;
 	prmAddParam(msr->prm,"bBulkViscosity",0,&msr->param.bBulkViscosity,sizeof(int),
 				"bulk","<Bulk Viscosity> = 0");
-	msr->param.bGasDomainDecomp = 1;
+	msr->param.bGasDomainDecomp = 0;
 	prmAddParam(msr->prm,"bGasDomainDecomp",0,&msr->param.bGasDomainDecomp,sizeof(int),
-				"gasDD","<Gas Domain Decomp> = 1");
+				"gasDD","<Gas Domain Decomp> = 0");
 	msr->param.bFastGas = 0;
 	prmAddParam(msr->prm,"bFastGas",0,&msr->param.bFastGas,sizeof(int),
 				"Fgas","<Fast Gas Method> = 0");
