@@ -45,18 +45,9 @@ void stfmInitialize(STFM *pstfm)
               d(ln(rhostar))/dt=cstar/tdyn
 
 */
-        /* seconds per year = 3600*24*365.25 */
-#define SEC_YR 3.15576e07;
-	/* mass of hydrogen atom in grams */
-#define MHYDR 1.67e-24
-	/* solar mass in grams */
-#define MSOLG 1.99e33
 
 void stfmInitConstants(STFM stfm) 
 {
-    const double dHDenMin=0.1; /* minimum density for star
-				     formation in atoms/CC */
-
     assert(stfm->dSecUnit != 0.0);
     assert(stfm->dGmPerCcUnit != 0.0);
     assert(stfm->dGmUnit != 0.0);
@@ -65,8 +56,6 @@ void stfmInitConstants(STFM stfm)
     stfm->dTempMax = 3.0e4;
     stfm->dSoftMin = 1.0;
     
-    stfm->dPhysDenMin = dHDenMin/stfm->dGmPerCcUnit*MHYDR;
-
     stfm->bInitialized = 1;
     }
 

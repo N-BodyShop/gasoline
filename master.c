@@ -669,6 +669,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dOverDenMin", 2, &msr->param.stfm->dOverDenMin,
 		    sizeof(double), "stODmin",
 		    "<Minimum overdensity for forming stars> = 2");
+	msr->param.stfm->dPhysDenMin = 0.1;
+	prmAddParam(msr->prm,"dPhysDenMin", 2, &msr->param.stfm->dPhysDenMin,
+		    sizeof(double), "stPDmin",
+		    "<Minimum physical density for forming stars (atoms/cc)> = .1");
 	msr->param.stfm->dStarEff = .3333;
 	prmAddParam(msr->prm,"dStarEff", 2, &msr->param.stfm->dStarEff,
 		    sizeof(double), "stEff",
@@ -1055,6 +1059,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		GCGS*pow(msr->param.dMsolUnit*MSOLG, 2.0)
 		/msr->param.dKpcUnit*KPCCM;
 	    msr->param.stfm->dDeltaT = msr->param.dDelta;
+	    /* convert to system units */
+	    msr->param.stfm->dPhysDenMin *= MHYDR/msr->param.stfm->dGmPerCcUnit;
 
 	    stfmInitConstants(msr->param.stfm) ;
 
