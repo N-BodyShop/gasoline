@@ -24,10 +24,10 @@ KSR_LIBMDL = erf.o v_sqrt1.ksr.o $(KSR_MDL)/mdl.o -lm -lrpc
 #
 #       SP1/2 defines
 #
-MDL = ../mdl/spx
-SPX_CFLAGS = -g -I$(MDL)
+SPX_MDL = ../mdl/spx
+SPX_CFLAGS = -O3 -I$(SPX_MDL)
 SPX_LD_FLAGS = 
-SPX_LIBMDL = v_sqrt1.o $(MDL)/mdl.o -lm
+SPX_LIBMDL = v_sqrt1.o $(SPX_MDL)/mdl.o -lm
 
 #
 #       T3D MPP defines

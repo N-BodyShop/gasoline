@@ -7,6 +7,7 @@
 #include "pkd.h"
 
 
+#ifdef COMPLETE_LOCAL
 #define SETILIST(iOrder,ilcn,pkdn,x,y,z)\
 {\
 	switch (iOrder) {\
@@ -40,7 +41,7 @@
 	case 2:\
 		ilcn.xx = pkdn->mom.Qxx;\
 		ilcn.yy = pkdn->mom.Qyy;\
-		ilcn.zz = pkdn->mom.Qzz;\
+                ilcn.zz = pkdn->mom.Qzz;\
 		ilcn.xy = pkdn->mom.Qxy;\
 		ilcn.xz = pkdn->mom.Qxz;\
 		ilcn.yz = pkdn->mom.Qyz;\
@@ -52,7 +53,55 @@
 		ilcn.z = z;\
 		}\
 	}
-
+#else
+#define SETILIST(iOrder,ilcn,pkdn,x,y,z)\
+{\
+	switch (iOrder) {\
+        double tr;\
+	case 4:\
+		ilcn.xxxx = pkdn->mom.Hxxxx;\
+		ilcn.xyyy = pkdn->mom.Hxyyy;\
+		ilcn.xxxy = pkdn->mom.Hxxxy;\
+		ilcn.yyyy = pkdn->mom.Hyyyy;\
+		ilcn.xxxz = pkdn->mom.Hxxxz;\
+		ilcn.yyyz = pkdn->mom.Hyyyz;\
+		ilcn.xxyy = pkdn->mom.Hxxyy;\
+		ilcn.xxyz = pkdn->mom.Hxxyz;\
+		ilcn.xyyz = pkdn->mom.Hxyyz;\
+		ilcn.xxzz = pkdn->mom.Hxxzz;\
+		ilcn.xyzz = pkdn->mom.Hxyzz;\
+		ilcn.xzzz = pkdn->mom.Hxzzz;\
+		ilcn.yyzz = pkdn->mom.Hyyzz;\
+		ilcn.yzzz = pkdn->mom.Hyzzz;\
+		ilcn.zzzz = pkdn->mom.Hzzzz;\
+	case 3:\
+		ilcn.xxx = pkdn->mom.Oxxx;\
+		ilcn.xyy = pkdn->mom.Oxyy;\
+		ilcn.xxy = pkdn->mom.Oxxy;\
+		ilcn.yyy = pkdn->mom.Oyyy;\
+		ilcn.xxz = pkdn->mom.Oxxz;\
+		ilcn.yyz = pkdn->mom.Oyyz;\
+		ilcn.xyz = pkdn->mom.Oxyz;\
+		ilcn.xzz = pkdn->mom.Oxzz;\
+		ilcn.yzz = pkdn->mom.Oyzz;\
+		ilcn.zzz = pkdn->mom.Ozzz;\
+	case 2:\
+		tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;\
+		ilcn.xx = pkdn->mom.Qxx - tr/3.0;\
+		ilcn.yy = pkdn->mom.Qyy - tr/3.0;\
+                ilcn.zz = pkdn->mom.Qzz - tr/3.0;\
+		ilcn.xy = pkdn->mom.Qxy;\
+		ilcn.xz = pkdn->mom.Qxz;\
+		ilcn.yz = pkdn->mom.Qyz;\
+	case 1:\
+	default:\
+		ilcn.m = pkdn->fMass;\
+		ilcn.x = x;\
+		ilcn.y = y;\
+		ilcn.z = z;\
+		}\
+	}
+#endif
 
 void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3],int iOrder)
 {

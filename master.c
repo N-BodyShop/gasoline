@@ -108,12 +108,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.dDelta = 0.0;
 	prmAddParam(msr->prm,"dDelta",2,&msr->param.dDelta,"dt",
 				"<time step>");
-	msr->param.dEwCut = 1.8;
+	msr->param.dEwCut = 2.6;
 	prmAddParam(msr->prm,"dEwCut",2,&msr->param.dEwCut,"ew",
-				"<dEwCut> = 1.8");
-	msr->param.dEwhCut = 2.0;
+				"<dEwCut> = 2.6");
+	msr->param.dEwhCut = 2.8;
 	prmAddParam(msr->prm,"dEwhCut",2,&msr->param.dEwhCut,"ewh",
-				"<dEwhCut> = 2.0");
+				"<dEwhCut> = 2.8");
 	msr->param.dTheta = 0.8;
 	prmAddParam(msr->prm,"dTheta",2,&msr->param.dTheta,"theta",
 				"<Barnes opening criterion> = 0.8");
