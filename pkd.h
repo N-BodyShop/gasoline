@@ -72,6 +72,8 @@ typedef struct kdNode {
 	BND bnd;
 	int pLower;		/* also doubles as thread id for the LTT */
 	int pUpper;
+	int iLower;
+	int iUpper;
 	double fMass;
 	double fSoft;
 	float r[3];
@@ -121,6 +123,8 @@ typedef struct pkdContext {
 	int nSplit;
 	int nNodes;
 	int iOrder;
+	int iFreeCell;
+	int iRoot;
 	float fPeriod[3];
 	int *piLeaf;
 	KDN *kdTop;

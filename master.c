@@ -93,6 +93,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.bKDK = 1;
 	prmAddParam(msr->prm,"bKDK",0,&msr->param.bKDK,sizeof(int),"kdk",
 				"enable/disable use of kick-drift-kick integration = +kdk");
+	msr->param.bBinary = 1;
+	prmAddParam(msr->prm,"bBinary",0,&msr->param.bBinary,sizeof(int),"bb",
+				"spatial/density binary trees = +bb");
 	msr->param.nBucket = 8;
 	prmAddParam(msr->prm,"nBucket",1,&msr->param.nBucket,sizeof(int),"b",
 				"<max number of particles in a bucket> = 8");
@@ -341,6 +344,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# achDataSubPath: %s",msr->param.achDataSubPath);
 	if (msr->param.bComove) {
 		fprintf(fp,"\n# RedOut:");
+		if (msr->nOuts == 0) fprintf(fp," none");
 		for (i=0;i<msr->nOuts;i++) {
 			if (i%5 == 0) fprintf(fp,"\n#   ");
 			z = 1.0/msrTime2Exp(msr,msr->pdOutTime[i])-1.0;
@@ -350,7 +354,8 @@ void msrLogParams(MSR msr,FILE *fp)
 		fflush(fp);
 		}
 	else {
-		fprintf(fp,"# TimeOut:");
+		fprintf(fp,"\n# TimeOut:");
+		if (msr->nOuts == 0) fprintf(fp," none");
 		for (i=0;i<msr->nOuts;i++) {
 			if (i%5 == 0) fprintf(fp,"\n#   ");
 			fprintf(fp," %f",msr->pdOutTime[i]);
@@ -765,8 +770,9 @@ double msrReadTipsy(MSR msr)
 	if (msr->param.bVerbose) puts("Input file has been successfully read.");
 	/*
 	 ** Now read in the output points, passing the initial time.
+	 ** We do this only if nSteps is not equal to zero.
 	 */
-	msrReadOuts(msr,dTime);
+	if (msrSteps(msr) > 0) msrReadOuts(msr,dTime);
 	/*
 	 ** Set up the output counter.
 	 */
@@ -891,7 +897,7 @@ void msrBuildTree(MSR msr,double dMass)
 	struct ioCalcRoot root;
 	KDN *pkdn;
 	int sec,dsec;
-	int iDum,nCell;
+	int i,iDum,nCell;
 
 	if (msr->param.bVerbose) printf("Domain Decomposition...\n");
 	sec = time(0);
@@ -907,6 +913,7 @@ void msrBuildTree(MSR msr,double dMass)
 	in.iOrder = (msr->param.iOrder >= msr->param.iEwOrder)?
 		msr->param.iOrder:msr->param.iEwOrder;
 	in.dCrit = msr->dCrit;
+	in.bBinary = msr->param.bBinary;
 	sec = time(0);
 	pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
 	msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
@@ -921,7 +928,7 @@ void msrBuildTree(MSR msr,double dMass)
 	inc.nCell = nCell;
 	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
 	msrMassCheck(msr,dMass,"After pstColCells in msrBuildTree");
-#if (0)
+#if (1)
 	for (i=1;i<nCell;++i) {
 		struct pkdCalcCellStruct *m;
 

@@ -15,6 +15,7 @@ struct parameters {
 	int bCannonical;
 	int bStandard;
 	int bKDK;
+	int bBinary;
 	int nBucket;
 	int iOutInterval;
 	int iLogInterval;

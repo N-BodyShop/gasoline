@@ -61,7 +61,10 @@ FDL checkpoint_1 (
 				)
 			ELEMENT bKDK (
 				TYPE int
-				)			
+				)		
+			ELEMENT bBinary (
+				TYPE int
+				)	
 			ELEMENT nBucket (
 				TYPE int
 				)

@@ -115,19 +115,23 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3],i
 	nCellNewt = pkd->nCellNewt;
 	p = pkd->pStore;
 	pbuc = &pkd->kdNodes[iBucket];
-	iCell = ROOT;
-	while (1) {
+	iCell = pkd->iRoot;
+	while (iCell != -1) {
 		pkdn = &pkd->kdNodes[iCell];
 		x = pkdn->r[0] + rOffset[0];
 		y = pkdn->r[1] + rOffset[1];
 		z = pkdn->r[2] + rOffset[2];
 		INTERSECTNP(pbuc,pkdn->fOpen2,x,y,z,bIntersect);
+		/*
+		 ** If the cell has less than 4 particles in it then open it.
+		 */
+		if (pkdn->pUpper - pkdn->pLower < 3) bIntersect = 1;
 		if (bIntersect) {
-			/*
-			 ** Open cell.
-			 */
-			if (pkdn->iDim >= 0) {
-				iCell = LOWER(iCell);
+			if (pkdn->iLower != -1) {
+				/*
+				 ** Open cell.
+				 */
+				iCell = pkdn->iLower;
 				}
 			else {
 				/*
@@ -155,8 +159,7 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3],i
 						pkd->ilp[nPart].h = p[pj].fSoft;
 						}
 					}
-				SETNEXT(iCell);
-				if (iCell == ROOT) break;
+				iCell = pkdn->iUpper;
 				}
 			}
 		else {
@@ -213,8 +216,7 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3],i
 				SETILIST(iOrder,pkd->ilcn[nCellNewt],pkdn,x,y,z);
 				++nCellNewt;
 				}
-			SETNEXT(iCell);
-			if (iCell == ROOT) break;
+			iCell = pkdn->iUpper;
 			}
 		}
 	pkd->nPart = nPart;
@@ -235,20 +237,24 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3],in
 	nCellSoft = pkd->nCellSoft;
 	nCellNewt = pkd->nCellNewt;
 	pbuc = &pkd->kdNodes[iBucket];
-	iCell = ROOT;
-	while (1) {
+	iCell = pkd->iRoot;
+	while (iCell != -1) {
 		pkdn = mdlAquire(pkd->mdl,CID_CELL,iCell,id);
 		x = pkdn->r[0] + rOffset[0];
 		y = pkdn->r[1] + rOffset[1];
 		z = pkdn->r[2] + rOffset[2];
 		INTERSECTNP(pbuc,pkdn->fOpen2,x,y,z,bIntersect);
+		/*
+		 ** If the cell has less than 4 particles in it then open it.
+		 */
+		if (pkdn->pUpper - pkdn->pLower < 3) bIntersect = 1;
 		if (bIntersect) {
-			/*
-			 ** Open cell.
-			 */
-			if (pkdn->iDim >= 0) {
+			if (pkdn->iLower != -1) {
+				/*
+				 ** Open cell.
+				 */
+				iCell = pkdn->iLower;
 				mdlRelease(pkd->mdl,CID_CELL,pkdn);
-				iCell = LOWER(iCell);
 				}
 			else {
 				/*
@@ -276,9 +282,8 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3],in
 					pkd->ilp[nPart].h = p->fSoft;
 					mdlRelease(pkd->mdl,CID_PARTICLE,p);
 					}
+				iCell = pkdn->iUpper;
 				mdlRelease(pkd->mdl,CID_CELL,pkdn);
-				SETNEXT(iCell);
-				if (iCell == ROOT) break;
 				}
 			}
 		else {
@@ -335,9 +340,8 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3],in
 				SETILIST(iOrder,pkd->ilcn[nCellNewt],pkdn,x,y,z);
 				++nCellNewt;
 				}
+			iCell = pkdn->iUpper;
 			mdlRelease(pkd->mdl,CID_CELL,pkdn);
-			SETNEXT(iCell);
-			if (iCell == ROOT) break;
 			}
 		}
 	pkd->nPart = nPart;

@@ -24,7 +24,7 @@
 	else if (INTRSCT_dy1 > 0.0) INTRSCT_fDist2 += INTRSCT_dy1*INTRSCT_dy1;\
 	if (INTRSCT_dz > 0.0) INTRSCT_fDist2 += INTRSCT_dz*INTRSCT_dz;\
 	else if (INTRSCT_dz1 > 0.0) INTRSCT_fDist2 += INTRSCT_dz1*INTRSCT_dz1;\
-	bIntersect = (INTRSCT_fDist2 < fBall2);\
+	bIntersect = (INTRSCT_fDist2 <= fBall2);\
 	}
 
 

@@ -171,6 +171,7 @@ struct inBuildTree {
 	int iOpenType;
 	int iOrder;
 	double dCrit;
+	int bBinary;
 	};
 struct outBuildTree {
 	KDN kdn;

@@ -610,7 +610,7 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,float *rcm,int iOrder,
 	/*
 	 ** Calculate moments and B numbers about center-of-mass.
 	 */
-	if (pkdn == NULL) pkdn = &pkd->kdNodes[ROOT];
+	if (pkdn == NULL) pkdn = &pkd->kdNodes[pkd->iRoot];
 	for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
 		m = pkd->pStore[pj].fMass;
 		dx = pkd->pStore[pj].r[0] - rcm[0];
@@ -949,6 +949,249 @@ void pkdSelect(PKD pkd,int d,int k,int l,int r)
 	}
 
 
+int NumBinaryNodes(PKD pkd,int nBucket,int pLower,int pUpper)
+{
+	BND bnd;
+	int i,j,m,d,l,u;
+	float fSplit;
+
+	if (pLower > pUpper) return(0);
+	else {
+		if (pUpper-pLower+1 > nBucket) {
+			/*
+			 ** We need to find the bounding box.
+			 */
+			for (j=0;j<3;++j) {
+				bnd.fMin[j] = pkd->pStore[pLower].r[j];
+				bnd.fMax[j] = pkd->pStore[pLower].r[j];
+				}
+			for (i=pLower+1;i<=pUpper;++i) {
+				for (j=0;j<3;++j) {
+					if (pkd->pStore[i].r[j] < bnd.fMin[j]) 
+						bnd.fMin[j] = pkd->pStore[i].r[j];
+					else if (pkd->pStore[i].r[j] > bnd.fMax[j])
+						bnd.fMax[j] = pkd->pStore[i].r[j];
+					}
+				}	
+			/*
+			 ** Now we need to determine the longest axis.
+			 */
+			d = 0;
+			for (j=1;j<3;++j) {
+				if (bnd.fMax[j]-bnd.fMin[j] > bnd.fMax[d]-bnd.fMin[d]) {
+					d = j;
+					}
+				}
+			/*
+			 ** Now we do the split.
+			 */
+			fSplit = 0.5*(bnd.fMin[d]+bnd.fMax[d]);
+			m = pkdUpperPart(pkd,d,fSplit,pLower,pUpper);
+			/*
+			 ** Recursive node count.
+			 */
+			l = NumBinaryNodes(pkd,nBucket,pLower,m-1);
+			u = NumBinaryNodes(pkd,nBucket,m,pUpper);
+			/*
+			 ** Careful, this assert only applies when we are doing the
+			 ** squeezing!
+			 */
+			assert(l > 0 && u > 0);
+			return(l+u+1);
+			}
+		else {
+			return(1);
+			}
+		}
+	}
+
+
+int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
+				double dCrit,int iOrder)
+{
+	KDN *pkdn;
+	int i,j,m,d,c;
+	float fm;
+	double dOpen;
+
+	if (pLower > pUpper) return(-1);
+	else {
+		/*
+		 ** Grab a cell from the cell storage!
+		 */
+		assert(pkd->iFreeCell < pkd->nNodes);
+		c = pkd->iFreeCell++;
+		pkdn = &pkd->kdNodes[c];
+		pkdn->pLower = pLower;
+		pkdn->pUpper = pUpper;
+		/*
+		 ** We need to find the bounding box.
+		 */
+		for (j=0;j<3;++j) {
+			pkdn->bnd.fMin[j] = pkd->pStore[pLower].r[j];
+			pkdn->bnd.fMax[j] = pkd->pStore[pLower].r[j];
+			}
+		for (i=pLower+1;i<=pUpper;++i) {
+			for (j=0;j<3;++j) {
+				if (pkd->pStore[i].r[j] < pkdn->bnd.fMin[j]) 
+					pkdn->bnd.fMin[j] = pkd->pStore[i].r[j];
+				else if (pkd->pStore[i].r[j] > pkdn->bnd.fMax[j])
+					pkdn->bnd.fMax[j] = pkd->pStore[i].r[j];
+				}
+			}	
+		if (pUpper-pLower+1 > nBucket) {
+			/*
+			 ** Now we need to determine the longest axis.
+			 */
+			d = 0;
+			for (j=1;j<3;++j) {
+				if (pkdn->bnd.fMax[j]-pkdn->bnd.fMin[j] > 
+					pkdn->bnd.fMax[d]-pkdn->bnd.fMin[d]) {
+					d = j;
+					}
+				}
+			pkdn->iDim = d;
+			/*
+			 ** Now we do the split.
+			 */
+			pkdn->fSplit = 0.5*(pkdn->bnd.fMin[d]+pkdn->bnd.fMax[d]);
+			m = pkdUpperPart(pkd,d,pkdn->fSplit,pLower,pUpper);
+			pkdn->iLower = BuildBinary(pkd,nBucket,pLower,m-1,iOpenType,
+									   dCrit,iOrder);
+			pkdn->iUpper = BuildBinary(pkd,nBucket,m,pUpper,iOpenType,
+									   dCrit,iOrder);
+			/*
+			 ** Careful, this assert only applies when we are doing the
+			 ** squeezing!
+			 */
+			assert(pkdn->iLower != -1 && pkdn->iUpper != -1);
+			/*
+			 ** Now calculate the mass, center of mass and mass weighted
+			 ** softening radius.
+			 */
+			pkdn->fMass = 0.0;
+			pkdn->fSoft = 0.0;
+			for (j=0;j<3;++j) {
+				pkdn->r[j] = 0.0;
+				}
+			if (pkdn->iLower != -1) {
+				fm = pkd->kdNodes[pkdn->iLower].fMass;
+				pkdn->fMass += fm;
+				pkdn->fSoft += fm*pkd->kdNodes[pkdn->iLower].fSoft;
+				for (j=0;j<3;++j) {
+					pkdn->r[j] += fm*pkd->kdNodes[pkdn->iLower].r[j];
+					}
+				}
+			if (pkdn->iUpper != -1) {
+				fm = pkd->kdNodes[pkdn->iUpper].fMass;
+				pkdn->fMass += fm;
+				pkdn->fSoft += fm*pkd->kdNodes[pkdn->iUpper].fSoft;
+				for (j=0;j<3;++j) {
+					pkdn->r[j] += fm*pkd->kdNodes[pkdn->iUpper].r[j];
+					}
+				}
+			pkdn->fSoft /= pkdn->fMass;
+			for (j=0;j<3;++j) {
+				pkdn->r[j] /= pkdn->fMass;
+				}
+			}
+		else {
+			pkdn->iDim = -1; /* it is a bucket! */
+			pkdn->fSplit = 0.0;
+			pkdn->iLower = -1;
+			pkdn->iUpper = -1;
+			/*
+			 ** Calculate the bucket quantities.
+			 */
+			fm = pkd->pStore[pkdn->pLower].fMass;
+			pkdn->fMass = fm;
+			pkdn->fSoft = fm*pkd->pStore[pkdn->pLower].fSoft;
+			for (j=0;j<3;++j) {
+				pkdn->r[j] = fm*pkd->pStore[pLower].r[j];
+				}
+			for (i=pkdn->pLower+1;i<=pkdn->pUpper;++i) {
+				fm = pkd->pStore[i].fMass;
+				pkdn->fMass += fm;
+				pkdn->fSoft += fm*pkd->pStore[i].fSoft;
+				for (j=0;j<3;++j) {
+					pkdn->r[j] += fm*pkd->pStore[i].r[j];
+					}
+				}
+			pkdn->fSoft /= pkdn->fMass;
+			for (j=0;j<3;++j) {
+				pkdn->r[j] /= pkdn->fMass;
+				}
+			}
+		/*
+		 ** Calculate multipole moments.
+		 */
+		pkdCalcCell(pkd,pkdn,pkdn->r,iOrder,&pkdn->mom);
+		dOpen = pkdCalcOpen(pkdn,iOpenType,dCrit,iOrder);
+		pkdn->fOpen2 = dOpen*dOpen;
+		return(c);
+		}
+	}
+
+
+void pkdThreadTree(PKD pkd,int iCell,int iNext)
+{
+	int l,u;
+
+	if (iCell == -1) return;
+	else if (pkd->kdNodes[iCell].iDim != -1) {
+		l = pkd->kdNodes[iCell].iLower;
+		u = pkd->kdNodes[iCell].iUpper;
+		if (u == -1) {
+			assert(l != -1);
+			pkdThreadTree(pkd,l,iNext);
+			}
+		else if (l == -1) {
+			assert(u != -1);
+			pkdThreadTree(pkd,u,iNext);
+			/* 
+			 ** need to change the "down" pointer in this case.
+			 */
+			pkd->kdNodes[iCell].iLower = u;
+			}
+		else {
+			pkdThreadTree(pkd,l,u);
+			pkdThreadTree(pkd,u,iNext);
+			}
+		pkd->kdNodes[iCell].iUpper = iNext;
+		}
+	else {
+		pkd->kdNodes[iCell].iLower = -1;	/* Just make sure! */
+		pkd->kdNodes[iCell].iUpper = iNext;
+		}
+	}
+
+
+void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
+					int iOrder,KDN *pRoot)
+{
+	if (pkd->kdNodes) mdlFree(pkd->mdl,pkd->kdNodes);
+	/*
+	 ** First problem is to figure out how many cells we need to
+	 ** allocate. We need to do this in advance because we need to
+	 ** synchronize to allocate the memory with mdlMalloc().
+	 */
+	pkd->nNodes = NumBinaryNodes(pkd,nBucket,0,pkd->nLocal-1);
+	pkd->kdNodes = mdlMalloc(pkd->mdl,pkd->nNodes*sizeof(KDN));
+	/*
+	 ** Now we really build the tree.
+	 */
+	pkd->iFreeCell = 0;
+	pkd->iRoot = BuildBinary(pkd,nBucket,0,pkd->nLocal-1,
+							 iOpenType,dCrit,iOrder);
+	assert(pkd->iFreeCell == pkd->nNodes);
+	/*
+	 ** Thread the tree.
+	 */
+	pkdThreadTree(pkd,pkd->iRoot,-1);
+	*pRoot = pkd->kdNodes[pkd->iRoot];
+	}
+
+
 void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 				   int iOrder,KDN *pRoot)
 {
@@ -977,13 +1220,14 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	 ** Set up ROOT node
 	 */
 	c = pkd->kdNodes;
-	c[ROOT].pLower = 0;
-	c[ROOT].pUpper = pkd->nLocal-1;
+	pkd->iRoot = ROOT;
+	c[pkd->iRoot].pLower = 0;
+	c[pkd->iRoot].pUpper = pkd->nLocal-1;
 	/*
 	 ** determine the local bound of the particles.
 	 */
-	pkdCalcBound(pkd,&c[ROOT].bnd);
-	i = ROOT;
+	pkdCalcBound(pkd,&c[pkd->iRoot].bnd);
+	i = pkd->iRoot;
 	while (1) {
 		assert(c[i].pUpper - c[i].pLower + 1 > 0);
 		if (i < pkd->nSplit && (c[i].pUpper - c[i].pLower) > 0) {
@@ -993,10 +1237,11 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 					c[i].bnd.fMax[d]-c[i].bnd.fMin[d]) d = j;
 				}
 			c[i].iDim = d;
-
 			m = (c[i].pLower + c[i].pUpper)/2;
 			pkdSelect(pkd,d,m,c[i].pLower,c[i].pUpper);
 			c[i].fSplit = pkd->pStore[m].r[d];
+			c[i].iLower = LOWER(i);
+			c[i].iUpper = UPPER(i);
 			c[LOWER(i)].bnd = c[i].bnd;
 			c[LOWER(i)].bnd.fMax[d] = c[i].fSplit;
 			c[LOWER(i)].pLower = c[i].pLower;
@@ -1011,12 +1256,18 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 			}
 		else {
 			c[i].iDim = -1;		/* to indicate a bucket! */
+			c[i].iLower = -1;
+			c[i].iUpper = -1;
 			SETNEXT(i);
-			if (i == ROOT) break;
+			if (i == pkd->iRoot) break;
 			}
 		}
-	pkdUpPass(pkd,ROOT,iOpenType,dCrit,iOrder);
-	*pRoot = c[ROOT];
+	pkdUpPass(pkd,pkd->iRoot,iOpenType,dCrit,iOrder);
+	/*
+	 ** Thread the tree.
+	 */
+	pkdThreadTree(pkd,pkd->iRoot,-1);
+	*pRoot = c[pkd->iRoot];
 	}
 
 
@@ -1036,15 +1287,13 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 				double fEwCut,double fEwhCut,
 				double *pdPartSum,double *pdCellSum,CASTAT *pcs)
 {
-	KDN *c;
+	KDN *c = pkd->kdNodes;
 	int iCell,n;
 	float fWeight;
 
 	pkdClearTimer(pkd,1);
 	pkdClearTimer(pkd,2);
 	pkdClearTimer(pkd,3);
-	*pdPartSum = 0.0;
-	*pdCellSum = 0.0;
 	if (bPeriodic) {
 		pkdStartTimer(pkd,3);
 		pkdEwaldInit(pkd,fEwhCut,iEwOrder);
@@ -1059,33 +1308,35 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	/*
 	 ** Walk over the local buckets!
 	 */
-	c = pkd->kdNodes;
-	iCell = ROOT;
-	while (1) {
-		if (c[iCell].iDim >= 0) iCell = LOWER(iCell);
-		else {
-			n = c[iCell].pUpper - c[iCell].pLower + 1;
-			pkdStartTimer(pkd,1);
-			pkdBucketWalk(pkd,iCell,nReps,iOrder);
-			pkdStopTimer(pkd,1);
-			*pdPartSum += n*pkd->nPart + n*(n-1)/2;
-			*pdCellSum += n*(pkd->nCellSoft + pkd->nCellNewt);
-			pkdStartTimer(pkd,2);
-			pkdBucketInteract(pkd,iCell,iOrder);
-			pkdStopTimer(pkd,2);
-			if (bPeriodic) {
-				pkdStartTimer(pkd,3);
-				pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
-				pkdStopTimer(pkd,3);
-				}
-			fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 
-			    1.0*(pkd->nPart + (n-1)/2.0);
-
-			pkdBucketWeight(pkd,iCell,fWeight);
-
-			SETNEXT(iCell);
-			if (iCell == ROOT) break;
+	*pdPartSum = 0.0;
+	*pdCellSum = 0.0;
+	iCell = pkd->iRoot;
+	while (iCell != -1) {
+		if (c[iCell].iLower != -1) {
+			iCell = c[iCell].iLower;
+			continue;
 			}
+		/*
+		 ** Calculate gravity on this bucket.
+		 */
+		n = c[iCell].pUpper - c[iCell].pLower + 1;
+		pkdStartTimer(pkd,1);
+		pkdBucketWalk(pkd,iCell,nReps,iOrder);
+		pkdStopTimer(pkd,1);
+		*pdPartSum += n*pkd->nPart + n*(n-1)/2;
+		*pdCellSum += n*(pkd->nCellSoft + pkd->nCellNewt);
+		pkdStartTimer(pkd,2);
+		pkdBucketInteract(pkd,iCell,iOrder);
+		pkdStopTimer(pkd,2);
+		if (bPeriodic) {
+			pkdStartTimer(pkd,3);
+			pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
+			pkdStopTimer(pkd,3);
+			}
+		fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 
+			1.0*(pkd->nPart + (n-1)/2.0);
+		pkdBucketWeight(pkd,iCell,fWeight);
+		iCell = c[iCell].iUpper;
 		}
 	/*
 	 ** Get caching statistics.
@@ -1285,7 +1536,7 @@ void pkdCalcRoot(PKD pkd,struct ilCellNewt *pcc)
 	/*
 	 ** Calculate moments.
 	 */
-	pkdn = &pkd->kdNodes[ROOT];
+	pkdn = &pkd->kdNodes[pkd->iRoot];
 	for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
 		m = pkd->pStore[pj].fMass;
 		dx = pkd->pStore[pj].r[0] - pkdn->r[0];
@@ -1370,4 +1621,6 @@ double pkdMassCheck(PKD pkd)
 		}
 	return(dMass);
 	}
+
+
 

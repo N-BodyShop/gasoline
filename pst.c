@@ -1043,8 +1043,14 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pst->kdn.fOpen2 = dOpen*dOpen;
 		}
 	else {
-		pkdBuildLocal(plcl->pkd,in->nBucket,in->iOpenType,in->dCrit,
-					  in->iOrder,&pst->kdn);
+		if (in->bBinary) {
+			pkdBuildBinary(plcl->pkd,in->nBucket,in->iOpenType,in->dCrit,
+						  in->iOrder,&pst->kdn);
+			}
+		else {
+			pkdBuildLocal(plcl->pkd,in->nBucket,in->iOpenType,in->dCrit,
+						  in->iOrder,&pst->kdn);
+			}
 		pst->kdn.pLower = pst->idSelf;
 		pst->kdn.pUpper = 1;
 		}
@@ -1454,11 +1460,15 @@ void pstColCells(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 				}
 			}
 		free(ptmp);
+		pst->kdn.iLower = LOWER(iCell);
+		pst->kdn.iUpper = UPPER(iCell);
 		pkdn[iCell] = pst->kdn;
 		assert(pkdn[iCell].pUpper != 0);
 		}
 	else {
 		for (i=1;i<in->nCell;++i) pkdn[i].pUpper = 0; /* used flag = unused */
+		pst->kdn.iLower = -1;
+		pst->kdn.iUpper = -1;
 		pkdn[iCell] = pst->kdn;
 		assert(pkdn[iCell].pUpper != 0);
 		}
