@@ -93,7 +93,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 #else
 			SPLINEM(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b,c);
 #endif
-			dir2 = a*a;
 			a *= ilp[j].m;
 			b *= ilp[j].m;
 			fPot -= a;
@@ -250,9 +249,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dvz = p[j].v[2] - p[i].v[2];
 			vdotr = dx*dvx + dy*dvy + dz*dvz;
 			vdotr *= c;
-			adotx -= dvx*b - vdotr*dx;
-			adoty -= dvy*b - vdotr*dy;
-			adotz -= dvz*b - vdotr*dz;
 
 			if (p[j].iActive) {
 				p[j].fPot -= a*p[i].fMass;
@@ -268,9 +264,9 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 				p[i].a[0] += dx*b*p[j].fMass;
 				p[i].a[1] += dy*b*p[j].fMass;
 				p[i].a[2] += dz*b*p[j].fMass;
-				p[j].adot[0] += (dvx*b - vdotr*dx)*p[j].fMass;
-				p[j].adot[1] += (dvy*b - vdotr*dy)*p[j].fMass;
-				p[j].adot[2] += (dvz*b - vdotr*dz)*p[j].fMass;
+				p[i].adot[0] += (dvx*b - vdotr*dx)*p[j].fMass;
+				p[i].adot[1] += (dvy*b - vdotr*dy)*p[j].fMass;
+				p[i].adot[2] += (dvz*b - vdotr*dz)*p[j].fMass;
 				}
 			}
 		}
