@@ -705,7 +705,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	     */
 	    if (nLowTot < pst->nLower) {
 		    fl = fm;
-		    fu = pst->bnd.fMax[d];
+				/* Try to catch highest particle if needed. */
+		    fu = pst->bnd.fMax[d]
+			+ EPS_BOUND*(pst->bnd.fMax[d] - pst->bnd.fMin[d]);
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
 		while (fl < fmm && fmm < fu && ittr < 32) {
