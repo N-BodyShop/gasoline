@@ -35,7 +35,7 @@ typedef struct particle {
 	float fPot;
 	float fBall2;
 	float fDensity;
-	float dt;			/* time-step */
+	float dt;			/* a time step suggestion */
 #ifdef SUPERCOOL
 	float vMean[3];
 #endif
@@ -62,7 +62,7 @@ typedef struct particle {
 	} PARTICLE;
 
 
-#define CHECKPOINT_VERSION		3
+#define CHECKPOINT_VERSION		4
 
 typedef struct chkParticle {
 	int iOrder;
@@ -279,8 +279,8 @@ int pkdInactive(PKD);
 int pkdNodes(PKD);
 void pkdDomainColor(PKD);
 int pkdColOrdRejects(PKD,int,int);
-void pkdLocalOrder(PKD,int);
-void pkdWriteTipsy(PKD,char *,int,int,int,double,double);
+void pkdLocalOrder(PKD);
+void pkdWriteTipsy(PKD,char *,int,int,double,double);
 void pkdCombine(KDN *,KDN *,KDN *);
 void pkdCalcCell(PKD,KDN *,float *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);
@@ -312,12 +312,14 @@ void pkdInitDt(PKD pkd, double dDelta);
 int pkdRungParticles(PKD,int);
 void pkdCoolVelocity(PKD,int,double,double,double);
 void pkdActiveCool(PKD,int);
-
-#ifdef GASOLINE
-
+void pkdInitAccel(PKD);
+int pkdOrdWeight(PKD,int,int,int,int,int *,int *);
 int pkdIsGas(PKD,PARTICLE *);
 int pkdIsDark(PKD,PARTICLE *);
 int pkdIsStar(PKD,PARTICLE *);
+
+#ifdef GASOLINE
+
 void pkdActiveGas(PKD);
 void pkdCalcEthdot(PKD);
 void pkdKickVpred(PKD pdk, double dvFacOne, double dvFacTwo);
