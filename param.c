@@ -192,7 +192,7 @@ int prmParseParam(PRM prm,char *pszFile)
 		if (*q == '\n') *q = 0;
 		else ++q;
 		}
-	printf("Unrecognized command in %s(%d):\n%s",iLine,achBuf);
+	printf("Unrecognized command in %s(%d):%s\n",pszFile,iLine,achBuf);
 	fclose(fpParam);
 	return(0);
 	}

@@ -24,7 +24,7 @@ KSR_LIBMDL = erf.o v_sqrt1.ksr.o $(KSR_MDL)/mdl.o -lm -lrpc
 #
 #       SP1/2 defines
 #
-SPX_MDL = ../mdl/spx
+SPX_MDL = ../mdl/mpi
 SPX_CFLAGS = -O3 -I$(SPX_MDL)
 SPX_LD_FLAGS = 
 SPX_LIBMDL = v_sqrt1.o $(SPX_MDL)/mdl.o -lm
@@ -71,7 +71,7 @@ ksr:
 
 spx:
 	cd $(SPX_MDL); make
-	make pkdgrav CC=mpcc "CFLAGS=$(SPX_CFLAGS)" "LD_FLAGS=$(SPX_LD_FLAGS)" "MDL=$(SPX_MDL)" "LIBMDL=$(SPX_LIBMDL)"
+	make pkdgrav CC=mpicc "CFLAGS=$(SPX_CFLAGS)" "LD_FLAGS=$(SPX_LD_FLAGS)" "MDL=$(SPX_MDL)" "LIBMDL=$(SPX_LIBMDL)"
 
 t3d:
 	cd $(T3D_MDL); make

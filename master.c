@@ -520,7 +520,7 @@ double msrReadTipsy(MSR msr)
 		msr->dRedshift = 1.0/h.time - 1.0;
 		printf("Input file, Time:%g Redshift:%g Expansion factor:%g\n",
 			   dTime,msr->dRedshift,h.time);
-		if (prmArgSpecified(msr->prm,"dRedTo")) {
+		if (prmSpecified(msr->prm,"dRedTo")) {
 			if (!prmArgSpecified(msr->prm,"nSteps") &&
 				prmArgSpecified(msr->prm,"dDelta")) {
 				aTo = 1.0/(msr->dRedTo + 1.0);
@@ -537,6 +537,34 @@ double msrReadTipsy(MSR msr)
 				}
 			else if (!prmArgSpecified(msr->prm,"dDelta") &&
 					 prmArgSpecified(msr->prm,"nSteps")) {
+				aTo = 1.0/(msr->dRedTo + 1.0);
+				tTo = msrExp2Time(msr,aTo);
+				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
+					   tTo,1.0/aTo-1.0,aTo);
+				if (tTo < dTime) {
+					printf("Badly specified final redshift, check -zto parameter.\n");	
+					msrFinish(msr);
+					mdlFinish(msr->mdl);
+					exit(1);
+					}
+				msr->param.dDelta = (tTo-dTime)/msr->param.nSteps;
+				}
+			else if (!prmSpecified(msr->prm,"nSteps") &&
+				prmFileSpecified(msr->prm,"dDelta")) {
+				aTo = 1.0/(msr->dRedTo + 1.0);
+				tTo = msrExp2Time(msr,aTo);
+				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
+					   tTo,1.0/aTo-1.0,aTo);
+				if (tTo < dTime) {
+					printf("Badly specified final redshift, check -zto parameter.\n");
+					msrFinish(msr);
+					mdlFinish(msr->mdl);
+					exit(1);
+					}
+				msr->param.nSteps = (int)ceil((tTo-dTime)/msr->param.dDelta);
+				}
+			else if (!prmSpecified(msr->prm,"dDelta") &&
+					 prmFileSpecified(msr->prm,"nSteps")) {
 				aTo = 1.0/(msr->dRedTo + 1.0);
 				tTo = msrExp2Time(msr,aTo);
 				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
