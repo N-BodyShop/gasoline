@@ -1915,6 +1915,94 @@ void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass)
 	}
 
 
+void pkdLogHalo(PKD pkd)
+{
+	PARTICLE *p;
+	int i,j,n;
+
+	/* v in (kpc)/(4.691822922e16s) 128 km/s x 1.5233 */
+	const double v = 194.9848486;
+	const double d = 12.0;	/* in kpc */
+	const double fl = 1.0;	/* flattening */
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i) {
+		if (p[i].iActive) {
+			double x = p[i].r[0];
+			double y = p[i].r[1];
+			double z = p[i].r[2];
+			/*
+			 **	Do the logarithmic halo potential.
+			 */
+			double r = sqrt(x*x + y*y + z*z/(fl*fl));
+			double C = 1.0/(r*r + d*d);	
+			p[i].a[0] -= 2*v*v*x*C;
+			p[i].a[1] -= 2*v*v*y*C;
+			p[i].a[2] -= 2*v*v*z*C/(fl*fl);
+			p[i].fPot += v*v*log(r*r + d*d);
+			}
+		}
+	}
+
+
+void pkdHernquistSpheroid(PKD pkd)
+{
+	PARTICLE *p;
+	int i,j,n;
+
+	const double M_s = 3.4e5;	/* in 10^5 M_sun */
+	const double c = 0.7;		/* in kpc */
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i) {
+		if (p[i].iActive) {
+			double x = p[i].r[0];
+			double y = p[i].r[1];
+			double z = p[i].r[2];
+			/*
+			 **	Do the spheroid potential
+			 */
+			double r = sqrt(x*x + y*y + z*z);
+			double A = 1.0/(r + c);	
+			p[i].a[0] -= M_s*A*A*x/r;
+			p[i].a[1] -= M_s*A*A*y/r;
+			p[i].a[2] -= M_s*A*A*z/r;
+			p[i].fPot -= M_s/(r + c);
+			}
+		}
+	}
+
+
+void pkdMiyamotoDisk(PKD pkd)
+{
+	PARTICLE *p;
+	int i,j,n;
+
+	const double M_d = 1.0e6;	/* in 10^5 M_sun */
+	const double aa = 6.5;		/* in kpc */
+	const double b = 0.26;		/* in kpc */
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i) {
+		if (p[i].iActive) {
+			double x = p[i].r[0];
+			double y = p[i].r[1];
+			double z = p[i].r[2];
+			/*
+			 **	Do the Miyamoto Disk potential
+			 */
+			double U = sqrt(z*z + b*b);
+			double W = aa + U;
+			double A = sqrt(x*x + y*y + W*W);
+			p[i].a[0] -= M_d*x/(A*A*A);
+			p[i].a[1] -= M_d*y/(A*A*A);
+			p[i].a[2] -= M_d*z*W/(A*A*A*U);
+			p[i].fPot -= M_d/A;
+			}
+		}
+	}
+
+
 void pkdCalcE(PKD pkd,double *T,double *U)
 {
 	PARTICLE *p;
@@ -2414,40 +2502,6 @@ pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac)
 		}
     }
 
-void
-pkdAdotStep(PKD pkd, double dEta, double dVelFac)
-{
-    int i;
-    double acc;
-    double adot;
-    int j;
-    double dT;
-    
-    for(i = 0; i < pkdLocal(pkd); ++i) {
-		if(pkd->pStore[i].iActive) {
-#ifdef PLANETS
-			if (pkd->pStore[i].iColor != PLANETESIMAL)
-				continue; /* non planetesimals get max step via pkdInitDt() */
-#endif /* PLANETS */
-			adot = 0;
-            acc = 0;
-			for(j = 0; j < 3; j++) {
-				adot += pkd->pStore[i].adot[j]*pkd->pStore[i].adot[j];
-                acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
-				}
-			/*
-			 * Note use of dVelfac, since adot is calculated as
-			 * v*da/dx.
-			 */
-			adot = sqrt(adot)*dVelFac;
-			acc = sqrt(acc);
-			dT = dEta*acc/adot;
-			if(dT < pkd->pStore[i].dt)
-				pkd->pStore[i].dt = dT;
-			}
-		}
-	}
-
 #define STEP_EPS 1e-6
 
 int
@@ -2655,7 +2709,6 @@ void pkdInitAccel(PKD pkd)
 		if (pkd->pStore[i].iActive) {
 			for (j=0;j<3;++j) {
 				pkd->pStore[i].a[j] = 0;
-				pkd->pStore[i].adot[j] = 0;
 				}
 			}
 		}

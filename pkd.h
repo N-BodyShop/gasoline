@@ -33,7 +33,6 @@ typedef struct particle {
 	FLOAT r[3];
 	FLOAT v[3];
 	FLOAT a[3];
-	FLOAT adot[3];
 	FLOAT fPot;
 	FLOAT fBall2;
 	FLOAT fDensity;
@@ -46,14 +45,11 @@ typedef struct particle {
 #endif
 #ifdef GASOLINE
 	FLOAT vPred[3];		/* predicted velocity (time centered) */
+	FLOAT uPred;		/* predicted thermal energy */
+	FLOAT fPoverRho2;	/* P/rho^2 */
 	FLOAT fHsmDivv;		/* 0.5*sqrt(fBall2)*div(vPred) */
-	FLOAT fRhoDivv;		/* <fDensity*div(vPred)_j> */
-	FLOAT fCutVisc;
-	FLOAT u;			/* New thermal energy */ 
-	FLOAT du;			/* time derivative of thermal energy */
-	FLOAT uOld;			/* Old thermal energy */ 
-	FLOAT A;			/* sqrt(uNew_i) prefactor in duNew/dt */
-	FLOAT B;			/* constant term in duNew/dt */
+	FLOAT u;			/* thermal energy */ 
+	FLOAT aPdVold[3];	/* old P dV term of SPH acceleration */
 	FLOAT fMetals;
 	FLOAT fTimeForm;
 #endif
@@ -346,7 +342,6 @@ void pkdDensityStep(PKD pkd, double dEta, double
 		    dRhoFac);
 void pkdAccelStep(PKD pkd, double dEta, double dVelFac, double
 		     dAccFac);
-void pkdAdotStep(PKD pkd, double dEta, double dVelFac);
 int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int
 		bAll);
 void pkdInitDt(PKD pkd, double dDelta);
@@ -367,6 +362,7 @@ void pkdNewOrder(PKD pkd, int nStart);
 void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int nMaxOrderGas,
 		  int nMaxOrderDark);
 void pkdSunIndirect(PKD,double *,int,double);
+void pkdLogHalo(PKD);
 
 #ifdef PLANETS
 

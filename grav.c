@@ -24,8 +24,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	ILCN *ilcn;
 	int n,i,j;
 	double fPot,ax,ay,az;
-	double adotx, adoty, adotz;
-	double vx, vy, vz, dvx, dvy, dvz, vdotr;
 	double x,y,z,dx,dy,dz,dir,d2,h,twoh,a,b,c,d;
 	double dir2,qirx,qiry,qirz,qir,tr,qir3;
 	double gam[6];
@@ -52,16 +50,10 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 		ax = 0.0;
 		ay = 0.0;
 		az = 0.0;
-		adotx = 0.0;
-		adoty = 0.0;
-		adotz = 0.0;
 		fPot = 0.0;
 		x = p[i].r[0];
 		y = p[i].r[1];
 		z = p[i].r[2];
-		vx = p[i].v[0];
-		vy = p[i].v[1];
-		vz = p[i].v[2];
 		h = p[i].fSoft;
 		/*
 		 ** Scoring for Part (+,*)
@@ -77,7 +69,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dy = y - ilp[j].y;
 			dz = z - ilp[j].z;
 			pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
-			assert(pkd->d2a[j] > 0.0);
 			}
 		if (pkd->nPart>0) v_sqrt1(pkd->nPart,pkd->d2a,pkd->sqrttmp);
 #endif
@@ -88,10 +79,9 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			twoh = h + ilp[j].h;
 #if (NATIVE_SQRT)
 			d2 = dx*dx + dy*dy + dz*dz;
-			assert(d2 > 0.0);
-			SPLINE(d2,twoh,a,b,c);
+			SPLINE(d2,twoh,a,b);
 #else
-			SPLINEM(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b,c);
+			SPLINEM(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b);
 #endif
 			a *= ilp[j].m;
 			b *= ilp[j].m;
@@ -99,15 +89,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			ax -= dx*b;
 			ay -= dy*b;
 			az -= dz*b;
-
-			dvx = vx - ilp[j].vx;
-			dvy = vy - ilp[j].vy;
-			dvz = vz - ilp[j].vz;
-			vdotr = dx*dvx + dy*dvy + dz*dvz;
-			vdotr *= c*ilp[j].m;
-			adotx -= dvx*b - vdotr*dx;
-			adoty -= dvy*b - vdotr*dy;
-			adotz -= dvz*b - vdotr*dz;
 			}
 		/*
 		 ** Scoring for CellSoft (+,*)
@@ -123,7 +104,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dy = y - ilcs[j].y;
 			dz = z - ilcs[j].z;
 			pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
-			assert(pkd->d2a[j] > 0.0);
 			}
 		if (pkd->nCellSoft>0) v_sqrt1(pkd->nCellSoft,pkd->d2a,pkd->sqrttmp);
 #endif
@@ -134,7 +114,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			twoh = h + ilcs[j].h;
 #if (NATIVE_SQRT)
 			d2 = dx*dx + dy*dy + dz*dz;
-			assert(d2 > 0.0);
 			dir = 1.0/sqrt(d2);
 			SPLINEQ(dir,d2,twoh,a,b,c,d);
 #else
@@ -150,16 +129,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			ax -= qir3*dx - c*qirx;
 			ay -= qir3*dy - c*qiry;
 			az -= qir3*dz - c*qirz;
-
-			dvx = vx - ilcs[j].vx;
-			dvy = vy - ilcs[j].vy;
-			dvz = vz - ilcs[j].vz;
-			vdotr = dx*dvx + dy*dvy + dz*dvz;
-			vdotr *= c*ilcs[j].m;
-			b *= ilcs[j].m;
-			adotx -= dvx*b - vdotr*dx;
-			adoty -= dvy*b - vdotr*dy;
-			adotz -= dvz*b - vdotr*dz;
 			}
 		/*
 		 ** Scoring for CellNewt (+,*)
@@ -175,7 +144,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dy = y - ilcn[j].y;
 			dz = z - ilcn[j].z;
 			pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
-			assert(pkd->d2a[j] > 0.0);
 			}
 		if (pkd->nCellNewt>0) v_sqrt1(pkd->nCellNewt,pkd->d2a,pkd->sqrttmp);
 #endif
@@ -185,7 +153,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dz = z - ilcn[j].z;
 #if (NATIVE_SQRT)
 			d2 = dx*dx + dy*dy + dz*dz;
-			assert(d2 > 0.0);
 			gam[0] = 1.0/sqrt(d2);
 #else
 			gam[0] = pkd->sqrttmp[j];
@@ -201,28 +168,15 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 #else
 			QEVAL(iOrder,ilcn[j],gam,dx,dy,dz,ax,ay,az,fPot);
 #endif
-
-			dvx = vx - ilcn[j].vx;
-			dvy = vy - ilcn[j].vy;
-			dvz = vz - ilcn[j].vz;
-			vdotr = dx*dvx + dy*dvy + dz*dvz;
-			vdotr *= gam[2]*ilcn[j].m;
-			gam[1] *= ilcn[j].m;
-			adotx -= dvx*gam[1] - vdotr*dx;
-			adoty -= dvy*gam[1] - vdotr*dy;
-			adotz -= dvz*gam[1] - vdotr*dz;
 			}
 		p[i].fPot = fPot;
 		p[i].a[0] += ax;
 		p[i].a[1] += ay;
 		p[i].a[2] += az;
-		p[i].adot[0] += adotx;
-		p[i].adot[1] += adoty;
-		p[i].adot[2] += adotz;
 		/*
-		 ** Try a cache check to improve responsiveness.
+		 ** Try a cache check to improve responsiveness?
+		 ** mdlCacheCheck(pkd->mdl);
 		 */
-		mdlCacheCheck(pkd->mdl);
 		}
 	/*
 	 ** Do the intra-bucket interactions.
@@ -242,31 +196,18 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dz = p[j].r[2] - p[i].r[2];
 			d2 = dx*dx + dy*dy + dz*dz;
 			twoh = p[i].fSoft + p[j].fSoft;
-			SPLINE(d2,twoh,a,b,c);
-
-			dvx = p[j].v[0] - p[i].v[0];
-			dvy = p[j].v[1] - p[i].v[1];
-			dvz = p[j].v[2] - p[i].v[2];
-			vdotr = dx*dvx + dy*dvy + dz*dvz;
-			vdotr *= c;
-
+			SPLINE(d2,twoh,a,b);
 			if (p[j].iActive) {
 				p[j].fPot -= a*p[i].fMass;
 				p[j].a[0] -= dx*b*p[i].fMass;
 				p[j].a[1] -= dy*b*p[i].fMass;
 				p[j].a[2] -= dz*b*p[i].fMass;
-				p[j].adot[0] -= (dvx*b - vdotr*dx)*p[i].fMass;
-				p[j].adot[1] -= (dvy*b - vdotr*dy)*p[i].fMass;
-				p[j].adot[2] -= (dvz*b - vdotr*dz)*p[i].fMass;
 				}
 			if (p[i].iActive) {
 				p[i].fPot -= a*p[j].fMass;
 				p[i].a[0] += dx*b*p[j].fMass;
 				p[i].a[1] += dy*b*p[j].fMass;
 				p[i].a[2] += dz*b*p[j].fMass;
-				p[i].adot[0] += (dvx*b - vdotr*dx)*p[j].fMass;
-				p[i].adot[1] += (dvy*b - vdotr*dy)*p[j].fMass;
-				p[i].adot[2] += (dvz*b - vdotr*dz)*p[j].fMass;
 				}
 			}
 		}

@@ -19,13 +19,15 @@ struct parameters {
 	int bKDK;
 	int bBinary;
 	int bEpsVel;
-	int bAAdot;
 	int bNonSymp;
 	int bDoDensity;
 	int bSymCool;
 	int bDoGravity;
 	int bFandG;
 	int bHeliocentric;
+	int bLogHalo;
+	int bHernquistSpheroid;
+	int bMiyamotoDisk;
 	int nBucket;
 	int iOutInterval;
 	int iLogInterval;

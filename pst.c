@@ -137,8 +137,6 @@ void pstAddServices(PST pst,MDL mdl)
 		      nThreads*sizeof(int), 0);
 	mdlAddService(mdl,PST_SETNPARTS,pst,pstSetNParts,
 		      sizeof(struct inSetNParts), 0);
-	mdlAddService(mdl,PST_ADOTSTEP,pst,pstAdotStep,
-		      sizeof(struct inAdotStep), 0);
 	mdlAddService(mdl,PST_GRAVEXTERNAL,pst,pstGravExternal,
 				  sizeof(struct inGravExternal),0);
 #ifdef PLANETS
@@ -2313,23 +2311,6 @@ void pstAccelStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
       if (pnOut) *pnOut = 0;
       }
 
-void pstAdotStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
-{
-      LCL *plcl = pst->plcl;
-      struct inAdotStep *in = vin;
-
-      assert(nIn == sizeof(*in));
-      if (pst->nLeaves > 1) {
-              mdlReqService(pst->mdl,pst->idUpper,PST_ADOTSTEP,vin,nIn);
-              pstAdotStep(pst->pstLower,vin,nIn,vout,pnOut);
-              mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
-              }
-      else {
-              pkdAdotStep(plcl->pkd, in->dEta, in->dVelFac);
-              }
-      if (pnOut) *pnOut = 0;
-      }
-
 void pstDtToRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
       LCL *plcl = pst->plcl;
@@ -2457,10 +2438,19 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-	  if (in->bIndirect) {
-		pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass);
-	  }
-	}
+		if (in->bIndirect) {
+			pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass);
+			}
+		if (in->bLogHalo) {
+			pkdLogHalo(plcl->pkd);
+			}
+		if (in->bHernquistSpheroid) {
+			pkdHernquistSpheroid(plcl->pkd);
+			}
+		if (in->bMiyamotoDisk) {
+			pkdMiyamotoDisk(plcl->pkd);
+			}
+		}
 	if (pnOut) *pnOut = 0;
 	}
 

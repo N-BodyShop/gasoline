@@ -498,6 +498,12 @@ struct inGravExternal {
     int bDoSun;
     double dSunMass;
     double aSun[3];
+	/*
+	 ** For external galaxy potential stuff
+	 */
+	int bLogHalo;
+	int bHernquistSpheroid;
+	int bMiyamotoDisk;
 	};
 void pstGravExternal(PST,void *,int,void *,int *);
 
@@ -526,13 +532,6 @@ struct outSphCurrRung {
 void pstSphCurrRung(PST,void *,int,void *,int *);
 
 #endif
-
-#define PST_ADOTSTEP			62
-struct inAdotStep {
-    double dEta;
-    double dVelFac;
-    };
-void pstAdotStep(PST,void *,int,void *,int *);
 
 #ifdef PLANETS
 

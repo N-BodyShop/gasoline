@@ -124,37 +124,34 @@ void MeanVelSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 void initHsmDivv(void *p)
 {
+	((PARTICLE *)p)->fDensity = 0.0;
 	((PARTICLE *)p)->fHsmDivv = 0.0;
-	((PARTICLE *)p)->fRhoDivv = 0.0;
-	((PARTICLE *)p)->fCutVisc = 0.0;
 	}
 
 void combHsmDivv(void *p1,void *p2)
 {
+	((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
 	((PARTICLE *)p1)->fHsmDivv += ((PARTICLE *)p2)->fHsmDivv;
-	((PARTICLE *)p1)->fRhoDivv += ((PARTICLE *)p2)->fRhoDivv;
-	((PARTICLE *)p1)->fCutVisc += ((PARTICLE *)p2)->fCutVisc;
 	}
 
 void postHsmDivv(PARTICLE *p,SMF *smf)
 {
-	p->fHsmDivv *= 0.5*sqrt(p->fBall2);
+	p->fHsmDivv *= 0.5*sqrt(p->fBall2)/p->fDensity;
 	}
 
 void HsmDivv(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	FLOAT ih2,r2,r,rs;
-	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr,fHsmDivv,fRhoDivv,fCutVisc;
-	FLOAT fNorm,fTmp;
+	FLOAT ih2,r2,r,rs,rs1;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr,fHsmDivv,fDensity;
+	FLOAT fNorm,fNorm1,fTmp;
 	int i;
 
 	ih2 = 4.0/p->fBall2;
-	fNorm = M_1_PI*sqrt(ih2)*ih2*ih2;
-	fNorm *= smf->a;	/* converts to physical velocities */
+	fNorm = M_1_PI*sqrt(ih2)*ih2;
+	fNorm1 = fNorm*ih2*smf->a;	/* converts to physical velocities */
+	fDensity = 0.0;
 	fHsmDivv = 0.0;
-	fRhoDivv = 0.0;
-	fCutVisc = 0.0;
 	for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
 		r2 = nnList[i].fDist2*ih2;
@@ -162,38 +159,38 @@ void HsmDivv(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dy = nnList[i].dy;
 		dz = nnList[i].dz;
 		r = sqrt(r2);
+		rs = 2.0 - r;
 		if (r2 < 1.0) {
-			rs = -3 + 2.25*r;
+			rs = (1.0 - 0.75*rs*r2);
+			rs1 = -3 + 2.25*r;
 			}
 		else {
-			rs = 2.0 - r;
-			rs *= -0.75*rs/r;
+			rs1 = -0.75*rs*rs/r;
+			rs = 0.25*rs*rs*rs;
 			}
 		dvx = p->vPred[0] - q->vPred[0];
 		dvy = p->vPred[1] - q->vPred[1];
 		dvz = p->vPred[2] - q->vPred[2];
 		dvdotdr = dvx*dx + dvy*dy + dvz*dz + nnList[i].fDist2*smf->H;
-		rs *= dvdotdr;
-		fRhoDivv += rs*q->fMass;
-		if (dvdotdr < 0) fCutVisc += rs*q->fMass;
-		fHsmDivv -= rs*q->fMass/q->fDensity;
+		rs1 *= dvdotdr;
+		fDensity += rs*q->fMass;
+		fHsmDivv -= rs1*q->fMass;
  		}
-	p->fRhoDivv = fNorm*fRhoDivv;
-	p->fCutVisc = fNorm*fCutVisc;
-	p->fHsmDivv = fNorm*fHsmDivv;
+	p->fDensity = fNorm*fDensity;
+	p->fHsmDivv = fNorm1*fHsmDivv;
 	}
 
 void HsmDivvSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	FLOAT ih2,r2,r,rs;
+	FLOAT ih2,r2,r,rs,rs1;
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	FLOAT fNorm;
+	FLOAT fNorm,fNorm1;
 	int i;
 
 	ih2 = 4.0/p->fBall2;
-	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2*ih2;
-	fNorm *= smf->a;		/* converts to physical velocities */
+	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
+	fNorm1 = fNorm*ih2*smf->a;		/* converts to physical velocities */
 	for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
 		r2 = nnList[i].fDist2*ih2;
@@ -201,95 +198,27 @@ void HsmDivvSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dy = nnList[i].dy;
 		dz = nnList[i].dz;
 		r = sqrt(r2);
+		rs = 2.0 - r;
 		if (r2 < 1.0) {
-			rs = -3 + 2.25*r;
+			rs = (1.0 - 0.75*rs*r2);
+			rs1 = -3 + 2.25*r;
 			}
 		else {
-			rs = 2.0 - r;
-			rs *= -0.75*rs/r;
+			rs1 = -0.75*rs*rs/r;
+			rs = 0.25*rs*rs*rs;
 			}
 		rs *= fNorm;
+		rs1 *= fNorm1;
 		dvx = p->vPred[0] - q->vPred[0];
 		dvy = p->vPred[1] - q->vPred[1];
 		dvz = p->vPred[2] - q->vPred[2];
 		dvdotdr = dvx*dx + dvy*dy + dvz*dz + nnList[i].fDist2*smf->H;
-		rs *= dvdotdr;
-		p->fRhoDivv += rs*q->fMass;
-		p->fHsmDivv -= rs*q->fMass/q->fDensity;
-		q->fRhoDivv += rs*p->fMass;
-		q->fHsmDivv -= rs*p->fMass/p->fDensity;
-		if (dvdotdr < 0) {
-			p->fCutVisc += rs*q->fMass;
-			q->fCutVisc += rs*p->fMass;
-			}
+		rs1 *= dvdotdr;
+		p->fDensity += rs*q->fMass;
+		q->fDensity += rs*p->fMass;
+		p->fHsmDivv -= rs1*q->fMass;
+		q->fHsmDivv -= rs1*p->fMass;
  		}
-	}
-
-
-void initGeomBV(void *p)
-{
-	((PARTICLE *)p)->A = 0.0;
-	((PARTICLE *)p)->B = 0.0;
-	}
-
-void combGeomBV(void *p1,void *p2)
-{
-	((PARTICLE *)p1)->A += ((PARTICLE *)p2)->A;
-	((PARTICLE *)p1)->B += ((PARTICLE *)p2)->B;
-	}
-
-void postGeomBV(PARTICLE *p,SMF *smf)
-{
-	p->A *= (smf->gamma-1)/sqrt(p->fDensity);
-	if (p->fHsmDivv < 0) {
-		p->A -= 0.5*smf->algam*p->fHsmDivv/p->fDensity*p->fCutVisc;
-		p->B += 0.5*smf->beta*p->fHsmDivv*p->fHsmDivv/p->fDensity*p->fCutVisc;
-		}
-	}
-
-void GeomBVSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
-{
-	PARTICLE *q;
-	FLOAT ih2,r2,r,rs;
-	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	FLOAT fNorm;
-	int i;
-
-	ih2 = 4.0/p->fBall2;
-	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2*ih2;
-	for (i=0;i<nSmooth;++i) {
-		q = nnList[i].pPart;
-		r2 = nnList[i].fDist2*ih2;
-		dx = nnList[i].dx;
-		dy = nnList[i].dy;
-		dz = nnList[i].dz;
-		r = sqrt(r2);
-		if (r2 < 1.0) {
-			rs = -3 + 2.25*r;
-			}
-		else {
-			rs = 2.0 - r;
-			rs *= -0.75*rs/r;
-			}
-		rs *= fNorm;
-		dvx = p->vPred[0] - q->vPred[0];
-		dvy = p->vPred[1] - q->vPred[1];
-		dvz = p->vPred[2] - q->vPred[2];
-		dvdotdr = dvx*dx + dvy*dy + dvz*dz + nnList[i].fDist2*smf->H;
-		rs *= dvdotdr;
-		p->A += rs*q->fMass*sqrt(q->u/q->fDensity);
-		q->A += rs*p->fMass*sqrt(p->u/p->fDensity);
-		if (dvdotdr < 0) {
-			if (q->fHsmDivv < 0) {
-				p->B += 0.5*rs*q->fMass/q->fDensity*q->fHsmDivv*
-					(smf->beta*q->fHsmDivv - smf->algam*sqrt(q->u));
-				}
-			if (p->fHsmDivv < 0) {
-				q->B += 0.5*rs*p->fMass/p->fDensity*p->fHsmDivv*
-					(smf->beta*p->fHsmDivv - smf->algam*sqrt(p->u));
-				}
-			}
-		}
 	}
 
 

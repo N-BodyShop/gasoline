@@ -29,7 +29,6 @@
 #define OUT_VPRED_VECTOR	4
 
 #endif
-#define OUT_ADOT_VECTOR		5
 
 void pkdOutArray(PKD,char *,int);
 void pkdOutVector(PKD,char *,int,int);

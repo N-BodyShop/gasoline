@@ -147,9 +147,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bEpsVel = 1;
 	prmAddParam(msr->prm,"bEpsVel",0,&msr->param.bEpsVel,sizeof(int),
 				"ev", "<Epsilon on V timestepping>");
-	msr->param.bAAdot = 0;
-	prmAddParam(msr->prm,"bAAdot",0,&msr->param.bAAdot,sizeof(int),
-				"aad", "<A on Adot timestepping>");
 	msr->param.bNonSymp = 0;
 	prmAddParam(msr->prm,"bNonSymp",0,&msr->param.bNonSymp,sizeof(int),
 				"ns", "<Non-symplectic density stepping>");
@@ -256,6 +253,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dCentMass = 1.0;
 	prmAddParam(msr->prm,"dCentMass",2,&msr->param.dCentMass,sizeof(double),
 				"fgm","specifies the central mass for Keplerian orbits");
+	msr->param.bLogHalo = 0;
+	prmAddParam(msr->prm,"bLogHalo",0,&msr->param.bLogHalo,
+				sizeof(int),"halo","use/don't use galaxy halo = -halo");
+	msr->param.bHernquistSpheroid = 0;
+	prmAddParam(msr->prm,"bHernquistSpheroid",0,&msr->param.bHernquistSpheroid,
+				sizeof(int),"hspher","use/don't use galaxy Hernquist Spheroid = -hspher");
+	msr->param.bMiyamotoDisk = 0;
+	prmAddParam(msr->prm,"bMiyamotoDisk",0,&msr->param.bMiyamotoDisk,
+				sizeof(int),"mdisk","use/don't use galaxy Miyamoto Disk = -mdisk");
 #ifdef GASOLINE
 	msr->param.bGeometric = 1;
 	prmAddParam(msr->prm,"bGeometric",0,&msr->param.bGeometric,sizeof(int),
@@ -522,7 +528,6 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dEta: %g",msr->param.dEta);
 	fprintf(fp," iMaxRung: %d",msr->param.iMaxRung);
 	fprintf(fp," bEpsVel: %d",msr->param.bEpsVel);
-	fprintf(fp," bAAdot: %d",msr->param.bAAdot);
 	fprintf(fp," bNonSymp: %d",msr->param.bNonSymp);
 #ifdef GASOLINE
 	fprintf(fp,"\n# SPH: bGeometric: %d",msr->param.bGeometric);
@@ -1692,7 +1697,8 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	 ** This may contain a huge list of flags in the future, so we may want to 
 	 ** replace this test with something like bAnyExternal.
 	 */
-	if (msr->param.bHeliocentric) {
+	if (msr->param.bHeliocentric || msr->param.bLogHalo || 
+		msr->param.bHernquistSpheroid || msr->param.bMiyamotoDisk) {
 		/*
 		 ** Only allow inclusion of solar terms if we are in Heliocentric 
 		 ** coordinates.
@@ -1701,6 +1707,9 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bDoSun = bDoSun;  /* Treat the Sun explicitly. */
 		inExt.dSunMass = msr->param.dCentMass;
 		for (j=0;j<3;++j) inExt.aSun[j] = out.aSun[j];
+		inExt.bLogHalo = msr->param.bLogHalo;
+		inExt.bHernquistSpheroid = msr->param.bHernquistSpheroid;
+		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
 		}
 	/*
@@ -2271,11 +2280,17 @@ double msrReadCheck(MSR msr,int *piStep)
 		FDL_read(fdl,"bFandG",&msr->param.bFandG);
 		FDL_read(fdl,"bHeliocentric",&msr->param.bHeliocentric);
 		FDL_read(fdl,"dCentMass",&msr->param.dCentMass);
+		FDL_read(fdl,"bLogHalo",&msr->param.bLogHalo);
+		FDL_read(fdl,"bHernquistSpheroid",&msr->param.bHernquistSpheroid);
+		FDL_read(fdl,"bMiyamotoDisk",&msr->param.bMiyamotoDisk);
 		}
 	else {
 		msr->param.bFandG = 0;
 		msr->param.bHeliocentric = 0;
 		msr->param.dCentMass = 0.0;
+		msr->param.bLogHalo = 0;
+		msr->param.bHernquistSpheroid = 0;
+		msr->param.bMiyamotoDisk = 0;
 		}
 	
 	if (msr->param.bVerbose) {
@@ -2454,6 +2469,9 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"bBinary",&msr->param.bBinary);
 	FDL_write(fdl,"bFandG",&msr->param.bFandG);
 	FDL_write(fdl,"bHeliocentric",&msr->param.bHeliocentric);
+	FDL_write(fdl,"bLogHalo",&msr->param.bLogHalo);
+	FDL_write(fdl,"bHernquistSpheroid",&msr->param.bHernquistSpheroid);
+	FDL_write(fdl,"bMiyamotoDisk",&msr->param.bMiyamotoDisk);
 	FDL_write(fdl,"nBucket",&msr->param.nBucket);
 	FDL_write(fdl,"iOutInterval",&msr->param.iOutInterval);
 	FDL_write(fdl,"iLogInterval",&msr->param.iLogInterval);
@@ -2785,23 +2803,6 @@ void msrAccelStep(MSR msr, double dTime)
     }
 
 void
-msrAdotStep(MSR msr, double dTime)
-{
-    struct inAdotStep in;
-    double a;
-
-    in.dEta = msrEta(msr);
-    a = msrTime2Exp(msr,dTime);
-    if(msr->param.bCannonical) {
-	in.dVelFac = 1.0/(a*a);
-	}
-    else {
-	in.dVelFac = 1.0;
-	}
-    pstAdotStep(msr->pst, &in, sizeof(in), NULL, NULL);
-    }
-
-void
 msrInitDt(MSR msr)
 {
     struct inInitDt in;
@@ -2926,9 +2927,6 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 
 			msrActiveRung(msr, iRung, 1);
 			msrInitDt(msr);
-			if(msr->param.bAAdot) {
-			    msrAdotStep(msr, dTime);
-			    }
 			if(msr->param.bEpsVel) {
 			    msrAccelStep(msr, dTime);
 			    }
@@ -3022,8 +3020,6 @@ void msrTopStepKDK(MSR msr,
 		msrInitDt(msr);
 		if(msr->param.bEpsVel)
 		    msrAccelStep(msr, dTime);
-		if(msr->param.bAAdot)
-		    msrAdotStep(msr, dTime);
 #ifdef SMOOTH_STEP
 		msrBuildTree(msr,0,dMass,1);
 		msrSmooth(msr,dTime,SMX_TIMESTEP,0);
@@ -3408,9 +3404,6 @@ void msrDoCollisions(MSR msr,double dTime,double dDelta)
 				if (dTime == 0) fp = fopen(msr->param.achCollLog,"w");
 				else fp = fopen(msr->param.achCollLog,"a");
 				assert(fp);
-/*  DCR, what was supposed to be here?
-				p1->id.iOrder,p2->id.iOrder);
-*/
 				fprintf(fp,"COLLISION:T=%e\n",dTime + find.dImpactTime);
 				fprintf(fp,"***1:pid=%i,idx=%i,ord=%i,M=%e,R=%e,dt=%e,"
 						"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",

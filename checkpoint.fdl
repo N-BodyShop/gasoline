@@ -89,6 +89,15 @@ FDL checkpoint_5 (
 			ELEMENT bHeliocentric (
 				TYPE int
 				)	
+			ELEMENT bLogHalo (
+				TYPE int
+				)	
+			ELEMENT bHernquistSpheroid (
+				TYPE int
+				)	
+			ELEMENT bMiyamotoDisk (
+				TYPE int
+				)	
 			ELEMENT nBucket (
 				TYPE int
 				)
