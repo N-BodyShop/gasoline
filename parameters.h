@@ -39,6 +39,7 @@ struct parameters {
 	int nSmooth;
 	int iMaxRung;
 	int nSuperCool;
+        int iWallRunTime;
 	double dEta;
 	double dExtraStore;
 	double dSoft;

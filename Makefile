@@ -47,12 +47,22 @@ KSR_LD_FLAGS = -para
 KSR_LIBMDL = erf.o v_sqrt1.ksr.o $(KSR_MDL)/mdl.o -lm -lrpc
 
 #
+#       SGI defines
+#
+SGI_MDL = ../mdl/mpi
+SGI_CFLAGS = -O3 -I$(SGI_MDL) $(CODEDEF) -mips4 -64 -r10000
+SGI_LD_FLAGS = -mips4 -64 -r10000
+SGI_LIBMDL = $(SGI_MDL)/mdl.o -lmpi -lm
+SGI_MDL_CFLAGS = -g -O3 -mips4 -64 -r10000
+
+#
 #       SP1/2 defines
 #
 SPX_MDL = ../mdl/mpi
 SPX_CFLAGS = -O3 -I$(SPX_MDL) $(CODEDEF)
 SPX_LD_FLAGS = 
 SPX_LIBMDL = v_sqrt1.o $(SPX_MDL)/mdl.o -lm
+SPX_MDL_CFLAGS = -g -O3
 
 #
 #       T3D MPP defines
@@ -97,7 +107,7 @@ EXTRA_OBJ = 	erf.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o hyperlib.o
 
 default:	
 	@echo "Please tell me what architecture to make."
-	@echo "Choices are pvm, null, pthread, ksr, spx, t3d and t3dmpi."
+	@echo "Choices are pvm, null, pthread, ksr, spx, sgi, t3d, t3dmpi, and t3empi."
 
 $(XDIR):
 	- mkdir $(BDIR)
@@ -136,8 +146,12 @@ ksr:
 	make $(EXE) "CFLAGS=$(KSR_CFLAGS)" "LD_FLAGS=$(KSR_LD_FLAGS)" "MDL=$(KSR_MDL)" "LIBMDL=$(KSR_LIBMDL)"
 
 spx:
-	cd $(SPX_MDL); make
+	cd $(SPX_MDL); make CC=mpicc "CC_FLAGS=$(SPX_MDL_CFLAGS)"
 	make $(EXE) CC=mpicc "CFLAGS=$(SPX_CFLAGS)" "LD_FLAGS=$(SPX_LD_FLAGS)" "MDL=$(SPX_MDL)" "LIBMDL=$(SPX_LIBMDL)"
+
+sgi:
+	cd $(SGI_MDL); make CC=cc "CC_FLAGS=$(SGI_MDL_CFLAGS)"
+	make $(EXE) "CFLAGS=$(SGI_CFLAGS)" "LD_FLAGS=$(SGI_LD_FLAGS)" "MDL=$(SGI_MDL)" "LIBMDL=$(SGI_LIBMDL)"
 
 t3d:
 	cd $(T3D_MDL); make

@@ -42,6 +42,7 @@ int main(int argc,char **argv)
 	double dMass;
 	int nActive;
 	double dMultiEff;
+	long lSec,lStart;
 
 #ifdef TINY_PTHREAD_STACK
 	static int first = 1;
@@ -83,6 +84,7 @@ int main(int argc,char **argv)
 	setbuf(stdout,(char *)NULL);
 #endif
 
+	lStart=time(0);
 	mdlInitialize(&mdl,argv,main_ch);
 	for(argc = 0; argv[argc]; argc++); /* some MDLs can trash argv */
 	msrInitialize(&msr,mdl,argc,argv);
@@ -182,6 +184,8 @@ int main(int argc,char **argv)
 				(void) fflush(fpLog);
 				}
 			}
+		
+		fprintf(stderr,"WallRunTime: %d\n",msr->param.iWallRunTime);
 
 		for (iStep=1;iStep<=msrSteps(msr);++iStep) {
 			if (msrComove(msr)) {
@@ -189,6 +193,7 @@ int main(int argc,char **argv)
 				}
 			if (msrKDK(msr)) {
 				dMultiEff = 0.0;
+				lSec = time(0);
 				msrTopStepKDK(msr, iStep-1, dTime,
 					      msrDelta(msr), 0, 0, 1,
 					      &dMultiEff, &dWMax,
@@ -203,14 +208,16 @@ int main(int argc,char **argv)
 				 */
 				msrCalcE(msr,MSR_STEP_ECOSMO,dTime,&E,&T,&U);
 				msrMassCheck(msr,dMass,"After msrCalcE in KDK");
+				lSec = time(0) - lSec;
 				if (msrLogInterval(msr) && iStep%msrLogInterval(msr) == 0) {
 					(void) fprintf(fpLog,"%e %e %e %e %e %i %e %e %e %e\n",
 								   dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,
-								   iSec,dWMax,dIMax,dEMax,dMultiEff);
+								   lSec,dWMax,dIMax,dEMax,dMultiEff);
 					(void) fflush(fpLog);
 					}
 				}
 			else {
+			        lSec = time(0);
 				msrTopStepDKD(msr, iStep-1, dTime,
 					      msrDelta(msr), &dMultiEff);
 				msrRungStats(msr);
@@ -233,12 +240,13 @@ int main(int argc,char **argv)
 						msrMassCheck(msr,dMass,"After msrCalcE in DKD-log");
 						if (msrLogInterval(msr) && msrLogInterval(msr)%iStep == 0) {
 							(void) fprintf(fpLog,"%e %e %e %e %e %i %e %e %e %e\n",dTime,
-										   1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,
+										   1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,time(0)-lSec,
 										   dWMax,dIMax,dEMax,dMultiEff);
 							(void) fflush(fpLog);
 							}
 						}
 					}
+				lSec = time(0) - lSec;
 				}
 			if (msrOutTime(msr,dTime)) {
 				if (msrDoDensity(msr)) {
@@ -308,8 +316,11 @@ int main(int argc,char **argv)
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
 					msrMassCheck(msr,dMass,"After msrOutArray in OutFinal");
 					}
+				msrWriteCheck(msr,dTime,iStep);
+				msrMassCheck(msr,dMass,"After msrWriteCheck");
 				}
 			else if (msrOutInterval(msr) > 0) {
+			    
 				if (iStep%msrOutInterval(msr) == 0) {
 					if (msrDoDensity(msr)) {
 						msrActiveRung(msr,0,1);
@@ -341,7 +352,17 @@ int main(int argc,char **argv)
 						msrMassCheck(msr,dMass,"After msrOutArray in OutInt");
 						}
 					}
-				}
+			}
+			if (msr->param.iWallRunTime > 0) {
+			    if (msr->param.iWallRunTime*60 - (time(0)-lStart) < ((int) (lSec*1.5)) ) {
+				printf("RunTime limit exceeded.  Writing checkpoint and exiting.\n");
+				printf("    iWallRunTime(sec): %d   Time running: %ld   Last step: %ld\n",
+				       msr->param.iWallRunTime*60,time(0)-lStart,lSec);
+				msrWriteCheck(msr,dTime,iStep);
+				msrMassCheck(msr,dMass,"After msrWriteCheck");
+				break;
+			    }
+			}
 			if (msrCheckInterval(msr) && iStep%msrCheckInterval(msr) == 0 &&
 				iStep != msrSteps(msr)) {
 				/*

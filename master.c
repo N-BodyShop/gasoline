@@ -262,6 +262,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bMiyamotoDisk = 0;
 	prmAddParam(msr->prm,"bMiyamotoDisk",0,&msr->param.bMiyamotoDisk,
 				sizeof(int),"mdisk","use/don't use galaxy Miyamoto Disk = -mdisk");
+	msr->param.iWallRunTime = 0;
+	prmAddParam(msr->prm,"iWallRunTime",1,&msr->param.iWallRunTime,
+		    sizeof(int),"wall","<Maximum Wallclock time to run> = 0 = infinite");
 #ifdef GASOLINE
 	msr->param.bGeometric = 1;
 	prmAddParam(msr->prm,"bGeometric",0,&msr->param.bGeometric,sizeof(int),
