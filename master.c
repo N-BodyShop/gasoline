@@ -509,7 +509,7 @@ double msrReadTipsy(MSR msr)
 			if (!prmArgSpecified(msr->prm,"nSteps") &&
 				prmArgSpecified(msr->prm,"dDelta")) {
 				aTo = 1.0/(msr->dRedTo + 1.0);
-				tTo = msrTime2Exp(msr,aTo);
+				tTo = msrExp2Time(msr,aTo);
 				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
 					   tTo,1.0/aTo-1.0,aTo);
 				if (tTo < dTime) {
@@ -523,7 +523,7 @@ double msrReadTipsy(MSR msr)
 			else if (!prmArgSpecified(msr->prm,"dDelta") &&
 					 prmArgSpecified(msr->prm,"nSteps")) {
 				aTo = 1.0/(msr->dRedTo + 1.0);
-				tTo = msrTime2Exp(msr,aTo);
+				tTo = msrExp2Time(msr,aTo);
 				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
 					   tTo,1.0/aTo-1.0,aTo);
 				if (tTo < dTime) {
