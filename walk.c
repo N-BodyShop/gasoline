@@ -9,7 +9,6 @@
 
 #define SETILIST(iOrder,ilcn,pkdn,x,y,z)\
 {\
-	double tr;\
 	switch (iOrder) {\
 	case 4:\
 		ilcn.xxxx = pkdn->mom.Hxxxx;\
@@ -21,12 +20,12 @@
 		ilcn.xxyy = pkdn->mom.Hxxyy;\
 		ilcn.xxyz = pkdn->mom.Hxxyz;\
 		ilcn.xyyz = pkdn->mom.Hxyyz;\
-		ilcn.xxzz = -pkdn->mom.Hxxxx - pkdn->mom.Hxxyy;\
-		ilcn.xyzz = -pkdn->mom.Hxxxy - pkdn->mom.Hxyyy;\
-		ilcn.xzzz = -pkdn->mom.Hxxxz - pkdn->mom.Hxyyz;\
-		ilcn.yyzz = -pkdn->mom.Hxxyy - pkdn->mom.Hyyyy;\
-		ilcn.yzzz = -pkdn->mom.Hxxyz - pkdn->mom.Hyyyz;\
-		ilcn.zzzz = -ilcn.xxzz - ilcn.yyzz;\
+		ilcn.xxzz = pkdn->mom.Hxxzz;\
+		ilcn.xyzz = pkdn->mom.Hxyzz;\
+		ilcn.xzzz = pkdn->mom.Hxzzz;\
+		ilcn.yyzz = pkdn->mom.Hyyzz;\
+		ilcn.yzzz = pkdn->mom.Hyzzz;\
+		ilcn.zzzz = pkdn->mom.Hzzzz;\
 	case 3:\
 		ilcn.xxx = pkdn->mom.Oxxx;\
 		ilcn.xyy = pkdn->mom.Oxyy;\
@@ -35,14 +34,13 @@
 		ilcn.xxz = pkdn->mom.Oxxz;\
 		ilcn.yyz = pkdn->mom.Oyyz;\
 		ilcn.xyz = pkdn->mom.Oxyz;\
-		ilcn.xzz = -pkdn->mom.Oxxx - pkdn->mom.Oxyy;\
-		ilcn.yzz = -pkdn->mom.Oxxy - pkdn->mom.Oyyy;\
-		ilcn.zzz = -pkdn->mom.Oxxz - pkdn->mom.Oyyz;\
+		ilcn.xzz = pkdn->mom.Oxzz;\
+		ilcn.yzz = pkdn->mom.Oyzz;\
+		ilcn.zzz = pkdn->mom.Ozzz;\
 	case 2:\
-		tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;\
-		ilcn.xx = pkdn->mom.Qxx - tr/3.0;\
-		ilcn.yy = pkdn->mom.Qyy - tr/3.0;\
-		ilcn.zz = pkdn->mom.Qzz - tr/3.0;\
+		ilcn.xx = pkdn->mom.Qxx;\
+		ilcn.yy = pkdn->mom.Qyy;\
+		ilcn.zz = pkdn->mom.Qzz;\
 		ilcn.xy = pkdn->mom.Qxy;\
 		ilcn.xz = pkdn->mom.Qxz;\
 		ilcn.yz = pkdn->mom.Qyz;\

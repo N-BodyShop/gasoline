@@ -4,6 +4,7 @@
 #include "mdl.h"
 #include "pkd.h"
 #include "grav.h"
+#include "meval.h"
 #include "qeval.h"
 
 #define NATIVE_SQRT (defined(_MIPS_ISA) && (_MIPS_ISA == _MIPS_ISA_MIPS4)) 
@@ -136,7 +137,11 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			gam[3] = 5*gam[2]*dir2;
 			gam[4] = 7*gam[3]*dir2;
 			gam[5] = 9*gam[4]*dir2;
+#ifdef COMPLETE_LOCAL
+			MEVAL(iOrder,ilcn[j],gam,dx,dy,dz,ax,ay,az,fPot);
+#else
 			QEVAL(iOrder,ilcn[j],gam,dx,dy,dz,ax,ay,az,fPot);
+#endif
 			}
 		p[i].fPot = fPot;
 		p[i].a[0] = ax;

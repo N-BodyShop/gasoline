@@ -1255,6 +1255,12 @@ void pstCalcCell(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			out->mom.Hxxyy += occ.mom.Hxxyy;
 			out->mom.Hxxyz += occ.mom.Hxxyz;
 			out->mom.Hxyyz += occ.mom.Hxyyz;
+			out->mom.Hxxzz += occ.mom.Hxxzz;
+			out->mom.Hxyzz += occ.mom.Hxyzz;
+			out->mom.Hxzzz += occ.mom.Hxzzz;
+			out->mom.Hyyzz += occ.mom.Hyyzz;
+			out->mom.Hyzzz += occ.mom.Hyzzz;
+			out->mom.Hzzzz += occ.mom.Hzzzz;
 			out->mom.B6 += occ.mom.B6;
 		case 3:
 			out->mom.Oxxx += occ.mom.Oxxx;
@@ -1264,6 +1270,9 @@ void pstCalcCell(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			out->mom.Oxxz += occ.mom.Oxxz;
 			out->mom.Oyyz += occ.mom.Oyyz;
 			out->mom.Oxyz += occ.mom.Oxyz;
+			out->mom.Oxzz += occ.mom.Oxzz;
+			out->mom.Oyzz += occ.mom.Oyzz;
+			out->mom.Ozzz += occ.mom.Ozzz;
 			out->mom.B5 += occ.mom.B5;
 		default:
 			out->mom.Qxx += occ.mom.Qxx;
@@ -1291,6 +1300,12 @@ void pstCalcCell(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			out->mom.Hxxyy = pcc.Hxxyy;
 			out->mom.Hxxyz = pcc.Hxxyz;
 			out->mom.Hxyyz = pcc.Hxyyz;
+			out->mom.Hxxzz = pcc.Hxxzz;
+			out->mom.Hxyzz = pcc.Hxyzz;
+			out->mom.Hxzzz = pcc.Hxzzz;
+			out->mom.Hyyzz = pcc.Hyyzz;
+			out->mom.Hyzzz = pcc.Hyzzz;
+			out->mom.Hzzzz = pcc.Hzzzz;
 			out->mom.B6 = pcc.B6;
 		case 3:	
 			out->mom.Oxxx = pcc.Oxxx;
@@ -1300,6 +1315,9 @@ void pstCalcCell(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			out->mom.Oxxz = pcc.Oxxz;
 			out->mom.Oyyz = pcc.Oyyz;
 			out->mom.Oxyz = pcc.Oxyz;
+			out->mom.Oxzz = pcc.Oxzz;
+			out->mom.Oyzz = pcc.Oyzz;
+			out->mom.Ozzz = pcc.Ozzz;
 			out->mom.B5 = pcc.B5;
 		default:
 			out->mom.Qxx = pcc.Qxx;

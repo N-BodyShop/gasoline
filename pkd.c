@@ -570,6 +570,12 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,float *rcm,int iOrder,
 		pcc->Hxxyy = 0.0;
 		pcc->Hxxyz = 0.0;
 		pcc->Hxyyz = 0.0;
+		pcc->Hxxzz = 0.0;
+		pcc->Hxyzz = 0.0;
+		pcc->Hxzzz = 0.0;
+		pcc->Hyyzz = 0.0;
+		pcc->Hyzzz = 0.0;
+		pcc->Hzzzz = 0.0;
 		pcc->B6 = 0.0;
 	case 3:
 		pcc->Oxxx = 0.0;
@@ -579,6 +585,9 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,float *rcm,int iOrder,
 		pcc->Oxxz = 0.0;
 		pcc->Oyyz = 0.0;
 		pcc->Oxyz = 0.0;
+		pcc->Oxzz = 0.0;
+		pcc->Oyzz = 0.0;
+		pcc->Ozzz = 0.0;
 		pcc->B5 = 0.0;
 	default:
 		pcc->Qxx = 0.0;
@@ -604,6 +613,14 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,float *rcm,int iOrder,
 		d2 = dx*dx + dy*dy + dz*dz;
 		d1 = sqrt(d2);
 		if (d1 > pcc->Bmax) pcc->Bmax = d1;
+		pcc->B2 += m*d2;
+		pcc->B3 += m*d2*d1;
+		pcc->B4 += m*d2*d2;
+		pcc->B5 += m*d2*d2*d1;
+		pcc->B6 += m*d2*d2*d2;
+#ifdef COMPLETE_LOCAL
+		d2 = 0.0;
+#endif
 		switch (iOrder) {
 		case 4:
 			/*
@@ -618,7 +635,12 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,float *rcm,int iOrder,
 			pcc->Hxxyy += m*(dx*dx*dy*dy - 1.0/7.0*d2*(dx*dx + dy*dy - 0.2*d2));
 			pcc->Hxxyz += m*(dx*dx*dy*dz - 1.0/7.0*d2*dy*dz);
 			pcc->Hxyyz += m*(dx*dy*dy*dz - 1.0/7.0*d2*dx*dz);
-			pcc->B6 += m*d2*d2*d2;
+			pcc->Hxxzz += m*(dx*dx*dz*dz - 1.0/7.0*d2*(dx*dx + dz*dz - 0.2*d2));
+			pcc->Hxyzz += m*(dx*dy*dz*dz - 1.0/7.0*d2*dx*dy);
+			pcc->Hxzzz += m*(dx*dz*dz*dz - 3.0/7.0*d2*dx*dz);
+			pcc->Hyyzz += m*(dy*dy*dz*dz - 1.0/7.0*d2*(dy*dy + dz*dz - 0.2*d2));
+			pcc->Hyzzz += m*(dy*dz*dz*dz - 3.0/7.0*d2*dy*dz);
+			pcc->Hzzzz += m*(dz*dz*dz*dz - 6.0/7.0*d2*(dz*dz - 0.1*d2));
 		case 3:
 			/*
 			 ** Calculate reduced octopole moment...
@@ -630,7 +652,9 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,float *rcm,int iOrder,
 			pcc->Oxxz += m*(dx*dx*dz - 0.2*d2*dz);
 			pcc->Oyyz += m*(dy*dy*dz - 0.2*d2*dz);
 			pcc->Oxyz += m*dx*dy*dz;
-			pcc->B5 += m*d2*d2*d1;
+			pcc->Oxzz += m*(dx*dz*dz - 0.2*d2*dx);
+			pcc->Oyzz += m*(dy*dz*dz - 0.2*d2*dy);
+			pcc->Ozzz += m*(dz*dz*dz - 0.6*d2*dz);;
 		default:
 			/*
 			 ** Calculate quadrupole moment...
@@ -641,9 +665,6 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,float *rcm,int iOrder,
 			pcc->Qxy += m*dx*dy;
 			pcc->Qxz += m*dx*dz;
 			pcc->Qyz += m*dy*dz;
-			pcc->B2 += m*d2;
-			pcc->B3 += m*d2*d1;
-			pcc->B4 += m*d2*d2;
 			}
 		}
 	}
@@ -1280,6 +1301,7 @@ void pkdCalcRoot(PKD pkd,struct ilCellNewt *pcc)
 	KDN *pkdn;
 	int pj;
 	double m,dx,dy,dz;
+	double d2;
 
 	/*
 	 ** Initialize moments.
@@ -1318,37 +1340,39 @@ void pkdCalcRoot(PKD pkd,struct ilCellNewt *pcc)
 		dx = pkd->pStore[pj].r[0] - pkdn->r[0];
 		dy = pkd->pStore[pj].r[1] - pkdn->r[1];
 		dz = pkd->pStore[pj].r[2] - pkdn->r[2];
+#ifdef REDUCED_EWALD
+		d2 = dx*dx + dy*dy + dz*dz;
+#else
+		d2 = 0.0;
+#endif
+		pcc->xxxx += m*(dx*dx*dx*dx - 6.0/7.0*d2*(dx*dx - 0.1*d2));
+		pcc->xyyy += m*(dx*dy*dy*dy - 3.0/7.0*d2*dx*dy);
+		pcc->xxxy += m*(dx*dx*dx*dy - 3.0/7.0*d2*dx*dy);
+		pcc->yyyy += m*(dy*dy*dy*dy - 6.0/7.0*d2*(dy*dy - 0.1*d2));
+		pcc->xxxz += m*(dx*dx*dx*dz - 3.0/7.0*d2*dx*dz);
+		pcc->yyyz += m*(dy*dy*dy*dz - 3.0/7.0*d2*dy*dz);
+		pcc->xxyy += m*(dx*dx*dy*dy - 1.0/7.0*d2*(dx*dx + dy*dy - 0.2*d2));
+		pcc->xxyz += m*(dx*dx*dy*dz - 1.0/7.0*d2*dy*dz);
+		pcc->xyyz += m*(dx*dy*dy*dz - 1.0/7.0*d2*dx*dz);
+		pcc->xxzz += m*(dx*dx*dz*dz - 1.0/7.0*d2*(dx*dx + dz*dz - 0.2*d2));
+		pcc->xyzz += m*(dx*dy*dz*dz - 1.0/7.0*d2*dx*dy);
+		pcc->xzzz += m*(dx*dz*dz*dz - 3.0/7.0*d2*dx*dz);
+		pcc->yyzz += m*(dy*dy*dz*dz - 1.0/7.0*d2*(dy*dy + dz*dz - 0.2*d2));
+		pcc->yzzz += m*(dy*dz*dz*dz - 3.0/7.0*d2*dy*dz);
+		pcc->zzzz += m*(dz*dz*dz*dz - 6.0/7.0*d2*(dz*dz - 0.1*d2));
 		/*
-		 ** Calculate COMPLETE hexadecapole moment...
+		 ** Calculate octopole moment...
 		 */
-		pcc->xxxx += m*dx*dx*dx*dx;
-		pcc->xyyy += m*dx*dy*dy*dy;
-		pcc->xxxy += m*dx*dx*dx*dy;
-		pcc->yyyy += m*dy*dy*dy*dy;
-		pcc->xxxz += m*dx*dx*dx*dz;
-		pcc->yyyz += m*dy*dy*dy*dz;
-		pcc->xxyy += m*dx*dx*dy*dy;
-		pcc->xxyz += m*dx*dx*dy*dz;
-		pcc->xyyz += m*dx*dy*dy*dz;
-		pcc->xxzz += m*dx*dx*dz*dz;
-		pcc->xyzz += m*dx*dy*dz*dz;
-		pcc->xzzz += m*dx*dz*dz*dz;
-		pcc->yyzz += m*dy*dy*dz*dz;
-		pcc->yzzz += m*dy*dz*dz*dz;
-		pcc->zzzz += m*dz*dz*dz*dz;
-		/*
-		 ** Calculate COMPLETE octopole moment...
-		 */
-		pcc->xxx += m*dx*dx*dx;
-		pcc->xyy += m*dx*dy*dy;
-		pcc->xxy += m*dx*dx*dy;
-		pcc->yyy += m*dy*dy*dy;
-		pcc->xxz += m*dx*dx*dz;
-		pcc->yyz += m*dy*dy*dz;
+		pcc->xxx += m*(dx*dx*dx - 0.6*d2*dx);
+		pcc->xyy += m*(dx*dy*dy - 0.2*d2*dx);
+		pcc->xxy += m*(dx*dx*dy - 0.2*d2*dy);
+		pcc->yyy += m*(dy*dy*dy - 0.6*d2*dy);
+		pcc->xxz += m*(dx*dx*dz - 0.2*d2*dz);
+		pcc->yyz += m*(dy*dy*dz - 0.2*d2*dz);
 		pcc->xyz += m*dx*dy*dz;
-		pcc->xzz += m*dx*dz*dz;
-		pcc->yzz += m*dy*dz*dz;
-		pcc->zzz += m*dz*dz*dz;
+		pcc->xzz += m*(dx*dz*dz - 0.2*d2*dx);
+		pcc->yzz += m*(dy*dz*dz - 0.2*d2*dy);
+		pcc->zzz += m*(dz*dz*dz - 0.6*d2*dz);
 		}
 	}
 
@@ -1356,22 +1380,28 @@ void pkdCalcRoot(PKD pkd,struct ilCellNewt *pcc)
 void pkdDistribRoot(PKD pkd,struct ilCellNewt *pcc)
 {
 	KDN *pkdn;
+	double tr;
 
 	pkd->ilcnRoot = *pcc;
 	/*
 	 ** Must set the quadrupole, mass and cm.
 	 */
 	pkdn = &pkd->kdNodes[ROOT];
+#ifdef REDUCED_EWALD
+	tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;
+#else
+	tr = 0.0;
+#endif
 	pkd->ilcnRoot.m = pkdn->fMass;
 	pkd->ilcnRoot.x = pkdn->r[0];
 	pkd->ilcnRoot.y = pkdn->r[1];
 	pkd->ilcnRoot.z = pkdn->r[2];
-	pkd->ilcnRoot.xx = pkdn->mom.Qxx;
+	pkd->ilcnRoot.xx = pkdn->mom.Qxx - tr/3.0;
 	pkd->ilcnRoot.xy = pkdn->mom.Qxy;
 	pkd->ilcnRoot.xz = pkdn->mom.Qxz;
-	pkd->ilcnRoot.yy = pkdn->mom.Qyy;
+	pkd->ilcnRoot.yy = pkdn->mom.Qyy - tr/3.0;
 	pkd->ilcnRoot.yz = pkdn->mom.Qyz;
-	pkd->ilcnRoot.zz = pkdn->mom.Qzz;
+	pkd->ilcnRoot.zz = pkdn->mom.Qzz - tr/3.0;
 	}
 
 

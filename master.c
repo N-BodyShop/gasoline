@@ -51,6 +51,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr = (MSR)malloc(sizeof(struct msrContext));
 	assert(msr != NULL);
 	msr->mdl = mdl;
+	msr->pst = NULL;
 	*pmsr = msr;
 	/*
 	 ** Now setup for the input parameters.

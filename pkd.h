@@ -72,7 +72,9 @@ struct pkdCalcCellStruct {
 	 ** Reduced multipole moments for l>2 !!!
 	 */
 	double Oxxx,Oxyy,Oxxy,Oyyy,Oxxz,Oyyz,Oxyz;
+	double Oxzz, Oyzz, Ozzz;
 	double Hxxxx,Hxyyy,Hxxxy,Hyyyy,Hxxxz,Hyyyz,Hxxyy,Hxxyz,Hxyyz;
+	double Hxxzz, Hxyzz, Hxzzz, Hyyzz, Hyzzz, Hzzzz;
 	double Bmax,B2,B3,B4,B5,B6;
 	};
 

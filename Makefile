@@ -79,15 +79,3 @@ t3d:
 
 pkdgrav: $(OBJS) $(EXTRA_OBJ)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -o pkdgrav $(OBJS) $(LIBMDL)
-
-
-
-
-
-
-
-
-
-
-
-

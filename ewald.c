@@ -71,7 +71,11 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 					gam[4] = 7*gam[3]*dir2 + alphan*a;
 					alphan *= 2*alpha2;
 					gam[5] = 9*gam[4]*dir2 + alphan*a;
+#ifdef REDUCED_EWALD
+					QEVAL(iOrder,mom,gam,dxo,dyo,dzo,ax,ay,az,fPot);
+#else
 					MEVAL(iOrder,mom,gam,dxo,dyo,dzo,ax,ay,az,fPot);
+#endif
 					}
 				}
 			}
@@ -124,9 +128,9 @@ void pkdEwaldInit(PKD pkd,double fhCut,int iOrder)
 				gam[0] = exp(-k4*h2)/(M_PI*h2*L);
 				gam[1] = 2*M_PI/L*gam[0];
 				gam[2] = -2*M_PI/L*gam[1];
-				gam[3] = -2*M_PI/L*gam[2];
-				gam[4] = 2*M_PI/L*gam[3];
-				gam[5] = -2*M_PI/L*gam[4];
+				gam[3] = 2*M_PI/L*gam[2];
+				gam[4] = -2*M_PI/L*gam[3];
+				gam[5] = 2*M_PI/L*gam[4];
 				gam[1] = 0.0;
 				gam[3] = 0.0;
 				gam[5] = 0.0;
@@ -138,9 +142,9 @@ void pkdEwaldInit(PKD pkd,double fhCut,int iOrder)
 				gam[0] = exp(-k4*h2)/(M_PI*h2*L);
 				gam[1] = 2*M_PI/L*gam[0];
 				gam[2] = -2*M_PI/L*gam[1];
-				gam[3] = -2*M_PI/L*gam[2];
-				gam[4] = 2*M_PI/L*gam[3];
-				gam[5] = -2*M_PI/L*gam[4];
+				gam[3] = 2*M_PI/L*gam[2];
+				gam[4] = -2*M_PI/L*gam[3];
+				gam[5] = 2*M_PI/L*gam[4];
 				gam[0] = 0.0;
 				gam[2] = 0.0;
 				gam[4] = 0.0;
