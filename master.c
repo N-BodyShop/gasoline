@@ -1843,7 +1843,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	*pdIMax = out.dIMax;
 	*pdEMax = out.dEMax;
 	if (msr->param.bVStep) {
-		double dPartAvg,dCellAvg;
+		double dPartAvg,dCellAvg,dSoftAvg;
 		double dWAvg,dWMax,dWMin;
 		double dIAvg,dIMax,dIMin;
 		double dEAvg,dEMax,dEMin;
@@ -1864,6 +1864,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		if (out.nActive > 0) {
 			dPartAvg = out.dPartSum/out.nActive;
 			dCellAvg = out.dCellSum/out.nActive;
+			dSoftAvg = out.dSoftSum/out.nActive;
 			}
 		else {
 			dPartAvg = dCellAvg = 0;
@@ -1887,7 +1888,8 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		dWMin = out.dWMin;
 		dIMin = out.dIMin;
 		dEMin = out.dEMin;
-		printf("dPartAvg:%f dCellAvg:%f\n",dPartAvg,dCellAvg);
+		printf("dPartAvg:%f dCellAvg:%f dSoftAvg:%f\n",
+			   dPartAvg,dCellAvg,dSoftAvg);
 		printf("Walk CPU     Avg:%10f Max:%10f Min:%10f\n",dWAvg,dWMax,dWMin);
 		printf("Interact CPU Avg:%10f Max:%10f Min:%10f\n",dIAvg,dIMax,dIMin);
 		printf("Ewald CPU    Avg:%10f Max:%10f Min:%10f\n",dEAvg,dEMax,dEMin);

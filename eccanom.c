@@ -13,7 +13,12 @@
 
 double dEccAnom(double M,double e)
 {
-	double E,dE,w,w1,w2,w3,lb,ub,twopi;
+	double w,w1,w2,w3,twopi;
+#ifdef __i386__
+	long double dE,E,lb,ub;
+#else
+	double dE,E,lb,ub;
+#endif
 	int i;
 
 	twopi = 2.0*M_PI;

@@ -371,7 +371,7 @@ void pkdBuildLocal(PKD,int,int,double,int,int,int,KDN *);
 void pkdBuildBinary(PKD,int,int,double,int,int,int,KDN *);
 void pkdThreadTree(PKD pkd,int iCell,int iNext);
 void pkdGravAll(PKD,int,int,int,int,double,double,int,double *,int *,
-				double *,double *,CASTAT *,double *); 
+				double *,double *,double *,CASTAT *,double *); 
 void pkdCalcE(PKD,double *,double *,double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,FLOAT);
 void pkdDriftRung(PKD,double,FLOAT *,int,int,FLOAT);

@@ -316,6 +316,7 @@ struct outGravity {
     double aSun[3];
 	double dPartSum;
 	double dCellSum;
+	double dSoftSum;
 	double dFlop;
 	/*	
 	 ** Collected CPU time stats.

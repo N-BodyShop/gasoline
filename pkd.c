@@ -1807,8 +1807,8 @@ void pkdColorCell(PKD pkd,int iCell,FLOAT fColor)
 void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 				double fEwCut,double fEwhCut,int bDoSun,
 				double *aSun,int *nActive,
-				double *pdPartSum,double *pdCellSum,CASTAT *pcs,
-				double *pdFlop)
+				double *pdPartSum,double *pdCellSum,double *pdSoftSum,
+				CASTAT *pcs,double *pdFlop)
 {
 	KDN *c = pkd->kdNodes;
 	int iCell,n;
@@ -1840,6 +1840,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	*nActive = 0;
 	*pdPartSum = 0.0;
 	*pdCellSum = 0.0;
+	*pdSoftSum = 0.0;
 	iCell = pkd->iRoot;
 	while (iCell != -1) {
 		if (c[iCell].iLower != -1) {
@@ -1878,7 +1879,8 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			*nActive += n;
 			*pdPartSum += n*pkd->nPart + 
 				n*(2*(c[iCell].pUpper-c[iCell].pLower) - n + 1)/2;
-			*pdCellSum += n*(pkd->nCellSoft + pkd->nCellNewt);
+			*pdCellSum += n*pkd->nCellNewt;
+			*pdSoftSum += n*pkd->nCellSoft;
 			pkdStartTimer(pkd,2);
 			dFlopI = pkdBucketInteract(pkd,iCell,iOrder);
 			*pdFlop += dFlopI;

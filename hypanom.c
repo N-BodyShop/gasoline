@@ -23,8 +23,13 @@
 
 double dHypAnom(double M,double e)
 {
-	double F,dF,w,w1,w2,w3,lb,ub;
+	double w,w1,w2,w3;
 	double Y,crit,sgm;
+#ifdef __i386__
+        long double dF,F,lb,ub;
+#else
+        double dF,F,lb,ub;
+#endif
 	int i;
 
 	/*
