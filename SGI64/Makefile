@@ -35,10 +35,10 @@ clean:
 mdl:
 	cd $(MDL); aimk
 
-pkdgrav: main.o master.o param.o outtype.o pkd.o pst.o smooth.o grav.o \
+pkdgrav: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	ewald.o walk.o
 	$(CC) $(CFLAGS) -o pkdgrav main.o master.o param.o outtype.o pkd.o \
-	 pst.o smooth.o grav.o ewald.o walk.o $(LIBS)
+	 pst.o grav.o ewald.o walk.o $(LIBS)
 	mv -f pkdgrav $(XDIR)
 
 main.o: $(SDIR)/main.c
@@ -58,9 +58,6 @@ pkd.o: $(SDIR)/pkd.c
 
 pst.o: $(SDIR)/pst.c
 	$(CC) $(CFLAGS) -c $(SDIR)/pst.c
-
-smooth.o: $(SDIR)/smooth.c
-	$(CC) $(CFLAGS) -c $(SDIR)/smooth.c
 
 grav.o: $(SDIR)/grav.c
 	$(CC) $(CFLAGS) -c $(SDIR)/grav.c
