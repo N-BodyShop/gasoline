@@ -328,7 +328,6 @@ int main(int argc,char **argv)
 				msrRungStats(msr);
 				msrCoolVelocity(msr,dTime,dMass);	/* Supercooling if specified */
 				msrMassCheck(msr,dMass,"After CoolVelocity in KDK");
-				msrGrowMass(msr,dTime,msrDelta(msr)); /* Grow Masses if specified */
 				dTime += msrDelta(msr);
 				/*
 				 ** Output a log file line if requested.

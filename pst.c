@@ -3001,6 +3001,9 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (in->bMiyamotoDisk) {
 			pkdMiyamotoDisk(plcl->pkd);
 			}
+		if (in->bTimeVarying) {
+			pkdTimeVarying(plcl->pkd,in->dTime);
+			}
 #ifdef ROT_FRAME
 		if (in->bRotFrame) {
 			pkdRotFrame(plcl->pkd,in->dOmega,in->dOmegaDot);

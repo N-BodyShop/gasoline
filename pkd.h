@@ -105,7 +105,7 @@ typedef struct particle {
 	FLOAT fMassForm;	/* record original mass of star */
 	int iGasOrder;		/* gas from which star formed */
 #endif
-#endif
+#endif  /* GASOLINE */
 #ifdef COLLISIONS
 	int iOrgIdx;		/* for tracking of mergers, aggregates etc. */
 	FLOAT w[3];			/* spin vector */
@@ -586,6 +586,7 @@ void pkdNFWSpheroid(PKD pkd);
 void pkdHomogSpheroid(PKD pkd);
 void pkdBodyForce(PKD pkd);
 void pkdMiyamotoDisk(PKD pkd);
+void pkdTimeVarying(PKD pkd,double dTime);
 #ifdef ROT_FRAME
 void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);
 #endif

@@ -488,7 +488,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				iSetMask = TYPE_STAR;
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
+#ifdef STARFORM
 				p->fMassForm = fTmp;
+#endif
 				assert(p->fMass >= 0);
 				for (j=0;j<3;++j) {
 					xdr_float(&xdrs,&fTmp);
@@ -606,7 +608,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					p->v[j] = dvFac*sp.vel[j];
 					}
 				p->fMass = sp.mass;
+#ifdef STARFORM
 				p->fMassForm = sp.mass;
+#endif
 				assert(p->fMass >= 0);
 				p->fSoft = sp.eps;
 #ifdef CHANGESOFT
@@ -1523,7 +1527,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	/*
 	 ** Seek past the header and up to nStart.
 	 */
-	fp = fopen(pszFileName,"a");
+	fp = fopen(pszFileName,"r+");
 	mdlassert(pkd->mdl,fp != NULL);
 	pkdSeek(pkd,fp,nStart,bStandard);
 	if (bStandard) {
@@ -3106,6 +3110,42 @@ void pkdMiyamotoDisk(PKD pkd)
 		}
 	}
 
+/*
+ ** This is a copy of the Miyamoto function above, but change it as you
+ ** like.
+ */
+void pkdTimeVarying(PKD pkd,double dTime)
+{
+	const double M_d0 = 1.0e6;	/* in 10^5 M_sun */
+	const double aa = 6.5;		/* in kpc */
+	const double b = 0.26;		/* in kpc */
+	PARTICLE *p;
+	int i,n;
+	double M_d;
+	
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	M_d = M_d0 * dTime;
+	for (i=0;i<n;++i) {
+		if (TYPEQueryACTIVE(&(p[i]))) {
+			double x = p[i].r[0];
+			double y = p[i].r[1];
+			double z = p[i].r[2];
+			/*
+			 **	Do the Miyamoto Disk potential
+			 */
+			double U = sqrt(z*z + b*b);
+			double W = aa + U;
+			double A = sqrt(x*x + y*y + W*W);
+			p[i].a[0] -= M_d*x/(A*A*A);
+			p[i].a[1] -= M_d*y/(A*A*A);
+			p[i].a[2] -= M_d*z*W/(A*A*A*U);
+			p[i].fPot -= M_d/A;
+			}
+		}
+	}
+
+
 /*DEBUG #define SPINUP*/
 
 #ifdef ROT_FRAME
@@ -3763,8 +3803,12 @@ void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass,
 	for (i=0;i<pkdLocal(pkd);++i) {
 		*dTotMass += pkd->pStore[i].fMass;
                 if ( TYPETest(&pkd->pStore[i], TYPE_GAS) ){
+#ifdef GASOLINE 
                     *dTotMetals += pkd->pStore[i].fMass*pkd->pStore[i].fMetals;
+#endif
+#ifdef STARFORM
                     *dTotEnergy += pkd->pStore[i].fMass*pkd->pStore[i].fESNrate;
+#endif
                     }
 		}
 	}
@@ -3847,7 +3891,7 @@ pkdGravStep(PKD pkd,double dEta)
 
     for (i=0;i<pkdLocal(pkd);i++) {
 		if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
-			mdlassert(pkd->mdl,pkd->pStore[i].dtGrav);
+			mdlassert(pkd->mdl,pkd->pStore[i].dtGrav > 0);
 			dt = dEta/sqrt(pkd->pStore[i].dtGrav);
 			if (dt < pkd->pStore[i].dt)
 				pkd->pStore[i].dt = dt;
@@ -4380,7 +4424,6 @@ void pkdSetParticleTypes(PKD pkd, int nSuperCool)
 
 void pkdGrowMass(PKD pkd,int nGrowMass, double dDeltaM)
 {
-#ifdef GROWMASS
     int i;
 
     for(i=0;i<pkdLocal(pkd);++i) {
@@ -4388,7 +4431,6 @@ void pkdGrowMass(PKD pkd,int nGrowMass, double dDeltaM)
 			pkd->pStore[i].fMass += dDeltaM;
 			}
 		}
-#endif
     }
 
 void pkdInitAccel(PKD pkd)

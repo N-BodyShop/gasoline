@@ -450,6 +450,7 @@ void pstGravity(PST,void *,int,void *,int *);
 struct inGravExternal {
     int bIndirect;
     int bDoSun;
+	double dTime;
     double dSunMass;
     double aSun[3];
 	/*
@@ -461,6 +462,7 @@ struct inGravExternal {
 	int bHomogSpheroid;
 	int bBodyForce;
 	int bMiyamotoDisk;
+	int bTimeVarying;
 #ifdef ROT_FRAME
 	int bRotFrame;
 	double dOmega;

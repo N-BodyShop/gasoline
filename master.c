@@ -680,6 +680,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bMiyamotoDisk = 0;
 	prmAddParam(msr->prm,"bMiyamotoDisk",0,&msr->param.bMiyamotoDisk,
 				sizeof(int),"mdisk","use/don't use galaxy Miyamoto Disk = -mdisk");
+	msr->param.bTimeVarying = 0;
+	prmAddParam(msr->prm,"bTimeVarying",0,&msr->param.bTimeVarying,
+				sizeof(int),"tvar","use/don't use the time varying externalpotential = -tvar");
 	msr->param.bRotFrame = 0;
 	prmAddParam(msr->prm,"bRotFrame",0,&msr->param.bRotFrame,
 				sizeof(int),"rframe","use/don't use rotating frame = -rframe");
@@ -1629,9 +1632,6 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef SUPERCOOL
 	fprintf(fp," SUPERCOOL");
 #endif
-#ifdef GROWMASS
-	fprintf(fp," GROWMASS");
-#endif
 #ifdef ROT_FRAME
 	fprintf(fp," ROT_FRAME");
 #endif
@@ -1739,6 +1739,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bHomogSpheroid: %d",msr->param.bHomogSpheroid );
 	fprintf(fp," bBodyForce: %d",msr->param.bBodyForce );
 	fprintf(fp," bMiyamotoDisk: %d",msr->param.bMiyamotoDisk );
+	fprintf(fp," bTimeVarying: %d",msr->param.bTimeVarying );
 	fprintf(fp,"\n# bRotFrame: %d",msr->param.bRotFrame);
 	fprintf(fp," dOmega: %g",msr->param.dOmega);
 	fprintf(fp," dOmegaDot: %g",msr->param.dOmegaDot);
@@ -1754,12 +1755,10 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bShockTracker: %d",msr->param.bShockTracker);
 	fprintf(fp," dShockTrackerA: %f",msr->param.dShockTrackerA);
 	fprintf(fp," dShockTrackerB: %f",msr->param.dShockTrackerB);
-#ifdef GROWMASS
 	fprintf(fp,"\n# GROWMASS: nGrowMass: %d",msr->param.nGrowMass);
 	fprintf(fp," dGrowDeltaM: %g",msr->param.dGrowDeltaM);
 	fprintf(fp," dGrowStartT: %g",msr->param.dGrowStartT);
 	fprintf(fp," dGrowEndT: %g",msr->param.dGrowEndT);
-#endif
 #ifdef GASOLINE
 	fprintf(fp,"\n# SPH: bDoGas: %d",msr->param.bDoGas);	
 	fprintf(fp," bGeometric: %d",msr->param.bGeometric);
@@ -3275,7 +3274,11 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	if (msr->param.bHeliocentric || msr->param.bLogHalo ||
 		msr->param.bHernquistSpheroid || msr->param.bNFWSpheroid ||
 		msr->param.bHomogSpheroid || msr->param.bBodyForce ||
-        msr->param.bMiyamotoDisk) {
+        msr->param.bMiyamotoDisk || msr->param.bTimeVarying) {
+		/*
+		 ** Provide the time.
+		 */
+		inExt.dTime = dStep*msr->param.dDelta;
 		/*
 		 ** Only allow inclusion of solar terms if we are in Heliocentric 
 		 ** coordinates.
@@ -3291,6 +3294,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
 		inExt.bBodyForce = msr->param.bBodyForce;
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
+		inExt.bTimeVarying = msr->param.bTimeVarying;
 		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
 		}
 #ifdef ROT_FRAME
@@ -3500,6 +3504,11 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	double a;
 #endif
 
+	/*
+	 ** This only gets done if growmass parameters have been set!
+	 */
+	msrGrowMass(msr,dTime,dDelta);
+
 #ifdef AGGS
 	msrAggsAdvanceOpen(msr);
 #endif
@@ -3639,7 +3648,6 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 
 void msrGrowMass(MSR msr, double dTime, double dDelta)
 {
-#ifdef GROWMASS
     struct inGrowMass in;
     
     if (msr->param.nGrowMass > 0 && dTime > msr->param.dGrowStartT &&
@@ -3649,7 +3657,6 @@ void msrGrowMass(MSR msr, double dTime, double dDelta)
 			(msr->param.dGrowEndT - msr->param.dGrowStartT);
 		pstGrowMass(msr->pst, &in, sizeof(in), NULL, NULL);
 		}
-#endif
     }
 
 /*
@@ -4652,7 +4659,7 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 	
 #ifdef GROWMASS
 	out.dMass = 0.0;
-#else
+#endif
 #ifndef SUPPRESSMASSCHECKREPORT      
 	if (msr->param.bVDetails) puts("doing mass check...");
 #endif
@@ -4661,8 +4668,7 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 	else if (fabs(dMass - out.dMass) > 1e-12*dMass) {
 		printf("ERROR: Mass not conserved (%s): %.15e != %.15e!\n",
 			   pszWhere,dMass,out.dMass);
-		}
-#endif
+		}	
 	return(out.dMass);
 	}
 
@@ -4680,28 +4686,30 @@ void msrMassMetalsEnergyCheck(MSR msr,double *dTotMass,
 	pstMassMetalsEnergyCheck(msr->pst,NULL,0,&out,NULL);
 	if (*dTotMass < 0.0) {}
 	else {
-            if ( fabs(*dTotMass - out.dTotMass) > 1e-12*(*dTotMass) ) {
-		printf("ERROR: Mass not conserved (%s): %.15e != %.15e!\n",
-			   pszWhere,*dTotMass,out.dTotMass);
-		}
+		if ( fabs(*dTotMass - out.dTotMass) > 1e-12*(*dTotMass) ) {
+			printf("ERROR: Mass not conserved (%s): %.15e != %.15e!\n",
+				   pszWhere,*dTotMass,out.dTotMass);
+			}
             /* Commented out because metals are almost conserved.  Error
              * comes because some of the gas mass gets converted into stars
              * so conservation error is reported as a net loss in metals
              * Remaining metals are in stars
-            if ( fabs(*dTotMetals - out.dTotMetals) > 1e-12*(*dTotMetals) ) {
-		printf("ERROR: Metal mass not conserved (%s): %.15e != %.15e!\n",
-			   pszWhere,*dTotMetals,out.dTotMetals);
-		}*/
-            if ( fabs(*dTotEnergy - out.dTotEnergy*msr->param.dDeltaStarForm) > 1e-12*(*dTotEnergy) ) {
-		printf("ERROR: SN Energy not conserved (%s): %.15e != %.15e!\n",
-			   pszWhere,*dTotEnergy,out.dTotEnergy*msr->param.dDeltaStarForm);
-		}
-            }
+			 if ( fabs(*dTotMetals - out.dTotMetals) > 1e-12*(*dTotMetals) ) {
+			 printf("ERROR: Metal mass not conserved (%s): %.15e != %.15e!\n",
+			 pszWhere,*dTotMetals,out.dTotMetals);
+			 }*/
+#ifdef STARFORM
+		if ( fabs(*dTotEnergy - out.dTotEnergy*msr->param.dDeltaStarForm) > 1e-12*(*dTotEnergy) ) {
+			printf("ERROR: SN Energy not conserved (%s): %.15e != %.15e!\n",
+				   pszWhere,*dTotEnergy,out.dTotEnergy*msr->param.dDeltaStarForm);
+			}
 #endif
-        *dTotMass = out.dTotMass;
-        *dTotMetals = out.dTotMetals;
-        *dTotEnergy = out.dTotEnergy;
-        return;
+		}
+#endif
+	*dTotMass = out.dTotMass;
+	*dTotMetals = out.dTotMetals;
+	*dTotEnergy = out.dTotEnergy;
+	return;
 	}
 
 void
@@ -5317,10 +5325,11 @@ void msrTopStepKDK(MSR msr,
 #ifdef SIMPLESF
 		msrSimpleStarForm(msr, dTime, dDelta);
 #endif
+#ifdef STARFORM
                 /* only form stars at user defined intervals */
                 if ( iKickRung <= msr->param.iStarFormRung )
                     msrFormStars(msr, dTime, max(dDelta,msr->param.dDeltaStarForm));
-
+#endif
 		/* 
 		 ** Dump Frame
 		 */

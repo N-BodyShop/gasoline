@@ -55,6 +55,7 @@ struct parameters {
 	int bHomogSpheroid;
     int bBodyForce;
 	int bMiyamotoDisk;
+	int bTimeVarying;
 	int bRotFrame;
 	double dOmega;
 	double dOmegaDot;
