@@ -5104,7 +5104,7 @@ pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		dfClearImage( in, vout, pnOut );
 		dfRenderParticlesInit( in, TYPE_GAS, TYPE_DARK, TYPE_STAR,
 							  &p->r[0], &p->fMass, &p->fSoft, &p->fBall2, &p->iActive,
-							  p, sizeof(p) );
+							  p, sizeof(p[0]) );
 		dfRenderParticles( in, vout, p, pst->plcl->pkd->nLocal );
 		}
 	}
