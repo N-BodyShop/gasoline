@@ -89,7 +89,9 @@ void main(int argc,char **argv)
 	msrBuildTree(msr,0,dMass);
 	msrMassCheck(msr,dMass,"After msrBuildTree");
 	msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax);
-/*	msrDensity(msr);  Uncomment to test Density */
+	msrDensity(msr);
+				msrReorder(msr);
+				msrOutArray(msr,"density1.out",OUT_DENSITY_ARRAY);
 	msrMassCheck(msr,dMass,"After msrGravity");
 	msrCalcE(msr,MSR_INIT_ECOSMO,dTime,&E,&T,&U);
 	msrMassCheck(msr,dMass,"After msrCalcE");
@@ -99,7 +101,6 @@ void main(int argc,char **argv)
 	fflush(fpLog);
 
 	if (msrSteps(msr) > 0) {
-	        msrInitStep(msr);
 		for (iStep=1;iStep<=msrSteps(msr);++iStep) {
 			if (msrKDK(msr)) {
 				msrKick(msr,dTime,0.5*msrDelta(msr));

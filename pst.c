@@ -1352,7 +1352,8 @@ void pstDensity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		LCL *plcl = pst->plcl;
 		SMX smx;
 
-		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bGatherScatter);
+		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bGatherScatter,
+			     in->bPeriodic);
 		if (in->bGatherScatter) {
                         fprintf(stderr,"In GatherScatter\n");
 			smSmooth(smx,smDensitySym);

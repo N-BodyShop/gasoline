@@ -113,7 +113,7 @@ void combDen(void *p1,void *p2)
 	((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
 	}
 
-int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bCombiner)
+int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bCombiner, int bPeriodic)
 {
 	SMX smx;
 	int pi;
@@ -122,6 +122,7 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bCombiner)
 	assert(smx != NULL);
 	smx->pkd = pkd;
 	smx->nSmooth = nSmooth;
+	smx->bPeriodic = bPeriodic;
 	/*
 	 ** Initialize Densities of the local particles.
 	 */
@@ -237,9 +238,16 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 	x = ri[0];
 	y = ri[1];
 	z = ri[2];
-	lx = smx->pkd->fPeriod[0];
-	ly = smx->pkd->fPeriod[1];
-	lz = smx->pkd->fPeriod[2];
+	if(smx->bPeriodic) {
+	    lx = smx->pkd->fPeriod[0];
+	    ly = smx->pkd->fPeriod[1];
+	    lz = smx->pkd->fPeriod[2];
+	    }
+	else {
+	    lx = HUGE;
+	    ly = HUGE;
+	    lz = HUGE;
+	    }
 	idSelf = smx->pkd->idSelf;
 	fBall2 = pq->fKey;
 	cell = smx->pkd->iRoot;
@@ -249,8 +257,9 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 	 ** Warning: in parallel ri[3] SHOULD be contained in the LOCAL DOMAIN!
 	 */
 	while (c[cell].iDim >= 0) {
-		if (ri[c[cell].iDim] < c[cell].fSplit) cell = c[cell].iLower;
-		else cell = c[cell].iUpper;
+		cell = c[cell].iLower;
+		if (ri[c[cell].iDim] >= c[cell].fSplit) 
+		    cell = c[cell].iUpper;
 		}
 	pUpper = c[cell].pUpper;
 	for (pj=c[cell].pLower;pj<=pUpper;++pj) {
@@ -281,7 +290,7 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 	while (c[cell].iParent != -1) {
 		cp = c[cell].iSibling;
 		ct = cp;
-		ct = c[ct].iNext;
+		ct = c[ct].iUpper;
 		while (1) {
 			INTERSECT(&c[cp],fBall2,lx,ly,lz,x,y,z,sx,sy,sz,GetNext_1);
 			if (c[cp].iDim >= 0) {
@@ -316,7 +325,7 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 					}
 				}
 		GetNext_1:
-			cp = c[cp].iNext;
+			cp = c[cp].iUpper;
 			if (cp == ct) break;
 			}
 		cell = c[cell].iParent;
@@ -339,9 +348,16 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	PQ *pq,*pqi,*pqn;
 
 	nSmooth = smx->nSmooth;
-	lx = smx->pkd->fPeriod[0];
-	ly = smx->pkd->fPeriod[1];
-	lz = smx->pkd->fPeriod[2];
+	if(smx->bPeriodic) {
+	    lx = smx->pkd->fPeriod[0];
+	    ly = smx->pkd->fPeriod[1];
+	    lz = smx->pkd->fPeriod[2];
+	    }
+	else {
+	    lx = HUGE;
+	    ly = HUGE;
+	    lz = HUGE;
+	    }
 	/*
 	 ** Clear Mark array and pqHash.
 	 */
@@ -363,8 +379,9 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	z = p[pi].r[2];
 	cell = pkd->iRoot;
 	while (c[cell].iDim >= 0) {
-		if (p[pi].r[c[cell].iDim] < c[cell].fSplit) cell = c[cell].iLower;
-		else cell = c[cell].iUpper;
+		cell = c[cell].iLower;
+		if (p[pi].r[c[cell].iDim] >= c[cell].fSplit) 
+		    cell = c[cell].iUpper;
 		}
 	/*
 	 ** Add local stuff to the prioq.

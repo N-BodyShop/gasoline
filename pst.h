@@ -186,6 +186,7 @@ void pstBuildTree(PST,void *,int,void *,int *);
 struct inDensity {
 	int nSmooth;
 	int bGatherScatter;
+        int bPeriodic;
 	};
 void pstDensity(PST,void *,int,void *,int *);
 

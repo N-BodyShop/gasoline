@@ -32,6 +32,7 @@ typedef struct nNeighbor {
 typedef struct smContext {
 	PKD pkd;
 	int nSmooth;
+        int bPeriodic;
 	int *piMark;
 	int nListSize;
 	NN *nnList;
@@ -134,7 +135,7 @@ typedef struct smContext {
 		}\
 	}
 
-int smInitialize(SMX *,PKD,int,int);
+int smInitialize(SMX *,PKD,int,int, int);
 void smFinish(SMX);
 void smSmooth(SMX,void (*)(SMX,int,int,NN *));
 /*

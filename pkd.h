@@ -75,14 +75,8 @@ typedef struct kdNode {
 	int pUpper;
 	int iLower;
 	int iUpper;
-	/*
-	 ** We shouldn't really need ALL of these. Why is there an iNext when
-	 ** I had thought that iUpper serves that purpose once the tree is 
-	 ** threaded?
-	 */
 	int iSibling;
 	int iParent;
-	int iNext;
 
 	double fMass;
 	double fSoft;
@@ -225,7 +219,7 @@ typedef struct CacheStatistics {
 	SETNEXT(iCell);\
 	}\
      else {\
-	iCell = pkdn->iNext;\
+	iCell = pkdn->iUpper;\
 	if (iCell == -1) {\
 		iCell = pkd->piLeaf[id];\
 		id = -1;\

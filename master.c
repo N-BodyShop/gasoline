@@ -1072,7 +1072,7 @@ void msrBuildTree(MSR msr,int bActiveOnly,double dMass)
 	inc.nCell = nCell;
 	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
 	msrMassCheck(msr,dMass,"After pstColCells in msrBuildTree");
-#if (0)
+#if (1)
 	for (i=1;i<nCell;++i) {
 		struct pkdCalcCellStruct *m;
 
@@ -1302,6 +1302,7 @@ void msrDensity(MSR msr)
 
 	in.nSmooth = msr->param.nSmooth;
 	in.bGatherScatter = msr->param.bGatherScatter;
+	in.bPeriodic = msr->param.bPeriodic;
 	if (msr->param.bVerbose) printf("Calculating Densities...\n");
 	sec = time(0);
 	pstDensity(msr->pst,&in,sizeof(in),NULL,NULL);
@@ -2037,6 +2038,7 @@ void msrDensityRung(MSR msr, int iRung, double dDelta, double dTime)
 
     inden.nSmooth = msr->param.nSmooth;
     inden.bGatherScatter = 0;
+    inden.bPeriodic = msr->param.bPeriodic;
     if (msr->param.bVerbose) printf("Calculating Rung Densities...\n");
     sec = time(0);
     pstDensity(msr->pst,&inden,sizeof(inden),NULL,NULL);

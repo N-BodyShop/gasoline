@@ -1246,18 +1246,16 @@ void pkdThreadTree(PKD pkd,int iCell,int iNext)
 			 ** It is convenient to change the "down" pointer in this case.
 			 */
 			pkd->kdNodes[iCell].iLower = u;
-			pkd->kdNodes[iCell].iUpper = -1;
 			}
 		else {
 			pkdThreadTree(pkd,l,u);
 			pkdThreadTree(pkd,u,iNext);
 			}
-		pkd->kdNodes[iCell].iNext = iNext;
+		pkd->kdNodes[iCell].iUpper = iNext;
 		}
 	else {
 		pkd->kdNodes[iCell].iLower = -1;	/* Just make sure! */
-		pkd->kdNodes[iCell].iUpper = -1;
-		pkd->kdNodes[iCell].iNext = iNext;
+		pkd->kdNodes[iCell].iUpper = iNext;
 		}
 	}
 
@@ -1547,7 +1545,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 		pkdBucketWeight(pkd,iCell,fWeight);
 		pkdColorCell(pkd,iCell,fColor);
 		fColor += 1.0;
-		iCell = c[iCell].iNext;
+		iCell = c[iCell].iUpper;
 		}
 	/*
 	 ** Get caching statistics.
@@ -1581,7 +1579,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 		     ** Calculate Ewald on this bucket.
 		     */
 		    pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
-		    iCell = c[iCell].iNext;
+		    iCell = c[iCell].iUpper;
 		    }
 	    pkdStopTimer(pkd,3);
 	    }
