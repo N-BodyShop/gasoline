@@ -61,6 +61,7 @@ enum pst_service {
       PST_READTIPSY,
       PST_DOMAINDECOMP,
       PST_CALCBOUND,
+      PST_GASWEIGHT,
       PST_WEIGHT,
       PST_FREESTORE,
       PST_COLREJECTS,
@@ -189,6 +190,8 @@ struct outCalcBound {
 	BND bndTreeActive;
 	};
 void pstCalcBound(PST,void *,int,void *,int *);
+
+void pstGasWeight(PST,void *,int,void *,int *);
 
 /* #define PST_WEIGHT		        8  */
 struct inWeight {

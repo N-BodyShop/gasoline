@@ -196,9 +196,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dEtaCourant = 0.4;
 	prmAddParam(msr->prm,"dEtaCourant",2,&msr->param.dEtaCourant,sizeof(double),"etaC",
 				"<Courant criterion> = 0.4");
-	msr->param.dEtauDot = 0.1;
+	msr->param.dEtauDot = 0.25;
 	prmAddParam(msr->prm,"dEtauDot",2,&msr->param.dEtauDot,sizeof(double),"etau",
-				"<uDot criterion> = 0.1");
+				"<uDot criterion> = 0.25");
 	msr->param.duDotLimit = -0.2;
 	prmAddParam(msr->prm,"duDotLimit",2,&msr->param.duDotLimit,sizeof(double),"uDL",
 				"<uDotLimit:  Treat udot/u < duDotLimit specially> = -0.2 < 0");
@@ -422,10 +422,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"<Kiloparsec/system length unit>");
 	msr->param.bViscosityLimiter = 0;
 	prmAddParam(msr->prm,"bViscosityLimiter",0,&msr->param.bViscosityLimiter,sizeof(int),
-				"vlim","Balsara Viscosity Limiter");
+				"vlim","<Balsara Viscosity Limiter> = 0");
 	msr->param.bBulkViscosity = 0;
 	prmAddParam(msr->prm,"bBulkViscosity",0,&msr->param.bBulkViscosity,sizeof(int),
-				"vlim","Bulk Viscosity");
+				"bulk","<Bulk Viscosity> = 0");
+	msr->param.bGasDomainDecomp = 1;
+	prmAddParam(msr->prm,"bGasDomainDecomp",0,&msr->param.bGasDomainDecomp,sizeof(int),
+				"gasDD","<Gas Domain Decomp> = 1");
 
 #endif
 #ifdef GLASS
@@ -868,6 +871,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dKpcUnit: %g",msr->param.dKpcUnit);
 	fprintf(fp,"\n# bViscosityLimiter: %d",msr->param.bViscosityLimiter);
 	fprintf(fp," bBulkViscosity: %d",msr->param.bBulkViscosity);
+	fprintf(fp," bGasDomainDecomp: %d",msr->param.bGasDomainDecomp);
 #endif
 #ifdef COLLISIONS
 	fprintf(fp,"\n# Collisions:");
@@ -1464,11 +1468,29 @@ void msrSetSoft(MSR msr,double dSoft)
 
 void msrDomainDecomp(MSR msr)
 {
+        /* Sanity check on Gas particles being present */
+        if (msr->nGas==0 && (msr->param.bDoGas==1 || msr->param.bGasDomainDecomp)) {
+	        if (msr->param.bGasDomainDecomp) {
+		     printf("MDD: switching bGasDomainDecomp off.\n");
+		     msr->param.bGasDomainDecomp=0;
+		     msr->bDoneDomainDecomp=0;
+		     }
+		if (msr->param.bDoGas==1) {
+		     printf("MDD: switching bDoGas off.\n");
+		     msr->param.bDoGas=0;
+		     }
+	        }
+
         if (msr->bDoneDomainDecomp && msr->nActive < msr->N*msr->param.dFracNoDomainDecomp) {
 	        printf("Skipping Domain Decomposition (nActive = %d/%d)\n",
                      msr->nActive, msr->N );
                 return;
                 }
+
+	if (msr->param.bGasDomainDecomp) {
+		msrActiveType(msr, TYPE_ALL, TYPE_ACTIVE );
+		pstGasWeight(msr->pst,NULL, 0,NULL,NULL);
+	        }
 
 	if (msr->param.bVDetails) {
 		int sec,dsec;
@@ -2178,6 +2200,7 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 			msrActiveType(msr, TYPE_SUPERCOOL, TYPE_ACTIVE );
 			msrActiveType(msr, TYPE_ALL, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
                         msrDomainDecomp(msr);
+			msrActiveType(msr, TYPE_SUPERCOOL, TYPE_ACTIVE );
 			msrBuildTree(msr,1,dMass,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
 			msrReSmooth(msr,dTime,SMX_MEANVEL,1);
@@ -2192,6 +2215,7 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 			msrActiveTypeRung(msr, TYPE_SUPERCOOL, TYPE_ACTIVE, 0,1); 
 			msrActiveType(msr, TYPE_ALL, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
                         msrDomainDecomp(msr);
+			msrActiveTypeRung(msr, TYPE_SUPERCOOL, TYPE_ACTIVE, 0,1); 
 			msrBuildTree(msr,0,SMX_DENSITY,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,0);
 			msrReSmooth(msr,dTime,SMX_MEANVEL,0);
@@ -3432,12 +3456,14 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 			if(msr->param.bEpsVel || msr->param.bSqrtPhi) {
 			    msrInitAccel(msr);
 			    msrDomainDecomp(msr);
+			    msrActiveRung(msr, iRung, 1);
 			    msrBuildTree(msr,0,dMass,0);
 			    msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			    msrAccelStep(msr, dTime);
 			    }
 			if(msr->param.bISqrtRho) {
 			    msrDomainDecomp(msr);
+			    msrActiveRung(msr, iRung, 1);
 			    msrBuildTree(msr,0,dMass,1);
 			    msrDensityStep(msr, dTime);
 			    }
@@ -3457,6 +3483,7 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 			if (msr->param.bVDetails) printf("SPH, iRung: %d\n", iRung);
            	        msrActiveTypeRung(msr, TYPE_GAS, TYPE_ACTIVE, iRung, 0 );
                         msrDomainDecomp(msr);
+           	        msrActiveTypeRung(msr, TYPE_GAS, TYPE_ACTIVE, iRung, 0 );
            	        msrActiveType(msr, TYPE_GAS, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 			msrBuildTree(msr,1,-1.0,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
@@ -3481,6 +3508,7 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 		    if(msrDoGravity(msr)) {
    		        if (msr->param.bVDetails) printf("Gravity, iRung: %d\n", iRung);
                         msrDomainDecomp(msr);
+			msrActiveRung(msr, iRung, 0);
 			msrBuildTree(msr,0,dMass,0);
 			msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
@@ -3539,6 +3567,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			    }
 			if(msr->param.bISqrtRho) {
                             msrDomainDecomp(msr);
+			    msrActiveRung(msr, iRung, 1);
 			    msrBuildTree(msr,0,dMass,1);
 			    msrDensityStep(msr, dTime);
 			    }
@@ -3546,6 +3575,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 /*DEBUG out of date
 #ifdef SMOOTH_STEP
                         msrDomainDecomp(msr);
+			msrActiveRung(msr, iRung, 1);
 			msrBuildTree(msr,0,dMass,1);
 			msrSmooth(msr,dTime,SMX_TIMESTEP,0);
 #endif
@@ -3562,6 +3592,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 		dStep += 1.0/(2 << iRung);
 		msrActiveRung(msr, iRung, 0);
                 msrDomainDecomp(msr);
+		msrActiveRung(msr, iRung, 0);
 		msrInitAccel(msr);
 #ifdef GASOLINE
 		if(msrSphCurrRung(msr, iRung, 0)) {
@@ -3650,6 +3681,7 @@ void msrTopStepKDK(MSR msr,
 		    msrAccelStep(msr, dTime);
 		if(msr->param.bISqrtRho) {
                     msrDomainDecomp(msr);
+		    msrActiveRung(msr, iRung, 1);
 		    msrBuildTree(msr,0,dMass,1);
 		    msrDensityStep(msr, dTime);
 		    }
@@ -3692,6 +3724,7 @@ void msrTopStepKDK(MSR msr,
 		dTime += dDelta;
 		dStep += 1.0/(1 << iRung);
                 msrDomainDecomp(msr);
+		msrActiveMaskRung(msr, TYPE_ACTIVE, iKickRung, 1);
 		msrInitAccel(msr);
 #ifdef GASOLINE
 		if (msr->param.bVDetails)
@@ -3838,6 +3871,7 @@ void msrInitTimeSteps(MSR msr,double dTime,double dDelta)
                 msrAccelStep(msr, dTime);
 	if(msr->param.bISqrtRho) {
 	        msrDomainDecomp(msr);
+		msrActiveType(msr, TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 		msrBuildTree(msr,0,dMass,1);
 		msrDensityStep(msr, dTime);
 		}
@@ -4000,6 +4034,7 @@ msrFindRejects(MSR msr)
 	if (msr->param.bVStart)	puts("Checking for rejected ICs...");
 	msrActiveRung(msr,0,1); /* redundant if particles just loaded */
         msrDomainDecomp(msr);
+	msrActiveRung(msr,0,1); /* redundant if particles just loaded */
 	msrActiveType(msr, TYPE_SMOOTHACTIVE|TYPE_TREEACTIVE ); /* redundant if particles just loaded */
 	msrBuildTree(msr,0,-1.0,1);
 	msr->param.nSmooth = 8; /*DEBUG nicer if we could pass this directly...*/
@@ -4208,6 +4243,7 @@ msrPlanetsKDK(MSR msr,double dStep,double dTime,double dDelta,double *pdWMax,
 		int nDum;
 		if (msr->param.bVDetails) printf("Planets Gravity\n");
                 msrDomainDecomp(msr);
+		msrActiveRung(msr,0,1);
 		msrBuildTree(msr,0,-1.0,0);
 		msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nDum);
 		}
@@ -4320,6 +4356,8 @@ msrLinearKDK(MSR msr,double dStep,double dTime,double dDelta)
 		int iDum;
 		if (msr->param.bVDetails) printf("Linear Gravity\n");
                 msrDomainDecomp(msr);
+		assert(msr->ngas==0);
+		/* NEED to reassert active here if gas */
 		msrBuildTree(msr,0,-1.0,0);
 		msrGravity(msr,dStep,msrDoSun(msr),&iDum,&dDum,&dDum,&dDum,&iDum);
 		}

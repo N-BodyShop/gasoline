@@ -434,6 +434,18 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive)
 	}
 
 
+void pkdGasWeight(PKD pkd)
+{
+    PARTICLE *p;
+    int i, nActive = 0;
+
+    for(i=0;i<pkdLocal(pkd);++i) {
+                p = &pkd->pStore[i];
+		if (TYPETest( p, TYPE_GAS )) p->fWeight=1.0;
+		else p->fWeight=0.0;
+		}
+    }
+
 /*
  ** Partition particles between iFrom and iTo into those < fSplit and
  ** those >= to fSplit.  Find number and weight in each partition.

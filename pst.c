@@ -30,6 +30,9 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_CALCBOUND,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstCalcBound,
 				  0,sizeof(struct outCalcBound));
+	mdlAddService(mdl,PST_GASWEIGHT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstGasWeight,
+				  0,0);
 	mdlAddService(mdl,PST_WEIGHT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstWeight,
 				  sizeof(struct inWeight),sizeof(struct outWeight));
@@ -1214,6 +1217,22 @@ void pstCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pkdCalcBound(plcl->pkd,&out->bnd,&out->bndActive,&out->bndTreeActive);
 		}
 	if (pnOut) *pnOut = sizeof(struct outCalcBound); 
+	}
+
+void pstGasWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_GASWEIGHT,vin,nIn);
+		pstGasWeight(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdGasWeight(plcl->pkd);
+		}
+	if (pnOut) *pnOut = 0;
 	}
 
 

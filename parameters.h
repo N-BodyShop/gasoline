@@ -106,6 +106,7 @@ struct parameters {
         int    nCoolingTable;
         int    bViscosityLimiter;
         int    bBulkViscosity;
+        int    bGasDomainDecomp;
         int    bDoGas;
         int    bUV;
 #ifdef GLASS

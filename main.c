@@ -105,6 +105,7 @@ int main(int argc,char **argv)
 		if(msrKDK(msr) || msr->param.bEpsVel) {
 			msrActiveRung(msr,0,1);
                         msrDomainDecomp(msr);
+			msrActiveRung(msr,0,1);
 			msrInitAccel(msr);
 #ifdef GASOLINE
 			msrInitSph(msr, dTime);
@@ -187,6 +188,7 @@ int main(int argc,char **argv)
 		 */
 		msrActiveType(msr, TYPE_ALL, TYPE_ACTIVE);
                 msrDomainDecomp(msr);
+		msrActiveType(msr, TYPE_ALL, TYPE_ACTIVE);
 		msrInitAccel(msr);
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
@@ -277,6 +279,7 @@ int main(int argc,char **argv)
 					        */
 					        msrActiveType(msr, TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE);
                                                 msrDomainDecomp(msr);
+					        msrActiveType(msr, TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE);
 						msrBuildTree(msr,0,dMass,0);
 						msrMassCheck(msr,dMass,"After msrBuildTree in DKD-log");
 						msrInitAccel(msr);
@@ -321,6 +324,7 @@ int main(int argc,char **argv)
 				if (msrDoDensity(msr)) {
 					msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
                                         msrDomainDecomp(msr);
+					msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 					msrBuildTree(msr,0,dMass,1);
 					msrSmooth(msr,dTime,SMX_DENSITY,1);
 					msrReorder(msr);
@@ -374,6 +378,7 @@ int main(int argc,char **argv)
 					if (msrDoDensity(msr)) {
  					        msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
                                                 msrDomainDecomp(msr);
+ 					        msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 						msrBuildTree(msr,0,dMass,1);
 						msrMassCheck(msr,dMass,"After msrBuildTree in OutInt");
 						msrSmooth(msr,dTime,SMX_DENSITY,1);
@@ -431,6 +436,7 @@ int main(int argc,char **argv)
 		if (msrDoDensity(msr)) {
 			msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
                         msrDomainDecomp(msr);
+			msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 			msrBuildTree(msr,0,dMass,1);
 			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Density");
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
@@ -473,6 +479,7 @@ int main(int argc,char **argv)
 		else if (msrDoGravity(msr)) {
 			msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
                         msrDomainDecomp(msr);
+			msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Gravity");
 			msrInitAccel(msr);

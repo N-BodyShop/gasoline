@@ -392,6 +392,7 @@ void pkdFinish(PKD);
 void pkdReadTipsy(PKD,char *,int,int,int,double,double);
 void pkdSetSoft(PKD pkd,double dSoft);
 void pkdCalcBound(PKD,BND *,BND *,BND *);
+void pkdGasWeight(PKD);
 int pkdWeight(PKD,int,FLOAT,int,int,int,int *,int *,FLOAT *,FLOAT *);
 int pkdLowerPart(PKD,int,FLOAT,int,int);
 int pkdUpperPart(PKD,int,FLOAT,int,int);
