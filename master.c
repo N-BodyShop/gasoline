@@ -2372,7 +2372,6 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		_msrExit(msr,1);
 		}
 	in.bStandard = msr->param.bStandard;
-	in.iReadIOrder = msr->param.iReadIOrder;
 #ifdef GASOLINE
 	in.duTFac = (msr->param.dConstGamma - 1)*msr->param.dMeanMolWeight/
 		msr->param.dGasConst;
