@@ -187,7 +187,7 @@ void smFinish(SMX smx)
 	}
 
 
-PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int pi)
+PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 {
 	MDL mdl = smx->pkd->mdl;
 	KDN *c = smx->pkd->kdNodes;
@@ -240,7 +240,6 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int pi)
 		}
 	if (cell == smx->pkd->iRoot) return(pq);
 	while (c[cell].iParent != -1) {
-	    if (c[cell].iSibling != -1) { 
 		cp = c[cell].iSibling;
 		ct = cp;
 		ct = c[ct].iNext;
@@ -281,7 +280,6 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int pi)
 			cp = c[cp].iNext;
 			if (cp == ct) break;
 			}
-	            } 
 		cell = c[cell].iParent;
 		}
 	return(pq);
@@ -356,7 +354,7 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	/*
 	 ** Priority Queue must be built. 'pi' must be defined.
 	 */
-	pq = smBallSearch(smx,pq,p[pi].r,pi);
+	pq = smBallSearch(smx,pq,p[pi].r);
 	/*
 	 ** Start non-local search.
 	 */
@@ -365,11 +363,11 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	cell = pkd->piLeaf[pkd->idSelf];
 	while (!pkdIsRoot(cell,idcell)) {
 		cp = cell;
-		pkdSibling(pkd,cp,idcell);
+		pkdSibling(pkdn,cp,idcell); /* pkdn should not be referenced 1st time thru loop */
 		id = idcell;
 		ct = cp;
 		idct = id;
-		pkdNext(pkd,ct,idct);
+		pkdNext(pkd,pkdn,ct,idct); /* pkdn should not be referenced 1st time thru loop */
 		/*
 		 ** Check for any cache work.
 		 */
@@ -378,10 +376,23 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 			else pkdn = &pkd->kdTop[cp];
    			INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,GetNext_2);
 			if (pkdn->iDim >= 0) {
-				if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
-				pkdLower(pkd,cp,id);
-				continue;
+			    if (id == -1) {
+				id = pkd->kdTop[cp].pLower;
+				if (id != -1) {
+				    cp = pkd->iRoot;  /* iRoot must be the same on all PE's for this to work! */
+				    pkdn = mdlAquire(mdl,CID_CELL,cp,id);
+				    cp = pkdn->iLower;
 				}
+				else {
+				    cp = LOWER(cp);
+				}
+			    }
+			    else {
+				cp = pkdn->iLower;
+			    }
+			    if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
+			    continue;
+			}
 			for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
 				pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
 				dx = sx - pPart->r[0];
@@ -415,10 +426,10 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 				}
 		GetNext_2:
 			if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
-			pkdNext(pkd,cp,id);
+			pkdNext(pkd,pkdn,cp,id);
 			if (cp == ct && id == idct) break;
 			}
-		pkdParent(pkd,cell,idcell);
+		pkdParent(pkd,pkdn,cell,idcell);
 	        }
 	/*
 	 ** Create Nearest-Neighbor List and try to pick next particle.
