@@ -5,7 +5,7 @@ MDL = ../mdl/ksr
 
 CC_FLAGS = -O2 -w2 -I$(MDL)
 LD_FLAGS = -para
-LD_LIBS = $(MDL)/mdl.o -lm 
+LD_LIBS = $(MDL)/mdl.o -lm -lrpc
 
 default: mdl pkdgrav
 
@@ -13,23 +13,23 @@ mdl:
 	cd $(MDL); make
 
 pkdgrav : main.o master.o param.o pst.o pkd.o outtype.o \
-	grav.o ewald.o erf.o walk.o $(LD_MDL)
+	grav.o ewald.o erf.o walk.o $(LD_MDL) $(MDL)/mdl.c $(MDL)/mdl.h
 	cc $(LD_FLAGS) -o pkdgrav main.o master.o param.o pst.o pkd.o \
     	outtype.o grav.o ewald.o erf.o walk.o $(LD_LIBS)
 
-main.o: main.c
+main.o: main.c $(MDL)/mdl.h
 	cc $(CC_FLAGS) -c main.c
 
-master.o: master.c
+master.o: master.c $(MDL)/mdl.h
 	cc $(CC_FLAGS) -c master.c
 
 param.o: param.c
 	cc $(CC_FLAGS) -c param.c
 
-pst.o: pst.c
+pst.o: pst.c $(MDL)/mdl.h
 	cc $(CC_FLAGS) -c pst.c
 
-pkd.o: pkd.c
+pkd.o: pkd.c $(MDL)/mdl.h
 	cc $(CC_FLAGS) -c pkd.c
 
 outtype.o: outtype.c
@@ -44,7 +44,7 @@ ewald.o: ewald.c
 erf.o: erf.c
 	cc $(CC_FLAGS) -c erf.c
 
-walk.o: walk.c
+walk.o: walk.c $(MDL)/mdl.h
 	cc $(CC_FLAGS) -c walk.c
 
 

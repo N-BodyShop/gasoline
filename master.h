@@ -73,6 +73,7 @@ int msrCheckInterval(MSR);
 int msrOutInterval(MSR);
 int msrRestart(MSR);
 int msrComove(MSR);
+double msrSoft(MSR);
 
 #endif
 
