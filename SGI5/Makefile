@@ -20,7 +20,7 @@ BDIR	=	$(HOME)/pvm3/bin
 XDIR	=	$(BDIR)/$(PVM_ARCH)
 
 MDL		=	$(SDIR)/../mdl/pvm
-CFLAGS	=	-32 -O2 -fullwarn -I$(PVMDIR)/include -I$(MDL)
+CFLAGS	=	-32 -O2 -I$(PVMDIR)/include -I$(MDL)
 LIBS	=	$(MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
 
 default:	mdl pkdgrav
