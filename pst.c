@@ -1834,8 +1834,8 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 */
 		if (in->bDoSplitDimFind) {
 		  d = pst->iSplitDim;
-		  dimsize = (pst->bnd.fMax[d]-pst->bnd.fMin[d])*NEWSPLITDIMCUT;
 		  if (d==-1) dimsize = -1;
+		  else dimsize = (pst->bnd.fMax[d]-pst->bnd.fMin[d])*NEWSPLITDIMCUT;
 		  if(pst->bndActive.fMax[0] > pst->bndActive.fMin[0]) {
 		    for (j=0;j<3;++j) {
 			    if ((pst->bnd.fMax[j]-pst->bnd.fMin[j]) > dimsize) {
