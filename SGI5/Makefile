@@ -21,9 +21,11 @@ XDIR	=	$(BDIR)/$(PVM_ARCH)
 
 MDL		=	$(SDIR)/../mdl/pvm
 CFLAGS	=	-32 -O2 -I$(PVMDIR)/include -I$(MDL)
-LIBS	=	$(MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
+LIBRND	=	$(MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
+LIBLRU	=	$(MDL)/$(PVM_ARCH)/mdl-lru.o $(PVMLIB) $(ARCHLIB) -lm
+LIBPLR	=	$(MDL)/$(PVM_ARCH)/mdl-plr.o $(PVMLIB) $(ARCHLIB) -lm
 
-default:	mdl pkdgrav
+default:	mdl pkdgrav-rnd pkdgrav-lru pkdgrav-plr
 
 $(XDIR):
 	- mkdir $(BDIR)
@@ -35,11 +37,23 @@ clean:
 mdl:
 	cd $(MDL); aimk
 
-pkdgrav: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
+pkdgrav-rnd: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	ewald.o walk.o
-	$(CC) $(CFLAGS) -o pkdgrav main.o master.o param.o outtype.o pkd.o \
-	 pst.o grav.o ewald.o walk.o $(LIBS)
-	mv -f pkdgrav $(XDIR)
+	$(CC) $(CFLAGS) -o pkdgrav-rnd main.o master.o param.o outtype.o pkd.o \
+	 pst.o grav.o ewald.o walk.o $(LIBRND)
+	mv -f pkdgrav-rnd $(XDIR)
+
+pkdgrav-lru: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
+	ewald.o walk.o
+	$(CC) $(CFLAGS) -o pkdgrav-lru main.o master.o param.o outtype.o pkd.o \
+	 pst.o grav.o ewald.o walk.o $(LIBLRU)
+	mv -f pkdgrav-lru $(XDIR)
+
+pkdgrav-plr: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
+	ewald.o walk.o
+	$(CC) $(CFLAGS) -o pkdgrav-plr main.o master.o param.o outtype.o pkd.o \
+	 pst.o grav.o ewald.o walk.o $(LIBPLR)
+	mv -f pkdgrav-plr $(XDIR)
 
 main.o: $(SDIR)/main.c
 	$(CC) $(CFLAGS) -c $(SDIR)/main.c
