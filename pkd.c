@@ -133,6 +133,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,double dvFac)
 	long lStart;
 
 	pkd->nLocal = nLocal;
+	pkd->nActive = nLocal;
 	/*
 	 ** Seek past the header and up to nStart.
 	 */
@@ -152,6 +153,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,double dvFac)
 		pkd->pStore[i].fMass = dp.mass;
 		pkd->pStore[i].fSoft = dp.eps;
 		pkd->pStore[i].iOrder = nStart + i;
+		pkd->pStore[i].iActive = 1;
 		pkd->pStore[i].fWeight = 1.0;
 		}
 	fclose(fp);
@@ -191,13 +193,13 @@ int pkdWeight(PKD pkd,int d,float fSplit,int iSplitSide,int iFrom,int iTo,
 	 */
 	if (iSplitSide) {
 		iPart = pkdLowerPart(pkd,d,fSplit,iFrom,iTo);
-		*pnLow = pkd->nLocal-iPart;
+		*pnLow = pkdLocal(pkd)-iPart;
 		*pnHigh = iPart;
 		}
 	else {
 		iPart = pkdUpperPart(pkd,d,fSplit,iFrom,iTo);
 		*pnLow = iPart;
-		*pnHigh = pkd->nLocal-iPart;
+		*pnHigh = pkdLocal(pkd)-iPart;
 		}
 	/*
 	 ** Calculate the lower weight and upper weight BETWEEN the particles
@@ -299,20 +301,63 @@ int pkdUpperOrdPart(PKD pkd,int nOrdSplit,int i,int j)
 	}
 
 
-int pkdColRejects(PKD pkd,int d,float fSplit,int iSplitSide)
+void pkdActiveOrder(PKD pkd)
 {
-	int nSplit,iRejects,i;
+	PARTICLE pTemp;
+	int i=0;
+	int j=pkdLocal(pkd)-1;
+
+	if (i > j) goto done;
+    while (1) {
+        while (pkd->pStore[i].iActive)
+            if (++i > j) goto done;
+        while (!pkd->pStore[j].iActive)
+            if (i > --j) goto done;
+		pTemp = pkd->pStore[i];
+		pkd->pStore[i] = pkd->pStore[j];
+		pkd->pStore[j] = pTemp;
+        }
+ done:
+	pkd->nActive = i;
+	}
+
+
+int pkdColRejects(PKD pkd,int d,float fSplit,float fSplitInactive,
+				  int iSplitSide)
+{
+	PARTICLE pTemp;
+	int nSplit,nSplitInactive,iRejects,i,j;
 
 	assert(pkd->nRejects == 0);
 	if (iSplitSide) {
-		nSplit = pkdLowerPart(pkd,d,fSplit,0,pkd->nLocal-1);
+		nSplit = pkdLowerPart(pkd,d,fSplit,0,pkdActive(pkd)-1);
 		}
 	else {
-		nSplit = pkdUpperPart(pkd,d,fSplit,0,pkd->nLocal-1);
+		nSplit = pkdUpperPart(pkd,d,fSplit,0,pkdActive(pkd)-1);
 		}
-	pkd->nRejects = pkd->nLocal - nSplit;
-	iRejects = pkd->nStore - pkd->nRejects;
-	pkd->nLocal = nSplit;
+	if (iSplitSide) {
+		nSplitInactive = pkdLowerPart(pkd,d,fSplitInactive,
+									  pkdActive(pkd),pkdLocal(pkd)-1);
+		}
+	else {
+		nSplitInactive = pkdUpperPart(pkd,d,fSplitInactive,
+									  pkdActive(pkd),pkdLocal(pkd)-1);
+		}
+	nSplitInactive -= pkdActive(pkd);
+	/*
+	 ** Now do some fancy rearrangement.
+	 */
+	i = pkdActive(pkd) - 1;
+	j = pkdActive(pkd) + nSplitInactive - 1;
+	while (i >= nSplit) {
+		pTemp = pkd->pStore[i];
+		pkd->pStore[i] = pkd->pStore[j];
+		pkd->pStore[j] = pTemp;
+		}
+	pkd->nRejects = pkdLocal(pkd) - nSplit - nSplitInactive;
+	iRejects = pkdFreeStore(pkd) - pkd->nRejects;
+	pkd->nActive = nSplit;
+	pkd->nLocal = nSplit + nSplitInactive;
 	/*
 	 ** Move rejects to High memory.
 	 */
@@ -328,10 +373,10 @@ int pkdSwapRejects(PKD pkd,int idSwap)
 	int nOutBytes,nSndBytes,nRcvBytes;
 
 	if (idSwap != -1) {
-		nBuf = (pkd->nStore - pkd->nLocal)*sizeof(PARTICLE);
+		nBuf = (pkdSwapSpace(pkd))*sizeof(PARTICLE);
 		nOutBytes = pkd->nRejects*sizeof(PARTICLE);
-		assert(pkd->nLocal + pkd->nRejects <= pkd->nStore);
-		mdlSwap(pkd->mdl,idSwap,nBuf,&pkd->pStore[pkd->nLocal],
+		assert(pkdLocal(pkd) + pkd->nRejects <= pkdFreeStore(pkd));
+		mdlSwap(pkd->mdl,idSwap,nBuf,&pkd->pStore[pkdLocal(pkd)],
 				nOutBytes,&nSndBytes,&nRcvBytes);
 		pkd->nLocal += nRcvBytes/sizeof(PARTICLE);
 		pkd->nRejects -= nSndBytes/sizeof(PARTICLE);
@@ -349,15 +394,15 @@ void pkdSwapAll(PKD pkd, int idSwap)
     /*
      ** Move particles to High memory.
      */
-    iBuf = pkd->nStore - pkd->nLocal;
-    for (i=pkd->nLocal-1;i>=0;--i)
+    iBuf = pkdSwapSpace(pkd);
+    for (i=pkdLocal(pkd)-1;i>=0;--i)
 	pkd->pStore[iBuf+i] = pkd->pStore[i];
 
-    nBuf = pkd->nStore*sizeof(PARTICLE);
-    nOutBytes = pkd->nLocal*sizeof(PARTICLE);
+    nBuf = pkdFreeStore(pkd)*sizeof(PARTICLE);
+    nOutBytes = pkdLocal(pkd)*sizeof(PARTICLE);
     mdlSwap(pkd->mdl,idSwap,nBuf,&pkd->pStore[0], nOutBytes,
 	    &nSndBytes, &nRcvBytes);
-    assert(nSndBytes/sizeof(PARTICLE) == pkd->nLocal);
+    assert(nSndBytes/sizeof(PARTICLE) == pkdLocal(pkd));
     pkd->nLocal = nRcvBytes/sizeof(PARTICLE);
     }
 
@@ -372,6 +417,15 @@ int pkdFreeStore(PKD pkd)
 	return(pkd->nStore);
 	}
 
+int pkdActive(PKD pkd)
+{
+	return(pkd->nActive);
+	}
+
+int pkdInactive(PKD pkd)
+{
+	return(pkd->nLocal - pkd->nActive);
+	}
 
 int pkdLocal(PKD pkd)
 {
@@ -386,14 +440,13 @@ int pkdNodes(PKD pkd)
 
 void pkdDomainColor(PKD pkd)
 {
-	assert(0);
-	/*
+#if (0)
 	int i;
 	
 	for (i=0;i<pkd->nLocal;++i) {
 		pkd->pStore[i].fColor = (float)pkd->idSelf;
 		}
-		*/
+#endif
 	}
 
 
@@ -401,10 +454,10 @@ int pkdColOrdRejects(PKD pkd,int nOrdSplit,int iSplitSide)
 {
 	int nSplit,iRejects,i;
 
-	if (iSplitSide) nSplit = pkdLowerOrdPart(pkd,nOrdSplit,0,pkd->nLocal-1);
-	else nSplit = pkdUpperOrdPart(pkd,nOrdSplit,0,pkd->nLocal-1);
-	pkd->nRejects = pkd->nLocal - nSplit;
-	iRejects = pkd->nStore - pkd->nRejects;
+	if (iSplitSide) nSplit = pkdLowerOrdPart(pkd,nOrdSplit,0,pkdLocal(pkd)-1);
+	else nSplit = pkdUpperOrdPart(pkd,nOrdSplit,0,pkdLocal(pkd)-1);
+	pkd->nRejects = pkdLocal(pkd) - nSplit;
+	iRejects = pkdFreeStore(pkd) - pkd->nRejects;
 	pkd->nLocal = nSplit;
 	/*
 	 ** Move rejects to High memory.
@@ -709,34 +762,12 @@ double fcnAbsMono(KDN *pkdn,double r)
 	}
 
 
-double fcnRelMono(KDN *pkdn,double r)
-{
-	double t;
-
-	t = (r - pkdn->mom.Bmax);
-	t *= pkdn->fMass*t;
-	t = (3.0*pkdn->mom.B2 - 2.0*pkdn->mom.B3/r)/t;
-	return t;
-	}
-
-
 double fcnAbsQuad(KDN *pkdn,double r)
 {
 	double t;
 
 	t = r*(r - pkdn->mom.Bmax);
 	t *= r*t;
-	t = (4.0*pkdn->mom.B3 - 3.0*pkdn->mom.B4/r)/t;
-	return t;
-	}
-
-
-double fcnRelQuad(KDN *pkdn,double r)
-{
-	double t;
-
-	t = (r - pkdn->mom.Bmax);
-	t *= pkdn->fMass*r*t;
 	t = (4.0*pkdn->mom.B3 - 3.0*pkdn->mom.B4/r)/t;
 	return t;
 	}
@@ -753,34 +784,12 @@ double fcnAbsOct(KDN *pkdn,double r)
 	}
 
 
-double fcnRelOct(KDN *pkdn,double r)
-{
-	double t;
-
-	t = r*(r - pkdn->mom.Bmax);
-	t *= pkdn->fMass*t;
-	t = (5.0*pkdn->mom.B4 - 4.0*pkdn->mom.B5/r)/t;
-	return t;
-	}
-
-
 double fcnAbsHex(KDN *pkdn,double r)
 {
 	double t;
 
 	t = r*r*(r - pkdn->mom.Bmax);
 	t *= r*t;
-	t = (6.0*pkdn->mom.B5 - 5.0*pkdn->mom.B6/r)/t;
-	return t;
-	}
-
-
-double fcnRelHex(KDN *pkdn,double r)
-{
-	double t;
-
-	t = r*(r - pkdn->mom.Bmax);
-	t *= pkdn->fMass*r*t;
 	t = (6.0*pkdn->mom.B5 - 5.0*pkdn->mom.B6/r)/t;
 	return t;
 	}
@@ -849,22 +858,6 @@ double pkdCalcOpen(KDN *pkdn,int iOpenType,double dCrit,int iOrder)
 			break;
 		case 4:
 			dOpen = dRootBracket(pkdn,dCrit,fcnAbsHex);
-			break;
-			}
-		}
-	else if (iOpenType == OPEN_RELPAR) {
-		switch (iOrder) {
-		case 1:
-			dOpen = dRootBracket(pkdn,dCrit,fcnRelMono);
-			break;
-		case 2:
-			dOpen = dRootBracket(pkdn,dCrit,fcnRelQuad);
-			break;
-		case 3:
-			dOpen = dRootBracket(pkdn,dCrit,fcnRelOct);
-			break;
-		case 4:
-			dOpen = dRootBracket(pkdn,dCrit,fcnRelHex);
 			break;
 			}
 		}
@@ -1171,19 +1164,21 @@ void pkdThreadTree(PKD pkd,int iCell,int iNext)
 			assert(u != -1);
 			pkdThreadTree(pkd,u,iNext);
 			/* 
-			 ** need to change the "down" pointer in this case.
+			 ** It is convenient to change the "down" pointer in this case.
 			 */
 			pkd->kdNodes[iCell].iLower = u;
+			pkd->kdNodes[iCell].iUpper = -1;
 			}
 		else {
 			pkdThreadTree(pkd,l,u);
 			pkdThreadTree(pkd,u,iNext);
 			}
-		pkd->kdNodes[iCell].iUpper = iNext;
+		pkd->kdNodes[iCell].iNext = iNext;
 		}
 	else {
 		pkd->kdNodes[iCell].iLower = -1;	/* Just make sure! */
-		pkd->kdNodes[iCell].iUpper = iNext;
+		pkd->kdNodes[iCell].iUpper = -1;
+		pkd->kdNodes[iCell].iNext = iNext;
 		}
 	}
 
@@ -1305,6 +1300,19 @@ void pkdBucketWeight(PKD pkd,int iBucket,float fWeight)
 	}
 
 
+void pkdColorCell(PKD pkd,int iCell,float fColor)
+{
+	KDN *pkdn;
+	int pj;
+	
+	pkdn = &pkd->kdNodes[iCell];
+	for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
+		pkd->pStore[pj].fColor = fColor;
+		}
+	
+	}
+
+
 void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 				double fEwCut,double fEwhCut,
 				double *pdPartSum,double *pdCellSum,CASTAT *pcs)
@@ -1312,6 +1320,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	KDN *c = pkd->kdNodes;
 	int iCell,n;
 	float fWeight;
+	float fColor;
 
 	pkdClearTimer(pkd,1);
 	pkdClearTimer(pkd,2);
@@ -1325,6 +1334,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	/*
 	 ** Walk over the local buckets!
 	 */
+	fColor = 1.0;
 	*pdPartSum = 0.0;
 	*pdCellSum = 0.0;
 	iCell = pkd->iRoot;
@@ -1348,7 +1358,9 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 		fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 
 			1.0*(pkd->nPart + (n-1)/2.0);
 		pkdBucketWeight(pkd,iCell,fWeight);
-		iCell = c[iCell].iUpper;
+		pkdColorCell(pkd,iCell,fColor);
+		fColor += 1.0;
+		iCell = c[iCell].iNext;
 		}
 	/*
 	 ** Get caching statistics.
@@ -1647,7 +1659,7 @@ double pkdMassCheck(PKD pkd)
 	for (i=0;i<pkdLocal(pkd);++i) {
 		dMass += pkd->pStore[i].fMass;
 		}
-	iRej = pkd->nStore - pkd->nRejects;
+	iRej = pkdFreeStore(pkd) - pkd->nRejects;
 	for (i=0;i<pkd->nRejects;++i) {
 		dMass += pkd->pStore[iRej+i].fMass;
 		}

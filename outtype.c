@@ -11,6 +11,8 @@ float ArrType(PARTICLE *p,int iType)
 	case OUT_DENSITY_ARRAY:
 		return(p->fDensity);
 #endif
+	case OUT_COLOR_ARRAY:
+		return(p->fColor);
 	case OUT_POT_ARRAY:
 		return(p->fPot);
 	case OUT_AMAG_ARRAY:

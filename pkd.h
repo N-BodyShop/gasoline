@@ -24,6 +24,7 @@
 
 typedef struct particle {
 	int iOrder;
+	int iActive;
 	float fWeight;
 	float fMass;
 	float fSoft;
@@ -31,6 +32,7 @@ typedef struct particle {
 	float v[3];
 	float a[3];
 	float fPot;
+	float fColor;
 #ifdef SMOOTH_CODE
 	float fBall2;
 	float fDensity;
@@ -74,6 +76,7 @@ typedef struct kdNode {
 	int pUpper;
 	int iLower;
 	int iUpper;
+	int iNext;
 	double fMass;
 	double fSoft;
 	float r[3];
@@ -118,6 +121,7 @@ typedef struct pkdContext {
 	int nStore;
 	int nRejects;
 	int nLocal;
+	int nActive;
 	int nBucket;
 	int nLevels;
 	int nSplit;
@@ -240,11 +244,14 @@ int pkdLowerPart(PKD,int,float,int,int);
 int pkdUpperPart(PKD,int,float,int,int);
 int pkdLowerOrdPart(PKD,int,int,int);
 int pkdUpperOrdPart(PKD,int,int,int);
-int pkdColRejects(PKD,int,float,int);
+void pkdActiveOrder(PKD);
+int pkdColRejects(PKD,int,float,float,int);
 int pkdSwapRejects(PKD,int);
 int pkdSwapSpace(PKD);
 int pkdFreeStore(PKD);
 int pkdLocal(PKD);
+int pkdActive(PKD);
+int pkdInactive(PKD);
 int pkdNodes(PKD);
 void pkdDomainColor(PKD);
 int pkdColOrdRejects(PKD,int,int);

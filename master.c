@@ -1013,7 +1013,7 @@ void msrBuildTree(MSR msr,double dMass)
 	struct ioCalcRoot root;
 	KDN *pkdn;
 	int sec,dsec;
-	int i,iDum,nCell;
+	int iDum,nCell;
 
 	if (msr->param.bVerbose) printf("Domain Decomposition...\n");
 	sec = time(0);
@@ -1045,7 +1045,7 @@ void msrBuildTree(MSR msr,double dMass)
 	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
 	msrMassCheck(msr,dMass,"After pstColCells in msrBuildTree");
 #if (0)
-	for (i=1;i<nCell;++i) {
+	for (int i=1;i<nCell;++i) {
 		struct pkdCalcCellStruct *m;
 
 		printf("\nLTTO:%d\n",i);

@@ -198,6 +198,9 @@ void main(int argc,char **argv)
 		sprintf(achFile,"%s.pot",msrOutName(msr));
 		msrOutArray(msr,achFile,OUT_POT_ARRAY);
 		msrMassCheck(msr,dMass,"After msrOutArray");
+
+		sprintf(achFile,"%s.buc",msrOutName(msr));
+		msrOutArray(msr,achFile,OUT_COLOR_ARRAY);
 		}
 	msrFinish(msr);
 	mdlFinish(mdl);

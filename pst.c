@@ -366,6 +366,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	struct inColRejects inCol;
 	OREJ *pLowerRej,*pUpperRej;
 	int *pidSwap,iRet;
+	int nLowTot,nHighTot;
 
 	struct outMassCheck outMass;
 #ifdef PARANOID_CHECK
@@ -382,7 +383,13 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	mdlGetReply(pst->mdl,pst->idUpper,&outFree,NULL);
 	nUpperStore = outFree.nFreeStore;
 	/*
-	 ** Now start the ROOT finder based on balancing weight ALONE!
+	 ** Make sure that the particles are ordered into active-inactive order.
+	 */
+	mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVEORDER,NULL,0);
+	pstActiveOrder(pst->pstLower,NULL,0,NULL,NULL);
+	mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+	/*
+	 ** Now start the ROOT finder based on balancing active weight ALONE!
 	 */
 	d = iSplitDim;
 	fl = pst->bnd.fMin[d];
@@ -395,6 +402,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		inWt.fSplit = fm;
 		inWt.ittr = ittr;
 		inWt.iSplitSide = 1;
+		inWt.pFlag = 1;
 		mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 		inWt.iSplitSide = 0;
 		pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
@@ -432,12 +440,13 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			inWt.fSplit = fm;
 			inWt.ittr = ittr;
 			inWt.iSplitSide = 1;
+			inWt.pFlag = 1;
 			mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 			inWt.iSplitSide = 0;
 			pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
 			mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
 			/*
-			 ** Add lower and Upper subsets weights and numbers
+			 ** Add lower and Upper subsets number of active particles
 			 */
 			nLow = outWtLow.nLow + outWtHigh.nLow;
 			nHigh = outWtLow.nHigh + outWtHigh.nHigh;
@@ -469,12 +478,13 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			inWt.fSplit = fm;
 			inWt.ittr = ittr;
 			inWt.iSplitSide = 1;
+			inWt.pFlag = 1;
 			mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 			inWt.iSplitSide = 0;
 			pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
 			mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
 			/*
-			 ** Add lower and Upper subsets weights and numbers
+			 ** Add lower and Upper subsets number of active particles
 			 */
 			nLow = outWtLow.nLow + outWtHigh.nLow;
 			nHigh = outWtLow.nHigh + outWtHigh.nHigh;
@@ -498,6 +508,103 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	pst->fSplit = fm;
 	pst->iSplitDim = d;
 	/*
+	 ** Now we see if the TOTAL number of particles in the lower and upper
+	 ** subsets exceeds the local pStores. If so then we need to find a new
+	 ** boundary to distribute the INACTIVE particles so that everything 
+	 ** fits.
+	 */
+	inWt.iSplitDim = d;
+	inWt.fSplit = fm;
+	inWt.ittr = 0;
+	inWt.iSplitSide = 1;
+	inWt.pFlag = -1;
+	mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
+	inWt.iSplitSide = 0;
+	pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
+	mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
+	/*
+	 ** Add lower and Upper subsets numbers of particles
+	 */
+	nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
+	nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
+	if (nLowTot > nLowerStore-NUM_SAFETY) {
+		fl = pst->bnd.fMin[d];
+		fu = fm;
+		fmm = (fl + fu)/2;
+		ittr = 0;
+	    while (fl < fmm && fmm < fu) {
+			fm = fmm;
+			inWt.iSplitDim = d;
+			inWt.fSplit = fm;
+			inWt.ittr = ittr;
+			inWt.iSplitSide = 1;
+			inWt.pFlag = -1;
+			mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
+			inWt.iSplitSide = 0;
+			pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
+			mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
+			/*
+			 ** Add lower and Upper subsets numbers of particles
+			 */
+			nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
+			nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
+/*
+			printf("Inactive Fit ittr:%d l:%d\n",ittr,nLowTot);
+*/
+			if (nLowTot > nLowerStore) fu = fm;
+			else if (nLowTot < nLowerStore) fl = fm;
+			else {
+				fl = fm;
+				break;
+				}
+			fmm = (fl + fu)/2;
+			++ittr;
+			}
+		/*
+		printf("Inactive Fit ittr:%d l:%d <= %d\n",ittr,nLowTot,nLowerStore);
+		*/
+		assert(nLowTot <= nLowerStore);
+		}
+	else if (nHighTot > nUpperStore-NUM_SAFETY) {
+		fl = fm;
+		fu = pst->bnd.fMax[d];
+		fmm = (fl + fu)/2;
+		ittr = 0;
+	    while (fl < fmm && fmm < fu) {
+			fm = fmm;
+			inWt.iSplitDim = d;
+			inWt.fSplit = fm;
+			inWt.ittr = ittr;
+			inWt.iSplitSide = 1;
+			inWt.pFlag = -1;
+			mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
+			inWt.iSplitSide = 0;
+			pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
+			mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
+			/*
+			 ** Add lower and Upper subsets numbers of particles
+			 */
+			nLowTot = outWtLow.nLow + outWtHigh.nLow;
+			nHighTot = outWtLow.nHigh + outWtHigh.nHigh;
+/*
+			printf("Inactive Fit ittr:%d u:%d\n",ittr,nHighTot);
+*/
+			if (nHighTot > nUpperStore) fl = fm;
+			else if (nHighTot < nUpperStore) fu = fm;
+			else {
+				fu = fm;
+				break;
+				}
+			fmm = (fl + fu)/2;
+			++ittr;
+			}
+		/*
+		printf("Inactive Fit ittr:%d u:%d <= %d\n",ittr,nHighTot,nUpperStore);
+		*/
+		assert(nHighTot <= nUpperStore);
+		}
+	pst->fSplitInactive = fm;
+	/*
 	 ** First Collect rejects.
 	 **
 	 ** Careful, SERVICE PST_COLREJECTS does NOT conform strictly to
@@ -512,6 +619,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	assert(pidSwap != NULL);
 
 	inCol.fSplit = pst->fSplit;
+	inCol.fSplitInactive = pst->fSplitInactive;
 	inCol.iSplitDim = pst->iSplitDim;
 	inCol.iSplitSide = 1;
 	mdlReqService(pst->mdl,pst->idUpper,PST_COLREJECTS,&inCol,sizeof(inCol));
@@ -522,6 +630,10 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	assert(nOut/sizeof(OREJ) == pst->nUpper);
 
 #ifdef PARANOID_CHECK
+	/*
+	 ** This paranoid check no longer works for Active particles, need
+	 ** to modify or remove this!
+	 */
 	iLowSum = 0;
 	iHighSum = 0;
 	for (i=0;i<pst->nLower;++i) {
@@ -659,6 +771,10 @@ void pstCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+/*
+ ** Make sure that the local particles are split into active and inactive
+ ** when passing pFlag != 0.
+ */
 void pstWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -686,8 +802,24 @@ void pstWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			 ** Initialize.
 			 */
 			plcl->fSplit = fSplit;
-			plcl->iWtFrom = 0;
-			plcl->iWtTo = pkdLocal(plcl->pkd)-1;
+			if (in->pFlag == 0) {
+				plcl->iWtFrom = 0;
+				plcl->iWtTo = pkdLocal(plcl->pkd)-1;
+				}
+			else if (in->pFlag > 0) {
+				/*
+				 ** Particles must be in the active-inactive order here!
+				 */
+				plcl->iWtFrom = 0;
+				plcl->iWtTo = pkdActive(plcl->pkd)-1;
+				}
+			else {
+				/*
+				 ** Particles must be in the active-inactive order here!
+				 */
+				plcl->iWtFrom = pkdActive(plcl->pkd);
+				plcl->iWtTo = pkdInactive(plcl->pkd)-1;
+				}
 			plcl->fWtLow = 0.0;
 			plcl->fWtHigh = 0.0;
 			}
@@ -741,11 +873,6 @@ void pstFreeStore(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
-/*
- ** This function does NOT conform to proper use of the MDL services
- ** primitives, as it returns a variable length arguement. This 
- ** cannot be fully supported by MDL. Have to fix this sometime!
- */
 void pstColRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -763,7 +890,8 @@ void pstColRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 	    pOutRej->nRejects = pkdColRejects(plcl->pkd,in->iSplitDim,
-										  in->fSplit,in->iSplitSide);
+										  in->fSplit,in->fSplitInactive,
+										  in->iSplitSide);
 		pOutRej->nSpace = pkdSwapSpace(plcl->pkd);
 		pOutRej->id = pst->idSelf;
 		pOutRej->nLocal = pkdLocal(plcl->pkd);
@@ -773,11 +901,6 @@ void pstColRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
-/*
- ** This function does NOT conform to proper use of the MDL services
- ** primitives, as it returns a variable length arguement. This 
- ** cannot be fully supported by MDL. Have to fix this sometime!
- */
 void pstColOrdRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -803,11 +926,6 @@ void pstColOrdRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
-/*
- ** This function does NOT conform to proper use of the MDL services
- ** primitives, as it uses variable length arguements. This 
- ** cannot be fully supported by MDL. Have to fix this sometime!
- */
 void pstSwapRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -942,6 +1060,23 @@ void pstLocalOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdLocalOrder(plcl->pkd,pst->nStart);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstActiveOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVEORDER,NULL,0);
+		pstActiveOrder(pst->pstLower,NULL,0,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdActiveOrder(plcl->pkd);
 		}
 	if (pnOut) *pnOut = 0;
 	}

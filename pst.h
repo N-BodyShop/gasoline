@@ -31,6 +31,7 @@ typedef struct pstContext {
 	BND	bnd;
 	int iSplitDim;
 	float fSplit;
+	float fSplitInactive;
 	int nStart;
 	int nEnd;
 	int nOrdSplit;
@@ -88,6 +89,7 @@ struct inWeight {
 	float fSplit;
 	int iSplitSide;
 	int ittr;
+	int pFlag;
 	};
 struct outWeight {
 	int nLow;
@@ -117,6 +119,7 @@ typedef struct outReject {
 struct inColRejects {
 	int iSplitDim;
 	float fSplit;
+	float fSplitInactive;
 	int iSplitSide;
 	};
 void pstColRejects(PST,void *,int,void *,int *);
@@ -317,4 +320,8 @@ struct outMassCheck {
 	};
 void pstMassCheck(PST,void *,int,void *,int *);
 
+#define PST_ACTIVEORDER		38
+void pstActiveOrder(PST,void *,int,void *,int *);
+
 #endif
+
