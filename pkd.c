@@ -3821,15 +3821,20 @@ pkdDensityStep(PKD pkd,double dEta,double dRhoFac)
     }
 
 int
-pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,int bAll, int *pnMaxRung)
+pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
+	    int bAll, /* 0 => symplectic case */
+	    int *pnMaxRung,	/* number of particles on MaxRung */
+	    int *piMaxRungIdeal) /* preferred max rung */
 {
     int i;
     int iMaxRungOut;
     int iTempRung;
     int iSteps;
     int nMaxRung;
+    int iMaxRungIdeal;
     
     iMaxRungOut = 0;
+    iMaxRungIdeal = 0;
     nMaxRung = 0;
     for(i=0;i<pkdLocal(pkd);++i) {
 		if(pkd->pStore[i].iRung >= iRung) {
@@ -3849,6 +3854,8 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,int bAll, int *pnMaxRun
 					++iTempRung;
 					iSteps >>= 1;
 					}
+				if(iTempRung >= iMaxRungIdeal)
+					iMaxRungIdeal = iTempRung+1;
 				if(iTempRung >= iMaxRung)
 					iTempRung = iMaxRung-1;
 				pkd->pStore[i].iRung = iTempRung;
@@ -3872,6 +3879,7 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,int bAll, int *pnMaxRun
 		}
 
     *pnMaxRung = nMaxRung;
+    *piMaxRungIdeal = iMaxRungIdeal;
     return iMaxRungOut;
     }
 

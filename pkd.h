@@ -523,7 +523,8 @@ void pkdGravStep(PKD pkd, double dEta);
 void pkdAccelStep(PKD pkd, double dEta, double dVelFac, double
 				  dAccFac, int bDoGravity, int bEpsAcc, int bSqrtPhi, double dhMinOverSoft);
 void pkdDensityStep(PKD pkd, double dEta, double dRhoFac);
-int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll, int *pnMaxRung);
+int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll,
+		int *pnMaxRung, int *piMaxRungIdeal);
 void pkdInitDt(PKD pkd, double dDelta);
 int pkdRungParticles(PKD,int);
 void pkdCoolVelocity(PKD,int,double,double,double);

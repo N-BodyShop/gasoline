@@ -3591,6 +3591,7 @@ void pstDtToRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct inDtToRung *in = vin;
 	struct outDtToRung *out = vout;
 	int iMaxRung, nMaxRung;
+	int iMaxRungIdeal;
 
 	mdlassert(pst->mdl,nIn == sizeof(*in));
 	if (pst->nLeaves > 1) {
@@ -3598,6 +3599,7 @@ void pstDtToRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pstDtToRung(pst->pstLower,vin,nIn,vout,pnOut);
 		iMaxRung = out->iMaxRung;
 		nMaxRung = out->nMaxRung;
+		iMaxRungIdeal = out->iMaxRungIdeal;
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
 		if(iMaxRung > out->iMaxRung) {
 			out->iMaxRung = iMaxRung;
@@ -3606,10 +3608,14 @@ void pstDtToRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		else if (iMaxRung == out->iMaxRung) 
 		        out->nMaxRung += nMaxRung;
 		        
+		if(iMaxRungIdeal > out->iMaxRungIdeal)
+		    out->iMaxRungIdeal = iMaxRungIdeal;
 		}
 	else {
 		out->iMaxRung = pkdDtToRung(plcl->pkd, in->iRung,
-					    in->dDelta, in->iMaxRung, in->bAll, &(out->nMaxRung));
+					    in->dDelta, in->iMaxRung, in->bAll,
+					    &(out->nMaxRung),
+					    &(out->iMaxRungIdeal));
 		}
 	if (pnOut) *pnOut = sizeof(*out);
 	}

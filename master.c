@@ -4758,13 +4758,18 @@ void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
 
     pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
 
+    if(out.iMaxRungIdeal > msrMaxRung(msr)) {
+	fprintf(stderr, "WARNING, TIMESTEPS TOO LARGE: nMaxRung (%d) is greater than ideal rung (%d)\n", 
+		msrMaxRung(msr), out.iMaxRungIdeal);
+	}
     if (out.nMaxRung <= msr->param.nTruncateRung && out.iMaxRung > iRung) {
-      if (msr->param.bVDetails) printf("n_CurrMaxRung = %d  (iCurrMaxRung = %d):  Promoting particles to iCurrMaxrung = %d\n",
-				       out.nMaxRung,out.iMaxRung,out.iMaxRung-1);
+	if (msr->param.bVDetails)
+	    printf("n_CurrMaxRung = %d  (iCurrMaxRung = %d):  Promoting particles to iCurrMaxrung = %d\n",
+		   out.nMaxRung,out.iMaxRung,out.iMaxRung-1);
 
-      in.iMaxRung = out.iMaxRung; /* Note this is the forbidden rung so no -1 here */
-      pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
-    }
+	in.iMaxRung = out.iMaxRung; /* Note this is the forbidden rung so no -1 here */
+	pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
+	}
 
     msr->iCurrMaxRung = out.iMaxRung;
     }

@@ -793,6 +793,7 @@ struct inDtToRung {
 struct outDtToRung {
     int iMaxRung;
     int nMaxRung;
+    int iMaxRungIdeal;
     };
 void pstDtToRung(PST,void *,int,void *,int *);
 
