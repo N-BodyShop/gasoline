@@ -71,24 +71,45 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 					dzo = dz + iz*L;
 					r2 = dxo*dxo + dyo*dyo + dzo*dzo;
 					if (r2 > fEwCut2 && !bInHole) continue;
-					if (r2 == 0.0) continue;
-					r = sqrt(r2);
-					dir = 1/r;
-					dir2 = dir*dir;
-					a = exp(-r2*alpha2);
-					a *= ka*dir2;
-					if (bInHole) gam[0] = -erf(alpha*r);
-					else gam[0] = erfc(alpha*r);
-					gam[0] *= dir;
-					gam[1] = gam[0]*dir2 + a;
-					alphan = 2*alpha2;
-					gam[2] = 3*gam[1]*dir2 + alphan*a;
-					alphan *= 2*alpha2;
-					gam[3] = 5*gam[2]*dir2 + alphan*a;
-					alphan *= 2*alpha2;
-					gam[4] = 7*gam[3]*dir2 + alphan*a;
-					alphan *= 2*alpha2;
-					gam[5] = 9*gam[4]*dir2 + alphan*a;
+					if (r2 < 3.0e-3*L*L) {
+					/*
+					 * For small r, series expand about
+					 * the origin to avoid errors caused
+					 * by cancellation of large terms.
+					 */
+					  alphan = ka;
+					  r2 *= alpha2;
+					  gam[0] = alphan*(r2/3 - 1);
+					  alphan *= 2*alpha2;
+					  gam[1] = alphan*(r2/5 - 1.0/3.0);
+					  alphan *= 2*alpha2;
+					  gam[2] = alphan*(r2/7 - 1.0/5.0);
+					  alphan *= 2*alpha2;
+					  gam[3] = alphan*(r2/9 - 1.0/7.0);
+					  alphan *= 2*alpha2;
+					  gam[4] = alphan*(r2/11 - 1.0/9.0);
+					  alphan *= 2*alpha2;
+					  gam[5] = alphan*(r2/13 - 1.0/11.0);
+					  }
+					else {
+					    r = sqrt(r2);
+					    dir = 1/r;
+					    dir2 = dir*dir;
+					    a = exp(-r2*alpha2);
+					    a *= ka*dir2;
+					    if (bInHole) gam[0] = -erf(alpha*r);
+					    else gam[0] = erfc(alpha*r);
+					    gam[0] *= dir;
+					    gam[1] = gam[0]*dir2 + a;
+					    alphan = 2*alpha2;
+					    gam[2] = 3*gam[1]*dir2 + alphan*a;
+					    alphan *= 2*alpha2;
+					    gam[3] = 5*gam[2]*dir2 + alphan*a;
+					    alphan *= 2*alpha2;
+					    gam[4] = 7*gam[3]*dir2 + alphan*a;
+					    alphan *= 2*alpha2;
+					    gam[5] = 9*gam[4]*dir2 + alphan*a;
+					    }
 #ifdef REDUCED_EWALD
 					QEVAL(iOrder,mom,gam,dxo,dyo,dzo,ax,ay,az,fPot);
 #else
