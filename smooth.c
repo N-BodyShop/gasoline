@@ -598,14 +598,14 @@ void smSmooth(SMX smx,SMF *smf)
 	 ** Have to add non-local particles to the queue?
 	 */
 	for (id=0;id<mdlThreads(pkd->mdl) && (iLoad < 0);++id) {
-		if (id = pkd->idSelf) continue;
+		if (id == pkd->idSelf) continue;
 		pkdn = mdlAquire(mdl,CID_CELL,ROOT,id);
 		for (pj=pkdn->pLower;pj<=pkdn->pUpper && (iLoad < 0);++pj) {
 			pqi = &smx->pq[nQueue];
 			pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
-			dx = sx - pPart->r[0];
-			dy = sy - pPart->r[1];
-			dz = sz - pPart->r[2];
+			dx = x - pPart->r[0];
+			dy = y - pPart->r[1];
+			dz = z - pPart->r[2];
 			fDist2 = dx*dx + dy*dy + dz*dz;
 			pqi->fKey = fDist2;
 			pqi->dx = dx;
@@ -637,7 +637,7 @@ void smSmooth(SMX smx,SMF *smf)
 		pqi->dx = dx;
 		pqi->dy = dy;
 		pqi->dz = dz;
-		pqi->p = pj;
+		pqi->p = iLoad;
 		pqi->id = pkd->idSelf;
 		pqi->pPart = &p[iLoad];
 		pqi->ax = 0.0;
