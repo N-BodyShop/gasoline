@@ -1,3 +1,4 @@
+VPATH=..
 #
 # Custom section
 # Set PVM_ARCH to your architecture type (SUN4, HP9K, RS6K, SGI, etc)
@@ -36,10 +37,10 @@ mdl:
 	cd $(MDL); aimk
 
 pkdgrav: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
-	ewald.o walk.o v_sqrt1.o eccanom.o hypanom.o fdl.o htable.o smooth.o
+	ewald.o walk.o v_sqrt1.o eccanom.o hypanom.o fdl.o htable.o smooth.o smoothfcn.o
 	$(CC) $(CFLAGS) -o pkdgrav main.o master.o param.o outtype.o pkd.o \
 	 pst.o grav.o ewald.o walk.o v_sqrt1.o eccanom.o hypanom.o fdl.o \
-	htable.o smooth.o $(LIBS)
+	htable.o smooth.o smoothfcn.o $(LIBS)
 	mv -f pkdgrav $(XDIR)
 
 main.o: $(SDIR)/main.c
