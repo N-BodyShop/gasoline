@@ -98,6 +98,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.bBinary = 1;
 	prmAddParam(msr->prm,"bBinary",0,&msr->param.bBinary,sizeof(int),"bb",
 				"spatial/density binary trees = +bb");
+	msr->param.bDoDensity = 1;
+	prmAddParam(msr->prm,"bDoDensity",0,&msr->param.bDoDensity,sizeof(int),
+				"den","enable/disable density outputs = +den");
 	msr->param.nBucket = 8;
 	prmAddParam(msr->prm,"nBucket",1,&msr->param.nBucket,sizeof(int),"b",
 				"<max number of particles in a bucket> = 8");
@@ -188,10 +191,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.nSmooth = 64;
 	prmAddParam(msr->prm,"nSmooth",1,&msr->param.nSmooth,sizeof(int),"s",
 				"<number of particles to smooth over> = 64");
-	msr->param.bGatherScatter = 1;
-	prmAddParam(msr->prm,"bGatherScatter",0,&msr->param.bGatherScatter,
-				sizeof(int),"gs",
-				"gather-scatter/gather-only smoothing kernel = +gs");
 	msr->param.bStandard = 0;
 	prmAddParam(msr->prm,"bStandard",0,&msr->param.bStandard,sizeof(int),"std",
 				"output in standard TIPSY binary format = -std");
@@ -296,6 +295,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	assert(msr->pMap != NULL);
 	inGM.nStart = 0;
 	pstGetMap(msr->pst,&inGM,sizeof(inGM),msr->pMap,NULL);
+	/*
+	 ** Initialize tree type to none.
+	 */
+	msr->iTreeType = MSR_TREE_NONE;
 	}
 
 
@@ -309,7 +312,6 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bDiag: %d",msr->param.bDiag);
 	fprintf(fp," bVerbose: %d",msr->param.bVerbose);
 	fprintf(fp,"\n# bPeriodic: %d",msr->param.bPeriodic);
-	fprintf(fp," bGatherScatter: %d",msr->param.bGatherScatter);
 	fprintf(fp," bRestart: %d",msr->param.bRestart);
 	fprintf(fp," bComove: %d",msr->param.bComove);
 	fprintf(fp,"\n# bParaRead: %d",msr->param.bParaRead);
@@ -1036,7 +1038,7 @@ void msrSetSoft(MSR msr,double dSoft)
 	}
 
 
-void msrBuildTree(MSR msr,int bActiveOnly,double dMass)
+void msrBuildTree(MSR msr,int bActiveOnly,double dMass,int bSmooth)
 {
 	struct inBuildTree in;
 	struct outBuildTree out;
@@ -1065,7 +1067,19 @@ void msrBuildTree(MSR msr,int bActiveOnly,double dMass)
 	in.iOrder = (msr->param.iOrder >= msr->param.iEwOrder)?
 		msr->param.iOrder:msr->param.iEwOrder;
 	in.dCrit = msr->dCrit;
-	in.bBinary = msr->param.bBinary;
+	if (bSmooth) {
+		in.bBinary = 0;
+		msr->iTreeType = MSR_TREE_DENSITY;
+		}
+	else {
+		in.bBinary = msr->param.bBinary;
+		if (msr->param.bBinary) {
+			msr->iTreeType = MSR_TREE_SPATIAL;
+			}
+		else {
+			msr->iTreeType = MSR_TREE_DENSITY;
+			}
+		}
 	in.bActiveOnly = bActiveOnly;
 	sec = time(0);
 	pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
@@ -1134,6 +1148,10 @@ void msrReorder(MSR msr)
 	if (msr->param.bVerbose) {
 		printf("Order established, Wallclock: %d secs\n\n",dsec);
 		}
+	/*
+	 ** Mark tree as void.
+	 */
+	msr->iTreeType = MSR_TREE_NONE;
 	}
 
 
@@ -1299,8 +1317,11 @@ void msrDensity(MSR msr)
 	struct inDensity in;
 	int sec,dsec;
 
+	/*
+	 ** Make sure that the type of tree is a density binary tree!
+	 */
+	assert(msr->iTreeType == MSR_TREE_DENSITY);
 	in.nSmooth = msr->param.nSmooth;
-	in.bGatherScatter = msr->param.bGatherScatter;
 	in.bPeriodic = msr->param.bPeriodic;
 	if (msr->param.bVerbose) printf("Calculating Densities...\n");
 	sec = time(0);
@@ -1311,7 +1332,8 @@ void msrDensity(MSR msr)
 
 
 void msrGravity(MSR msr,double dStep,
-				int *piSec,double *pdWMax,double *pdIMax,double *pdEMax)
+				int *piSec,double *pdWMax,double *pdIMax,double *pdEMax,
+				int *pnActive)
 {
 	struct inGravity in;
 	struct outGravity out;
@@ -1323,6 +1345,8 @@ void msrGravity(MSR msr,double dStep,
 	double dEAvg,dEMax,dEMin;
 	double iP;
 
+	assert(msr->iTreeType == MSR_TREE_SPATIAL || 
+		   msr->iTreeType == MSR_TREE_DENSITY);
 	printf("Calculating Gravity, Step:%.1f\n",dStep);
 	sec = time(0);
     in.nReps = msr->param.nReplicas;
@@ -1337,6 +1361,7 @@ void msrGravity(MSR msr,double dStep,
 	*piSec = dsec;
 	dPartAvg = out.dPartSum/out.nActive;
 	dCellAvg = out.dCellSum/out.nActive;
+	*pnActive = out.nActive;
 	iP = 1.0/msr->nThreads;
 	dWAvg = out.dWSum*iP;
 	dIAvg = out.dISum*iP;
@@ -1414,6 +1439,11 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		}
 	in.bPeriodic = msr->param.bPeriodic;
 	pstDrift(msr->pst,&in,sizeof(in),NULL,NULL);
+	/*
+	 ** Once we move the particles the tree should no longer be considered 
+	 ** valid.
+	 */
+	msr->iTreeType = MSR_TREE_NONE;
 	}
 
 
@@ -2050,7 +2080,6 @@ void msrDensityRung(MSR msr, int iRung, double dDelta, double dTime,
     int sec,dsec;
 
     inden.nSmooth = msr->param.nSmooth;
-    inden.bGatherScatter = 0;
     inden.bPeriodic = msr->param.bPeriodic;
     if (msr->param.bVerbose) printf("Calculating Rung Densities...\n");
     sec = time(0);
@@ -2067,8 +2096,8 @@ void msrDensityRung(MSR msr, int iRung, double dDelta, double dTime,
     msr->iCurrMaxRung = out.iMaxRung;
     }
 
-void
-msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime, int bAll)
+
+void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime, int bAll)
 {
     struct inVelocityRung in;
     struct outVelocityRung out;
@@ -2089,41 +2118,46 @@ msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime, int bAll)
     msr->iCurrMaxRung = out.iMaxRung;
     }
 
-void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta, int iRung)
+
+void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta, 
+				   int iRung, double *pdActiveSum)
 {
     double dMass = -1.0;
     int iSec;
     double dWMax, dIMax, dEMax;
+	int nActive;
 
 	if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
 	    if(iRung < msrMaxRung(msr)-1) {
-		if (msr->param.bVerbose) {
-		      printf("Adjust, iRung: %d\n", iRung);
-		      }
-		msrDrift(msr,dTime,0.5*dDelta);
-		msrActiveRung(msr, iRung, 1);
-		msrBuildTree(msr,0,dMass);
-		dTime += 0.5*dDelta;
-		msrDensityRung(msr,iRung, dDelta, dTime, 0);
-		msrDrift(msr,dTime,-0.5*dDelta);
-		dTime -= 0.5*dDelta;
-		}
+			if (msr->param.bVerbose) {
+				printf("Adjust, iRung: %d\n", iRung);
+				}
+			msrDrift(msr,dTime,0.5*dDelta);
+			msrActiveRung(msr, iRung, 1);
+			msrBuildTree(msr,0,dMass,1);
+			dTime += 0.5*dDelta;
+			msrDensityRung(msr,iRung, dDelta, dTime, 0);
+			msrDrift(msr,dTime,-0.5*dDelta);
+			dTime -= 0.5*dDelta;
+			}
 		/*
 		 ** Actual Stepping.
 		 */
-		msrTopStepDen(msr, dStep, dTime, 0.5*dDelta,iRung+1);
-	        dStep += 1.0/(2 << iRung);
+		msrTopStepDen(msr, dStep, dTime, 0.5*dDelta,iRung+1,pdActiveSum);
+		dStep += 1.0/(2 << iRung);
 		if(msrCurrRung(msr, iRung)) {
 			if (msr->param.bVerbose) {
 			    printf("Kick, iRung: %d\n", iRung);
 			    }
 			msrActiveRung(msr, iRung, 0);
-			msrBuildTree(msr,0,dMass);
-			msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax);
+			msrBuildTree(msr,0,dMass,0);
+			msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+			*pdActiveSum += (double)nActive/msr->N;
 			msrKick(msr, dTime, dDelta);
 			msrRungStats(msr);
 			}
-		msrTopStepDen(msr,dStep,dTime+0.5*dDelta,0.5*dDelta,iRung+1);
+		msrTopStepDen(msr,dStep,dTime+0.5*dDelta,0.5*dDelta,iRung+1,
+					  pdActiveSum);
 		}
 	else {    
 		if (msr->param.bVerbose) {
@@ -2132,6 +2166,7 @@ void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta, int iRung
 		msrDrift(msr,dTime,dDelta);
 		}
 	}
+
 
 void msrRungStats(MSR msr)
 {
@@ -2149,104 +2184,117 @@ void msrRungStats(MSR msr)
 	printf(")\n");
 	}
 
-void
-msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
-	     iRung, int iAdjust)
+
+void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
+				  iRung, int iAdjust, double *pdActiveSum)
 {
     double dMass = -1.0;
     int iSec;
     double dWMax, dIMax, dEMax;
+	int nActive;
 
-      if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
-          if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
-              if (msr->param.bVerbose) {
-                    printf("Adjust, iRung: %d\n", iRung);
-                    }
+	if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
+		if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
+			if (msr->param.bVerbose) {
+				printf("Adjust, iRung: %d\n", iRung);
+				}
 
-              msrActiveRung(msr, iRung, 1);
-              msrBuildTree(msr,1,dMass);
-              msrDensityRung(msr,iRung, dDelta, dTime, 1);
-              }
-              /*
-               ** Actual Stepping.
-               */
-              msrTopStepNS(msr, dStep, dTime, 0.5*dDelta,iRung+1, 0);
-	      dStep += 1.0/(2 << iRung);
-              if(msrCurrRung(msr, iRung)) {
-                      if (msr->param.bVerbose) {
-                          printf("Kick, iRung: %d\n", iRung);
-                          }
-                      msrActiveRung(msr, iRung, 0);
-                      msrBuildTree(msr,0,dMass);
-                      msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax);
-                      msrKick(msr, dTime, dDelta);
-                      }
-              msrTopStepNS(msr, dStep, dTime+0.5*dDelta,
-			   0.5*dDelta,iRung+1, 1);
-              }
-      else {    
-              if (msr->param.bVerbose) {
-                  printf("Drift, iRung: %d\n", iRung-1);
-                  }
-              msrDrift(msr,dTime,dDelta);
-              }
-      }
-
-void
-msrTopStepVel(MSR msr, double dStep, double dTime, double dDelta, int
-	      iRung, int iAdjust)
-{
-    double dMass = -1.0;
-    int iSec;
-    double dWMax, dIMax, dEMax;
-
-      if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
-          if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
-              if (msr->param.bVerbose) {
-                    printf("Adjust, iRung: %d\n", iRung);
-                    }
-
-              msrActiveRung(msr, iRung, 1);
-              msrVelocityRung(msr,iRung, dDelta, dTime, 1);
-              }
-	  /*
-	   ** Actual Stepping.
-	   */
-	  msrTopStepVel(msr, dStep, dTime, 0.5*dDelta,iRung+1, 0);
-	  dStep += 1.0/(2 << iRung);
-	  if(msrCurrRung(msr, iRung)) {
-		  if (msr->param.bVerbose) {
-		      printf("Kick, iRung: %d\n", iRung);
-		      }
-		  msrActiveRung(msr, iRung, 0);
-		  msrBuildTree(msr,0,dMass);
-		  msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax);
-		  msrKick(msr, dTime, dDelta);
-		  }
-	  msrTopStepVel(msr, dStep, dTime+0.5*dDelta, 0.5*dDelta,
-			iRung+1, 1);
-	  }
-      else {    
-	  if (msr->param.bVerbose) {
-	      printf("Drift, iRung: %d\n", iRung-1);
-	      }
-	  msrDrift(msr,dTime,dDelta);
-	  }
-      }
-
-void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung)
-{
-    if(msr->param.bEpsVel)
-	msrTopStepVel(msr, dStep, dTime, dDelta, iRung, 1);
-    else {
-	if(msr->param.bNonSymp)
-	    msrTopStepNS(msr, dStep, dTime, dDelta, iRung, 1);
-	else
-	    msrTopStepDen(msr, dStep, dTime, dDelta, iRung);
+			msrActiveRung(msr, iRung, 1);
+			msrBuildTree(msr,1,dMass,1);
+			msrDensityRung(msr,iRung, dDelta, dTime, 1);
+			}
+		/*
+		 ** Actual Stepping.
+		 */
+		msrTopStepNS(msr, dStep, dTime, 0.5*dDelta,iRung+1, 0, pdActiveSum);
+		dStep += 1.0/(2 << iRung);
+		if(msrCurrRung(msr, iRung)) {
+			if (msr->param.bVerbose) {
+				printf("Kick, iRung: %d\n", iRung);
+				}
+			msrActiveRung(msr, iRung, 0);
+			msrBuildTree(msr,0,dMass,0);
+			msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+			*pdActiveSum += (double)nActive/msr->N;
+			msrKick(msr, dTime, dDelta);
+			}
+		msrTopStepNS(msr, dStep, dTime+0.5*dDelta,
+					 0.5*dDelta,iRung+1, 1, pdActiveSum);
+		}
+	else {    
+		if (msr->param.bVerbose) {
+			printf("Drift, iRung: %d\n", iRung-1);
+			}
+		msrDrift(msr,dTime,dDelta);
+		}
 	}
-}
 
 
+void msrTopStepVel(MSR msr, double dStep, double dTime, double dDelta, int
+				   iRung, int iAdjust, double *pdActiveSum)
+{
+    double dMass = -1.0;
+    int iSec;
+    double dWMax, dIMax, dEMax;
+	int nActive;
+
+	if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
+		if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
+			if (msr->param.bVerbose) {
+				printf("Adjust, iRung: %d\n", iRung);
+				}
+
+			msrActiveRung(msr, iRung, 1);
+			msrVelocityRung(msr,iRung, dDelta, dTime, 1);
+			}
+		/*
+		 ** Actual Stepping.
+		 */
+		msrTopStepVel(msr, dStep, dTime, 0.5*dDelta,iRung+1, 0, pdActiveSum);
+		dStep += 1.0/(2 << iRung);
+		if(msrCurrRung(msr, iRung)) {
+			if (msr->param.bVerbose) {
+				printf("Kick, iRung: %d\n", iRung);
+				}
+			msrActiveRung(msr, iRung, 0);
+			msrBuildTree(msr,0,dMass,0);
+			msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+			*pdActiveSum += (double)nActive/msr->N;
+			msrKick(msr, dTime, dDelta);
+			}
+		msrTopStepVel(msr, dStep, dTime+0.5*dDelta, 0.5*dDelta,
+					  iRung+1, 1, pdActiveSum);
+		}
+	else {    
+		if (msr->param.bVerbose) {
+			printf("Drift, iRung: %d\n", iRung-1);
+			}
+		msrDrift(msr,dTime,dDelta);
+		}
+	}
 
 
+void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, 
+				double *pdMultiEff)
+{
+	int iRung = 0;
+
+	*pdMultiEff = 0.0;
+    if(msr->param.bEpsVel)
+		msrTopStepVel(msr,dStep,dTime,dDelta,iRung,1,pdMultiEff);
+    else {
+		if(msr->param.bNonSymp)
+			msrTopStepNS(msr,dStep,dTime,dDelta,iRung,1,pdMultiEff);
+		else
+			msrTopStepDen(msr,dStep,dTime,dDelta,iRung,pdMultiEff);
+		}
+	printf("Multistep Efficiency (average number of microsteps per step):%f\n",
+		   *pdMultiEff);
+	}
+
+
+int msrDoDensity(MSR msr)
+{
+	return(msr->param.bDoDensity);
+	}
 

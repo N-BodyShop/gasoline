@@ -135,15 +135,12 @@ typedef struct smContext {
 		}\
 	}
 
-int smInitialize(SMX *,PKD,int,int, int);
+int smInitialize(SMX *,PKD,int,int);
 void smFinish(SMX);
-void smSmooth(SMX,void (*)(SMX,int,int,NN *));
+void smSmooth(SMX);
 /*
  ** Smoothing functions.
  */
-void smDensity(SMX,int,int,NN *);
-void smDensitySym(SMX,int,int,NN *);
-
 
 #endif
 

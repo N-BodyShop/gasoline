@@ -185,8 +185,7 @@ void pstBuildTree(PST,void *,int,void *,int *);
 #define PST_DENSITY			20
 struct inDensity {
 	int nSmooth;
-	int bGatherScatter;
-        int bPeriodic;
+    int bPeriodic;
 	};
 void pstDensity(PST,void *,int,void *,int *);
 

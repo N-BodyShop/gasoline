@@ -33,6 +33,8 @@ void main(int argc,char **argv)
 	char achFile[256];
 	FILE *fpLog;
 	double dMass;
+	int nActive;
+	double dMultiEff;
 
 	mdlInitialize(&mdl,argv,main_ch);
 	msrInitialize(&msr,mdl,argc,argv,"pkdgrav");
@@ -48,9 +50,9 @@ void main(int argc,char **argv)
 		fpLog = fopen(achFile,"a");
 		assert(fpLog != NULL);
 		if(msrKDK(msr)) {
-			msrBuildTree(msr,0,dMass);
+			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree");
-			msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax);
+			msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			}
 		goto Restart;
 		}
@@ -68,49 +70,54 @@ void main(int argc,char **argv)
 	 */
 	msrDrift(msr,dTime,0.0);
 	msrMassCheck(msr,dMass,"After initial msrDrift");
-	/*
-	 ** Now we have all the parameters for the simulation we can make a 
-	 ** log file entry.
-	 */
-	sprintf(achFile,"%s.log",msrOutName(msr));
-	fpLog = fopen(achFile,"w");
-	assert(fpLog != NULL);
-	/*
-	 ** Include a comment at the start of the log file showing the
-	 ** command line options.
-	 */
-	fprintf(fpLog,"#");
-	for (i=0;i<argc;++i) fprintf(fpLog,"%s ",argv[i]);
-	fprintf(fpLog,"\n");
-	fflush(fpLog);
-	msrLogParams(msr, fpLog);
-	msrMassCheck(msr,dMass,"After msrLogParams");
-
-	msrBuildTree(msr,0,dMass);
-	msrMassCheck(msr,dMass,"After msrBuildTree");
-	msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax);
-	msrActiveRung(msr, 0, 1);
-	msrVelocityRung(msr, 0, msrDelta(msr), dTime, 1);
-	msrReorder(msr);
-	msrOutArray(msr,"rung.out",OUT_RUNG_ARRAY);
-	msrMassCheck(msr,dMass,"After msrGravity");
-	msrCalcE(msr,MSR_INIT_ECOSMO,dTime,&E,&T,&U);
-	msrMassCheck(msr,dMass,"After msrCalcE");
-
-	fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f\n",
-			dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,dWMax,dIMax,dEMax);
-	fflush(fpLog);
 
 	if (msrSteps(msr) > 0) {
+		/*
+		 ** Now we have all the parameters for the simulation we can make a 
+		 ** log file entry.
+		 */
+		sprintf(achFile,"%s.log",msrOutName(msr));
+		fpLog = fopen(achFile,"w");
+		assert(fpLog != NULL);
+		/*
+		 ** Include a comment at the start of the log file showing the
+		 ** command line options.
+		 */
+		fprintf(fpLog,"#");
+		for (i=0;i<argc;++i) fprintf(fpLog,"%s ",argv[i]);
+		fprintf(fpLog,"\n");
+		fflush(fpLog);
+		msrLogParams(msr, fpLog);
+		msrMassCheck(msr,dMass,"After msrLogParams");
+		/*
+		 ** Build tree, activating all particles first (just in case).
+		 */
+		msrActiveRung(msr,0,1);
+		msrBuildTree(msr,0,dMass,0);
+		msrMassCheck(msr,dMass,"After msrBuildTree");
+
+		msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+		msrMassCheck(msr,dMass,"After msrGravity");
+		msrCalcE(msr,MSR_INIT_ECOSMO,dTime,&E,&T,&U);
+		msrMassCheck(msr,dMass,"After msrCalcE");
+
+		dMultiEff = 1.0;
+		fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f %.2f\n",
+				dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,dWMax,dIMax,
+				dEMax,dMultiEff);
+		fflush(fpLog);
+
 		for (iStep=1;iStep<=msrSteps(msr);++iStep) {
 			if (msrKDK(msr)) {
+				dMultiEff = 1.0;
 				msrKick(msr,dTime,0.5*msrDelta(msr));
 				msrMassCheck(msr,dMass,"After msrKick-1 in KDK");
 				msrDrift(msr,dTime,msrDelta(msr));
 				msrMassCheck(msr,dMass,"After msrDrift in KDK");
-				msrBuildTree(msr,0,dMass);
+				msrActiveRung(msr,0,1);
+				msrBuildTree(msr,0,dMass,0);
 				msrMassCheck(msr,dMass,"After msrBuildTree in KDK");
-				msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax);
+				msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 				msrMassCheck(msr,dMass,"After msrGravity in KDK");
 				msrKick(msr,dTime+0.5*msrDelta(msr),0.5*msrDelta(msr));
 				msrMassCheck(msr,dMass,"After msrKick-2 in KDK");
@@ -121,12 +128,13 @@ void main(int argc,char **argv)
 				 */
 				msrCalcE(msr,MSR_STEP_ECOSMO,dTime,&E,&T,&U);
 				msrMassCheck(msr,dMass,"After msrCalcE in KDK");
-				fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f\n",
-						dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,dWMax,dIMax,dEMax);
+				fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f %.2f\n",
+						dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,dWMax,
+						dIMax,dEMax,dMultiEff);
 				fflush(fpLog);			
 				}
 			else {
-				msrTopStep(msr,iStep-1,dTime,msrDelta(msr),0);
+				msrTopStep(msr,iStep-1,dTime,msrDelta(msr),&dMultiEff);
 				msrRungStats(msr);
 				dTime += msrDelta(msr);
 				if (iStep%msrLogInterval(msr) == 0) {
@@ -135,23 +143,36 @@ void main(int argc,char **argv)
 					 ** Reactivate all particles.
 					 */
 					msrActiveRung(msr,0,1);
-					msrBuildTree(msr,0,dMass);
+					msrBuildTree(msr,0,dMass,0);
 					msrMassCheck(msr,dMass,"After msrBuildTree in DKD-log");
-					msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax);
+					msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 					msrMassCheck(msr,dMass,"After msrGravity in DKD-log");
 					msrCalcE(msr,MSR_STEP_ECOSMO,dTime,&E,&T,&U);
 					msrMassCheck(msr,dMass,"After msrCalcE in DKD-log");
-					fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f\n",
-							dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,dWMax,dIMax,dEMax);
+					fprintf(fpLog,"%10g %10g %10g %10g %10g %5d %7.1f %7.1f %7.1f %.2f\n",
+							dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,iSec,
+							dWMax,dIMax,dEMax,dMultiEff);
 					fflush(fpLog);		
 					}
 				}
 			if (msrOutTime(msr,dTime)) {
+				if (msrDoDensity(msr)) {
+					msrActiveRung(msr,0,1);
+					msrBuildTree(msr,0,dMass,1);
+					msrMassCheck(msr,dMass,"After msrBuildTree in OutTime");
+					msrDensity(msr);
+					msrMassCheck(msr,dMass,"After msrDensity in OutTime");
+					}
 				msrReorder(msr);
 				msrMassCheck(msr,dMass,"After msrReorder in OutTime");
 				sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
 				msrWriteTipsy(msr,achFile,dTime);
 				msrMassCheck(msr,dMass,"After msrWriteTipsy in OutTime");
+				if (msrDoDensity(msr)) {
+					sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
+					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
+					msrMassCheck(msr,dMass,"After msrOutArray in OutTime");
+					}
 				/*
 				 ** Don't allow duplicate outputs.
 				 */
@@ -161,19 +182,43 @@ void main(int argc,char **argv)
 				/*
 				 ** Final output always produced.
 				 */
+				if (msrDoDensity(msr)) {
+					msrActiveRung(msr,0,1);
+					msrBuildTree(msr,0,dMass,1);
+					msrMassCheck(msr,dMass,"After msrBuildTree in OutFinal");
+					msrDensity(msr);
+					msrMassCheck(msr,dMass,"After msrDensity in OutFinal");
+					}
 				msrReorder(msr);
 				msrMassCheck(msr,dMass,"After msrReorder in OutFinal");
 				sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
 				msrWriteTipsy(msr,achFile,dTime);
 				msrMassCheck(msr,dMass,"After msrWriteTipsy in OutFinal");
+				if (msrDoDensity(msr)) {
+					sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
+					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
+					msrMassCheck(msr,dMass,"After msrOutArray in OutFinal");
+					}
 				}
 			else if (msrOutInterval(msr) > 0) {
 				if (iStep%msrOutInterval(msr) == 0) {
+					if (msrDoDensity(msr)) {
+						msrActiveRung(msr,0,1);
+						msrBuildTree(msr,0,dMass,1);
+						msrMassCheck(msr,dMass,"After msrBuildTree in OutInt");
+						msrDensity(msr);
+						msrMassCheck(msr,dMass,"After msrDensity in OutInt");
+						}
 					msrReorder(msr);
 					msrMassCheck(msr,dMass,"After msrReorder in OutInt");
 					sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
 					msrWriteTipsy(msr,achFile,dTime);
 					msrMassCheck(msr,dMass,"After msrWriteTipsy in OutInt");
+					if (msrDoDensity(msr)) {
+						sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
+						msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
+						msrMassCheck(msr,dMass,"After msrOutArray in OutInt");
+						}
 					}
 				}
 			if (iStep%msrCheckInterval(msr) == 0 && iStep != msrSteps(msr)) {
@@ -186,19 +231,39 @@ void main(int argc,char **argv)
 				;
 				}
 			}
-	        } 
+		fclose(fpLog);
+		} 
 	else {
-		msrReorder(msr);
-		msrMassCheck(msr,dMass,"After msrReorder in OutArray");
-		sprintf(achFile,"%s.acc",msrOutName(msr));
-		msrOutVector(msr,achFile,OUT_ACCEL_VECTOR);
-		msrMassCheck(msr,dMass,"After msrOutVector");
-		sprintf(achFile,"%s.pot",msrOutName(msr));
-		msrOutArray(msr,achFile,OUT_POT_ARRAY);
-		msrMassCheck(msr,dMass,"After msrOutArray");
-		sprintf(achFile,"%s.den",msrOutName(msr));
-		msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
-		msrMassCheck(msr,dMass,"After msrOutArray");
+		/*
+		 ** Build tree, activating all particles first (just in case).
+		 */
+		if (msrDoDensity(msr)) {
+			msrActiveRung(msr,0,1);
+			msrBuildTree(msr,0,dMass,1);
+			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Density");
+			msrDensity(msr);
+			msrMassCheck(msr,dMass,"After msrDensity in OutSingle Density");
+			msrReorder(msr);
+			msrMassCheck(msr,dMass,"After msrReorder in OutSingle Density");
+			sprintf(achFile,"%s.den",msrOutName(msr));
+			msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
+			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Density");
+			}
+		else {
+			msrActiveRung(msr,0,1);
+			msrBuildTree(msr,0,dMass,0);
+			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Gravity");
+			msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+			msrMassCheck(msr,dMass,"After msrGravity in OutSingle Gravity");
+			msrReorder(msr);
+			msrMassCheck(msr,dMass,"After msrReorder in OutSingle Gravity");
+			sprintf(achFile,"%s.acc",msrOutName(msr));
+			msrOutVector(msr,achFile,OUT_ACCEL_VECTOR);
+			msrMassCheck(msr,dMass,"After msrOutVector in OutSingle Gravity");
+			sprintf(achFile,"%s.pot",msrOutName(msr));
+			msrOutArray(msr,achFile,OUT_POT_ARRAY);
+			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Gravity");
+			}
 		}
 	msrFinish(msr);
 	mdlFinish(mdl);

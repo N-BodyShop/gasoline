@@ -9,6 +9,16 @@
 #define MSR_INIT_ECOSMO		1
 #define MSR_STEP_ECOSMO		0
 
+/*
+ ** An integer marking the type of tree currently in use.
+ ** MSR_TREE_NONE: undefined tree type
+ ** MSR_TREE_SPATIAL: spatial binary tree
+ ** MSR_TREE_DENSITY: density binary tree (the old style KD-tree!)
+ */
+#define MSR_TREE_NONE		0
+#define MSR_TREE_SPATIAL	1
+#define MSR_TREE_DENSITY	2
+
 typedef struct msrContext {
 	PRM prm;
 	PST pst;
@@ -45,6 +55,13 @@ typedef struct msrContext {
 	 ** Processor mapping for one-node-output functions.
 	 */
 	int *pMap;
+	/*
+	 ** An integer marking the type of tree currently in use.
+	 ** MSR_TREE_NONE: undefined tree type
+	 ** MSR_TREE_SPATIAL: spatial binary tree
+	 ** MSR_TREE_DENSITY: density binary tree (the old style KD-tree!)
+	 */
+	int iTreeType;
 	} * MSR;
 
 
@@ -60,13 +77,13 @@ double msrComoveKickFac(MSR,double,double);
 double msrReadTipsy(MSR);
 void msrWriteTipsy(MSR,char *,double);
 void msrSetSoft(MSR msr,double);
-void msrBuildTree(MSR,int,double);
+void msrBuildTree(MSR,int,double,int);
 void msrDomainColor(MSR);
 void msrReorder(MSR);
 void msrOutArray(MSR,char *,int);
 void msrOutVector(MSR,char *,int);
 void msrDensity(MSR);
-void msrGravity(MSR,double,int *,double *,double *,double *);
+void msrGravity(MSR,double,int *,double *,double *,double *,int *);
 void msrCalcE(MSR,int,double,double *,double *,double *);
 void msrDrift(MSR,double,double);
 void msrKick(MSR,double,double);
@@ -75,7 +92,8 @@ void msrWriteCheck(MSR,double,int);
 int msrOutTime(MSR,double);
 void msrReadOuts(MSR,double);
 double msrMassCheck(MSR,double,char *);
-void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung);
+void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, 
+				double *pdMultiEff);
 void msrRungStats(MSR);
 void msrActiveRung(MSR msr, int iRung, int bGreater);
 void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime,
@@ -93,6 +111,7 @@ int msrRestart(MSR);
 int msrComove(MSR);
 int msrKDK(MSR);
 double msrSoft(MSR);
+int msrDoDensity(MSR);
 
 #endif
 

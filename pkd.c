@@ -1194,38 +1194,6 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 		}
 	}
 
-void pkdFamily(PKD pkd,int iCell)
-{
-    int l,u;
-
-    if (iCell == pkd->iRoot) pkd->kdNodes[iCell].iParent = -1;
-    if (iCell == -1) return;
-    else if (pkd->kdNodes[iCell].iDim != -1) {
-	l = pkd->kdNodes[iCell].iLower;
-	u = pkd->kdNodes[iCell].iUpper;
-	if (u == -1) {
-	    assert(l != -1);
-	    pkd->kdNodes[l].iSibling = -1;
-	    pkd->kdNodes[l].iParent = iCell;
-	    pkdFamily(pkd,l);
-	}
-	else if (l == -1) {
-	    assert(u != -1);
-	    pkd->kdNodes[u].iSibling = -1;
-	    pkd->kdNodes[u].iParent = iCell;
-	    pkdFamily(pkd,u);
-	}
-	else {
-	    pkd->kdNodes[l].iSibling = u;
-	    pkd->kdNodes[l].iParent = iCell;
-	    pkd->kdNodes[u].iSibling = l;
-	    pkd->kdNodes[u].iParent = iCell;
-	    pkdFamily(pkd,l);
-	    pkdFamily(pkd,u);
-	}
-    }
-}
-	
 
 void pkdThreadTree(PKD pkd,int iCell,int iNext)
 {
@@ -1298,10 +1266,6 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 								 iOpenType,dCrit,iOrder);
 		}
 	assert(pkd->iFreeCell == pkd->nNodes);
-	/*
-	 ** Set up parent and sibling pointers.
-	 */
-	pkdFamily(pkd,pkd->iRoot);
 	/*
 	 ** Thread the tree.
 	 */
@@ -1398,10 +1362,6 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		}
 	pkdUpPass(pkd,pkd->iRoot,iOpenType,dCrit,iOrder);
 	/*
-	 ** Set up parent and sibling pointers.
-	 */
-	pkdFamily(pkd,pkd->iRoot);
-	/*
 	 ** Thread the tree.
 	 */
 	pkdThreadTree(pkd,pkd->iRoot,-1);
@@ -1477,9 +1437,8 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			pkdBucketWalk(pkd,iCell,nReps,iOrder);
 			pkdStopTimer(pkd,1);
 			*nActive += n;
-			*pdPartSum += n*pkd->nPart +
-			     n*(2*(c[iCell].pUpper - c[iCell].pLower)
-				- n + 1)/2;
+			*pdPartSum += n*pkd->nPart + 
+				n*(2*(c[iCell].pUpper-c[iCell].pLower) - n + 1)/2;
 			*pdCellSum += n*(pkd->nCellSoft + pkd->nCellNewt);
 			pkdStartTimer(pkd,2);
 			pkdBucketInteract(pkd,iCell,iOrder);
@@ -1488,7 +1447,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 				1.0*(pkd->nPart + (n-1)/2.0);
 			/*
 			 ** pkdBucketWeight, only updates the weights of the active
-			 ** particles. Although, this isn't really a requirement it
+			 ** particles. Although this isn't really a requirement it
 			 ** might be a good idea, if weights correspond to different 
 			 ** tasks at different times.
 			 */

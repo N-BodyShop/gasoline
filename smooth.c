@@ -8,94 +8,123 @@
 #include "pkd.h"
 
 
-
-#define INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,label)\
+#define INTERSECTNP(pkdn,fBall2,x,y,z,label)\
 {\
-	float dx,dy,dz,dx1,dy1,dz1,fDist2;\
-	dx = (pkdn)->bnd.fMin[0]-x;\
-	dx1 = x-(pkdn)->bnd.fMax[0];\
-	dy = (pkdn)->bnd.fMin[1]-y;\
-	dy1 = y-(pkdn)->bnd.fMax[1];\
-	dz = (pkdn)->bnd.fMin[2]-z;\
-	dz1 = z-(pkdn)->bnd.fMax[2];\
-	if (dx > 0.0) {\
-		dx1 += lx;\
-		if (dx1 < dx) {\
-			fDist2 = dx1*dx1;\
+	float INTRSCT_dx,INTRSCT_dy,INTRSCT_dz;\
+	float INTRSCT_dx1,INTRSCT_dy1,INTRSCT_dz1;\
+    float INTRSCT_fDist2;\
+	INTRSCT_dx = (pkdn)->bnd.fMin[0]-x;\
+	INTRSCT_dx1 = x-(pkdn)->bnd.fMax[0];\
+	INTRSCT_dy = (pkdn)->bnd.fMin[1]-y;\
+	INTRSCT_dy1 = y-(pkdn)->bnd.fMax[1];\
+	INTRSCT_dz = (pkdn)->bnd.fMin[2]-z;\
+	INTRSCT_dz1 = z-(pkdn)->bnd.fMax[2];\
+	if (INTRSCT_dx > 0.0) INTRSCT_fDist2 = INTRSCT_dx*INTRSCT_dx;\
+	else if (INTRSCT_dx1 > 0.0) INTRSCT_fDist2 = INTRSCT_dx1*INTRSCT_dx1;\
+	else INTRSCT_fDist2 = 0.0;\
+	if (INTRSCT_dy > 0.0) INTRSCT_fDist2 += INTRSCT_dy*INTRSCT_dy;\
+	else if (INTRSCT_dy1 > 0.0) INTRSCT_fDist2 += INTRSCT_dy1*INTRSCT_dy1;\
+	if (INTRSCT_dz > 0.0) INTRSCT_fDist2 += INTRSCT_dz*INTRSCT_dz;\
+	else if (INTRSCT_dz1 > 0.0) INTRSCT_fDist2 += INTRSCT_dz1*INTRSCT_dz1;\
+    if (INTRSCT_fDist2 > fBall2) goto label;\
+	}
+
+
+#define INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,bPeriodic,label)\
+{\
+	float INTRSCT_dx,INTRSCT_dy,INTRSCT_dz;\
+	float INTRSCT_dx1,INTRSCT_dy1,INTRSCT_dz1;\
+    float INTRSCT_fDist2;\
+	INTRSCT_dx = (pkdn)->bnd.fMin[0]-x;\
+	INTRSCT_dx1 = x-(pkdn)->bnd.fMax[0];\
+	INTRSCT_dy = (pkdn)->bnd.fMin[1]-y;\
+	INTRSCT_dy1 = y-(pkdn)->bnd.fMax[1];\
+	INTRSCT_dz = (pkdn)->bnd.fMin[2]-z;\
+	INTRSCT_dz1 = z-(pkdn)->bnd.fMax[2];\
+	if (INTRSCT_dx > 0.0) {\
+		INTRSCT_dx1 += lx;\
+		if (INTRSCT_dx1 < INTRSCT_dx) {\
+			INTRSCT_fDist2 = INTRSCT_dx1*INTRSCT_dx1;\
 			sx = x+lx;\
+			bPeriodic = 1;\
 			}\
 		else {\
-			fDist2 = dx*dx;\
+			INTRSCT_fDist2 = INTRSCT_dx*INTRSCT_dx;\
 			sx = x;\
 			}\
-		if (fDist2 > fBall2) goto label;\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
 		}\
-	else if (dx1 > 0.0) {\
-		dx += lx;\
-		if (dx < dx1) {\
-			fDist2 = dx*dx;\
+	else if (INTRSCT_dx1 > 0.0) {\
+		INTRSCT_dx += lx;\
+		if (INTRSCT_dx < INTRSCT_dx1) {\
+			INTRSCT_fDist2 = INTRSCT_dx*INTRSCT_dx;\
 			sx = x-lx;\
+			bPeriodic = 1;\
 			}\
 		else {\
-			fDist2 = dx1*dx1;\
+			INTRSCT_fDist2 = INTRSCT_dx1*INTRSCT_dx1;\
 			sx = x;\
 			}\
-		if (fDist2 > fBall2) goto label;\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
 		}\
 	else {\
-		fDist2 = 0.0;\
+		INTRSCT_fDist2 = 0.0;\
 		sx = x;\
 		}\
-	if (dy > 0.0) {\
-		dy1 += ly;\
-		if (dy1 < dy) {\
-			fDist2 += dy1*dy1;\
+	if (INTRSCT_dy > 0.0) {\
+		INTRSCT_dy1 += ly;\
+		if (INTRSCT_dy1 < INTRSCT_dy) {\
+			INTRSCT_fDist2 += INTRSCT_dy1*INTRSCT_dy1;\
 			sy = y+ly;\
+			bPeriodic = 1;\
 			}\
 		else {\
-			fDist2 += dy*dy;\
+			INTRSCT_fDist2 += INTRSCT_dy*INTRSCT_dy;\
 			sy = y;\
 			}\
-		if (fDist2 > fBall2) goto label;\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
 		}\
-	else if (dy1 > 0.0) {\
-		dy += ly;\
-		if (dy < dy1) {\
-			fDist2 += dy*dy;\
+	else if (INTRSCT_dy1 > 0.0) {\
+		INTRSCT_dy += ly;\
+		if (INTRSCT_dy < INTRSCT_dy1) {\
+			INTRSCT_fDist2 += INTRSCT_dy*INTRSCT_dy;\
 			sy = y-ly;\
+			bPeriodic = 1;\
 			}\
 		else {\
-			fDist2 += dy1*dy1;\
+			INTRSCT_fDist2 += INTRSCT_dy1*INTRSCT_dy1;\
 			sy = y;\
 			}\
-		if (fDist2 > fBall2) goto label;\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
 		}\
 	else {\
 		sy = y;\
 		}\
-	if (dz > 0.0) {\
-		dz1 += lz;\
-		if (dz1 < dz) {\
-			fDist2 += dz1*dz1;\
+	if (INTRSCT_dz > 0.0) {\
+		INTRSCT_dz1 += lz;\
+		if (INTRSCT_dz1 < INTRSCT_dz) {\
+			INTRSCT_fDist2 += INTRSCT_dz1*INTRSCT_dz1;\
 			sz = z+lz;\
+			bPeriodic = 1;\
 			}\
 		else {\
-			fDist2 += dz*dz;\
+			INTRSCT_fDist2 += INTRSCT_dz*INTRSCT_dz;\
 			sz = z;\
 			}\
-		if (fDist2 > fBall2) goto label;\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
 		}\
-	else if (dz1 > 0.0) {\
-		dz += lz;\
-		if (dz < dz1) {\
-			fDist2 += dz*dz;\
+	else if (INTRSCT_dz1 > 0.0) {\
+		INTRSCT_dz += lz;\
+		if (INTRSCT_dz < INTRSCT_dz1) {\
+			INTRSCT_fDist2 += INTRSCT_dz*INTRSCT_dz;\
 			sz = z-lz;\
+			bPeriodic = 1;\
 			}\
 		else {\
-			fDist2 += dz1*dz1;\
+			INTRSCT_fDist2 += INTRSCT_dz1*INTRSCT_dz1;\
 			sz = z;\
 			}\
-		if (fDist2 > fBall2) goto label;\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
 		}\
 	else {\
 		sz = z;\
@@ -113,7 +142,7 @@ void combDen(void *p1,void *p2)
 	((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
 	}
 
-int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bCombiner, int bPeriodic)
+int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic)
 {
 	SMX smx;
 	int pi;
@@ -133,7 +162,7 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bCombiner, int bPeriodic)
 			}
 		else if (pkd->pStore[pi].fBall2 <= 0.0) {
 			pkd->pStore[pi].fBall2 = 0.0;
-			pkd->pStore[pi].fDensity = 0.0;
+			pkd->pStore[pi].fDensity = 0.0; /* should we really zero this? */
 			}
 		}
 	/*
@@ -163,14 +192,8 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bCombiner, int bPeriodic)
 	 ** Start caching spaces.
 	 */
 	mdlDiag(pkd->mdl, "Before Particle cache\n");
-	if (bCombiner) {
-		mdlCOcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
-				   pkdLocal(pkd),initDen,combDen);
-		}
-	else {
-		mdlROcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
-				   pkdLocal(pkd));
-		}
+	mdlCOcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
+			   pkdLocal(pkd),initDen,combDen);
 	mdlDiag(pkd->mdl, "Before Cell cache\n");
 	mdlROcache(pkd->mdl,CID_CELL,pkd->kdNodes,sizeof(KDN),pkdNodes(pkd));
 	mdlDiag(pkd->mdl, "After Cell cache\n");
@@ -227,7 +250,7 @@ void smFinish(SMX smx)
 	}
 
 
-PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
+PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int *pbPeriodic)
 {
 	MDL mdl = smx->pkd->mdl;
 	KDN *c = smx->pkd->kdNodes;
@@ -250,16 +273,15 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 	    }
 	idSelf = smx->pkd->idSelf;
 	fBall2 = pq->fKey;
-	cell = smx->pkd->iRoot;
+	cell = ROOT;
 	/*
 	 ** First find the "local" Bucket.
 	 ** This could mearly be the closest to ri[3]! 
 	 ** Warning: in parallel ri[3] SHOULD be contained in the LOCAL DOMAIN!
 	 */
 	while (c[cell].iDim >= 0) {
-		cell = c[cell].iLower;
-		if (ri[c[cell].iDim] >= c[cell].fSplit) 
-		    cell = c[cell].iUpper;
+		if (ri[c[cell].iDim] < c[cell].fSplit) cell = LOWER(cell);
+		else cell = UPPER(cell);
 		}
 	pUpper = c[cell].pUpper;
 	for (pj=c[cell].pLower;pj<=pUpper;++pj) {
@@ -271,7 +293,7 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 			if (smx->piMark[pj]) continue;
 			if (pq->id == idSelf) smx->piMark[pq->p] = 0;
 			else {
-			        mdlRelease(mdl,CID_PARTICLE,pq->pPart);
+				mdlRelease(mdl,CID_PARTICLE,pq->pPart);
 				PQ_HASHDEL(smx->pqHash,smx->nHash,pq);
 				pq->id = idSelf;
 				}
@@ -286,15 +308,15 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 			fBall2 = pq->fKey;
 			}
 		}
-	if (cell == smx->pkd->iRoot) return(pq);
-	while (c[cell].iParent != -1) {
-		cp = c[cell].iSibling;
+	while (cell != ROOT) {
+		cp = SIBLING(cell);
 		ct = cp;
-		ct = c[ct].iUpper;
+		SETNEXT(ct);
 		while (1) {
-			INTERSECT(&c[cp],fBall2,lx,ly,lz,x,y,z,sx,sy,sz,GetNext_1);
+			INTERSECT(&c[cp],fBall2,lx,ly,lz,x,y,z,sx,sy,sz,*pbPeriodic,
+					  GetNext_1);
 			if (c[cp].iDim >= 0) {
-			        cp = c[cp].iLower;
+				cp = LOWER(cp);
 				continue;
 				}
 			else {
@@ -308,7 +330,7 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 						if (smx->piMark[pj]) continue;
 						if (pq->id == idSelf) smx->piMark[pq->p] = 0;
 						else {
-						        mdlRelease(mdl,CID_PARTICLE,pq->pPart);
+							mdlRelease(mdl,CID_PARTICLE,pq->pPart);
 							PQ_HASHDEL(smx->pqHash,smx->nHash,pq);
 							pq->id = idSelf;
 							}
@@ -325,16 +347,105 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 					}
 				}
 		GetNext_1:
-			cp = c[cp].iUpper;
+			SETNEXT(cp);
 			if (cp == ct) break;
 			}
-		cell = c[cell].iParent;
+		cell = PARENT(cell);
 		}
 	return(pq);
 	}
 
 
-void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
+PQ *smBallSearchNP(SMX smx,PQ *pq,float *ri)
+{
+	MDL mdl = smx->pkd->mdl;
+	KDN *c = smx->pkd->kdNodes;
+	PARTICLE *p = smx->pkd->pStore;
+	int cell,cp,ct,pj,pUpper,idSelf;
+	float fBall2,fDist2,dx,dy,dz,x,y,z;
+
+	x = ri[0];
+	y = ri[1];
+	z = ri[2];
+	idSelf = smx->pkd->idSelf;
+	fBall2 = pq->fKey;
+	cell = ROOT;
+	/*
+	 ** First find the "local" Bucket.
+	 ** This could mearly be the closest to ri[3]! 
+	 ** Warning: in parallel ri[3] SHOULD be contained in the LOCAL DOMAIN!
+	 */
+	while (c[cell].iDim >= 0) {
+		if (ri[c[cell].iDim] < c[cell].fSplit) cell = LOWER(cell);
+		else cell = UPPER(cell);
+		}
+	pUpper = c[cell].pUpper;
+	for (pj=c[cell].pLower;pj<=pUpper;++pj) {
+		dx = x - p[pj].r[0];
+		dy = y - p[pj].r[1];
+		dz = z - p[pj].r[2];
+		fDist2 = dx*dx + dy*dy + dz*dz;
+		if (fDist2 < fBall2) {
+			if (smx->piMark[pj]) continue;
+			if (pq->id == idSelf) smx->piMark[pq->p] = 0;
+			else {
+				mdlRelease(mdl,CID_PARTICLE,pq->pPart);
+				PQ_HASHDEL(smx->pqHash,smx->nHash,pq);
+				pq->id = idSelf;
+				}
+			smx->piMark[pj] = 1;
+			pq->fKey = fDist2;
+			pq->p = pj;
+			pq->pPart = &p[pj];
+			PQ_REPLACE(pq);
+			fBall2 = pq->fKey;
+			}
+		}
+	while (cell != ROOT) {
+		cp = SIBLING(cell);
+		ct = cp;
+		SETNEXT(ct);
+		while (1) {
+			INTERSECTNP(&c[cp],fBall2,x,y,z,GetNext_1);
+			if (c[cp].iDim >= 0) {
+				cp = LOWER(cp);
+				continue;
+				}
+			else {
+				pUpper = c[cp].pUpper;
+				for (pj=c[cp].pLower;pj<=pUpper;++pj) {
+					dx = x - p[pj].r[0];
+					dy = y - p[pj].r[1];
+					dz = z - p[pj].r[2];
+					fDist2 = dx*dx + dy*dy + dz*dz;
+					if (fDist2 < fBall2) {
+						if (smx->piMark[pj]) continue;
+						if (pq->id == idSelf) smx->piMark[pq->p] = 0;
+						else {
+							mdlRelease(mdl,CID_PARTICLE,pq->pPart);
+							PQ_HASHDEL(smx->pqHash,smx->nHash,pq);
+							pq->id = idSelf;
+							}
+						smx->piMark[pj] = 1;
+						pq->fKey = fDist2;
+						pq->p = pj;
+						pq->pPart = &p[pj];
+						PQ_REPLACE(pq);
+						fBall2 = pq->fKey;
+						}
+					}
+				}
+		GetNext_1:
+			SETNEXT(cp);
+			if (cp == ct) break;
+			}
+		cell = PARENT(cell);
+		}
+	return(pq);
+	}
+
+
+void smSmooth(SMX smx)
 {
 	PKD pkd = smx->pkd;
 	MDL mdl = smx->pkd->mdl;
@@ -342,13 +453,15 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	PARTICLE *p = pkd->pStore;
 	KDN *pkdn;
 	PARTICLE *pPart;
-	int nSmooth,i,j,pi,pj,pNext,nCnt;
+	int nSmooth,i,j,pi,pj,pNext;
 	int cell,idcell,cp,id,ct,idct;
 	float fBall2,fDist2,x,y,z,dx,dy,dz,lx,ly,lz,sx,sy,sz,h2;
+	float fNorm,ih2,r2,rs;
 	PQ *pq,*pqi,*pqn;
+	int bPeriodic;
 
 	nSmooth = smx->nSmooth;
-	if(smx->bPeriodic) {
+	if (smx->bPeriodic) {
 	    lx = smx->pkd->fPeriod[0];
 	    ly = smx->pkd->fPeriod[1];
 	    lz = smx->pkd->fPeriod[2];
@@ -377,11 +490,10 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	x = p[pi].r[0];
 	y = p[pi].r[1];
 	z = p[pi].r[2];
-	cell = pkd->iRoot;
+	cell = ROOT;
 	while (c[cell].iDim >= 0) {
-		cell = c[cell].iLower;
-		if (p[pi].r[c[cell].iDim] >= c[cell].fSplit) 
-		    cell = c[cell].iUpper;
+		if (p[pi].r[c[cell].iDim] < c[cell].fSplit) cell = LOWER(cell);
+		else cell = UPPER(cell);
 		}
 	/*
 	 ** Add local stuff to the prioq.
@@ -410,7 +522,13 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	/*
 	 ** Priority Queue must be built. 'pi' must be defined.
 	 */
-	pq = smBallSearch(smx,pq,p[pi].r);
+	if (smx->bPeriodic) {
+		bPeriodic = 0;
+		pq = smBallSearch(smx,pq,p[pi].r,&bPeriodic);
+		}
+	else {
+		pq = smBallSearchNP(smx,pq,p[pi].r);
+	    }
 	/*
 	 ** Start non-local search.
 	 */
@@ -418,37 +536,23 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	idcell = -1;	/* We are in the LTT now ! */
 	cell = pkd->piLeaf[pkd->idSelf];
 	while (!pkdIsRoot(cell,idcell)) {
-		cp = cell;
-		pkdSibling(pkdn,cp,idcell); /* pkdn should not be referenced 1st time thru loop */
+		cp = SIBLING(cell);
 		id = idcell;
 		ct = cp;
 		idct = id;
-		pkdNext(pkd,pkdn,ct,idct); /* pkdn should not be referenced 1st time thru loop */
+		pkdNext(pkd,ct,idct);
 		/*
 		 ** Check for any cache work.
 		 */
 		while (1) {
 		    if (id >= 0) pkdn = mdlAquire(mdl,CID_CELL,cp,id);
 			else pkdn = &pkd->kdTop[cp];
-   			INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,GetNext_2);
+   			INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,bPeriodic,GetNext_2);
 			if (pkdn->iDim >= 0) {
-			    if (id == -1) {
-				id = pkd->kdTop[cp].pLower;
-				if (id != -1) {
-				    cp = pkd->iRoot;  /* iRoot must be the same on all PE's for this to work! */
-				    pkdn = mdlAquire(mdl,CID_CELL,cp,id);
-				    cp = pkdn->iLower;
-				}
-				else {
-				    cp = LOWER(cp);
-				}
-			    }
-			    else {
-				cp = pkdn->iLower;
-			    }
 			    if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
+				pkdLower(pkd,cp,id);
 			    continue;
-			}
+				}
 			for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
 				pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
 				dx = sx - pPart->r[0];
@@ -459,7 +563,7 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 					PQ_INQUEUE(smx->pqHash,smx->nHash,pj,id,NextParticle);
 					if (pq->id == pkd->idSelf) smx->piMark[pq->p] = 0;
 					else {
-					        mdlRelease(mdl,CID_PARTICLE,pq->pPart);
+						mdlRelease(mdl,CID_PARTICLE,pq->pPart);
 						PQ_HASHDEL(smx->pqHash,smx->nHash,pq);
 						}
 					pq->fKey = fDist2;
@@ -482,26 +586,34 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 				}
 		GetNext_2:
 			if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
-			pkdNext(pkd,pkdn,cp,id);
+			pkdNext(pkd,cp,id);
 			if (cp == ct && id == idct) break;
 			}
-		pkdParent(pkd,pkdn,cell,idcell);
-	        }
+		pkdParent(pkd,cell,idcell);
+		}
 	/*
-	 ** Create Nearest-Neighbor List and try to pick next particle.
+	 ** Calculate density and try to pick next particle.
 	 */
 	pqn = NULL;
-	nCnt = 0;
 	h2 = pq->fKey;
 	p[pi].fBall2 = h2;
+	ih2 = 4.0/h2;
+	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
 	for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
 		if (pqi == pq) continue;
 		/*
-		 ** Move relevant data into Nearest Neighbor array.
+		 ** Calculate the Density directly here.
 		 */
-		smx->nnList[nCnt].pPart = pqi->pPart;
-		smx->nnList[nCnt].fDist2 = pqi->fKey;
-		++nCnt;
+		r2 = pqi->fKey*ih2;
+		rs = 2.0 - sqrt(r2);
+		if (r2 < 1.0) rs = (1.0 - 0.75*rs*r2);
+		else rs = 0.25*rs*rs*rs;
+		rs *= fNorm;
+		p[pi].fDensity += rs*pqi->pPart->fMass;
+		pqi->pPart->fDensity += rs*p[pi].fMass;
+		/*
+		 ** pick next closest particle candidate
+		 */
 		if (pqi->id != pkd->idSelf) continue;
 		if (pkd->pStore[pqi->p].fBall2 >= 0) continue;
 		if (pqi->fKey < h2) {
@@ -509,7 +621,6 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 			h2 = pqn->fKey;
 			}
 		}
-	(*fncSmooth)(smx,pi,nCnt,smx->nnList);
 	if (!pqn) {
 		/*
 		 ** Clean up piMark array, pqHash, and release all aquired
@@ -556,48 +667,6 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
  DoneSmooth:
 	;
 	}
-
-
-void smDensity(SMX smx,int pi,int nSmooth,NN *nnList)
-{
-	PARTICLE *p = &smx->pkd->pStore[pi];
-	float ih2,r2,rs,fDensity;
-	int i;
-
-	ih2 = 4.0/p->fBall2;
-	fDensity = 0.0;
-	for (i=0;i<nSmooth;++i) {
-		r2 = nnList[i].fDist2*ih2;
-		rs = 2.0 - sqrt(r2);
-		if (r2 < 1.0) rs = (1.0 - 0.75*rs*r2);
-		else rs = 0.25*rs*rs*rs;
-		fDensity += rs*nnList[i].pPart->fMass;
-		}
-	p->fDensity = M_1_PI*sqrt(ih2)*ih2*fDensity; 
-	}
-
-
-void smDensitySym(SMX smx,int pi,int nSmooth,NN *nnList)
-{
-	PARTICLE *p = &smx->pkd->pStore[pi];
-	PARTICLE *q;
-	float fNorm,ih2,r2,rs;
-	int i;
-
-	ih2 = 4.0/p->fBall2;
-	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
-	for (i=0;i<nSmooth;++i) {
-		r2 = nnList[i].fDist2*ih2;
-		rs = 2.0 - sqrt(r2);
-		if (r2 < 1.0) rs = (1.0 - 0.75*rs*r2);
-		else rs = 0.25*rs*rs*rs;
-		rs *= fNorm;
-		q = nnList[i].pPart;
-		p->fDensity += rs*q->fMass;
-		q->fDensity += rs*p->fMass;
-		}
-	}
-
 
 
 

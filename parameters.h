@@ -7,7 +7,6 @@ struct parameters {
 	int bDiag;
 	int bVerbose;
 	int bPeriodic;
-	int bGatherScatter;
 	int bRestart;
 	int bComove;
 	int bParaRead;
@@ -25,10 +24,11 @@ struct parameters {
 	int nReplicas;
 	int nSteps;
 	int nSmooth;
-        int iMaxRung;
-        int bEpsVel;
-        int bNonSymp;
-        double dEta;
+	int iMaxRung;
+	int bEpsVel;
+	int bNonSymp;
+	int bDoDensity;
+	double dEta;
 	double dExtraStore;
 	double dSoft;
 	double dDelta;

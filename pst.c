@@ -1405,7 +1405,6 @@ void pstDensity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	struct inDensity *in = vin;
 
-	fprintf(stderr,"In pstDensity...\n");
 	assert(nIn == sizeof(struct inDensity));
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_DENSITY,in,nIn);
@@ -1416,19 +1415,9 @@ void pstDensity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		LCL *plcl = pst->plcl;
 		SMX smx;
 
-		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bGatherScatter,
-			     in->bPeriodic);
-		if (in->bGatherScatter) {
-                        fprintf(stderr,"In GatherScatter\n");
-			smSmooth(smx,smDensitySym);
-			}
-		else {
-                        fprintf(stderr,"In no GatherScatter\n");
-			smSmooth(smx,smDensity);
-			}
-                fprintf(stderr,"Before smFinish\n");
+		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bPeriodic);
+		smSmooth(smx);
 		smFinish(smx);
-                fprintf(stderr,"After smFinish\n");
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -1986,8 +1975,8 @@ pstCurrRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = sizeof(*out);
 	}
 
-void
-pstDensityRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+
+void pstDensityRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	struct inDensityRung *in = vin;
@@ -2000,19 +1989,18 @@ pstDensityRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pstDensityRung(pst->pstLower,vin,nIn,vout,pnOut);
 		iMaxRung = out->iMaxRung;
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
-		if(iMaxRung > out->iMaxRung)
-		    out->iMaxRung = iMaxRung;
+		if(iMaxRung > out->iMaxRung) out->iMaxRung = iMaxRung;
 		}
 	else {
 		out->iMaxRung = pkdDensityRung(plcl->pkd, in->iRung,
-					       in->dDelta, in->dEta,
-					       in->dRhoFac, in->bAll);
+									   in->dDelta, in->dEta,
+									   in->dRhoFac, in->bAll);
 		}
 	if (pnOut) *pnOut = sizeof(*out);
 	}
 
-void
-pstVelocityRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+
+void pstVelocityRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
       LCL *plcl = pst->plcl;
       struct inVelocityRung *in = vin;
@@ -2037,6 +2025,7 @@ pstVelocityRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
       if (pnOut) *pnOut = sizeof(*out);
       }
 
+
 void pstRungStats(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -2056,5 +2045,12 @@ void pstRungStats(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	if (pnOut) *pnOut = sizeof(struct outRungStats);
 	}
+
+
+
+
+
+
+
 
 
