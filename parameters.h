@@ -7,6 +7,7 @@ struct parameters {
 	 ** Parameters for PKDGRAV.
 	 */
 	int nThreads;
+	int bDiag;
 	int bOverwrite;
 	int bVWarnings;
 	int bVStart;
