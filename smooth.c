@@ -14,20 +14,21 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 				 int bSymmetric,int iSmoothType,int bSmooth)
 {
 	SMX smx;
-	void (*initParticle)(void *);
-	void (*init)(void *);
-	void (*comb)(void *,void *);
+	void (*initParticle)(void *) = NULL;
+	void (*init)(void *) = NULL;
+	void (*comb)(void *,void *) = NULL;
 	int pi;
 	int nTree;
 
 	smx = (SMX)malloc(sizeof(struct smContext));
 	assert(smx != NULL);
-	smx->pkd = pkd;
-#ifdef COLLISIONS
-	smf->pkd = pkd;
-#endif /* COLLISIONS */
+	smx->pkd = smf->pkd = pkd;
 	smx->nSmooth = nSmooth;
 	smx->bPeriodic = bPeriodic;
+#ifdef SLIDING_PATCH
+	smx->dOrbFreq = smf->dOrbFreq;
+	smx->dTime = smf->dTime;
+#endif
 
 	switch (iSmoothType) {
 	case SMX_DENSITY:
@@ -92,19 +93,11 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 #endif	       
 #ifdef COLLISIONS
 	case SMX_REJECTS:
-		assert(bSymmetric == 0);
+		assert(bSymmetric != 0);
 		smx->fcnSmooth = FindRejects;
-		initParticle = NULL;
-		init = NULL;
-		comb = NULL;
-		smx->fcnPost = NULL;
-		break;
-	case SMX_TIMESTEP:
-		assert(bSymmetric == 0);
-		smx->fcnSmooth = SetTimeStep;
-		initParticle = NULL;
-		init = NULL;
-		comb = NULL;
+		initParticle = initFindRejects;
+		init = initFindRejects;
+		comb = combFindRejects;
 		smx->fcnPost = NULL;
 		break;
 	case SMX_ENCOUNTER:
@@ -118,7 +111,6 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_COLLISION:
 		assert(bSymmetric == 0);
 		smx->fcnSmooth = CheckForCollision;
-		/*smf->*/pkd->dImpactTime = DBL_MAX; /*DEBUG initialization kludge!*/
 		initParticle = NULL;
 		init = NULL;
 		comb = NULL;
@@ -134,14 +126,14 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	 */
 	nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
 	for (pi=0;pi<nTree;++pi) {
-		if (TYPEQuerySMOOTHACTIVE( &(pkd->pStore[pi]) )) {
-		        TYPEReset( &(pkd->pStore[pi]), TYPE_SMOOTHDONE );
+		if (TYPEQuerySMOOTHACTIVE(&(pkd->pStore[pi]))) {
+			TYPEReset( &(pkd->pStore[pi]),TYPE_SMOOTHDONE );
 			/*			if (bSmooth) pkd->pStore[pi].fBall2 = -1.0;*/
 			if (initParticle != NULL) {
 				initParticle(&pkd->pStore[pi]);
 				}
 			}
-	        }
+		}
 	/*
 	 ** Start particle caching space (cell cache is already active).
 	 */
@@ -180,7 +172,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	assert(smx->pqHash != NULL);
 	*psmx = smx;	
 	return(1);
-        }
+	}
 
 
 void smFinish(SMX smx,SMF *smf)
@@ -193,29 +185,28 @@ void smFinish(SMX smx,SMF *smf)
 	 * Output statistics.
 	 */
 	sprintf(achOut, "Cell Accesses: %g\n",
-		mdlNumAccess(smx->pkd->mdl,CID_CELL));
+			mdlNumAccess(smx->pkd->mdl,CID_CELL));
 	mdlDiag(smx->pkd->mdl, achOut);
 	sprintf(achOut, "    Miss ratio: %g\n",
-		mdlMissRatio(smx->pkd->mdl,CID_CELL));
+			mdlMissRatio(smx->pkd->mdl,CID_CELL));
 	mdlDiag(smx->pkd->mdl, achOut);
 	sprintf(achOut, "    Min ratio: %g\n",
-		mdlMinRatio(smx->pkd->mdl,CID_CELL));
+			mdlMinRatio(smx->pkd->mdl,CID_CELL));
 	mdlDiag(smx->pkd->mdl, achOut);
 	sprintf(achOut, "    Coll ratio: %g\n",
-		mdlCollRatio(smx->pkd->mdl,CID_CELL));
+			mdlCollRatio(smx->pkd->mdl,CID_CELL));
 	mdlDiag(smx->pkd->mdl, achOut);
-
 	sprintf(achOut, "Particle Accesses: %g\n",
-		mdlNumAccess(smx->pkd->mdl,CID_PARTICLE));
+			mdlNumAccess(smx->pkd->mdl,CID_PARTICLE));
 	mdlDiag(smx->pkd->mdl, achOut);
 	sprintf(achOut, "    Miss ratio: %g\n",
-		mdlMissRatio(smx->pkd->mdl,CID_PARTICLE));
+			mdlMissRatio(smx->pkd->mdl,CID_PARTICLE));
 	mdlDiag(smx->pkd->mdl, achOut);
 	sprintf(achOut, "    Min ratio: %g\n",
-		mdlMinRatio(smx->pkd->mdl,CID_PARTICLE));
+			mdlMinRatio(smx->pkd->mdl,CID_PARTICLE));
 	mdlDiag(smx->pkd->mdl, achOut);
 	sprintf(achOut, "    Coll ratio: %g\n",
-		mdlCollRatio(smx->pkd->mdl,CID_PARTICLE));
+			mdlCollRatio(smx->pkd->mdl,CID_PARTICLE));
 	mdlDiag(smx->pkd->mdl, achOut);
 	/*
 	 ** Stop particle caching space.
@@ -468,10 +459,10 @@ void smGrowList(SMX smx)
 {
     smx->nListSize *= 1.5;
     
-    smx->nnList = (NN *) realloc(smx->nnList, smx->nListSize*sizeof(NN));
+    smx->nnList = (NN *) realloc(smx->nnList,smx->nListSize*sizeof(NN));
     assert(smx->nnList != NULL);
-    smx->pbRelease = (int *) realloc(smx->pbRelease,
-				     smx->nListSize*sizeof(int));
+    smx->pbRelease =
+		(int *) realloc(smx->pbRelease,smx->nListSize*sizeof(int));
     assert(smx->pbRelease != NULL);
 }
 
@@ -612,9 +603,9 @@ void smBallScatter(SMX smx,FLOAT *ri,int iMarkType)
 
 	cp = ROOT;
 	while (1) {
-	  /*mdlDiag(smx->pkd->mdl, "smINTERSECTSCATTER:Before\n" );*/
+		/*mdlDiag(smx->pkd->mdl, "smINTERSECTSCATTER:Before\n" );*/
 		INTERSECTSCATTER(&c[cp],lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNextCell);
-    	        /*mdlDiag(smx->pkd->mdl, "smINTERSECTSCATTER:After\n" );*/
+		/*mdlDiag(smx->pkd->mdl, "smINTERSECTSCATTER:After\n" );*/
 		/*
 		 ** We have an intersection to test.
 		 */
@@ -630,7 +621,7 @@ void smBallScatter(SMX smx,FLOAT *ri,int iMarkType)
 				dz = sz - p[pj].r[2];
 				fDist2 = dx*dx + dy*dy + dz*dz;
 				if (fDist2 <= p[pj].fBallMax*p[pj].fBallMax) {
-				        TYPESet(&(p[pj]), iMarkType);
+					TYPESet(&(p[pj]),iMarkType);
 					}
 				}
 			}
@@ -671,7 +662,7 @@ void smBallScatterNP(SMX smx,FLOAT *ri,int iMarkType,int cp)
 				dz = z - p[pj].r[2];
 				fDist2 = dx*dx + dy*dy + dz*dz;
 				if (fDist2 <= p[pj].fBallMax*p[pj].fBallMax) {
-				        TYPESet(&(p[pj]), iMarkType);
+					TYPESet(&(p[pj]),iMarkType);
 					}
 				}
 			}
@@ -698,6 +689,9 @@ void smSmooth(SMX smx,SMF *smf)
 	int nTree,nQueue,iLoad;
 	int nSmoothed = 0, nLoop = 1;
 	int idSelf;
+#ifdef SLIDING_PATCH
+	KDN dpkdn; /* dummy node */
+#endif
 
 	idSelf = smx->pkd->idSelf;
 	nSmooth = smx->nSmooth;
@@ -723,11 +717,11 @@ void smSmooth(SMX smx,SMF *smf)
 	 ** Check if we are finished!
 	 */
 	if (pNext == nTree) {
-                goto DoneSmooth;
-	        }
+		goto DoneSmooth;
+		}
 
-	if (!TYPEFilter(&(pkd->pStore[pNext]), TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE, TYPE_SMOOTHACTIVE )) {
-	  /*) || pkd->pStore[pNext].fBall2 >= 0.0) {*/
+	if (!TYPEFilter(&(pkd->pStore[pNext]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) {
+		/*) || pkd->pStore[pNext].fBall2 >= 0.0) {*/
 		++pNext;
 		goto StartParticle;
 		}
@@ -758,17 +752,32 @@ void smSmooth(SMX smx,SMF *smf)
 			dx = x - pPart->r[0];
 			dy = y - pPart->r[1];
 			dz = z - pPart->r[2];
-			fDist2 = dx*dx + dy*dy + dz*dz;
-			pqi->fKey = fDist2;
+			pqi->ax = 0.0;
+			pqi->ay = 0.0;
+			pqi->az = 0.0;
+#ifdef SLIDING_PATCH
+			/*
+			 ** If nSmooth ~ N, may need to load the queue with ghosts...
+			 */
+			for (i=0;i<3;i++)
+				dpkdn.bnd.fMin[i] = dpkdn.bnd.fMax[i] = pPart->r[i];
+			INTERSECT(&dpkdn,FLOAT_MAXVAL,lx,ly,lz,x,y,z,sx,sy,sz,iDum,
+					  dumlabel1);
+			dx = sx - pPart->r[0];
+			dy = sy - pPart->r[1];
+			dz = sz - pPart->r[2];
+			pqi->ax = sx - x;
+			pqi->ay = sy - y;
+			pqi->az = sz - z;
+		dumlabel1:
+#endif
+			pqi->fKey = dx*dx + dy*dy + dz*dz;
 			pqi->dx = dx;
 			pqi->dy = dy;
 			pqi->dz = dz;
 			pqi->p = pj;
 			pqi->id = id;
 			pqi->pPart = pPart;
-			pqi->ax = 0.0;
-			pqi->ay = 0.0;
-			pqi->az = 0.0;
 			PQ_HASHADD(smx->pqHash,smx->nHash,pqi);
 			/*
 			 ** Note: in this case we DO NOT want to release pPart!
@@ -785,6 +794,21 @@ void smSmooth(SMX smx,SMF *smf)
 		dx = x - p[iLoad].r[0];
 		dy = y - p[iLoad].r[1];
 		dz = z - p[iLoad].r[2];
+		pqi->ax = 0.0;
+		pqi->ay = 0.0;
+		pqi->az = 0.0;
+#ifdef SLIDING_PATCH
+		for (i=0;i<3;i++)
+			dpkdn.bnd.fMin[i] = dpkdn.bnd.fMax[i] = p[iLoad].r[i];
+		INTERSECT(&dpkdn,FLOAT_MAXVAL,lx,ly,lz,x,y,z,sx,sy,sz,iDum,dumlabel2);
+		dx = sx - p[iLoad].r[0];
+		dy = sy - p[iLoad].r[1];
+		dz = sz - p[iLoad].r[2];
+		pqi->ax = sx - x;
+		pqi->ay = sy - y;
+		pqi->az = sz - z;
+	dumlabel2:
+#endif
 		pqi->fKey = dx*dx + dy*dy + dz*dz;
 		pqi->dx = dx;
 		pqi->dy = dy;
@@ -792,9 +816,6 @@ void smSmooth(SMX smx,SMF *smf)
 		pqi->p = iLoad;
 		pqi->id = pkd->idSelf;
 		pqi->pPart = &p[iLoad];
-		pqi->ax = 0.0;
-		pqi->ay = 0.0;
-		pqi->az = 0.0;
 		}
 	PQ_BUILD(smx->pq,nSmooth,pq);
 /*
@@ -889,45 +910,55 @@ void smSmooth(SMX smx,SMF *smf)
 	nCnt = 0;
 	h2 = 2.0*pq->fKey;   /* arbitrarily bigger than pq->fKey! */
 
-        fBall2 = pq->fKey;
-        /* Limit fBall2 growth to help stability and neighbour finding */
-	if (p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax) fBall2=p[pi].fBallMax*p[pi].fBallMax;
+	fBall2 = pq->fKey;
+	/* Limit fBall2 growth to help stability and neighbour finding */
+	if (p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)
+		fBall2=p[pi].fBallMax*p[pi].fBallMax;
 	p[pi].fBall2 = fBall2;
 
-	TYPESet( &p[pi], TYPE_SMOOTHDONE );
+	TYPESet(&p[pi],TYPE_SMOOTHDONE);
 	for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
-/*
- ** There are cases like in collisions where we do want to include the
- ** single nearest neighbor. So include the most distant particle.
- **
+		/*
+		 ** There are cases like in collisions where we do want to include the
+		 ** single nearest neighbor. So include the most distant particle.
+		 **
 		if (pqi == pq) continue;
-*/
+		 */
 		/*
 		 ** Move relevant data into Nearest Neighbor array.
 		 */
 	        if (pqi->fKey < fBall2) {
 		        smx->nnList[nCnt].iPid = pqi->id;
-			smx->nnList[nCnt].iIndex = pqi->p;
-			smx->nnList[nCnt].pPart = pqi->pPart;
-			smx->nnList[nCnt].fDist2 = pqi->fKey;
-			smx->nnList[nCnt].dx = pqi->dx;
-			smx->nnList[nCnt].dy = pqi->dy;
-			smx->nnList[nCnt].dz = pqi->dz;
-			++nCnt;
+				smx->nnList[nCnt].iIndex = pqi->p;
+				smx->nnList[nCnt].pPart = pqi->pPart;
+				smx->nnList[nCnt].fDist2 = pqi->fKey;
+				smx->nnList[nCnt].dx = pqi->dx;
+				smx->nnList[nCnt].dy = pqi->dy;
+				smx->nnList[nCnt].dz = pqi->dz;
+				++nCnt;
 		        }
-		if (pqi->id != pkd->idSelf) continue;
-		if (!TYPEFilter(&(pkd->pStore[pqi->p]), TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE, TYPE_SMOOTHACTIVE )) continue;
-		/*pkd->pStore[pqi->p].fBall2 >= 0) continue; */
-		if (pqi->fKey < h2) {
-			pqn = pqi;
-			h2 = pqn->fKey;
+			if (pqi->id != pkd->idSelf) continue;
+			if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
+			/*pkd->pStore[pqi->p].fBall2 >= 0) continue; */
+			if (pqi->fKey < h2) {
+				pqn = pqi;
+				h2 = pqn->fKey;
+				}
 			}
-		}
+	/*
+	 ** For periodic boundary conditions, make sure search ball has not
+	 ** exceeded half the spatial period. If it has, this probably means
+	 ** nSmooth is too large.
+	 */
+	assert(!smx->bPeriodic ||
+		   ((lx == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lx*lx) &&
+			(ly == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*ly*ly) &&
+			(lz == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lz*lz)));
 	nSmoothed++;
 	smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
 	/*
 	 ** Need to do a CACHE recombine (ie. finish up Smooth)
-         ** to deliver info to particles on other processors.
+	 ** to deliver info to particles on other processors.
 	 */
 	/*
 	 ** Try a cache check to improve responsiveness.
@@ -981,11 +1012,10 @@ void smSmooth(SMX smx,SMF *smf)
 
  DoneSmooth:
 	{
-	  char debug[256];
-	  sprintf(debug,"nSmoothed: %d, nLoop: %d\n",nSmoothed,nLoop);
- 	  mdlDiag(smx->pkd->mdl, debug);
- 	  }
-	;
+	char debug[256];
+	sprintf(debug,"nSmoothed: %d, nLoop: %d\n",nSmoothed,nLoop);
+	mdlDiag(smx->pkd->mdl, debug);
+	}
 	}
 
 
@@ -1013,18 +1043,19 @@ void smReSmooth(SMX smx,SMF *smf)
 	    }
 	nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
 	for (pi=0;pi<nTree;++pi) {
-		if (!TYPEFilter(&(p[pi]), TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE, TYPE_SMOOTHACTIVE ))  continue;
+		if (!TYPEFilter(&(p[pi]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,
+						TYPE_SMOOTHACTIVE)) continue;
 		/*
 		 ** Do a Ball Gather at the radius of the most distant particle
-		 ** which is smSmooth sets in p[pi].fBall2.
+		 ** which smSmooth sets in p[pi].fBall2.
 		 */
 		fBall2 = p[pi].fBall2;
 		cp = p[pi].cpStart;
-		TYPESet( &p[pi], TYPE_SMOOTHDONE );
+		TYPESet(&p[pi],TYPE_SMOOTHDONE);
 		if (cp) {
 			nCnt = smBallGatherNP(smx,fBall2,p[pi].r,cp);
 			smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
-	                /*
+			/*
 			** Try a cache check to improve responsiveness.
 			*/
 			mdlCacheCheck(mdl);
@@ -1050,7 +1081,7 @@ void smReSmooth(SMX smx,SMF *smf)
 				else pkdn = &pkd->kdTop[cp];
 				if (pkdn->pUpper < 0) goto GetNextCell;
 				INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNextCell);
-				if (pkdn->iDim >= 0) {
+				if (pkdn->iDim >= 0 || id == -1) {
 					if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
 					pkdLower(pkd,cp,id);
 					continue;
@@ -1102,13 +1133,13 @@ void smMarkSmooth(SMX smx,SMF *smf,int iMarkType)
 	PARTICLE *p = smx->pkd->pStore;
 	PARTICLE *pPart;
 	KDN *pkdn;
-	int pi,pj,nCnt,cp,id,i;
+	int pi,pj,cp,id;
 	FLOAT x,y,z,lx,ly,lz,sx,sy,sz,dx,dy,dz,fDist2;
 	int iDum;
 	int nTree;
-        char DiagStr[100];
+	char DiagStr[100];
 	
-	mdlDiag(smx->pkd->mdl, "smMarkSmooth:Start\n" );
+	mdlDiag(smx->pkd->mdl,"smMarkSmooth:Start\n" );
 	if (smx->bPeriodic) {
 	    lx = pkd->fPeriod[0];
 	    ly = pkd->fPeriod[1];
@@ -1121,85 +1152,77 @@ void smMarkSmooth(SMX smx,SMF *smf,int iMarkType)
 	    }
 	nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
 	for (pi=0;pi<nTree;++pi) {
-		if (!TYPEFilter(&(p[pi]), TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE, TYPE_SMOOTHACTIVE ))  continue;
+		if (!TYPEFilter(&(p[pi]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,
+						TYPE_SMOOTHACTIVE)) continue;
 		/*		sprintf( DiagStr, "smMarkSmooth: Particle %d\n", p[pi].iOrder);*/
  		mdlDiag(smx->pkd->mdl, DiagStr );
 		/*
 		 ** Do a Ball Scatter to this particle
 		 ** which is smSmooth sets in p[pi].fBall2.
 		 */
-		TYPESet( &p[pi], TYPE_SMOOTHDONE );
+		TYPESet(&p[pi],TYPE_SMOOTHDONE);
 		/*
-		cp = p[pi].cpStart;
-		if (cp) {
-			smBallScatterNP(smx,p[pi].r,iMarkType,cp);
-			mdlCacheCheck(mdl);
-        	} else */ 
-	        /*mdlDiag(smx->pkd->mdl, "smMarkSmooth: before local smBallSacatter\n" ); */
+		   cp = p[pi].cpStart;
+		   if (cp) {
+		   smBallScatterNP(smx,p[pi].r,iMarkType,cp);
+		   mdlCacheCheck(mdl);
+		   } else */ 
+		/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: before local smBallSacatter\n" ); */
 		{
-			if (smx->bPeriodic) {
-				smBallScatter(smx,p[pi].r,iMarkType);
-				}
-			else {
-				smBallScatterNP(smx,p[pi].r,iMarkType,ROOT);
-				}
-			/*
-			 ** Start non-local search.
-			 */
-			/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: after local before nonlocal\n" );*/
-			x = p[pi].r[0];
-			y = p[pi].r[1];
-			z = p[pi].r[2];
-			cp = ROOT;
-			id = -1;	/* We are in the LTT now ! */
-			while (1) {
-				if (id == pkd->idSelf) goto SkipLocal;
-				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 0\n" );*/
-				if (id >= 0) pkdn = mdlAquire(mdl,CID_CELL,cp,id);
-				else pkdn = &pkd->kdTop[cp];
-				if (pkdn->pUpper < 0) goto GetNextCell;
-				/*mdlDiag(smx->pkd->mdl, "smINTERSECTSCATTER: Before\n" );*/
-				INTERSECTSCATTER(pkdn,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNextCell);
-				/*mdlDiag(smx->pkd->mdl, "smINTERSECTSCATTER: After\n" );*/
-				if (pkdn->iDim >= 0) {
-					if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
-					pkdLower(pkd,cp,id);
-					continue;
-					}
-				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2\n" );*/
-				for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
-				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2a\n" );*/
-					pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
-				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2b\n" );*/
-					dx = sx - pPart->r[0];
-					dy = sy - pPart->r[1];
-					dz = sz - pPart->r[2];
-					fDist2 = dx*dx + dy*dy + dz*dz;
-					if (fDist2 <= pPart->fBallMax*pPart->fBallMax) {
-                                                TYPESet(pPart, iMarkType);	
-						}
-				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2c\n" );*/
-					mdlRelease(mdl,CID_PARTICLE,pPart);
-				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2d\n" );*/
-					}
-				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 3\n" );*/
-			GetNextCell:
-				if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
-			SkipLocal:
-				pkdNext(pkd,cp,id);
-				if (pkdIsRoot(cp,id)) break;
-				}
+		if (smx->bPeriodic) {
+			smBallScatter(smx,p[pi].r,iMarkType);
 			}
-		        /*mdlDiag(smx->pkd->mdl, "smMarkSmooth: after nonlocal\n" );*/
+		else {
+			smBallScatterNP(smx,p[pi].r,iMarkType,ROOT);
+			}
+		/*
+		 ** Start non-local search.
+		 */
+		/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: after local before nonlocal\n" );*/
+		x = p[pi].r[0];
+		y = p[pi].r[1];
+		z = p[pi].r[2];
+		cp = ROOT;
+		id = -1;	/* We are in the LTT now ! */
+		while (1) {
+			if (id == pkd->idSelf) goto SkipLocal;
+			/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 0\n" );*/
+			if (id >= 0) pkdn = mdlAquire(mdl,CID_CELL,cp,id);
+			else pkdn = &pkd->kdTop[cp];
+			if (pkdn->pUpper < 0) goto GetNextCell;
+			/*mdlDiag(smx->pkd->mdl, "smINTERSECTSCATTER: Before\n" );*/
+			INTERSECTSCATTER(pkdn,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNextCell);
+			/*mdlDiag(smx->pkd->mdl, "smINTERSECTSCATTER: After\n" );*/
+			if (pkdn->iDim >= 0) {
+				if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
+				pkdLower(pkd,cp,id);
+				continue;
+				}
+			/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2\n" );*/
+			for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
+				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2a\n" );*/
+				pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
+				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2b\n" );*/
+				dx = sx - pPart->r[0];
+				dy = sy - pPart->r[1];
+				dz = sz - pPart->r[2];
+				fDist2 = dx*dx + dy*dy + dz*dz;
+				if (fDist2 <= pPart->fBallMax*pPart->fBallMax) {
+					TYPESet(pPart, iMarkType);	
+					}
+				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2c\n" );*/
+				mdlRelease(mdl,CID_PARTICLE,pPart);
+				/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 2d\n" );*/
+				}
+			/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: 3\n" );*/
+		GetNextCell:
+			if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
+		SkipLocal:
+			pkdNext(pkd,cp,id);
+			if (pkdIsRoot(cp,id)) break;
+			}
+		}
+		/*mdlDiag(smx->pkd->mdl, "smMarkSmooth: after nonlocal\n" );*/
 		}
 	/*mdlDiag(smx->pkd->mdl, "smMarkSmooth:End\n" );*/
 	}
-
-
-
-
-
-
-
-
-

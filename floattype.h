@@ -5,12 +5,12 @@
 
 #ifndef SINGLE
 
-#define FLOAT	double
+#define FLOAT			double
 #define FLOAT_MAXVAL	DBL_MAX
 
 #else
 
-#define FLOAT	float
+#define FLOAT			float
 #define FLOAT_MAXVAL	FLT_MAX
 
 #endif

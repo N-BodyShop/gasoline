@@ -351,8 +351,12 @@ void pkdRemoteWalk(PKD pkd,int iBucket,FLOAT fSoftMax,int id,FLOAT rOffset[3],
 	pkd->nCellNewt = nCellNewt;
 	}
 
-
+#ifdef SLIDING_PATCH
+void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder,
+				   double dOrbFreq,double dTime)
+#else
 void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
+#endif
 {
 	KDN *pbuc,*pkdn;
 	int iCell,id,ix,iy,iz,bRep,bIntersect,pj;
@@ -372,10 +376,17 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
 			}
 		}
 	for (ix=-nReps;ix<=nReps;++ix) {
+		if (ix && pkd->fPeriod[0] >= FLOAT_MAXVAL) continue;
 		rOffset[0] = ix*pkd->fPeriod[0];
 		for (iy=-nReps;iy<=nReps;++iy) {
+			if (iy && pkd->fPeriod[1] >= FLOAT_MAXVAL) continue;
 			rOffset[1] = iy*pkd->fPeriod[1];
+#ifdef SLIDING_PATCH
+			rOffset[1] += SHEAR(ix,pkd->fPeriod[0],pkd->fPeriod[1],
+								dTime,dOrbFreq);
+#endif
 			for (iz=-nReps;iz<=nReps;++iz) {
+				if (iz && pkd->fPeriod[2] >= FLOAT_MAXVAL) continue;
 				rOffset[2] = iz*pkd->fPeriod[2];
 				bRep = ix || iy || iz;
 				/*
@@ -480,6 +491,3 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
 			} /* of iy */
 		} /* of ix */
 	}
-
-
-

@@ -223,13 +223,3 @@ void pkdEwaldInit(PKD pkd,double fhCut,int iOrder)
 		}
 	pkd->nEwhLoop = i;
 	}
-
-
-
-
-
-
-
-
-
-

@@ -4,11 +4,11 @@
 
 #define ELEMENT			0
 #define ARRAY			1
-#define FDL			2
+#define FDL				2
 #define TYPE			3
 #define SIZE			4
 #define INDEX			5
-#define NUM_COMMANDS		6
+#define NUM_COMMANDS	6
 #define FIX_SIZE		7
 #define FLT_SIZE		8
 
@@ -32,7 +32,7 @@
 #define FDL_MSG_MEMIDENT	13
 #define FDL_MSG_MEMSYM		14
 #define FDL_MSG_MEMBUILDSYM	15
-#define FDL_MSG_BIGINDEX        16
+#define FDL_MSG_BIGINDEX	16
 #define FDL_MSG_FILEWRITE	17
 
 #define FDL_MESSAGES		18

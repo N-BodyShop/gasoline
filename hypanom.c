@@ -26,9 +26,9 @@ double dHypAnom(double M,double e)
 	double w,w1,w2,w3;
 	double Y,crit,sgm;
 #ifdef __i386__
-        long double dF,F,lb,ub;
+        long double dF,F=0,lb,ub=0;
 #else
-        double dF,F,lb,ub;
+        double dF,F=0,lb,ub=0;
 #endif
 	int i;
 
@@ -91,7 +91,3 @@ double dHypAnom(double M,double e)
 	assert(0);
 	return(0.0);
 	}
-
-
-
-

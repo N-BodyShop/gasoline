@@ -2,7 +2,6 @@
 
 double asinh(double a)
 {
-
     return log(a+sqrt(a*a+1));
 }
 

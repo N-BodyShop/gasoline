@@ -4,24 +4,38 @@
 #include "pkd.h"
 #include "floattype.h"
 
+#ifdef SAND_PILE
+#include "collision.h" /* for definition of WALLS */
+#endif
+
 typedef struct smfParameters {
 	double H;
 	double a;
+#ifdef GASOLINE
 	double alpha;
 	double beta;
 	double gamma;
 	double algam;
 	int bGeometric;
-        int bCannonical;
-        int bGrowSmoothList;
+	int bCannonical;
+	int bGrowSmoothList;
+#endif
 #ifdef COLLISIONS
 	double dTime;
 	double dDelta;
 	double dCentMass;
-	double dStart;	/* collision search time interval */
+	double dStart; /* collision search time interval */
 	double dEnd;
-#endif /* COLLISIONS */
-	PKD pkd;		/* pointer to processor's PKD structure */
+	double dCollapse; /* limit for inelastic collapse checks */
+#endif
+#ifdef SLIDING_PATCH
+	double dOrbFreq;
+	FLOAT fLx;
+#endif
+#ifdef SAND_PILE
+	WALLS walls;
+#endif
+	PKD pkd; /* useful for diagnostics, etc. */
 	} SMF;
 
 
@@ -35,13 +49,13 @@ typedef struct nNeighbor {
 	FLOAT dz;
 	} NN;
 
-#define SMX_DENSITY		1
+#define SMX_DENSITY				1
 void initDensity(void *);
 void combDensity(void *,void *);
 void Density(PARTICLE *,int,NN *,SMF *);
 void DensitySym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_MARKDENSITY		6
+#define SMX_MARKDENSITY			6
 void initParticleMarkDensity(void *);
 void initMarkDensity(void *);
 void combMarkDensity(void *,void *);
@@ -55,10 +69,10 @@ void combMarkIIDensity(void *,void *);
 void MarkIIDensity(PARTICLE *,int,NN *,SMF *);
 void MarkIIDensitySym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_MARK 	        17
+#define SMX_MARK				17
 void combMark(void *,void *);
 
-#define SMX_MEANVEL		2
+#define SMX_MEANVEL				2
 void initMeanVel(void *);
 void combMeanVel(void *,void *);
 void MeanVel(PARTICLE *,int,NN *,SMF *);
@@ -73,13 +87,13 @@ void combSphPressureTerms(void *,void *);
 void SphPressureTerms(PARTICLE *,int,NN *,SMF *);
 void SphPressureTermsSym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_DIVVORT             4
+#define SMX_DIVVORT				4
 void initDivVort(void *);
 void combDivVort(void *,void *);
 void DivVort(PARTICLE *,int,NN *,SMF *);
 void DivVortSym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_HKPRESSURETERMS    5
+#define SMX_HKPRESSURETERMS		5
 void initHKPressureTermsParticle(void *);
 void initHKPressureTerms(void *);
 void combHKPressureTerms(void *,void *);
@@ -90,16 +104,15 @@ void HKPressureTermsSym(PARTICLE *,int,NN *,SMF *);
 
 #ifdef COLLISIONS
 
-#define SMX_REJECTS		7
+#define SMX_REJECTS			   	7
+void initFindRejects(void *p);
+void combFindRejects(void *p1, void *p2);
 void FindRejects(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
 
-#define SMX_TIMESTEP	8
-void SetTimeStep(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
-
-#define SMX_ENCOUNTER	9
+#define SMX_ENCOUNTER			8
 void CheckForEncounter(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
 
-#define SMX_COLLISION	10
+#define SMX_COLLISION			9
 void CheckForCollision(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
 
 #endif /* COLLISIONS */

@@ -1275,9 +1275,3 @@ int FDL_offset(FDL_CTX *CTX,char *ident)
     p = el->point;
 	return(FDL_offsetp(CTX,p) + CTX->iOffset);
 	}
-
-
-
-
-
-

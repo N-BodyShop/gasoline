@@ -1,3 +1,5 @@
+#ifdef GASOLINE
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -9,8 +11,6 @@
 
 /* debug */
 #include "pkd.h"
-
-#ifdef GASOLINE
 
 #define EPS 1e-5
 #define MAXABUNDITERATIONS 20
@@ -405,7 +405,7 @@ void clAbunds( CL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
   double yHe = cl->Y_He;
   double yeMAX = cl->Y_eMAX;
   double rye,ye;
-  double fHI,fHeI,fHeII,fHeIIp,rfHe,yHI_old,yHeII_old;
+  double fHI,fHeI,fHeII,rfHe,yHI_old,yHeII_old;
   int i;  
 
   for ( i=0 ; i<MAXABUNDITERATIONS ; i++ ) {
@@ -827,7 +827,6 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
   PERBARYON Yin = *Y, YY;
   RATE Rate,Ratein;
   double Ein = *E, dE, Tin, Ttmp;
-  int sign = 1;
   int i;
   /* brent */
   int iter;
@@ -1050,7 +1049,6 @@ void clIntegrateEnergyDEBUG(CL *cl, PERBARYON *Y, double *E,
   PERBARYON Yin = *Y, YY;
   RATE Rate,Ratein;
   double Ein = *E, dE, Tin;
-  int sign = 1;
   int i;
   /* brent */
   int iter;
@@ -1245,12 +1243,4 @@ void clIntegrateEnergyDEBUG(CL *cl, PERBARYON *Y, double *E,
 }
 #endif
 
-#endif
-
-
-
-
-
-
-
-
+#endif /* GASOLINE */

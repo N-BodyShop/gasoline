@@ -20,7 +20,7 @@
 #define MSR_TREE_NONE		0
 #define MSR_TREE_SPATIAL	1
 #define MSR_TREE_DENSITY	2
-#define MSR_TREE_QQ		3
+#define MSR_TREE_QQ			3
 
 typedef struct msrContext {
 	PRM prm;
@@ -40,7 +40,7 @@ typedef struct msrContext {
 	int nDark;
 	int nGas;
 	int nStar;
-        int nMaxOrder;		/* Order number of last particle */
+	int nMaxOrder;		/* Order number of last particle */
 	int nMaxOrderGas;
 	int nMaxOrderDark;
 	int iCurrMaxRung;
@@ -72,16 +72,14 @@ typedef struct msrContext {
 	 */
 	int iTreeType;
 	int bGravityTree;
-        /*
-         * Domain Decomposition Done
-         */
-        int bDoneDomainDecomp;
-        int nActive;
-        int nTreeActive;
-        int nSmoothActive;
+	/*
+	 * Domain Decomposition Done
+	 */
+	int bDoneDomainDecomp;
+	int nActive;
+	int nTreeActive;
+	int nSmoothActive;
 	} * MSR;
-
-
 
 void msrInitialize(MSR *,MDL,int,char **);
 void msrLogParams(MSR msr, FILE *fp);
@@ -105,7 +103,6 @@ void msrMarkSmooth(MSR,double,int,int);
 void msrGravity(MSR,double,int,int *,double *,double *,double *,int *);
 void msrCalcE(MSR,int,double,double *,double *,double *,double *);
 void msrDrift(MSR,double,double);
-void msrUpdateuDot(MSR,double,double,int);
 void msrKick(MSR,double,double);
 double msrReadCheck(MSR,int *);
 void msrWriteCheck(MSR,double,int);
@@ -113,21 +110,20 @@ int msrOutTime(MSR,double);
 void msrReadOuts(MSR,double);
 double msrMassCheck(MSR,double,char *);
 void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta, 
-				double *pdMultiEff);
+				   double *pdMultiEff);
 void msrTopStepKDK(MSR msr,
-		   double dStep, /* Current step */
-		   double dTime, /* Current time */
-		   double dDelta, /* Time step */
-		   int iRung,	/* Rung level */
-		   int iKickRung, /* Gravity on all rungs from iRung
-				     to iKickRung */
-		   int iAdjust,	/* Do an adjust? */
-		   double *pdActiveSum,
-		   double *pdWMax,
-		   double *pdIMax,
-		   double *pdEMax,
-		   int *piSec);
-
+				   double dStep,	/* Current step */
+				   double dTime,	/* Current time */
+				   double dDelta,	/* Time step */
+				   int iRung,		/* Rung level */
+				   int iKickRung,	/* Gravity on all rungs from iRung
+									   to iKickRung */
+				   int iAdjust,		/* Do an adjust? */
+				   double *pdActiveSum,
+				   double *pdWMax,
+				   double *pdIMax,
+				   double *pdEMax,
+				   int *piSec);
 void msrRungStats(MSR);
 
 void msrBallMax(MSR msr, int iRung, int bGreater);
@@ -172,8 +168,7 @@ void msrActiveTypeOrder(MSR msr, unsigned int iTestMask );
 /* Active Functions */
 /*------------------*/
 
-void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime,
-		     int bAll);
+void msrVelocityRung(MSR msr,int iRung,double dDelta,double dTime,int bAll);
 void msrCoolVelocity(MSR,double,double);
 void msrGrowMass(MSR msr, double dTime, double dDelta);
 void msrCalcWriteStart(MSR);
@@ -209,6 +204,7 @@ int msrMaxOrder(MSR msr);
 void msrInitTimeSteps(MSR,double,double);
 
 #ifdef GASOLINE
+void msrUpdateuDot(MSR,double,double,int);
 void msrInitSph(MSR,double);
 int msrSphCurrRung(MSR msr, int iRung, int bGreater);
 void msrSphStep(MSR msr, double dTime);
@@ -223,18 +219,14 @@ void msrFindRejects(MSR msr);
 double msrReadSS(MSR msr);
 void msrWriteSS(MSR msr, char *pszFileName, double dTime);
 void msrCalcHill(MSR msr);
-void msrHillStep(MSR msr);
+void msrHelioStep(MSR msr);
 void msrPlanetsKDK(MSR msr, double dStep, double dTime, double dDelta,
 				   double *pdWMax, double *pdIMax, double *pdEMax, int *piSec);
 void msrPlanetsDrift(MSR msr, double dStep, double dTime, double dDelta);
-void msrFindEncounter(MSR msr, double dStart, double dEnd, double *dNext);
+void msrNextEncounter(MSR msr, double dStart, double dEnd, double *dNext);
 void msrMarkEncounters(MSR msr, double dTmax);
 void msrLinearKDK(MSR msr, double dStep, double dTime, double dDelta);
 void msrDoCollisions(MSR msr, double dTime, double dDelta);
 #endif /* COLLISIONS */
 
 #endif
-
-
-
-

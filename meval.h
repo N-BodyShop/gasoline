@@ -82,10 +82,3 @@ az -= dz*Qta;\
 #define MEVAL_FLOP	{10,10,48,151,343}
 
 #endif
-
-
-
-
-
-
-

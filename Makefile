@@ -1,18 +1,19 @@
 #
 # Makefile for pkdgrav or gasoline (specify below)
 #
-#EXE = pkdgrav
-EXE = gasoline
 
-#CODEDEF = #-DCOLLISIONS -DFIX_COLLAPSE -DI32N_A_BOX -DSAND_PILE
+#CC = gcc -Wall
+EXE = pkdgrav
+#EXE = gasoline
+CODEDEF = -DCOLLISIONS -DSLIDING_PATCH
 #CODEDEF = -DSUPERCOOL
 #CODEDEF = -DGROWMASS
 #CODEDEF = -DGASOLINE
 #CODEDEF = -DDEBUG -HSHRINK
 
 #ev6
-CC = ccc
-CODEDEF = -DGASOLINE -DCCC
+#CC = ccc
+#CODEDEF = -DGASOLINE -DCCC
 
 #CC = cc
 #CODEDEF = -DGASOLINE 
@@ -21,14 +22,14 @@ CODEDEF = -DGASOLINE -DCCC
 #       NULL defines
 #
 NULL_MDL		= ../mdl/null
+NULL_CFLAGS		= -O3 -g -I$(NULL_MDL) $(CODEDEF)
+
 #ev6 flags:
-#NULL_CFLAGS		= -g -I$(NULL_MDL) $(CODEDEF)
-NULL_CFLAGS		= -O3 -g3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
+#NULL_CFLAGS		= -O3 -g3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
 
 #NULL_CFLAGS		= -O2 -g -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -O2 -I$(NULL_MDL) $(CODEDEF)
-#NULL_CFLAGS		= -O3 -g -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -g -I$(NULL_MDL) $(CODEDEF)
 #NULL_LD_FLAGS	= -Wl,-s
 NULL_XOBJ		= erf.o v_sqrt1.o
@@ -157,17 +158,17 @@ install:
 	@echo "No installation rules."
 
 clean:
-	rm -f *.o
+	-rm -f $(OBJ) $(EXTRA_OBJ)
 
-spotless:
-	-rm -f $(EXE) $(OBJ) $(EXTRA_OBJ) cflow.out
+spotless: clean
+	-rm -f $(EXE)
 
 depend:
 	makedepend -Y -- $(CODEDEF) -- *.c
 
 $(XDIR):
-	- mkdir $(BDIR)
-	- mkdir $(XDIR)
+	-mkdir $(BDIR)
+	-mkdir $(XDIR)
 
 null:
 	cd $(NULL_MDL); make "CC=$(CC)" "CFLAGS=$(NULL_CFLAGS)"
@@ -228,10 +229,7 @@ ksr:
 	make $(EXE) "CFLAGS=$(KSR_CFLAGS)" "LD_FLAGS=$(KSR_LD_FLAGS)"\
 		"MDL=$(KSR_MDL)" "XOBJ=$(KSR_XOBJ)" "LIBMDL=$(KSR_LIBMDL)"
 
-pkdgrav: $(OBJ) $(XOBJ)
-	$(CC) $(CFLAGS) $(LD_FLAGS) -o $@ $(OBJ) $(XOBJ) $(LIBMDL)
-
-gasoline: $(OBJ) $(XOBJ)
+$(EXE): $(OBJ) $(XOBJ)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -o $@ $(OBJ) $(XOBJ) $(LIBMDL)
 
 $(OBJ) $(EXTRA_OBJ): Makefile
@@ -247,15 +245,15 @@ main.o: pst.h pkd.h floattype.h smoothfcn.h collision.h master.h param.h
 main.o: parameters.h outtype.h
 master.o: master.h param.h pst.h pkd.h floattype.h smoothfcn.h collision.h
 master.o: parameters.h tipsydefs.h opentype.h fdl.h htable.h outtype.h
-master.o: ssdefs.h
+master.o: ssdefs.h ssio.h
 outtype.o: pkd.h floattype.h outtype.h collision.h
 param.o: param.h
 pkd.o: pkd.h floattype.h ewald.h grav.h walk.h opentype.h tipsydefs.h
-pkd.o: ssdefs.h collision.h
+pkd.o: ssdefs.h ssio.h collision.h
 pst.o: pst.h pkd.h floattype.h smoothfcn.h collision.h outtype.h smooth.h
 qqsmooth.o: smooth.h pkd.h floattype.h smoothfcn.h
 smooth.o: smooth.h pkd.h floattype.h smoothfcn.h
-smoothfcn.o: smoothfcn.h pkd.h floattype.h ssdefs.h collision.h
+smoothfcn.o: smoothfcn.h pkd.h floattype.h ssdefs.h ssio.h collision.h
 walk.o: walk.h pkd.h floattype.h
 cooling.o: cooling.h
 

@@ -375,5 +375,3 @@ int prmSpecified(PRM prm,char *pszName)
 {
 	return(prmArgSpecified(prm,pszName) || prmFileSpecified(prm,pszName));
 	}
-
-

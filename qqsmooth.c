@@ -76,7 +76,7 @@ void pkdQQCalcBound(PKD pkd,BND *pbnd,BND *pbndActive)
 	for (i=0;i<pkd->nLocal;++i) {
 		fq = PARTQQ(&pkd->pStore[i], 0);
 		fQ = PARTQQ(&pkd->pStore[i], 1);
-		fh = 0.5*(fq + fQ)*pkd->pStore[i].fRedHill;
+		fh = 0.5*(fq + fQ)*pkd->pStore[i].fHill;
 		if (fq - fh < pbnd->fMin[0]) 
 			pbnd->fMin[0] = fq - fh;
 		if (fq > pbnd->fMax[0])
@@ -90,10 +90,10 @@ void pkdQQCalcBound(PKD pkd,BND *pbnd,BND *pbndActive)
 	 ** Calculate Active Bounds.
 	 */
 	for (i=0;i<pkd->nLocal;++i) {
-	    if (AM_test(&(pkd->pStore[i]),AM_ACTIVE)) {
+		if (TYPEQueryACTIVE(&pkd->pStore[i])) {
 			fq = PARTQQ(&pkd->pStore[i], 0);
 			fQ = PARTQQ(&pkd->pStore[i], 1);
-			fh = 0.5*(fq + fQ)*pkd->pStore[i].fRedHill;
+			fh = 0.5*(fq + fQ)*pkd->pStore[i].fHill;
 			if (fq - fh < pbndActive->fMin[0]) 
 				pbndActive->fMin[0] = fq - fh;
 			if (fq > pbndActive->fMax[0])
@@ -174,7 +174,7 @@ pkdQQUpPass(PKD pkd,int iCell)
 		for (pj=l;pj<=u;++pj) {
 			fq = PARTQQ(&p[pj], 0);
 			fQ = PARTQQ(&p[pj], 1);
-			fh = 0.5*(fq + fQ)*p[pj].fRedHill;
+			fh = 0.5*(fq + fQ)*p[pj].fHill;
 			if (fq - fh < c[iCell].bnd.fMin[0])
 				c[iCell].bnd.fMin[0] = fq - fh;
 			if (fq > c[iCell].bnd.fMax[0])
@@ -364,7 +364,7 @@ int smGatherQQ(SMX smx,FLOAT fq,FLOAT fQ,int cp)
 			for (pj=c[cp].pLower;pj<=pUpper;++pj) {
 				fqp = PARTQQ(&p[pj], 0);
 				fQp = PARTQQ(&p[pj], 1);
-				fhp = 0.5*(fqp + fQp)*p[pj].fRedHill;
+				fhp = 0.5*(fqp + fQp)*p[pj].fHill;
 				if (fqp - fhp < fQ && fQp + fhp > fq) {
 					if(nCnt >= smx->nListSize)
 					    smGrowList(smx);
@@ -403,7 +403,7 @@ void smQQSmooth(SMX smx,SMF *smf)
 		 */
 		fq = PARTQQ(&p[pi], 0);
 		fQ = PARTQQ(&p[pi], 1);
-		fh = 0.5*(fq + fQ)*p[pi].fRedHill;
+		fh = 0.5*(fq + fQ)*p[pi].fHill;
 		fq -= fh;
 		fQ += fh;
 		nCnt = smGatherQQ(smx,fq,fQ,ROOT);
@@ -426,7 +426,7 @@ void smQQSmooth(SMX smx,SMF *smf)
 				pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
 				fqp = PARTQQ(pPart, 0);
 				fQp = PARTQQ(pPart, 1);
-				fhp = 0.5*(fqp + fQp)*pPart->fRedHill;
+				fhp = 0.5*(fqp + fQp)*pPart->fHill;
 				if(fqp - fhp < fQ && fQp + fhp > fq) {
 					if(nCnt >= smx->nListSize)
 					    smGrowList(smx);
@@ -462,7 +462,7 @@ CheckForEncounter(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	double dInteract(double dTime,double dDelta,double dCentMass,
 					 PARTICLE *pi,PARTICLE *pj);
 
-	double min_enc_time = HUGE_VAL,enc_time;
+	double min_enc_time = DBL_MAX,enc_time;
 	int i;
 
 /*
@@ -482,10 +482,8 @@ CheckForEncounter(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		if (enc_time == 0) continue;
 		if (enc_time < min_enc_time) min_enc_time = enc_time;
 		}
-    p->fDensity = (min_enc_time == HUGE_VAL ? 0 : min_enc_time);
+    p->fDensity = (min_enc_time == DBL_MAX ? 0 : min_enc_time);
 /*	(void) printf("CheckForEncounter: min_enc_time = %e\n",p->fDensity);*/
     }
 
 #endif /* COLLISIONS */
-/*  LocalWords:  ifdef
- */

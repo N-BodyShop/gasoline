@@ -42,6 +42,10 @@ typedef struct smContext {
 	PQ *pqHead;
 	int nHash;
 	PQ **pqHash;
+#ifdef SLIDING_PATCH
+	double dOrbFreq;
+	double dTime;
+#endif
 	} * SMX;
 
 
@@ -165,7 +169,114 @@ typedef struct smContext {
     if (INTRSCT_fDist2 > fBall2) goto label;\
 	}
 
-
+#ifdef SLIDING_PATCH
+#define INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,bPeriodic,label)\
+{\
+	FLOAT INTRSCT_dx,INTRSCT_dy,INTRSCT_dz;\
+	FLOAT INTRSCT_dx1,INTRSCT_dy1,INTRSCT_dz1;\
+	FLOAT INTRSCT_fDist2;\
+	sy = y;\
+	INTRSCT_dx = (pkdn)->bnd.fMin[0]-x;\
+	INTRSCT_dx1 = x-(pkdn)->bnd.fMax[0];\
+	if (INTRSCT_dx > 0.0) {\
+		INTRSCT_dx1 += lx;\
+		if (INTRSCT_dx1 < INTRSCT_dx) {\
+			INTRSCT_fDist2 = INTRSCT_dx1*INTRSCT_dx1;\
+			sx = x+lx;\
+			sy += SHEAR(1,lx,ly,smx->dOrbFreq,smx->dTime);\
+			if (sy >= 0.5*ly) sy -= ly;\
+			else if (sy < - 0.5*ly) sy += ly;\
+			bPeriodic = 1;\
+			}\
+		else {\
+			INTRSCT_fDist2 = INTRSCT_dx*INTRSCT_dx;\
+			sx = x;\
+			}\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
+		}\
+	else if (INTRSCT_dx1 > 0.0) {\
+		INTRSCT_dx += lx;\
+		if (INTRSCT_dx < INTRSCT_dx1) {\
+			INTRSCT_fDist2 = INTRSCT_dx*INTRSCT_dx;\
+			sx = x-lx;\
+			sy += SHEAR(-1,lx,ly,smx->dOrbFreq,smx->dTime);\
+			if (sy >= 0.5*ly) sy -= ly;\
+			else if (sy < - 0.5*ly) sy += ly;\
+			bPeriodic = 1;\
+			}\
+		else {\
+			INTRSCT_fDist2 = INTRSCT_dx1*INTRSCT_dx1;\
+			sx = x;\
+			}\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
+		}\
+	else {\
+		INTRSCT_fDist2 = 0.0;\
+		sx = x;\
+		}\
+	INTRSCT_dy = (pkdn)->bnd.fMin[1]-sy;\
+	INTRSCT_dy1 = sy-(pkdn)->bnd.fMax[1];\
+	if (INTRSCT_dy > 0.0) {\
+		INTRSCT_dy1 += ly;\
+		if (INTRSCT_dy1 < INTRSCT_dy) {\
+			INTRSCT_fDist2 += INTRSCT_dy1*INTRSCT_dy1;\
+			sy += ly;\
+			bPeriodic = 1;\
+			}\
+		else {\
+			INTRSCT_fDist2 += INTRSCT_dy*INTRSCT_dy;\
+			}\
+		if ((pkdn)->bnd.fMax[0] - (pkdn)->bnd.fMin[0] < 0.5*lx &&\
+			INTRSCT_fDist2 > fBall2) goto label;\
+		}\
+	else if (INTRSCT_dy1 > 0.0) {\
+		INTRSCT_dy += ly;\
+		if (INTRSCT_dy < INTRSCT_dy1) {\
+			INTRSCT_fDist2 += INTRSCT_dy*INTRSCT_dy;\
+			sy -= ly;\
+			bPeriodic = 1;\
+			}\
+		else {\
+			INTRSCT_fDist2 += INTRSCT_dy1*INTRSCT_dy1;\
+			}\
+		if ((pkdn)->bnd.fMax[0] - (pkdn)->bnd.fMin[0] < 0.5*lx &&\
+			INTRSCT_fDist2 > fBall2) goto label;\
+		}\
+	else {\
+		}\
+	INTRSCT_dz = (pkdn)->bnd.fMin[2]-z;\
+	INTRSCT_dz1 = z-(pkdn)->bnd.fMax[2];\
+	if (INTRSCT_dz > 0.0) {\
+		INTRSCT_dz1 += lz;\
+		if (INTRSCT_dz1 < INTRSCT_dz) {\
+			INTRSCT_fDist2 += INTRSCT_dz1*INTRSCT_dz1;\
+			sz = z+lz;\
+			bPeriodic = 1;\
+			}\
+		else {\
+			INTRSCT_fDist2 += INTRSCT_dz*INTRSCT_dz;\
+			sz = z;\
+			}\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
+		}\
+	else if (INTRSCT_dz1 > 0.0) {\
+		INTRSCT_dz += lz;\
+		if (INTRSCT_dz < INTRSCT_dz1) {\
+			INTRSCT_fDist2 += INTRSCT_dz*INTRSCT_dz;\
+			sz = z-lz;\
+			bPeriodic = 1;\
+			}\
+		else {\
+			INTRSCT_fDist2 += INTRSCT_dz1*INTRSCT_dz1;\
+			sz = z;\
+			}\
+		if (INTRSCT_fDist2 > fBall2) goto label;\
+		}\
+	else {\
+		sz = z;\
+		}\
+	}
+#else
 #define INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,bPeriodic,label)\
 {\
 	FLOAT INTRSCT_dx,INTRSCT_dy,INTRSCT_dz;\
@@ -266,6 +377,7 @@ typedef struct smContext {
 		sz = z;\
 		}\
 	}
+#endif
 
 
 #define INTERSECTSCATTERNP(pkdn,x,y,z,label)\
@@ -332,14 +444,3 @@ void smQQSmooth(SMX smx, SMF *smf);
 #endif /* COLLISIONS */
 
 #endif
-
-
-
-
-
-
-
-
-
-
-

@@ -119,9 +119,3 @@ void *HTBL_lookup(HTBL *T,void *data)
         }
     return(0);
     }
-
-
-
-
-
-
