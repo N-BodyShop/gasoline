@@ -3,7 +3,6 @@
 #include <unistd.h> /* for unlink() */
 #include <stddef.h>
 #include <string.h>
-#include <malloc.h>
 #include <assert.h>
 #include <time.h>
 #include <sys/time.h>

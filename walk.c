@@ -1,7 +1,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <malloc.h>
 #include <assert.h>
 #include "walk.h"
 #include "pkd.h"

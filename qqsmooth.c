@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <malloc.h>
 #include <math.h>
 #include <assert.h>
 #include "smooth.h"

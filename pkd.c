@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stddef.h>
-#include <malloc.h>
 #include <math.h>
 #include <assert.h>
 #include <sys/time.h>

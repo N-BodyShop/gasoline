@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
-#include <malloc.h>
 #include <assert.h>
 #include "mdl.h"
 #include "pst.h"

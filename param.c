@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <malloc.h>
 #include <string.h>
-#include <malloc.h>
 #include <assert.h>
 #include <ctype.h>
 #include "param.h"

@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <malloc.h>
 #include <math.h>
 #include <limits.h>
 #include <assert.h>
