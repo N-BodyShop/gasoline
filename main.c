@@ -103,13 +103,13 @@ int main(int argc,char **argv)
 		msrAggsFind(msr);
 #endif
 #ifdef GASOLINE
-#ifdef SUPERNOVA
-		if (msr->param.bSN) msrInitSupernova(msr);
-#endif
 		if (msr->param.iGasModel == GASMODEL_COOLING
 		    || msr->param.iGasModel == GASMODEL_COOLING_NONEQM
 			|| msr->param.bStarForm) 
 		    msrInitCooling(msr);
+#ifdef SUPERNOVA
+		if (msr->param.bSN) msrInitSupernova(msr);
+#endif
 #ifdef STARFORM
 		if (msr->param.bStarForm) /* dDelta is now determined */
 			msr->param.stfm->dDeltaT = msr->param.dDelta;
@@ -201,13 +201,13 @@ int main(int argc,char **argv)
 		}
 #endif
 #ifdef GASOLINE
-#ifdef SUPERNOVA
-	if (msr->param.bSN) msrInitSupernova(msr);
-#endif
 	if (msr->param.iGasModel == GASMODEL_COOLING ||
 	    msr->param.iGasModel == GASMODEL_COOLING_NONEQM ||
 		msr->param.bStarForm)
 		msrInitCooling(msr);
+#ifdef SUPERNOVA
+	if (msr->param.bSN) msrInitSupernova(msr);
+#endif
 #ifdef STARFORM
 	if (msr->param.bStarForm) /* dDelta is now determined */
 	    msr->param.stfm->dDeltaT = msr->param.dDelta;
