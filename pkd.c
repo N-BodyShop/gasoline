@@ -281,6 +281,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->uSN = 0.0;
 	        p->PdVSN = 0.0;
 #endif
+#ifdef STARFORM
+		p->fESNrate = 0.0;
+#endif
 #ifdef SHOCKTRACK
 		p->ShockTracker = 0.0;
 #endif
@@ -1542,7 +1545,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 				sp.metals = 0.0;
 				sp.tform = 0.0;
 #endif
-				nout = fwrite(&sp,sizeof(struct dark_particle),1,fp);
+				nout = fwrite(&sp,sizeof(struct star_particle),1,fp);
 				mdlassert(pkd->mdl,nout == 1);
 				}
 			else mdlassert(pkd->mdl,0);
@@ -3147,9 +3150,11 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
                 p->uSN = 0.0;
                 p->PdVSN = 0.0;
 #endif
+#ifdef STARFORM
+		p->fESNrate = 0.0;
+		p->fTimeForm = cp.fTimeForm;
+#endif
 		p->fMetals = cp.fMetals;
-		p->fTimeForm = 0.0;
-		mdlassert(pkd->mdl, !pkdIsStar(pkd, p));
 #ifndef NOCOOLING		
 		/* Place holders -- later fixed in pkdInitEnergy */
 		p->Y_HI = 0.75;
@@ -3207,6 +3212,9 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 #ifdef GASOLINE
 		cp.u = pkd->pStore[i].u;
 		cp.fMetals = pkd->pStore[i].fMetals;
+#ifdef STARFORM
+		cp.fTimeForm = pkd->pStore[i].fTimeForm;
+#endif
 #endif
 #ifdef COLLISIONS
 		for (j=0;j<3;++j)
@@ -3590,10 +3598,11 @@ int pkdRungParticles(PKD pkd,int iRung)
 	}
 
 void
-pkdDeleteParticle(PKD pkd, int i)
+pkdDeleteParticle(PKD pkd, PARTICLE *p)
 {
-    pkd->pStore[i].iOrder = -2 - pkd->pStore[i].iOrder;
-	TYPEClearACTIVE(&(pkd->pStore[i]));
+    p->iOrder = -2 - p->iOrder;
+    TYPEClearACTIVE(p);
+    TYPESet(p, TYPE_DELETED);
     }
 
 void
