@@ -1,5 +1,7 @@
 #include <math.h>
+#include <assert.h>
 
+#define MAXDEP 10
 /*
  * Make one R-K step
  */
@@ -14,15 +16,16 @@ RungeStep(void *CTX,		/* context for extra parameters */
 	  double *xout,		/* array of output */
 	  double dDelta)	/* step size */
 {
-    double k1[nDep];
-    double k2[nDep];
-    double k3[nDep];
-    double k4[nDep];
-    double xtemp[nDep];
+    double k1[MAXDEP];
+    double k2[MAXDEP];
+    double k3[MAXDEP];
+    double k4[MAXDEP];
+    double xtemp[MAXDEP];
     const double onesixth = 1.0/6.0;
     const double onethird = 1.0/3.0;
     int i;
     
+    assert(nDep <= MAXDEP);
     deriv(CTX, t, xin, k1);
     for(i = 0; i < nDep; i++) {
 	k1[i] *= dDelta;
@@ -57,8 +60,10 @@ RungeKutta(void *CTX,
 {
     double dDelta = (tout - tin)/nSteps;
     int i;
-    double xtemp[nDep];
+    double xtemp[MAXDEP];
 	
+    assert(nDep <= MAXDEP);
+
     for(i = 0; i < nDep; i++) {
 	xtemp[i] = xin[i];
 	}
