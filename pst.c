@@ -138,6 +138,8 @@ void pstAddServices(PST pst,MDL mdl)
 		      nThreads*sizeof(int), 0);
 	mdlAddService(mdl,PST_SETNPARTS,pst,pstSetNParts,
 		      sizeof(struct inSetNParts), 0);
+	mdlAddService(mdl,PST_ADOTSTEP,pst,pstAdotStep,
+		      sizeof(struct inAdotStep), 0);
 #ifdef PLANETS
 	mdlAddService(mdl,PST_READSS,pst,pstReadSS,sizeof(struct inReadSS),0);
 	mdlAddService(mdl,PST_WRITESS,pst,pstWriteSS,sizeof(struct inWriteSS),0);
