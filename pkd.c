@@ -1136,6 +1136,8 @@ double pkdCalcOpen(KDN *pkdn,int iOpenType,double dCrit,int iOrder)
 		case 4:
 			dOpen = dRootBracket(pkdn,dCrit,fcnAbsHex);
 			break;
+		default:
+		        assert(0);
 			}
 		}
 	else if (iOpenType == OPEN_JOSH) {
@@ -1717,6 +1719,9 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 				*pdFlop += dFlopE;
 				pkdStopTimer(pkd,3);
 				}
+			else {
+			    dFlopE = 0.0;
+			    }
 			fWeight = dFlopI + dFlopE;
 			/*
 			 ** pkdBucketWeight, only updates the weights of the active
