@@ -100,7 +100,7 @@ PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt)
 #endif
 		}
 	p->iRung = c->iRung;
-	p->fBall2 += 2*sqrt(p->fBall2*r) + r;
+	p->fBall2 += 2*sqrt(p->fBall2)*r + r*r;
 	p->dtPrevCol = dt;
 	p->iPrevCol = iOrder2; /* stored to avoid false collisions */
 	}
