@@ -318,6 +318,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->pst = NULL;
 	msr->lcl.pkd = NULL;
 	*pmsr = msr;
+	/*
+	 ** default dTimeOld value
+	 */
+	msr->dTimeOld = 1e-20;
 	csmInitialize(&msr->param.csm);
 	/*
 	 ** Now setup for the input parameters.
@@ -2368,7 +2372,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		_msrExit(msr,1);
 		}
 	in.bStandard = msr->param.bStandard;
-	in.bStandard = msr->param.iReadIOrder;
+	in.iReadIOrder = msr->param.iReadIOrder;
 #ifdef GASOLINE
 	in.duTFac = (msr->param.dConstGamma - 1)*msr->param.dMeanMolWeight/
 		msr->param.dGasConst;
