@@ -1,4 +1,4 @@
-FDL checkpoint_2 (
+FDL checkpoint_4 (
 	ELEMENT version (
 		TYPE int
 		)
@@ -125,10 +125,25 @@ FDL checkpoint_2 (
 			ELEMENT dPeriod (
 				TYPE double
 				)
+			ELEMENT dxPeriod (
+				TYPE double
+				)
+			ELEMENT dyPeriod (
+				TYPE double
+				)
+			ELEMENT dzPeriod (
+				TYPE double
+				)
 			ELEMENT dHubble0 (
 				TYPE double
 				)
 			ELEMENT dOmega0 (
+				TYPE double
+				)
+			ELEMENT dTheta (
+				TYPE double
+				)
+			ELEMENT dTheta2 (
 				TYPE double
 				)
 			)
