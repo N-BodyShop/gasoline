@@ -127,7 +127,7 @@ pkdDoCollision(PKD pkd,int iOutcomes,double dEpsN,double dEpsT,
 
 	iOutcome = NONE;
 
-	if ((iOutcomes & MERGE) && v2 <= ve2) {
+	if (iOutcomes == MERGE || ((iOutcomes & MERGE) && v2 <= ve2)) {
 		iOutcome = MERGE;
 		pkdMerge(pkd,&p,&n);
 		assert(n == 1);
