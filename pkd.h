@@ -323,13 +323,21 @@ enum GasModel {
 
 #define pkdIsRoot(iCell,id)		((id==-1)?((iCell==ROOT)?1:0):0)
 
+/*
+ * There is now a slight inefficency here when going from the top tree to
+ * a node tree in that we visit the root cell twice (once as the leaf of the
+ * top tree and once as the root of the node tree).  This is necessary to
+ * check if the root cell is a bucket.
+ */
+
 #define pkdLower(pkd,iCell,id)\
 {\
 	if (id == -1) {\
 		id = pkd->kdTop[iCell].pLower;\
 		if (id != -1) iCell = ROOT;\
+		else iCell = LOWER(iCell);\
 		}\
-	iCell = LOWER(iCell);\
+	else iCell = LOWER(iCell);\
 	}
 
 #define pkdUpper(pkd,iCell,id)\
@@ -337,8 +345,9 @@ enum GasModel {
 	if (id == -1) {\
 		id = pkd->kdTop[iCell].pLower;\
 		if (id != -1) iCell = ROOT;\
+		else iCell = UPPER(iCell);\
 		}\
-	iCell = UPPER(iCell);\
+	else iCell = UPPER(iCell);\
 	}
 
 #define pkdParent(pkd,iCell,id)\
