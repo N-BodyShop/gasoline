@@ -566,12 +566,14 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 	}
 
 
-#define NUM_SAFETY	3
+#define MAX_ITTR	64
 #define EPS_BOUND	0.01
 #define MASS_EPS	1e-11
 
 void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 {
+	int NUM_SAFETY = 4; 	/* slop space when filling up memory */
+	int nSafeTot;		/* total slop space we have to play with */
 	int d,ittr,nOut;
 	int nLow=-1,nHigh=-1,nLowerStore,nUpperStore;
 	FLOAT fLow,fHigh;
@@ -584,6 +586,10 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	OREJ *pLowerRej,*pUpperRej;
 	int *pidSwap,iRet;
 	int nLowTot,nHighTot;
+	int nLast;		/* number of particles at the last split
+				   iteration */
+	int nDiff;		/* Difference between one iteration and the
+				   next */
 
 	struct outMassCheck outMass;
 #ifdef PARANOID_CHECK
@@ -633,16 +639,16 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	nTotalActive = outWtLow.nLow + outWtHigh.nLow
 	    + outWtLow.nHigh + outWtHigh.nHigh;
 	/*
-	 * If we only have one or zero active particles, just split
+	 * If we only have a few active particles, just split
 	 * all the particles.
 	 */
-	if(nTotalActive < 2) pFlag = 0;
+	if(nTotalActive < 16) pFlag = 0;
 	else pFlag = 1;
 	/*
 	 ** Now start the ROOT finder based on balancing active weight ALONE!
 	 */
 	ittr = 0;
-	while (fl < fmm && fmm < fu && ittr < 32) {
+	while (fl < fmm && fmm < fu && ittr < MAX_ITTR) {
 		fm = fmm;
 		inWt.iSplitDim = d;
 		inWt.fSplit = fm;
@@ -685,12 +691,18 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	 ** we have to relax the condition that work be balanced and try to
 	 ** max out the number of particles in the subset which had too many.
 	 */
+	nSafeTot = nLowerStore + nUpperStore - nTotalActive;
+	if(nSafeTot/pst->nLeaves < NUM_SAFETY) {
+		NUM_SAFETY = nSafeTot/pst->nLeaves;
+		fprintf(stderr, "id: %d tripped active NUM_SAFETY %d\n",
+		pst->mdl->idSelf, NUM_SAFETY);
+		}
 	if (nLow > nLowerStore-NUM_SAFETY*pst->nLower) {
 		fl = pst->bnd.fMin[dBnd];
 		fu = fm;
 		fmm = (fl + fu)/2;
 		ittr = 0;
-	    while (fl < fmm && fmm < fu && ittr < 32) {
+	    while (fl < fmm && fmm < fu && ittr < MAX_ITTR) {
 			fm = fmm;
 			inWt.iSplitDim = d;
 			inWt.fSplit = fm;
@@ -728,7 +740,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		fu = pst->bnd.fMax[dBnd];
 		fmm = (fl + fu)/2;
 		ittr = 0;
-	    while (fl < fmm && fmm < fu && ittr < 32) {
+	    while (fl < fmm && fmm < fu && ittr < MAX_ITTR) {
 			fm = fmm;
 			inWt.iSplitDim = d;
 			inWt.fSplit = fm;
@@ -785,12 +797,19 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	    nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
 	    nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
 
+	    nSafeTot = nLowerStore + nUpperStore - (nLowTot + nHighTot);
+	    if(nSafeTot/pst->nLeaves < NUM_SAFETY) {
+		NUM_SAFETY = nSafeTot/pst->nLeaves;
+		fprintf(stderr, "id: %d tripped inactive NUM_SAFETY %d\n",
+		pst->mdl->idSelf, NUM_SAFETY);
+		}
 	    if (nLowTot > nLowerStore-NUM_SAFETY*pst->nLower) {
 		    fl = pst->bnd.fMin[dBnd];
 		    fu = fm;
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
-		while (fl < fmm && fmm < fu && ittr < 32) {
+		    nLast = nLowTot;
+		while (fl < fmm && fmm < fu && ittr < MAX_ITTR) {
 			    fm = fmm;
 			    inWt.iSplitDim = d;
 			    inWt.fSplit = fm;
@@ -806,9 +825,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			     */
 			    nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
 			    nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
-			    /*
-			    printf("Inactive Fit ittr:%d l:%d\n",ittr,nLowTot);
-			    */
+			    if(nLowTot != nLast)
+				nDiff = nLowTot - nLast;
+			    nLast = nLowTot;
 			    if (nLowTot > nLowerStore-NUM_SAFETY*pst->nLower) fu = fm;
 			    else if (nLowTot < nLowerStore-NUM_SAFETY*pst->nLower) fl = fm;
 			    else {
@@ -818,9 +837,11 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			    fmm = (fl + fu)/2;
 			    ++ittr;
 			    }
-		    /*
-		    printf("Inactive Fit ittr:%d l:%d <= %d\n",ittr,nLowTot,nLowerStore);
-		    */
+		    if(nLowTot != nLowerStore-NUM_SAFETY*pst->nLower) {
+			if(abs(nDiff) > 1)
+			    fprintf(stderr, "id: %d delta of %d, check NUM_SAFTEY\n",
+				    pst->mdl->idSelf, nDiff);
+			}
 		    assert(nLowTot <= nLowerStore);
 		    }
 	    else if (nHighTot > nUpperStore-NUM_SAFETY*pst->nUpper) {
@@ -828,7 +849,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		    fu = pst->bnd.fMax[dBnd];
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
-		while (fl < fmm && fmm < fu && ittr < 32) {
+		    nLast = nLowTot;
+		while (fl < fmm && fmm < fu && ittr < MAX_ITTR) {
 			    fm = fmm;
 			    inWt.iSplitDim = d;
 			    inWt.fSplit = fm;
@@ -844,9 +866,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			     */
 			    nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
 			    nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
-			    /*
-			    printf("Inactive Fit ittr:%d u:%d\n",ittr,nHighTot);
-			    */
+			    if(nLowTot != nLast)
+				nDiff = nLowTot - nLast;
+			    nLast = nLowTot;
 			    if (nHighTot > nUpperStore-NUM_SAFETY*pst->nUpper) fl = fm;
 			    else if (nHighTot < nUpperStore-NUM_SAFETY*pst->nUpper) fu = fm;
 			    else {
@@ -856,9 +878,11 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			    fmm = (fl + fu)/2;
 			    ++ittr;
 			    }
-		    /*
-		    printf("Inactive Fit ittr:%d u:%d <= %d\n",ittr,nHighTot,nUpperStore);
-		    */
+		    if(nHighTot != nUpperStore-NUM_SAFETY*pst->nUpper) {
+			if(abs(nDiff) > 1)
+			    fprintf(stderr, "id: %d delta of %d, check NUM_SAFTEY\n",
+				    pst->mdl->idSelf, nDiff);
+			}
 		    assert(nHighTot <= nUpperStore);
 		    }
 	    /*
@@ -873,7 +897,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			+ EPS_BOUND*(pst->bnd.fMax[dBnd] - pst->bnd.fMin[dBnd]);
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
-		while (fl < fmm && fmm < fu && ittr < 32) {
+		while (fl < fmm && fmm < fu && ittr < MAX_ITTR) {
 			    fm = fmm;
 			    inWt.iSplitDim = d;
 			    inWt.fSplit = fm;
@@ -909,7 +933,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		    fu = fm;
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
-		while (fl < fmm && fmm < fu && ittr < 32) {
+		while (fl < fmm && fmm < fu && ittr < MAX_ITTR) {
 			    fm = fmm;
 			    inWt.iSplitDim = d;
 			    inWt.fSplit = fm;
@@ -938,11 +962,13 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			    ++ittr;
 			    }
 		    }
-	    /*
-	    printf("Fit stats: Active: %d %d Inactive: %d %d Sum: %d %d\n",
-		   nLow, nHigh, outWtLow.nLow + outWtHigh.nLow, outWtLow.nHigh +
-		   outWtHigh.nHigh, nLowTot, nHighTot);
-	     */
+	/*
+	    fprintf(stderr, "id: %dFit stats: Active: %d %d Inactive: %d %d Sum: %d %d Space: %d %d\n",
+		   pst->mdl->idSelf, nLow, nHigh,
+		   outWtLow.nLow + outWtHigh.nLow, outWtLow.nHigh
+		   + outWtHigh.nHigh,
+		   nLowTot, nHighTot, nLowerStore, nUpperStore);
+	*/
 	    /*
 	     ** Make sure everything is OK.
 	     */
@@ -1476,7 +1502,7 @@ void _pstOrdSplit(PST pst,int iMaxOrder)
 	iu = iMaxOrder;
 	imm = (il + iu)/2;
 	ittr = 0;
-	while (il < imm && imm < iu && ittr < 32) {
+	while (il < imm && imm < iu && ittr < MAX_ITTR) {
 		im = imm;
 		inWt.iOrdSplit = im;
 		inWt.ittr = ittr;
@@ -1505,8 +1531,8 @@ void _pstOrdSplit(PST pst,int iMaxOrder)
 		imm = (il + iu)/2;
 		++ittr;
 		}
-	assert(nLow <= nLowerStore-NUM_SAFETY*pst->nLower);
-	assert(nHigh <= nUpperStore-NUM_SAFETY*pst->nUpper);
+	assert(nLow <= nLowerStore);
+	assert(nHigh <= nUpperStore);
 	pst->iOrdSplit = im;
 	/*
 	 ** Collect rejects.
