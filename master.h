@@ -71,6 +71,7 @@ typedef struct msrContext {
 	 ** MSR_TREE_DENSITY: density binary tree (the old style KD-tree!)
 	 */
 	int iTreeType;
+	int bGravityTree;
 	} * MSR;
 
 

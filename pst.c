@@ -1606,27 +1606,31 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 ** This also combine the bounds to set pst->kdn.bnd!
 		 */
 		pkdCombine(&out1.kdn,&out2.kdn,&pst->kdn);
-		/*
-		 ** Calculate moments and other center-of-mass related quantities.
-		 */
-		for (j=0;j<3;++j) inc.rcm[j] = pst->kdn.r[j];
-		inc.iOrder = in->iOrder;
-		pstCalcCell(pst,&inc,sizeof(struct inCalcCell),&outc,NULL);
-		pst->kdn.mom = outc.mom;
-		/*
-		 ** Calculate an opening radius.
-		 */
-		dOpen = pkdCalcOpen(&pst->kdn,in->iOpenType,in->dCrit,in->iOrder);
-		pst->kdn.fOpen2 = dOpen*dOpen;
+		if(in->bGravity) {
+		    /*
+		     ** Calculate moments and other center-of-mass related quantities.
+		     */
+		    for (j=0;j<3;++j) inc.rcm[j] = pst->kdn.r[j];
+		    inc.iOrder = in->iOrder;
+		    pstCalcCell(pst,&inc,sizeof(struct inCalcCell),&outc,NULL);
+		    pst->kdn.mom = outc.mom;
+		    /*
+		     ** Calculate an opening radius.
+		     */
+		    dOpen = pkdCalcOpen(&pst->kdn,in->iOpenType,in->dCrit,in->iOrder);
+		    pst->kdn.fOpen2 = dOpen*dOpen;
+		    }
 		}
 	else {
 		if (in->bBinary) {
 			pkdBuildBinary(plcl->pkd,in->nBucket,in->iOpenType,in->dCrit,
-						   in->iOrder,in->bActiveOnly,&pst->kdn);
+				       in->iOrder,in->bActiveOnly,
+				       in->bGravity, &pst->kdn);
 			}
 		else {
 			pkdBuildLocal(plcl->pkd,in->nBucket,in->iOpenType,in->dCrit,
-						  in->iOrder,in->bActiveOnly,&pst->kdn);
+				      in->iOrder,in->bActiveOnly,
+				      in->bGravity, &pst->kdn);
 			}
 		pst->kdn.pLower = pst->idSelf;
 		pst->kdn.pUpper = 1;

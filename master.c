@@ -1348,10 +1348,14 @@ void msrBuildTree(MSR msr,int bActiveOnly,double dMass,int bSmooth)
 	in.dCrit = msr->dCrit;
 	if (bSmooth) {
 		in.bBinary = 0;
+		in.bGravity = 0;
 		msr->iTreeType = MSR_TREE_DENSITY;
+		msr->bGravityTree = 0;
 		}
 	else {
 		in.bBinary = msr->param.bBinary;
+		in.bGravity = 1;
+		msr->bGravityTree = 1;
 		if (msr->param.bBinary) {
 			msr->iTreeType = MSR_TREE_SPATIAL;
 			}
@@ -1675,6 +1679,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	double dEAvg,dEMax,dEMin;
 	double iP;
 
+	assert(msr->bGravityTree == 1);
 	assert(msr->iTreeType == MSR_TREE_SPATIAL || 
 		   msr->iTreeType == MSR_TREE_DENSITY);
 #ifndef VERY_QUIET
@@ -3478,6 +3483,7 @@ void msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 	 */
 	pstActiveOrder(msr->pst,NULL,0,NULL,NULL);
 	in.nBucket = msr->param.nBucket;
+	msr->bGravityTree = 0;
 	msr->iTreeType = MSR_TREE_QQ;
 	in.bActiveOnly = bActiveOnly;
 	sec = time(0);

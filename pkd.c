@@ -1227,7 +1227,8 @@ double pkdCalcOpen(KDN *pkdn,int iOpenType,double dCrit,int iOrder)
 	}
 
 
-void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,int iOrder)
+void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
+	       int iOrder, int bGravity)
 {
 	KDN *c;
 	PARTICLE *p;
@@ -1239,8 +1240,8 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,int iOrder)
 	l = c[iCell].pLower;
 	u = c[iCell].pUpper;
 	if (c[iCell].iDim >= 0) {
-		pkdUpPass(pkd,LOWER(iCell),iOpenType,dCrit,iOrder);
-		pkdUpPass(pkd,UPPER(iCell),iOpenType,dCrit,iOrder);
+		pkdUpPass(pkd,LOWER(iCell),iOpenType,dCrit,iOrder, bGravity);
+		pkdUpPass(pkd,UPPER(iCell),iOpenType,dCrit,iOrder, bGravity);
 		pkdCombine(&c[LOWER(iCell)],&c[UPPER(iCell)],&c[iCell]);
 		}
 	else {
@@ -1278,9 +1279,11 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,int iOrder)
 	/*
 	 ** Calculate multipole moments.
 	 */
-	pkdCalcCell(pkd,&c[iCell],c[iCell].r,iOrder,&c[iCell].mom);
-	dOpen = pkdCalcOpen(&c[iCell],iOpenType,dCrit,iOrder);
-	c[iCell].fOpen2 = dOpen*dOpen;
+	if(bGravity) {
+	    pkdCalcCell(pkd,&c[iCell],c[iCell].r,iOrder,&c[iCell].mom);
+	    dOpen = pkdCalcOpen(&c[iCell],iOpenType,dCrit,iOrder);
+	    c[iCell].fOpen2 = dOpen*dOpen;
+	    }
 	}
 
 
@@ -1376,7 +1379,7 @@ int NumBinaryNodes(PKD pkd,int nBucket,int pLower,int pUpper)
 
 
 int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
-				double dCrit,int iOrder)
+		double dCrit,int iOrder, int bGravity)
 {
 	KDN *pkdn;
 	int i,j,m,d,c;
@@ -1425,10 +1428,12 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 			 */
 			pkdn->fSplit = 0.5*(pkdn->bnd.fMin[d]+pkdn->bnd.fMax[d]);
 			m = pkdUpperPart(pkd,d,pkdn->fSplit,pLower,pUpper);
-			pkdn->iLower = BuildBinary(pkd,nBucket,pLower,m-1,iOpenType,
-									   dCrit,iOrder);
-			pkdn->iUpper = BuildBinary(pkd,nBucket,m,pUpper,iOpenType,
-									   dCrit,iOrder);
+			pkdn->iLower = BuildBinary(pkd,nBucket,pLower,m-1,
+						   iOpenType, dCrit,iOrder,
+						   bGravity);
+			pkdn->iUpper = BuildBinary(pkd,nBucket,m,pUpper,
+						   iOpenType, dCrit,iOrder,
+						   bGravity);
 			/*
 			 ** Careful, this assert only applies when we are doing the
 			 ** squeezing!
@@ -1501,9 +1506,12 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 		/*
 		 ** Calculate multipole moments.
 		 */
-		pkdCalcCell(pkd,pkdn,pkdn->r,iOrder,&pkdn->mom);
-		dOpen = pkdCalcOpen(pkdn,iOpenType,dCrit,iOrder);
-		pkdn->fOpen2 = dOpen*dOpen;
+		if(bGravity) {
+		    pkdCalcCell(pkd,pkdn,pkdn->r,iOrder,&pkdn->mom);
+		    dOpen = pkdCalcOpen(pkdn,iOpenType,dCrit,iOrder);
+		    pkdn->fOpen2 = dOpen*dOpen;
+		    }
+		
 		return(c);
 		}
 	}
@@ -1543,7 +1551,7 @@ void pkdThreadTree(PKD pkd,int iCell,int iNext)
 
 
 void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
-					int iOrder,int bActiveOnly,KDN *pRoot)
+		    int iOrder,int bActiveOnly,int bGravity, KDN *pRoot)
 {
 	/*
 	 ** Make sure the particles are in Active/Inactive order.
@@ -1584,11 +1592,11 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	pkd->iFreeCell = 0;
 	if (bActiveOnly) {
 		pkd->iRoot = BuildBinary(pkd,nBucket,0,pkd->nActive-1,
-								 iOpenType,dCrit,iOrder);
+					 iOpenType,dCrit,iOrder, bGravity);
 		}
 	else {
 		pkd->iRoot = BuildBinary(pkd,nBucket,0,pkd->nLocal-1,
-								 iOpenType,dCrit,iOrder);
+					 iOpenType,dCrit,iOrder, bGravity);
 		}
 	assert(pkd->iFreeCell == pkd->nNodes);
 	/*
@@ -1604,7 +1612,7 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 
 
 void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
-				   int iOrder,int bActiveOnly,KDN *pRoot)
+		   int iOrder,int bActiveOnly,int bGravity, KDN *pRoot)
 {
 	int l,n,i,d,m,j,diff;
 	KDN *c;
@@ -1704,7 +1712,7 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 			if (i == pkd->iRoot) break;
 			}
 		}
-	pkdUpPass(pkd,pkd->iRoot,iOpenType,dCrit,iOrder);
+	pkdUpPass(pkd,pkd->iRoot,iOpenType,dCrit,iOrder, bGravity);
 	/*
 	 ** Thread the tree.
 	 */

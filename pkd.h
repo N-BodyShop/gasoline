@@ -320,8 +320,8 @@ void pkdWriteTipsy(PKD,char *,int,int,double,double);
 void pkdCombine(KDN *,KDN *,KDN *);
 void pkdCalcCell(PKD,KDN *,FLOAT *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);
-void pkdBuildLocal(PKD,int,int,double,int,int,KDN *);
-void pkdBuildBinary(PKD,int,int,double,int,int,KDN *);
+void pkdBuildLocal(PKD,int,int,double,int,int,int,KDN *);
+void pkdBuildBinary(PKD,int,int,double,int,int,int,KDN *);
 void pkdThreadTree(PKD pkd,int iCell,int iNext);
 void pkdGravAll(PKD,int,int,int,int,double,double,int,double *,int *,
 				double *,double *,CASTAT *,double *); 

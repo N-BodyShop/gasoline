@@ -191,6 +191,7 @@ struct inBuildTree {
 	double dCrit;
 	int bBinary;
 	int bActiveOnly;
+	int bGravity;
 	};
 struct outBuildTree {
 	KDN kdn;
