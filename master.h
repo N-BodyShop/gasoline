@@ -7,8 +7,8 @@
 #include "parameters.h"
 #include "floattype.h"
 
-#define MSR_INIT_ECOSMO		1
-#define MSR_STEP_ECOSMO		0
+#define MSR_INIT_E		1
+#define MSR_STEP_E		0
 
 /*
  ** An integer marking the type of tree currently in use.
@@ -55,6 +55,9 @@ typedef struct msrContext {
 	double dEcosmo;
 	double dUOld;
 	double dTimeOld;
+#ifdef COLLISIONS
+	double dTcoll;
+#endif
 	/*
 	 ** Redshift output points.
 	 */
@@ -112,7 +115,7 @@ void msrSmooth(MSR,double,int,int);
 void msrReSmooth(MSR,double,int,int);
 void msrMarkSmooth(MSR,double,int,int);
 void msrGravity(MSR,double,int,int *,double *,double *,double *,int *);
-void msrCalcE(MSR,int,double,double *,double *,double *,double *);
+void msrCalcEandL(MSR,int,double,double *,double *,double *,double *,double *);
 void msrDrift(MSR,double,double);
 void msrKick(MSR,double,double);
 double msrReadCheck(MSR,int *);

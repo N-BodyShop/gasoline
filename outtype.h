@@ -33,7 +33,7 @@
 #define OUT_VEL_VECTOR		2
 #define OUT_ACCEL_VECTOR	3
 
-#if defined(GASOLINE) || defined(SLIDING_PATCH)
+#ifdef NEED_VPRED
 #define OUT_VPRED_VECTOR	4
 #endif
 

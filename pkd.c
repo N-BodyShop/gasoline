@@ -268,9 +268,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		p->fBall2 = 0.0;
 		p->fBallMax = 0.0;
 #ifdef GASOLINE
-		for (j=0;j<3;++j) {
-			p->vPred[j] = 0.0;
-			}
 		p->u = 0.0;
 		p->uPred = 0.0;
 #ifndef NOCOOLING		
@@ -282,6 +279,11 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		p->c = 0.0;
 		p->fMetals = 0.0;
 		p->fTimeForm = 0.0;
+#endif
+#ifdef NEED_VPRED
+		for (j=0;j<3;++j) {
+			p->vPred[j] = 0.0;
+			}
 #endif
 		}
 	/*
@@ -331,7 +333,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					xdr_float(&xdrs,&fTmp);
 					vTemp = fTmp;
 					p->v[j] = dvFac*vTemp;			
-#ifdef GASOLINE
+#ifdef NEED_VPRED
 					p->vPred[j] = dvFac*vTemp;
 #endif
 					}
@@ -408,7 +410,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				for (j=0;j<3;++j) {
 					p->r[j] = gp.pos[j];
 					p->v[j] = dvFac*gp.vel[j];
-#ifdef GASOLINE
+#ifdef NEED_VPRED
 					p->vPred[j] = dvFac*gp.vel[j];
 #endif
 					}
@@ -2359,19 +2361,11 @@ void pkdColorCell(PKD pkd,int iCell,FLOAT fColor)
 #endif	
 	}
 
-#ifdef SLIDING_PATCH
-void
-pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
-		   double fEwCut,double fEwhCut,int bDoSun,double *aSun,int *nActive,
-		   double *pdPartSum,double *pdCellSum,double *pdSoftSum,CASTAT *pcs,
-		   double *pdFlop,double dOrbFreq,double dTime)
-#else
 void
 pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 		   double fEwCut,double fEwhCut,int bDoSun,double *aSun,int *nActive,
 		   double *pdPartSum,double *pdCellSum,double *pdSoftSum,CASTAT *pcs,
 		   double *pdFlop)
-#endif
 {
 	KDN *c = pkd->kdNodes;
 	int iCell,n;
@@ -2436,11 +2430,7 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 			 ** Calculate gravity on this bucket.
 			 */
 			pkdStartTimer(pkd,1);
-#ifdef SLIDING_PATCH
-			pkdBucketWalk(pkd,iCell,nReps,iOrder,dOrbFreq,dTime);
-#else
 			pkdBucketWalk(pkd,iCell,nReps,iOrder); /* ignored in Flop count! */
-#endif
 			pkdStopTimer(pkd,1);
 			c[iCell].bnd = bndTmp;
 			*nActive += n;
@@ -2499,11 +2489,7 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 		c[pkd->iFreeCell].pUpper = iDummy;
 		c[pkd->iFreeCell].iDim = -1;	/* It is really a bucket! */
 
-#ifdef SLIDING_PATCH
-		pkdBucketWalk(pkd,pkd->iFreeCell,nReps,iOrder,dOrbFreq,dTime);
-#else
 		pkdBucketWalk(pkd,pkd->iFreeCell,nReps,iOrder);
-#endif
 		pkdBucketInteract(pkd,pkd->iFreeCell,iOrder);
 
 		/*
@@ -2534,7 +2520,6 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 	sprintf(achDiag, "nMaxPart: %d, nMaxSoftCell: %d, nMaxNewtCell: %d\n",
 		pkd->nMaxPart, pkd->nMaxCellSoft, pkd->nMaxCellNewt);
 	mdlDiag(pkd->mdl, achDiag);
-
 	}
 
 
@@ -2550,24 +2535,24 @@ void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass)
 		if (TYPEQueryACTIVE(&(p[i]))) {
 			t = 0;
 			for (j=0;j<3;++j) t += p[i].r[j]*p[i].r[j];
-			t = 1.0/sqrt(t);
+			t = (t == 0 ? 0 : 1/sqrt(t)); /* gravity at origin = zero */
 			t = t*t*t;
 			idt2 = (p[i].fMass + dSunMass)*t;
 			if (idt2 > p[i].dtGrav) p[i].dtGrav = idt2;
 			/*
 			 ** The way that aSun[j] gets added in here is confusing, but this
-			 ** is the correct way!
+			 ** is the correct way! (aSun[] is the acceleration on the Sun).
 			 */
 			if (bDoSun) {
 				t *= dSunMass;
 				for (j=0;j<3;++j) {					
-					p[i].a[j] -= aSun[j] + p[i].r[j]*t;
+					p[i].a[j] -= (aSun[j] + p[i].r[j]*t);
 					}				
 				}
 			else {
 				t *= p[i].fMass;
 				for (j=0;j<3;++j) {
-					p[i].a[j] -= aSun[j] - p[i].r[j]*t;
+					p[i].a[j] -= (aSun[j] - p[i].r[j]*t);
 					}
 				}
 			}
@@ -2662,28 +2647,107 @@ void pkdMiyamotoDisk(PKD pkd)
 		}
 	}
 
+/*DEBUG #define SPINUP*/
 
-void pkdCalcE(PKD pkd,double *T,double *U,double *Eth)
+#ifdef ROT_FRAME
+void
+pkdRotFrame(PKD pkd,double dOmega,double dOmegaDot)
 {
+#ifdef SPINUP
+	PARTICLE *p = pkd->pStore;
+	int i;
+	for (i=0;i<pkd->nLocal;i++) {
+		p[i].a[0] -= dOmegaDot*p[i].r[1];
+		p[i].a[1] += dOmegaDot*p[i].r[0];
+		}
+#else
+	/* note Omega & dOmega/dt are assumed to be in the +z direction */
+
 	PARTICLE *p;
+	double w2,w2r[2],wxv[2],dwxr[2];
+	int i,k;
+
+	p = pkd->pStore;
+	w2 = dOmega*dOmega;
+	for (i=0;i<pkd->nLocal;i++) {
+		if (!TYPEQueryACTIVE(&p[i])) continue;
+		w2r[0] = -w2*p[i].r[0];
+		w2r[1] = -w2*p[i].r[1];
+		wxv[0] = -dOmega*p[i].vPred[1];
+		wxv[1] =  dOmega*p[i].vPred[0];
+		dwxr[0] = -dOmegaDot*p[i].r[1];
+		dwxr[1] =  dOmegaDot*p[i].r[0];
+		for (k=0;k<2;k++)
+			p[i].a[k] -= (w2r[k] + 2*wxv[k] + dwxr[k]);
+		}
+#endif
+	}
+#endif
+
+void pkdCalcEandL(PKD pkd,double *T,double *U,double *Eth,double L[])
+{
+	/* L is calculated with respect to the origin (0,0,0) */
+
+	PARTICLE *p;
+	FLOAT rx,ry,rz,vx,vy,vz;
 	int i,n;
-	FLOAT vx,vy,vz;
+
+#ifdef COLLISIONS
+	FLOAT wx,wy,wz,moi;
+#endif
 
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	*T = 0.0;
 	*U = 0.0;
 	*Eth = 0.0;
+	L[0] = L[1] = L[2] = 0;
 	for (i=0;i<n;++i) {
-		*U += 0.5*p[i].fMass*p[i].fPot;
-		vx = p[i].v[0];
-		vy = p[i].v[1];
-		vz = p[i].v[2];
+		rx = p[i].r[0]; ry = p[i].r[1]; rz = p[i].r[2];
+		vx = p[i].v[0]; vy = p[i].v[1]; vz = p[i].v[2];
 		*T += 0.5*p[i].fMass*(vx*vx + vy*vy + vz*vz);
+		*U += 0.5*p[i].fMass*p[i].fPot;
 #ifdef GASOLINE
 		if (pkdIsGas(pkd,&p[i]))
 			*Eth += p[i].fMass*p[i].u;
 #endif
+		L[0] += p[i].fMass*(ry*vz - rz*vy);
+		L[1] += p[i].fMass*(rz*vx - rx*vz);
+		L[2] += p[i].fMass*(rx*vy - ry*vx);
+#ifdef COLLISIONS
+		wx = p[i].w[0]; wy = p[i].w[1]; wz = p[i].w[2];
+		moi = 1.6*p[i].fMass*p[i].fSoft*p[i].fSoft; /* 2/5 MR^2: unf. sphere */
+		*T += 0.5*moi*(wx*wx + wy*wy + wz*wz);
+		L[0] += moi*wx;
+		L[1] += moi*wy;
+		L[2] += moi*wz;
+#endif
+		}
+	}
+
+
+void pkdCalcEandLExt(PKD pkd,double *dMass,double dSumMR[],double dSumMV[],
+					 double *dPot)
+{
+	PARTICLE *p;
+	FLOAT m,r2;
+	int i,k,n;
+
+	/* Currently this is for the heliocentric reference frame only */
+
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	*dMass = *dPot = 0;
+	for (k=0;k<3;k++) dSumMR[k] = dSumMV[k] = 0;
+	for (i=0;i<n;i++) {
+		*dMass += (m = p[i].fMass);
+		r2 = 0;
+		for (k=0;k<3;k++) {
+			dSumMR[k] += m*p[i].r[k];
+			dSumMV[k] += m*p[i].v[k];
+			r2 += p[i].r[k]*p[i].r[k];
+			}
+		if (r2 > 0) *dPot += m/sqrt(r2);
 		}
 	}
 
@@ -2792,15 +2856,9 @@ void fg(MDL mdl,double mu,FLOAT *x,FLOAT *v,double dt) {
 		}
 	}
 
-#ifdef SLIDING_PATCH
-void
-pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
-		 FLOAT fCentMass,double dOrbFreq,double dTime)
-#else
 void
 pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 		 FLOAT fCentMass)
-#endif
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -2812,7 +2870,7 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
-#ifdef COLLISIONS
+#ifdef OLD_KEPLER
 		if (p[i].iDriftType == KEPLER) /*DEBUG a bit ugly...*/
 #else
 		if (bFandG)
@@ -2829,10 +2887,10 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 						p[i].r[j] -= pkd->fPeriod[j];
 #ifdef SLIDING_PATCH
 						if (j == 0) {
-							fShear = 1.5*dOrbFreq*pkd->fPeriod[0];
+							fShear = 1.5*pkd->dOrbFreq*pkd->fPeriod[0];
 							p[i].r[1] += SHEAR(-1,pkd->fPeriod[0],
-											   pkd->fPeriod[1],dOrbFreq,
-											   dTime + dDelta);
+											   pkd->fPeriod[1],pkd->dOrbFreq,
+											   pkd->dTime + dDelta);
 							}
 #endif
 						}
@@ -2840,10 +2898,10 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 						p[i].r[j] += pkd->fPeriod[j];
 #ifdef SLIDING_PATCH
 						if (j == 0) {
-							fShear = - 1.5*dOrbFreq*pkd->fPeriod[0];
+							fShear = - 1.5*pkd->dOrbFreq*pkd->fPeriod[0];
 							p[i].r[1] += SHEAR(1,pkd->fPeriod[0],
-											   pkd->fPeriod[1],dOrbFreq,
-											   dTime + dDelta);
+											   pkd->fPeriod[1],pkd->dOrbFreq,
+											   pkd->dTime + dDelta);
 							}
 #endif
 						}
@@ -2873,9 +2931,10 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i,++p) {
-		if(TYPEQueryACTIVE(p)) {
+		if (TYPEQueryACTIVE(p)) {
+#ifdef NEED_VPRED
 #ifdef GASOLINE
-			if(pkdIsGas(pkd, p)) {
+			if (pkdIsGas(pkd, p)) {
 				for (j=0;j<3;++j) {
 					p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
 					}
@@ -2887,17 +2946,16 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				p->u = p->u + p->PdV*duDelta;
 #endif
 				}
-#endif
-		       for (j=0;j<3;++j) {
-				p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
-#ifdef SAND_PILE
-				if (p->r[2] > 2*p->fSoft)
-					p->v[2] -= 0.25*dvFacTwo; /* uniform 0.25 -z accel. */
-				if (p->r[2] > 10)
-					p->v[2] = -1; /* uniform velocity above z = 10 */
-#endif /* SAND_PILE */
+#else
+			for (j=0;j<3;++j) {
+				p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
 				}
-		       }
+#endif
+#endif /* NEED_VPRED */
+			for (j=0;j<3;++j) {
+				p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
+				}
+			}
 	    }
 
 	pkdStopTimer(pkd,1);
@@ -2934,6 +2992,9 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		for (j=0;j<3;++j) {
 			p->r[j] = cp.r[j];
 			p->v[j] = cp.v[j];
+#ifdef NEED_VPRED
+			p->vPred[j] = cp.v[j];
+#endif
 			}
 #ifdef GASOLINE
 		p->u = cp.u;
@@ -3368,7 +3429,7 @@ void
 pkdDeleteParticle(PKD pkd, int i)
 {
     pkd->pStore[i].iOrder = -2 - pkd->pStore[i].iOrder;
-	TYPEReset(&(pkd->pStore[i]),TYPE_ACTIVE);
+	TYPEClearACTIVE(&(pkd->pStore[i]));
     }
 
 void
@@ -3943,39 +4004,6 @@ void pkdGlassGasPressure(PKD pkd, void *vin)
 
 #endif
 
-void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int iGasModel,
-		  double z, double duDotLimit)
-{
-	PARTICLE *p;
-	int i,j,n;
-
-	char ach[256];
-
-	mdlDiag(pkd->mdl, "Into Vpred\n");
-
-	pkdClearTimer(pkd,1);
-	pkdStartTimer(pkd,1);
-
-	p = pkd->pStore;
-	n = pkdLocal(pkd);
-	for (i=0;i<n;++i,++p) {
-		if (pkdIsGas(pkd,p)) {
-			for (j=0;j<3;++j) {
-				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;
-				}
-#ifndef NOCOOLING
-			p->uPred = p->uPred + p->uDot*duDelta;
-#else
-			p->uPred = p->uPred + p->PdV*duDelta;
-#endif
-			mdlassert(pkd->mdl,p->uPred > 0);
-			}
-		}
-
-	pkdStopTimer(pkd,1);
-	mdlDiag(pkd->mdl, "Done Vpred\n");
-	}
-
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta)
 {
 	PARTICLE *p;
@@ -4264,18 +4292,16 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	pkd->nLocal = nLocal;
 	pkd->nActive = nLocal;
 	/*
-	 ** General initialization.
+	 ** General initialization (modelled after pkdReadTipsy()).
 	 */
 	for (i=0;i<nLocal;++i) {
 		p = &pkd->pStore[i];
 		TYPEClear(p);
-		TYPESet(p,TYPE_ACTIVE);
 		p->iRung = 0;
 		p->fWeight = 1.0;
-		p->fPot = 0.0;
-		p->fBall2 = 0.0;
 		p->fDensity = 0.0;
-		p->dt = 0.0;
+		p->fBall2 = 0.0;
+		p->fBallMax = 0.0;
 		p->iDriftType = NORMAL; /*DEBUG must initialize b/c pkdDrift()...*/
 #ifdef SAND_PILE
 		p->bStuck = 0;
@@ -4308,7 +4334,7 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 			{xdr_double(&xdrs,&dDum); p->w[j] = dDum;}
 		xdr_int(&xdrs,&p->iColor);
 		xdr_int(&xdrs,&iDum);
-#ifdef SLIDING_PATCH
+#ifdef NEED_VPRED
 		for (j=0;j<3;++j) p->vPred[j] = p->v[j];
 #endif
 		}
@@ -4421,7 +4447,7 @@ pkdMarkEncounters(PKD pkd,double dt)
 
 #ifdef SLIDING_PATCH
 
-void pkdPatch(PKD pkd,double dOrbFreq,double dOrbFreqZ2)
+void pkdPatch(PKD pkd,double dOrbFreqZ2)
 {
 	PARTICLE *p;
 	int i;
@@ -4432,12 +4458,49 @@ void pkdPatch(PKD pkd,double dOrbFreq,double dOrbFreqZ2)
 		/*
 		 ** Apply Hill's Equations, using *predicted* velocities...
 		 */
-		p[i].a[0] += dOrbFreq*(2*p[i].vPred[1] + 3*dOrbFreq*p[i].r[0]);
-		p[i].a[1] -= 2*dOrbFreq*p[i].vPred[0];
+		p[i].a[0] += pkd->dOrbFreq*(2*p[i].vPred[1] + 3*pkd->dOrbFreq*p[i].r[0]);
+		p[i].a[1] -= 2*pkd->dOrbFreq*p[i].vPred[0];
 		p[i].a[2] -= dOrbFreqZ2*p[i].r[2];
 		}
 	}
 
+#endif /* SLIDING_PATCH */
+
+#ifdef NEED_VPRED
+#ifdef GASOLINE
+void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int iGasModel,
+		  double z, double duDotLimit)
+{
+	PARTICLE *p;
+	int i,j,n;
+
+	char ach[256];
+
+	mdlDiag(pkd->mdl, "Into Vpred\n");
+
+	pkdClearTimer(pkd,1);
+	pkdStartTimer(pkd,1);
+
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i,++p) {
+		if (pkdIsGas(pkd,p)) {
+			for (j=0;j<3;++j) {
+				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;
+				}
+#ifndef NOCOOLING
+			p->uPred = p->uPred + p->uDot*duDelta;
+#else
+			p->uPred = p->uPred + p->PdV*duDelta;
+#endif
+			mdlassert(pkd->mdl,p->uPred > 0);
+			}
+		}
+
+	pkdStopTimer(pkd,1);
+	mdlDiag(pkd->mdl, "Done Vpred\n");
+	}
+#else
 void
 pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo)
 {
@@ -4450,5 +4513,5 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo)
 		for (j=0;j<3;j++)
 			p[i].vPred[j] = p[i].vPred[j]*dvFacOne + p[i].a[j]*dvFacTwo;
 	}
-
-#endif /* SLIDING_PATCH */
+#endif
+#endif /* NEED_VPRED */

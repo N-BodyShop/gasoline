@@ -84,9 +84,16 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_GRAVITY,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGravity,
 				  sizeof(struct inGravity),sizeof(struct outGravity));
-	mdlAddService(mdl,PST_CALCE,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstCalcE,
-				  0,sizeof(struct outCalcE));
+	mdlAddService(mdl,PST_GRAVEXTERNAL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstGravExternal,
+				  sizeof(struct inGravExternal),0);
+	mdlAddService(mdl,PST_CALCEANDL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstCalcEandL,
+				  0,sizeof(struct outCalcEandL));
+	mdlAddService(mdl,PST_CALCEANDLEXT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstCalcEandLExt,
+				  sizeof(struct inCalcEandLExt),
+				  sizeof(struct outCalcEandLExt));
 	mdlAddService(mdl,PST_DRIFT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstDrift,
 				  sizeof(struct inDrift),0);
@@ -232,9 +239,6 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_INITENERGY,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstInitEnergy,
 				  sizeof(struct inInitEnergy),0);
-	mdlAddService(mdl,PST_KICKVPRED,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstKickVpred, 
-				  sizeof(struct inKickVpred),sizeof(struct outKick));
 	mdlAddService(mdl,PST_KICKRHOPRED,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstKickRhopred, 
 				  sizeof(struct inKickRhopred),0);
@@ -269,9 +273,6 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_SETNPARTS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetNParts,
 				  sizeof(struct inSetNParts),0);
-	mdlAddService(mdl,PST_GRAVEXTERNAL,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstGravExternal,
-				  sizeof(struct inGravExternal),0);
 #ifdef COLLISIONS
 	mdlAddService(mdl,PST_NUMREJECTS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstNumRejects,
@@ -319,14 +320,14 @@ void pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inSmooth),0);
 #endif
 #endif /* COLLISIONS */
-#ifdef SLIDING_PATCH
-	mdlAddService(mdl,PST_KICKVPRED,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstKickVpred, 
-				  sizeof(struct inKickVpred),0);
-#endif
 	mdlAddService(mdl,PST_CLEARTIMER,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstClearTimer,
 				  sizeof(struct inClearTimer),0);
+#ifdef NEED_VPRED
+	mdlAddService(mdl,PST_KICKVPRED,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstKickVpred, 
+				  sizeof(struct inKickVpred),sizeof(struct outKick));
+#endif
 	}
 
 void pstInitialize(PST *ppst,MDL mdl,LCL *plcl)
@@ -1846,16 +1847,16 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 ** Next determine the longest axis 
 		 */
 		if (in->bDoSplitDimFind) {
-		  d = pst->iSplitDim;
-		  if (d==-1) dimsize = -1;
-		  else dimsize = (pst->bnd.fMax[d]-pst->bnd.fMin[d])*NEWSPLITDIMCUT;
-		  for (j=0;j<3;++j) {
-		    if ((pst->bnd.fMax[j]-pst->bnd.fMin[j]) > dimsize) {
-		      d=j;
-		      dimsize = (pst->bnd.fMax[d]-pst->bnd.fMin[d]);
-		      }
-		    }
-		  }
+			d = pst->iSplitDim;
+			if (d==-1) dimsize = -1;
+			else dimsize = (pst->bnd.fMax[d]-pst->bnd.fMin[d])*NEWSPLITDIMCUT;
+			for (j=0;j<3;++j) {
+				if ((pst->bnd.fMax[j]-pst->bnd.fMin[j]) > dimsize) {
+					d=j;
+					dimsize = (pst->bnd.fMax[d]-pst->bnd.fMin[d]);
+					}
+				}
+			}
 
 		mdlPrintTimer(pst->mdl,"TIME CalcBound done in pstDomainDecomp",&t);
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
@@ -2857,16 +2858,13 @@ void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 #ifdef SLIDING_PATCH
-		pkdGravAll(plcl->pkd,in->nReps,in->bPeriodic,in->iOrder,in->bEwald,
-				   in->iEwOrder,in->dEwCut,in->dEwhCut,in->bDoSun,out->aSun,
-				   &out->nActive,&out->dPartSum,&out->dCellSum,&out->dSoftSum,
-				   &cs,&out->dFlop,in->dOrbFreq,in->dTime);
-#else
+		plcl->pkd->dOrbFreq = in->dOrbFreq;
+		plcl->pkd->dTime = in->dTime;
+#endif
 		pkdGravAll(plcl->pkd,in->nReps,in->bPeriodic,in->iOrder,in->bEwald,
 				   in->iEwOrder,in->dEwCut,in->dEwhCut,in->bDoSun,out->aSun,
 				   &out->nActive,&out->dPartSum,&out->dCellSum,&out->dSoftSum,
 				   &cs,&out->dFlop);
-#endif
 		out->dWSum = pkdGetTimer(plcl->pkd,1);
 		out->dISum = pkdGetTimer(plcl->pkd,2);
 		out->dESum = pkdGetTimer(plcl->pkd,3);
@@ -2892,25 +2890,88 @@ void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
-void pstCalcE(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
-	struct outCalcE *out = vout;
-	struct outCalcE outE;
-	
-	mdlassert(pst->mdl,nIn == 0);
+	struct inGravExternal *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inGravExternal));
 	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_CALCE,NULL,0);
-		pstCalcE(pst->pstLower,NULL,0,out,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,&outE,NULL);
-		out->T += outE.T;
-		out->U += outE.U;
-		out->Eth += outE.Eth;
+		mdlReqService(pst->mdl,pst->idUpper,PST_GRAVEXTERNAL,in,nIn);
+		pstGravExternal(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdCalcE(plcl->pkd,&out->T,&out->U,&out->Eth);
+		if (in->bIndirect) {
+			pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass);
+			}
+		if (in->bLogHalo) {
+			pkdLogHalo(plcl->pkd);
+			}
+		if (in->bHernquistSpheroid) {
+			pkdHernquistSpheroid(plcl->pkd);
+			}
+		if (in->bMiyamotoDisk) {
+			pkdMiyamotoDisk(plcl->pkd);
+			}
+#ifdef ROT_FRAME
+		if (in->bRotFrame) {
+			pkdRotFrame(plcl->pkd,in->dOmega,in->dOmegaDot);
+			}
+#endif
+#ifdef SLIDING_PATCH
+		if (in->bPatch) {
+			plcl->pkd->dOrbFreq = in->dOrbFreq;
+			pkdPatch(plcl->pkd,in->dOrbFreqZ2);
+			}
+#endif
 		}
-	if (pnOut) *pnOut = sizeof(struct outCalcE);
+	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstCalcEandL(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct outCalcEandL *out = vout;
+	struct outCalcEandL outLcl;
+	int k;
+
+	mdlassert(pst->mdl,nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_CALCEANDL,NULL,0);
+		pstCalcEandL(pst->pstLower,NULL,0,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outLcl,NULL);
+		out->T += outLcl.T;
+		out->U += outLcl.U;
+		out->Eth += outLcl.Eth;
+		for (k=0;k<3;k++) out->L[k] = outLcl.L[k];
+		}
+	else {
+		pkdCalcEandL(plcl->pkd,&out->T,&out->U,&out->Eth,out->L);
+		}
+	if (pnOut) *pnOut = sizeof(struct outCalcEandL);
+	}
+
+
+void pstCalcEandLExt(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inCalcEandLExt *in = vin;
+	struct outCalcEandLExt *out = vout,outLcl;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inCalcEandLExt));
+	mdlassert(pst->mdl,in->bHeliocentric); /* only one option supported currently */
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_CALCEANDLEXT,in,nIn);
+		pstCalcEandLExt(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outLcl,NULL);
+		}
+	else {
+		pkdCalcEandLExt(plcl->pkd,&out->dMass,out->dSumMR,out->dSumMV,
+						&out->dPot);
+		}
+	if (pnOut) *pnOut = sizeof(struct outCalcEandLExt);
 	}
 
 
@@ -2927,12 +2988,11 @@ void pstDrift(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 #ifdef SLIDING_PATCH
-		pkdDrift(plcl->pkd,in->dDelta,in->fCenter,in->bPeriodic,in->bFandG,
-				 in->fCentMass,in->dOrbFreq,in->dTime);
-#else
+		plcl->pkd->dOrbFreq = in->dOrbFreq;
+		plcl->pkd->dTime = in->dTime;
+#endif
 		pkdDrift(plcl->pkd,in->dDelta,in->fCenter,in->bPeriodic,in->bFandG,
 				 in->fCentMass);
-#endif
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -3763,6 +3823,7 @@ void pstGrowMass(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
+
 void pstInitAccel(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -3775,40 +3836,6 @@ void pstInitAccel(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdInitAccel(plcl->pkd);
-		}
-	if (pnOut) *pnOut = 0;
-	}
-
-
-void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
-{
-	LCL *plcl = pst->plcl;
-	struct inGravExternal *in = vin;
-
-	mdlassert(pst->mdl,nIn == sizeof(struct inGravExternal));
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_GRAVEXTERNAL,in,nIn);
-		pstGravExternal(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-		}
-	else {
-		if (in->bIndirect) {
-			pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass);
-			}
-		if (in->bLogHalo) {
-			pkdLogHalo(plcl->pkd);
-			}
-		if (in->bHernquistSpheroid) {
-			pkdHernquistSpheroid(plcl->pkd);
-			}
-		if (in->bMiyamotoDisk) {
-			pkdMiyamotoDisk(plcl->pkd);
-			}
-#ifdef SLIDING_PATCH
-		if (in->bPatch) {
-			pkdPatch(plcl->pkd,in->dOrbFreq,in->dOrbFreqZ2);
-			}
-#endif
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -3936,30 +3963,6 @@ void pstInitEnergy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
-
-void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
-{
-	LCL *plcl = pst->plcl;
-	struct inKickVpred *in = vin;
-	struct outKick *out = vout;
-	struct outKick outUp;
-
-	mdlassert(pst->mdl,nIn == sizeof(struct inKickVpred));
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_KICKVPRED,in,nIn);
-		pstKickVpred(pst->pstLower,in,nIn,out,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
-		}
-	else {
-		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo,in->duDelta,
-					 in->iGasModel,in->z,in->duDotLimit);
-		out->Time = pkdGetTimer(plcl->pkd,1);
-		out->MaxTime = out->Time;
-		out->SumTime = out->Time;
-		out->nSum = 1;
-		}
-	if (pnOut) *pnOut = sizeof(struct outKick);
-	}
 
 void pstKickRhopred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -4400,15 +4403,12 @@ pstDoCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (in->Collider1.id.iPid == pkd->idSelf ||
 			in->Collider2.id.iPid == pkd->idSelf) {
 #ifdef SLIDING_PATCH
-			pkdDoCollision(pkd,in->dTime,in->dt,&in->Collider1,&in->Collider2,
-						   in->bPeriodic,&in->CP,in->dOrbFreq,
-						   &out->dImpactEnergy,&out->iOutcome,out->Out,
-						   &out->nOut);
-#else
-			pkdDoCollision(pkd,in->dTime,in->dt,&in->Collider1,&in->Collider2,
-						   in->bPeriodic,&in->CP,&out->dImpactEnergy,
-						   &out->iOutcome,out->Out,&out->nOut);
+			pkd->dOrbFreq = in->dOrbFreq;
+			pkd->dTime = in->dTime;
 #endif
+			pkdDoCollision(pkd,in->dt,&in->Collider1,&in->Collider2,
+						   in->bPeriodic,&in->CP,&out->iOutcome,&out->dT,
+						   out->Out,&out->nOut);
 			}
 		}
 	if (pnOut) *pnOut = sizeof(*out);
@@ -4584,27 +4584,6 @@ pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 #endif /* COLLISIONS */
 
-#ifdef SLIDING_PATCH
-
-void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
-{
-	LCL *plcl = pst->plcl;
-	struct inKickVpred *in = vin;
-
-	mdlassert(pst->mdl,nIn == sizeof(struct inKickVpred));
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_KICKVPRED,in,nIn);
-		pstKickVpred(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-		}
-	else {
-		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo);
-		}
-	if (pnOut) *pnOut = 0;
-	}
-
-#endif
-
 void 
 pstClearTimer(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -4621,3 +4600,49 @@ pstClearTimer(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	if (pnOut) *pnOut = 0;
 	}
+
+
+#ifdef NEED_VPRED
+#ifdef GASOLINE
+void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inKickVpred *in = vin;
+	struct outKick *out = vout;
+	struct outKick outUp;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inKickVpred));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_KICKVPRED,in,nIn);
+		pstKickVpred(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+		}
+	else {
+		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo,in->duDelta,
+					 in->iGasModel,in->z,in->duDotLimit);
+		out->Time = pkdGetTimer(plcl->pkd,1);
+		out->MaxTime = out->Time;
+		out->SumTime = out->Time;
+		out->nSum = 1;
+		}
+	if (pnOut) *pnOut = sizeof(struct outKick);
+	}
+#else
+void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inKickVpred *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inKickVpred));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_KICKVPRED,in,nIn);
+		pstKickVpred(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+#endif
+#endif /* NEED_VPRED */

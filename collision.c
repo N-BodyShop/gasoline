@@ -67,11 +67,11 @@ pkdGetColliderInfo(PKD pkd,int iOrder,COLLIDER *c)
 	}
 
 void
-PutColliderInfo(const COLLIDER *c,PARTICLE *p,double dt)
+PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt)
 {
 	/*
 	 ** Stores collider info in particle structure (except id & color).
-	 ** Also, dt is stored in dtColPrev for inelastic collapse checks.
+	 ** Also, dt is stored in dtPrevCol for inelastic collapse checks.
 	 **
 	 ** NOTE: Because colliding particles have their positions traced back to
 	 ** the start of the step using their NEW velocities, it is possible for
@@ -95,15 +95,18 @@ PutColliderInfo(const COLLIDER *c,PARTICLE *p,double dt)
 		p->r[i] = c->r[i];
 		p->v[i] = c->v[i];
 		p->w[i] = c->w[i];
+#ifdef NEED_VPRED
+		p->vPred[i] = c->v[i] - dt*p->a[i];
+#endif
 		}
 	p->iRung = c->iRung;
 	p->fBall2 += 2*sqrt(p->fBall2*r) + r;
-	p->dtColPrev = dt;
+	p->dtPrevCol = dt;
+	p->iPrevCol = iOrder2; /* stored to avoid false collisions */
 	}
 
 void
-pkdMerge(PKD pkd,double dTime,
-		 const COLLIDER *c1,const COLLIDER *c2,
+pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
 		 COLLIDER **cOut,int *pnOut)
 {
 	/*
@@ -166,15 +169,13 @@ pkdMerge(PKD pkd,double dTime,
 	}
 
 int
-pkdBounce(PKD pkd,double dTime,
-		  const COLLIDER *c1,const COLLIDER *c2,
-		  double dEpsN,double dEpsT,
-		  COLLIDER **cOut,int *pnOut)
+pkdBounce(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
+		  double dEpsN,double dEpsT,COLLIDER **cOut,int *pnOut)
 {
 	/* Bounces colliders, preserving particle order */
 
 	COLLIDER *co1,*co2;
-	FLOAT n[3],s1[3],s2[3],u[3],un[3],ut[3],p[3],q[3];
+	FLOAT n[3],s1[3],s2[3],v[3],s[3],u[3],un[3],ut[3],p[3],q[3];
 	FLOAT m1,m2,m,r1,r2,i1,i2,mu,alpha,beta;
 	FLOAT a,b,c,d;
 	int i;
@@ -218,14 +219,19 @@ pkdBounce(PKD pkd,double dTime,
 	s2[1] = r2*(c2->w[0]*n[2] - c2->w[2]*n[0]);
 	s2[2] = r2*(c2->w[1]*n[0] - c2->w[0]*n[1]);
 
+	for (i=0;i<3;i++) {
+		v[i] = c2->v[i] - c1->v[i];
+		s[i] = s2[i] - s1[i];
+		}
+
 	for (i=0;i<3;i++)
-		u[i] = (c2->v[i] - c1->v[i]) + (s2[i] - s1[i]);
+		u[i] = v[i] + s[i];
 
 	a = u[0]*n[0] + u[1]*n[1] + u[2]*n[2];
 	if (a >= 0) {
 		char ach[256];
-		(void) sprintf(ach,"WARNING [T=%e]: %i & %i -- near miss?\n",
-					   dTime,c1->id.iOrder,c2->id.iOrder);
+		(void) sprintf(ach,"WARNING: %i & %i -- near miss?\n",
+					   c1->id.iOrder,c2->id.iOrder);
 #ifdef MDL_DIAG
 		mdlDiag(pkd->mdl,ach);
 #else
@@ -293,12 +299,26 @@ pkdBounce(PKD pkd,double dTime,
 		co2->w[i] += d*q[i];
 		}
 
+/*DEBUG -- dT check
+	{
+	double dT;
+	dT =
+		- mu*(v[0]*p[0] + v[1]*p[1] + v[2]*p[2]) +
+			0.5*mu*(p[0]*p[0] + p[1]*p[1] + p[2]*p[2]) +
+				(r1*c1->w[0] + r2*c2->w[0])*q[0] +
+					(r1*c1->w[1] + r2*c2->w[1])*q[1] +
+						(r1*c1->w[2] + r2*c2->w[2])*q[2] +
+							0.5*alpha*(q[0]*q[0] + q[1]*q[1] + q[2]*q[2]);
+	(void) printf("COLLISION %i & %i e_n=%f e_t=%f dT %e\n",
+				  c1->id.iOrder,c2->id.iOrder,dEpsN,dEpsT,dT);
+	}
+*/
+
 	return BOUNCE_OK;
 	}
 
 void
-pkdFrag(PKD pkd,double dTime,
-		const COLLIDER *c1,const COLLIDER *c2,
+pkdFrag(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
 		COLLIDER **cOut,int *pnOut)
 {
 	/*
@@ -312,21 +332,10 @@ pkdFrag(PKD pkd,double dTime,
 	 */
 	}
 
-#ifdef SLIDING_PATCH
 void
-pkdDoCollision(PKD pkd,double dTime,double dt,
-			   const COLLIDER *pc1,const COLLIDER *pc2,
-			   int bPeriodic,const COLLISION_PARAMS *CP,
-			   double dOrbFreq,double *pdImpactEnergy,int *piOutcome,
-			   COLLIDER *cOut,int *pnOut)
-#else
-void
-pkdDoCollision(PKD pkd,double dTime,double dt,
-			   const COLLIDER *pc1,const COLLIDER *pc2,
-			   int bPeriodic,const COLLISION_PARAMS *CP,
-			   double *pdImpactEnergy,int *piOutcome,
-			   COLLIDER *cOut,int *pnOut)
-#endif
+pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
+			   int bPeriodic,const COLLISION_PARAMS *CP,int *piOutcome,
+			   double *dT,COLLIDER *cOut,int *pnOut)
 {
 	/*
 	 ** Processes collision by advancing particle coordinates to impact
@@ -361,7 +370,107 @@ pkdDoCollision(PKD pkd,double dTime,double dt,
 
 	bDiagInfo = (c1.id.iPid == pkd->idSelf);
 
+	if (bDiagInfo && dT) *dT = 0;
+
 #ifdef SAND_PILE
+#ifdef TUMBLER
+	if (c2.id.iOrder < 0) { /* wall collision */
+		const WALLS *w = &CP->walls;
+		WALL mywall = w->wall[-c2.id.iOrder - 1];
+
+		assert(c1.id.iPid == pkd->idSelf);
+		assert(pkd->pStore[c1.id.iIndex].bStuck == 0);
+		for (i=0;i<3;i++) c1.r[i] += c1.v[i]*dt;
+		if (mywall.dEpsN == 0) { /* sticky wall! */
+			for (i=0;i<3;i++) c1.v[i] = c1.w[i] = 0;
+			pkd->pStore[c1.id.iIndex].bStuck = 1;
+			*piOutcome = MERGE;
+			}
+		else { /* bounce */
+			double m1,r1,i1,ndotr=0,rprime[3],rlength=0;
+			double n[3],s1[3],s2[3],u[3],udotn=0,un[3],ut[3],w[3];
+			double dEpsN,dEpsT;
+			m1 = c1.fMass;
+			r1 = c1.fRadius;
+			i1 = 0.4*m1*r1*r1;
+
+			for (i=0;i<3;i++) {
+				ndotr += mywall.n[i] * c1.r[i];
+				}
+			for (i=0;i<3;i++) {
+				rprime[i] = c1.r[i] - ndotr * mywall.n[i];
+				rlength += rprime[i]*rprime[i];
+				}
+			rlength = sqrt(rlength);
+
+			if (mywall.type == 1) {	/* cylindrical wall */
+				for (i=0;i<3;i++) {
+					n[i] = rprime[i] / rlength;
+					}
+				s2[0] = mywall.n[1]*n[2]-mywall.n[2]*n[1];
+				s2[1] = mywall.n[2]*n[0]-mywall.n[0]*n[2];
+				s2[2] = mywall.n[0]*n[1]-mywall.n[1]*n[0];
+				for (i=0;i<3;i++) {
+					s2[i] *= mywall.radius*mywall.omega;
+					}
+				}
+			else {				/* infinite flat wall */
+				for (i=0;i<3;i++) {
+					n[i] = (ndotr < mywall.ndotp) ? mywall.n[i] : -mywall.n[i];
+					}
+
+				s2[0] = mywall.n[1]*rprime[2]-mywall.n[2]*rprime[1];
+				s2[1] = mywall.n[2]*rprime[0]-mywall.n[0]*rprime[2];
+				s2[2] = mywall.n[0]*rprime[1]-mywall.n[1]*rprime[0];
+				for (i=0;i<3;i++) {
+					s2[i] *= mywall.omega;
+					}
+				}
+
+			s1[0] = r1 * (c1.w[1]*n[2] - c1.w[2]*n[1]);
+			s1[1] = r1 * (c1.w[2]*n[0] - c1.w[0]*n[2]);
+			s1[2] = r1 * (c1.w[0]*n[1] - c1.w[1]*n[0]);
+			for (i=0;i<3;i++) {
+				u[i] = -c1.v[i] + s2[i] - s1[i];
+				udotn += u[i] * n[i];
+				}
+			assert(udotn < 0);
+			for (i=0;i<3;i++) {
+				un[i] = udotn * n[i];
+				ut[i] = u[i] - un[i];
+				}
+
+			if (c1.bTinyStep) {
+				dEpsN = CP->dCollapseEpsN;
+				dEpsT = CP->dCollapseEpsT;
+				}
+			else if (CP->iSlideOption == MaxTrv &&
+					 fabs(c1.v[0]*n[0] + c1.v[1]*n[1] + c1.v[2]*n[2]) < CP->dSlideLimit) {
+				dEpsN = CP->dSlideEpsN;
+				dEpsT = CP->dSlideEpsT;
+				}
+			else {
+				dEpsN = mywall.dEpsN;
+				dEpsT = mywall.dEpsT;
+				}
+
+			w[0] = n[1]*u[2] - n[2]*u[1];
+			w[1] = n[2]*u[0] - n[0]*u[2];
+			w[2] = n[0]*u[1] - n[1]*u[0];
+			for (i=0;i<3;i++) {
+				c1.v[i] += (1 + dEpsN)*un[i] + (2.0/7)*(1 - dEpsT)*ut[i];
+				c1.w[i] += (2.0/7)*(m1/i1)*(1 - dEpsT)*r1*w[i];
+				}
+			for (i=0;i<3;i++) c1.r[i] -= c1.v[i]*dt;
+			*piOutcome = BOUNCE;
+			}
+		PutColliderInfo(&c1,c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
+		cOut[0] = c1;
+		cOut[1] = c2;
+		*pnOut = 2;
+		return;
+		}
+#else /* TUMBLER */
 	if (c2.id.iOrder < 0) { /* wall or endpoint collision */
 		const WALLS *w = &CP->walls;
 		int wall,endpt;
@@ -442,13 +551,13 @@ pkdDoCollision(PKD pkd,double dTime,double dt,
 			for (i=0;i<3;i++) c1.r[i] -= c1.v[i]*dt;
 			*piOutcome = BOUNCE;
 			}
-		PutColliderInfo(&c1,&pkd->pStore[c1.id.iIndex],dt);
+		PutColliderInfo(&c1,c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
 		cOut[0] = c1;
 		cOut[1] = c2;
-		*pdImpactEnergy = 0;
 		*pnOut = 2;
 		return;
 		}
+#endif /* !TUMBLER */
 #endif /* SAND_PILE */
 
 	/*
@@ -471,14 +580,14 @@ pkdDoCollision(PKD pkd,double dTime,double dt,
 #ifdef SLIDING_PATCH
 			if (i == 0) {
 				if (fOffset[0] < 0) {
-					fShear = 1.5*dOrbFreq*pkd->fPeriod[0];
+					fShear = 1.5*pkd->dOrbFreq*pkd->fPeriod[0];
 					fOffset[1] = SHEAR(-1,pkd->fPeriod[0],pkd->fPeriod[1],
-									   dOrbFreq,dTime);
+									   pkd->dOrbFreq,pkd->dTime);
 					}
 				else if (fOffset[0] > 0) {
-					fShear = - 1.5*dOrbFreq*pkd->fPeriod[0];
+					fShear = - 1.5*pkd->dOrbFreq*pkd->fPeriod[0];
 					fOffset[1] = SHEAR(1,pkd->fPeriod[0],pkd->fPeriod[1],
-									   dOrbFreq,dTime);
+									   pkd->dOrbFreq,pkd->dTime);
 					}
 				c2.r[1] += fOffset[1];
 				c2.v[1] += fShear;
@@ -505,15 +614,13 @@ pkdDoCollision(PKD pkd,double dTime,double dt,
 
 	dImpactEnergy = 0.5*c1.fMass*c2.fMass/(c1.fMass + c2.fMass)*v2;
 
-	if (bDiagInfo) *pdImpactEnergy = dImpactEnergy;
-
 	/* Determine collision outcome */
 
 	iOutcome = MISS;
 
 	if (CP->iOutcomes == MERGE || ((CP->iOutcomes & MERGE) && v2 <= ve2)) {
 		iOutcome = MERGE;
-		pkdMerge(pkd,dTime,&c1,&c2,&c,&n);
+		pkdMerge(pkd,&c1,&c2,&c,&n);
 		assert(n == 1);
 		if (CP->iOutcomes & (BOUNCE | FRAG)) { /* check if spinning too fast */
 			double w2max,w2=0;
@@ -524,7 +631,7 @@ pkdDoCollision(PKD pkd,double dTime,double dt,
 				int rv;
 				free((void *) c);
 				iOutcome = BOUNCE;
-				rv = pkdBounce(pkd,dTime,&c1,&c2,CP->dEpsN,CP->dEpsT,&c,&n);
+				rv = pkdBounce(pkd,&c1,&c2,CP->dEpsN,CP->dEpsT,&c,&n);
 				assert(rv == BOUNCE_OK);
 				assert(n == 2);
 				}
@@ -584,13 +691,13 @@ pkdDoCollision(PKD pkd,double dTime,double dt,
 				dEpsT = CP->dEpsT;
 				}
 			}
-		if (pkdBounce(pkd,dTime,&c1,&c2,dEpsN,dEpsT,&c,&n) == NEAR_MISS)
+		if (pkdBounce(pkd,&c1,&c2,dEpsN,dEpsT,&c,&n) == NEAR_MISS)
 			iOutcome = MISS;
 		assert(n == 2);
 		}
 	else if (CP->iOutcomes & FRAG) {
 		iOutcome = FRAG;
-		pkdFrag(pkd,dTime,&c1,&c2,&c,&n);
+		pkdFrag(pkd,&c1,&c2,&c,&n);
 		assert(n <= MAX_NUM_FRAG);
 		}
 
@@ -603,6 +710,24 @@ pkdDoCollision(PKD pkd,double dTime,double dt,
 	assert(n > 0);
 
 	if (bDiagInfo) {
+		if (dT) {
+			double moi;
+			*dT = 0; /* redundant */
+			for (j=0;j<n;j++) {
+				moi = 0.4*c[j].fMass*c[j].fRadius*c[j].fRadius;
+				for (i=0;i<3;i++)
+					*dT += c[j].fMass*(c[j].v[i]*c[j].v[i]) +
+						moi*(c[j].w[i]*c[j].w[i]);
+				}
+			moi = 0.4*c1.fMass*c1.fRadius*c1.fRadius;
+			for (i=0;i<3;i++)
+				*dT -= c1.fMass*(c1.v[i]*c1.v[i]) + moi*(c1.w[i]*c1.w[i]);
+			moi = 0.4*c2.fMass*c2.fRadius*c2.fRadius;
+			for (i=0;i<3;i++)
+				*dT -= c2.fMass*(c2.v[i]*c2.v[i]) + moi*(c2.w[i]*c2.w[i]);
+			*dT *= 0.5;
+			}
+		/*DEBUG (void) printf("Compare: dT = %e\n",*dT); */
 		for (i=0;i<n;i++)
 			cOut[i] = c[i];
 		*pnOut = n;
@@ -645,7 +770,7 @@ pkdDoCollision(PKD pkd,double dTime,double dt,
 				iDel = c2.id.iIndex;
 			}
 		if (iMrg > -1) {
-			PutColliderInfo(&c[0],&pkd->pStore[iMrg],dt);
+			PutColliderInfo(&c[0],INT_MAX,&pkd->pStore[iMrg],dt);
 			if (bDiagInfo) {
 				cOut[0].id.iPid = pkd->idSelf;
 				cOut[0].id.iIndex = iMrg;
@@ -656,7 +781,7 @@ pkdDoCollision(PKD pkd,double dTime,double dt,
 		}
 	else if (n == 2) { /* bounce or mass transfer */
 		if (c1.id.iPid == pkd->idSelf)
-			PutColliderInfo(&c[0],&pkd->pStore[c1.id.iIndex],dt);
+			PutColliderInfo(&c[0],c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
 		if (c2.id.iPid == pkd->idSelf) {
 			if (bPeriodic) {
 				for (i=0;i<3;i++)
@@ -665,7 +790,7 @@ pkdDoCollision(PKD pkd,double dTime,double dt,
 				c[1].v[1] -= fShear;
 #endif
 				}
-			PutColliderInfo(&c[1],&pkd->pStore[c2.id.iIndex],dt);
+			PutColliderInfo(&c[1],c1.id.iOrder,&pkd->pStore[c2.id.iIndex],dt);
 			}
 		}
 	else { /* fragmentation */
@@ -692,6 +817,7 @@ pkdResetColliders(PKD pkd,int iOrder1,int iOrder2)
 
 	for (i=0;i<pkdLocal(pkd);i++) {
 		p = &pkd->pStore[i];
+		if (!TYPEQueryACTIVE(p)) continue;
 		if (p->iOrder == iOrder1 || p->iOrder == iOrder2 ||
 			p->iOrderCol == iOrder1 || p->iOrderCol == iOrder2)
 			TYPESet(p,TYPE_SMOOTHACTIVE);

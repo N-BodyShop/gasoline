@@ -78,7 +78,9 @@ enum pst_service {
       PST_BUILDTREE,
       PST_SMOOTH,
       PST_GRAVITY,
-      PST_CALCE,
+      PST_GRAVEXTERNAL,
+      PST_CALCEANDL,
+	  PST_CALCEANDLEXT,
       PST_DRIFT,
       PST_KICK,
       PST_READCHECK,
@@ -123,7 +125,6 @@ enum pst_service {
       PST_COLNPARTS,
       PST_NEWORDER,
       PST_SETNPARTS,
-      PST_GRAVEXTERNAL,
       PST_UPDATEUDOT,
       PST_GETGASPRESSURE,
       PST_INITENERGY,
@@ -391,13 +392,51 @@ struct outGravity {
 	};
 void pstGravity(PST,void *,int,void *,int *);
 
-/* PST_CALCE */
-struct outCalcE {
+/* PST_GRAVEXTERNAL */
+struct inGravExternal {
+    int bIndirect;
+    int bDoSun;
+    double dSunMass;
+    double aSun[3];
+	/*
+	 ** For external galaxy potential stuff
+	 */
+	int bLogHalo;
+	int bHernquistSpheroid;
+	int bMiyamotoDisk;
+#ifdef ROT_FRAME
+	int bRotFrame;
+	double dOmega;
+	double dOmegaDot;
+#endif
+#ifdef SLIDING_PATCH
+	int bPatch;
+	double dOrbFreq;
+	double dOrbFreqZ2;
+#endif
+	};
+void pstGravExternal(PST,void *,int,void *,int *);
+
+/* PST_CALCEANDL */
+struct outCalcEandL {
 	double T;
 	double U;
 	double Eth;
+	double L[3];
 	};
-void pstCalcE(PST,void *,int,void *,int *);
+void pstCalcEandL(PST,void *,int,void *,int *);
+
+/* PST_CALCEANDLEXT */
+struct inCalcEandLExt {
+    int bHeliocentric;
+	};
+struct outCalcEandLExt {
+	double dMass;
+    double dSumMR[3];
+    double dSumMV[3];
+	double dPot;
+	};
+void pstCalcEandLExt(PST,void *,int,void *,int *);
 
 /* PST_DRIFT */
 struct inDrift {
@@ -733,26 +772,6 @@ struct inSetNParts {
     };
 void pstSetNParts(PST, void *, int, void *, int *);
 
-/* PST_GRAVEXTERNAL */
-struct inGravExternal {
-    int bIndirect;
-    int bDoSun;
-    double dSunMass;
-    double aSun[3];
-	/*
-	 ** For external galaxy potential stuff
-	 */
-	int bLogHalo;
-	int bHernquistSpheroid;
-	int bMiyamotoDisk;
-#ifdef SLIDING_PATCH
-	int bPatch;
-	double dOrbFreq;
-	double dOrbFreqZ2;
-#endif
-	};
-void pstGravExternal(PST,void *,int,void *,int *);
-
 #ifdef GASOLINE
 
 #ifdef SUPERNOVA
@@ -814,17 +833,6 @@ struct inInitEnergy {
 };
 
 void pstInitEnergy(PST, void *,int,void *,int *);
-
-/* PST_KICKVPRED */
-struct inKickVpred {
-	double dvFacOne;
-	double dvFacTwo;
-	double duDelta;
-	double duDotLimit;
-	int iGasModel;
-	double z;
-	};
-void pstKickVpred(PST,void *,int,void *,int *);
 
 /* PST_KICKVPRED */
 struct inKickRhopred {
@@ -930,14 +938,14 @@ struct inDoCollision {
 	COLLIDER Collider1,Collider2;
 	int bPeriodic;
 	COLLISION_PARAMS CP;
-	double dTime;
 #ifdef SLIDING_PATCH
 	double dOrbFreq;
+	double dTime;
 #endif
 	};
 struct outDoCollision {
 	COLLIDER Out[MAX_NUM_FRAG];
-	double dImpactEnergy;
+	double dT;
 	int iOutcome,nOut;
 	};
 void pstDoCollision(PST,void *,int,void *,int *);
@@ -963,17 +971,6 @@ void pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 #endif
 
 #endif /* COLLISIONS */
-
-#ifdef SLIDING_PATCH
-
-/* replacement PST_KICKVPRED */
-struct inKickVpred {
-	double dvFacOne;
-	double dvFacTwo;
-	};
-void pstKickVpred(PST,void *,int,void *,int *);
-
-#endif
 
 #ifdef GASOLINE
 
@@ -1027,3 +1024,16 @@ struct inClearTimer
     };
 
 void pstClearTimer(PST,void *,int,void *,int *);
+
+/* PST_KICKVPRED */
+#ifdef NEED_VPRED
+struct inKickVpred {
+	double dvFacOne;
+	double dvFacTwo;
+	double duDelta;
+	double duDotLimit;
+	int iGasModel;
+	double z;
+	};
+void pstKickVpred(PST,void *,int,void *,int *);
+#endif

@@ -28,7 +28,7 @@ struct parameters {
 	int bSqrtPhiStep;
 	int bAccelStep; /* true if bEpsAccStep or bSqrtPhiStep */
 	int bDensityStep;
-        int nTruncateRung;
+	int nTruncateRung;
 	int bNonSymp;
 	int bDoDensity;
  	int bDohOutput;
@@ -42,6 +42,11 @@ struct parameters {
 	int bLogHalo;
 	int bHernquistSpheroid;
 	int bMiyamotoDisk;
+	int bRotFrame;
+	double dOmega;
+	double dOmegaDot;
+	int bPatch;
+	double dOrbFreq;
 	int nBucket;
 	int iOutInterval;
 	int iLogInterval;
@@ -149,8 +154,6 @@ struct parameters {
 	int bFindRejects;
 	int bDoCollLog;
 	char achCollLog[256];
-	int bPatch;
-	double dOrbFreq;
 	double dSmallStep;
 	double dxUnifGrav;
 	double dyUnifGrav;

@@ -920,73 +920,70 @@ void smSmooth(SMX smx,SMF *smf)
 	** We may get many more than nSmooth neighbours here -- resort to a ReSmooth
 	*/
 	if (smx->bLowhFix && fBall2 < smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft) {
- 	     /* We ReSmooth for this guy later */
-             p[pi].fBall2 = 0;
-	     TYPESet(&p[pi],TYPE_SMOOTHDONE);
+		/* We ReSmooth for this guy later */
+		p[pi].fBall2 = 0;
+		TYPESet(&p[pi],TYPE_SMOOTHDONE);
 
-	     /* Get the next in line */
-	     for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
-		  if (pqi->id != pkd->idSelf) continue;
-		  if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
-		  /*pkd->pStore[pqi->p].fBall2 >= 0) continue; */
-		  if (pqi->fKey < h2) {
-		         pqn = pqi;
-			 h2 = pqn->fKey;
-		         }
-	          }
-		
-	     }
-        else {
-	     /* Limit fBall2 growth to help stability and neighbour finding */
-	     if (p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)
-	       fBall2=p[pi].fBallMax*p[pi].fBallMax;
+		/* Get the next in line */
+		for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
+			if (pqi->id != pkd->idSelf) continue;
+			if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
+			if (pqi->fKey < h2) {
+				pqn = pqi;
+				h2 = pqn->fKey;
+				}
+			}
+		}
+	else {
+		/* Limit fBall2 growth to help stability and neighbour finding */
+		if (p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)
+			fBall2=p[pi].fBallMax*p[pi].fBallMax;
 
-	     p[pi].fBall2 = fBall2;
-	     TYPESet(&p[pi],TYPE_SMOOTHDONE);
+		p[pi].fBall2 = fBall2;
+		TYPESet(&p[pi],TYPE_SMOOTHDONE);
 
-	     for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
-	          /*
-		  ** There are cases like in collisions where we do want to include the
-		  ** single nearest neighbor. So include the most distant particle.
-		  **
-		  if (pqi == pq) continue;
-		  */
-	          /*
-	          ** Move relevant data into Nearest Neighbor array.
-	          */
-	          if (pqi->fKey < fBall2) {
-		         smx->nnList[nCnt].iPid = pqi->id;
-			 smx->nnList[nCnt].iIndex = pqi->p;
-			 smx->nnList[nCnt].pPart = pqi->pPart;
-			 smx->nnList[nCnt].fDist2 = pqi->fKey;
-			 smx->nnList[nCnt].dx = pqi->dx;
-			 smx->nnList[nCnt].dy = pqi->dy;
-			 smx->nnList[nCnt].dz = pqi->dz;
-			 ++nCnt;
-		         } 
-		  if (pqi->id != pkd->idSelf) continue;
-		  if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
-		  /*pkd->pStore[pqi->p].fBall2 >= 0) continue; */
-		  if (pqi->fKey < h2) {
-		         pqn = pqi;
-			 h2 = pqn->fKey;
-		         }
-	          }
-		
-	     /*
+		for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
+			/*
+			 ** There are cases like in collisions where we do want to include the
+			 ** single nearest neighbor. So include the most distant particle.
+			 **
+			 if (pqi == pq) continue;
+			 */
+			/*
+			 ** Move relevant data into Nearest Neighbor array.
+			 */
+			if (pqi->fKey <= fBall2) {
+				smx->nnList[nCnt].iPid = pqi->id;
+				smx->nnList[nCnt].iIndex = pqi->p;
+				smx->nnList[nCnt].pPart = pqi->pPart;
+				smx->nnList[nCnt].fDist2 = pqi->fKey;
+				smx->nnList[nCnt].dx = pqi->dx;
+				smx->nnList[nCnt].dy = pqi->dy;
+				smx->nnList[nCnt].dz = pqi->dz;
+				++nCnt;
+				} 
+			if (pqi->id != pkd->idSelf) continue;
+			if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
+			if (pqi->fKey < h2) {
+				pqn = pqi;
+				h2 = pqn->fKey;
+				}
+			}
+
+		/*
 	     ** For periodic boundary conditions, make sure search ball has not
 	     ** exceeded half the spatial period. If it has, this probably means
 	     ** nSmooth is too large.
 	     */
-	     assert(!smx->bPeriodic ||
-		    ((lx == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lx*lx) &&
-		     (ly == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*ly*ly) &&
-		     (lz == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lz*lz)));
-	
-	     nSmoothed++;
-	     smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
-	     }
-	
+		assert(!smx->bPeriodic ||
+			   ((lx == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lx*lx) &&
+				(ly == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*ly*ly) &&
+				(lz == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lz*lz)));
+
+		nSmoothed++;
+		smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
+		}
+
 	/*
 	 ** Need to do a CACHE recombine (ie. finish up Smooth)
 	 ** to deliver info to particles on other processors.

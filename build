@@ -17,7 +17,7 @@ if !(-d $mdl) then
 	exit 1
 endif
 #
-set targets = (pkdgrav gasoline collisions sand_pile sliding_patch clean archive)
+set targets = (pkdgrav gasoline collisions sand_pile tumbler rot_frame sliding_patch clean archive)
 set modes = (null mpi pthread pvm ALL)
 set options = (optimize debug profile depend)
 @ target_dflt = 1
@@ -156,6 +156,14 @@ foreach mode ($modes)
 		set EXE = pkdgrav
 		set CODEDEF = "-DCOLLISIONS -DSAND_PILE"
 		breaksw
+	case tumbler:
+		set EXE = pkdgrav
+		set CODEDEF = "-DCOLLISIONS -DSAND_PILE -DTUMBLER"
+		breaksw
+	case rot_frame:
+		set EXE = pkdgrav
+		set CODEDEF = "-DCOLLISIONS -DROT_FRAME"
+		breaksw
 	case sliding_patch:
 		set EXE = pkdgrav
 		set CODEDEF = "-DCOLLISIONS -DSLIDING_PATCH"
@@ -222,6 +230,8 @@ foreach mode ($modes)
 		if ($mode == pvm) set PVM_ARCH = SGI64
 		breaksw
 	case Linux-alpha:
+		set CC = ccc
+#		set CC = gcc
 		set LDFLAGS = (-L/local/lib $LDFLAGS) # fix sqrt() bug
 		breaksw
 	case Linux-i686:

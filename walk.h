@@ -28,10 +28,6 @@
 	bIntersect = (INTRSCT_fDist2 <= fBall2);\
 	}
 
-#ifdef SLIDING_PATCH
-void pkdBucketWalk(PKD,int,int,int,double,double);
-#else
 void pkdBucketWalk(PKD,int,int,int);
-#endif
 
 #endif

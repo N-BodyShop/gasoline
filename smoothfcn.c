@@ -1178,6 +1178,8 @@ FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	}
 
+/*#define VERBOSE_COLLAPSE*/
+
 void
 _CheckForCollapse(PARTICLE *p,double dt,double rdotv,double r2,SMF *smf)
 {
@@ -1191,20 +1193,25 @@ _CheckForCollapse(PARTICLE *p,double dt,double rdotv,double r2,SMF *smf)
 
 	double dRatio;
 
-	dRatio = rdotv*(p->dtColPrev - dt)/r2;
+	dRatio = rdotv*(p->dtPrevCol - dt)/r2;
+	assert(dRatio > 0);
 	if (dRatio < smf->dCollapseLimit) {
+#ifdef VERBOSE_COLLAPSE
 		char ach[256];
 		(void) sprintf(ach,"WARNING [T=%e]: Tiny step %i & %i "
 					   "(dt=%.16e, dRatio=%.16e)\n",smf->dTime,
 					   p->iOrder,p->iOrderCol,dt,dRatio);
-		p->bTinyStep = 1;
 #ifdef MDL_DIAG
 		mdlDiag(smf->pkd->mdl,ach);
 #else
 		(void) printf("%i: %s",smf->pkd->idSelf,ach);
 #endif
+#endif
+		p->bTinyStep = 1;
 		}
 	}
+
+#undef VERBOSE_COLLAPSE
 
 void
 CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
@@ -1227,13 +1234,22 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	p->dtCol = DBL_MAX; /* initialize */
 	p->iOrderCol = -1;
-	if (smf->dStart == 0) p->dtColPrev = 0;
 	p->bTinyStep = 0;
+	if (smf->dStart == 0) { /* these are set in PutColliderInfo() */
+		p->dtPrevCol = 0;
+		p->iPrevCol = INT_MAX;
+		}
 
 	for (i=0;i<nSmooth;i++) {
 		pn = nnList[i].pPart;
-		/* consider all valid particles, even if inactive */
-		if (pn == p || pn->iOrder < 0) continue;
+		/*
+		 ** Consider all valid particles, even if inactive.  We can skip
+		 ** this neighbour if it's the last particle we collided with in
+		 ** this search interval, eliminating the potential problem of
+		 ** "ghost" particles colliding due to roundoff error. Note that
+		 ** iPrevCol must essentially be reset after each KICK.
+		 */
+		if (pn == p || pn->iOrder < 0 || pn->iOrder == p->iPrevCol) continue;
 		vx = p->v[0] - pn->v[0];
 		vy = p->v[1] - pn->v[1];
 		vz = p->v[2] - pn->v[2];
@@ -1255,7 +1271,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		 ** There should be no touching or overlapping particles
 		 ** at the start of the step...
 		 */
-		if (dt <= 0 && smf->dStart == 0) {
+		if (smf->dStart == 0 && dt <= 0) {
 			char ach[512];
 #ifdef FIX_COLLAPSE
 			if (dt < p->dtCol) { /* take most negative */
@@ -1311,6 +1327,81 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 
 #ifdef SAND_PILE
+#ifdef TUMBLER
+	{
+	WALLS *w = &smf->walls;
+	double R,ndotr,ndotv,target,dt,r2;
+	int j;
+	R = 2*p->fSoft; /* this is the particle radius (twice the softening) */
+
+	rdotv = r2 = 0; /* to keep compiler happy */
+	for (i=0;i<w->nWalls;i++) {
+		/* NOTE: following check may be invalid if dt is too large! */
+		if (p->iPrevCol == -i - 1) continue;
+		ndotr = ndotv = 0;
+		for (j=0;j<3;j++) {
+			ndotr += w->wall[i].n[j] * p->r[j];
+			ndotv += w->wall[i].n[j] * p->v[j];
+			}
+		if (w->wall[i].type == 1) {     /* cylinder wall */
+			double rprime[3],vprime[3],rr=0,rv=0,vv=0,dsc;
+			for (j=0;j<3;j++) {
+				rprime[j] = p->r[j] - ndotr * w->wall[i].n[j];
+				vprime[j] = p->v[j] - ndotv * w->wall[i].n[j];
+				rr += rprime[j]*rprime[j];
+				rv += rprime[j]*vprime[j];
+				vv += vprime[j]*vprime[j];
+				}
+			if (vv == 0) continue;
+			target = w->wall[i].radius - R;
+			if (rr > target*target) continue; /* no collision from outside */
+			dsc = rv*rv - rr*vv + target*target*vv;
+			assert(dsc >= 0);
+			dt = ( sqrt(dsc) - rv ) / vv;
+			if (dt <= 0) continue; /* should do an overlap check here */
+			if (smf->dCollapseLimit) {
+				if (rv > 0) {
+					rdotv = (1 - target/sqrt(rr))*rv;
+					r2 = (target - sqrt(rr));
+					}
+				else {
+					rdotv = (1 + target/sqrt(rr))*rv;
+					r2 = (target + sqrt(rr));
+					}
+				r2 *= r2;
+				}
+			}
+		else { /* infinite flat wall */
+			double distance; 
+			if (ndotv == 0) continue; 
+			target = w->wall[i].ndotp; 
+			/* first check for overlap */
+			if ( (smf->dStart == 0) && (fabs(target-ndotr) <= R) ) {
+				(void) fprintf(stderr,"OVERLAP [T=%g]: %i & wall %i dt %g\n",
+							   smf->dTime,p->iOrder,i,dt); 
+				(void) fprintf(stderr,"x=%f y=%f z=%f vx=%f vy=%f vz=%f\n",
+							   p->r[0],p->r[1],p->r[2],p->v[0],p->v[1],p->v[2]); 
+				}
+			/* now check for collision */
+			target += (ndotr < w->wall[i].ndotp) ? -R : R; 
+			distance = target - ndotr; 
+			dt = distance / ndotv; 
+			if (dt <= 0) continue; /* should do an overlap check here */
+			if (smf->dCollapseLimit) {
+				rdotv = - distance * ndotv; 
+				r2 = distance*distance; 
+				}
+			}
+		assert(smf->dStart > 0 || dt > 0);
+		if (dt > smf->dStart && dt <= smf->dEnd && dt < p->dtCol) {
+			p->dtCol = dt;
+			p->iOrderCol = -i -1;
+			if (smf->dCollapseLimit)
+				_CheckForCollapse(p,dt,rdotv,r2,smf);
+			}
+		}
+	}
+#else /* TUMBLER */
 	{
 	WALLS *w = &smf->walls;
 	double R,lx,lz,r2=0,x0,z0,d,m,b,dp,ldotv,l2,st,nx,nz,l;
@@ -1325,7 +1416,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		lx = p->r[0] - w->wall[i].x1;
 		lz = p->r[2] - w->wall[i].z1;
 		rdotv = lx*p->v[0] + lz*p->v[2];
-		if (rdotv < 0) {
+		if (p->iPrevCol != -w->nWalls - i*2 - 1 && rdotv < 0) {
 			approaching = 1;
 			r2 = lx*lx + lz*lz;
 			D = 1 - v2*(r2 - R*R)/(rdotv*rdotv);
@@ -1344,7 +1435,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		lx = p->r[0] - w->wall[i].x2;
 		lz = p->r[2] - w->wall[i].z2;
 		rdotv = lx*p->v[0] + lz*p->v[2];
-		if (rdotv < 0) {
+		if (p->iPrevCol != -w->nWalls - i*2 - 2 && rdotv < 0) {
 			approaching = 1;
 			r2 = lx*lx + lz*lz;
 			D = 1 - v2*(r2 - R*R)/(rdotv*rdotv);
@@ -1361,6 +1452,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			}
 		if (!approaching) continue; /* must be approaching at least 1 endpt */
 		/* now check wall */
+		if (p->iPrevCol == -i - 1) continue;
 		lx = w->wall[i].x2 - w->wall[i].x1;
 		lz = w->wall[i].z2 - w->wall[i].z1;
 		if (lx == 0) { /* vertical wall */
@@ -1443,6 +1535,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			}
 		}
 	}
+#endif /* !TUMBLER */
 #endif /* SAND_PILE */
 
 	}

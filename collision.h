@@ -29,11 +29,22 @@
 
 #ifdef SAND_PILE
 #define MAX_NUM_WALLS 10
+#ifdef TUMBLER
+typedef struct {
+	double n[3];		/*unit normal to flat wall or axis of cylinder */
+	double ndotp;		/*dot product of unit normal n and point p on wall */
+	double radius;		/* radius of cylinder */
+	double omega;		/*rotation rate of cylinder */
+	double dEpsN,dEpsT;
+	int type;			/*type = 0 for flat wall, = 1 for cylinder */
+	} WALL;
+#else
 typedef struct {
 	double x1,z1;
 	double x2,z2;
 	double dEpsN,dEpsT;
 	} WALL;
+#endif
 typedef struct {
 	int nWalls;
 	WALL wall[MAX_NUM_WALLS];
@@ -86,19 +97,9 @@ typedef struct {
 
 void pkdNextCollision(PKD pkd, double *dtCol, int *iOrder1, int *iOrder2);
 void pkdGetColliderInfo(PKD pkd, int iOrder, COLLIDER *c);
-#ifdef SLIDING_PATCH
-void pkdDoCollision(PKD pkd, double dTime, double dt,
-					const COLLIDER *c1, const COLLIDER *c2,
-					int bPeriodic, const COLLISION_PARAMS *CP,
-					double dOrbFreq, double *pdImpactEnergy, int *piOutcome,
-					COLLIDER *cOut, int *pnOut);
-#else
-void pkdDoCollision(PKD pkd, double dTime, double dt,
-					const COLLIDER *c1, const COLLIDER *c2,
-					int bPeriodic, const COLLISION_PARAMS *CP,
-					double *pdImpactEnergy, int *piOutcome,
-					COLLIDER *cOut, int *pnOut);
-#endif
+void pkdDoCollision(PKD pkd, double dt, const COLLIDER *c1, const COLLIDER *c2,
+					int bPeriodic, const COLLISION_PARAMS *CP, int *piOutcome,
+					double *dT,	COLLIDER *cOut, int *pnOut);
 void pkdResetColliders(PKD pkd, int iOrder1, int iOrder2);
 
 #endif /* COLLISIONS */

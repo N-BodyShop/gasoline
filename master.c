@@ -102,6 +102,7 @@ _msrMakePath(const char *dir,const char *base,char *path)
 	}
 
 #ifdef SAND_PILE
+
 void
 _msrGetWallData(MSR msr,char achFilename[])
 {
@@ -112,7 +113,7 @@ _msrGetWallData(MSR msr,char achFilename[])
 	int i,di;
 
 	assert(msr && achFilename);
-	if (!strlen(achFilename)) {
+	if (!strlen(achFilename)) { /*DEBUG won't work: "" in string*/
 		w->nWalls = 0;
 		return;
 		}
@@ -136,6 +137,16 @@ _msrGetWallData(MSR msr,char achFilename[])
 		goto abort;
 		}
 	for (i=0;i<w->nWalls;i++) {
+#ifdef TUMBLER
+		if (fscanf(fp,"%lf%lf%lf%lf%lf%lf%lf%lf%i",
+			&w->wall[i].n[0],&w->wall[i].n[1],&w->wall[i].n[2],
+			&w->wall[i].ndotp,&w->wall[i].radius,&w->wall[i].omega,
+			&w->wall[i].dEpsN,&w->wall[i].dEpsT,&w->wall[i].type) != 9) {
+			(void) fprintf(stderr,"Invalid/missing data in \"%s\" (wall %i)\n",
+						   achFilename,i);
+			goto abort;
+			}
+#else
 		if (fscanf(fp,"%lf%lf%lf%lf%lf%lf%lf%lf%i",
 				   &w->wall[i].x1,&dd,&w->wall[i].z1,
 				   &w->wall[i].x2,&dd,&w->wall[i].z2,
@@ -144,6 +155,7 @@ _msrGetWallData(MSR msr,char achFilename[])
 						   achFilename,i);
 			goto abort;
 			}
+#endif
 		if (w->wall[i].dEpsN < 0 || w->wall[i].dEpsN > 1) {
 			(void) fprintf(stderr,"Invalid epsn (%g) in \"%s\", wall %i\n",
 						   w->wall[i].dEpsN,achFilename,i);
@@ -161,6 +173,7 @@ _msrGetWallData(MSR msr,char achFilename[])
 	if (fp) (void) fclose(fp);
 	_msrExit(msr,1);
 	}
+
 #endif /* SAND_PILE */
 
 void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
@@ -493,6 +506,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bMiyamotoDisk = 0;
 	prmAddParam(msr->prm,"bMiyamotoDisk",0,&msr->param.bMiyamotoDisk,
 				sizeof(int),"mdisk","use/don't use galaxy Miyamoto Disk = -mdisk");
+	msr->param.bRotFrame = 0;
+	prmAddParam(msr->prm,"bRotFrame",0,&msr->param.bRotFrame,
+				sizeof(int),"rframe","use/don't use rotating frame = -rframe");
+	msr->param.dOmega = 0;
+	prmAddParam(msr->prm,"dOmega",2,&msr->param.dOmega,sizeof(double),
+				"omega","<dOmega> = 0");
+	msr->param.dOmegaDot = 0;
+	prmAddParam(msr->prm,"dOmegaDot",2,&msr->param.dOmegaDot,sizeof(double),
+				"omegadot","<dOmegaDot> = 0");
 	msr->param.iWallRunTime = 0;
 	prmAddParam(msr->prm,"iWallRunTime",1,&msr->param.iWallRunTime,
 				sizeof(int),"wall",
@@ -603,13 +625,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dGlassVR",2,&msr->param.dGlassVR,sizeof(double),
 				"dGlassVR","Right Max Random Velocity = 0.0");
 #endif /* GLASS */
-#ifdef COLLISIONS
 	msr->param.bPatch = 0;
 	prmAddParam(msr->prm,"bPatch",0,&msr->param.bPatch,
 				sizeof(int),"patch","enable/disable patch reference frame = -patch");
 	msr->param.dOrbFreq = 0.0;
 	prmAddParam(msr->prm,"dOrbFreq",2,&msr->param.dOrbFreq,
 				sizeof(double),"orbfreq","<Patch orbit frequency>");
+#ifdef COLLISIONS
 	msr->param.bFindRejects = 0;
 	prmAddParam(msr->prm,"bFindRejects",0,&msr->param.bFindRejects,
 				sizeof(int),"rejects","enable/disable check for rejected ICs = -rejects");
@@ -876,6 +898,17 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		}
 #endif /* GASOLINE */
 
+#ifdef ROT_FRAME
+	if (!msr->param.bRotFrame) {
+		puts("WARNING: ROT_FRAME set without bRotFrame");
+		}
+#else
+	if (msr->param.bRotFrame) {
+		puts("ERROR: bRotFrame set without ROT_FRAME");
+		_msrExit(msr,1);
+		}
+#endif
+
 #ifdef COLLISIONS
 	/*
 	 ** Parameter checks and initialization.
@@ -897,16 +930,23 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #endif
 	assert(msr->param.dCentMass >= 0);
 	if (msr->param.bFandG) {
+#ifdef PATCH
+		assert(0);
+#endif
+#ifdef SAND_PILE
+		assert(0);
+#endif
 		assert(msr->param.bHeliocentric);
-		/* note: ok to be heliocentric _without_ FandG... */
 		if (!msr->param.bCannonical) {
 			puts("ERROR: must use cannonical momentum in FandG collision model");
 			_msrExit(msr,1);
 			}
+#ifdef OLD_KEPLER /* override for now */
 		if (msr->param.iMaxRung > 1) {
 			puts("ERROR: multistepping not currently supported in FandG collision model");
 			_msrExit(msr,1);
 			}
+#endif
 		if (msr->param.dSmallStep < 0) {
 			puts("ERROR: dSmallStep cannot be negative");
 			_msrExit(msr,1);
@@ -948,11 +988,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #endif
 #ifdef SLIDING_PATCH
 	if (!msr->param.bPatch) {
-		puts("ERROR: SLIDING_PATCH set without bPatch");
+		puts("WARNING: SLIDING_PATCH set without bPatch");
+		}
+	if (msr->param.bPatch && msr->param.dxPeriod == FLOAT_MAXVAL) {
+		puts("ERROR: must specify positive x period");
 		_msrExit(msr,1);
 		}
-	if (msr->param.dxPeriod == FLOAT_MAXVAL) {
-		puts("ERROR: must specify positive x period");
+#else
+	if (msr->param.bPatch) {
+		puts("ERROR: bPatch set without SLIDING_PATCH");
 		_msrExit(msr,1);
 		}
 #endif
@@ -1101,6 +1145,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef GROWMASS
 	fprintf(fp," GROWMASS");
 #endif
+#ifdef ROT_FRAME
+	fprintf(fp," ROT_FRAME");
+#endif
 #ifdef COLLISIONS
 	fprintf(fp," COLLISIONS");
 #endif
@@ -1108,10 +1155,13 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," FIX_COLLAPSE");
 #endif
 #ifdef SLIDING_PATCH
-	fprintf(fp," SLIDING PATCH");
+	fprintf(fp," SLIDING_PATCH");
 #endif
 #ifdef SAND_PILE
 	fprintf(fp," SAND_PILE");
+#endif
+#ifdef TUMBLER
+	fprintf(fp," TUMBLER");
 #endif
 #ifdef _REENTRANT
 	fprintf(fp," _REENTRANT");
@@ -1174,12 +1224,15 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bFandG: %d",msr->param.bFandG);
 	fprintf(fp," bHeliocentric: %d",msr->param.bHeliocentric);
 	fprintf(fp," dCentMass: %g",msr->param.dCentMass);
+	fprintf(fp,"\n# bRotFrame: %d",msr->param.bRotFrame);
+	fprintf(fp," dOmega: %g",msr->param.dOmega);
+	fprintf(fp," dOmegaDot: %g",msr->param.dOmegaDot);
 	fprintf(fp,"\n# dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
 	fprintf(fp," dFracNoDomainDimChoice: %g",msr->param.dFracNoDomainDimChoice);
 	fprintf(fp," bFastGas: %d",msr->param.bFastGas);
 	fprintf(fp," dFracFastGas: %g",msr->param.dFracFastGas);
-        fprintf(fp," dhMinOverSoft: %g",msr->param.dhMinOverSoft);
-        fprintf(fp," bRungDD: %d",msr->param.bRungDD);
+	fprintf(fp," dhMinOverSoft: %g",msr->param.dhMinOverSoft);
+	fprintf(fp," bRungDD: %d",msr->param.bRungDD);
 	fprintf(fp," dRungDDWeight: %g ",msr->param.dRungDDWeight);
 #ifdef GROWMASS
 	fprintf(fp,"\n# GROWMASS: nGrowMass: %d",msr->param.nGrowMass);
@@ -1204,6 +1257,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bGasDomainDecomp: %d",msr->param.bGasDomainDecomp);
 	fprintf(fp," bSphStep: %d",msr->param.bSphStep);
 #endif
+	fprintf(fp,"\n# bPatch: %d",msr->param.bPatch);
+	fprintf(fp," dOrbFreq: %g",msr->param.dOrbFreq);
 #ifdef COLLISIONS
 	fprintf(fp,"\n# Collisions:");
 	fprintf(fp," bFindRejects: %d",msr->param.bFindRejects);
@@ -1212,8 +1267,6 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# dxUnifGrav: %g",msr->param.dxUnifGrav);
 	fprintf(fp," dyUnifGrav: %g",msr->param.dyUnifGrav);
 	fprintf(fp," dzUnifGrav: %g",msr->param.dzUnifGrav);
-	fprintf(fp,"\n# bPatch: %d",msr->param.bPatch);
-	fprintf(fp," dOrbFreq: %g",msr->param.dOrbFreq);
     fprintf(fp,"\n# iOutcomes: %d",msr->param.CP.iOutcomes);
 	fprintf(fp," iBounceOption: %d",msr->param.CP.iBounceOption);
     fprintf(fp," dEpsN: %g",msr->param.CP.dEpsN);
@@ -1235,9 +1288,18 @@ void msrLogParams(MSR msr,FILE *fp)
 	int i;
 	fprintf(fp,"\n# nWalls: %i",w->nWalls);
 	for (i=0;i<w->nWalls;i++) {
+#ifdef TUMBLER
+		fprintf(fp,"\n# Wall %i: nx: %g ny: %g nz: %g",
+			i,w->wall[i].n[0],w->wall[i].n[1],w->wall[i].n[2]);
+		fprintf(fp," ndotp: %g radius: %g omega:%g",
+			w->wall[i].ndotp,w->wall[i].radius,w->wall[i].omega);
+		fprintf(fp," dEpsN: %g dEpsT: %g type: %i",
+			w->wall[i].dEpsN,w->wall[i].dEpsT,w->wall[i].type);
+#else
 		fprintf(fp,"\n# Wall %i: x1: %g z1: %g x2: %g z2: %g",
 				i,w->wall[i].x1,w->wall[i].z1,w->wall[i].x2,w->wall[i].z2);
 		fprintf(fp," dEpsN: %g dEpsT: %g",w->wall[i].dEpsN,w->wall[i].dEpsT);
+#endif
 		}
 	}
 #endif
@@ -1861,47 +1923,47 @@ void msrDomainDecomp(MSR msr, int iRung, int bGreater)
 	
 	nActive=0;
 	if (bGreater) {
-	  iRungDD=msr->iCurrMaxRung+1; 
-	  while (iRungDD > iRung) {
-	    iRungDD--;
-	    nActive+=msr->nRung[iRungDD];
-	    }
-	  while(iRungDD > 0 && nActive < msr->N*msr->param.dFracNoDomainDecomp) {
-	    iRungDD--;
-	    nActive+=msr->nRung[iRungDD];
-	    }
-	  iRungSD = iRungDD;
-	  while(iRungSD > 0 && nActive < msr->N*msr->param.dFracNoDomainDimChoice) {
-	    iRungSD--;
-	    nActive+=msr->nRung[iRungSD];
-	    }
-	  }
+		iRungDD=msr->iCurrMaxRung+1; 
+		while (iRungDD > iRung) {
+			iRungDD--;
+			nActive+=msr->nRung[iRungDD];
+			}
+		while(iRungDD > 0 && nActive < msr->N*msr->param.dFracNoDomainDecomp) {
+			iRungDD--;
+			nActive+=msr->nRung[iRungDD];
+			}
+		iRungSD = iRungDD;
+		while(iRungSD > 0 && nActive < msr->N*msr->param.dFracNoDomainDimChoice) {
+			iRungSD--;
+			nActive+=msr->nRung[iRungSD];
+			}
+		}
 	else {
-	  iRungDD = iRung;
-	  while(iRungDD > 0 && msr->nRung[iRungDD] < msr->N*msr->param.dFracNoDomainDecomp) {
-	    iRungDD--;
-	    }
-	  iRungSD = iRungDD;
-	  while(iRungSD > 0 && msr->nRung[iRungSD] < msr->N*msr->param.dFracNoDomainDimChoice) {
-	    iRungSD--;
-	    }
-	  }
+		iRungDD = iRung;
+		while(iRungDD > 0 && msr->nRung[iRungDD] < msr->N*msr->param.dFracNoDomainDecomp) {
+			iRungDD--;
+			}
+		iRungSD = iRungDD;
+		while(iRungSD > 0 && msr->nRung[iRungSD] < msr->N*msr->param.dFracNoDomainDimChoice) {
+			iRungSD--;
+			}
+		}
 
 	if (msr->nActive < msr->N*msr->param.dFracNoDomainDecomp) {
 		if (msr->bDoneDomainDecomp && msr->iLastRungDomainDecomp >= iRungDD) {
-		        printf("Skipping Root Finder (nActive = %d/%d, iRung %d/%d/%d)\n",msr->nActive,msr->N,iRung,iRungDD,msr->iLastRungDomainDecomp);
+			if (msr->param.bVRungStat) printf("Skipping Root Finder (nActive = %d/%d, iRung %d/%d/%d)\n",msr->nActive,msr->N,iRung,iRungDD,msr->iLastRungDomainDecomp);
 			in.bDoRootFind = 0;
 			in.bDoSplitDimFind = 0;
-		        }
+			}
 		else if (iRungDD < iRung) {
-		        /* Set up the DD for the highest rung that still gets one */
-		        msrActiveRung(msr,iRungDD,bGreater);
-		        }
+			/* Set up the DD for the highest rung that still gets one */
+			msrActiveRung(msr,iRungDD,bGreater);
+			}
 		}
 	else iRungDD = iRung;
 
 	if (in.bDoRootFind && msr->bDoneDomainDecomp && iRungDD > iRungSD && msr->iLastRungDomainDecomp >= iRungSD) {
-		printf("Skipping Split Dim Finding (nDDActive = %d/%d, iRung %d/%d/%d/%d)\n",msr->nActive,msr->N,iRung,iRungDD,iRungSD,msr->iLastRungDomainDecomp);
+		if (msr->param.bVRungStat) printf("Skipping Split Dim Finding (nDDActive = %d/%d, iRung %d/%d/%d/%d)\n",msr->nActive,msr->N,iRung,iRungDD,iRungSD,msr->iLastRungDomainDecomp);
 		in.bDoSplitDimFind = 0;
 		}
 
@@ -2404,6 +2466,17 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
 		}
+#ifdef ROT_FRAME
+	if (msr->param.bRotFrame) { /* general rotating frame */
+		inExt.bIndirect = inExt.bDoSun = inExt.bLogHalo =
+			inExt.bHernquistSpheroid = inExt.bMiyamotoDisk = 0;
+		inExt.bRotFrame = msr->param.bRotFrame;
+		inExt.dOmega = msr->param.dOmega +
+			dStep*msr->param.dDelta*msr->param.dOmegaDot;
+		inExt.dOmegaDot = msr->param.dOmegaDot;
+		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
+		}
+#endif
 #ifdef SLIDING_PATCH
 	if (msr->param.bPatch) { /* orbiting patch */
 		static int bFirstCall = 1;
@@ -2498,23 +2571,54 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	}
 
 
-void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U,double *Eth)
+void msrCalcEandL(MSR msr,int bFirst,double dTime,double *E,double *T,
+				  double *U,double *Eth,double L[])
 {
-	struct outCalcE out;
+	struct outCalcEandL out;
+	struct inCalcEandLExt inExt;
+	struct outCalcEandLExt outExt;
 	double a;
+	int k;
 
-	pstCalcE(msr->pst,NULL,0,&out,NULL);
+	pstCalcEandL(msr->pst,NULL,0,&out,NULL);
 	*T = out.T;
 	*U = out.U;
 	*Eth = out.Eth;
+	for (k=0;k<3;k++) L[k] = out.L[k];
+	/*
+	 ** Calculate E & L contribution from external potential and/or
+	 ** reference frame. Currently only heliocentric frame implemented.
+	 ** NOTE: In some cases the correction terms may be comparable to
+	 ** the original values, resulting in precision errors.
+	 */
+	if (msr->param.bHeliocentric) {
+		double dSunPos[3],dSunVel[3],dRxV[3],dTotMass,dSunVel2;
+		inExt.bHeliocentric = msr->param.bHeliocentric;
+		pstCalcEandLExt(msr->pst,&inExt,sizeof(inExt),&outExt,NULL);
+		dTotMass = outExt.dMass + msr->param.dCentMass;
+		assert(dTotMass > 0);
+		dSunVel2 = 0;
+		for (k=0;k<3;k++) {
+			dSunPos[k] = - outExt.dSumMR[k]/dTotMass;
+			dSunVel[k] = - outExt.dSumMV[k]/dTotMass;
+			dSunVel2 += dSunVel[k]*dSunVel[k];
+			}
+		dRxV[0] = dSunPos[1]*dSunVel[2] - dSunPos[2]*dSunVel[1];
+		dRxV[1] = dSunPos[2]*dSunVel[0] - dSunPos[0]*dSunVel[2];
+		dRxV[2] = dSunPos[0]*dSunVel[1] - dSunPos[1]*dSunVel[0];
+		*T -= 0.5*dTotMass*dSunVel2;
+		*U -= msr->param.dCentMass*outExt.dPot;
+		for (k=0;k<3;k++) L[k] -= dTotMass*dRxV[k];
+		}
 	/*
 	 ** Do the comoving coordinates stuff.
+	 ** Currently L is not adjusted for this. Should it be?
 	 */
 	a = csmTime2Exp(msr->param.csm,dTime);
 	if (!msr->param.bCannonical) *T *= pow(a,4.0);
 	/*
 	 * Estimate integral (\dot a*U*dt) over the interval.
-	 * Note that this is equal to intregral (W*da) and the latter
+	 * Note that this is equal to integral (W*da) and the latter
 	 * is more accurate when a is changing rapidly.
 	 */
 	if (msrComove(msr) && !bFirst) {
@@ -2527,6 +2631,12 @@ void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U,doub
 	msr->dTimeOld = dTime;
 	msr->dUOld = *U;
 	*U *= a;
+#ifdef COLLISIONS
+	if (bFirst)
+		msr->dTcoll = 0;
+	else
+		*T -= msr->dTcoll;
+#endif
 	*E = (*T) + (*U) - msr->dEcosmo + a*a*(*Eth);
 	}
 
@@ -2535,11 +2645,9 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 {
 	struct inDrift in;
 	int j;
-#ifdef GASOLINE
-	double H,a;
+#ifdef NEED_VPRED
 	struct inKickVpred invpr;
-	struct inKickRhopred inRhop;
-	struct outKick out;
+	double a;
 #endif
 
 #ifdef COLLISIONS
@@ -2556,7 +2664,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		in.fCenter[j] = msr->fCenter[j];
 		}
 	in.bPeriodic = msr->param.bPeriodic;
-	in.bFandG = msr->param.bFandG; /* for NOW! */
+	in.bFandG = msr->param.bFandG;
 	in.fCentMass = msr->param.dCentMass;
 #ifdef SLIDING_PATCH
 	in.dOrbFreq = msr->param.dOrbFreq;
@@ -2568,10 +2676,12 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	 ** valid.
 	 */
 	msr->iTreeType = MSR_TREE_NONE;
-	
-#ifdef GASOLINE
+
+#ifdef NEED_VPRED
+
 #ifdef PREDRHO
 	if (msr->param.bPredRho == 2) {
+		struct inKickRhopred inRhop;
 		if (msrComove(msr)) 
 			inRhop.dHubbFac = 3*csmTime2Hub(msr->param.csm, dTime + dDelta/2.0);
 		else
@@ -2597,6 +2707,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.duDotLimit = msr->param.duDotLimit;
 		}
 	else {
+		double H;
 		/*
 		 ** Careful! For non-cannonical we want H and a at the 
 		 ** HALF-STEP! This is a bit messy but has to be special
@@ -2612,20 +2723,14 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.z = 1/a - 1;
 		invpr.duDotLimit = msr->param.duDotLimit;
 		}
-	if(dDelta != 0.0) {
-	    pstKickVpred(msr->pst,&invpr,sizeof(invpr),&out,NULL);
-	    printf("Drift (Vpred): Avg Wallclock %f, Max Wallclock %f\n",
-			   out.SumTime/out.nSum,out.MaxTime);
+	if (dDelta != 0.0) {
+		struct outKick out;
+		int nout;
+	    pstKickVpred(msr->pst,&invpr,sizeof(invpr),&out,&nout);
+		if (nout) printf("Drift (Vpred): Avg Wallclock %f, Max Wallclock %f\n",
+						 out.SumTime/out.nSum,out.MaxTime);
 	    }
-#endif
-#ifdef SLIDING_PATCH
-	if (msr->param.bPatch) {
-		struct inKickVpred invpr;
-		invpr.dvFacOne = 1.0;
-		invpr.dvFacTwo = dDelta;
-		pstKickVpred(msr->pst,&invpr,sizeof(invpr),NULL,NULL);
-		}
-#endif
+#endif /* NEED_VPRED */
 	}
 
 /* Untested */
@@ -2704,7 +2809,7 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 #else
 		in.dvFacOne = 1.0; /* no hubble drag, man! */
 #endif
-#if defined(GASOLINE) || defined(SLIDING_PATCH)
+#ifdef NEED_VPRED
 #ifdef GLASS	  
 		in.dvPredFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper; /* Damp velocities */
 #else
@@ -2718,7 +2823,7 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 		a = csmTime2Exp(msr->param.csm,dTime);
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-#endif
+#endif /* NEED_VPRED */
 		}
 	else {
 		/*
@@ -2731,7 +2836,7 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 		H = csmTime2Hub(msr->param.csm,dTime);
 		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
-#if defined(GASOLINE) || defined(SLIDING_PATCH)
+#ifdef NEED_VPRED
 		dTime -= dDelta/4.0;
 		a = csmTime2Exp(msr->param.csm,dTime);
 		H = csmTime2Hub(msr->param.csm,dTime);
@@ -2742,7 +2847,7 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-#endif
+#endif /* NEED_VPRED */
 		}
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
 	printf("Kick: Avg Wallclock %f, Max Wallclock %f\n",
@@ -2765,7 +2870,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.dvFacOne = 1.0;		/* no hubble drag, man! */
 #endif
 		in.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
-#if defined(GASOLINE) || defined(SLIDING_PATCH)
+#ifdef NEED_VPRED
 #ifdef GLASS	  
 		in.dvPredFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
 #else
@@ -2779,7 +2884,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		a = csmTime2Exp(msr->param.csm,dTime);
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-#endif
+#endif /* NEED_VPRED */
 		}
 	else {
 		/*
@@ -2792,7 +2897,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		H = csmTime2Hub(msr->param.csm,dTime);
 		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
-#if defined(GASOLINE) || defined(SLIDING_PATCH)
+#ifdef NEED_VPRED
 		in.dvPredFacOne = 1.0;
 		in.dvPredFacTwo = 0.0;
 		in.duDelta      = dDelta;
@@ -2800,13 +2905,18 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-#endif
+#endif /* NEED_VPRED */
 		}
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
 	if (msr->param.bVDetails)
 		printf("KickOpen: Avg Wallclock %f, Max Wallclock %f\n",
 			   out.SumTime/out.nSum,out.MaxTime);
 #ifdef COLLISIONS
+	/*
+	 ** This would be better as an external potential call, but usually
+	 ** we want uniform gravity *without* interparticle gravity, in which
+	 ** case pstGravExternal() is never called.
+	 */
 	{
 	struct inKickUnifGrav inkug;
 	inkug.dvx = msr->param.dxUnifGrav*dDelta;
@@ -2833,7 +2943,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.dvFacOne = 1.0; /* no hubble drag, man! */
 #endif
 		in.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
-#if defined(GASOLINE) || defined(SLIDING_PATCH)
+#ifdef NEED_VPRED
 #ifdef GLASS	  
 		in.dvPredFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper; /* Damp velocities */
 #else
@@ -2847,7 +2957,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		a = csmTime2Exp(msr->param.csm,dTime);
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-#endif
+#endif /* NEED_VPRED */
 		}
 	else {
 		/*
@@ -2860,7 +2970,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		H = csmTime2Hub(msr->param.csm,dTime);
 		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
-#if defined(GASOLINE) || defined(SLIDING_PATCH)
+#ifdef NEED_VPRED
 		in.dvPredFacOne = in.dvFacOne;
 		in.dvPredFacTwo = in.dvFacTwo;
 		in.duDelta      = dDelta;
@@ -2868,7 +2978,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-#endif
+#endif /* NEED_VPRED */
 		}
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
 	if (msr->param.bVDetails)
@@ -3007,6 +3117,9 @@ double msrReadCheck(MSR msr,int *piStep)
 	FDL_read(fdl,"current_ecosmo",&msr->dEcosmo);
 	FDL_read(fdl,"old_time",&msr->dTimeOld);
 	FDL_read(fdl,"old_potentiale",&msr->dUOld);
+#ifdef COLLISIONS
+	msr->dTcoll = 0; /*DEBUG*/
+#endif
 	if (!msr->bOpenSpec) {
 		FDL_read(fdl,"opening_type",&msr->iOpenType);
 		FDL_read(fdl,"opening_criterion",&msr->dCrit);
@@ -4173,16 +4286,20 @@ void msrTopStepKDK(MSR msr,
     else {
 		/* This Drifts everybody */
 		if (msr->param.bVDetails) printf("Drift, iRung: %d\n", iRung);
+#ifdef GASOLINE
 		msrDrift(msr,dTime,0.5*dDelta);
 		dTime += 0.5*dDelta;
 		dStep += 1.0/(2 << iRung);
 		msrActiveRung(msr,iRung,0);
-#ifdef GASOLINE
 		msrUpdateuDot(msr,dTime,0.5*dDelta,0); /* Need forward uDot for uPred */
-#endif
 		msrDrift(msr,dTime,0.5*dDelta);
 		dTime += 0.5*dDelta;
 		dStep += 1.0/(2 << iRung);
+#else
+		msrDrift(msr,dTime,dDelta);
+		dTime += dDelta;
+		dStep += 1;
+#endif
 
 		msrActiveMaskRung(msr,TYPE_ACTIVE,iKickRung,1);
 		msrDomainDecomp(msr,iKickRung,1);
@@ -5129,14 +5246,15 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 	smooth.bPeriodic = msr->param.bPeriodic;
 	smooth.bSymmetric = 0;
 	smooth.iSmoothType = SMX_COLLISION;
+	smooth.dfBall2OverSoft2 = 0; /*DEBUG what is this for???*/
 	smooth.smf.dTime = dTime;
 	smooth.smf.dStart = 0;
 	smooth.smf.dEnd = dDelta;
 	smooth.smf.dCollapseLimit = msr->param.CP.dCollapseLimit;
 	inDo.bPeriodic = smooth.bPeriodic;
-	inDo.dTime = smooth.smf.dTime;
 #ifdef SLIDING_PATCH
 	inDo.dOrbFreq = smooth.smf.dOrbFreq = msr->param.dOrbFreq;
+	inDo.dTime = smooth.smf.dTime;
 	smooth.smf.fLx = msr->param.dxPeriod;
 #endif
 #ifdef SAND_PILE
@@ -5207,6 +5325,7 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 #endif
 			inDo.CP = msr->param.CP;
 			pstDoCollision(msr->pst,&inDo,sizeof(inDo),&outDo,NULL);
+			msr->dTcoll += outDo.dT; /* account for kinetic energy loss */
 			++nCol;
 			switch (outDo.iOutcome) {
 #ifdef FIX_COLLAPSE
@@ -5272,14 +5391,13 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 						c2->r[0],c2->r[1],c2->r[2],
 						c2->v[0],c2->v[1],c2->v[2],
 						c2->w[0],c2->w[1],c2->w[2]);
-				fprintf(fp,"***IMPACT ENERGY=%e outcome=%s\n",
-						outDo.dImpactEnergy,
+				fprintf(fp,"***OUTCOME=%s dT=%e\n",
 #ifdef FIX_COLLAPSE
 						outDo.iOutcome == MISS ? "MISS" :
 #endif
 						outDo.iOutcome == MERGE ? "MERGE" :
 						outDo.iOutcome == BOUNCE ? "BOUNCE" :
-						outDo.iOutcome == FRAG ? "FRAG" : "UNKNOWN");
+						outDo.iOutcome == FRAG ? "FRAG" : "UNKNOWN",outDo.dT);
 				for (i=0;i<outDo.nOut;++i) {
 					c = &outDo.Out[i];
 					fprintf(fp,"***out%i:p=%i,i=%i,o=%i,M=%e,R=%e,rung=%i,"

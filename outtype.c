@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <assert.h>
 #include "pkd.h"
@@ -62,7 +63,7 @@ FLOAT VecType(PARTICLE *p,int iDim,int iType)
 		return(p->v[iDim]);
 	case OUT_ACCEL_VECTOR:
 		return(p->a[iDim]);
-#if defined(GASOLINE) || defined(SLIDING_PATCH)
+#ifdef NEED_VPRED
 	case OUT_VPRED_VECTOR:
 		return(p->vPred[iDim]);
 #endif

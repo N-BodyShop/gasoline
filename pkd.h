@@ -6,6 +6,15 @@
 #include "floattype.h"
 #include "cooling.h"
 
+/*
+ ** The following sort of definition should really be in a global
+ ** configuration header file -- someday...
+ */
+
+#if defined(GASOLINE) || defined(ROT_FRAME) || defined(SLIDING_PATCH)
+#define NEED_VPRED
+#endif
+
 #define CID_TOP			0
 #define CID_PARTICLE	0
 #define CID_CELL		1
@@ -47,7 +56,6 @@ typedef struct particle {
 #endif
 	FLOAT fBallMax;		/* SPH 2h Max value */
 #ifdef GASOLINE
-	FLOAT vPred[3];		/* predicted velocity (time centered) */
 	FLOAT uPred;		/* predicted thermal energy */
 	FLOAT PoverRho2;	/* P/rho^2 */
 	FLOAT u;	        /* thermal energy */ 
@@ -75,14 +83,15 @@ typedef struct particle {
 	int iDriftType;		/* either NORMAL or KEPLER */
 	double dtCol;		/* time to next encounter or collision */
 	int iOrderCol;		/* neighbour or collider iOrder */
-	double dtColPrev;	/* time of previous collision */
+	double dtPrevCol;	/* time of previous collision */
+	int iPrevCol;		/* iOrder of previous collider */
 	int bTinyStep;		/* flag for imminent collapse */
-#endif
-#ifdef SLIDING_PATCH
-	FLOAT vPred[3];
 #endif
 #ifdef SAND_PILE
 	int bStuck;
+#endif
+#ifdef NEED_VPRED
+	FLOAT vPred[3];		/* predicted velocity (time centered) */
 #endif
 	} PARTICLE;
 
@@ -139,7 +148,7 @@ int TYPEClear( PARTICLE *a );
 #define TYPEFilter(a,b,c)        (((a)->iActive & (b))==(c))
 #define TYPESet(a,b)             ((a)->iActive |= (b))
 #define TYPEReset(a,b)           ((a)->iActive &= (~(b)))
-#define TYPEClearACTIVE(a)       ((a)->iActive &= (TYPE_GAS|TYPE_DARK|TYPE_STAR|TYPE_SUPERCOOL))
+#define TYPEClearACTIVE(a)       ((a)->iActive &= (TYPE_ALL|TYPE_SUPERCOOL))
 #define TYPEClear(a)             ((a)->iActive = 0)
 
 #define CHECKPOINT_VERSION 6
@@ -289,6 +298,13 @@ typedef struct pkdContext {
 	 ** Cooling 
 	 */
 	CL cl;
+#ifdef SLIDING_PATCH
+	/*
+	 ** Rotating frame info...
+	 */
+	double dOrbFreq;
+	double dTime;
+#endif
 	} * PKD;
 
 
@@ -416,19 +432,11 @@ double pkdCalcOpen(KDN *,int,double,int);
 void pkdBuildLocal(PKD,int,int,double,int,int,int,KDN *);
 void pkdBuildBinary(PKD,int,int,double,int,int,int,KDN *);
 void pkdThreadTree(PKD pkd,int iCell,int iNext);
-#ifdef SLIDING_PATCH
-void pkdGravAll(PKD,int,int,int,int,int,double,double,int,double *,int *,
-				double *,double *,double *,CASTAT *,double *,double,double);
-#else
 void pkdGravAll(PKD,int,int,int,int,int,double,double,int,double *,int *,
 				double *,double *,double *,CASTAT *,double *);
-#endif
-void pkdCalcE(PKD,double *,double *,double *);
-#ifdef SLIDING_PATCH
-void pkdDrift(PKD,double,FLOAT *,int,int,FLOAT,double,double);
-#else
+void pkdCalcEandL(PKD,double *,double *,double *,double []);
+void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,FLOAT);
-#endif
 void pkdUpdateUdot(PKD pkd,double,double,int,int);
 void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double);
 void pkdReadCheck(PKD,char *,int,int,int,int);
@@ -476,6 +484,9 @@ void pkdSunIndirect(PKD,double *,int,double);
 void pkdLogHalo(PKD);
 void pkdHernquistSpheroid(PKD pkd);
 void pkdMiyamotoDisk(PKD pkd);
+#ifdef ROT_FRAME
+void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);
+#endif
 
 #ifdef GASOLINE
 #ifdef SUPERNOVA
@@ -492,7 +503,6 @@ void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dPdVMetal, d
 void pkdUpdateuDot(PKD,double,double,int,int);
 void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z);
-void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int iGasModel, double z, double duDotLimit);
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);
 int pkdSphCurrRung(PKD pkd, int iRung, int bGreater);
 void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int bViscosityLimitdt);
@@ -543,8 +553,16 @@ void pkdQQBuild(PKD pkd, int nBucket, int bActiveOnly, KDN *pRoot);
 #define SHEAR(ix,lx,ly,w,t)\
 	((ix) < 0 ? fmod(0.5*(ly) - 1.5*(ix)*(w)*(lx)*(t),(ly)) - 0.5*(ly):\
 	 (ix) > 0 ? 0.5*(ly) - fmod(0.5*(ly) + 1.5*(ix)*(w)*(lx)*(t),(ly)): 0.0)
-void pkdPatch(PKD pkd, double dOrbFreq, double dOrbFreqZ2);
+void pkdPatch(PKD pkd, double dOrbFreqZ2);
+#endif
+
+#ifdef NEED_VPRED
+#ifdef GASOLINE
+void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,
+				  int iGasModel, double z, double duDotLimit);
+#else
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
+#endif
 #endif
 
 #endif

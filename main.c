@@ -33,7 +33,7 @@ int main(int argc,char **argv)
 	MSR msr;
 	FILE *fpLog = NULL;
 	char achFile[256]; /*DEBUG use MAXPATHLEN here (& elsewhere)? -- DCR*/
-	double dTime,E,T,U,Eth,dWMax,dIMax,dEMax,dMass,dMultiEff;
+	double dTime,E,T,U,Eth,L[3],dWMax,dIMax,dEMax,dMass,dMultiEff;
 	long lSec,lStart;
 	int i,iStep,iSec,nActive,iStop = 0;
 
@@ -218,13 +218,15 @@ int main(int argc,char **argv)
 		if (msrDoGravity(msr)) {
 			msrGravity(msr,0.0,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			msrMassCheck(msr,dMass,"After msrGravity");
-			msrCalcE(msr,MSR_INIT_ECOSMO,dTime,&E,&T,&U,&Eth);
-			msrMassCheck(msr,dMass,"After msrCalcE");
+			msrCalcEandL(msr,MSR_INIT_E,dTime,&E,&T,&U,&Eth,L);
+			msrMassCheck(msr,dMass,"After msrCalcEandL");
 			dMultiEff = 1.0;
 			if (msrLogInterval(msr)) {
-				(void) fprintf(fpLog,"%e %e %e %e %e %e %i %e %e %e %e\n",
-							   dTime,1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
-							   E,T,U,Eth,iSec,dWMax,dIMax,dEMax,dMultiEff);
+				(void) fprintf(fpLog,"%e %e %.16e %e %e %e %.16e %.16e %.16e "
+							   "%i %e %e %e %e\n",dTime,
+							   1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
+							   E,T,U,Eth,L[0],L[1],L[2],iSec,dWMax,dIMax,dEMax,
+							   dMultiEff);
 				}
 			}
 
@@ -235,7 +237,7 @@ int main(int argc,char **argv)
 			if (msrKDK(msr)) {
 				dMultiEff = 0.0;
 				lSec = time(0);
-#ifdef COLLISIONS
+#ifdef OLD_KEPLER
 				if (msr->param.bFandG)
 					msrPlanetsKDK(msr,iStep - 1,dTime,msrDelta(msr),
 								  &dWMax,&dIMax,&dEMax,&iSec);
@@ -252,13 +254,15 @@ int main(int argc,char **argv)
 				 ** Output a log file line at each step.
 				 ** Note: no extra gravity calculation required.
 				 */
-				msrCalcE(msr,MSR_STEP_ECOSMO,dTime,&E,&T,&U,&Eth);
-				msrMassCheck(msr,dMass,"After msrCalcE in KDK");
+				msrCalcEandL(msr,MSR_STEP_E,dTime,&E,&T,&U,&Eth,L);
+				msrMassCheck(msr,dMass,"After msrCalcEandL in KDK");
 				lSec = time(0) - lSec;
 				if (msrLogInterval(msr) && iStep%msrLogInterval(msr) == 0) {
-					(void) fprintf(fpLog,"%e %e %e %e %e %e %li %e %e %e %e\n",
-								   dTime,1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
-								   E,T,U,Eth,lSec,dWMax,dIMax,dEMax,dMultiEff);
+					(void) fprintf(fpLog,"%e %e %.16e %e %e %e %.16e %.16e "
+								   "%.16e %li %e %e %e %e\n",dTime,
+								   1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
+								   E,T,U,Eth,L[0],L[1],L[2],lSec,dWMax,dIMax,
+								   dEMax,dMultiEff);
 					}
 				}
 			else {
@@ -285,11 +289,13 @@ int main(int argc,char **argv)
 						msrGravity(msr,iStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 						msrMassCheck(msr,dMass,"After msrGravity in DKD-log");
 						}
-					msrCalcE(msr,MSR_STEP_ECOSMO,dTime,&E,&T,&U,&Eth);
-					msrMassCheck(msr,dMass,"After msrCalcE in DKD-log");
-					(void) fprintf(fpLog,"%e %e %e %e %e %e %li %e %e %e %e\n",
-								   dTime,1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
-								   E,T,U,Eth,time(0)-lSec,dWMax,dIMax,dEMax,dMultiEff);
+					msrCalcEandL(msr,MSR_STEP_E,dTime,&E,&T,&U,&Eth,L);
+					msrMassCheck(msr,dMass,"After msrCalcEandL in DKD-log");
+					(void) fprintf(fpLog,"%e %e %.16e %e %e %e %.16e %.16e "
+								   "%.16e %li %e %e %e %e\n",dTime,
+								   1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
+								   E,T,U,Eth,L[0],L[1],L[2],time(0)-lSec,dWMax,
+								   dIMax,dEMax,dMultiEff);
 					}
 				lSec = time(0) - lSec;
 				}
