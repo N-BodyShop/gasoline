@@ -1048,13 +1048,17 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind)
 			    ++ittr;
 			    }
 		    }
+	    if(!bDoRootFind) {
 		/*
-		   fprintf(stderr, "id: %dFit stats: Active: %d %d Inactive: %d %d Sum: %d %d Space: %d %d\n",
-		   pst->mdl->idSelf, nLow, nHigh,
-		   outWtLow.nLow + outWtHigh.nLow, outWtLow.nHigh
-		   + outWtHigh.nHigh,
-		   nLowTot, nHighTot, nLowerStore, nUpperStore);
-		   */
+		 ** Make sure that the particles are back in
+		 ** active-inactive order after we've split all the
+		 ** particles when we are not rootfinding.
+		 */
+		mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVEORDER,NULL,0);
+		pstActiveOrder(pst->pstLower,NULL,0,&nActive,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&nActive,NULL);
+		}
+	    
 	    /*
 	     ** Make sure everything is OK.
 	     */
