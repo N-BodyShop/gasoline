@@ -2925,29 +2925,41 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 	 ** Read Stuff!
 	 */
 	for (i=0;i<nLocal;++i) {
+		PARTICLE *p = &pkd->pStore[i];
+	    
 		fread(&cp,sizeof(CHKPART),1,fp);
-		pkd->pStore[i].iOrder = cp.iOrder;
-		pkd->pStore[i].fMass = cp.fMass;
-		pkd->pStore[i].fSoft = cp.fSoft;
+		p->iOrder = cp.iOrder;
+		p->fMass = cp.fMass;
+		p->fSoft = cp.fSoft;
 		for (j=0;j<3;++j) {
-			pkd->pStore[i].r[j] = cp.r[j];
-			pkd->pStore[i].v[j] = cp.v[j];
+			p->r[j] = cp.r[j];
+			p->v[j] = cp.v[j];
 			}
 #ifdef GASOLINE
-		pkd->pStore[i].u = cp.u;
-		pkd->pStore[i].uPred = cp.u;
-		pkd->pStore[i].fMetals = cp.fMetals;
+		p->u = cp.u;
+		p->uPred = cp.u;
+		p->fMetals = cp.fMetals;
+		p->fTimeForm = 0.0;
+		mdlassert(pkd->mdl, !pkdIsStar(pkd, p));
+#ifndef NOCOOLING		
+		/* Place holders -- later fixed in pkdInitEnergy */
+		p->Y_HI = 0.75;
+		p->Y_HeI = 0.0625;
+		p->Y_HeII = 0.0;
+#endif
 #endif
 #ifdef COLLISIONS
 		for (j=0;j<3;++j)
-			pkd->pStore[i].w[j] = cp.w[j];
-		pkd->pStore[i].iColor = cp.iColor;
+			p->w[j] = cp.w[j];
+		p->iColor = cp.iColor;
 #endif
-		TYPESet(&(pkd->pStore[i]),TYPE_ACTIVE);
-		pkd->pStore[i].iRung = 0;
-		pkd->pStore[i].fWeight = 1.0;	/* set the initial weight to 1.0 */
-		pkd->pStore[i].fDensity = 0.0;
-		pkd->pStore[i].fBall2 = 0.0;
+		TYPEClear(p);
+		TYPESet(p,TYPE_ACTIVE);
+		p->iRung = 0;
+		p->fWeight = 1.0;
+		p->fDensity = 0.0;
+		p->fBall2 = 0.0;
+		p->fBallMax = 0.0;
 		}
 	fclose(fp);	
 	}
