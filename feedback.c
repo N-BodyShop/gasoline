@@ -46,6 +46,8 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
     FBEffects fbEffects;
     double dTotMassLoss;
     double dTotMetals;
+    double dTotMOxygen;
+    double dTotMIron;
     double dDeltaYr;
     double dSNIaMassStore;
     int j;
@@ -60,16 +62,11 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
     
     for(i = 0; i < n; ++i) {
         p = &pkd->pStore[i];
-#ifdef COOLDEBUG
-		if (p->iOrder == 842079) {
-			fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
-			}
-		assert(p->u >= 0);
-		assert(p->uPred >= 0);
-#endif
         if(pkdIsStar(pkd, p)) {
             dTotMassLoss = 0.0;
             dTotMetals = 0.0;
+            dTotMOxygen = 0.0;
+            dTotMIron = 0.0;
             p->fESNrate = 0.0;
 
             if(fb->dInitStarMass > 0.0)
@@ -124,6 +121,8 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                 fbTotals[j].dMassLoss += fbEffects.dMassLoss;
                 fbTotals[j].dEnergy += fbEffects.dEnergy*fbEffects.dMassLoss;
                 fbTotals[j].dMetals += fbEffects.dMetals*fbEffects.dMassLoss;
+                dTotMOxygen += fbEffects.dMOxygen*MSOLG/fb->dGmUnit;
+                dTotMIron += fbEffects.dMIron*MSOLG/fb->dGmUnit;
                 }
 
             /*
@@ -133,6 +132,8 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 
             p->fMass -= dTotMassLoss;
             p->fMSN = dTotMassLoss;
+            p->fMIronOut = dTotMIron;
+            p->fMOxygenOut = dTotMOxygen;
             /* The SNMetals and ESNrate used to be specific
                quantities, but we are making them totals as
                they leave the stars so that they are easier
@@ -152,14 +153,6 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                         }
 		}
 
-#ifdef COOLDEBUG
-    for(i=0;i<pkdLocal(pkd);++i) {
-		p = &pkd->pStore[i];
-		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i] after\n",p->iOrder,(int) (p-pkd->pStore));
-		assert(p->u >= 0);
-		assert(p->uPred >= 0);
-		}
-#endif
 	}
 
 
@@ -217,6 +210,8 @@ void snCalcWindFeedback(SN sn, SFEvent sfEvent,
     fbEffects->dMassLoss = 0.0;
     fbEffects->dEnergy = 0.0;    
     fbEffects->dMetals = 0.0; 
+    fbEffects->dMIron = 0.0;
+    fbEffects->dMOxygen = 0.0;
   }
 }
 void snCalcUVFeedback(SN sn, SFEvent sfEvent,
@@ -227,6 +222,8 @@ void snCalcUVFeedback(SN sn, SFEvent sfEvent,
     fbEffects->dMassLoss = 0.0;
     fbEffects->dEnergy = 0.0;
     fbEffects->dMetals = 0.0;
+    fbEffects->dMIron = 0.0;
+    fbEffects->dMOxygen = 0.0;
     }
 
 #endif

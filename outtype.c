@@ -75,6 +75,10 @@ FLOAT ArrType(PARTICLE *p,int iType)
 	    return((FLOAT) p->fMassForm);
 	case OUT_COOLTURNONTIME_ARRAY:
 	    return((FLOAT) p->fTimeCoolIsOffUntil);
+	case OUT_OXYGENMASSFRAC_ARRAY:
+	    return((FLOAT) p->fMFracOxygen);
+	case OUT_IRONMASSFRAC_ARRAY:
+	    return((FLOAT) p->fMFracIron);
 #endif
 #ifdef SIMPLESF
 	case OUT_TCOOLAGAIN_ARRAY:

@@ -1,3 +1,4 @@
+/*#include <fenv.h>*/
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -46,6 +47,9 @@ int main(int argc,char **argv)
 	int i,iStep,iSec=0,iStop=0,nActive;
 
 	char achBaseMask[256];
+
+	/* code to make gasoline core dump if there is a floating point exception 
+	feenableexcept(FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);*/
 
 #ifdef TINY_PTHREAD_STACK
 	static int first = 1;
@@ -509,6 +513,12 @@ int main(int argc,char **argv)
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
 					strncat(achFile,".coolontime",256);
 					msrOutArray(msr,achFile,OUT_COOLTURNONTIME_ARRAY);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".OxMassFrac",256);
+					msrOutArray(msr,achFile,OUT_OXYGENMASSFRAC_ARRAY);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".FeMassFrac",256);
+					msrOutArray(msr,achFile,OUT_IRONMASSFRAC_ARRAY);
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
 					strncat(achFile,".rhoform",256);
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);

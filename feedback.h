@@ -24,6 +24,8 @@ typedef struct fbeffects {
     double dMassLoss;		/* Mass lost in Solar Masses */
     double dMetals;		/* Fraction of the mass lost in
 				   elements heavier than Helium */
+    double dMIron;              /* Solar masses of iron ejected */
+    double dMOxygen;            /* Solar masses of oxygen ejected */
     } FBEffects;
 
 #define FB_SNII 0

@@ -312,6 +312,11 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		p->uPred = 0.0;
 #ifdef STARFORM
 		p->fESNrate = 0.0;
+		p->fMSNII = 0.0;
+		p->fMOxygenOut = 0.0;
+		p->fMIronOut = 0.0;
+		p->fMFracOxygen = 0.0;
+		p->fMFracIron = 0.0;
                 p->fTimeCoolIsOffUntil = 0.0;
 #endif
 #ifdef SIMPLESF
@@ -3632,6 +3637,9 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		p->fDensity = cp.fDenForm;
 		p->iGasOrder = cp.iGasOrder;
                 p->fTimeCoolIsOffUntil = cp.fTimeCoolIsOffUntil;
+                p->fMSNII = 0.0;
+                p->fMFracOxygen = cp.fMFracOxygen;
+                p->fMFracIron = cp.fMFracIron;
 #endif
 #ifdef SIMPLESF
 		p->fMassStar = cp.fMassStar;
@@ -3713,6 +3721,8 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 		cp.fDenForm = pkd->pStore[i].fDensity;
 		cp.iGasOrder = pkd->pStore[i].iGasOrder;
                 cp.fTimeCoolIsOffUntil = pkd->pStore[i].fTimeCoolIsOffUntil;
+                cp.fMFracOxygen = pkd->pStore[i].fMFracOxygen;
+                cp.fMFracIron = pkd->pStore[i].fMFracIron;
 #endif
 #ifdef SIMPLESF
 		cp.fMassStar = pkd->pStore[i].fMassStar;

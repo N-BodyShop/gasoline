@@ -79,11 +79,15 @@ void snInitConstants(SN sn)
        Raiteri, Villata and Navarro, A&A 315, 105, 1996 */
     sn->dMEjexp = 1.056;    
     sn->dMEjconst = 0.7682; 
-    sn->dMFeexp = 1.864;    
-    sn->dMFeconst = 2.802e-4; 
-    sn->dMOxexp = 2.721;    
-    sn->dMOxconst = 4.586e-4; 
-    sn->dSNIaMetals = 0.76;
+    sn->dMFeexp = 2.864;    
+    sn->dMFeconst = 9.783e-5; 
+    sn->dMOxexp = 3.721;    
+    sn->dMOxconst = 1.2325e-4; 
+/*    sn->dMFeexp = 1.864;    
+    sn->dMFeconst = 2.802e-4;       The values from the article, but
+    sn->dMOxexp = 2.721;            we want to integrate the functions
+    sn->dMOxconst = 4.586e-4; */
+    sn->dSNIaMetals = 0.76;  /* 0.63 Msol Fe + 0.13 Msol Ox (Theilemann 1986)*/
     
     MSInitialize(&tempMS);
     sn->MSparam = *tempMS;
@@ -128,6 +132,8 @@ void snCalcSNIIFeedback(SN sn, SFEvent sfEvent,
 		fbEffects->dMassLoss = 0.0;
 		fbEffects->dEnergy = 0.0;
 		fbEffects->dMetals = 0.0;
+                fbEffects->dMIron = 0.0;
+                fbEffects->dMOxygen = 0.0;
 		return;
 		} else {
 			dMStarMinII = max (sn->dMSNIImin, dMStarMin); 
@@ -172,10 +178,14 @@ void snCalcSNIIFeedback(SN sn, SFEvent sfEvent,
 	/* fraction of mass in metals to be re-distributed among neighbouring
 	 * gas particles.  Formula 6-8 of  Raiteri, Villata and Navarro, A&A
 	 * 315, 105, 1996  are used to calculate SNII yields
+         * Integrate over power law from lowest mass progenitor to highest mass.
 	 */
-    fbEffects->dMetals = (sn->dMFeconst * pow(dMeanMStar, sn->dMFeexp)
-						  + sn->dMOxconst*pow(dMeanMStar, sn->dMOxexp))
-		/ (sn->dMEjconst * pow(dMeanMStar, sn->dMEjexp));
+    fbEffects->dMIron = 
+        sn->dMFeconst * (pow(dMStarMax, sn->dMFeexp) - pow(dMStarMin, sn->dMFeexp));
+    fbEffects->dMOxygen = 
+        sn->dMOxconst * (pow(dMStarMax, sn->dMOxexp) - pow(dMStarMin, sn->dMOxexp));
+    fbEffects->dMetals = ( fbEffects->dMIron + fbEffects->dMOxygen )/ fbEffects->dMassLoss;
+/*		/ (sn->dMEjconst * pow(dMeanMStar, sn->dMEjexp));*/
     
 	}
 
@@ -213,15 +223,15 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
 
         assert (dMStarMinIa < dMStarMaxIa && dMStarMinIa >0 && dMStarMaxIa > 0);
         
-        dMSNTypeIa = dMSNIa (&mssn, dMStarMinIa, dMStarMaxIa); /* mass of
-																  stars that
-																  go SNIa */
-        dNSNTypeIa = dNSNIa (&mssn, dMStarMinIa, dMStarMaxIa); /* number of
-																  stars that go
-																  SNIa */
+        /* mass of stars that go SNIa */
+        dMSNTypeIa = dMSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
+        
+        /* number of stars that go SNIa */        
+        dNSNTypeIa = dNSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
         dMSNTypeIa /= dMtot;	/* convert to mass fraction of stars */
-        dMSNTypeIa *= sfEvent.dMass; /* convert to mass of stars that
-										go SNIa */
+        
+        /* convert to mass of stars that go SNIa */ 
+        dMSNTypeIa *= sfEvent.dMass; 
 
         dNSNTypeIa /= dMtot;	/* convert to number per solar mass of stars */
         dNSNTypeIa *= sfEvent.dMass; /* convert to absolute number of SNIa */
@@ -231,6 +241,8 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
 			fbEffects->dMassLoss = 0.0;
 			fbEffects->dEnergy = 0.0;    
 			fbEffects->dMetals = 0.0; 
+                        fbEffects->dMIron = 0.0;
+                        fbEffects->dMOxygen = 0.0;
 			return;
 			}
     
@@ -243,6 +255,13 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
        particles */
     fbEffects->dEnergy = dESNTypeIa/(MSOLG*fbEffects->dMassLoss);   
 
+    /* Following Raiteri 1996 who follows Thielemann's 1986 W7 model for
+     * SNIa explosions, the same mass of iron and oxygen is released in
+     * every single explosion.  A comparable amount of Silicon is ejected
+     * to the amount of Oxygen that is ejected.
+     */
+    fbEffects->dMIron = dNSNTypeIa*0.63;
+    fbEffects->dMOxygen = dNSNTypeIa*0.13;
 	/* Fraction of mass in metals to be re-distributed among neighbouring
 	 * gas particles: assumes fixed amount of metals per supernovea independent of
 	 * mass. See Raiteri, Villata and Navarro, page 108.

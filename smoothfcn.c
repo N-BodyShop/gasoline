@@ -2087,6 +2087,8 @@ void initTreeParticleDistSNEnergy(void *p1)
     if(TYPETest((PARTICLE *)p1, TYPE_GAS)){
         ((PARTICLE *)p1)->fESNrate *= ((PARTICLE *)p1)->fMass;
         ((PARTICLE *)p1)->fMetals *= ((PARTICLE *)p1)->fMass;    
+        ((PARTICLE *)p1)->fMFracOxygen *= ((PARTICLE *)p1)->fMass;    
+        ((PARTICLE *)p1)->fMFracIron *= ((PARTICLE *)p1)->fMass;    
         }
     
     }
@@ -2106,6 +2108,8 @@ void initDistSNEnergy(void *p1)
      */
     ((PARTICLE *)p1)->fESNrate = 0.0;
     ((PARTICLE *)p1)->fMetals = 0.0;
+    ((PARTICLE *)p1)->fMFracOxygen = 0.0;
+    ((PARTICLE *)p1)->fMFracIron = 0.0;
     }
 
 void combDistSNEnergy(void *p1,void *p2)
@@ -2118,6 +2122,8 @@ void combDistSNEnergy(void *p1,void *p2)
     ((PARTICLE *)p1)->fMass += fAddedMass;
     ((PARTICLE *)p1)->fESNrate += ((PARTICLE *)p2)->fESNrate;
     ((PARTICLE *)p1)->fMetals += ((PARTICLE *)p2)->fMetals;
+    ((PARTICLE *)p1)->fMFracOxygen += ((PARTICLE *)p2)->fMFracOxygen;
+    ((PARTICLE *)p1)->fMFracIron += ((PARTICLE *)p2)->fMFracIron;
     ((PARTICLE *)p1)->fTimeCoolIsOffUntil = max( ((PARTICLE *)p1)->fTimeCoolIsOffUntil,
                 ((PARTICLE *)p2)->fTimeCoolIsOffUntil );
     }
@@ -2125,7 +2131,7 @@ void combDistSNEnergy(void *p1,void *p2)
 void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fAveDens,delta_m,m_new,f1,f2,fPartEncMass;
+	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fAveDens,fNewBall,f2h2,delta_m,m_new,f1,f2,fPartEncMass;
 	int i,counter;
 
 	assert(TYPETest(p, TYPE_STAR));
@@ -2140,30 +2146,56 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             q = nnList[i].pPart;
             fNorm_u += q->fMass*rs;
 	    assert(TYPETest(q, TYPE_GAS));
-        }
-        fNorm = 1./rstot;
+            }
         fAveDens = fNorm_u;
+#ifdef SMALLSNSMOOTH
+        if ( p->fESNrate != 0.0 && p->fMSNII != 0.0 ) {
+            fNewBall = pow(3.0*p->fMSNII*smf->dSNFBMassFactor/(4.0*M_PI*fAveDens),0.3333);
+/*            fNewBall = 10*pow(p->ESNII,0.5)*pow(fAveDens,0.2);*/
+            /* fNewBall in units of smoothing lengths (normalized
+                to BALL size), so multiply by BALL to get new h.
+            */
+            f2h2 = fNewBall*fNewBall*BALL2(p);
+            ih2 = 4.0/f2h2;
+            for (i=0;i<nSmooth;++i) {
+                r2 = nnList[i].fDist2*ih2;            
+                KERNEL(rs,r2);
+                rstot += rs;
+                q = nnList[i].pPart;
+                fNorm_u += q->fMass*rs;
+                assert(TYPETest(q, TYPE_GAS));
+                }
+            }
+#endif /*SMALLSNSMOOTH*/      
+    
+        fNorm = 1./rstot;
         fNorm_u = 1./fNorm_u;
   counter=0;
 	for (i=0;i<nSmooth;++i) {
             q = nnList[i].pPart;
-            r2 = nnList[i].fDist2*ih2;            
+#ifdef SMALLSNSMOOTH
+            if ( p->fESNrate != 0.0 && nnList[i].fDist2 < f2h2 ) {
+                q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
+                    smf->dTime + smf->dtCoolingShutoff);
+counter++;
+#endif /*SMALLSNSMOOTH*/          
+            r2 = nnList[i].fDist2*ih2;  
             KERNEL(rs,r2);
             /* Remember: We are dealing with total energy rate and total metal
-               mass, not energy/gram or metals per gram.  */
+             * mass, not energy/gram or metals per gram.  
+             * q->fMass is in product to make units work for fNorm_u.
+             */
             q->fESNrate += rs*fNorm_u*q->fMass*p->fESNrate;
             q->fMetals += rs*fNorm_u*q->fMass*p->fSNMetals;
+            q->fMFracOxygen += rs*fNorm_u*q->fMass*p->fMOxygenOut;
+            q->fMFracIron += rs*fNorm_u*q->fMass*p->fMIronOut;
             
-            /*	The normalization factor "rs" is one of three possibilities:
-                1) scale time with rs so that cooling is turned off shorter
-                    further you are away from the star forming particle because
-                    it will be harder for the SN to ionize stuff further away.
-                2) scale more severely with rs*fNorm so that time quantity is
-                    "conserved" (not very physically intuitive)
-                3) Don't scale at all because ionization will happen over
-                    every smoothed particle.
-                We (Anil, Greg, TRQ) chose rs because it seemed the most
-                physically plausible.
+#ifndef SMALLSNSMOOTH
+            /*	Mass Factor Stuff:
+                r2 (normalized radius to particle) is 
+                the right thing to use to calculate the mass
+                because average density is also based on smoothing
+                normalized units.
             */
             fPartEncMass = 4*M_PI*sqrt(r2)*r2*fAveDens/3;
             if ( p->fESNrate != 0.0 && 
@@ -2172,10 +2204,13 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                     smf->dTime + smf->dtCoolingShutoff);
 counter++;
                 }
-
+#endif /*not SMALLSNSMOOTH */
             /*	update mass after everything else so that distribution
                 is based entirely upon initial mass of gas particle */
             q->fMass += rs*fNorm_u*q->fMass*p->fMSN;
+#ifdef SMALLSNSMOOTH
+            }
+#endif /*SMALLSNSMOOTH*/          
             }
 if (counter >0) printf("%i ",counter);
 }
@@ -2188,6 +2223,8 @@ void postDistSNEnergy(PARTICLE *p1, SMF *smf)
     if(TYPETest(p1, TYPE_GAS)){
         p1->fESNrate /= p1->fMass;
         p1->fMetals /= p1->fMass;    
+        p1->fMFracIron /= p1->fMass;    
+        p1->fMFracOxygen /= p1->fMass;    
         }
     
     }
