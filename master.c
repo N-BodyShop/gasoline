@@ -299,6 +299,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	 ** Initialize tree type to none.
 	 */
 	msr->iTreeType = MSR_TREE_NONE;
+	msr->iCurrMaxRung = 0;
 	}
 
 
@@ -813,7 +814,10 @@ double msrReadTipsy(MSR msr)
 					printf("Badly specified final redshift, check -zto parameter.\n");	
 					_msrExit(msr);
 					}
-				msr->param.dDelta = (tTo-dTime)/msr->param.nSteps;
+				if(msr->param.nSteps != 0)
+				    msr->param.dDelta = (tTo-dTime)/msr->param.nSteps;
+				else
+				    msr->param.dDelta = 0.0;
 				}
 			}
 		else {
