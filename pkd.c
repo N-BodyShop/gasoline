@@ -443,6 +443,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 	int i,j;
 	struct dark_particle dp;
 	long lStart;
+	int nout;
 
 	/*
 	 ** First verify order of the particles!
@@ -503,10 +504,12 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 			dp.mass = pkd->pStore[i].fMass;
 			dp.eps = pkd->pStore[i].fSoft;
 			dp.phi = pkd->pStore[i].fPot;
-			fwrite(&dp,sizeof(struct dark_particle),1,fp);
+			nout = fwrite(&dp,sizeof(struct dark_particle),1,fp);
+		        assert(nout == 1);
 			}
 		}
-	fclose(fp);
+	nout = fclose(fp);
+	assert(nout == 0);
 	}
 
 
