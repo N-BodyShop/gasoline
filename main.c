@@ -28,6 +28,7 @@ void main_ch(MDL mdl)
 /*DEBUG Should opaque nature of "msr" be enforced in main()? -- DCR*/ 
 
 #ifdef AMPI
+#define printf CmiPrintf
 /* Charm MPI requires this name as "main" */
 int AMPI_Main(int argc,char **argv)
 #else

@@ -28,6 +28,11 @@
 #include "outtype.h"
 #include "smoothfcn.h"
 
+#ifdef AMPI
+#include "charm.h"
+#define printf CmiPrintf
+#endif
+
 #ifdef COLLISIONS
 #include "ssdefs.h" /* in turn includes ssio.h */
 #include "collision.h"
