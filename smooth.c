@@ -126,8 +126,14 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bCombiner)
 	 ** Initialize Densities of the local particles.
 	 */
 	for (pi=0;pi<pkd->nLocal;++pi) {
-		pkd->pStore[pi].fDensity = 0.0;
-		pkd->pStore[pi].fBall2 = -1.0;
+		if (pkd->pStore[pi].iActive) {
+			pkd->pStore[pi].fDensity = 0.0;
+			pkd->pStore[pi].fBall2 = -1.0;
+			}
+		else if (pkd->pStore[pi].fBall2 < 0.0) {
+			pkd->pStore[pi].fBall2 = 0.0;
+			pkd->pStore[pi].fDensity = 0.0;
+			}
 		}
 	/*
 	 ** Allocate mark array.
@@ -314,7 +320,7 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	 ** Check if we are finished!
 	 */
 	if (pNext == pkd->nLocal) goto DoneSmooth;
-	if (pkd->pStore[pNext].fBall2 >= 0) {
+	if (pkd->pStore[pNext].fBall2 >= 0.0) {
 		++pNext;
 		goto StartParticle;
 		}
@@ -462,7 +468,7 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 		for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
 			if (pqi->id == pkd->idSelf) smx->piMark[pqi->p] = 0;
 			else {
-			        mdlRelease(mdl,CID_PARTICLE,pqi->pPart);
+				mdlRelease(mdl,CID_PARTICLE,pqi->pPart);
 				PQ_HASHDEL(smx->pqHash,smx->nHash,pqi);
 				}
 			}
