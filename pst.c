@@ -385,6 +385,7 @@ void _pstRootSplit(PST pst,int iSplitDim)
 			++ittr;
 			}
 		fm = fl;
+		assert(nLow <= nLowerStore);
 		}
 	else if (nHigh > nUpperStore) {
 		fl = fm;
@@ -417,6 +418,7 @@ void _pstRootSplit(PST pst,int iSplitDim)
 			++ittr;
 			}
 		fm = fu;
+		assert(nHigh <= nUpperStore);
 		}
 	pst->fSplit = fm;
 	pst->iSplitDim = d;
@@ -425,6 +427,7 @@ void _pstRootSplit(PST pst,int iSplitDim)
 	 **
 	 ** Careful, SERVICE PST_COLREJECTS does NOT conform strictly to
 	 ** the proper use of MDL. This should be fixed in the future.
+	 ** FIXED -- MDL modified.
 	 */
 	pLowerRej = malloc(pst->nLower*sizeof(OREJ));
 	assert(pLowerRej != NULL);

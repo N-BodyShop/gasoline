@@ -59,6 +59,7 @@ void main(int argc,char **argv)
 	 */
 	dTime = msrReadTipsy(msr);
 	if(prmArgSpecified(msr->prm,"dSoft")) msrSetSoft(msr,msrSoft(msr));
+	msrDrift(msr,0.0);
 	/*
 	 ** Now we have all the parameters for the simulation we can make a 
 	 ** log file entry.

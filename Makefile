@@ -32,10 +32,10 @@ SPX_LIBMDL = v_sqrt1.o $(SPX_MDL)/mdl.o -lm
 #
 #       T3D MPP defines
 #
-T3D_MDL = $(HOME)/ptools/mdl/mpp
-V_SQRT = $(HOME)/ptools/v_sqrt/lib
-V_SQRT1 = $(HOME)/ptools/v_sqrt1/lib
-RPC = $(HOME)/rpc
+T3D_MDL = ../mdl/mpp
+V_SQRT = ../v_sqrt/lib
+V_SQRT1 = ../v_sqrt1/lib
+RPC = ../rpc
 RPCOBJS = $(RPC)/xdr.o $(RPC)/xdr_mem.o $(RPC)/xdr_rec.o \
           $(RPC)/xdr_reference.o $(RPC)/xdr_stdio.o $(RPC)/xdr_float.o
 

@@ -327,6 +327,7 @@ int pkdSwapRejects(PKD pkd,int idSwap)
 	if (idSwap != -1) {
 		nBuf = (pkd->nStore - pkd->nLocal)*sizeof(PARTICLE);
 		nOutBytes = pkd->nRejects*sizeof(PARTICLE);
+		assert(pkd->nLocal + pkd->nRejects <= pkd->nStore);
 		mdlSwap(pkd->mdl,idSwap,nBuf,&pkd->pStore[pkd->nLocal],
 				nOutBytes,&nSndBytes,&nRcvBytes);
 		pkd->nLocal += nRcvBytes/sizeof(PARTICLE);

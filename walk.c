@@ -138,10 +138,13 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3],i
 					if (nPart + n > pkd->nMaxPart) {
 						pkd->nMaxPart += pkd->nMaxPart + n;
 						pkd->ilp = realloc(pkd->ilp,pkd->nMaxPart*sizeof(ILP));
+						assert(pkd->ilp != NULL);
 						if (pkd->nMaxPart > pkd->nSqrtTmp) {
 						    pkd->nSqrtTmp = pkd->nMaxPart;
 						    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+						    assert(pkd->sqrttmp != NULL);
 						    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+						    assert(pkd->d2a != NULL);
 						}
 						}
 					for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj,++nPart) {
@@ -171,10 +174,13 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3],i
 					pkd->nMaxCellSoft *= 2;
 					pkd->ilcs = realloc(pkd->ilcs,pkd->nMaxCellSoft*
 										sizeof(ILCS));
+					assert(pkd->ilcs != NULL);
 					if (pkd->nMaxCellSoft > pkd->nSqrtTmp) {
 					    pkd->nSqrtTmp = pkd->nMaxCellSoft;
 					    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+					    assert(pkd->sqrttmp != NULL);
 					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+					    assert(pkd->d2a != NULL);
 						}
 					}
 				pkd->ilcs[nCellSoft].m = pkdn->fMass;
@@ -195,10 +201,13 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3],i
 					pkd->nMaxCellNewt *= 2;
 					pkd->ilcn = realloc(pkd->ilcn,pkd->nMaxCellNewt*
 										sizeof(ILCN));
+					assert(pkd->ilcn != NULL);
 					if (pkd->nMaxCellNewt > pkd->nSqrtTmp) {
 					    pkd->nSqrtTmp = pkd->nMaxCellNewt;
 					    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+					    assert(pkd->sqrttmp != NULL);
 					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+					    assert(pkd->d2a != NULL);
 						}
 					}
 				SETILIST(iOrder,pkd->ilcn[nCellNewt],pkdn,x,y,z);
@@ -249,10 +258,13 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3],in
 				if (nPart + n > pkd->nMaxPart) {
 					pkd->nMaxPart += pkd->nMaxPart + n;
 					pkd->ilp = realloc(pkd->ilp,pkd->nMaxPart*sizeof(ILP));
+					assert(pkd->ilp != NULL);
 					if (pkd->nMaxPart > pkd->nSqrtTmp) {
 					    pkd->nSqrtTmp = pkd->nMaxPart;
 					    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+					    assert(pkd->sqrttmp != NULL);
 					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+					    assert(pkd->d2a != NULL);
 						}
 					}
 				for (j=0;j<n;++j,++nPart) {
@@ -284,10 +296,13 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3],in
 					pkd->nMaxCellSoft *= 2;
 					pkd->ilcs = realloc(pkd->ilcs,pkd->nMaxCellSoft*
 										sizeof(ILCS));
+					assert(pkd->ilcs != NULL);
 					if (pkd->nMaxCellSoft > pkd->nSqrtTmp) {
 					    pkd->nSqrtTmp = pkd->nMaxCellSoft;
 					    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+					    assert(pkd->sqrttmp != NULL);
 					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+					    assert(pkd->d2a != NULL);
 						}
 					}
 				pkd->ilcs[nCellSoft].m = pkdn->fMass;
@@ -308,10 +323,13 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3],in
 					pkd->nMaxCellNewt *= 2;
 					pkd->ilcn = realloc(pkd->ilcn,pkd->nMaxCellNewt*
 										sizeof(ILCN));
+					assert(pkd->ilcn != NULL);
 					if (pkd->nMaxCellNewt > pkd->nSqrtTmp) {
 					    pkd->nSqrtTmp = pkd->nMaxCellNewt;
 					    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+					    assert(pkd->sqrttmp != NULL);
 					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+					    assert(pkd->d2a != NULL);
 						}
 					}
 				SETILIST(iOrder,pkd->ilcn[nCellNewt],pkdn,x,y,z);
@@ -404,10 +422,13 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
 									pkd->ilcs = realloc(pkd->ilcs,
 														pkd->nMaxCellSoft*
 														sizeof(ILCS));
+									assert(pkd->ilcs != NULL);
 									if (pkd->nMaxCellSoft > pkd->nSqrtTmp) {
 									    pkd->nSqrtTmp = pkd->nMaxCellSoft;
 									    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+									    assert(pkd->sqrttmp != NULL);
 									    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+									    assert(pkd->d2a != NULL);
 										}
 									}
 								pkd->ilcs[pkd->nCellSoft].m = pkdn->fMass;
@@ -432,10 +453,13 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
 									pkd->ilcn = realloc(pkd->ilcn,
 														pkd->nMaxCellNewt*
 														sizeof(ILCN));
+									assert(pkd->ilcn != NULL);
 									if (pkd->nMaxCellNewt > pkd->nSqrtTmp) {
 									    pkd->nSqrtTmp = pkd->nMaxCellNewt;
 									    pkd->sqrttmp = realloc(pkd->sqrttmp,pkd->nSqrtTmp*sizeof(double));
+									    assert(pkd->sqrttmp != NULL);
 									    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
+									    assert(pkd->d2a != NULL);
 										}
 									}
 								SETILIST(iOrder,pkd->ilcn[pkd->nCellNewt],pkdn,x,y,z);
