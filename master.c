@@ -2694,7 +2694,7 @@ void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta,
 	int iRung = 0;
 
 	*pdMultiEff = 0.0;
-	if(msr->param.bNonSymp)
+	if(msr->param.bNonSymp || msr->param.bEpsVel)
 		msrTopStepNS(msr,dStep,dTime,dDelta,iRung,1,pdMultiEff);
 	else
 		msrTopStepDen(msr,dStep,dTime,dDelta,iRung,pdMultiEff);
