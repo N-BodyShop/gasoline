@@ -29,7 +29,7 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 	int nMultiFlop[5] = MEVAL_FLOP;
 #endif
 	
-	if (!iOrder) return;
+	if (!iOrder) return 0;
 	mom = pkd->ilcnRoot;
 	pkdn = &pkd->kdNodes[iBucket];
 	n = pkdn->pUpper - pkdn->pLower + 1;
