@@ -2,7 +2,6 @@
 #define PKD_HINCLUDED
 
 #include <sys/resource.h>
-#include <sys/timeb.h>
 #include "mdl.h"
 #include "floattype.h"
 #include "cooling.h"
