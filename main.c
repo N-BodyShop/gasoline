@@ -60,7 +60,7 @@ void main(int argc,char **argv)
 	 */
 	dTime = msrReadTipsy(msr);
 	dMass = msrMassCheck(msr,-1.0,"Initial");
-	if(prmArgSpecified(msr->prm,"dSoft")) msrSetSoft(msr,msrSoft(msr));
+	if (prmSpecified(msr->prm,"dSoft")) msrSetSoft(msr,msrSoft(msr));
 	msrMassCheck(msr,dMass,"After msrSetSoft");
 	/*
 	 ** If the simulation is periodic make sure to wrap all particles into
