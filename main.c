@@ -113,7 +113,11 @@ int main(int argc,char **argv)
 	/*
 	 ** Establish safety lock.
 	 */
-	if (!msrGetLock(msr)) return 1;
+	if (!msrGetLock(msr)) {
+	    msrFinish(msr);
+	    mdlFinish(mdl);
+	    return 1;
+	    }
 	/*
 	 ** Read in the binary file, this may set the number of timesteps or
 	 ** the size of the timestep when the zto parameter is used.
