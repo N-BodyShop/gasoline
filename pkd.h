@@ -45,8 +45,8 @@ typedef struct particle {
 #ifdef COLORCODE
 	FLOAT fColor;
 #endif
-#ifdef GASOLINE
         FLOAT fBallMax;         /* SPH 2h Max value */
+#ifdef GASOLINE
 	FLOAT vPred[3];		/* predicted velocity (time centered) */
 	FLOAT uPred;		/* predicted thermal energy */
 	FLOAT PoverRho2;	/* P/rho^2 */
