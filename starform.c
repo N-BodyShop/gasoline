@@ -224,10 +224,10 @@ void pkdFormStars(PKD pkd, STFM stfm, double dTime, int *nFormed,
         p = &pkd->pStore[i];
         if(pkdIsGas(pkd, p))
             stfmFormStars(stfm, pkd, p, dTime, nFormed, dMassFormed, nDeleted);
-        }
         assert(p->u >= 0);
         assert(p->uPred >= 0);
         assert(p->fMass >= 0);
+        }
     }
 
 #endif
