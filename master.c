@@ -147,7 +147,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bEpsVel = 1;
 	prmAddParam(msr->prm,"bEpsVel",0,&msr->param.bEpsVel,sizeof(int),
 				"ev", "<Epsilon on V timestepping>");
-	msr->param.bNonSymp = 0;
+	msr->param.bNonSymp = 1;
 	prmAddParam(msr->prm,"bNonSymp",0,&msr->param.bNonSymp,sizeof(int),
 				"ns", "<Non-symplectic density stepping>");
 	msr->param.iMaxRung = 1;
@@ -2827,7 +2827,7 @@ void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
     msr->iCurrMaxRung = out.iMaxRung;
     }
 
-void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta, 
+void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta, 
 				   int iRung, double *pdActiveSum)
 {
     double dMass = -1.0;
@@ -2842,10 +2842,18 @@ void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta,
 				}
 			msrDrift(msr,dTime,0.5*dDelta);
 			msrActiveRung(msr, iRung, 1);
-			msrBuildTree(msr,0,dMass,1);
 			dTime += 0.5*dDelta;
 			msrInitDt(msr);
-			msrDensityStep(msr, dTime);
+			if(msr->param.bEpsVel) {
+			    msrInitAccel(msr);
+			    msrBuildTree(msr,0,dMass,0);
+			    msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+			    msrAccelStep(msr, dTime);
+			    }
+			else {
+			    msrBuildTree(msr,0,dMass,1);
+			    msrDensityStep(msr, dTime);
+			    }
 #ifdef SMOOTH_STEP
 			msrSmooth(msr,dTime,SMX_TIMESTEP,0);
 #endif
@@ -2856,7 +2864,7 @@ void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta,
 		/*
 		 ** Actual Stepping.
 		 */
-		msrTopStepDen(msr, dStep, dTime, 0.5*dDelta,iRung+1,pdActiveSum);
+		msrTopStepSym(msr, dStep, dTime, 0.5*dDelta,iRung+1,pdActiveSum);
 		dStep += 1.0/(2 << iRung);
 		msrActiveRung(msr, iRung, 0);
 		msrInitAccel(msr);
@@ -2883,7 +2891,7 @@ void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta,
 		    }
 		msrKickDKD(msr, dTime, dDelta);
 		msrRungStats(msr);
-		msrTopStepDen(msr,dStep,dTime+0.5*dDelta,0.5*dDelta,iRung+1,
+		msrTopStepSym(msr,dStep,dTime+0.5*dDelta,0.5*dDelta,iRung+1,
 					  pdActiveSum);
 		}
 	else {    
@@ -2989,10 +2997,10 @@ void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta,
 	int iRung = 0;
 
 	*pdMultiEff = 0.0;
-	if(msr->param.bNonSymp || msr->param.bEpsVel)
+	if(msr->param.bNonSymp)
 		msrTopStepNS(msr,dStep,dTime,dDelta,iRung,1,pdMultiEff);
 	else
-		msrTopStepDen(msr,dStep,dTime,dDelta,iRung,pdMultiEff);
+		msrTopStepSym(msr,dStep,dTime,dDelta,iRung,pdMultiEff);
 	printf("Multistep Efficiency (average number of microsteps per step):%f\n",
 		   *pdMultiEff);
 	}
