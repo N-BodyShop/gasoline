@@ -1134,7 +1134,7 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	double dMass;
 	struct inDomainDecomp *in = vin;
 
-	assert(nIn == 0);
+	assert(nIn == sizeof(struct inDomainDecomp));
 	if (pst->nLeaves > 1) {
 		/*
 		 ** First calculate the Bounds for the set.
