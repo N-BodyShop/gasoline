@@ -230,6 +230,7 @@ void pstCalcE(PST,void *,int,void *,int *);
 struct inDrift {
 	double dDelta;
 	float fCenter[3];
+	int bPeriodic;
 	};
 void pstDrift(PST,void *,int,void *,int *);
 

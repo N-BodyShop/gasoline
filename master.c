@@ -1006,6 +1006,7 @@ void msrDrift(MSR msr,double dDelta)
 	for (j=0;j<3;++j) {
 		in.fCenter[j] = msr->fCenter[j];
 		}
+	in.bPeriodic = msr->param.bPeriodic;
 	pstDrift(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 

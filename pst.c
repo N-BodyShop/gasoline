@@ -1085,7 +1085,7 @@ void pstDrift(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdDrift(plcl->pkd,in->dDelta,in->fCenter);
+		pkdDrift(plcl->pkd,in->dDelta,in->fCenter,in->bPeriodic);
 		}
 	if (pnOut) *pnOut = 0;
 	}

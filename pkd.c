@@ -1113,7 +1113,7 @@ void pkdCalcE(PKD pkd,double *T,double *U)
 	}
 
 
-void pkdDrift(PKD pkd,double dDelta,float fCenter[3])
+void pkdDrift(PKD pkd,double dDelta,float fCenter[3],int bPeriodic)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -1123,10 +1123,12 @@ void pkdDrift(PKD pkd,double dDelta,float fCenter[3])
 	for (i=0;i<n;++i) {
 		for (j=0;j<3;++j) {
 			p[i].r[j] += dDelta*p[i].v[j];
-			if (p[i].r[j] >= fCenter[j]+0.5*pkd->fPeriod[j])
-				p[i].r[j] -= pkd->fPeriod[j];
-			if (p[i].r[j] < fCenter[j]-0.5*pkd->fPeriod[j])
-				p[i].r[j] += pkd->fPeriod[j];
+			if (bPeriodic) {
+				if (p[i].r[j] >= fCenter[j]+0.5*pkd->fPeriod[j])
+					p[i].r[j] -= pkd->fPeriod[j];
+				if (p[i].r[j] < fCenter[j]-0.5*pkd->fPeriod[j])
+					p[i].r[j] += pkd->fPeriod[j];
+				}
 			}
 		}
 	}

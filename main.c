@@ -48,7 +48,9 @@ void main(int argc,char **argv)
 		sprintf(achFile,"%s.log",msrOutName(msr));
 		fpLog = fopen(achFile,"a");
 		assert(fpLog != NULL);
-		while (msrRedshift(msr) <= msrRedOut(msr,iRed)) ++iRed;
+		if (msrComove(msr)) {
+			while (msrRedshift(msr) <= msrRedOut(msr,iRed)) ++iRed;
+			}
 		goto Restart;
 		}
 	/*
@@ -88,13 +90,13 @@ void main(int argc,char **argv)
 		for (iStep=1;iStep<=msrSteps(msr);++iStep) {
 			msrDrift(msr,msrDelta(msr)/2.0);
 			dTime += msrDelta(msr)/2.0;
-			msrStepCosmo(msr,dTime);
+			if (msrComove(msr)) msrStepCosmo(msr,dTime);
 			msrBuildTree(msr);
 			msrGravity(msr,&iSec,&dWMax,&dIMax,&dEMax);
 			msrKick(msr,msrDelta(msr));
 			msrDrift(msr,msrDelta(msr)/2.0);
 			dTime += msrDelta(msr)/2.0;
-			msrStepCosmo(msr,dTime);
+			if (msrComove(msr)) msrStepCosmo(msr,dTime);
 			if (iStep%msrLogInterval(msr) == 0) {
 				/*
 				 ** Output a log file line.
@@ -108,11 +110,20 @@ void main(int argc,char **argv)
 				fflush(fpLog);
 				
 				}
-			if (msrRedshift(msr) <= msrRedOut(msr,iRed)) {
-				msrReorder(msr);
-				sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
-				msrWriteTipsy(msr,achFile,dTime);
-				++iRed;
+			if (msrComove(msr)) {
+				if (msrRedshift(msr) <= msrRedOut(msr,iRed)) {
+					msrReorder(msr);
+					sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
+					msrWriteTipsy(msr,achFile,dTime);
+					++iRed;
+					}
+				}
+			else {
+				if (iStep%msrOutInterval(msr) == 0) {
+					msrReorder(msr);
+					sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
+					msrWriteTipsy(msr,achFile,dTime);
+					}
 				}
 			if (iStep%msrCheckInterval(msr) == 0) {
 				/*
@@ -123,12 +134,24 @@ void main(int argc,char **argv)
 				;
 				}
 			}
-		/*
-		 ** Final output.
-		 */
-		msrReorder(msr);
-		sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
-		msrWriteTipsy(msr,achFile,dTime);
+		if (msrComove(msr)) {
+			/*
+			 ** Final output.
+			 */
+			msrReorder(msr);
+			sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
+			msrWriteTipsy(msr,achFile,dTime);
+			}
+		else {
+			if (msrSteps(msr)%msrOutInterval(msr)) {
+				/*
+				 ** Final output.
+				 */
+				msrReorder(msr);
+				sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
+				msrWriteTipsy(msr,achFile,dTime);
+				}
+			}
 		} 
 	else {
 		msrReorder(msr);
