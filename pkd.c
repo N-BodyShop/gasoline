@@ -3460,6 +3460,7 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 	CHKPART cp;
 	long lStart;
 	int i,j,nLocal;
+	int nout;
 
 	/*
 	 ** Seek past the header and up to nStart.
@@ -3508,9 +3509,11 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 			cp.w[j] = pkd->pStore[i].w[j];
 		cp.iColor = pkd->pStore[i].iColor;
 #endif /* COLLISIONS */
-		fwrite(&cp,sizeof(CHKPART),1,fp);
+		nout = fwrite(&cp,sizeof(CHKPART),1,fp);
+		mdlassert(pkd->mdl,nout == 1);
 		}
-	fclose(fp);
+	nout = fclose(fp);
+	mdlassert(pkd->mdl,nout == 0);
 	}
 
 
