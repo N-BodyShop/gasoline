@@ -876,6 +876,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dtCoolingShutoff", 2, &msr->param.dtCoolingShutoff,
 		    sizeof(double), "stTimeCoolIsOff",
 		    "<The time in years that cooling is shutoff because SN have ionized everything> = 30e6");
+	msr->param.dSNFBMassFactor = 0.0;
+	prmAddParam(msr->prm,"dSNFBMassFactor", 2, &msr->param.dSNFBMassFactor,
+		    sizeof(double), "dSNFBMassFactor",
+		    "<The factor by which SNII mass is multiplied to find out how many gas particles have their cooling shutoff> = 0.0");
 	msr->param.dDeltaStarForm = msr->param.dDelta;
 	prmAddParam(msr->prm,"dDeltaStarForm", 2, &msr->param.dDeltaStarForm,
 		    sizeof(double), "dDeltaStarForm",
@@ -1295,7 +1299,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    assert(msr->param.stfm->dMinMassFrac > 0 && 
                 msr->param.stfm->dMinMassFrac < 1);
 		if (msr->param.stfm->dInitStarMass > 0) {
-			if (msr->param.stfm->dMinGasMass <= 0) 
+/*			if (msr->param.stfm->dMinGasMass <= 0) */
  			  /* Only allow 10% underweight star particles */
 				msr->param.stfm->dMinGasMass = 0.9*msr->param.stfm->dInitStarMass;
 			}
@@ -1308,14 +1312,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.stfm->dErgUnit =
 		GCGS*pow(msr->param.dMsolUnit*MSOLG, 2.0)
 		/(msr->param.dKpcUnit*KPCCM);
-	    msr->param.stfm->dDeltaT = msr->param.dDelta;
 	    /* convert to system units */
 	    msr->param.stfm->dPhysDenMin *= MHYDR/msr->param.stfm->dGmPerCcUnit;
 #define SECONDSPERYEAR   31557600.
             msr->param.dtCoolingShutoff *= SECONDSPERYEAR/msr->param.dSecUnit;
-            if( prmSpecified(msr->prm, "dDeltaStarForm") )
+            if( prmSpecified(msr->prm, "dDeltaStarForm") ){
                 msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
-
+                msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm;
+                }
 
 	    msr->param.fb->dSecUnit = msr->param.dSecUnit;
 	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
@@ -1805,6 +1809,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dMinGasMass: %g",msr->param.stfm->dMinGasMass);
 	fprintf(fp," dMaxStarMass: %g",msr->param.stfm->dMaxStarMass);
 	fprintf(fp," dESN: %g",msr->param.sn->dESN);
+	fprintf(fp," dSNFBMassFactor: %g",msr->param.dSNFBMassFactor);
 	fprintf(fp," dtCoolingShutoff: %g = %g yrs",
                 msr->param.dtCoolingShutoff,
                 msr->param.dSecUnit*msr->param.dtCoolingShutoff/SECONDSPERYEAR);
@@ -2997,6 +3002,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 #endif
 #ifdef STARFORM
         in.smf.dMinMassFrac = msr->param.stfm->dMinMassFrac;
+        in.smf.dSNFBMassFactor = msr->param.dSNFBMassFactor;
         in.smf.dtCoolingShutoff = msr->param.dtCoolingShutoff;
 	in.smf.dTime = dTime;
 #endif
@@ -5896,6 +5902,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		return;
     
     in.dTime = dTime;
+    msr->param.stfm->dDeltaT = dDelta;
     in.stfm = *msr->param.stfm;
     inFB.dTime = dTime;
     inFB.dDelta = dDelta;

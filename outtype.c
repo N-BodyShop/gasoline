@@ -73,6 +73,8 @@ FLOAT ArrType(PARTICLE *p,int iType)
 	    return((FLOAT) p->iGasOrder);
 	case OUT_MASSFORM_ARRAY:
 	    return((FLOAT) p->fMassForm);
+	case OUT_COOLTURNONTIME_ARRAY:
+	    return((FLOAT) p->fTimeCoolIsOffUntil);
 #endif
 #ifdef SIMPLESF
 	case OUT_TCOOLAGAIN_ARRAY:

@@ -184,6 +184,7 @@ struct parameters {
 	STFM   stfm;
 	FB     fb;
         SN sn;
+        double dSNFBMassFactor;
         double dtCoolingShutoff;
         double dDeltaStarForm;
         int iStarFormRung;

@@ -98,6 +98,7 @@ typedef struct particle {
 #ifdef STARFORM
 	FLOAT fESNrate;
 	FLOAT fMSN;
+	FLOAT fMSNII;
 	FLOAT fSNMetals;
         FLOAT fTimeCoolIsOffUntil;
 	FLOAT rForm[3];		/* record pos and vel of star formation */

@@ -67,81 +67,82 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 		assert(p->u >= 0);
 		assert(p->uPred >= 0);
 #endif
-		if(pkdIsStar(pkd, p)) {
-			dTotMassLoss = 0.0;
-			dTotMetals = 0.0;
-			p->fESNrate = 0.0;
-	    
-			if(fb->dInitStarMass > 0.0)
-			    sfEvent.dMass = fb->dInitStarMass*fb->dGmUnit/MSOLG;
-			else
-			    sfEvent.dMass = p->fMass*fb->dGmUnit/MSOLG;
-			sfEvent.dTimeForm = p->fTimeForm*fb->dSecUnit/SEC_YR;;
-			sfEvent.dMetals = p->fMetals;
-	    
-			/*
-			 * Call all the effects in order and accumulate them.
-			 */
-			dSNIaMassStore=0.0;  /* Stores mass loss of Ia so as
-						not to double count it in 
-						wind feedback */
-						
-			for(j = 0; j < FB_NFEEDBACKS; j++) {
-				switch (j) {
-				case FB_SNII:
-					snCalcSNIIFeedback(sn, sfEvent, dTime,
-									   dDeltaYr, &fbEffects);
-					break;
-				case FB_SNIA:
-					snCalcSNIaFeedback(sn, sfEvent, dTime,
-									   dDeltaYr, &fbEffects);
-					dSNIaMassStore=fbEffects.dMassLoss;
+        if(pkdIsStar(pkd, p)) {
+            dTotMassLoss = 0.0;
+            dTotMetals = 0.0;
+            p->fESNrate = 0.0;
 
-					break;
-				case FB_WIND:
-					snCalcWindFeedback(sn, sfEvent, dTime,
-									   dDeltaYr, &fbEffects);
-					fbEffects.dMassLoss -= dSNIaMassStore;
-					/*				printf("Wind, SNaI Mass Loss: %d   %d\n",fbEffects.dMassLoss,dSNIaMassStore); */
-					
-					break;
-				case FB_UV:
-					snCalcUVFeedback(sn, sfEvent, dTime, dDeltaYr,
-									 &fbEffects);
-					break;
-				default:
-					assert(0);
-					}
-		
-				fbEffects.dMassLoss *= MSOLG/fb->dGmUnit;
-				fbEffects.dEnergy /= fb->dErgPerGmUnit;
-	    
-				dTotMassLoss += fbEffects.dMassLoss;
-				p->fESNrate += fbEffects.dEnergy*fbEffects.dMassLoss;
-				dTotMetals += fbEffects.dMetals*fbEffects.dMassLoss;
-	    
-				fbTotals[j].dMassLoss += fbEffects.dMassLoss;
-				fbTotals[j].dEnergy += fbEffects.dEnergy*fbEffects.dMassLoss;
-				fbTotals[j].dMetals += fbEffects.dMetals*fbEffects.dMassLoss;
-				}
-	    
-			/*
-			 * Modify star particle
-			 */
-			assert(p->fMass > dTotMassLoss);
-	    
-			p->fMass -= dTotMassLoss;
-			p->fMSN = dTotMassLoss;
-                        /* The SNMetals and ESNrate used to be specific
-                           quantities, but we are making them totals as
-                           they leave the stars so that they are easier
-                           to divvy up among the gas particles in 
-                           distSNEnergy in smoothfcn.c.  These quantities
-                           will be converted back to specific quantities when
-                           they are parts of gas particles. */
-                        p->fSNMetals = dTotMetals;
-                        p->fESNrate /= dDelta; /* convert to rate */
-			}
+            if(fb->dInitStarMass > 0.0)
+                sfEvent.dMass = fb->dInitStarMass*fb->dGmUnit/MSOLG;
+            else
+                sfEvent.dMass = p->fMassForm*fb->dGmUnit/MSOLG;
+            sfEvent.dTimeForm = p->fTimeForm*fb->dSecUnit/SEC_YR;;
+            sfEvent.dMetals = p->fMetals;
+
+            /*
+             * Call all the effects in order and accumulate them.
+             */
+            dSNIaMassStore=0.0;  /* Stores mass loss of Ia so as
+                                    not to double count it in 
+                                    wind feedback */
+                                    
+            for(j = 0; j < FB_NFEEDBACKS; j++) {
+                switch (j) {
+                case FB_SNII:
+                    snCalcSNIIFeedback(sn, sfEvent, dTime,
+                                        dDeltaYr, &fbEffects);
+                    p->fMSNII = fbEffects.dMassLoss * MSOLG/fb->dGmUnit;
+                    break;
+                case FB_SNIA:
+                    snCalcSNIaFeedback(sn, sfEvent, dTime,
+                                        dDeltaYr, &fbEffects);
+                    dSNIaMassStore=fbEffects.dMassLoss;
+
+                    break;
+                case FB_WIND:
+                    snCalcWindFeedback(sn, sfEvent, dTime,
+                                        dDeltaYr, &fbEffects);
+                    fbEffects.dMassLoss -= dSNIaMassStore;
+                    /*printf("Wind, SNaI Mass Loss: %d   %d\n",fbEffects.dMassLoss,dSNIaMassStore); */
+                    
+                    break;
+                case FB_UV:
+                    snCalcUVFeedback(sn, sfEvent, dTime, dDeltaYr,
+                                                     &fbEffects);
+                    break;
+                default:
+                    assert(0);
+                    }
+
+                fbEffects.dMassLoss *= MSOLG/fb->dGmUnit;
+                fbEffects.dEnergy /= fb->dErgPerGmUnit;
+
+                dTotMassLoss += fbEffects.dMassLoss;
+                p->fESNrate += fbEffects.dEnergy*fbEffects.dMassLoss;
+                dTotMetals += fbEffects.dMetals*fbEffects.dMassLoss;
+
+                fbTotals[j].dMassLoss += fbEffects.dMassLoss;
+                fbTotals[j].dEnergy += fbEffects.dEnergy*fbEffects.dMassLoss;
+                fbTotals[j].dMetals += fbEffects.dMetals*fbEffects.dMassLoss;
+                }
+
+            /*
+             * Modify star particle
+             */
+            assert(p->fMass > dTotMassLoss);
+
+            p->fMass -= dTotMassLoss;
+            p->fMSN = dTotMassLoss;
+            /* The SNMetals and ESNrate used to be specific
+               quantities, but we are making them totals as
+               they leave the stars so that they are easier
+               to divvy up among the gas particles in 
+               distSNEnergy in smoothfcn.c.  These quantities
+               will be converted back to specific quantities when
+               they are parts of gas particles. */
+            p->fSNMetals = dTotMetals;
+            p->fESNrate /= dDelta; /* convert to rate */
+            }
 	    
 	
 		else if(pkdIsGas(pkd, p)){
@@ -176,7 +177,7 @@ void snCalcWindFeedback(SN sn, SFEvent sfEvent,
 
   /* First determine if dying stars are between 1-8 Msolar
 
-  /* stellar lifetimes corresponding to beginning and end of 
+   * stellar lifetimes corresponding to beginning and end of 
    * current timestep with respect to starbirth time in yrs */
   dMmin=1.0;
   dMmax=8.0;
@@ -188,7 +189,7 @@ void snCalcWindFeedback(SN sn, SFEvent sfEvent,
   assert(dMStarMax >= dMStarMin);
 
   if (((dMStarMin < dMmax) && (dMStarMax > dMmin)) && dMStarMax > dMStarMin) {
-  //printf(""); /* Intel optimizer needs this to avoid floating point exception on sharks. */
+  /*printf("");  Intel optimizer needs this to avoid floating point exception on sharks. */
 
     /* Mass Fraction returned to ISM taken from Weidermann, 1987, A&A 188 74 
      then fit to function: MFreturned = 0.86 - exp(-Mass/1.1) */

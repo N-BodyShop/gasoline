@@ -115,10 +115,6 @@ int main(int argc,char **argv)
 			|| msr->param.bStarForm) 
 		    msrInitCooling(msr);
 #endif
-#ifdef STARFORM
-		if (msr->param.bStarForm) /* dDelta is now determined */
-			msr->param.stfm->dDeltaT = msr->param.dDelta;
-#endif
 #endif
 		msrInitStep(msr);
 		dMass = msrMassCheck(msr,-1.0,"Initial");
@@ -220,10 +216,6 @@ int main(int argc,char **argv)
 	if (msr->param.iGasModel == GASMODEL_COOLING ||
 		msr->param.bStarForm)
 		msrInitCooling(msr);
-#endif
-#ifdef STARFORM
-	if (msr->param.bStarForm) /* dDelta is now determined */
-	    msr->param.stfm->dDeltaT = msr->param.dDelta;
 #endif
 #endif
 	msrInitStep(msr);
@@ -517,8 +509,10 @@ int main(int argc,char **argv)
 					msrOutArray(msr,achFile,OUT_IGASORDER_ARRAY);
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
 					strncat(achFile,".massform",256);
-					
 					msrOutArray(msr,achFile,OUT_MASSFORM_ARRAY);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".coolontime",256);
+					msrOutArray(msr,achFile,OUT_COOLTURNONTIME_ARRAY);
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
 					strncat(achFile,".rhoform",256);
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);

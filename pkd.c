@@ -4520,12 +4520,15 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i,++p) {
 		if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
-			if ( bCool  ) {
+			if ( bCool &&
+                             ((dTime >= p->fTimeCoolIsOffUntil) 
+                               || ((p->fESNrate + p->PdV)*duDelta + p->u < 0 )) ) {
+                                
 				cp = p->CoolParticle;
 				E = p->u;
 #ifdef STARFORM
 				cl->p = p;
-				CoolIntegrateEnergyEPDRCode(cl, &cp, &E, p->fESNrate + p->PdV, p->fDensity, p->r, dt);
+                                CoolIntegrateEnergyEPDRCode(cl, &cp, &E, p->fESNrate + p->PdV, p->fDensity, p->r, dt);
 #else
 				CoolIntegrateEnergyEPDRCode(cl, &cp, &E, p->PdV, p->fDensity, p->r, dt);
 #endif

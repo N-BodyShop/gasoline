@@ -85,9 +85,10 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * Is particle in convergent part of flow?
      */
     
+#ifndef DIVVOFF
     if(p->divv >= 0.0)
 	return;
-
+#endif /*DIVVOFF*/
     /*
      * Determine dynamical time.
      */
@@ -97,20 +98,17 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * Determine cooling time.
      */
 
-	E = CoolCodeEnergyToErgPerGm( cl, p->u );
+    E = CoolCodeEnergyToErgPerGm( cl, p->u );
     T = CoolEnergyToTemperature( cl, &p->CoolParticle, E );
 
     tcool = E/(-CoolHeatingRate( cl, &p->CoolParticle, T, 
-								CodeDensityToComovingGmPerCc(cl,p->fDensity ))
-			   -CoolCodeWorkToErgPerGmPerSec( cl, p->PdV ));
+		 CodeDensityToComovingGmPerCc(cl,p->fDensity ))
+                    -CoolCodeWorkToErgPerGmPerSec( cl, p->PdV ));
 
-	tcool = CoolSecondsToCodeTime( cl, tcool ); 
+    tcool = CoolSecondsToCodeTime( cl, tcool ); 
 
 #ifdef SFCONDITIONS
     if(tcool < 0.0 && T > stfm->dTempMax) return;
-#else
-    if(T > stfm->dTempMax) return;
-#endif /*SFCONDITIONS*/
     /*
      * Determine sound crossing time.
      */
@@ -120,13 +118,14 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * criteria that stars form if the Jean's length is less than the
      * softening
      */
-#ifdef SFCONDITIONS
     l_jeans2 = M_PI*p->c*p->c/p->fDensity*dCosmoFac;
     if (l_jeans2 < p->fSoft*p->fSoft*stfm->dSoftMin*stfm->dSoftMin) 
         small_jeans = 1;
 
     if (!small_jeans && tsound <= tdyn)
-        return;*/
+        return;
+#else
+    if(T > stfm->dTempMax) return;
 #endif /*SFCONDITIONS*/
 
     /*
@@ -143,20 +142,21 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	tform = tcool;
     
     dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
-    if(dMprob < (rand()/((double) RAND_MAX)))
-	return;
     
     /*
      * Decrement mass of particle.
      */
 
-	if (stfm->dInitStarMass > 0) 
-		dDeltaM = stfm->dInitStarMass;
+    if (stfm->dInitStarMass > 0) 
+        dDeltaM = stfm->dInitStarMass;
     else 
-		dDeltaM = p->fMass*stfm->dStarEff;
+        dDeltaM = p->fMass*stfm->dStarEff;
 
-	/* No negative masses please! */
-	if (dDeltaM > p->fMass) dDeltaM = p->fMass;
+    /* No negative or very tiny masses please! */
+    if ( (dDeltaM > p->fMass) ) dDeltaM = p->fMass;
+
+    if(dMprob*p->fMass < dDeltaM*(rand()/((double) RAND_MAX)))
+	return;
 
     p->fMass -= dDeltaM;
 	assert(p->fMass >= 0);
@@ -219,24 +219,12 @@ void pkdFormStars(PKD pkd, STFM stfm, double dTime, int *nFormed,
     
     for(i = 0; i < n; ++i) {
         p = &pkd->pStore[i];
-#ifdef COOLDEBUG
-		assert (pkd->nLocal <= 210897 || pkd->pStore[210897].u > 0);
-
-		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
-		assert(p->u >= 0);
-		assert(p->uPred >= 0);
-#endif
-		if(pkdIsGas(pkd, p))
-			stfmFormStars(stfm, pkd, p, dTime, nFormed, dMassFormed, nDeleted);
-		}
-#ifdef COOLDEBUG
-		assert (pkd->nLocal <= 210897 || pkd->pStore[210897].u > 0);
-
-		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i] (after)\n",p->iOrder,(int) (p-pkd->pStore));
-		assert(p->u >= 0);
-		assert(p->uPred >= 0);
-	    assert(p->fMass >= 0);
-#endif
+        if(pkdIsGas(pkd, p))
+            stfmFormStars(stfm, pkd, p, dTime, nFormed, dMassFormed, nDeleted);
+        }
+        assert(p->u >= 0);
+        assert(p->uPred >= 0);
+        assert(p->fMass >= 0);
     }
 
 #endif

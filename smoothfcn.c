@@ -2111,8 +2111,8 @@ void combDistSNEnergy(void *p1,void *p2)
 void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,delta_m,m_new,f1,f2;
-	int i;
+	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fAveDens,delta_m,m_new,f1,f2,fPartEncMass;
+	int i,counter;
 
 	assert(TYPETest(p, TYPE_STAR));
 	ih2 = 4.0/BALL2(p);
@@ -2128,12 +2128,13 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    assert(TYPETest(q, TYPE_GAS));
         }
         fNorm = 1./rstot;
+        fAveDens = fNorm_u;
         fNorm_u = 1./fNorm_u;
+  counter=0;
 	for (i=0;i<nSmooth;++i) {
             q = nnList[i].pPart;
             r2 = nnList[i].fDist2*ih2;            
             KERNEL(rs,r2);
-            
             /* Remember: We are dealing with total energy rate and total metal
                mass, not energy/gram or metals per gram.  */
             q->fESNrate += rs*fNorm_u*q->fMass*p->fESNrate;
@@ -2150,15 +2151,19 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                 We (Anil, Greg, TRQ) chose rs because it seemed the most
                 physically plausible.
             */
-            if ( p->fESNrate != 0.0 ){
+            fPartEncMass = 4*M_PI*sqrt(r2)*r2*fAveDens/3;
+            if ( p->fESNrate != 0.0 && 
+                 (p->fMSNII*smf->dSNFBMassFactor > fPartEncMass)){
                 q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
-                    smf->dTime + rs*smf->dtCoolingShutoff);
+                    smf->dTime + smf->dtCoolingShutoff);
+counter++;
                 }
 
             /*	update mass after everything else so that distribution
                 is based entirely upon initial mass of gas particle */
             q->fMass += rs*fNorm_u*q->fMass*p->fMSN;
             }
+if (counter >0) printf("%i ",counter);
 }
 
 void postDistSNEnergy(PARTICLE *p1, SMF *smf)
