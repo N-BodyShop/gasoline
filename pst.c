@@ -612,6 +612,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind)
 				   iteration */
 	int nDiff;		/* Difference between one iteration and the
 				   next */
+	char ach[256]; /* Debug */
 
 	struct outMassCheck outMass;
 #ifdef PARANOID_CHECK
@@ -635,9 +636,16 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind)
 	pstActiveOrder(pst->pstLower,NULL,0,&nActive,NULL);
 	mdlGetReply(pst->mdl,pst->idUpper,&nActive,NULL);
 
+	/* Debug */
+	sprintf(ach,"id: %d _pstRootSplit\n", pst->mdl->idSelf );
+	mdlDiag(pst->mdl,ach);
+
 	if(!bDoRootFind) {
 	    d = pst->iSplitDim;
 	    fm = pst->fSplit;
+	    pFlag = 0;
+	    nLow = 0;
+	    nHigh = 0;
 	    goto DoneRootFind;
 	    }
 	    
@@ -802,6 +810,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind)
 		}
 	pst->fSplit = fm;
 	pst->iSplitDim = d;
+
 DoneRootFind:
 	if(pFlag || !bDoRootFind) {
 	    /*
@@ -814,24 +823,30 @@ DoneRootFind:
 	    inWt.fSplit = fm;
 	    inWt.ittr = 0;
 	    inWt.iSplitSide = 1;
-	    inWt.pFlag = -1;
+	    inWt.pFlag = (!bDoRootFind ? 0 : -1);
 	    mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 	    inWt.iSplitSide = 0;
 	    pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
 	    mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
 	    /*
 	     ** Add lower and Upper subsets numbers of particles
-	     */
+	     */ 
 	    nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
 	    nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
 
 	    nSafeTot = nLowerStore + nUpperStore - (nLowTot + nHighTot);
 	    if(nSafeTot/pst->nLeaves < NUM_SAFETY) {
 		NUM_SAFETY = nSafeTot/pst->nLeaves;
+		sprintf(ach,"id: %d tripped inactive NUM_SAFETY %d\n",
+			pst->mdl->idSelf, NUM_SAFETY);
+     	        mdlDiag(pst->mdl,ach);
 		fprintf(stderr, "id: %d tripped inactive NUM_SAFETY %d\n",
 		pst->mdl->idSelf, NUM_SAFETY);
 		}
 	    if (nLowTot > nLowerStore-NUM_SAFETY*pst->nLower) {
+	            sprintf(ach,"id: %d: nLowTot > nLowerStore-NUM_SAFETY*pst->nLower %d %d %d %d\n",
+			    pst->mdl->idSelf, nLowTot, nLowerStore, NUM_SAFETY, pst->nLower);
+		    mdlDiag(pst->mdl,ach);
 		    fl = pst->bnd.fMin[dBnd];
 		    fu = fm;
 		    fmm = (fl + fu)/2;
@@ -873,6 +888,9 @@ DoneRootFind:
 		    assert(nLowTot <= nLowerStore);
 		    }
 	    else if (nHighTot > nUpperStore-NUM_SAFETY*pst->nUpper) {
+	            sprintf(ach,"id: %d: nHighTot > nUpperStore-NUM_SAFETY*pst->nUpper %d %d %d %d\n",
+			    pst->mdl->idSelf, nHighTot, nUpperStore, NUM_SAFETY, pst->nUpper);
+		    mdlDiag(pst->mdl,ach);
 		    fl = fm;
 		    fu = pst->bnd.fMax[dBnd];
 		    fmm = (fl + fu)/2;
@@ -919,6 +937,9 @@ DoneRootFind:
 	     ** every processor has at least one.
 	     */
  	    if (nLowTot < NUM_SAFETY*pst->nLower) {
+	            sprintf(ach,"id: %d: nLowTot < NUM_SAFETY*pst->nLower %d %d %d\n",
+			    pst->mdl->idSelf, nLowTot, NUM_SAFETY, pst->nLower);
+		    mdlDiag(pst->mdl,ach);
 		    fl = fm;
 				/* Try to catch highest particle if needed. */
 		    fu = pst->bnd.fMax[dBnd]
@@ -955,6 +976,9 @@ DoneRootFind:
 			    }
 		    }
 	    else if (nHighTot < NUM_SAFETY*pst->nUpper) {
+	            sprintf(ach,"id: %d: nHighTot < NUM_SAFETY*pst->nUpper %d %d %d\n",
+			    pst->mdl->idSelf, nHighTot, NUM_SAFETY, pst->nUpper);
+		    mdlDiag(pst->mdl,ach);
 				/* Try to catch lowest particle if needed. */
 		    fl = pst->bnd.fMin[dBnd]
 			- EPS_BOUND*(pst->bnd.fMax[dBnd] - pst->bnd.fMin[dBnd]);
