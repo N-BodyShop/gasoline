@@ -5017,124 +5017,13 @@ pkdNumRejects(PKD pkd)
 	return nRej;
 	}
 
-#ifdef OLD_SS /*DEBUG original--can be deleted*/
-void
-pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
-{
-	FILE *fp;
-	XDR xdrs;
-	PARTICLE *p;
-	double dDum;
-	int i,j,iDum;
-
-	pkd->nLocal = nLocal;
-	pkd->nActive = nLocal;
-	/*
-	 ** General initialization (modelled after pkdReadTipsy()).
-	 */
-	for (i=0;i<nLocal;++i) {
-		p = &pkd->pStore[i];
-		TYPEClear(p);
-		p->iRung = 0;
-		p->fWeight = 1.0;
-		p->fDensity = 0.0;
-		p->fBall2 = 0.0;
-		p->fBallMax = 0.0;
-		p->iDriftType = NORMAL; /*DEBUG must initialize b/c pkdDrift()...*/
-#ifdef SAND_PILE
-		p->bStuck = 0;
-#endif
-		}
-	/*
-	 ** Seek past the header and up to nStart.
-	 */
-	fp = fopen(pszFileName,"r");
-	mdlassert(pkd->mdl,fp != NULL);
-	/*
-	 ** Seek to right place in file.
-	 */
-	fseek(fp,SSHEAD_SIZE + nStart*SSDATA_SIZE,SEEK_SET);
-	/*
-	 ** Read Stuff
-	 */
-	xdrstdio_create(&xdrs,fp,XDR_DECODE);
-	for (i=0;i<nLocal;++i) {
-		p = &pkd->pStore[i];
-		p->iOrder = nStart + i;
-		if (!pkdIsDark(pkd,p)) mdlassert(pkd->mdl,0);
-		xdr_double(&xdrs,&dDum); p->fMass = dDum; /* SS format always double */
-		xdr_double(&xdrs,&dDum); p->fSoft = 0.5*dDum;
-
-#ifdef CHANGESOFT 
- 		p->fSoft0 = 0.5*dDum;
-#endif
-		for (j=0;j<3;++j)
-			{xdr_double(&xdrs,&dDum); p->r[j] = dDum;}
-		for (j=0;j<3;++j)
-			{xdr_double(&xdrs,&dDum); p->v[j] = dDum;}
-		for (j=0;j<3;++j)
-			{xdr_double(&xdrs,&dDum); p->w[j] = dDum;}
-		xdr_int(&xdrs,&p->iColor);
-		xdr_int(&xdrs,&iDum);
-#ifdef NEED_VPRED
-		for (j=0;j<3;++j) p->vPred[j] = p->v[j];
-#endif
-		}
-	xdr_destroy(&xdrs);
-	fclose(fp);
-	}
-
-void
-pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
-{
-	FILE *fp;
-	XDR xdrs;
-	PARTICLE *p;
-	double dDum;
-	int i,j,iDum,nout;
-
-	/*
-	 ** Seek past the header and up to nStart.
-	 */
-	fp = fopen(pszFileName,"r+");
-	mdlassert(pkd->mdl,fp != NULL);
-	fseek(fp,SSHEAD_SIZE + nStart*SSDATA_SIZE,SEEK_SET);
-	/* 
-	 ** Write Stuff!
-	 */
-	xdrstdio_create(&xdrs,fp,XDR_ENCODE);
-	for (i=0;i<pkdLocal(pkd);++i) {
-		p = &pkd->pStore[i];
-		if (!pkdIsDark(pkd,p)) mdlassert(pkd->mdl,0);
-		dDum = p->fMass; xdr_double(&xdrs,&dDum); /* SS format always double */
-#ifdef CHANGESOFT
-		dDum = 2*p->fSoft0; 
-#else
-		dDum = 2*p->fSoft; 
-#endif
-		xdr_double(&xdrs,&dDum);
-		for (j=0;j<3;++j)
-			{dDum = p->r[j]; xdr_double(&xdrs,&dDum);}
-		for (j=0;j<3;++j)
-			{dDum = p->v[j]; xdr_double(&xdrs,&dDum);}
-		for (j=0;j<3;++j)
-			{dDum = p->w[j]; xdr_double(&xdrs,&dDum);}
-		xdr_int(&xdrs,&p->iColor);
-		iDum = -1; xdr_int(&xdrs,&iDum);
-		}
-	xdr_destroy(&xdrs);
-	nout = fclose(fp);
-	mdlassert(pkd->mdl,nout == 0);
-	}
-#endif /*OLD_SS*/
-
 void
 pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 {
 	SSIO ssio;
 	SSDATA data;
 	PARTICLE *p;
-	int i,j;
+	int i,j, iSetMask;
 
 	pkd->nLocal = nLocal;
 	pkd->nActive = nLocal;
@@ -5167,8 +5056,9 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	for (i=0;i<nLocal;++i) {
 		p = &pkd->pStore[i];
 		p->iOrder = nStart + i;
-		if (!pkdIsDark(pkd,p)) /* determined by p->iOrder */
+		if (!pkdIsDarkByOrder(pkd,p)) /* determined by p->iOrder */
 			mdlassert(pkd->mdl,0); /* only dark particles allowed in ss file */
+		iSetMask = TYPE_DARK;
 		if (ssioData(&ssio,&data))
 			mdlassert(pkd->mdl,0); /* error during read in ss file */
 		p->iOrgIdx = data.org_idx;
@@ -5185,6 +5075,7 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 #ifdef NEED_VPRED
 		for (j=0;j<3;++j) p->vPred[j] = p->v[j];
 #endif
+		TYPESet(p,iSetMask);
 		}
 	if (ssioClose(&ssio))
 		mdlassert(pkd->mdl,0); /* unable to close ss file */
