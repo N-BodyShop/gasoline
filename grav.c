@@ -202,12 +202,12 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			QEVAL(iOrder,ilcn[j],gam,dx,dy,dz,ax,ay,az,fPot);
 #endif
 
-			dvx = vx - ilcs[j].vx;
-			dvy = vy - ilcs[j].vy;
-			dvz = vz - ilcs[j].vz;
+			dvx = vx - ilcn[j].vx;
+			dvy = vy - ilcn[j].vy;
+			dvz = vz - ilcn[j].vz;
 			vdotr = dx*dvx + dy*dvy + dz*dvz;
-			vdotr *= gam[2]*ilcs[j].m;
-			gam[1] *= ilcs[j].m;
+			vdotr *= gam[2]*ilcn[j].m;
+			gam[1] *= ilcn[j].m;
 			adotx -= dvx*gam[1] - vdotr*dx;
 			adoty -= dvy*gam[1] - vdotr*dy;
 			adotz -= dvz*gam[1] - vdotr*dz;
