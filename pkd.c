@@ -1383,8 +1383,8 @@ int pkdColRejects(PKD pkd,int d,FLOAT fSplit,FLOAT fSplitInactive,
 
 int pkdSwapRejects(PKD pkd,int idSwap)
 {
-	int nBuf;
-	int nOutBytes,nSndBytes,nRcvBytes;
+	size_t nBuf;
+	size_t nOutBytes,nSndBytes,nRcvBytes;
 
 	if (idSwap != -1) {
 		nBuf = (pkdSwapSpace(pkd))*sizeof(PARTICLE);
@@ -1400,8 +1400,8 @@ int pkdSwapRejects(PKD pkd,int idSwap)
 
 void pkdSwapAll(PKD pkd, int idSwap)
 {
-    int nBuf;
-    int nOutBytes,nSndBytes,nRcvBytes;
+    size_t nBuf;
+    size_t nOutBytes,nSndBytes,nRcvBytes;
     int i;
     int iBuf;
     
@@ -1753,16 +1753,19 @@ void pkdPhysicalSoft(PKD pkd,double dSoftMax,double dFac,int bSoftMaxMul)
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	
-	assert(dFac > 0);
+	assert(dFac > 0.);
 	if (bSoftMaxMul) {
-	        for (i=0;i<n;++i) {
-		        assert(p[i].fSoft0 > 0);
+	        for (i=0;i<n;++i) { 
+		  /*		  assert(p[i].fSoft0 > 0.);
+				  printf("Compton:  %f\n",p[i].fSoft0);*/
+                  
+		        assert(p[i].fSoft0 > 0.);
 	                p[i].fSoft = p[i].fSoft0*dFac;
-			assert(p[i].fSoft > 0);
+			assert(p[i].fSoft > 0.);
 		        }
 	        }
 	else {
- 	        assert(dSoftMax > 0);
+ 	        assert(dSoftMax > 0.);
 	        for (i=0;i<n;++i) {
 	                p[i].fSoft = p[i].fSoft0*dFac;
 	                if (p[i].fSoft > dSoftMax) p[i].fSoft = dSoftMax;
