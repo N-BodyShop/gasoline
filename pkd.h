@@ -351,6 +351,7 @@ typedef struct CacheStatistics {
 
 /* JW: */
 
+#define GASMODEL_UNSET -1
 enum GasModel {
 	GASMODEL_ADIABATIC, 
 	GASMODEL_ISOTHERMAL, 
@@ -517,6 +518,7 @@ void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int nMaxOrderGas,
 void pkdSunIndirect(PKD,double *,int,double);
 void pkdLogHalo(PKD);
 void pkdHernquistSpheroid(PKD pkd);
+void pkdNFWSpheroid(PKD pkd);
 void pkdHomogSpheroid(PKD pkd);
 void pkdMiyamotoDisk(PKD pkd);
 #ifdef ROT_FRAME

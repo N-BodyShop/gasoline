@@ -37,10 +37,12 @@ struct parameters {
 	int bDoIonOutput;
 	int bSymCool;
 	int bDoGravity;
+        int bDoSelfGravity;
 	int bFandG;
 	int bHeliocentric;
 	int bLogHalo;
 	int bHernquistSpheroid;
+	int bNFWSpheroid;
 	int bHomogSpheroid;
 	int bMiyamotoDisk;
 	int bRotFrame;
@@ -108,6 +110,10 @@ struct parameters {
 	 ** Additional parameters for GASOLINE.
 	 */
 	int bGeometric;
+	int bGasAdiabatic;
+	int bGasIsothermal;
+	int bGasCooling;
+	int bGasCoolingNonEqm;
 	int iGasModel;
 	double dEtaCourant;
 	double dEtauDot;

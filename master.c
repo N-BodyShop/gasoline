@@ -519,6 +519,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoGravity = 1;
 	prmAddParam(msr->prm,"bDoGravity",0,&msr->param.bDoGravity,sizeof(int),"g",
 				"enable/disable interparticle gravity = +g");
+	msr->param.bDoSelfGravity = 1;
+	prmAddParam(msr->prm,"bDoSelfGravity",0,&msr->param.bDoSelfGravity,sizeof(int),"sg",
+				"enable/disable interparticle self gravity = +sg");
 	msr->param.bRungDD = 0;
 	prmAddParam(msr->prm,"bRungDomainDecomp",0,&msr->param.bRungDD,sizeof(int),
 				"RungDD","<Rung Domain Decomp> = 0");
@@ -540,6 +543,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bHernquistSpheroid = 0;
 	prmAddParam(msr->prm,"bHernquistSpheroid",0,&msr->param.bHernquistSpheroid,
 				sizeof(int),"hspher","use/don't use galaxy Hernquist Spheroid = -hspher");
+	msr->param.bNFWSpheroid = 0;
+	prmAddParam(msr->prm,"bNFWSpheroid",0,&msr->param.bNFWSpheroid,
+				sizeof(int),"NFWspher","use/don't use galaxy NFW Spheroid = -NFWspher");
 	msr->param.bHomogSpheroid = 0;
 	prmAddParam(msr->prm,"bHomogSpheroid",0,&msr->param.bHomogSpheroid,
 				sizeof(int),"hspher","use/don't use galaxy Homog Spheroid = -homogspher");
@@ -592,7 +598,23 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bGeometric = 0;
 	prmAddParam(msr->prm,"bGeometric",0,&msr->param.bGeometric,sizeof(int),
 				"geo","geometric/arithmetic mean to calc Grad(P/rho) = +geo");
-	msr->param.iGasModel = GASMODEL_ADIABATIC;
+	msr->param.bGasAdiabatic = 0;
+	prmAddParam(msr->prm,"bGasAdiabatic",0,&msr->param.bGasAdiabatic,
+				sizeof(int),"GasAdiabatic",
+				"<Gas is Adiabatic> = +GasAdiabatic");
+	msr->param.bGasIsothermal = 0;
+	prmAddParam(msr->prm,"bGasIsothermal",0,&msr->param.bGasIsothermal,
+				sizeof(int),"GasIsothermal",
+				"<Gas is Isothermal> = +GasIsothermal");
+	msr->param.bGasCooling = 0;
+	prmAddParam(msr->prm,"bGasCooling",0,&msr->param.bGasCooling,
+				sizeof(int),"GasCooling",
+				"<Gas is Cooling> = +GasCooling");
+	msr->param.bGasCoolingNonEqm = 0;
+	prmAddParam(msr->prm,"bGasCooling",0,&msr->param.bGasCoolingNonEqm,
+				sizeof(int),"GasCoolingNonEqm",
+				"<Gas is Cooling Non-Equilibrium Abundances> = +GasCoolingNonEqm");
+	msr->param.iGasModel = GASMODEL_UNSET; /* Deprecated in for backwards compatibility */
 	prmAddParam(msr->prm,"iGasModel",0,&msr->param.iGasModel,
 				sizeof(int),"GasModel",
 				"<Gas model employed> = 0 (Adiabatic)");
@@ -1003,6 +1025,23 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #endif
 
 #ifdef GASOLINE
+#define msrSetGasModel( iModel ) { \
+  if (msr->param.iGasModel == GASMODEL_UNSET) msr->param.iGasModel = iModel; \
+  else { \
+    fprintf( stderr, "More than one Gas Model specified [%i and %i]", msr->param.iGasModel, iModel ); \
+    assert(0); \
+  } \
+}
+	if (msr->param.bGasAdiabatic    ) msrSetGasModel( GASMODEL_ADIABATIC );
+	if (msr->param.bGasIsothermal   ) msrSetGasModel( GASMODEL_ISOTHERMAL );
+	if (msr->param.bGasCooling      ) msrSetGasModel( GASMODEL_COOLING );
+	if (msr->param.bGasCoolingNonEqm) msrSetGasModel( GASMODEL_COOLING_NONEQM );
+
+	if (msr->param.iGasModel == GASMODEL_UNSET) {
+	  msr->param.iGasModel = GASMODEL_ADIABATIC;
+	  fprintf( stderr, "Defaulting to Adiabatic Gas Model."); 
+	}
+
 	if(msr->param.iGasModel != GASMODEL_COOLING &&
 	   msr->param.iGasModel != GASMODEL_COOLING_NONEQM) {
 		/* Need these for units: */
@@ -1427,9 +1466,15 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," nTruncateRung: %d",msr->param.nTruncateRung);
 	fprintf(fp," bNonSymp: %d",msr->param.bNonSymp);
 	fprintf(fp,"\n# bDoGravity: %d",msr->param.bDoGravity);
+	fprintf(fp," bDoSelfGravity: %d",msr->param.bDoSelfGravity);
 	fprintf(fp," bFandG: %d",msr->param.bFandG);
 	fprintf(fp," bHeliocentric: %d",msr->param.bHeliocentric);
 	fprintf(fp," dCentMass: %g",msr->param.dCentMass);
+	fprintf(fp,"\n# bLogHalo: %d",msr->param.bLogHalo );
+	fprintf(fp," bHernquistSpheroid: %d",msr->param.bHernquistSpheroid );
+	fprintf(fp," bNFWSpheroid: %d",msr->param.bNFWSpheroid );
+	fprintf(fp," bHomogSpheroid: %d",msr->param.bHomogSpheroid );
+	fprintf(fp," bMiyamotoDisk: %d",msr->param.bMiyamotoDisk );
 	fprintf(fp,"\n# bRotFrame: %d",msr->param.bRotFrame);
 	fprintf(fp," dOmega: %g",msr->param.dOmega);
 	fprintf(fp," dOmegaDot: %g",msr->param.dOmegaDot);
@@ -1454,7 +1499,11 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef GASOLINE
 	fprintf(fp,"\n# SPH: bDoGas: %d",msr->param.bDoGas);	
 	fprintf(fp," bGeometric: %d",msr->param.bGeometric);
-	fprintf(fp," iGasModel: %d",msr->param.iGasModel);
+	/* fprintf(fp," iGasModel: %d",msr->param.iGasModel); // Deprecated usage */
+	fprintf(fp," bGasAdiabatic: %d",msr->param.bGasAdiabatic);	
+	fprintf(fp," bGasIsothermal: %d",msr->param.bGasIsothermal);	
+	fprintf(fp," bGasCooling: %d",msr->param.bGasCooling);	
+	fprintf(fp," bGasCoolingNonEqm: %d",msr->param.bGasCoolingNonEqm);	
 	fprintf(fp," dConstAlpha: %g",msr->param.dConstAlpha);
 	fprintf(fp," dConstBeta: %g",msr->param.dConstBeta);
 	fprintf(fp,"\n# dConstGamma: %g",msr->param.dConstGamma);
@@ -2701,30 +2750,33 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	int iDum,j;
 	double sec,dsec;
 
-	assert(msr->bGravityTree == 1);
-	assert(msr->iTreeType == MSR_TREE_SPATIAL || 
-		   msr->iTreeType == MSR_TREE_DENSITY);
-	if (msr->param.bVStep) printf("Calculating Gravity, Step:%f\n",dStep);
-	in.nReps = msr->param.nReplicas;
-	in.bPeriodic = msr->param.bPeriodic;
-	in.iOrder = msr->param.iOrder;
-	in.bEwald = msr->param.bEwald;
-	in.iEwOrder = msr->param.iEwOrder;
+	if (msr->param.bDoSelfGravity) {
+	  assert(msr->bGravityTree == 1);
+	  assert(msr->iTreeType == MSR_TREE_SPATIAL || 
+		 msr->iTreeType == MSR_TREE_DENSITY);
+	  if (msr->param.bVStep) printf("Calculating Gravity, Step:%f\n",dStep);
+	  in.nReps = msr->param.nReplicas;
+	  in.bPeriodic = msr->param.bPeriodic;
+	  in.iOrder = msr->param.iOrder;
+	  in.bEwald = msr->param.bEwald;
+	  in.iEwOrder = msr->param.iEwOrder;
 #ifdef SLIDING_PATCH
-	in.dOrbFreq = msr->param.dOrbFreq;
-	in.dTime = dStep*msr->param.dDelta;
+	  in.dOrbFreq = msr->param.dOrbFreq;
+	  in.dTime = dStep*msr->param.dDelta;
 #endif
-	/*
-	 ** The meaning of 'bDoSun' here is that we want the accel on (0,0,0) to
-	 ** use in creating the indirect acceleration on each particle. This is
-	 ** why it looks inconsistent with the call to pstGravExternal below.
-	 */
-	in.bDoSun = msr->param.bHeliocentric;
-    in.dEwCut = msr->param.dEwCut;
-    in.dEwhCut = msr->param.dEwhCut;
-	sec = msrTime();
-	pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
-	dsec = msrTime() - sec;
+	  /*
+	  ** The meaning of 'bDoSun' here is that we want the accel on (0,0,0) to
+	  ** use in creating the indirect acceleration on each particle. This is
+	  ** why it looks inconsistent with the call to pstGravExternal below.
+	  */
+	  in.bDoSun = msr->param.bHeliocentric;
+	  in.dEwCut = msr->param.dEwCut;
+	  in.dEwhCut = msr->param.dEwhCut;
+	  sec = msrTime();
+	  pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
+	  dsec = msrTime() - sec;
+	}
+
 	/* enforced initialization */
 #ifdef ROT_FRAME
 	inExt.bRotFrame = 0;
@@ -2737,8 +2789,8 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	 ** This may contain a huge list of flags in the future, so we may want to 
 	 ** replace this test with something like bAnyExternal.
 	 */
-	if (msr->param.bHeliocentric || msr->param.bLogHalo || 
-		msr->param.bHernquistSpheroid || msr->param.bHomogSpheroid || msr->param.bMiyamotoDisk) {
+	if (msr->param.bHeliocentric || msr->param.bLogHalo || msr->param.bHernquistSpheroid || 
+		msr->param.bNFWSpheroid || msr->param.bHomogSpheroid || msr->param.bMiyamotoDisk) {
 		/*
 		 ** Only allow inclusion of solar terms if we are in Heliocentric 
 		 ** coordinates.
@@ -2749,13 +2801,14 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		for (j=0;j<3;++j) inExt.aSun[j] = out.aSun[j];
 		inExt.bLogHalo = msr->param.bLogHalo;
 		inExt.bHernquistSpheroid = msr->param.bHernquistSpheroid;
+		inExt.bNFWSpheroid = msr->param.bNFWSpheroid;
 		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
 		}
 #ifdef ROT_FRAME
 	if (msr->param.bRotFrame) { /* general rotating frame */
-		inExt.bIndirect = inExt.bDoSun = inExt.bLogHalo =
+		inExt.bIndirect = inExt.bDoSun = inExt.bLogHalo = inExt.bNFWSpheroid =
 			inExt.bHernquistSpheroid = inExt.bMiyamotoDisk = 0;
 		inExt.bRotFrame = msr->param.bRotFrame;
 		inExt.dOmega = msr->param.dOmega +
@@ -2768,7 +2821,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	if (msr->param.bPatch) { /* orbiting patch */
 		static int bFirstCall = 1;
 		static double dOrbFreqZ2 = 0;
-		inExt.bIndirect = inExt.bDoSun = inExt.bLogHalo =
+		inExt.bIndirect = inExt.bDoSun = inExt.bLogHalo = inExt.bNFWSpheroid =
 			inExt.bHernquistSpheroid = inExt.bMiyamotoDisk = 0;
 		inExt.bPatch = msr->param.bPatch;
 		inExt.dOrbFreq = msr->param.dOrbFreq;
@@ -2790,7 +2843,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	*pdWMax = out.dWMax;
 	*pdIMax = out.dIMax;
 	*pdEMax = out.dEMax;
-	if (msr->param.bVStep) {
+	if (msr->param.bDoSelfGravity && msr->param.bVStep) {
 		double dPartAvg,dCellAvg,dSoftAvg;
 		double dWAvg,dWMax,dWMin;
 		double dIAvg,dIMax,dIMin;
@@ -4605,15 +4658,17 @@ void msrTopStepKDK(MSR msr,
 
 		if (msr->param.bVStep) printf("Forces, Step:%f\n",dStep);
 		if(msrDoGravity(msr)) {
+		  if (msr->param.bDoSelfGravity) {
 			msrActiveRung(msr,iKickRung,1);
 			msrUpdateSoft(msr,dTime);
 			msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
 			if (msr->param.bVDetails)
 				printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
 			msrBuildTree(msr,0,dMass,0);
-			msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nActive);
-			*pdActiveSum += (double)nActive/msr->N;
-			}
+		        }
+		  msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nActive);
+		  *pdActiveSum += (double)nActive/msr->N;
+		  }
 
 #ifdef GASOLINE
 		if (msr->param.bVDetails)
@@ -4834,13 +4889,11 @@ void msrGetGasPressure(MSR msr)
 	switch (in.iGasModel) {
 
 	case GASMODEL_ADIABATIC:
+	case GASMODEL_ISOTHERMAL:
 	case GASMODEL_COOLING:
 	case GASMODEL_COOLING_NONEQM:
 		in.gamma = msr->param.dConstGamma;
 		in.gammam1 = in.gamma-1;
-		break;
-	case GASMODEL_ISOTHERMAL:
-		assert(0);
 		break;
 	case GASMODEL_GLASS:
 #ifdef GLASS

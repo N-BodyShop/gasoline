@@ -2997,6 +2997,9 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (in->bHernquistSpheroid) {
 			pkdHernquistSpheroid(plcl->pkd);
 			}
+		if (in->bNFWSpheroid) {
+			pkdNFWSpheroid(plcl->pkd);
+			}
 		if (in->bHomogSpheroid) {
 			pkdHomogSpheroid(plcl->pkd);
 			}
@@ -4038,10 +4041,8 @@ void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		case GASMODEL_ADIABATIC: 
 		case GASMODEL_COOLING:
 		case GASMODEL_COOLING_NONEQM:
-			pkdAdiabaticGasPressure(plcl->pkd, in->gammam1,in->gamma);
-			break;
 		case GASMODEL_ISOTHERMAL:
-			mdlassert(pst->mdl,0);
+			pkdAdiabaticGasPressure(plcl->pkd, in->gammam1,in->gamma);
 			break;
 		case GASMODEL_GLASS:
 #ifdef GLASS		  

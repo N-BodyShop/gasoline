@@ -2772,6 +2772,69 @@ void pkdHernquistSpheroid(PKD pkd)
 	}
 
 
+void pkdNFWSpheroid(PKD pkd)
+{
+	PARTICLE *p;
+	int i,n;
+
+	const double M_200 = 2.;	/* Units 1e12 Solar masses */
+	const double r_200 = 200;       /* Units kpc */
+	const double G = 1;
+	/* Assuming G = 1 (this sets a timescale) */
+	/* TimeUnit = sqrt(kpc^3/(G*1e12 Msun)) = 1.1285945e+09 yr */
+        /* Vunit = 2073.8081 km/s */
+
+        const double c = 11; /* NFW concentration (cf. Lucio) */
+	const double dSoft = 0.5; /* kpc */
+	const double eps = c*dSoft/r_200; 
+
+	/* r=r_200 (x=1, cx=c), M=M_200 */
+	const double M_const = M_200/
+	  ( (1./3.)*eps*eps/(1+eps)/(1+eps) 
+	    - 1/(1+eps) + log((1+c)/(1+eps)) + 1/(1+c) );
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i) {
+		if (TYPEQueryACTIVE(&(p[i]))) {
+			double x = p[i].r[0];
+			double y = p[i].r[1];
+			double z = p[i].r[2];
+			/*
+			 **	Do the spheroid potential
+			 */
+			double r = sqrt(x*x + y*y + z*z);
+			double A, fPot;
+			double cx = r*(c/r_200);
+			
+			if (r < eps) {
+			  fPot = G*M_const*c/r_200* ((1./6.)*( cx*cx - eps*eps )/(eps*(1+eps)*(1+eps)) 
+			    - (1./3.)*eps/(1+eps)/(1+eps) - 1/(1+eps));
+
+			  A = G*M_const* 		
+			    (1./3.)/(eps*(1+eps)*(1+eps))
+			    *r_200*r_200*r_200/(c*c*c);
+			}			  
+			else {
+			  fPot = G*M_const*c/r_200 * 
+			    (( -(1./3.) *eps*eps/(1+eps)/(1+eps) - eps/(1+eps) 
+				   - log((1+cx)/(1+eps)) ) /cx);
+
+			  A = G*M_const* 
+			    ( (1./3.)*eps*eps/(1+eps)/(1+eps) 
+			       - 1/(1+eps) + log((1+cx)/(1+eps)) + 1/(1+cx) )
+			    /(r*r*r);
+			}
+
+			/*fprintf(stderr,"%i: %f %f %f  %f %f %f %f\n",p[i].iOrder,x,y,z,r,fPot,-A*r,A); */
+			p[i].a[0] -= A*x;
+			p[i].a[1] -= A*y;
+			p[i].a[2] -= A*z;
+			p[i].fPot += fPot;
+			}
+		}
+	}
+
+
 void pkdHomogSpheroid(PKD pkd)
 {
 	PARTICLE *p;
@@ -2800,7 +2863,6 @@ void pkdHomogSpheroid(PKD pkd)
 			}
 		}
 	}
-
 
 void pkdMiyamotoDisk(PKD pkd)
 {
@@ -3123,21 +3185,23 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 			if (pkdIsGas(pkd, p)) {
 				for (j=0;j<3;++j) {
 					p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
-					}
+				}
+				if (iGasModel != GASMODEL_ISOTHERMAL) {
 #ifndef NOCOOLING				
-				p->uPred = p->u + p->uDot*duPredDelta;
-				p->u = p->u + p->uDot*duDelta;
+				  p->uPred = p->u + p->uDot*duPredDelta;
+				  p->u = p->u + p->uDot*duDelta;
 #else
-				p->uPred = p->u + p->PdV*duPredDelta;
-				p->u = p->u + p->PdV*duDelta;
+				  p->uPred = p->u + p->PdV*duPredDelta;
+				  p->u = p->u + p->PdV*duDelta;
 #endif
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) 
-				if (p->uPred < 0) p->uPred = 0;
-				if (p->u < 0) p->u = 0;
+				  if (p->uPred < 0) p->uPred = 0;
+				  if (p->u < 0) p->u = 0;
 #endif
 #ifdef SUPERNOVA
-                                p->uSN += p->PdVSN*duDelta;	  
+				  p->uSN += p->PdVSN*duDelta;	  
 #endif
+				  }
 				}
 #else
 			for (j=0;j<3;++j) {
@@ -4420,15 +4484,17 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int 
 			for (j=0;j<3;++j) {
 				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;
 				}
+			if (iGasModel != GASMODEL_ISOTHERMAL) {
 #ifndef NOCOOLING
-			p->uPred = p->uPred + p->uDot*duDelta;
+			  p->uPred = p->uPred + p->uDot*duDelta;
 #else
-			p->uPred = p->uPred + p->PdV*duDelta;
+			  p->uPred = p->uPred + p->PdV*duDelta;
 #endif
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) 
-                        if (p->uPred < 0) p->uPred = 0;
+                          if (p->uPred < 0) p->uPred = 0;
 #endif
-			mdlassert(pkd->mdl,p->uPred > 0);
+			  mdlassert(pkd->mdl,p->uPred > 0);
+                          }
 			}
 		}
 
@@ -4739,7 +4805,7 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	 */
 	fseek(fp,SSHEAD_SIZE + nStart*SSDATA_SIZE,SEEK_SET);
 	/*
-	 ** Read Stuff!
+	 ** Read Stuff
 	 */
 	xdrstdio_create(&xdrs,fp,XDR_DECODE);
 	for (i=0;i<nLocal;++i) {
@@ -4917,15 +4983,17 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int 
 			for (j=0;j<3;++j) {
 				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;
 				}
+			if (iGasModel != GASMODEL_ISOTHERMAL) {
 #ifndef NOCOOLING
-			p->uPred = p->uPred + p->uDot*duDelta;
+			  p->uPred = p->uPred + p->uDot*duDelta;
 #else
-			p->uPred = p->uPred + p->PdV*duDelta;
+			  p->uPred = p->uPred + p->PdV*duDelta;
 #endif
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) 
-			if (p->uPred < 0) p->uPred = 0;
+			  if (p->uPred < 0) p->uPred = 0;
 #endif
-			mdlassert(pkd->mdl,p->uPred >= 0);
+			  mdlassert(pkd->mdl,p->uPred >= 0);
+			  }
 			}
 		}
 
