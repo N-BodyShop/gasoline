@@ -104,13 +104,24 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	nTotal = pst->nEnd - pst->nStart + 1;
 	if (pst->nLeaves > 1) {
 		pst->nOrdSplit = pst->nStart + pst->nLower*nTotal/pst->nLeaves;
-		in->nStart = pst->nOrdSplit;
-		mdlReqService(pst->mdl,pst->idUpper,PST_READTIPSY,in,nIn);
-		in->nStart = pst->nStart;
-		in->nEnd = pst->nOrdSplit - 1;
-		pstReadTipsy(pst->pstLower,in,nIn,NULL,NULL);
-		in->nEnd = pst->nEnd;
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		if (in->bParaRead) {
+			in->nStart = pst->nOrdSplit;
+			mdlReqService(pst->mdl,pst->idUpper,PST_READTIPSY,in,nIn);
+			in->nStart = pst->nStart;
+			in->nEnd = pst->nOrdSplit - 1;
+			pstReadTipsy(pst->pstLower,in,nIn,NULL,NULL);
+			in->nEnd = pst->nEnd;
+			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+			}
+		else {
+			in->nEnd = pst->nOrdSplit - 1;
+			pstReadTipsy(pst->pstLower,in,nIn,NULL,NULL);
+			in->nEnd = pst->nEnd;
+			in->nStart = pst->nOrdSplit;
+			mdlReqService(pst->mdl,pst->idUpper,PST_READTIPSY,in,nIn);
+			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+			in->nStart = pst->nStart;
+			}
 		}
 	else {
 		/*
@@ -774,9 +785,16 @@ void pstWriteTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 	assert(nIn == sizeof(struct inWriteTipsy));
 	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_WRITETIPSY,in,nIn);
-		pstWriteTipsy(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		if (in->bParaWrite) {
+			mdlReqService(pst->mdl,pst->idUpper,PST_WRITETIPSY,in,nIn);
+			pstWriteTipsy(pst->pstLower,in,nIn,NULL,NULL);
+			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+			}
+		else {
+			pstWriteTipsy(pst->pstLower,in,nIn,NULL,NULL);
+			mdlReqService(pst->mdl,pst->idUpper,PST_WRITETIPSY,in,nIn);
+			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+			}
 		}
 	else {
 		/*
@@ -1029,13 +1047,24 @@ void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	nTotal = pst->nEnd - pst->nStart + 1;
 	if (pst->nLeaves > 1) {
 		pst->nOrdSplit = pst->nStart + pst->nLower*nTotal/pst->nLeaves;
-		in->nStart = pst->nOrdSplit;
-		mdlReqService(pst->mdl,pst->idUpper,PST_READCHECK,in,nIn);
-		in->nStart = pst->nStart;
-		in->nEnd = pst->nOrdSplit - 1;
-		pstReadCheck(pst->pstLower,in,nIn,NULL,NULL);
-		in->nEnd = pst->nEnd;
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		if (in->bParaRead) {
+			in->nStart = pst->nOrdSplit;
+			mdlReqService(pst->mdl,pst->idUpper,PST_READCHECK,in,nIn);
+			in->nStart = pst->nStart;
+			in->nEnd = pst->nOrdSplit - 1;
+			pstReadCheck(pst->pstLower,in,nIn,NULL,NULL);
+			in->nEnd = pst->nEnd;
+			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+			}
+		else {
+			in->nEnd = pst->nOrdSplit - 1;
+			pstReadCheck(pst->pstLower,in,nIn,NULL,NULL);
+			in->nEnd = pst->nEnd;
+			in->nStart = pst->nOrdSplit;
+			mdlReqService(pst->mdl,pst->idUpper,PST_READCHECK,in,nIn);
+			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+			in->nStart = pst->nStart;
+			}
 		}
 	else {
 		/*
@@ -1096,11 +1125,20 @@ void pstWriteCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	assert(nIn == sizeof(struct inWriteCheck));
 	if (pst->nLeaves > 1) {
 		nStart = in->nStart;
-		in->nStart += pst->pstLower->nTotal;
-		mdlReqService(pst->mdl,pst->idUpper,PST_WRITECHECK,in,nIn);
-		in->nStart = nStart;
-		pstWriteCheck(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		if (in->bParaWrite) {
+			in->nStart += pst->pstLower->nTotal;
+			mdlReqService(pst->mdl,pst->idUpper,PST_WRITECHECK,in,nIn);
+			in->nStart = nStart;
+			pstWriteCheck(pst->pstLower,in,nIn,NULL,NULL);
+			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+			}
+		else {
+			pstWriteCheck(pst->pstLower,in,nIn,NULL,NULL);
+			in->nStart += pst->pstLower->nTotal;
+			mdlReqService(pst->mdl,pst->idUpper,PST_WRITECHECK,in,nIn);
+			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+			in->nStart = nStart;
+			}
 		}
 	else {
 		/*

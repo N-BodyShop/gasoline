@@ -67,6 +67,7 @@ struct inReadTipsy {
 	int iOrder;
 	float fExtraStore;
 	float fPeriod[3];
+	int bParaRead;
 	char achInFile[PST_FILENAME_SIZE];
 	};
 void pstReadTipsy(PST,void *,int,void *,int *);
@@ -155,6 +156,7 @@ void pstOutVector(PST,void *,int,void *,int *);
 #define PST_WRITETIPSY		18
 struct inWriteTipsy {
 	int bStandard;
+	int bParaWrite;
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteTipsy(PST,void *,int,void *,int *);
@@ -245,6 +247,7 @@ struct inReadCheck {
 	int iOrder;
 	float fExtraStore;
 	float fPeriod[3];
+	int bParaRead;
 	char achInFile[PST_FILENAME_SIZE];
 	};
 void pstReadCheck(PST,void *,int,void *,int *);
@@ -252,6 +255,7 @@ void pstReadCheck(PST,void *,int,void *,int *);
 #define PST_WRITECHECK		26
 struct inWriteCheck {
 	int nStart;
+	int bParaWrite;
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteCheck(PST,void *,int,void *,int *);

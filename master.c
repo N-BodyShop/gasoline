@@ -71,6 +71,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.bRestart = 0;
 	prmAddParam(msr->prm,"bRestart",0,&msr->param.bRestart,"restart",
 				"restart from checkpoint");
+	msr->param.bParaRead = 1;
+	prmAddParam(msr->prm,"bParaRead",0,&msr->param.bParaRead,"par",
+				"enable/disable parallel reading of files = +par");
+	msr->param.bParaWrite = 1;
+	prmAddParam(msr->prm,"bParaWrite",0,&msr->param.bParaWrite,"paw",
+				"enable/disable parallel writing of files = +paw");
 	msr->param.nBucket = 8;
 	prmAddParam(msr->prm,"nBucket",1,&msr->param.nBucket,"b",
 				"<max number of particles in a bucket> = 8");
@@ -575,11 +581,7 @@ double msrReadTipsy(MSR msr)
 	for (j=0;j<3;++j) {
 		in.fPeriod[j] = msr->param.dPeriod;
 		}
-	/*
-	 ** Do a parallel Read of the input file, may be benificial for
-	 ** some systems, or if there are multiple identical physical files. 
-	 ** Start child threads reading!
-	 */
+	in.bParaRead = msr->param.bParaRead;
 	pstReadTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	if (msr->param.bVerbose) puts("Input file has been successfully read.");
 	return(dTime);
@@ -672,9 +674,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		fwrite(&h,sizeof(struct dump),1,fp);
 		}
 	fclose(fp);
-	/*
-	 ** Do a parallel write to the output file.
-	 */
+	in.bParaWrite = msr->param.bParaWrite;
 	pstWriteTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	if (msr->param.bVerbose) {
 		puts("Output file has been successfully written.");
@@ -1113,12 +1113,8 @@ double msrReadCheck(MSR msr,int *piStep)
 	for (j=0;j<3;++j) {
 		in.fPeriod[j] = msr->param.dPeriod;
 		}
-	/*
-	 ** Do a parallel Read of the input file, may be benificial for
-	 ** some systems, or if there are multiple identical physical files. 
-	 ** Start child threads reading!
-	 */
 	in.bNewCheck = bNewCheck;
+	in.bParaRead = msr->param.bParaRead;
 	pstReadCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	if (msr->param.bVerbose) puts("Checkpoint file has been successfully read.");
 	return(dTime);
@@ -1202,6 +1198,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	 */
 	pstSetTotal(msr->pst,NULL,0,&oute,&iDum);
 	in.nStart = 0;
+	in.bParaWrite = msr->param.bParaWrite;
 	pstWriteCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	if (msr->param.bVerbose) {
 		puts("Checkpoint file has been successfully written.");

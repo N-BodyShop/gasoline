@@ -9,6 +9,9 @@ struct parameters {
 	int bPeriodic;
 	int bGatherScatter;
 	int bRestart;
+	int bComove;
+	int bParaRead;
+	int bParaWrite;
 	int nBucket;
 	int iOutInterval;
 	int iLogInterval;
@@ -29,14 +32,15 @@ struct parameters {
 	double dAbsTotal;
 	double dRelTotal;
 	double dPeriod;
+	double dHubble0;
+	double dOmega0;
 	char achInFile[256];
 	char achOutName[256];
 	char achDataSubPath[256];
-	double dHubble0;
-	double dOmega0;
-	int bComove;
 	};
 
 
 #endif
+
+
 
