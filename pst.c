@@ -405,7 +405,7 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 	}
 
 
-#define NUM_SAFETY	2
+#define NUM_SAFETY	0
 
 void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 {
@@ -426,6 +426,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 #ifdef PARANOID_CHECK
 	int i,iLowSum,iHighSum;
 #endif
+	int pFlag, nTotalActive;
 
 	/*
 	 ** First find out how much free storage there is available for particles
@@ -442,13 +443,34 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVEORDER,NULL,0);
 	pstActiveOrder(pst->pstLower,NULL,0,NULL,NULL);
 	mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-	/*
-	 ** Now start the ROOT finder based on balancing active weight ALONE!
-	 */
+
 	d = iSplitDim;
 	fl = pst->bnd.fMin[d];
 	fu = pst->bnd.fMax[d];
 	fmm = (fl + fu)/2;
+	/*
+	 * First find total number of active particles.
+	 */
+	inWt.iSplitDim = d;
+	inWt.fSplit = fmm;
+	inWt.ittr = 0;
+	inWt.iSplitSide = 1;
+	inWt.pFlag = 1;
+	mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
+	inWt.iSplitSide = 0;
+	pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
+	mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
+	nTotalActive = outWtLow.nLow + outWtHigh.nLow
+	    + outWtLow.nHigh + outWtHigh.nHigh;
+	/*
+	 * If we only have one or zero active particles, just split
+	 * all the particles.
+	 */
+	if(nTotalActive < 2) pFlag = 0;
+	else pFlag = 1;
+	/*
+	 ** Now start the ROOT finder based on balancing active weight ALONE!
+	 */
 	ittr = 0;
 	while (fl < fmm && fmm < fu) {
 		fm = fmm;
@@ -456,7 +478,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		inWt.fSplit = fm;
 		inWt.ittr = ittr;
 		inWt.iSplitSide = 1;
-		inWt.pFlag = 1;
+		inWt.pFlag = pFlag;
 		mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 		inWt.iSplitSide = 0;
 		pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
@@ -494,7 +516,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			inWt.fSplit = fm;
 			inWt.ittr = ittr;
 			inWt.iSplitSide = 1;
-			inWt.pFlag = 1;
+			inWt.pFlag = pFlag;
 			mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 			inWt.iSplitSide = 0;
 			pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
@@ -532,7 +554,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			inWt.fSplit = fm;
 			inWt.ittr = ittr;
 			inWt.iSplitSide = 1;
-			inWt.pFlag = 1;
+			inWt.pFlag = pFlag;
 			mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 			inWt.iSplitSide = 0;
 			pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
@@ -561,186 +583,206 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		}
 	pst->fSplit = fm;
 	pst->iSplitDim = d;
-	/*
-	 ** Now we see if the TOTAL number of particles in the lower and upper
-	 ** subsets exceeds the local pStores. If so then we need to find a new
-	 ** boundary to distribute the INACTIVE particles so that everything 
-	 ** fits.
-	 */
-	inWt.iSplitDim = d;
-	inWt.fSplit = fm;
-	inWt.ittr = 0;
-	inWt.iSplitSide = 1;
-	inWt.pFlag = -1;
-	mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
-	inWt.iSplitSide = 0;
-	pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
-	mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
-	/*
-	 ** Add lower and Upper subsets numbers of particles
-	 */
-	nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
-	nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
-	if (nLowTot > nLowerStore-NUM_SAFETY) {
-		fl = pst->bnd.fMin[d];
-		fu = fm;
-		fmm = (fl + fu)/2;
-		ittr = 1;
-	    while (fl < fmm && fmm < fu) {
-			fm = fmm;
-			inWt.iSplitDim = d;
-			inWt.fSplit = fm;
-			inWt.ittr = ittr;
-			inWt.iSplitSide = 1;
-			inWt.pFlag = -1;
-			mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
-			inWt.iSplitSide = 0;
-			pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
-			mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
-			/*
-			 ** Add lower and Upper subsets numbers of particles
-			 */
-			nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
-			nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
-			/*
-			printf("Inactive Fit ittr:%d l:%d\n",ittr,nLowTot);
-			*/
-			if (nLowTot > nLowerStore) fu = fm;
-			else if (nLowTot < nLowerStore) fl = fm;
-			else {
-				fl = fm;
-				break;
-				}
-			fmm = (fl + fu)/2;
-			++ittr;
-			}
-		/*
-		printf("Inactive Fit ittr:%d l:%d <= %d\n",ittr,nLowTot,nLowerStore);
-		*/
-		assert(nLowTot <= nLowerStore);
-		}
-	else if (nHighTot > nUpperStore-NUM_SAFETY) {
-		fl = fm;
-		fu = pst->bnd.fMax[d];
-		fmm = (fl + fu)/2;
-		ittr = 1;
-	    while (fl < fmm && fmm < fu) {
-			fm = fmm;
-			inWt.iSplitDim = d;
-			inWt.fSplit = fm;
-			inWt.ittr = ittr;
-			inWt.iSplitSide = 1;
-			inWt.pFlag = -1;
-			mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
-			inWt.iSplitSide = 0;
-			pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
-			mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
-			/*
-			 ** Add lower and Upper subsets numbers of particles
-			 */
-			nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
-			nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
-			/*
-			printf("Inactive Fit ittr:%d u:%d\n",ittr,nHighTot);
-			*/
-			if (nHighTot > nUpperStore) fl = fm;
-			else if (nHighTot < nUpperStore) fu = fm;
-			else {
-				fu = fm;
-				break;
-				}
-			fmm = (fl + fu)/2;
-			++ittr;
-			}
-		/*
-		printf("Inactive Fit ittr:%d u:%d <= %d\n",ittr,nHighTot,nUpperStore);
-		*/
-		assert(nHighTot <= nUpperStore);
-		}
-	/*
-	 ** Now we make sure that there is at least one particle per
-	 ** processor.  If not, redistribute the INACTIVE particles so
-	 ** every processor has at least one.
-	 */
-	if (nLowTot < pst->nLower) {
-		fl = fm;
-		fu = pst->bnd.fMax[d];
-		fmm = (fl + fu)/2;
-		ittr = 1;
-	    while (fl < fmm && fmm < fu) {
-			fm = fmm;
-			inWt.iSplitDim = d;
-			inWt.fSplit = fm;
-			inWt.ittr = ittr;
-			inWt.iSplitSide = 1;
-			inWt.pFlag = -1;
-			mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
-			inWt.iSplitSide = 0;
-			pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
-			mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
-			/*
-			 ** Add lower and Upper subsets numbers of particles
-			 */
-			nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
-			nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
-			/*
-			printf("Inactive Fit ittr:%d u:%d\n",ittr,nHighTot);
-			*/
-			if (nLowTot > pst->nLower) fu = fm;
-			else if (nLowTot < pst->nLower) fl = fm;
-			else {
-				fu = fm;
-				break;
-				}
-			fmm = (fl + fu)/2;
-			++ittr;
-			}
-		}
-	else if (nHighTot < pst->nUpper) {
-		fl = pst->bnd.fMin[d];
-		fu = fm;
-		fmm = (fl + fu)/2;
-		ittr = 1;
-	    while (fl < fmm && fmm < fu) {
-			fm = fmm;
-			inWt.iSplitDim = d;
-			inWt.fSplit = fm;
-			inWt.ittr = ittr;
-			inWt.iSplitSide = 1;
-			inWt.pFlag = -1;
-			mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
-			inWt.iSplitSide = 0;
-			pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
-			mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
-			/*
-			 ** Add lower and Upper subsets numbers of particles
-			 */
-			nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
-			nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
-			/*
-			printf("Inactive Fit ittr:%d l:%d\n",ittr,nLowTot);
-			*/
-			if (nHighTot > pst->nUpper) fl = fm;
-			else if (nHighTot < pst->nUpper) fu = fm;
-			else {
-				fl = fm;
-				break;
-				}
-			fmm = (fl + fu)/2;
-			++ittr;
-			}
-		}
-	printf("Fit stats: Active: %d %d Inactive: %d %d Sum: %d %d\n",
-	       nLow, nHigh, outWtLow.nLow + outWtHigh.nLow, outWtLow.nHigh +
-	       outWtHigh.nHigh, nLowTot, nHighTot);
-	/*
-	 ** Make sure everything is OK.
-	 */
-	assert(nLowTot >= pst->nLower);
-	assert(nHighTot >= pst->nUpper);
-	assert(nLowTot <= nUpperStore);
-	assert(nHighTot <= nUpperStore);
+	if(pFlag) {
+	    /*
+	     ** Now we see if the TOTAL number of particles in the lower and upper
+	     ** subsets exceeds the local pStores. If so then we need to find a new
+	     ** boundary to distribute the INACTIVE particles so that everything 
+	     ** fits.
+	     */
+	    inWt.iSplitDim = d;
+	    inWt.fSplit = fm;
+	    inWt.ittr = 0;
+	    inWt.iSplitSide = 1;
+	    inWt.pFlag = -1;
+	    mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
+	    inWt.iSplitSide = 0;
+	    pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
+	    mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
+	    /*
+	     ** Add lower and Upper subsets numbers of particles
+	     */
+	    nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
+	    nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
 
+	    if (nLowTot > nLowerStore) {
+		    fl = pst->bnd.fMin[d];
+		    fu = fm;
+		    fmm = (fl + fu)/2;
+		    ittr = 1;
+		while (fl < fmm && fmm < fu) {
+			    fm = fmm;
+			    inWt.iSplitDim = d;
+			    inWt.fSplit = fm;
+			    inWt.ittr = ittr;
+			    inWt.iSplitSide = 1;
+			    inWt.pFlag = -1;
+			    mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
+			    inWt.iSplitSide = 0;
+			    pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
+			    mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
+			    /*
+			     ** Add lower and Upper subsets numbers of particles
+			     */
+			    nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
+			    nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
+			    /*
+			    printf("Inactive Fit ittr:%d l:%d\n",ittr,nLowTot);
+			    */
+			    if (nLowTot > nLowerStore) fu = fm;
+			    else if (nLowTot < nLowerStore) fl = fm;
+			    else {
+				    fl = fm;
+				    break;
+				    }
+			    fmm = (fl + fu)/2;
+			    ++ittr;
+			    }
+		    /*
+		    printf("Inactive Fit ittr:%d l:%d <= %d\n",ittr,nLowTot,nLowerStore);
+		    */
+		    assert(nLowTot <= nLowerStore);
+		    }
+	    else if (nHighTot > nUpperStore) {
+		    fl = fm;
+		    fu = pst->bnd.fMax[d];
+		    fmm = (fl + fu)/2;
+		    ittr = 1;
+		while (fl < fmm && fmm < fu) {
+			    fm = fmm;
+			    inWt.iSplitDim = d;
+			    inWt.fSplit = fm;
+			    inWt.ittr = ittr;
+			    inWt.iSplitSide = 1;
+			    inWt.pFlag = -1;
+			    mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
+			    inWt.iSplitSide = 0;
+			    pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
+			    mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
+			    /*
+			     ** Add lower and Upper subsets numbers of particles
+			     */
+			    nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
+			    nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
+			    /*
+			    printf("Inactive Fit ittr:%d u:%d\n",ittr,nHighTot);
+			    */
+			    if (nHighTot > nUpperStore) fl = fm;
+			    else if (nHighTot < nUpperStore) fu = fm;
+			    else {
+				    fu = fm;
+				    break;
+				    }
+			    fmm = (fl + fu)/2;
+			    ++ittr;
+			    }
+		    /*
+		    printf("Inactive Fit ittr:%d u:%d <= %d\n",ittr,nHighTot,nUpperStore);
+		    */
+		    assert(nHighTot <= nUpperStore);
+		    }
+	    /*
+	     ** Now we make sure that there is at least one particle per
+	     ** processor.  If not, redistribute the INACTIVE particles so
+	     ** every processor has at least one.
+	     */
+	    if (nLowTot < pst->nLower) {
+		    fl = fm;
+		    fu = pst->bnd.fMax[d];
+		    fmm = (fl + fu)/2;
+		    ittr = 1;
+		while (fl < fmm && fmm < fu) {
+			    fm = fmm;
+			    inWt.iSplitDim = d;
+			    inWt.fSplit = fm;
+			    inWt.ittr = ittr;
+			    inWt.iSplitSide = 1;
+			    inWt.pFlag = -1;
+			    mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
+			    inWt.iSplitSide = 0;
+			    pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
+			    mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
+			    /*
+			     ** Add lower and Upper subsets numbers of particles
+			     */
+			    nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
+			    nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
+			    /*
+			    printf("Inactive Fit ittr:%d u:%d\n",ittr,nHighTot);
+			    */
+			    if (nLowTot > pst->nLower) fu = fm;
+			    else if (nLowTot < pst->nLower) fl = fm;
+			    else {
+				    fu = fm;
+				    break;
+				    }
+			    fmm = (fl + fu)/2;
+			    ++ittr;
+			    }
+		    }
+	    else if (nHighTot < pst->nUpper) {
+		    fl = pst->bnd.fMin[d];
+		    fu = fm;
+		    fmm = (fl + fu)/2;
+		    ittr = 1;
+		while (fl < fmm && fmm < fu) {
+			    fm = fmm;
+			    inWt.iSplitDim = d;
+			    inWt.fSplit = fm;
+			    inWt.ittr = ittr;
+			    inWt.iSplitSide = 1;
+			    inWt.pFlag = -1;
+			    mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
+			    inWt.iSplitSide = 0;
+			    pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
+			    mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
+			    /*
+			     ** Add lower and Upper subsets numbers of particles
+			     */
+			    nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
+			    nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
+			    /*
+			    printf("Inactive Fit ittr:%d l:%d\n",ittr,nLowTot);
+			    */
+			    if (nHighTot > pst->nUpper) fl = fm;
+			    else if (nHighTot < pst->nUpper) fu = fm;
+			    else {
+				    fl = fm;
+				    break;
+				    }
+			    fmm = (fl + fu)/2;
+			    ++ittr;
+			    }
+		    }
+	    printf("Fit stats: Active: %d %d Inactive: %d %d Sum: %d %d\n",
+		   nLow, nHigh, outWtLow.nLow + outWtHigh.nLow, outWtLow.nHigh +
+		   outWtHigh.nHigh, nLowTot, nHighTot);
+	    /*
+	     ** Make sure everything is OK.
+	     */
+	    assert(nLowTot >= pst->nLower);
+	    assert(nHighTot >= pst->nUpper);
+	    assert(nLowTot <= nLowerStore);
+	    assert(nHighTot <= nUpperStore);
+	    }
+	else {
+	    /*
+	     ** Make sure that the particles are back in
+	     ** active-inactive order after we've split all the particles.
+	     */
+	    mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVEORDER,NULL,0);
+	    pstActiveOrder(pst->pstLower,NULL,0,NULL,NULL);
+	    mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+	    printf("Fit stats: Sum: %d %d\n", nLow, nHigh);
+	    /*
+	     ** Make sure everything is OK.
+	     */
+	    assert(nLow >= pst->nLower);
+	    assert(nHigh >= pst->nUpper);
+	    assert(nLow <= nLowerStore);
+	    assert(nHigh <= nUpperStore);
+	    }
+	    
 	pst->fSplitInactive = fm;
 	/*
 	 ** First Collect rejects.
@@ -918,6 +960,8 @@ void pstCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 /*
  ** Make sure that the local particles are split into active and inactive
  ** when passing pFlag != 0.
+ ** pFlag > 0 => weight active particles.
+ ** pFlag < 0 => weight inactive particles.
  */
 void pstWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
