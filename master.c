@@ -1507,10 +1507,14 @@ void msrCoolVelocity(MSR msr,double dMass)
 		 */
 		ina.nSuperCool = msr->param.nSuperCool;
 		pstActiveCool(msr->pst,&ina,sizeof(ina),NULL,NULL);
-		msrBuildTree(msr,0,dMass,1);
-		msrSmooth(msr,SMX_DENSITY,0);
+		/*
+		 ** Build the tree, but with active only particles, just like 
+		 ** sph see!
+		 */
+		msrBuildTree(msr,1,dMass,1);
+		msrSmooth(msr,SMX_DENSITY,1);
 #ifdef SUPERCOOL
-		msrReSmooth(msr,SMX_MEANVEL,0);
+		msrReSmooth(msr,SMX_MEANVEL,1);
 #endif
 		/*
 		 ** Now cool them.

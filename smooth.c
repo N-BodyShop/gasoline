@@ -49,6 +49,10 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 			}
 		else {
 			assert(bSymmetric == 0);
+			if (bSmooth) {
+				if (pkd->pStore[pi].fBall2 < 0.0) 
+					pkd->pStore[pi].fBall2 = 0.0;
+				}
 			}
 		}
 	/*
@@ -56,11 +60,11 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 	 */
 	if (bSymmetric) {
 		mdlCOcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
-				   pkdLocal(pkd),init,comb);
+				   pkdActive(pkd),init,comb);
 		}
 	else {
 		mdlROcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
-				   pkdLocal(pkd));
+				   pkdActive(pkd));
 		}
 	/*
 	 ** Allocate mark array.
@@ -474,7 +478,7 @@ void smSmooth(SMX smx)
 	/*
 	 ** Check if we are finished!
 	 */
-	if (pNext == pkd->nLocal) goto DoneSmooth;
+	if (pNext == pkd->nActive) goto DoneSmooth;
 	if (pkd->pStore[pNext].fBall2 >= 0.0) {
 		++pNext;
 		goto StartParticle;
@@ -492,7 +496,7 @@ void smSmooth(SMX smx)
 	 ** Add local stuff to the prioq.
 	 */
 	pj = c[cell].pLower;
-	if (pj > pkd->nLocal - nSmooth) pj = pkd->nLocal - nSmooth;
+	if (pj > pkd->nActive - nSmooth) pj = pkd->nActive - nSmooth;
 	for (i=0,pqi=smx->pq;i<nSmooth;++i,++pj,++pqi) {
 		smx->piMark[pj] = 1;
 		dx = x - p[pj].r[0];
