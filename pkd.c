@@ -1916,7 +1916,8 @@ pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta, int iMaxRung,
 	    if(bAll) {          /* Assign all rungs at iRung and above */
 		iStepsv = dDelta*vel/(dEta*pkd->pStore[i].fSoft);
 		iStepsa = dDelta*sqrt(acc/pkd->pStore[i].fSoft)/dEta;
-		iSteps = iStepsv > iStepsa ? iStepsv : iStepsa;
+		/* iSteps = iStepsv > iStepsa ? iStepsv : iStepsa; */
+		iSteps = iStepsa;	/* Just use a --trq */
 		iTempRung = iRung;
 		while(iSteps) {
 		    ++iTempRung;
