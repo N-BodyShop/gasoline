@@ -2150,7 +2150,11 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 	if (msr->param.bVerbose) puts("doing mass check...");
 	pstMassCheck(msr->pst,NULL,0,&out,NULL);
 	if (dMass < 0.0) return(out.dMass);
+#if 0
 	else if (dMass != out.dMass) {
+#else
+	else if (fabs(dMass - out.dMass) > 1e-12*dMass) {
+#endif
 		printf("ERROR: Mass not conserved (%s): %.15f != %.15f!\n",
 			   pszWhere,dMass,out.dMass);
 		_msrExit(msr);
