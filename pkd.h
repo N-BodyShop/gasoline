@@ -178,7 +178,7 @@ typedef struct kdNode {
 	double fSplit;
 	BND bnd;
 	int pLower;		/* also doubles as thread id for the LTT */
-	int pUpper;
+	int pUpper;		/* pUpper < 0 indicates no particles in tree! */
 	int iLower;
 	int iUpper;
 	double fMass;

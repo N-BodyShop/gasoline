@@ -720,6 +720,7 @@ void smSmooth(SMX smx,SMF *smf)
 		while (1) {
 		    if (id >= 0) pkdn = mdlAquire(mdl,CID_CELL,cp,id);
 			else pkdn = &pkd->kdTop[cp];
+			if (pkdn->pUpper < 0) goto GetNext_2;
    			INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNext_2);
 			if (pkdn->iDim >= 0) {
 			    if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
@@ -1022,6 +1023,7 @@ void smMarkSmooth(SMX smx,SMF *smf)
 		while (1) {
 		    if (id >= 0) pkdn = mdlAquire(mdl,CID_CELL,cp,id);
 			else pkdn = &pkd->kdTop[cp];
+			if (pkdn->pUpper < 0) goto GetNext_2;
    			INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNext_2);
 			if (pkdn->iDim >= 0) {
 			    if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
@@ -1237,7 +1239,7 @@ void smReSmooth(SMX smx,SMF *smf)
 		 */
 		fBall2 = p[pi].fBall2;
 		cp = p[pi].cpStart;
-                TYPESet( &p[pi], TYPE_SMOOTHDONE );
+		TYPESet( &p[pi], TYPE_SMOOTHDONE );
 		if (cp) {
 			nCnt = smBallGatherNP(smx,fBall2,p[pi].r,cp);
 			smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
@@ -1265,8 +1267,8 @@ void smReSmooth(SMX smx,SMF *smf)
 				if (id == pkd->idSelf) goto SkipLocal;
 				if (id >= 0) pkdn = mdlAquire(mdl,CID_CELL,cp,id);
 				else pkdn = &pkd->kdTop[cp];
-				INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,iDum,
-						  GetNextCell);
+				if (pkdn->pUpper < 0) goto GetNextCell;
+				INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNextCell);
 				if (pkdn->iDim >= 0) {
 					if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
 					pkdLower(pkd,cp,id);

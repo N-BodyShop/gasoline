@@ -1793,7 +1793,6 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pst->kdn.iDim = pst->iSplitDim;
 		pst->kdn.fSplit = pst->fSplit;
 		pst->kdn.pLower = -1;
-		pst->kdn.pUpper = 1;
 		mdlReqService(pst->mdl,pst->idUpper,PST_BUILDTREE,in,nIn);
 		pstBuildTree(pst->pstLower,in,nIn,&out1,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,&out2,NULL);
@@ -1802,6 +1801,16 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 ** This also combine the bounds to set pst->kdn.bnd!
 		 */
 		pkdCombine(&out1.kdn,&out2.kdn,&pst->kdn);
+		/*
+		 ** Check if both subtrees are null, i.e. pUpper < 0
+		 ** if so set pUpper to -1;
+		 */
+		if (out1.kdn.pUpper < 0 && out2.kdn.pUpper < 0) {
+			pst->kdn.pUpper = -1;
+			}
+		else {
+			pst->kdn.pUpper = 0;
+			}			
 		if(in->bGravity) {
 		    /*
 		     ** Calculate moments and other center-of-mass related quantities.
@@ -1829,7 +1838,6 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 				      in->bGravity, &pst->kdn);
 			}
 		pst->kdn.pLower = pst->idSelf;
-		pst->kdn.pUpper = 1;
 		}
 	/*
 	 ** Calculated all cell properties, now pass up this cell info.

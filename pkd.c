@@ -1049,9 +1049,15 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 	 ** Find the center of mass and mass weighted softening.
 	 */
     pOut->fMass = p1->fMass + p2->fMass;
-	pOut->fSoft = (p1->fMass*p1->fSoft + p2->fMass*p2->fSoft)/pOut->fMass;
+	pOut->fSoft = p1->fMass*p1->fSoft + p2->fMass*p2->fSoft;
 	for (j=0;j<3;++j) {
-		pOut->r[j] = (p1->fMass*p1->r[j] + p2->fMass*p2->r[j])/pOut->fMass;
+		pOut->r[j] = p1->fMass*p1->r[j] + p2->fMass*p2->r[j];
+		}
+	if (pOut->fMass > 0) {
+		pOut->fSoft /= pOut->fMass;
+		for (j=0;j<3;++j) {
+			pOut->r[j] /= pOut->fMass;
+			}
 		}
 	}
 
@@ -1327,8 +1333,13 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 		c[iCell].fMass = 0.0;
 		c[iCell].fSoft = 0.0;
 		for (j=0;j<3;++j) {
-			c[iCell].bnd.fMin[j] = p[u].r[j];
-			c[iCell].bnd.fMax[j] = p[u].r[j];
+			/*
+			 ** We initialize the bounds to these extreme crazy values so
+			 ** that any particle will set the bounds correctly, if there 
+			 ** are no particles in the loop then these remain the bounds.
+			 */
+			c[iCell].bnd.fMin[j] = FLOAT_MAXVAL;
+			c[iCell].bnd.fMax[j] = -FLOAT_MAXVAL;
 			c[iCell].r[j] = 0.0;
 			}
 		for (pj=l;pj<=u;++pj) {
@@ -1347,10 +1358,12 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 				c[iCell].r[j] += p[pj].fMass*p[pj].r[j];
 				}
 			}
-		for (j=0;j<3;++j) {
-		    c[iCell].r[j] /= c[iCell].fMass;
-		    }
-		c[iCell].fSoft /= c[iCell].fMass;
+		if (c[iCell].fMass > 0) {
+			for (j=0;j<3;++j) {
+				c[iCell].r[j] /= c[iCell].fMass;
+				}
+			c[iCell].fSoft /= c[iCell].fMass;
+			}
 		}
 	/*
 	 ** Calculate multipole moments.
@@ -1552,9 +1565,11 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 					pkdn->r[j] += fm*pkd->kdNodes[pkdn->iUpper].r[j];
 					}
 				}
-			pkdn->fSoft /= pkdn->fMass;
-			for (j=0;j<3;++j) {
-				pkdn->r[j] /= pkdn->fMass;
+			if (pkdn->fMass > 0) {
+				pkdn->fSoft /= pkdn->fMass;
+				for (j=0;j<3;++j) {
+					pkdn->r[j] /= pkdn->fMass;
+					}
 				}
 			}
 		else {
@@ -1565,13 +1580,12 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 			/*
 			 ** Calculate the bucket quantities.
 			 */
-			fm = pkd->pStore[pkdn->pLower].fMass;
-			pkdn->fMass = fm;
-			pkdn->fSoft = fm*pkd->pStore[pkdn->pLower].fSoft;
+			pkdn->fMass = 0.0;
+			pkdn->fSoft = 0.0;
 			for (j=0;j<3;++j) {
-				pkdn->r[j] = fm*pkd->pStore[pLower].r[j];
+				pkdn->r[j] = 0.0;
 				}
-			for (i=pkdn->pLower+1;i<=pkdn->pUpper;++i) {
+			for (i=pkdn->pLower;i<=pkdn->pUpper;++i) {
 				fm = pkd->pStore[i].fMass;
 				pkdn->fMass += fm;
 				pkdn->fSoft += fm*pkd->pStore[i].fSoft;
@@ -1579,9 +1593,11 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 					pkdn->r[j] += fm*pkd->pStore[i].r[j];
 					}
 				}
-			pkdn->fSoft /= pkdn->fMass;
-			for (j=0;j<3;++j) {
-				pkdn->r[j] /= pkdn->fMass;
+			if (pkdn->fMass > 0) {
+				pkdn->fSoft /= pkdn->fMass;
+				for (j=0;j<3;++j) {
+					pkdn->r[j] /= pkdn->fMass;
+					}
 				}
 			}
 		/*
@@ -1592,7 +1608,6 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 		    dOpen = pkdCalcOpen(pkdn,iOpenType,dCrit,iOrder);
 		    pkdn->fOpen2 = dOpen*dOpen;
 		    }
-		
 		return(c);
 		}
 	}
@@ -1699,6 +1714,7 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	KDN *c;
 	char ach[256];
 	BND bndDum;
+	int bGoodBounds;
 
 	/*
 	 ** Make sure the particles are in Active/Inactive order.
@@ -1707,6 +1723,9 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	pkd->nBucket = nBucket;
 	if (bTreeActiveOnly) n = pkd->nTreeActive;
 	else n = pkd->nLocal;
+	if (n == 0) {
+		printf("id:%d has an empty local tree\n",pkd->idSelf);
+		}
 	pkd->nLevels = 1;
 	l = 1;
 	while (n > nBucket) {
@@ -1723,13 +1742,6 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		mdlFinishCache(pkd->mdl,CID_CELL);
 		mdlFree(pkd->mdl,pkd->kdNodes);
 		}
-
-	assert(n > 0);		/* XXX should be fixed */
-	
-	if(n == 0) {
-	    pkd->kdNodes = NULL;
-	    return;
-	    }
 	/*
 	 ** Need to allocate a special extra cell that we will use to calculate
 	 ** the acceleration on an arbitrary point in space.
@@ -1763,8 +1775,12 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		}
 	i = pkd->iRoot;
 	while (1) {
-		assert(c[i].pUpper - c[i].pLower + 1 > 0);
-		if (i < pkd->nSplit && (c[i].pUpper - c[i].pLower) > 0) {
+		bGoodBounds = 0;
+		for (j=0;j<3;++j) {
+			if (c[i].bnd.fMax[j] > c[i].bnd.fMin[j])
+				bGoodBounds = 1;
+			}
+		if (i < pkd->nSplit && (c[i].pUpper - c[i].pLower) > 0 && bGoodBounds) {
 			d = 0;
 			for (j=1;j<3;++j) {
 				if (c[i].bnd.fMax[j]-c[i].bnd.fMin[j] > 
@@ -2709,45 +2725,47 @@ pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac, int bDoGravit
     double dT;
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
-	if(TYPEQueryACTIVE(&(pkd->pStore[i]))) {
-	    vel = 0;
-            acc = 0;
-	    for(j = 0; j < 3; j++) {
-		vel += pkd->pStore[i].v[j]*pkd->pStore[i].v[j];
-                acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
-		}
-	    vel = sqrt(vel)*dVelFac;
-	    acc = sqrt(acc)*dAccFac;
-	    dT = FLOAT_MAXVAL;
-	    if(bEpsVel)
+		if(TYPEQueryACTIVE(&(pkd->pStore[i]))) {
+			vel = 0;
+			acc = 0;
+			for(j = 0; j < 3; j++) {
+				vel += pkd->pStore[i].v[j]*pkd->pStore[i].v[j];
+				acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
+				}
+			assert(vel >= 0);
+			vel = sqrt(vel)*dVelFac;
+			assert(acc > 0);
+			acc = sqrt(acc)*dAccFac;
+			dT = FLOAT_MAXVAL;
+			if(bEpsVel)
 #ifdef GASOLINE
-		if (pkdIsGas(pkd, &(pkd->pStore[i])) &&
-		    pkd->pStore[i].fBall2*0.25 < pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
-		    dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
+				if (pkdIsGas(pkd, &(pkd->pStore[i])) &&
+					pkd->pStore[i].fBall2*0.25 < pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
+					dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
                 else
-		    dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
+					dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
 #else
-		dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
+			dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
 #endif
 #ifdef DEBUG
-		if ((pkd->pStore[i].iOrder % 300)==0 || dT<1e-6) {
-			        printf("dt_a %i: %i %i %f %g %g %g  %f %f %f %f   dt_a %g\n",
+			if ((pkd->pStore[i].iOrder % 300)==0 || dT<1e-6) {
+				printf("dt_a %i: %i %i %f %g %g %g  %f %f %f %f   dt_a %g\n",
 				       pkd->pStore[i].iOrder,TYPEQueryACTIVE(&(pkd->pStore[i])),
-                                       TYPEQueryTREEACTIVE(&(pkd->pStore[i])),
+					   TYPEQueryTREEACTIVE(&(pkd->pStore[i])),
 				       sqrt(0.25*pkd->pStore[i].fBall2),pkd->pStore[i].PdV,pkd->pStore[i].u,pkd->pStore[i].PoverRho2,pkd->pStore[i].a[0],
 				       pkd->pStore[i].a[1],pkd->pStore[i].a[2],pkd->pStore[i].fSoft,dT);
-			        }
+				}
 #endif
-	    if(bSqrtPhi) {
-		double dtemp =
-		    dEta*3.5*sqrt(dAccFac*fabs(pkd->pStore[i].fPot))/acc;
-		if(dtemp < dT)
-		    dT = dtemp;
+			if(bSqrtPhi) {
+				double dtemp =
+					dEta*3.5*sqrt(dAccFac*fabs(pkd->pStore[i].fPot))/acc;
+				if(dtemp < dT)
+					dT = dtemp;
+				}
+			if(dT < pkd->pStore[i].dt)
+				pkd->pStore[i].dt = dT;
+			}
 		}
-	    if(dT < pkd->pStore[i].dt)
-		pkd->pStore[i].dt = dT;
-	    }
-	}
     }
 
 int
