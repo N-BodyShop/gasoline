@@ -27,7 +27,6 @@ typedef struct particle {
 	int iOrder;
 	unsigned int iActive;  
 	int iRung;
-	unsigned int iTouchRung; /* To be removed */
 	int cpStart;
 	FLOAT fWeight;
 	FLOAT fMass;
@@ -63,8 +62,10 @@ typedef struct particle {
 	FLOAT curlv[3];         
 	FLOAT BalsaraSwitch;
 /*	FLOAT fDensSave;*/	/* Used by diagnostic DensCheck funcs */
+#ifndef NOCOOLING
 	FLOAT uDot;			/* Rate of change of u -- for predicting */
 	FLOAT Y_HI,Y_HeI,Y_HeII;	/* Abundance of ions */
+#endif
 	FLOAT fMetals;
 	FLOAT fTimeForm;
 #endif
@@ -379,6 +380,9 @@ void pkdRungDDWeight(PKD, int, double);
 int pkdWeight(PKD,int,FLOAT,int,int,int,int *,int *,FLOAT *,FLOAT *);
 int pkdLowerPart(PKD,int,FLOAT,int,int);
 int pkdUpperPart(PKD,int,FLOAT,int,int);
+int pkdWeightWrap(PKD,int,FLOAT,FLOAT,int,int,int,int *,int *,FLOAT *,FLOAT *);
+int pkdLowerPartWrap(PKD,int,FLOAT,FLOAT,int,int);
+int pkdUpperPartWrap(PKD,int,FLOAT,FLOAT,int,int);
 int pkdLowerOrdPart(PKD,int,int,int);
 int pkdUpperOrdPart(PKD,int,int,int);
 int pkdActiveTypeOrder(PKD, unsigned int);

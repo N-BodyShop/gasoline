@@ -854,10 +854,10 @@ void smSmooth(SMX smx,SMF *smf)
 			else pkdn = &pkd->kdTop[cp];
 			if (pkdn->pUpper < 0) goto GetNext_2;
    			INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNext_2);
-			if (pkdn->iDim >= 0) {
-			    if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
+			if (pkdn->iDim >= 0 || id == -1) {
+			        if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
 				pkdLower(pkd,cp,id);
-			    continue;
+			        continue;
 				}
 			for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
 				pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);

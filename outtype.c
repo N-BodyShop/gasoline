@@ -29,14 +29,16 @@ FLOAT ArrType(PARTICLE *p,int iType)
 #ifdef GASOLINE
 	case OUT_U_ARRAY:
 		return(p->u);
+#ifndef NOCOOLING
 	case OUT_UDOT_ARRAY:
-		return 0;
+		return(p->uDot);
 	case OUT_HI_ARRAY:
 		return(p->Y_HI);
 	case OUT_HeI_ARRAY:
 		return(p->Y_HeI);
 	case OUT_HeII_ARRAY:
 		return(p->Y_HeII);
+#endif
 #endif
 	case OUT_H_ARRAY:
 		return(sqrt(p->fBall2*0.25));

@@ -30,7 +30,7 @@
 #endif
 
 #define LOCKFILE ".lockfile"	/* for safety lock */
-#define STOPFILE "STOP"			/* for user interrupt */
+#define STOPFILE "STOP"		/* for user interrupt */
 
 #define NEWTIME
 #ifdef NEWTIME 
@@ -429,11 +429,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dGrowEndT = 1.0;
 	prmAddParam(msr->prm,"dGrowEndT",2,&msr->param.dGrowEndT,
 				sizeof(double),"gmet","<End time for growing mass> = 1.0");
-	msr->param.dFracNoDomainDecomp = 0.1;
+	msr->param.dFracNoDomainDecomp = 0.002;
 	prmAddParam(msr->prm,"dFracNoDomainDecomp",2,&msr->param.dFracNoDomainDecomp,
 				sizeof(double),"fndd",
-				"<Fraction of Active Particles for no new DD> = 0.0");
-	msr->param.dFracFastGas = 0.1;
+				"<Fraction of Active Particles for no new DD> = 0.002");
+	msr->param.dFracNoDomainDimChoice = 0.1;
+	prmAddParam(msr->prm,"dFracNoDomainDimChoice",2,&msr->param.dFracNoDomainDimChoice,
+				sizeof(double),"fnddc",
+				"<Fraction of Active Particles for no new DD dimension choice> = 0.1");
+	msr->param.dFracFastGas = 0.2;
 	prmAddParam(msr->prm,"dFracFastGas",2,&msr->param.dFracFastGas,
 				sizeof(double),"fndd",
 				"<Fraction of Active Particles for Fast Gas> = 0.01");
@@ -504,6 +508,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoGas = 1;
 	prmAddParam(msr->prm,"bDoGas",0,&msr->param.bDoGas,sizeof(int),"gas",
 				"calculate gas/don't calculate gas = +gas");
+#ifndef GASOLINE
+	msr->param.bDoGas = 0;
+#endif
 	msr->param.bGeometric = 0;
 	prmAddParam(msr->prm,"bGeometric",0,&msr->param.bGeometric,sizeof(int),
 				"geo","geometric/arithmetic mean to calc Grad(P/rho) = +geo");
@@ -555,9 +562,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bGasDomainDecomp = 0;
 	prmAddParam(msr->prm,"bGasDomainDecomp",0,&msr->param.bGasDomainDecomp,sizeof(int),
 				"gasDD","<Gas Domain Decomp> = 0");
-	msr->param.bFastGas = 0;
+	msr->param.bFastGas = 1;
 	prmAddParam(msr->prm,"bFastGas",0,&msr->param.bFastGas,sizeof(int),
-				"Fgas","<Fast Gas Method> = 0");
+				"Fgas","<Fast Gas Method> = 1");
 #endif /* GASOLINE */
 #ifdef GLASS
 	msr->param.dGlassDamper = 0.0;
@@ -1044,6 +1051,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	 ** Mark the Domain Decompositon as not done
 	 */
 	msr->bDoneDomainDecomp = 0;
+	msr->iLastRungDomainDecomp = 0;
+	msr->nRung = (int *) malloc( (msr->param.iMaxRung+1)*sizeof(int) );
 	}
 
 
@@ -1152,6 +1161,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bHeliocentric: %d",msr->param.bHeliocentric);
 	fprintf(fp," dCentMass: %g",msr->param.dCentMass);
 	fprintf(fp,"\n# dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
+	fprintf(fp," dFracNoDomainDimChoice: %g",msr->param.dFracNoDomainDimChoice);
 	fprintf(fp," bFastGas: %d",msr->param.bFastGas);
 	fprintf(fp," dFracFastGas: %g",msr->param.dFracFastGas);
 	fprintf(fp," bRungDD: %d",msr->param.bRungDD);
@@ -1489,11 +1499,10 @@ double msrReadTipsy(MSR msr)
 	msr->nMaxOrder = msr->N - 1;
 	msr->nMaxOrderGas = msr->nGas - 1;
 	msr->nMaxOrderDark = msr->nGas + msr->nDark - 1;
-#ifdef GASOLINE
+
 	assert(msr->N == msr->nDark+msr->nGas+msr->nStar);
-#else
-	assert(msr->N == msr->nDark);
-	assert(msr->nGas == 0);
+#ifndef GASOLINE
+	if (msr->nGas != 0) fprintf(stderr,"GASOLINE compile flag not set:  Treating %d Gas particles as Dark\n",msr->nGas);
 	assert(msr->nStar == 0);
 #endif
 	if (msr->param.csm->bComove) {
@@ -1811,10 +1820,11 @@ void msrSetSoft(MSR msr,double dSoft)
 	}
 
 
-void msrDomainDecomp(MSR msr)
+void msrDomainDecomp(MSR msr, int iRung, int bGreater)
 {
 	struct inDomainDecomp in;
 	struct inClearTimer inCT;
+	int iRungDD,iRungSD,nActive;
 
 #ifdef GASOLINE
 	/* Sanity check on Gas particles being present */
@@ -1831,26 +1841,53 @@ void msrDomainDecomp(MSR msr)
 		}
 #endif
 
-	/*
-	inCT.iTimer=4;
-	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
-	inCT.iTimer=5;
-	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
-	inCT.iTimer=6;
-	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
-	inCT.iTimer=7;
-	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
-	inCT.iTimer=8;
-	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
-	inCT.iTimer=9;
-	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
-        */
-
 	in.bDoRootFind = 1;
+	in.bDoSplitDimFind = 1;
 	
-	if (msr->bDoneDomainDecomp && msr->nActive < msr->N*msr->param.dFracNoDomainDecomp) {
-		printf("Skipping Root Finder (nActive = %d/%d)\n",msr->nActive,msr->N);
-		in.bDoRootFind = 0;
+	nActive=0;
+	if (bGreater) {
+	  iRungDD=msr->iCurrMaxRung+1; 
+	  while (iRungDD > iRung) {
+	    iRungDD--;
+	    nActive+=msr->nRung[iRungDD];
+	    }
+	  while(iRungDD > 0 && nActive < msr->N*msr->param.dFracNoDomainDecomp) {
+	    iRungDD--;
+	    nActive+=msr->nRung[iRungDD];
+	    }
+	  iRungSD = iRungDD;
+	  while(iRungSD > 0 && nActive < msr->N*msr->param.dFracNoDomainDimChoice) {
+	    iRungSD--;
+	    nActive+=msr->nRung[iRungSD];
+	    }
+	  }
+	else {
+	  iRungDD = iRung;
+	  while(iRungDD > 0 && msr->nRung[iRungDD] < msr->N*msr->param.dFracNoDomainDecomp) {
+	    iRungDD--;
+	    }
+	  iRungSD = iRungDD;
+	  while(iRungSD > 0 && msr->nRung[iRungSD] < msr->N*msr->param.dFracNoDomainDimChoice) {
+	    iRungSD--;
+	    }
+	  }
+
+	if (msr->nActive < msr->N*msr->param.dFracNoDomainDecomp) {
+		if (msr->bDoneDomainDecomp && msr->iLastRungDomainDecomp >= iRungDD) {
+		        printf("Skipping Root Finder (nActive = %d/%d, iRung %d/%d/%d)\n",msr->nActive,msr->N,iRung,iRungDD,msr->iLastRungDomainDecomp);
+			in.bDoRootFind = 0;
+			in.bDoSplitDimFind = 0;
+		        }
+		else if (iRungDD < iRung) {
+		        /* Set up the DD for the highest rung that still gets one */
+		        msrActiveRung(msr,iRungDD,bGreater);
+		        }
+		}
+	else iRungDD = iRung;
+
+	if (in.bDoRootFind && msr->bDoneDomainDecomp && iRungDD > iRungSD && msr->iLastRungDomainDecomp >= iRungSD) {
+		printf("Skipping Split Dim Finding (nDDActive = %d/%d, iRung %d/%d/%d/%d)\n",msr->nActive,msr->N,iRung,iRungDD,iRungSD,msr->iLastRungDomainDecomp);
+		in.bDoSplitDimFind = 0;
 		}
 
 	if (msr->param.bGasDomainDecomp) {
@@ -1878,6 +1915,12 @@ void msrDomainDecomp(MSR msr)
 	else {
 		pstDomainDecomp(msr->pst,&in,sizeof(in),NULL,NULL);
 		msr->bDoneDomainDecomp = 1; 
+		}
+
+	msr->iLastRungDomainDecomp = iRungDD;
+	if (iRungDD < iRung) {
+	        /* Restore Active data */
+		msrActiveRung(msr,iRung,bGreater);
 		}
 	}
 
@@ -1924,7 +1967,6 @@ void msrBuildTree(MSR msr,int bActiveOnly, double dMass,int bSmooth)
 		double sec,dsec;
 		sec = msrTime();
 		pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
-		printf("Done pstBuildTree\n");
 		msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
 		dsec = msrTime() - sec;
 		printf("Tree built, Wallclock: %f secs\n\n",dsec);
@@ -2582,7 +2624,7 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 		if (msr->param.bSymCool) {
 			msrActiveType(msr,TYPE_SUPERCOOL,TYPE_ACTIVE);
 			msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-			msrDomainDecomp(msr);
+			msrDomainDecomp(msr,0,1);
 			msrActiveType(msr,TYPE_SUPERCOOL,TYPE_ACTIVE);
 			msrBuildTree(msr,1,dMass,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
@@ -2597,7 +2639,7 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 			/* activate all */
 			msrActiveTypeRung(msr,TYPE_SUPERCOOL,TYPE_ACTIVE,0,1); 
 			msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-			msrDomainDecomp(msr);
+			msrDomainDecomp(msr,0,1);
 			msrActiveTypeRung(msr,TYPE_SUPERCOOL,TYPE_ACTIVE,0,1); 
 			msrBuildTree(msr,0,SMX_DENSITY,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,0);
@@ -3608,7 +3650,7 @@ void msrActiveTypeOrder(MSR msr, unsigned int iTestMask )
     in.iTestMask = iTestMask;
     pstActiveTypeOrder(msr->pst,&in,sizeof(in),&nActive,NULL);
 
-    if (iTestMask & TYPE_ACTIVE)       msr->nActive       = nActive;
+    if (iTestMask & TYPE_ACTIVE)       msr->nActive      = nActive;
     if (iTestMask & TYPE_TREEACTIVE)   msr->nTreeActive   = nActive;
     if (iTestMask & TYPE_SMOOTHACTIVE) msr->nSmoothActive = nActive;
     }
@@ -3616,17 +3658,6 @@ void msrActiveTypeOrder(MSR msr, unsigned int iTestMask )
 void msrActiveOrder(MSR msr)
 {
     pstActiveOrder(msr->pst,NULL,0,&(msr->nActive),NULL);
-    }
-
-void msrResetTouchRung(MSR msr, unsigned int iTestMask, unsigned int iSetMask) 
-{
-    struct inResetTouchRung in;
-    int nActive;
-
-    in.iTestMask = iTestMask;
-    in.iSetMask = iSetMask;
-
-    pstResetTouchRung(msr->pst,&in,sizeof(in),&nActive,NULL);
     }
 
 void msrActiveExactType(MSR msr, unsigned int iFilterMask, unsigned int iTestMask, unsigned int iSetMask) 
@@ -3825,7 +3856,7 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 			msrInitDt(msr);
 			if (msr->param.bGravStep || msr->param.bAccelStep) {
 			    msrInitAccel(msr);
-			    msrDomainDecomp(msr);
+			    msrDomainDecomp(msr,iRung,1);
 			    msrActiveRung(msr,iRung,1);
 			    msrBuildTree(msr,0,dMass,0);
 			    msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
@@ -3837,7 +3868,7 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 					}
 			    }
 			if (msr->param.bDensityStep) {
-			    msrDomainDecomp(msr);
+			    msrDomainDecomp(msr,iRung,1);
 			    msrActiveRung(msr,iRung,1);
 			    msrBuildTree(msr,0,dMass,1);
 			    msrDensityStep(msr,dTime);
@@ -3857,7 +3888,7 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 		if(msrSphCurrRung(msr, iRung, 0)) {
 			if (msr->param.bVDetails) printf("SPH, iRung: %d\n", iRung);
            	        msrActiveTypeRung(msr, TYPE_GAS, TYPE_ACTIVE, iRung, 0 );
-                        msrDomainDecomp(msr);
+                        msrDomainDecomp(msr,iRung,0);
            	        msrActiveTypeRung(msr, TYPE_GAS, TYPE_ACTIVE, iRung, 0 );
            	        msrActiveType(msr, TYPE_GAS, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 			msrBuildTree(msr,1,-1.0,1);
@@ -3883,7 +3914,7 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 		if(msrCurrRung(msr, iRung)) {
 		    if(msrDoGravity(msr)) {
    		        if (msr->param.bVDetails) printf("Gravity, iRung: %d\n", iRung);
-                        msrDomainDecomp(msr);
+                        msrDomainDecomp(msr,iRung,0);
 			msrActiveRung(msr, iRung, 0);
 			msrBuildTree(msr,0,dMass,0);
 			msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
@@ -3915,6 +3946,7 @@ void msrRungStats(MSR msr)
 			if (i != 0) printf(",");
 			in.iRung = i;
 			pstRungStats(msr->pst,&in,sizeof(in),&out,NULL);
+			msr->nRung[i] = out.nParticles;
 			printf("%d",out.nParticles);
 			}
 		printf(")\n");
@@ -3942,7 +3974,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			    msrAccelStep(msr,dTime);
 				}
 			if (msr->param.bDensityStep) {
-				msrDomainDecomp(msr);
+				msrDomainDecomp(msr,iRung,1);
 			    msrActiveRung(msr,iRung,1);
 			    msrBuildTree(msr,0,dMass,1);
 			    msrDensityStep(msr,dTime);
@@ -3960,7 +3992,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 		msrTopStepNS(msr,dStep,dTime,0.5*dDelta,iRung+1,0,pdActiveSum);
 		dStep += 1.0/(2 << iRung);
 		msrActiveRung(msr,iRung,0);
-		msrDomainDecomp(msr);
+		msrDomainDecomp(msr,iRung,0);
 		msrActiveRung(msr,iRung,0);
 		msrInitAccel(msr);
 #ifdef GASOLINE
@@ -4062,7 +4094,7 @@ void msrTopStepKDK(MSR msr,
 		    msrAccelStep(msr,dTime);
 			}
 		if (msr->param.bDensityStep) {
-			msrDomainDecomp(msr);
+			msrDomainDecomp(msr,iRung,1);
 		    msrActiveRung(msr,iRung,1);
 		    msrBuildTree(msr,0,dMass,1);
 		    msrDensityStep(msr,dTime);
@@ -4113,7 +4145,7 @@ void msrTopStepKDK(MSR msr,
 		dStep += 1.0/(2 << iRung);
 
 		msrActiveMaskRung(msr,TYPE_ACTIVE,iKickRung,1);
-		msrDomainDecomp(msr);
+		msrDomainDecomp(msr,iKickRung,1);
 		msrInitAccel(msr);
 #ifdef GASOLINE
 		if (msr->param.bVDetails)
@@ -4322,7 +4354,7 @@ void msrInitTimeSteps(MSR msr,double dTime,double dDelta)
 		msrAccelStep(msr,dTime);
 		}
 	if (msr->param.bDensityStep) {
-		msrDomainDecomp(msr);
+		msrDomainDecomp(msr,0,1);
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 		msrBuildTree(msr,0,dMass,1);
 		msrDensityStep(msr,dTime);
@@ -4657,7 +4689,7 @@ msrFindRejects(MSR msr)
 	int nRej = 0;
 
 	if (msr->param.bVStart)	puts("Checking for rejected ICs...");
-	msrDomainDecomp(msr);
+	msrDomainDecomp(msr,0,1);
 	msrActiveType(msr,TYPE_ALL,TYPE_SMOOTHACTIVE|TYPE_TREEACTIVE);
 	msrBuildTree(msr,0,-1.0,1);
 	msrSmooth(msr,0.0,SMX_REJECTS,1); /* 1=use combiner cache */
@@ -4856,7 +4888,7 @@ msrPlanetsKDK(MSR msr,double dStep,double dTime,double dDelta,double *pdWMax,
 	if(msrDoGravity(msr)) {
 		int nDum;
 		if (msr->param.bVDetails) printf("Planets Gravity\n");
-		msrDomainDecomp(msr);
+		msrDomainDecomp(msr,0,1);
 		msrActiveRung(msr,0,1);
 		msrBuildTree(msr,0,-1.0,0);
 		msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nDum);
@@ -4969,7 +5001,7 @@ msrLinearKDK(MSR msr,double dStep,double dTime,double dDelta)
 		double dDum;
 		int iDum;
 		if (msr->param.bVDetails) printf("Linear Gravity\n");
-		msrDomainDecomp(msr);
+		msrDomainDecomp(msr,0,1);
 		msrBuildTree(msr,0,-1.0,0);
 		msrGravity(msr,dStep,msrDoSun(msr),&iDum,&dDum,&dDum,&dDum,&iDum);
 		}

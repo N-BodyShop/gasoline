@@ -1,4 +1,5 @@
 #ifdef GASOLINE
+#ifndef NOCOOLING
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -1242,4 +1243,5 @@ void clIntegrateEnergyDEBUG(CL *cl, PERBARYON *Y, double *E,
 }
 #endif
 
+#endif /* NOCOOLING */
 #endif /* GASOLINE */

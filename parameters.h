@@ -86,6 +86,7 @@ struct parameters {
 	double dGrowStartT;
 	double dGrowEndT;
 	double dFracNoDomainDecomp;
+	double dFracNoDomainDimChoice;
 	int    bRungDD;
 	double dRungDDWeight;
 	/*

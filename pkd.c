@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 #include <stddef.h>
 #include <malloc.h>
@@ -128,7 +127,7 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	int j;
 	
 	pkd = (PKD)malloc(sizeof(struct pkdContext));
-	assert(pkd != NULL);
+	mdlassert(pkd->mdl,pkd != NULL);
 	pkd->mdl = mdl;
 	pkd->iOrder = iOrder;
 	pkd->idSelf = mdlSelf(mdl);
@@ -156,7 +155,7 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	 ** the code (hopefully). pkd->pStore[pkd->nStore] is this particle.
 	 */
 	pkd->pStore = mdlMalloc(pkd->mdl,(nStore+1)*sizeof(PARTICLE));
-	assert(pkd->pStore != NULL);
+	mdlassert(pkd->mdl,pkd->pStore != NULL);
 	pkd->kdNodes = NULL;
 	pkd->piLeaf = NULL;
 	pkd->kdTop = NULL;
@@ -168,21 +167,21 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	pkd->nMaxCellNewt = 500;
 	pkd->nSqrtTmp = 500;
 	pkd->ilp = malloc(pkd->nMaxPart*sizeof(ILP));
-	assert(pkd->ilp != NULL);
+	mdlassert(pkd->mdl,pkd->ilp != NULL);
 	pkd->ilcs = malloc(pkd->nMaxCellSoft*sizeof(ILCS));
-	assert(pkd->ilcs != NULL);
+	mdlassert(pkd->mdl,pkd->ilcs != NULL);
 	pkd->ilcn = malloc(pkd->nMaxCellNewt*sizeof(ILCN));
-	assert(pkd->ilcn != NULL);
+	mdlassert(pkd->mdl,pkd->ilcn != NULL);
 	pkd->sqrttmp = malloc(pkd->nSqrtTmp*sizeof(double));
-	assert(pkd->sqrttmp != NULL);
+	mdlassert(pkd->mdl,pkd->sqrttmp != NULL);
 	pkd->d2a = malloc(pkd->nSqrtTmp*sizeof(double));
-	assert(pkd->d2a != NULL);
+	mdlassert(pkd->mdl,pkd->d2a != NULL);
 	/*
 	 ** Ewald stuff!
 	 */
 	pkd->nMaxEwhLoop = 100;
 	pkd->ewt = malloc(pkd->nMaxEwhLoop*sizeof(EWT));
-	assert(pkd->ewt != NULL);
+	mdlassert(pkd->mdl,pkd->ewt != NULL);
 	*ppkd = pkd;
 	}
 
@@ -263,7 +262,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	for (i=0;i<nLocal;++i) {
 		p = &pkd->pStore[i];
 		TYPEClear(p);
-		p->iTouchRung = 0;
 		p->iRung = 0;
 		p->fWeight = 1.0;
 		p->fDensity = 0.0;
@@ -275,10 +273,12 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 			}
 		p->u = 0.0;
 		p->uPred = 0.0;
+#ifndef NOCOOLING		
 		/* Place holders -- later fixed in pkdInitEnergy */
 		p->Y_HI = 0.75;
 		p->Y_HeI = 0.0625;
 		p->Y_HeII = 0.0;
+#endif
 		p->c = 0.0;
 		p->fMetals = 0.0;
 		p->fTimeForm = 0.0;
@@ -288,7 +288,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	 ** Seek past the header and up to nStart.
 	 */
 	fp = fopen(pszFileName,"r");
-	assert(fp != NULL);
+	mdlassert(pkd->mdl,fp != NULL);
 	/*
 	 ** Seek to right place in file.
 	 */
@@ -385,7 +385,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				xdr_float(&xdrs,&fTmp);
 				p->fPot = fTmp;
 				}
-			else assert(0);
+			else mdlassert(pkd->mdl,0);
 			}
 		xdr_destroy(&xdrs);
 		}
@@ -436,7 +436,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->fTimeForm = sp.tform;		
 #endif
 				}
-			else assert(0);
+			else mdlassert(pkd->mdl,0);
 			}
 		}
 	fclose(fp);
@@ -444,6 +444,57 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 
 
 void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pbndBall)
+{
+        /* Faster by assuming active order */
+
+	int i,j;
+	FLOAT fBall,r;
+
+	/*
+	 ** Initialize the bounds to 0 at the beginning
+	 */
+	for (j=0;j<3;++j) {
+		pbnd->fMin[j] = FLOAT_MAXVAL;
+		pbnd->fMax[j] = -FLOAT_MAXVAL;
+		pbndActive->fMin[j] = FLOAT_MAXVAL;
+		pbndActive->fMax[j] = -FLOAT_MAXVAL;
+		pbndBall->fMin[j] = FLOAT_MAXVAL;
+		pbndBall->fMax[j] = -FLOAT_MAXVAL;
+		}
+	/*
+	 ** Calculate Active Bounds assume TreeActive is the same as Active (Gnah!)
+	 */
+	for (i=0;i<pkd->nActive;++i) {
+	        fBall = pkd->pStore[i].fBallMax;
+	        for (j=0;j<3;++j) {
+		        r = pkd->pStore[i].r[j];
+			if (r < pbnd->fMin[j]) pbnd->fMin[j] = r;
+			if (r > pbnd->fMax[j]) pbnd->fMax[j] = r;
+	                if (r < pbndActive->fMin[j]) pbndActive->fMin[j] = r;
+			if (r > pbndActive->fMax[j]) pbndActive->fMax[j] = r;
+			if (r-fBall < pbndBall->fMin[j]) pbndBall->fMin[j] = r-fBall;
+			if (r+fBall > pbndBall->fMax[j]) pbndBall->fMax[j] = r+fBall;
+		        }
+		}
+	/*
+	 ** Calculate Local Bounds.
+	 */
+	for (i=pkd->nActive;i<pkd->nLocal;++i) {
+		for (j=0;j<3;++j) {
+		        r = pkd->pStore[i].r[j];
+			if (r < pbnd->fMin[j]) pbnd->fMin[j] = r;
+			if (r > pbnd->fMax[j]) pbnd->fMax[j] = r;
+			}
+		}
+
+	for (j=0;j<3;++j) {
+		pbndTreeActive->fMin[j] = pbndActive->fMin[j];
+		pbndTreeActive->fMax[j] = pbndActive->fMax[j];
+		}
+	}
+
+
+void pkdCalcBound_old(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pbndBall)
 {
 	int i,j;
 	FLOAT fBall;
@@ -533,7 +584,7 @@ void pkdRungDDWeight(PKD pkd, int iMaxRung, double dWeight)
     int i;
     float fRungWeight[50],sum;
 
-    assert(iMaxRung<50);
+    mdlassert(pkd->mdl,iMaxRung<50);
     fRungWeight[0]=1.0;
     sum=1.0;
     for (i=1;i<=iMaxRung;i++) {
@@ -594,6 +645,56 @@ int pkdWeight(PKD pkd,int d,FLOAT fSplit,int iSplitSide,int iFrom,int iTo,
 	}
 
 
+/*
+ ** Partition particles between iFrom and iTo into those < fSplit and
+ ** those >= to fSplit.  Find number and weight in each partition.
+ */
+int pkdWeightWrap(PKD pkd,int d,FLOAT fSplit,FLOAT fSplit2, int iSplitSide,int iFrom,int iTo,
+			  int *pnLow,int *pnHigh,FLOAT *pfLow,FLOAT *pfHigh)
+{
+	int i,iPart;
+	FLOAT fLower,fUpper;
+
+	/*
+	 ** First partition the memory about fSplit for particles iFrom to iTo.
+	 */
+	if (!iSplitSide) {
+		iPart = pkdLowerPartWrap(pkd,d,fSplit,fSplit2,iFrom,iTo);
+		*pnLow = iPart;
+		*pnHigh = pkdLocal(pkd)-iPart;
+		}
+	else {
+		iPart = pkdUpperPartWrap(pkd,d,fSplit,fSplit2,iFrom,iTo);
+		*pnHigh = iPart;
+		*pnLow = pkdLocal(pkd)-iPart;
+		}
+	/*
+	 ** Calculate the lower weight and upper weight BETWEEN the particles
+	 ** iFrom to iTo!
+	 */
+	/* Not needed */
+	/*
+	fLower = 0.0;
+	for (i=iFrom;i<iPart;++i) {
+		fLower += pkd->pStore[i].fWeight;
+		}
+	fUpper = 0.0;
+	for (i=iPart;i<=iTo;++i) {
+		fUpper += pkd->pStore[i].fWeight;
+		}
+	if (!iSplitSide) {
+		*pfLow = fLower;
+		*pfHigh = fUpper;
+		}
+	else {
+		*pfLow = fUpper;
+		*pfHigh = fLower;
+		}
+	*/
+	return(iPart);
+	}
+
+
 int pkdOrdWeight(PKD pkd,int iOrdSplit,int iSplitSide,int iFrom,int iTo,
 				 int *pnLow,int *pnHigh)
 {
@@ -619,13 +720,39 @@ int pkdOrdWeight(PKD pkd,int iOrdSplit,int iSplitSide,int iFrom,int iTo,
 int pkdLowerPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 {
 	PARTICLE pTemp;
-
+	/*
+	int i0=i,j0=j,iold;
+	*/
 #ifdef OLD_KEPLER
-	assert(d < 5);
+	mdlassert(pkd->mdl,d < 5);
 	if (d > 2) return pkdLowerQQPart(pkd,d,fSplit,i,j);
 #else
-	assert(d < 3);
+	mdlassert(pkd->mdl,d < 3);
 #endif
+
+	if (i > j) goto done1;
+	i--;
+	j++;
+	while (++i<j && pkd->pStore[i].r[d] >= fSplit);
+        while (i<--j && pkd->pStore[j].r[d] < fSplit);
+	if (i>=j) goto done1;
+	pTemp = pkd->pStore[i];
+	pkd->pStore[i] = pkd->pStore[j];
+	pkd->pStore[j] = pTemp;
+
+	while (1) {
+	     while (pkd->pStore[++i].r[d] >= fSplit);
+	     while (pkd->pStore[--j].r[d] < fSplit);
+	     if (i > j) goto done1;
+	     pTemp = pkd->pStore[i];
+	     pkd->pStore[i] = pkd->pStore[j];
+	     pkd->pStore[j] = pTemp;
+             }
+ done1:
+	/*     iold=i;
+     i=i0;
+     j=j0;
+	
 	if (i > j) goto done;
     while (1) {
         while (pkd->pStore[i].r[d] >= fSplit)
@@ -636,7 +763,11 @@ int pkdLowerPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 		pkd->pStore[i] = pkd->pStore[j];
 		pkd->pStore[j] = pTemp;
         }
+	
+	
  done:
+    mdlassert(pkd->mdl,i==iold);
+	*/
     return(i);
 	}
 
@@ -644,13 +775,41 @@ int pkdLowerPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 int pkdUpperPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 {
 	PARTICLE pTemp;
+	/*	
+	int i0=i,j0=j,iold;
+	*/
 
 #ifdef OLD_KEPLER
-	assert(d < 5);
+	mdlassert(pkd->mdl,d < 5);
 	if (d > 2) return pkdUpperQQPart(pkd,d,fSplit,i,j);
 #else
-	assert(d < 3);
+	mdlassert(pkd->mdl,d < 3);
 #endif
+
+	if (i > j) goto done1;
+	i--;
+	j++;
+	while (++i<j && pkd->pStore[i].r[d] < fSplit);
+        while (i<--j && pkd->pStore[j].r[d] >= fSplit);
+	if (i>=j) goto done1;
+	pTemp = pkd->pStore[i];
+	pkd->pStore[i] = pkd->pStore[j];
+	pkd->pStore[j] = pTemp;
+
+	while (1) {
+	     while (pkd->pStore[++i].r[d] < fSplit);
+	     while (pkd->pStore[--j].r[d] >= fSplit);
+	     if (i > j) goto done1;
+	     pTemp = pkd->pStore[i];
+	     pkd->pStore[i] = pkd->pStore[j];
+	     pkd->pStore[j] = pTemp;
+             }
+ done1:
+	/*
+     iold=i;
+     i=i0;
+     j=j0;
+	
 	if (i > j) goto done;
     while (1) {
         while (pkd->pStore[i].r[d] < fSplit)
@@ -663,8 +822,126 @@ int pkdUpperPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 		pkd->pStore[j] = pTemp;
         }
  done:
+    mdlassert(pkd->mdl,i==iold);
+	*/
     return(i);
 	}
+
+
+int pkdLowerPartWrap(PKD pkd,int d,FLOAT fSplit1,FLOAT fSplit2,int i,int j)
+{
+	PARTICLE pTemp;
+
+#ifdef OLD_KEPLER
+	mdlassert(pkd->mdl,d < 5);
+	if (d > 2) return pkdLowerQQPart(pkd,d,fSplit1,i,j);
+#else
+	mdlassert(pkd->mdl,d < 3);
+#endif
+
+	if (fSplit1 > fSplit2) {
+	     if (i > j) goto done1;
+	     i--;
+	     j++;
+	     while (++i<j && (pkd->pStore[i].r[d] < fSplit2 || pkd->pStore[i].r[d] >= fSplit1));
+	     while (i<--j && (pkd->pStore[j].r[d] >= fSplit2 && pkd->pStore[j].r[d] < fSplit1));
+	     if (i>=j) goto done1;
+	     pTemp = pkd->pStore[i];
+	     pkd->pStore[i] = pkd->pStore[j];
+	     pkd->pStore[j] = pTemp;
+	     
+	     while (1) {
+	       while (pkd->pStore[++i].r[d] < fSplit2 || pkd->pStore[i].r[d] >= fSplit1);
+	       while (pkd->pStore[--j].r[d] >= fSplit2 && pkd->pStore[j].r[d] < fSplit1);
+	       if (i > j) goto done1;
+	       pTemp = pkd->pStore[i];
+	       pkd->pStore[i] = pkd->pStore[j];
+	       pkd->pStore[j] = pTemp;
+               }
+	     }
+	else {
+	     if (i > j) goto done1;
+	     i--;
+	     j++;
+	     while (++i<j && (pkd->pStore[i].r[d] < fSplit2 && pkd->pStore[i].r[d] >= fSplit1));
+	     while (i<--j && (pkd->pStore[j].r[d] >= fSplit2 || pkd->pStore[j].r[d] < fSplit1));
+	     if (i>=j) goto done1;
+	     pTemp = pkd->pStore[i];
+	     pkd->pStore[i] = pkd->pStore[j];
+	     pkd->pStore[j] = pTemp;
+	     
+	     while (1) {
+	       while (pkd->pStore[++i].r[d] < fSplit2 && pkd->pStore[i].r[d] >= fSplit1);
+	       while (pkd->pStore[--j].r[d] >= fSplit2 || pkd->pStore[j].r[d] < fSplit1);
+	       if (i > j) goto done1;
+	       pTemp = pkd->pStore[i];
+	       pkd->pStore[i] = pkd->pStore[j];
+	       pkd->pStore[j] = pTemp;
+               }
+	     }
+	
+
+ done1:
+	return(i);
+        }
+
+int pkdUpperPartWrap(PKD pkd,int d,FLOAT fSplit1,FLOAT fSplit2,int i,int j)
+{
+	PARTICLE pTemp;
+
+#ifdef OLD_KEPLER
+	mdlassert(pkd->mdl,d < 5);
+	if (d > 2) return pkdUpperQQPart(pkd,d,fSplit1,i,j);
+#else
+	mdlassert(pkd->mdl,d < 3);
+#endif
+
+	if (fSplit1 > fSplit2) {
+	     if (i > j) goto done1;
+	     i--;
+	     j++;
+	     while (++i<j && (pkd->pStore[i].r[d] >= fSplit2 && pkd->pStore[i].r[d] < fSplit1));
+	     while (i<--j && (pkd->pStore[j].r[d] < fSplit2 || pkd->pStore[j].r[d] >= fSplit1));
+	     if (i>=j) goto done1;
+	     pTemp = pkd->pStore[i];
+	     pkd->pStore[i] = pkd->pStore[j];
+	     pkd->pStore[j] = pTemp;
+	     
+	     while (1) {
+	       while (pkd->pStore[++i].r[d] >= fSplit2 && pkd->pStore[i].r[d] < fSplit1);
+	       while (pkd->pStore[--j].r[d] < fSplit2 || pkd->pStore[j].r[d] >= fSplit1);
+	       if (i > j) goto done1;
+	       pTemp = pkd->pStore[i];
+	       pkd->pStore[i] = pkd->pStore[j];
+	       pkd->pStore[j] = pTemp;
+               }
+	     }
+	else {
+	     if (i > j) goto done1;
+	     i--;
+	     j++;
+	     while (++i<j && (pkd->pStore[i].r[d] >= fSplit2 || pkd->pStore[i].r[d] < fSplit1));
+	     while (i<--j && (pkd->pStore[j].r[d] < fSplit2 && pkd->pStore[j].r[d] >= fSplit1));
+	     if (i>=j) goto done1;
+	     pTemp = pkd->pStore[i];
+	     pkd->pStore[i] = pkd->pStore[j];
+	     pkd->pStore[j] = pTemp;
+	     
+	     while (1) {
+	       while (pkd->pStore[++i].r[d] >= fSplit2 || pkd->pStore[i].r[d] < fSplit1);
+	       while (pkd->pStore[--j].r[d] < fSplit2 && pkd->pStore[j].r[d] >= fSplit1);
+	       if (i > j) goto done1;
+	       pTemp = pkd->pStore[i];
+	       pkd->pStore[i] = pkd->pStore[j];
+	       pkd->pStore[j] = pTemp;
+               }
+	     }
+	
+
+ done1:
+	return(i);
+        }
+
 
 
 int pkdLowerOrdPart(PKD pkd,int nOrdSplit,int i,int j)
@@ -710,21 +987,51 @@ int pkdActiveTypeOrder(PKD pkd, unsigned int iTestMask)
 	PARTICLE pTemp;
 	int i=0;
 	int j=pkdLocal(pkd)-1;
+	/*
+	int i0=i,j0=j,iold;
+	*/
 
-	if (i > j) goto done;
+	if (i > j) goto done1;
+	i--;
+	j++;
+	while (++i<j && TYPETest(&(pkd->pStore[i]), iTestMask ));
+        while (i<--j && !TYPETest(&(pkd->pStore[j]), iTestMask ));
+	if (i>=j) goto done1;
+	pTemp = pkd->pStore[i];
+	pkd->pStore[i] = pkd->pStore[j];
+	pkd->pStore[j] = pTemp;
+
+	while (1) {
+	     while (TYPETest(&(pkd->pStore[++i]), iTestMask ));
+	     while (!TYPETest(&(pkd->pStore[--j]), iTestMask ));
+	     if (i > j) goto done1;
+	     pTemp = pkd->pStore[i];
+	     pkd->pStore[i] = pkd->pStore[j];
+	     pkd->pStore[j] = pTemp;
+             }
+ done1:
+	/*	iold=i;
+	i=i0;
+	j=j0;
+	
+        if (i > j) goto done;
     while (1) {
         while (TYPETest(&(pkd->pStore[i]), iTestMask ))
             if (++i > j) goto done;
         while (!TYPETest(&(pkd->pStore[j]), iTestMask ))
             if (i > --j) goto done;
-		pTemp = pkd->pStore[i];
-		pkd->pStore[i] = pkd->pStore[j];
-		pkd->pStore[j] = pTemp;
+                pTemp = pkd->pStore[i];
+                pkd->pStore[i] = pkd->pStore[j];
+                pkd->pStore[j] = pTemp;
         }
+	
  done:
+	assert (i==iold);
+	*/
 	if ( iTestMask & TYPE_ACTIVE )       pkd->nActive = i;
 	if ( iTestMask & TYPE_TREEACTIVE )   pkd->nTreeActive = i;
 	if ( iTestMask & TYPE_SMOOTHACTIVE ) pkd->nSmoothActive = i;
+
 	return (i);
 	}
 
@@ -734,29 +1041,60 @@ int pkdActiveOrder(PKD pkd)
 	PARTICLE pTemp;
 	int i=0;
 	int j=pkdLocal(pkd)-1;
+	/*
+	int i0=i,j0=j,iold;
+	*/
+	
+	if (i > j) goto done1;
+	i--;
+	j++;
+	while (++i<j && TYPEQueryACTIVE(&(pkd->pStore[i])));
+        while (i<--j && !TYPEQueryACTIVE(&(pkd->pStore[j])));
+	if (i>=j) goto done1;
+	pTemp = pkd->pStore[i];
+	pkd->pStore[i] = pkd->pStore[j];
+	pkd->pStore[j] = pTemp;
 
-	if (i > j) goto done;
+	while (1) {
+	     while (TYPEQueryACTIVE(&(pkd->pStore[++i])));
+	     while (!TYPEQueryACTIVE(&(pkd->pStore[--j])));
+	     if (i > j) goto done1;
+	     pTemp = pkd->pStore[i];
+	     pkd->pStore[i] = pkd->pStore[j];
+	     pkd->pStore[j] = pTemp;
+             }
+	
+ done1:
+	/*
+	iold=i;
+	i=i0;
+	j=j0;
+
+        if (i > j) goto done;
     while (1) {
         while (TYPEQueryACTIVE(&(pkd->pStore[i])))
             if (++i > j) goto done;
         while (!TYPEQueryACTIVE(&(pkd->pStore[j])))
             if (i > --j) goto done;
-		pTemp = pkd->pStore[i];
-		pkd->pStore[i] = pkd->pStore[j];
-		pkd->pStore[j] = pTemp;
+                pTemp = pkd->pStore[i];
+                pkd->pStore[i] = pkd->pStore[j];
+                pkd->pStore[j] = pTemp;
         }
+	
  done:
+        assert (i==iold);
+	*/
 	return (pkd->nActive = i);
 	}
 
 
-int pkdColRejects(PKD pkd,int d,FLOAT fSplit,FLOAT fSplitInactive,
+int pkdColRejects_Active_Inactive(PKD pkd,int d,FLOAT fSplit,FLOAT fSplitInactive,
 				  int iSplitSide)
 {
 	PARTICLE pTemp;
 	int nSplit,nSplitInactive,iRejects,i,j;
 
-	assert(pkd->nRejects == 0);
+	mdlassert(pkd->mdl,pkd->nRejects == 0);
 	if (iSplitSide) {
 		nSplit = pkdLowerPart(pkd,d,fSplit,0,pkdActive(pkd)-1);
 		}
@@ -771,17 +1109,19 @@ int pkdColRejects(PKD pkd,int d,FLOAT fSplit,FLOAT fSplitInactive,
 		nSplitInactive = pkdUpperPart(pkd,d,fSplitInactive,
 									  pkdActive(pkd),pkdLocal(pkd)-1);
 		}
+	/*
 	for(i = 0; i < nSplit; ++i)
-	    assert(TYPEQueryACTIVE(&(pkd->pStore[i])));
+	    mdlassert(pkd->mdl,TYPEQueryACTIVE(&(pkd->pStore[i])));
 	for(i = pkdActive(pkd); i < nSplitInactive; ++i)
-	    assert(!TYPEQueryACTIVE(&(pkd->pStore[i])));
+	    mdlassert(pkd->mdl,!TYPEQueryACTIVE(&(pkd->pStore[i])));
+	*/
 
 	nSplitInactive -= pkdActive(pkd);
 	/*
 	 ** Now do some fancy rearrangement.
 	 */
 	i = nSplit;
-	j = pkdActive(pkd);
+	j = nSplit+nSplitInactive;
 	while (j < pkdActive(pkd) + nSplitInactive) {
 		pTemp = pkd->pStore[i];
 		pkd->pStore[i] = pkd->pStore[j];
@@ -801,6 +1141,32 @@ int pkdColRejects(PKD pkd,int d,FLOAT fSplit,FLOAT fSplitInactive,
 	}
 
 
+int pkdColRejects(PKD pkd,int d,FLOAT fSplit,FLOAT fSplitInactive,
+				  int iSplitSide)
+{
+	PARTICLE pTemp;
+	int nSplit,nSplitInactive,iRejects,i,j;
+
+	mdlassert(pkd->mdl,pkd->nRejects == 0);
+	if (!iSplitSide) {
+		nSplit = pkdLowerPartWrap(pkd,d,fSplitInactive,fSplit,0,pkdLocal(pkd)-1);
+		}
+	else {
+		nSplit = pkdUpperPartWrap(pkd,d,fSplitInactive,fSplit,0,pkdLocal(pkd)-1);
+		}
+
+	pkd->nRejects = pkdLocal(pkd) - nSplit;
+	iRejects = pkdFreeStore(pkd) - pkd->nRejects;
+	pkd->nLocal = nSplit;
+	/*
+	 ** Move rejects to High memory.
+	 */
+	for (i=pkd->nRejects-1;i>=0;--i)
+		pkd->pStore[iRejects+i] = pkd->pStore[pkd->nLocal+i];
+	return(pkd->nRejects);
+	}
+
+
 int pkdSwapRejects(PKD pkd,int idSwap)
 {
 	int nBuf;
@@ -809,7 +1175,7 @@ int pkdSwapRejects(PKD pkd,int idSwap)
 	if (idSwap != -1) {
 		nBuf = (pkdSwapSpace(pkd))*sizeof(PARTICLE);
 		nOutBytes = pkd->nRejects*sizeof(PARTICLE);
-		assert(pkdLocal(pkd) + pkd->nRejects <= pkdFreeStore(pkd));
+		mdlassert(pkd->mdl,pkdLocal(pkd) + pkd->nRejects <= pkdFreeStore(pkd));
 		mdlSwap(pkd->mdl,idSwap,nBuf,&pkd->pStore[pkdLocal(pkd)],
 				nOutBytes,&nSndBytes,&nRcvBytes);
 		pkd->nLocal += nRcvBytes/sizeof(PARTICLE);
@@ -836,7 +1202,7 @@ void pkdSwapAll(PKD pkd, int idSwap)
     nOutBytes = pkdLocal(pkd)*sizeof(PARTICLE);
     mdlSwap(pkd->mdl,idSwap,nBuf,&pkd->pStore[0], nOutBytes,
 			&nSndBytes, &nRcvBytes);
-    assert(nSndBytes/sizeof(PARTICLE) == pkdLocal(pkd));
+    mdlassert(pkd->mdl,nSndBytes/sizeof(PARTICLE) == pkdLocal(pkd));
     pkd->nLocal = nRcvBytes/sizeof(PARTICLE);
     }
 
@@ -948,7 +1314,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	 ** Seek past the header and up to nStart.
 	 */
 	fp = fopen(pszFileName,"a");
-	assert(fp != NULL);
+	mdlassert(pkd->mdl,fp != NULL);
 	pkdSeek(pkd,fp,nStart,bStandard);
 	if (bStandard) {
 		FLOAT vTemp;
@@ -997,9 +1363,13 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 				switch (iGasModel) {
 				case GASMODEL_COOLING:
 				case GASMODEL_COOLING_NONEQM:
+#ifndef NOCOOLING
 					vTemp = clTemperature(2*(pkd->cl).Y_H - p->Y_HI + 
 										  3*(pkd->cl).Y_He - 2*p->Y_HeI - p->Y_HeII,
 										  p->u*(pkd->cl).dErgPerGmUnit);
+#else
+					mdlassert(pkd->mdl,0);
+#endif
 					break;
 				default:
 					vTemp = duTFac*p->u;
@@ -1054,7 +1424,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 				fTmp = p->fPot;
 				xdr_float(&xdrs,&fTmp);
 				}
-			else assert(0);
+			else mdlassert(pkd->mdl,0);
 			}
 		xdr_destroy(&xdrs);
 		}
@@ -1073,7 +1443,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 				dp.eps = p->fSoft;
 				dp.phi = p->fPot;
 				nout = fwrite(&dp,sizeof(struct dark_particle),1,fp);
-				assert(nout == 1);
+				mdlassert(pkd->mdl,nout == 1);
 				}
 			else if (pkdIsGas(pkd,p)) {
 				for (j=0;j<3;++j) {
@@ -1092,7 +1462,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 				gp.metals = 0.0;
 #endif
 				nout = fwrite(&gp,sizeof(struct gas_particle),1,fp);
-				assert(nout == 1);
+				mdlassert(pkd->mdl,nout == 1);
 				}
 			else if (pkdIsStar(pkd,p)) {
 				for (j=0;j<3;++j) {
@@ -1110,13 +1480,13 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 				sp.tform = 0.0;
 #endif
 				nout = fwrite(&sp,sizeof(struct dark_particle),1,fp);
-				assert(nout == 1);
+				mdlassert(pkd->mdl,nout == 1);
 				}
-			else assert(0);
+			else mdlassert(pkd->mdl,0);
 			}
 		}
 	nout = fclose(fp);
-	assert(nout == 0);
+	mdlassert(pkd->mdl,nout == 0);
 	}
 
 
@@ -1584,7 +1954,7 @@ int NumBinaryNodes(PKD pkd,int nBucket,int pLower,int pUpper)
 			 ** Careful, this assert only applies when we are doing the
 			 ** squeezing!
 			 */
-			assert(l > 0 && u > 0);
+			mdlassert(pkd->mdl,l > 0 && u > 0);
 			return(l+u+1);
 			}
 		else {
@@ -1608,7 +1978,7 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 		/*
 		 ** Grab a cell from the cell storage!
 		 */
-		assert(pkd->iFreeCell < pkd->nNodes);
+		mdlassert(pkd->mdl,pkd->iFreeCell < pkd->nNodes);
 		c = pkd->iFreeCell++;
 		pkdn = &pkd->kdNodes[c];
 		pkdn->pLower = pLower;
@@ -1666,7 +2036,7 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 			 ** Careful, this assert only applies when we are doing the
 			 ** squeezing!
 			 */
-			assert(pkdn->iLower != -1 && pkdn->iUpper != -1);
+			mdlassert(pkd->mdl,pkdn->iLower != -1 && pkdn->iUpper != -1);
 			/*
 			 ** Now calculate the mass, center of mass and mass weighted
 			 ** softening radius.
@@ -1749,11 +2119,11 @@ void pkdThreadTree(PKD pkd,int iCell,int iNext)
 		l = pkd->kdNodes[iCell].iLower;
 		u = pkd->kdNodes[iCell].iUpper;
 		if (u == -1) {
-			assert(l != -1);
+			mdlassert(pkd->mdl,l != -1);
 			pkdThreadTree(pkd,l,iNext);
 			}
 		else if (l == -1) {
-			assert(u != -1);
+			mdlassert(pkd->mdl,u != -1);
 			pkdThreadTree(pkd,u,iNext);
 			/* 
 			 ** It is convenient to change the "down" pointer in this case.
@@ -1801,14 +2171,14 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	/*
 	 ** We need at least one particle per processor.
 	 */
-	assert(pkd->nNodes > 0);
+	mdlassert(pkd->mdl,pkd->nNodes > 0);
 
 	/*
 	 ** Need to allocate a special extra cell that we will use to calculate
 	 ** the acceleration on an arbitrary point in space.
 	 */
 	pkd->kdNodes = mdlMalloc(pkd->mdl,(pkd->nNodes + 1)*sizeof(KDN));
-	assert(pkd->kdNodes != NULL);
+	mdlassert(pkd->mdl,pkd->kdNodes != NULL);
 	/*
 	 ** Now we really build the tree.
 	 */
@@ -1821,7 +2191,7 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		pkd->iRoot = BuildBinary(pkd,nBucket,0,pkd->nLocal-1,
 					 iOpenType,dCrit,iOrder, bGravity);
 		}
-	assert(pkd->iFreeCell == pkd->nNodes);
+	mdlassert(pkd->mdl,pkd->iFreeCell == pkd->nNodes);
 	/*
 	 ** Thread the tree.
 	 */
@@ -1874,7 +2244,7 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	 ** the acceleration on an arbitrary point in space.
 	 */
 	pkd->kdNodes = mdlMalloc(pkd->mdl,(pkd->nNodes + 1)*sizeof(KDN));
-	assert(pkd->kdNodes != NULL);
+	mdlassert(pkd->mdl,pkd->kdNodes != NULL);
 	pkd->iFreeCell = pkd->nNodes;
 	sprintf(ach,"nNodes:%d nSplit:%d nLevels:%d nBucket:%d\n",
 			pkd->nNodes,pkd->nSplit,pkd->nLevels,nBucket);
@@ -1930,7 +2300,7 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 			c[UPPER(i)].pLower = m+1;
 			c[UPPER(i)].pUpper = c[i].pUpper;
 			diff = (m-c[i].pLower+1)-(c[i].pUpper-m);
-			assert(diff == 0 || diff == 1);
+			mdlassert(pkd->mdl,diff == 0 || diff == 1);
 			i = LOWER(i);
 			}
 		else {
@@ -2106,8 +2476,8 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 		 ** this to work.
 		 ** Don't allow periodic BCs at the moment.
 		 */
-		assert(nReps == 0);
-		assert(bPeriodic == 0);
+		mdlassert(pkd->mdl,nReps == 0);
+		mdlassert(pkd->mdl,bPeriodic == 0);
 		for (j=0;j<3;++j) {
 			pkd->pStore[iDummy].r[j] = 0.0;
 			pkd->pStore[iDummy].a[j] = 0.0;
@@ -2468,8 +2838,8 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 							}
 #endif
 						}
-					assert(p[i].r[j] >= fCenter[j]-0.5*pkd->fPeriod[j]);
-					assert(p[i].r[j] <  fCenter[j]+0.5*pkd->fPeriod[j]);
+					mdlassert(pkd->mdl,p[i].r[j] >= fCenter[j]-0.5*pkd->fPeriod[j]);
+					mdlassert(pkd->mdl,p[i].r[j] <  fCenter[j]+0.5*pkd->fPeriod[j]);
 					}
 				}
 #ifdef SLIDING_PATCH
@@ -2500,8 +2870,13 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				for (j=0;j<3;++j) {
 					p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
 					}
+#ifndef NOCOOLING				
 				p->uPred = p->u + p->uDot*duPredDelta;
 				p->u = p->u + p->uDot*duDelta;
+#else
+				p->uPred = p->u + p->PdV*duPredDelta;
+				p->u = p->u + p->PdV*duDelta;
+#endif
 				}
 #endif
 		       for (j=0;j<3;++j) {
@@ -2534,7 +2909,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 	 ** Seek past the header and up to nStart.
 	 */
 	fp = fopen(pszFileName,"r");
-	assert(fp != NULL);
+	mdlassert(pkd->mdl,fp != NULL);
 	lStart = iOffset+nStart*sizeof(CHKPART);
 	fseek(fp,lStart,SEEK_SET);
 	/*
@@ -2580,7 +2955,7 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 	 ** Seek past the header and up to nStart.
 	 */
 	fp = fopen(pszFileName,"r+");
-	assert(fp != NULL);
+	mdlassert(pkd->mdl,fp != NULL);
 	lStart = iOffset+nStart*sizeof(CHKPART);
 	fseek(fp,lStart,0);
 	/* 
@@ -2617,9 +2992,9 @@ void pkdDistribCells(PKD pkd,int nCell,KDN *pkdn)
 	if (pkd->kdTop != NULL) free(pkd->kdTop);
 	if (pkd->piLeaf != NULL) free(pkd->piLeaf);
 	pkd->kdTop = malloc(nCell*sizeof(KDN));
-	assert(pkd->kdTop != NULL);
+	mdlassert(pkd->mdl,pkd->kdTop != NULL);
 	pkd->piLeaf = malloc(pkd->nThreads*sizeof(int));
-	assert(pkd->piLeaf != NULL);
+	mdlassert(pkd->mdl,pkd->piLeaf != NULL);
 	for (i=1;i<nCell;++i) {
 		if (pkdn[i].pUpper) {
 			pkd->kdTop[i] = pkdn[i];
@@ -2825,7 +3200,7 @@ pkdGravStep(PKD pkd,double dEta)
 
     for (i=0;i<pkdLocal(pkd);i++) {
 		if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
-			assert(pkd->pStore[i].dtGrav);
+			mdlassert(pkd->mdl,pkd->pStore[i].dtGrav);
 			dt = dEta/sqrt(pkd->pStore[i].dtGrav);
 			if (dt < pkd->pStore[i].dt)
 				pkd->pStore[i].dt = dt;
@@ -2851,7 +3226,7 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 				vel += pkd->pStore[i].v[j]*pkd->pStore[i].v[j];
 				acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
 				}
-			assert(vel >= 0);
+			mdlassert(pkd->mdl,vel >= 0);
 			vel = sqrt(vel)*dVelFac;
 			acc = sqrt(acc)*dAccFac;
 			dT = FLOAT_MAXVAL;
@@ -2904,7 +3279,7 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,int bAll)
     iMaxRungOut = 0;
     for(i=0;i<pkdLocal(pkd);++i) {
 		if(pkd->pStore[i].iRung >= iRung) {
-			assert(TYPEQueryACTIVE(&(pkd->pStore[i])));
+			mdlassert(pkd->mdl,TYPEQueryACTIVE(&(pkd->pStore[i])));
 			if(bAll) {          /* Assign all rungs at iRung and above */
 				iSteps = dDelta/pkd->pStore[i].dt;
 				/* insure that integer boundary goes
@@ -2969,7 +3344,7 @@ pkdDeleteParticle(PKD pkd, int i)
 void
 pkdNewParticle(PKD pkd, PARTICLE p)
 {
-    assert(pkd->nLocal < pkd->nStore);
+    mdlassert(pkd->mdl,pkd->nLocal < pkd->nStore);
     pkd->pStore[pkd->nLocal] = p;
     pkd->pStore[pkd->nLocal].iOrder = -1;
     pkd->nLocal++;
@@ -3018,7 +3393,7 @@ pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 	    else if(pkdIsStar(pkd, p))
 		--ndStar;
 	    else
-		assert(0);
+		mdlassert(pkd->mdl,0);
 	    if(TYPEQueryACTIVE(p))
 		--pkd->nActive;
 	    }
@@ -3079,24 +3454,6 @@ void pkdCoolVelocity(PKD pkd,int nSuperCool,double dCoolFac,
 		}
 	}
 
-int pkdResetTouchRung(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
-{
-    PARTICLE *p;
-    int i,nActive = 0;
-
-    for(i=0;i<pkdLocal(pkd);++i) { 
-		p = &pkd->pStore[i];
-		if (TYPETest(p,iTestMask)) {
-			if (p->iTouchRung & iSetMask) {
-				p->iTouchRung &= (~iSetMask);
-				TYPESet(p,TYPE_SMOOTHACTIVE);
-				nActive++;
-				}
-			}
-		}
-    return nActive;
-    }
-
 int pkdActiveExactType(PKD pkd, unsigned int iFilterMask, unsigned int iTestMask, unsigned int iSetMask)
 {
     PARTICLE *p;
@@ -3105,7 +3462,7 @@ int pkdActiveExactType(PKD pkd, unsigned int iFilterMask, unsigned int iTestMask
     for(i=0;i<pkdLocal(pkd);++i) { 
 		p = &pkd->pStore[i];
 		/* DEBUG: Paranoia check */
-		assert(TYPETest(p,TYPE_ALL));
+		mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
 		if (TYPEFilter(p,iFilterMask,iTestMask)) {
 			TYPESet(p,iSetMask);
 			nActive++;
@@ -3128,7 +3485,7 @@ int pkdSetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
     for(i=0;i<pkdLocal(pkd);++i) {
 		p = &pkd->pStore[i];
 		/* DEBUG: Paranoia check */
-		assert(TYPETest(p,TYPE_ALL));
+		mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
 		if (TYPETest(p,iTestMask)) {
 			TYPESet(p,iSetMask);
 			nActive++;
@@ -3151,7 +3508,7 @@ int pkdResetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
     for(i=0;i<pkdLocal(pkd);++i) {
 		p = &pkd->pStore[i];
 		/* DEBUG: Paranoia check */
-		assert(TYPETest(p,TYPE_ALL));
+		mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
 		if (TYPETest(p,iTestMask)) {
 			TYPEReset(p,iSetMask);
 			nActive++;
@@ -3192,7 +3549,7 @@ int pkdActiveType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
     for(i=0;i<pkdLocal(pkd);++i) {
 		p = &pkd->pStore[i];
 		/* DEBUG: Paranoia check */
-		assert(TYPETest(p,TYPE_ALL));
+		mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
 		if (TYPETest(p,iTestMask)) {
 			TYPESet(p,iSetMask);
 			nActive++;
@@ -3246,7 +3603,7 @@ pkdActiveTypeRung(PKD pkd, unsigned iTestMask, unsigned iSetMask, int iRung, int
     for(i=0;i<pkdLocal(pkd);++i) {
         p = &pkd->pStore[i];
         /* DEBUG: Paranoia check */
-        assert(TYPETest(p,TYPE_ALL));
+        mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
 		if(TYPETest(p,iTestMask) && 
            (p->iRung == iRung || (bGreater && p->iRung > iRung))) {
 			TYPESet(p,iSetMask);
@@ -3399,6 +3756,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdate
 	pkdClearTimer(pkd,1);
 	pkdStartTimer(pkd,1);
 
+#ifndef NOCOOLING
 	switch (iGasModel) {
 	case GASMODEL_COOLING:
 	case GASMODEL_COOLING_NONEQM:
@@ -3427,6 +3785,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdate
 				}
 			}
 		}
+#endif
 	pkdStopTimer(pkd,1);
 	}
 
@@ -3464,12 +3823,15 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z)
     RATE r;
     double T;
 
+#ifndef NOCOOLING
     cl = &(pkd->cl);
     clRatesRedshift( cl, z );
+#endif
 
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (TYPEQueryTREEACTIVE(p) && pkdIsGas(pkd,p)) {
+#ifndef NOCOOLING
 			T = p->u / dTuFac;
 			p->Y_HI = (pkd->cl).Y_H;
 			p->Y_HeI = (pkd->cl).Y_He;
@@ -3479,6 +3841,7 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z)
 			clAbunds(cl,&Y,&r,p->fDensity*cl->dComovingGmPerCcUnit);
 			pkdPERBARYON2PARTICLE(&Y,p);
 			p->u = clThermalEnergy(Y.Total,T)*cl->diErgPerGmUnit;
+#endif
 			p->uPred = p->u;
 #ifdef DEBUG
 			if ((p->iOrder % 1000)==0) {
@@ -3570,8 +3933,12 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int 
 			for (j=0;j<3;++j) {
 				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;
 				}
+#ifndef NOCOOLING
 			p->uPred = p->uPred + p->uDot*duDelta;
-			assert(p->uPred > 0);
+#else
+			p->uPred = p->uPred + p->PdV*duDelta;
+#endif
+			mdlassert(pkd->mdl,p->uPred > 0);
 			}
 		}
 
@@ -3868,7 +4235,6 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 		p = &pkd->pStore[i];
 		TYPEClear(p);
 		TYPESet(p,TYPE_ACTIVE);
-		p->iTouchRung = 0;
 		p->iRung = 0;
 		p->fWeight = 1.0;
 		p->fPot = 0.0;
@@ -3884,7 +4250,7 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	 ** Seek past the header and up to nStart.
 	 */
 	fp = fopen(pszFileName,"r");
-	assert(fp != NULL);
+	mdlassert(pkd->mdl,fp != NULL);
 	/*
 	 ** Seek to right place in file.
 	 */
@@ -3896,7 +4262,7 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	for (i=0;i<nLocal;++i) {
 		p = &pkd->pStore[i];
 		p->iOrder = nStart + i;
-		if (!pkdIsDark(pkd,p)) assert(0);
+		if (!pkdIsDark(pkd,p)) mdlassert(pkd->mdl,0);
 		xdr_double(&xdrs,&dDum); p->fMass = dDum; /* SS format always double */
 		xdr_double(&xdrs,&dDum); p->fSoft = 0.5*dDum;
 		for (j=0;j<3;++j)
@@ -3928,7 +4294,7 @@ pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
 	 ** Seek past the header and up to nStart.
 	 */
 	fp = fopen(pszFileName,"r+");
-	assert(fp != NULL);
+	mdlassert(pkd->mdl,fp != NULL);
 	fseek(fp,SSHEAD_SIZE + nStart*SSDATA_SIZE,SEEK_SET);
 	/* 
 	 ** Write Stuff!
@@ -3936,7 +4302,7 @@ pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
 	xdrstdio_create(&xdrs,fp,XDR_ENCODE);
 	for (i=0;i<pkdLocal(pkd);++i) {
 		p = &pkd->pStore[i];
-		if (!pkdIsDark(pkd,p)) assert(0);
+		if (!pkdIsDark(pkd,p)) mdlassert(pkd->mdl,0);
 		dDum = p->fMass; xdr_double(&xdrs,&dDum); /* SS format always double */
 		dDum = 2*p->fSoft; xdr_double(&xdrs,&dDum);
 		for (j=0;j<3;++j)
@@ -3950,7 +4316,7 @@ pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
 		}
 	xdr_destroy(&xdrs);
 	nout = fclose(fp);
-	assert(nout == 0);
+	mdlassert(pkd->mdl,nout == 0);
 	}
 
 void

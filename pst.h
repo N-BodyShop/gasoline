@@ -64,6 +64,7 @@ enum pst_service {
       PST_GASWEIGHT,
       PST_RUNGDDWEIGHT,
       PST_WEIGHT,
+      PST_WEIGHTWRAP,
       PST_FREESTORE,
       PST_COLREJECTS,
       PST_SWAPREJECTS,
@@ -194,6 +195,7 @@ void pstReadTipsy(PST,void *,int,void *,int *);
 /* PST_DOMAINDECOMP */
 struct inDomainDecomp {
     int bDoRootFind;
+    int bDoSplitDimFind;
     };
 
 void pstDomainDecomp(PST,void *,int,void *,int *);
@@ -231,6 +233,15 @@ struct outWeight {
 	FLOAT fHigh;
 	};
 void pstWeight(PST,void *,int,void *,int *);
+struct inWeightWrap {
+	int iSplitDim;
+	FLOAT fSplit;
+	FLOAT fSplit2;
+	int iSplitSide;
+	int ittr;
+	int pFlag;
+	};
+void pstWeightWrap(PST,void *,int,void *,int *);
 
 /* PST_FREESTORE */
 struct outFreeStore {
@@ -615,12 +626,6 @@ struct inCoolVelocity {
 	double dCoolMaxDens;
 	};
 void pstCoolVelocity(PST,void *,int,void *,int *);
-
-struct inResetTouchRung {
-	unsigned int iTestMask;
-	unsigned int iSetMask;
-	};
-void pstResetTouchRung(PST,void *,int,void *,int *);
 
 struct inActiveType {
 	unsigned int iFilterMask;

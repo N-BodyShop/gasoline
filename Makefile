@@ -3,11 +3,13 @@
 #
 
 #CC = gcc -Wall
-EXE = pkdgrav
-#EXE = gasoline
+#CC = pgcc
+CC = cc
+#EXE = pkdgrav
+EXE = gasoline
 #CODEDEF = -DCOLLISIONS -DSLIDING_PATCH
 #CODEDEF = -DSUPERCOOL
-#CODEDEF = -DGROWMASS
+#CODEDEF = -DGROWMAS
 #CODEDEF = -DGASOLINE
 #CODEDEF = -DDEBUG -HSHRINK
 
@@ -15,21 +17,21 @@ EXE = pkdgrav
 #CC = ccc
 #CODEDEF = -DGASOLINE -DCCC
 
-CC = cc
+#CC = cc
 # -DSUPERNOVA
-CODEDEF = -DGASOLINE 
+CODEDEF = -DGASOLINE -DNOCOOLING
 
 #
 #       NULL defines
 #
 NULL_MDL		= ../mdl/null
-NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(CODEDEF)
+#NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(CODEDEF)
 
 #ev6 flags:
 #NULL_CFLAGS		= -O3 -g3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
-
-NULL_CFLAGS		= -O2 -I$(NULL_MDL) $(CODEDEF)
+NULL_CFLAGS            = -fast -I$(NULL_MDL) $(CODEDEF)
+#NULL_CFLAGS		= -O2 -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -g -I$(NULL_MDL) $(CODEDEF)
 #NULL_LD_FLAGS	= -Wl,-s
 NULL_XOBJ		= erf.o v_sqrt1.o
@@ -177,7 +179,7 @@ null:
 
 sgi:
 	cd $(SGI_MDL); make CC=cc "CC_FLAGS=$(SGI_MDL_CFLAGS)"
-	make $(EXE) "CFLAGS=$(SGI_CFLAGS)" "LD_FLAGS=$(SGI_LD_FLAGS)"\
+	make $(EXE) CC=cc "CFLAGS=$(SGI_CFLAGS)" "LD_FLAGS=$(SGI_LD_FLAGS)"\
 		"MDL=$(SGI_MDL)" "XOBJ=$(SGI_XOBJ)" "LIBMDL=$(SGI_LIBMDL)"
 
 pvm:

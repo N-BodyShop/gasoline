@@ -77,7 +77,9 @@ typedef struct msrContext {
         /*
          * Domain Decomposition Done
          */
+        int *nRung;
         int bDoneDomainDecomp;
+        int iLastRungDomainDecomp;
         int nActive;
         int nTreeActive;
         int nSmoothActive;
@@ -99,7 +101,7 @@ int msrReadASCII(MSR, char *, int, double *);
 double msrReadTipsy(MSR);
 void msrWriteTipsy(MSR,char *,double);
 void msrSetSoft(MSR msr,double);
-void msrDomainDecomp(MSR);
+void msrDomainDecomp(MSR,int,int);
 void msrBuildTree(MSR,int,double,int);
 void msrDomainColor(MSR);
 void msrReorder(MSR);
@@ -164,7 +166,6 @@ void msrSmoothActiveCool(MSR msr);
 */
 
 /* Replacement functions */
-void msrResetTouchRung(MSR msr, unsigned int iTestMask, unsigned int iSetMask);
 void msrActiveExactType(MSR msr, unsigned int iFilterMask, unsigned int iTestMask, unsigned int iSetMask);
 void msrActiveType(MSR msr, unsigned int iTestMask, unsigned int iSetMask);
 void msrSetType(MSR msr, unsigned int iTestMask, unsigned int iSetMask);
