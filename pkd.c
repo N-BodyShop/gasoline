@@ -3998,6 +3998,7 @@ struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCu
 	}
       }
     }
+    return ret;
 }
 
 void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, double dTMax, 

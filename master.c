@@ -3772,10 +3772,10 @@ void msrReadOuts(MSR msr,double dTime)
 			msr->pdOutTime[i] = csmExp2Time(msr->param.csm,a);
 			}
 		++i;
-		if(i >= msr->nMaxOuts) {
+		if(i > msr->nMaxOuts) {
 			msr->nMaxOuts *= 2;
 			msr->pdOutTime = realloc(msr->pdOutTime,
-						 msr->nMaxOuts*sizeof(double));
+									 msr->nMaxOuts*sizeof(double));
 			assert(msr->pdOutTime != NULL);
 		    }
 		}
