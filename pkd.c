@@ -76,8 +76,10 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 		}
 	/*
 	 ** Allocate the main particle store.
+	 ** Need to use mdlMalloc() since the particles will need to be
+	 ** visible to all other processors thru mdlAquire() later on.
 	 */
-	pkd->pStore = (PARTICLE *)malloc(nStore*sizeof(PARTICLE));
+	pkd->pStore = mdlMalloc(nStore*sizeof(PARTICLE));
 	assert(pkd->pStore != NULL);
 	pkd->kdNodes = NULL;
 	pkd->piLeaf = NULL;
@@ -111,7 +113,7 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 
 void pkdFinish(PKD pkd)
 {
-	if (pkd->kdNodes) free(pkd->kdNodes);
+	if (pkd->kdNodes) mdlFree(pkd->kdNodes);
 	if (pkd->kdTop) free(pkd->kdTop);
 	if (pkd->piLeaf) free(pkd->piLeaf);
 	free(pkd->ilp);
@@ -120,7 +122,7 @@ void pkdFinish(PKD pkd)
 	free(pkd->sqrttmp);
 	free(pkd->d2a);
 	free(pkd->ewt);
-	free(pkd->pStore);
+	mdlFree(pkd->pStore);
 	free(pkd);
 	}
 
@@ -961,8 +963,8 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		}
 	pkd->nSplit = l;
 	pkd->nNodes = l<<1;
-	if (pkd->kdNodes) free(pkd->kdNodes);
-	pkd->kdNodes = (KDN *)malloc(pkd->nNodes*sizeof(KDN));
+	if (pkd->kdNodes) mdlFree(pkd->kdNodes);
+	pkd->kdNodes = mdlMalloc(pkd->nNodes*sizeof(KDN));
 	assert(pkd->kdNodes != NULL);
 	sprintf(ach,"nNodes:%d nSplit:%d nLevels:%d nBucket:%d\n",
 			pkd->nNodes,pkd->nSplit,pkd->nLevels,nBucket);

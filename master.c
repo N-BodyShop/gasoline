@@ -242,7 +242,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->dCosmoFac = 1.0;
 	msr->dHubble = 0.0;
 	msr->nRed = 0;
-        if(msrComove(msr)) msrReadRed(msr);
+	if (msrComove(msr)) msrReadRed(msr);
         
 	pstInitialize(&msr->pst,msr->mdl,&msr->lcl);
 
@@ -754,7 +754,7 @@ void msrBuildTree(MSR msr)
 		}
 #endif
 	pstDistribCells(msr->pst,pkdn,nCell*sizeof(KDN),NULL,NULL);
-
+	free(pkdn);
 	pstCalcRoot(msr->pst,NULL,0,&root,&iDum);
 	pstDistribRoot(msr->pst,&root,sizeof(struct ioCalcRoot),NULL,NULL);
 	}
