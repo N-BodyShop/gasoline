@@ -1237,6 +1237,7 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	assert(pkd->nNodes > 0);
 
 	pkd->kdNodes = mdlMalloc(pkd->mdl,pkd->nNodes*sizeof(KDN));
+	assert(pkd->kdNodes != NULL);
 	/*
 	 ** Now we really build the tree.
 	 */
