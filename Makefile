@@ -5,8 +5,8 @@
 EXE = pkdgrav
 #CODEDEF = -DPLANETS
 #CODEDEF = -DSUPERCOOL
-#EXE = gasoline
-#CODEDEF = -DGASOLINE
+EXE = gasoline
+CODEDEF = -DGASOLINE
 #
 # PVM defines
 #
@@ -109,7 +109,7 @@ clean:
 	rm -f *.o
 
 depend:
-	makedepend -- $(NULL_CFLAGS) -- *.c
+	makedepend -Y -- $(CODEDEF) -- *.c
 
 cflow:
 	-rm -f cflow.out
@@ -159,76 +159,17 @@ gasoline: $(OBJS) $(EXTRA_OBJ)
 
 # DO NOT DELETE
 
-eccanom.o: /usr/include/math.h /usr/include/assert.h
-erf.o: /usr/include/math.h
-ewald.o: /usr/include/stdio.h /usr/include/malloc.h /usr/include/math.h
-ewald.o: /usr/include/assert.h ewald.h pkd.h /usr/include/sys/resource.h
-ewald.o: /usr/include/sys/time.h /usr/include/sys/types.h
-ewald.o: /usr/include/sgidefs.h /usr/include/sys/bsd_types.h
-ewald.o: /usr/include/sys/select.h ../mdl/null/mdl.h meval.h qeval.h
-fdl.o: /usr/include/stdio.h /usr/include/stdlib.h /usr/include/sgidefs.h
-fdl.o: /usr/include/malloc.h /usr/include/assert.h /usr/include/ctype.h
-fdl.o: /usr/include/string.h htable.h fdl.h
-grav.o: /usr/include/stdio.h /usr/include/math.h /usr/include/assert.h
-grav.o: ../mdl/null/mdl.h pkd.h /usr/include/sys/resource.h
-grav.o: /usr/include/sys/time.h /usr/include/sys/types.h
-grav.o: /usr/include/sgidefs.h /usr/include/sys/bsd_types.h
-grav.o: /usr/include/sys/select.h grav.h meval.h qeval.h
-htable.o: /usr/include/stdlib.h /usr/include/sgidefs.h /usr/include/malloc.h
+ewald.o: ewald.h pkd.h meval.h qeval.h
+fdl.o: htable.h fdl.h
+grav.o: pkd.h grav.h meval.h qeval.h
 htable.o: htable.h
-hypanom.o: /usr/include/math.h /usr/include/assert.h
-hyperlib.o: /usr/include/math.h
-main.o: /usr/include/stdio.h /usr/include/math.h /usr/include/stdlib.h
-main.o: /usr/include/sgidefs.h /usr/include/string.h /usr/include/assert.h
-main.o: ../mdl/null/mdl.h pst.h pkd.h /usr/include/sys/resource.h
-main.o: /usr/include/sys/time.h /usr/include/sys/types.h
-main.o: /usr/include/sys/bsd_types.h /usr/include/sys/select.h smoothfcn.h
-main.o: master.h param.h parameters.h outtype.h
-master.o: /usr/include/stdio.h /usr/include/stdlib.h /usr/include/sgidefs.h
-master.o: /usr/include/stddef.h /usr/include/string.h /usr/include/malloc.h
-master.o: /usr/include/assert.h /usr/include/time.h /usr/include/math.h
-master.o: /usr/include/rpc/types.h /usr/include/sys/types.h
-master.o: /usr/include/sys/bsd_types.h /usr/include/sys/select.h
-master.o: /usr/include/sys/time.h /usr/include/rpc/xdr.h master.h param.h
-master.o: pst.h pkd.h /usr/include/sys/resource.h ../mdl/null/mdl.h
-master.o: smoothfcn.h parameters.h tipsydefs.h opentype.h fdl.h htable.h
-master.o: outtype.h
-outtype.o: /usr/include/stdio.h /usr/include/math.h /usr/include/assert.h
-outtype.o: pkd.h /usr/include/sys/resource.h /usr/include/sys/time.h
-outtype.o: /usr/include/sys/types.h /usr/include/sgidefs.h
-outtype.o: /usr/include/sys/bsd_types.h /usr/include/sys/select.h
-outtype.o: ../mdl/null/mdl.h outtype.h
-param.o: /usr/include/stdio.h /usr/include/stdlib.h /usr/include/sgidefs.h
-param.o: /usr/include/stddef.h /usr/include/malloc.h /usr/include/string.h
-param.o: /usr/include/assert.h /usr/include/ctype.h param.h
-pkd.o: /usr/include/stdio.h /usr/include/stdlib.h /usr/include/sgidefs.h
-pkd.o: /usr/include/stddef.h /usr/include/malloc.h /usr/include/math.h
-pkd.o: /usr/include/assert.h /usr/include/sys/time.h /usr/include/sys/types.h
-pkd.o: /usr/include/sys/bsd_types.h /usr/include/sys/select.h
-pkd.o: /usr/include/rpc/types.h /usr/include/rpc/xdr.h pkd.h
-pkd.o: /usr/include/sys/resource.h ../mdl/null/mdl.h ewald.h grav.h walk.h
-pkd.o: opentype.h tipsydefs.h
-pst.o: /usr/include/math.h /usr/include/stdlib.h /usr/include/sgidefs.h
-pst.o: /usr/include/stddef.h /usr/include/string.h /usr/include/malloc.h
-pst.o: /usr/include/assert.h ../mdl/null/mdl.h /usr/include/stdio.h pst.h
-pst.o: pkd.h /usr/include/sys/resource.h /usr/include/sys/time.h
-pst.o: /usr/include/sys/types.h /usr/include/sys/bsd_types.h
-pst.o: /usr/include/sys/select.h smoothfcn.h outtype.h smooth.h
-smooth.o: /usr/include/stdio.h /usr/include/stdlib.h /usr/include/sgidefs.h
-smooth.o: /usr/include/stddef.h /usr/include/malloc.h /usr/include/math.h
-smooth.o: /usr/include/assert.h smooth.h pkd.h /usr/include/sys/resource.h
-smooth.o: /usr/include/sys/time.h /usr/include/sys/types.h
-smooth.o: /usr/include/sys/bsd_types.h /usr/include/sys/select.h
-smooth.o: ../mdl/null/mdl.h smoothfcn.h
-smoothfcn.o: /usr/include/math.h /usr/include/assert.h smoothfcn.h pkd.h
-smoothfcn.o: /usr/include/sys/resource.h /usr/include/sys/time.h
-smoothfcn.o: /usr/include/sys/types.h /usr/include/sgidefs.h
-smoothfcn.o: /usr/include/sys/bsd_types.h /usr/include/sys/select.h
-smoothfcn.o: ../mdl/null/mdl.h /usr/include/stdio.h
-v_sqrt1.o: /usr/include/math.h
-v_sqrt1.t3x.o: /usr/include/math.h
-walk.o: /usr/include/math.h /usr/include/stdlib.h /usr/include/sgidefs.h
-walk.o: /usr/include/stddef.h /usr/include/malloc.h /usr/include/assert.h
-walk.o: walk.h pkd.h /usr/include/sys/resource.h /usr/include/sys/time.h
-walk.o: /usr/include/sys/types.h /usr/include/sys/bsd_types.h
-walk.o: /usr/include/sys/select.h ../mdl/null/mdl.h /usr/include/stdio.h
+main.o: pst.h pkd.h smoothfcn.h master.h param.h parameters.h outtype.h
+master.o: master.h param.h pst.h pkd.h smoothfcn.h parameters.h tipsydefs.h
+master.o: opentype.h fdl.h htable.h outtype.h
+outtype.o: pkd.h outtype.h
+param.o: param.h
+pkd.o: pkd.h ewald.h grav.h walk.h opentype.h tipsydefs.h
+pst.o: pst.h pkd.h smoothfcn.h outtype.h smooth.h
+smooth.o: smooth.h pkd.h smoothfcn.h
+smoothfcn.o: smoothfcn.h pkd.h
+walk.o: walk.h pkd.h
