@@ -2935,6 +2935,14 @@ msrAddDelParticles(MSR msr)
      */
     pNewOrder = malloc(msr->nThreads*sizeof(*pNewOrder));
     for(i = 0; i < msr->nThreads; i++) {
+	/*
+	 * Detect any changes in particle number, and force a tree
+	 * build.
+	 */
+	if(pColNParts[i].nNew != 0 || pColNParts[i].nDeltaGas != 0 ||
+	   pColNParts[i].nDeltaDark != 0 || pColNParts[i].nDeltaStar != 0)
+	    msr->iTreeType = MSR_TREE_NONE;
+	
 	pNewOrder[i] = msr->nMaxOrder + 1;
 	msr->nMaxOrder += pColNParts[i].nNew;
 	msr->nGas += pColNParts[i].nDeltaGas;
