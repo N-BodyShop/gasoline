@@ -442,6 +442,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.csm->dOmegab = 0.0;
 	prmAddParam(msr->prm,"dOmegab",2,&msr->param.csm->dOmegab,
 				sizeof(double),"Omb", "<dOmegab> = 0.0");
+	msr->param.csm->dQuintess = 0.0;
+	prmAddParam(msr->prm,"dQuintess",2,&msr->param.csm->dQuintess,
+				sizeof(double),"Quint",
+		    "<dQuintessence (constant w = -1/2) > = 0.0");
 	strcpy(msr->param.achDataSubPath,".");
 	prmAddParam(msr->prm,"achDataSubPath",3,msr->param.achDataSubPath,256,
 				NULL,NULL);
@@ -1614,6 +1618,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dLambda: %g",msr->param.csm->dLambda);
 	fprintf(fp," dOmegaRad: %g",msr->param.csm->dOmegaRad);
 	fprintf(fp," dOmegab: %g",msr->param.csm->dOmegab);
+	fprintf(fp," dQuintess: %g",msr->param.csm->dQuintess);
 	fprintf(fp,"\n# achInFile: %s",msr->param.achInFile);
 	fprintf(fp,"\n# achOutName: %s",msr->param.achOutName); 
 	fprintf(fp,"\n# achDataSubPath: %s",msr->param.achDataSubPath);
@@ -3557,6 +3562,7 @@ double msrReadCheck(MSR msr,int *piStep)
 	if (iVersion > 4) {
 	    FDL_read(fdl,"dLambda",&msr->param.csm->dLambda);
 	    FDL_read(fdl,"dOmegaRad",&msr->param.csm->dOmegaRad);
+	    FDL_read(fdl,"dQuintess",&msr->param.csm->dQuintess);
 	    }
 	if (iVersion > 3) {
 		if (!prmSpecified(msr->prm,"dTheta"))
@@ -3828,6 +3834,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"dOmega0",&msr->param.csm->dOmega0);
 	FDL_write(fdl,"dLambda",&msr->param.csm->dLambda);
 	FDL_write(fdl,"dOmegaRad",&msr->param.csm->dOmegaRad);
+	FDL_write(fdl,"dQuintess",&msr->param.csm->dQuintess);
 	FDL_write(fdl,"dTheta",&msr->param.dTheta);
 	FDL_write(fdl,"dTheta2",&msr->param.dTheta2);
 	FDL_write(fdl,"dCentMass",&msr->param.dCentMass);

@@ -182,6 +182,9 @@ FDL checkpoint_6 (
 			ELEMENT dOmegaRad (
 				TYPE double
 				)
+			ELEMENT dQuintess (
+				TYPE double
+				)
 			ELEMENT dTheta (
 				TYPE double
 				)

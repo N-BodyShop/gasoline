@@ -7,6 +7,7 @@ typedef struct csmContext {
     double dOmega0;
     double dLambda;
     double dOmegaRad;
+    double dQuintess; /* w = -1/2 equation of  state */
     double dOmegab;
     } * CSM;
 
