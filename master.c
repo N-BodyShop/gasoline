@@ -935,9 +935,12 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	strcat(achOutFile,DATA(in,inWriteCheck)->achOutFile);
 	sprintf(achOutTmp, "%s%s", achOutFile, ".tmp");
 	sprintf(achOutBak, "%s%s", achOutFile, ".bak");
-	strcat(DATA(in,inWriteCheck)->achOutFile, ".tmp");
-	
+#ifdef SAFE_CHECK
+	strcat(DATA(in,inWriteCheck)->achOutFile, ".tmp");	
 	fp = fopen(achOutTmp,"w");
+#else
+	fp = fopen(achOutFile,"w");
+#endif
 	if (!fp) {
 		printf("Could not open OutFile:%s\n",achOutTmp);
 		msrFinish(msr);
@@ -983,7 +986,9 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 		}
 	sprintf(ach, "mv -f %s %s; mv %s %s", achOutFile, achOutBak,
 		achOutTmp, achOutFile);
+#ifdef SAFE_CHECK
 	system(ach);
+#endif
 	}
 
 

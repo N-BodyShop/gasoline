@@ -85,11 +85,17 @@ typedef struct ilPart {
 	float x,y,z;
 	} ILP;
 
-typedef struct ilCell {
+typedef struct ilCellSoft {
 	float m,h;
 	float x,y,z;
 	float xx,yy,zz,xy,xz,yz;
-	} ILC;
+	} ILCS;
+
+typedef struct ilCellNewt {
+	float m;
+	float x,y,z;
+	float xx,yy,zz,xy,xz,yz;
+	} ILCN;
 
 typedef struct ewaldTable {
 	float hx,hy,hz;
@@ -117,11 +123,14 @@ typedef struct pkdContext {
 	 ** gravitational interaction lists
 	 */
 	int nMaxPart;
-	int nMaxCell;
+	int nMaxCellSoft;
+	int nMaxCellNewt;
 	int nPart;
-	int nCell;
+	int nCellSoft;
+	int nCellNewt;
 	ILP *ilp;
-	ILC *ilc;
+	ILCS *ilcs;
+	ILCN *ilcn;
 	/*
 	 ** Ewald summation setup.
 	 */

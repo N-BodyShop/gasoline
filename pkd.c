@@ -79,11 +79,14 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	 ** Allocate initial interaction lists
 	 */
 	pkd->nMaxPart = 500;
-	pkd->nMaxCell = 500;
+	pkd->nMaxCellSoft = 500;
+	pkd->nMaxCellNewt = 500;
 	pkd->ilp = malloc(pkd->nMaxPart*sizeof(ILP));
 	assert(pkd->ilp != NULL);
-	pkd->ilc = malloc(pkd->nMaxCell*sizeof(ILC));
-	assert(pkd->ilc != NULL);
+	pkd->ilcs = malloc(pkd->nMaxCellSoft*sizeof(ILCS));
+	assert(pkd->ilcs != NULL);
+	pkd->ilcn = malloc(pkd->nMaxCellNewt*sizeof(ILCN));
+	assert(pkd->ilcn != NULL);
 	/*
 	 ** Ewald stuff!
 	 */
@@ -98,7 +101,8 @@ void pkdFinish(PKD pkd)
 {
 	if (pkd->kdNodes) free(pkd->kdNodes);
 	free(pkd->ilp);
-	free(pkd->ilc);
+	free(pkd->ilcs);
+	free(pkd->ilcn);
 	free(pkd->ewt);
 	free(pkd->pStore);
 	free(pkd);
@@ -1037,7 +1041,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,float fEwCut,float fEwhCut,
 			pkdBucketWalk(pkd,iCell,nReps);
 			pkdStopTimer(pkd,1);
 			*pdPartSum += n*pkd->nPart + n*(n-1)/2;
-			*pdCellSum += n*pkd->nCell;
+			*pdCellSum += n*(pkd->nCellSoft + pkd->nCellNewt);
 			pkdStartTimer(pkd,2);
 			pkdBucketInteract(pkd,iCell);
 			pkdStopTimer(pkd,2);
@@ -1046,7 +1050,8 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,float fEwCut,float fEwhCut,
 				pkdBucketEwald(pkd,iCell,nReps,fEwCut);
 				pkdStopTimer(pkd,3);
 				}
-			fWeight = 2.0*pkd->nCell + 1.0*(pkd->nPart +(n-1)/2.0);
+			fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 
+			    1.0*(pkd->nPart +(n-1)/2.0);
 			pkdBucketWeight(pkd,iCell,fWeight);
 			SETNEXT(iCell);
 			if (iCell == ROOT) break;
