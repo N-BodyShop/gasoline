@@ -267,8 +267,15 @@ int main(int argc,char **argv)
 			 ** Check for user interrupt.
 			 */
 			iStop = msrCheckForStop(msr);
-			/*DEBUG a lot of the following seems awfully redundant... -- DCR*/
-			if (msrOutTime(msr,dTime)) {
+			/*
+			** Output if 1) we've hit an output time
+			**           2) We are stopping
+			**           3) we're at an output interval
+			*/
+			if (msrOutTime(msr,dTime)
+			    || iStep == msrSteps(msr) || iStop
+			    || (msrOutInterval(msr) > 0 &&
+				iStep%msrOutInterval(msr) == 0)) {
 				msrReorder(msr);
 				msrMassCheck(msr,dMass,"After msrReorder in OutTime");
 				sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
@@ -276,14 +283,12 @@ int main(int argc,char **argv)
 				msrWriteSS(msr,achFile,dTime);
 #else /* COLLISIONS */
 				msrWriteTipsy(msr,achFile,dTime);
-				msrMassCheck(msr,dMass,"After msrWriteTipsy in OutTime");
 #endif /* !COLLISIONS */
 				if (msrDoDensity(msr)) {
 					msrActiveRung(msr,0,1);
 					msrBuildTree(msr,0,dMass,1);
-					msrMassCheck(msr,dMass,"After msrBuildTree in OutTime");
 					msrSmooth(msr,dTime,SMX_DENSITY,1);
-					msrMassCheck(msr,dMass,"After msrSmooth in OutTime");
+					msrReorder(msr);
 					sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
 					msrMassCheck(msr,dMass,"After msrOutArray in OutTime");
@@ -293,54 +298,8 @@ int main(int argc,char **argv)
 				 */
 				while (msrOutTime(msr,dTime));
 				}
-			else if (iStep == msrSteps(msr) || iStop) {
-				/*
-				 ** Final output always produced.
-				 */
-				msrReorder(msr);
-				msrMassCheck(msr,dMass,"After msrReorder in OutFinal");
-				sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
-#ifdef COLLISIONS
-				msrWriteSS(msr,achFile,dTime);
-#else /* COLLISIONS */
-				msrWriteTipsy(msr,achFile,dTime);
-				msrMassCheck(msr,dMass,"After msrWriteTipsy in OutFinal");
-#endif /* !COLLISIONS */
-				if (msrDoDensity(msr)) {
-					msrActiveRung(msr,0,1);
-					msrBuildTree(msr,0,dMass,1);
-					msrMassCheck(msr,dMass,"After msrBuildTree in OutFinal");
-					msrSmooth(msr,dTime,SMX_DENSITY,1);
-					msrMassCheck(msr,dMass,"After msrSmooth in OutFinal");
-					sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
-					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
-					msrMassCheck(msr,dMass,"After msrOutArray in OutFinal");
-					}
+			if (iStep == msrSteps(msr) || iStop) {
 				msrWriteCheck(msr,dTime,iStep);
-				msrMassCheck(msr,dMass,"After msrWriteCheck");
-				}
-			else if (msrOutInterval(msr) > 0) {
-				if (iStep%msrOutInterval(msr) == 0) {
-					msrReorder(msr);
-					msrMassCheck(msr,dMass,"After msrReorder in OutInt");
-					sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
-#ifdef COLLISIONS
-					msrWriteSS(msr,achFile,dTime);
-#else /* COLLISIONS */
-					msrWriteTipsy(msr,achFile,dTime);
-					msrMassCheck(msr,dMass,"After msrWriteTipsy in OutInt");
-#endif /* !COLLISIONS */
-					if (msrDoDensity(msr)) {
-						msrActiveRung(msr,0,1);
-						msrBuildTree(msr,0,dMass,1);
-						msrMassCheck(msr,dMass,"After msrBuildTree in OutInt");
-						msrSmooth(msr,dTime,SMX_DENSITY,1);
-						msrMassCheck(msr,dMass,"After msrSmooth in OutInt");
-						sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
-						msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
-						msrMassCheck(msr,dMass,"After msrOutArray in OutInt");
-						}
-					}
 				}
 			if (msr->param.iWallRunTime > 0) {
 			    if (msr->param.iWallRunTime*60 - (time(0)-lStart) < ((int) (lSec*1.5)) ) {
@@ -350,7 +309,6 @@ int main(int argc,char **argv)
 					iStop = 1;
 					}
 				}
-			/*DEBUG isn't this how the outputs above should be done? -- DCR*/
 			if (iStop || iStep == msrSteps(msr) ||
 				(msrCheckInterval(msr) && iStep%msrCheckInterval(msr) == 0)) {
 				/*
