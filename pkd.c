@@ -5519,7 +5519,7 @@ pkdCOMByType(PKD pkd, int type, double *com)
 
     for (i=0;i<nLocal;++i) {
 	  if ( TYPETest(&pkd->pStore[i], type) ) {
-		printf("COM iOrder: %d\n",pkd->pStore[i].iOrder);
+		//		printf("COM iOrder: %d\n",pkd->pStore[i].iOrder);
 		m = pkd->pStore[i].fMass;
 		com[0] += m*pkd->pStore[i].r[0];
 		com[1] += m*pkd->pStore[i].r[1];

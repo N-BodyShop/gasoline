@@ -7408,7 +7408,7 @@ int msrSetTypeFromFile(MSR msr, char *file, int iSetMask)
 
 	fp = fopen( file, "r" );
 	if (!fp) {
-	  fprintf(stderr,"ERROR: Could not open photogenic particle list file:%s\n",file);
+	  fprintf(stderr,"ERROR: Could not iOrder list file:%s\n",file);
 	  assert(0);
 	  }
 	fclose(fp);
