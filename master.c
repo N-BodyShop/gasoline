@@ -2255,7 +2255,7 @@ void msrOneNodeWriteCheck(MSR msr, struct inWriteCheck *in)
 void msrWriteCheck(MSR msr,double dTime,int iStep)
 {
 	struct inWriteCheck in;
-	char achOutFile[PST_FILENAME_SIZE];
+	char achOutFile[PST_FILENAME_SIZE],achTmp[PST_FILENAME_SIZE];
 	int i;
 	LCL *plcl = msr->pst->plcl;
 	FDL_CTX *fdl;
@@ -2270,12 +2270,13 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	strcat(achOutFile,msr->param.achDataSubPath);
 	strcat(achOutFile,"/");
 	if(first) {
-	    sprintf(achOutFile,"%s.chk0",msr->param.achOutName);
+	    sprintf(achTmp,"%s.chk0",msr->param.achOutName);
 	    first = 0;
 	} else {
-	    sprintf(achOutFile,"%s.chk1",msr->param.achOutName);
+	    sprintf(achTmp,"%s.chk1",msr->param.achOutName);
 	    first = 1;
 	}
+	strcat(achOutFile,achTmp);
 	strcpy(in.achOutFile,achOutFile);
 	/*
 	 ** Add local Data Path.
