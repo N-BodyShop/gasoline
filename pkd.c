@@ -2227,6 +2227,8 @@ pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 #else
 	    ++ndDark;
 #endif
+	    if(p->iActive)
+		++pkd->nActive;
 	    continue;
 	    }
 	else if(p->iOrder < -1){
@@ -2240,6 +2242,8 @@ pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 		--ndStar;
 	    else
 		assert(0);
+	    if(p->iActive)
+		--pkd->nActive;
 	    }
 	else {
 	    ++pj;
