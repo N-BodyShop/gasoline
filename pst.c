@@ -4013,7 +4013,7 @@ void pstSphStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot);
+		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot,in->bViscosityLimitdt);
 		}
 	if (pnOut) *pnOut = 0;
 	}

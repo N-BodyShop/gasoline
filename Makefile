@@ -4,8 +4,8 @@
 
 #CC = gcc -Wall
 CC = pgcc
-CC = gcc
-CC = cc
+#CC = gcc
+#CC = cc
 #EXE = pkdgrav
 EXE = gasoline
 #CODEDEF = -DCOLLISIONS -DSLIDING_PATCH
@@ -51,12 +51,16 @@ SGI_MDL_CFLAGS	= -O2 -mips4 -64 -r10000
 #
 #       LINUX LAM MPI defines
 #
+LAM_DIR			= ../lam/lam-6.3.2
+#LAM_DIR			= /net/lam-gcc
 LAM_MDL			= ../mdl/mpi
-LAM_CFLAGS		= -O3 -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX -I/net/lam-6.3-b1/include
-LAM_LD_FLAGS	= -L/net/lam-6.3-b1/lib -lmpi -ltstdio -lt -largs -ltrillium -ltstdio -lmpi++
-LAM_XOBJ		=
-LAM_LIBMDL		= $(LAM_MDL)/mdl.o -L/net/lam-6.3-b1/lib -lmpi -ltstdio -lt -largs -ltrillium -ltstdio -lmpi++
-LAM_MDL_CFLAGS	= -O3 -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX  -I/net/lam-6.3-b1/include 
+#LAM_CFLAGS		= -O3 -malign-double -mstack-align-double -mpentiumpro -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX -I$(LAM_DIR)/include
+LAM_CFLAGS		= -fast -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX -I$(LAM_DIR)/include
+LAM_LD_FLAGS		=  
+LAM_XOBJ                = erf.o v_sqrt1.o
+LAM_LIBMDL              = -L$(LAM_DIR)/lib $(LAM_MDL)/mdl.o -lmpi -ltstdio -lt -largs -ltrillium -ltstdio -lmpi++ -lm -I$(LAM_DIR)/include
+#LAM_MDL_CFLAGS = -O3 -malign-double -mstack-align-double -mpentiumpro -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX  -I$(LAM_DIR)/include 
+LAM_MDL_CFLAGS  = -fast -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX  -I$(LAM_DIR)/include 
 
 #
 #       SP1/2 defines

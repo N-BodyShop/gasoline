@@ -4020,7 +4020,7 @@ int pkdSphCurrRung(PKD pkd, int iRung, int bGreater)
     }
 
 void
-pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot)
+pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int bViscosityLimitdt)
 {
     int i;
     PARTICLE *p;    
@@ -4037,7 +4037,10 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot)
 			 * Courant condition goes here.
 			 */
 			if (p->mumax>0.0) 
-				dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(p->c + 0.6*(p->c + 2*p->mumax)));
+				if (bViscosityLimitdt) 
+				  dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(p->c + 0.6*(p->c + 2*p->BalsaraSwitch*p->mumax)));
+				else
+				  dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(p->c + 0.6*(p->c + 2*p->mumax)));
 	       else
 			   dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(1.6*p->c));
 			if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */

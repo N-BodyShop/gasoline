@@ -982,6 +982,7 @@ struct inSphStep {
     double dCosmoFac;
     double dEtaCourant;
     double dEtauDot;
+    int bViscosityLimitdt;
     };
 void pstSphStep(PST,void *,int,void *,int *);
 

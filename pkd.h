@@ -495,7 +495,7 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z);
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int iGasModel, double z, double duDotLimit);
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);
 int pkdSphCurrRung(PKD pkd, int iRung, int bGreater);
-void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot);
+void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int bViscosityLimitdt);
 void pkdSphViscosityLimiter(PKD pkd, int bOn);
 
 void pkdPARTICLE2PERBARYON(PERBARYON *Y, PARTICLE *p, double HTotal, double HeTotal);

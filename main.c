@@ -432,6 +432,9 @@ int main(int argc,char **argv)
 		          fprintf(stderr,"Adding SphStep dt\n");
 			  msrSphStep(msr,dTime);
 			  }
+			msrReorder(msr);
+			sprintf(achFile,"%s.SPHdt",msrOutName(msr));
+			msrOutArray(msr,achFile,OUT_DT_ARRAY);
 		        }
 
 		if (msr->param.bDoSphhOutput) {
@@ -542,5 +545,6 @@ int main(int argc,char **argv)
 	mdlFinish(mdl);
 	return 0;
 	}
+
 
 

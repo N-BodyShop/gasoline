@@ -116,6 +116,7 @@ struct parameters {
 	double dCoolingTmax;
 	int    nCoolingTable;
 	int    bViscosityLimiter;
+	int    bViscosityLimitdt;
 	int    bBulkViscosity;
 	int    bGasDomainDecomp;
 	int    bFastGas;

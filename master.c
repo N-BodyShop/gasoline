@@ -566,6 +566,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bViscosityLimiter = 0;
 	prmAddParam(msr->prm,"bViscosityLimiter",0,&msr->param.bViscosityLimiter,sizeof(int),
 				"vlim","<Balsara Viscosity Limiter> = 0");
+	msr->param.bViscosityLimitdt = 0;
+	prmAddParam(msr->prm,"bViscosityLimitdt",0,&msr->param.bViscosityLimiter,sizeof(int),
+				"vlim","<Balsara Viscosity Limit dt> = 0");
 	msr->param.bBulkViscosity = 0;
 	prmAddParam(msr->prm,"bBulkViscosity",0,&msr->param.bBulkViscosity,sizeof(int),
 				"bulk","<Bulk Viscosity> = 0");
@@ -4526,6 +4529,7 @@ void msrSphStep(MSR msr, double dTime)
     in.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
     in.dEtaCourant = msrEtaCourant(msr);
     in.dEtauDot = msr->param.dEtauDot;
+    in.bViscosityLimitdt = msr->param.bViscosityLimitdt;
     pstSphStep(msr->pst,&in,sizeof(in),NULL,NULL);
     }
 
