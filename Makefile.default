@@ -1,7 +1,11 @@
 #
 # Makefile for pkdgrav or gasoline (specify below)
+# Copy this file "Makefile.default" to "Makefile"
+# Then type make <platform>
+# <platform> should be one of:
+# null, sgi, pvm, pthread, pthread_dec, pthread_sgi, ampi, lam_mpi, qmpi, mpi,
+# spx, t3d, t3dmpi, t3empi, ksr, charm
 #
-
 PNG_INCL =
 PNG_LIB = 
 PNG_OBJ =
@@ -13,51 +17,46 @@ PNG_DEF =
 #PNG_OBJ = writepng.o
 #PNG_DEF = $(PNG_INCL) -DUSE_PNG
 
-#COOLING_OBJ = cooling_cosmo.o
-#COOLING_DEF = -DCOOLING_COSMO
+COOLING_OBJ = cooling_cosmo.o
+COOLING_DEF = -DCOOLING_COSMO
 
 #COOLING_OBJ = cooling_planet.o
 #COOLING_DEF = -DCOOLING_PLANET
 
-COOLING_OBJ = 
-COOLING_DEF = -DNOCOOLING
+#BASE_LD_FLAGS = $(PNG_LIB) -static
+BASE_LD_FLAGS = $(PNG_LIB) 
 
-
-BASE_LD_FLAGS = $(PNG_LIB)
-
-
+CC = cc
 #CC = ecc
-CC = icc
+##CC = icc
 #CC = gcc -Wall
 #CC = pgcc 
 #CC = gcc
-#CC = cc
-EXE = pkdgrav
-#EXE = gasoline
 
 CC_DEF = 
 
 #CC = ccc
 #CC_DEF = -DCCC
 
-EXE = pkdgrav
 #CODE_DEF = -DCHANGESOFT
 #CODE_DEF = -DCOLLISIONS -DSLIDING_PATCH
 #CODE_DEF = -DSUPERCOOL
-CODE_DEF = -DGROWMASS
 #CODE_DEF = -DGASOLINE
 #CODE_DEF = -DSUPERNOVA
 #CODE_DEF = -DSTARFORM
-#CODE_DEF = -DDEBUG -HSHRINK
 #CODE_DEF = -DGASOLINE  -DSTARFORM -DPRES_HK -DPEAKKERNEL
 #CODE_DEF = -DGASOLINE -DSTARFORM -DCHANGESOFT 
 #CODE_DEF = -DGASOLINE -DLARGEFBALL
+#CODE_DEF =  -DCHANGESOFT -DGASOLINE -DSTARFORM    
 #CODE_DEF = -DGASOLINE -DSIMPLESF
+
+#Basic Gasoline (SPH+Gravity) code 
 CODE_DEF = -DGASOLINE
 EXE = gasoline
 
-CODE_DEF = 
-EXE = pkdgrav
+#Basic Gravity only code
+#CODE_DEF = 
+#EXE = pkdgrav
 
 BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 
@@ -114,7 +113,7 @@ LAM_MDL_CFLAGS  = -fast -I$(LAM_MDL) $(BASE_DEF)
 ##
 #       Quadrics MPI defines
 #
-QMPI_MDL                        = ../mdl/qmpi
+QMPI_MDL                        = ../mdl/mpi
 QMPI_CFLAGS             = -O5 -arch ev6 -fast -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX -DCCC
 #QMPI_CFLAGS            = -g -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX -DCCC
 QMPI_LD_FLAGS           =  $(BASE_LD_FLAGS)
@@ -235,7 +234,7 @@ EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 
 default:	
 	@echo "Please tell me what architecture to make."
-	@echo "Choices are null, sgi, pvm, pthread, spx, t3d, t3dmpi, t3empi, ksr."
+	@echo "Choices are null, sgi, pvm, pthread, pthread_dec, pthread_sgi, ampi, lam_mpi, qmpi, mpi, spx, t3d, t3dmpi, t3empi, ksr, charm"
 
 install:
 	@echo "No installation rules."

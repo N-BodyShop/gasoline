@@ -52,6 +52,8 @@ struct parameters {
 	int bLogHalo;
 	int bHernquistSpheroid;
 	int bNFWSpheroid;
+    int bElliptical;
+    int bEllipticalDarkNFW;
 	int bHomogSpheroid;
     int bBodyForce;
 	int bMiyamotoDisk;

@@ -671,6 +671,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bNFWSpheroid = 0;
 	prmAddParam(msr->prm,"bNFWSpheroid",0,&msr->param.bNFWSpheroid,
 				sizeof(int),"NFWspher","use/don't use galaxy NFW Spheroid = -NFWspher");
+	msr->param.bElliptical=0;
+	prmAddParam(msr->prm,"bElliptical",0,&msr->param.bElliptical,
+				sizeof(int),"elliptical","use/don't");
+	msr->param.bEllipticalDarkNFW=0;
+	prmAddParam(msr->prm,"bEllipticalDarkNFW",0,&msr->param.bEllipticalDarkNFW,
+		    sizeof(int),"ellipticaldarknfw","use/dont");
 	msr->param.bHomogSpheroid = 0;
 	prmAddParam(msr->prm,"bHomogSpheroid",0,&msr->param.bHomogSpheroid,
 				sizeof(int),"hspher","use/don't use galaxy Homog Spheroid = -homogspher");
@@ -3284,6 +3290,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	 */
 	if (msr->param.bHeliocentric || msr->param.bLogHalo ||
 		msr->param.bHernquistSpheroid || msr->param.bNFWSpheroid ||
+		msr->param.bElliptical ||
 		msr->param.bHomogSpheroid || msr->param.bBodyForce ||
         msr->param.bMiyamotoDisk || msr->param.bTimeVarying) {
 		/*
@@ -3302,6 +3309,8 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bLogHalo = msr->param.bLogHalo;
 		inExt.bHernquistSpheroid = msr->param.bHernquistSpheroid;
 		inExt.bNFWSpheroid = msr->param.bNFWSpheroid;
+		inExt.bElliptical= msr->param.bElliptical;
+		inExt.bEllipticalDarkNFW= msr->param.bEllipticalDarkNFW;
 		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
 		inExt.bBodyForce = msr->param.bBodyForce;
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
@@ -7395,7 +7404,6 @@ int msrReadASCII(MSR msr, char *extension, int nDataPerLine, double *dDataOut)
 	return i;
 	}
 
-/* Returns number set */
 int msrSetTypeFromFile(MSR msr, char *file, int iSetMask)
 {
 	FILE *fp;
@@ -7416,4 +7424,6 @@ int msrSetTypeFromFile(MSR msr, char *file, int iSetMask)
 	pstSetTypeFromFile(msr->pst,&in,sizeof(in),&out,NULL);
 	
 	if (msr->param.bVDetails) printf("%d iOrder numbers read.  %d photogenic particles seleected.",out.niOrder,out.nSet);
+	
+	return out.nSet;
 	}

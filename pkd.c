@@ -3048,6 +3048,63 @@ void pkdNFWSpheroid(PKD pkd)
 		}
 	}
 
+/** JH Feb 4 2004 
+elliptical potential using Hernquist model for luminous matter
+and Hernquist or NFW model for dark matter */ 
+
+void pkdElliptical(PKD pkd, int bEllipticalDarkNFW)
+{
+	PARTICLE *p;
+	int i,n;
+/* if bEllipticalDarkNFW=0 in param file uses hernquist dark matter otherwise uses NFW dark matter */
+	const double M_l =1.45e11/6.45e9 ;	/* mass of luminous matter in 6.45e9 M_sun */
+	const double a = 2.856/3.5;     /* hernquist scale length for light matter in 6 kpc */
+	const double pi=  3.1415; 
+	const double M_d= 7.2e11/6.45e9;     /* mass of dark matter in 6.45e9 M_sun */
+        const double d= 31.7/3.5;     /* hernquist scale length for dark matter in 6 kpc */
+        const double r_s=14.4/3.5 ;     /* NFW scale radius in 6 kpc  */
+        const double rho_s= (0.010e9/6.45e9)*3.5*3.5*3.5 ;   /* NFW density at scale radius M_sun/kpc^3 converted to dMsolUnits*/
+        const double eps1= 1e-5 ;   /* small softening for hernquist model */
+        const double dsoft=1e-5 ;
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	/*	printf("bEllipticalDarkNFW= %d", bEllipticalDarkNFW); */
+	for (i=0;i<n;++i) {
+		if (TYPEQueryACTIVE(&(p[i]))) {
+			double x = p[i].r[0];
+			double y = p[i].r[1];
+			double z = p[i].r[2];
+			/*
+			 **	Do the spheroid potential
+	                 */
+			double r = sqrt(x*x + y*y + z*z);
+			double A = 1.0/(r + a)  ;	/*light matter component */
+			double Ah=  1.0/(r+ d) ;        /*hernquist dark matter component */
+			double Anfw= 4*pi*rho_s*r_s*r_s*r_s ;     /* nfw dark matter component */
+			if (!bEllipticalDarkNFW) {
+			  p[i].a[0] -= M_l*A*A*x/(r + eps1) + M_d*Ah*Ah*x/(r+ eps1);
+			  p[i].a[1] -= M_l*A*A*y/(r +eps1)+ M_d*Ah*Ah*y/(r + eps1);
+			  p[i].a[2] -= M_l*A*A*z/(r + eps1)+ M_d*Ah*Ah*z/(r +eps1);
+			  p[i].fPot -= M_l*A + M_d*Ah ;
+			} 
+			else {
+			      if (r>=dsoft) {
+                              p[i].a[0]-= M_l*A*A*x/(r+ eps1) +Anfw*(r_s/(r+r_s)/(r*r) +log(r+r_s)/(r*r) -1/(r*r) -log(r_s)/(r*r))*x/r ; 
+			    p[i].a[1]-= M_l*A*A*y/(r+eps1)  +Anfw*(r_s/(r+r_s)/(r*r) +log(r+r_s)/(r*r) -1/(r*r) -log(r_s)/(r*r))*y/r ;   
+			    p[i].a[2]-= M_l*A*A*z/(r+ eps1) +Anfw*(r_s/(r+r_s)/(r*r) +log(r+r_s)/(r*r) -1/(r*r) -log(r_s)/(r*r))*z/r ;   
+			    p[i].fPot-= M_l*A -Anfw*(-log(r+r_s) + log(r_s))/r;
+			    }
+			      else {
+			    p[i].a[0]-= M_l*A*A*x/(r+ eps1) +Anfw*(r_s/(dsoft+r_s)/(dsoft*dsoft) +log(dsoft+r_s)/(dsoft*dsoft) -1/(dsoft*dsoft) -log(r_s)/(dsoft*dsoft))*x/dsoft ; 
+			    p[i].a[1]-= M_l*A*A*y/(r+eps1)  +Anfw*(r_s/(dsoft+r_s)/(dsoft*dsoft) +log(dsoft+r_s)/(dsoft*dsoft) -1/(dsoft*dsoft) -log(r_s)/(dsoft*dsoft))*y/dsoft ;   
+			    p[i].a[2]-= M_l*A*A*z/(r+ eps1) +Anfw*(r_s/(dsoft+r_s)/(dsoft*dsoft) +log(dsoft+r_s)/(dsoft*dsoft) -1/(dsoft*dsoft) -log(r_s)/(dsoft*dsoft))*z/dsoft ;   
+			    p[i].fPot-= M_l*A -Anfw*(-log(dsoft+r_s) + log(r_s))/dsoft; 
+			    }
+			  }
+		}
+	}
+}
+
 
 void pkdHomogSpheroid(PKD pkd)
 {
@@ -4558,10 +4615,12 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i,++p) {
 		if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
-			if ( bCool &&
-                             ((dTime >= p->fTimeCoolIsOffUntil) 
-                               || ((p->fESNrate + p->PdV)*duDelta + p->u < 0 )) ) {
-                                
+			if ( bCool 
+#ifdef STARFORM
+                            &&  ((dTime >= p->fTimeCoolIsOffUntil) 
+                               || ((p->fESNrate + p->PdV)*duDelta + p->u < 0 ))  
+#endif                                
+			  ) {
 				cp = p->CoolParticle;
 				E = p->u;
 #ifdef STARFORM

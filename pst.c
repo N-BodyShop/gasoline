@@ -3007,6 +3007,9 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (in->bNFWSpheroid) {
 			pkdNFWSpheroid(plcl->pkd);
 			}
+		if (in->bElliptical) {
+		    pkdElliptical(plcl->pkd,in->bEllipticalDarkNFW);
+		    }
 		if (in->bHomogSpheroid) {
 			pkdHomogSpheroid(plcl->pkd);
 			}

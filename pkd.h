@@ -587,6 +587,7 @@ void pkdSunIndirect(PKD,double *,int,double);
 void pkdLogHalo(PKD);
 void pkdHernquistSpheroid(PKD pkd);
 void pkdNFWSpheroid(PKD pkd);
+void pkdElliptical(PKD pkd, int bEllipticalDarkNFW);
 void pkdHomogSpheroid(PKD pkd);
 void pkdBodyForce(PKD pkd);
 void pkdMiyamotoDisk(PKD pkd);
