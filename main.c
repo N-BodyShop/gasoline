@@ -124,13 +124,14 @@ void main(int argc,char **argv)
 				fflush(fpLog);			
 				}
 			else {
-			        msrTopStep(msr, iStep-1, dTime, msrDelta(msr), 0);
-
+				msrTopStep(msr,iStep-1,dTime,msrDelta(msr),0);
 				dTime += msrDelta(msr);
 				if (iStep%msrLogInterval(msr) == 0) {
 					/*
 					 ** Output a log file line.
+					 ** Reactivate all particles.
 					 */
+					msrActiveRung(msr,0,1);
 					msrBuildTree(msr,0,dMass);
 					msrMassCheck(msr,dMass,"After msrBuildTree in DKD-log");
 					msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax);
