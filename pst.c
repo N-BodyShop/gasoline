@@ -237,7 +237,8 @@ void pstOneNodeReadInit(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	pst->nEnd = in->nEnd;
 	nTotal = pst->nEnd - pst->nStart + 1;
 	if (pst->nLeaves > 1) {
-		pst->nOrdSplit = pst->nStart + pst->nLower*nTotal/pst->nLeaves;
+		pst->nOrdSplit = pst->nStart
+		    + pst->nLower*(nTotal/pst->nLeaves);
 		in->nStart = pst->nOrdSplit;
 		mdlReqService(pst->mdl,pst->idUpper,PST_ONENODEREADINIT,
 			      in, nIn);
@@ -281,7 +282,8 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	pst->nEnd = in->nEnd;
 	nTotal = pst->nEnd - pst->nStart + 1;
 	if (pst->nLeaves > 1) {
-		pst->nOrdSplit = pst->nStart + pst->nLower*nTotal/pst->nLeaves;
+		pst->nOrdSplit = pst->nStart
+		    + pst->nLower*(nTotal/pst->nLeaves);
 		in->nStart = pst->nOrdSplit;
 		mdlReqService(pst->mdl,pst->idUpper,PST_READTIPSY,in,nIn);
 		in->nStart = pst->nStart;
@@ -1485,7 +1487,8 @@ void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	pst->nEnd = in->nEnd;
 	nTotal = pst->nEnd - pst->nStart + 1;
 	if (pst->nLeaves > 1) {
-		pst->nOrdSplit = pst->nStart + pst->nLower*nTotal/pst->nLeaves;
+		pst->nOrdSplit = pst->nStart
+		    + pst->nLower*(nTotal/pst->nLeaves);
 		in->nStart = pst->nOrdSplit;
 		mdlReqService(pst->mdl,pst->idUpper,PST_READCHECK,in,nIn);
 		in->nStart = pst->nStart;
