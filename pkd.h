@@ -461,6 +461,17 @@ void pkdHernquistSpheroid(PKD pkd);
 void pkdMiyamotoDisk(PKD pkd);
 
 #ifdef GASOLINE
+#ifdef SUPERNOVA
+struct outCountSupernova {
+        double dMassMetalRhoCut;
+        double dMassMetalTotal;
+        double dMassNonMetalRhoCut;
+        double dMassNonMetalTotal;
+        double dMassTotal;
+};
+struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCut);
+void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dPdVMetal, double dPdVNonMetal);
+#endif
 void pkdUpdateuDot(PKD,double,double,int,int);
 void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z);

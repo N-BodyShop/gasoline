@@ -833,8 +833,7 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
   double d,e,min1,min2;
   double p,q,r,s,tol1,xm;
 
-  /* debug */
-  /*
+  /* debug */  /*
   PARTICLE *part = cl->p;
 
   char ach[256];

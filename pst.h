@@ -150,6 +150,8 @@ enum pst_service {
       PST_INITCOOLING,
       PST_INITUV,
       PST_GROWMASS,
+      PST_COUNTSUPERNOVA,
+      PST_ADDSUPERNOVA,
       PST_CLEARTIMER,
       PST_BALLMAX
       };
@@ -730,6 +732,35 @@ void pstGravExternal(PST,void *,int,void *,int *);
 
 #ifdef GASOLINE
 
+#ifdef SUPERNOVA
+
+struct inCountSupernova {
+        double dMetal;
+        double dRhoCut;
+};
+
+/* Defined in pkd.h 
+struct outCountSupernova {
+        double dMassMetalRhoCut;
+        double dMassMetalTotal;
+        double dMassNonMetalRhoCut;
+        double dMassNonMetalTotal;
+	double dMassTotal;
+	};*/
+
+void pstCountSupernova(PST, void *,int,void *,int *);
+
+struct inAddSupernova {
+        double dMetal;
+        double dRhoCut;
+        double dPdVMetal;
+        double dPdVNonMetal;
+        };
+
+void pstAddSupernova(PST, void *,int,void *,int *);
+
+#endif
+
 struct inGetGasPressure {
 	enum GasModel iGasModel; 
   /* Adiabatic */
@@ -838,6 +869,14 @@ void pstCalcHill(PST,void *,int,void *,int *);
 struct inHelioStep {
 	double dEta;
 	};
+void pstHillStep(PST,void *,int,void *,int *);
+
+/* #define PST_FINDENCOUNTER	67 */
+struct outFindEncounter {
+	double dNext;
+	};
+void pstFindEncounter(PST,void *,int,void *,int *);
+
 void pstHelioStep(PST,void *,int,void *,int *);
 
 /* PST_KICKUNIFGRAV */
@@ -846,6 +885,7 @@ struct inKickUnifGrav {
 	};
 void pstKickUnifGrav(PST,void *,int,void *,int *);
 
+/* #define PST_MARKENCOUNTERS	68 */
 /* PST_NEXTENCOUNTER */
 struct outNextEncounter {
 	double dt;
@@ -853,6 +893,7 @@ struct outNextEncounter {
 void pstNextEncounter(PST,void *,int,void *,int *);
 
 /* PST_MARKENCOUNTERS */
+
 struct inMarkEncounters {
 	double dt;
 	};

@@ -104,16 +104,20 @@ struct parameters {
 	double dComovingGmPerCcUnit;
 	double dErgPerGmUnit;
 	double dSecUnit;
-	double dMassFracHelium;
-	double dCoolingTmin;
-	double dCoolingTmax;
-	int    nCoolingTable;
-	int    bViscosityLimiter;
-	int    bBulkViscosity;
-	int    bGasDomainDecomp;
-	int    bFastGas;
-	int    bDoGas;
-	int    bUV;
+        double dMassFracHelium;
+        double dCoolingTmin;
+        double dCoolingTmax;
+        int    nCoolingTable;
+        int    bViscosityLimiter;
+        int    bBulkViscosity;
+        int    bGasDomainDecomp;
+        int    bFastGas;
+        int    bDoGas;
+        int    bUV;
+        int    bSN;
+        double dSNRhoCut;
+        double dSNMetalCut;
+        double dSNHeatFraction;
 #ifdef GLASS
 	/*
 	 ** Additional parameters for GLASS.

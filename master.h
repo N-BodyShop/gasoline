@@ -72,14 +72,21 @@ typedef struct msrContext {
 	 */
 	int iTreeType;
 	int bGravityTree;
-	/*
-	 * Domain Decomposition Done
-	 */
-	int bDoneDomainDecomp;
-	int nActive;
-	int nTreeActive;
-	int nSmoothActive;
+        /*
+         * Domain Decomposition Done
+         */
+        int bDoneDomainDecomp;
+        int nActive;
+        int nTreeActive;
+        int nSmoothActive;
+#ifdef SUPERNOVA
+        int nSN;
+        struct SNDATA { double z; double ECl; double ENonCl; } *SNdata;
+#endif
 	} * MSR;
+
+void msrInitSupernova(MSR msr);
+void msrAddSupernova(MSR msr, double);
 
 void msrInitialize(MSR *,MDL,int,char **);
 void msrLogParams(MSR msr, FILE *fp);

@@ -209,6 +209,14 @@ void pstAddServices(PST pst,MDL mdl)
 				  (void (*)(void *,void *,int,void *,int *)) pstInitDt,
 				  sizeof(struct inInitDt),0);
 #ifdef GASOLINE
+#ifdef SUPERNOVA
+ 	mdlAddService(mdl,PST_COUNTSUPERNOVA,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstCountSupernova,
+				  sizeof(struct inCountSupernova),sizeof(struct outCountSupernova));
+ 	mdlAddService(mdl,PST_ADDSUPERNOVA,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAddSupernova,
+				  sizeof(struct inAddSupernova),0);
+#endif
 	mdlAddService(mdl,PST_UPDATEUDOT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstUpdateuDot,
 				  sizeof(struct inUpdateuDot),sizeof(struct outUpdateuDot));
@@ -3063,6 +3071,49 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 
 #ifdef GASOLINE
+#ifdef SUPERNOVA
+
+void pstCountSupernova(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+        struct inCountSupernova *in = vin;
+	struct outCountSupernova *out = vout;
+	
+	if (pst->nLeaves > 1) {
+	        struct outCountSupernova outleaf;
+		mdlReqService(pst->mdl,pst->idUpper,PST_COUNTSUPERNOVA,vin,nIn);
+		pstCountSupernova(pst->pstLower,vin,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,&outleaf,pnOut);
+		(*out).dMassMetalRhoCut    += outleaf.dMassMetalRhoCut;
+		(*out).dMassMetalTotal     += outleaf.dMassMetalTotal;
+		(*out).dMassNonMetalRhoCut += outleaf.dMassNonMetalRhoCut;
+		(*out).dMassNonMetalTotal  += outleaf.dMassNonMetalTotal;
+		(*out).dMassTotal          += outleaf.dMassTotal;
+		}
+	else {
+	        (*out) = pkdCountSupernova(plcl->pkd,in->dMetal,in->dRhoCut);
+		}
+	if (pnOut) *pnOut = sizeof(struct outCountSupernova);
+	}
+
+
+void pstAddSupernova(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+        struct inAddSupernova *in = vin;
+	
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_ADDSUPERNOVA,vin,nIn);
+		pstAddSupernova(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+	        pkdAddSupernova(plcl->pkd,in->dMetal,in->dRhoCut,in->dPdVMetal,in->dPdVNonMetal);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+#endif
 
 void pstUpdateuDot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {

@@ -472,6 +472,20 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				sizeof(int),"wall",
 				"<Maximum Wallclock time (in minutes) to run> = 0 = infinite");
 #ifdef GASOLINE
+#ifdef SUPERNOVA
+	msr->param.bSN = 0;
+	prmAddParam(msr->prm,"bSN",0,&msr->param.bSN,sizeof(int),"SN",
+				"read in a Supernova file = +SN");
+	msr->param.dSNRhoCut = 50.0;
+	prmAddParam(msr->prm,"dSNRhoCut",2,&msr->param.dSNRhoCut,
+				sizeof(double),"SNRho", "<SNRhoCut> = 50.0");
+	msr->param.dSNMetalCut = 0.5;
+	prmAddParam(msr->prm,"dSNMetalCut",2,&msr->param.dSNMetalCut,
+				sizeof(double),"SNMetal", "<SNMetalCut> = 0.5");
+	msr->param.dSNHeatFraction = 0.1;
+	prmAddParam(msr->prm,"dSNHeatFraction",2,&msr->param.dSNHeatFraction,
+				sizeof(double),"SNHeat", "<SNHeatFraction> = 0.1");
+#endif
 	msr->param.bDoGas = 1;
 	prmAddParam(msr->prm,"bDoGas",0,&msr->param.bDoGas,sizeof(int),"gas",
 				"calculate gas/don't calculate gas = +gas");
@@ -3800,6 +3814,7 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 			    msrActiveRung(msr, iRung, 0);
 			    msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
                             }
+			  if (msr->param.bSN) msrAddSupernova(msr, dTime);
 			  }
 			}
 #endif
@@ -3905,6 +3920,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			       msrGetGasPressure(msr);
 			       msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
 			       }
+  		           if (msr->param.bSN) msrAddSupernova(msr, dTime);
 			   }
 		}
 #endif
@@ -4125,6 +4141,8 @@ void msrTopStepKDK(MSR msr,
 #endif
 				msrBallMax(msr,iKickRung,1);
 				}
+
+                        if (msr->param.bSN) msrAddSupernova(msr, dTime);
 			}
 #endif /* GASOLINE */
 
@@ -4339,6 +4357,7 @@ void msrInitSph(MSR msr,double dTime)
 			msrGetGasPressure(msr);
 			msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
 			}
+                if (msr->param.bSN) msrAddSupernova(msr, dTime);
 		}
 
 	msrUpdateuDot(msr,dTime,0.5*msr->param.dDelta,0);
@@ -4374,6 +4393,115 @@ void msrSphViscosityLimiter(MSR msr, int bOn, double dTime)
     in.bOn = bOn;
     pstSphViscosityLimiter(msr->pst,&in,sizeof(in),NULL,NULL);
     }
+
+#ifdef SUPERNOVA
+/* Fabulous SN heating */
+void msrInitSupernova(MSR msr) 
+{
+    struct { double z; double t; double dt; double Ecl; double EVol; double EclVol; } *data;
+    struct inCountSupernova in;
+    struct outCountSupernova out;
+    int i;
+    double fac;
+
+    msr->SNdata = NULL;
+    msr->nSN = msrReadASCII(msr, "SN", 6, NULL);
+    if (!msr->nSN) {
+         msr->param.bSN = 0;
+         }
+    else {
+         in.dRhoCut = msr->param.dSNRhoCut;
+         in.dMetal = msr->param.dSNMetalCut;
+         pstCountSupernova(msr->pst,&in,sizeof(struct inCountSupernova),&out,NULL);
+	 printf("Setup SN: Cluster: (%g/%g)  Non-Cluster: (%g/%g)  Total: %g\n",
+		out.dMassMetalRhoCut* msr->param.dMsolUnit,
+		out.dMassMetalTotal* msr->param.dMsolUnit,
+		out.dMassNonMetalRhoCut* msr->param.dMsolUnit,
+		out.dMassNonMetalTotal* msr->param.dMsolUnit,
+		out.dMassTotal* msr->param.dMsolUnit);
+
+	 /* Msun (baryons) per Mpc^3 (hardwired for omb=0.05) */
+	 fac = 0.05 * 2.77536627e11 * pow(msr->param.csm->dHubble0,2.0);
+
+         data = malloc(sizeof(*data)*msr->nSN);
+  	 msr->nSN = msrReadASCII(msr, "SN", 6, (double *) data);
+         msr->SNdata = malloc(sizeof(struct SNDATA)*msr->nSN);
+
+	 for (i=0;i<msr->nSN;i++) {
+                msr->SNdata[i].z = data[i].z;
+
+		/* 10^51 Ergs per year (into baryons inside clusters) */
+		msr->SNdata[i].ECl = data[i].Ecl 
+		  /* -> Ergs per second (into baryons inside clusters) */
+		  * 1e51/31536000.0 
+		  /* -> code units */
+		  / (msr->param.dErgPerGmUnit*(msr->param.dMsolUnit*MSOLG)/(msr->param.dSecUnit));
+
+		/* 10^51 Ergs per year per Mpc^3 (physical) (outside clusters) */
+		msr->SNdata[i].ENonCl = data[i].EVol 
+		  /* -> Ergs per second per Mpc^3 (comoving) */
+		  * 1e51/31536000.0*pow(1./(1+data[i].z),3.0)
+		  /* -> Ergs per second per Msun (baryons) */
+		  / fac
+		  /* -> Ergs per second (into baryons outside clusters) */
+		  * out.dMassNonMetalTotal * msr->param.dMsolUnit
+		  /* -> code units */
+		  / (msr->param.dErgPerGmUnit*(msr->param.dMsolUnit*MSOLG)/(msr->param.dSecUnit));
+	        }
+
+         free(data);
+         }
+}
+
+void msrAddSupernova(MSR msr, double dTime) 
+{
+    struct SNDATA *SNd;
+    struct inCountSupernova in;
+    struct outCountSupernova out;
+    struct inAddSupernova inAdd;
+    double xx,a,z,ECl,ENonCl;
+    int i;
+
+    in.dRhoCut = msr->param.dSNRhoCut;
+    in.dMetal = msr->param.dSNMetalCut;
+    pstCountSupernova(msr->pst,&in,sizeof(struct inCountSupernova),&out,NULL);
+    printf("Add SN: Cluster: (%g/%g)  Non-Cluster: (%g/%g)  Total: %g\n",
+		out.dMassMetalRhoCut* msr->param.dMsolUnit,
+		out.dMassMetalTotal* msr->param.dMsolUnit,
+		out.dMassNonMetalRhoCut* msr->param.dMsolUnit,
+		out.dMassNonMetalTotal* msr->param.dMsolUnit,
+		out.dMassTotal* msr->param.dMsolUnit);
+
+    if (out.dMassMetalRhoCut == 0 || out.dMassNonMetalRhoCut==0) return;
+
+    a = csmTime2Exp(msr->param.csm,dTime);
+    z = 1/a - 1;
+
+    SNd = msr->SNdata;
+    for ( i=0; i < msr->nSN && z <= SNd->z ; i++,SNd++ );
+    
+    if (i == 0 || i == msr->nSN) return;
+
+    inAdd.dRhoCut = msr->param.dSNRhoCut;
+    inAdd.dMetal = msr->param.dSNMetalCut;
+
+    xx = log((1+z)/(1+(SNd-1)->z))/log((1+SNd->z)/(1+(SNd-1)->z));
+    ECl = pow((SNd-1)->ECl,1-xx)*pow(SNd->ECl,xx)* msr->param.dSNHeatFraction;
+    ENonCl = pow((SNd-1)->ENonCl,1-xx)*pow(SNd->ENonCl,xx)* msr->param.dSNHeatFraction;
+
+    inAdd.dPdVMetal = (1/out.dMassMetalRhoCut)*ECl;
+    inAdd.dPdVNonMetal = (1/out.dMassNonMetalRhoCut)*ENonCl;
+
+    printf("SN Energy (erg per s)  Cluster: %g Non-Cluster: %g\n", 
+	   ECl*(msr->param.dErgPerGmUnit*(msr->param.dMsolUnit * MSOLG)/(msr->param.dSecUnit)),
+	   ENonCl*(msr->param.dErgPerGmUnit*(msr->param.dMsolUnit * MSOLG)/(msr->param.dSecUnit)));
+
+    pstAddSupernova(msr->pst,&inAdd,sizeof(struct inAddSupernova),NULL,NULL);
+}
+#else
+void msrInitSupernova(MSR msr) { }
+void msrAddSupernova(MSR msr, double dTime) { }
+#endif
 
 void msrInitCooling(MSR msr)
 {

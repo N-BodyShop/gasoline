@@ -2490,6 +2490,129 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				p->u = p->u + p->uDot*duDelta;
 				}
 #endif
+		       for (j=0;j<3;++j) {
+				p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
+#ifdef SAND_PILE
+				if (p->r[2] > 2*p->fSoft)
+					p->v[2] -= 0.25*dvFacTwo; /* uniform 0.25 -z accel. */
+				if (p->r[2] > 10)
+					p->v[2] = -1; /* uniform velocity above z = 10 */
+#endif /* SAND_PILE */
+				}
+		       }
+	    }
+
+	pkdStopTimer(pkd,1);
+	mdlDiag(pkd->mdl, "Done pkdkick\n");
+	}
+
+
+void pkdKickOld(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
+	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
+	     double z, double duDotLimit )
+{
+	PARTICLE *p;
+	int i,j,n;
+#ifdef GASOLINE
+	int bCool = 0;
+	CL *cl;
+	PERBARYON Y;
+	double E,dt,dtPred;
+
+	pkdClearTimer(pkd,1);
+	pkdStartTimer(pkd,1);
+
+	switch (iGasModel) {
+	case GASMODEL_COOLING:
+	case GASMODEL_COOLING_NONEQM:
+	         bCool = 1;
+	         cl = &(pkd->cl);
+                 clRatesRedshift( cl, z );
+		 dt = duDelta * cl->dSecUnit;
+		 dtPred = duPredDelta * cl->dSecUnit;
+		 break;
+		 }
+#endif
+
+#ifdef DEBUG
+	printf("pkdKick: %f %f %f %f %f %f\n",dvFacOne,dvFacTwo,
+	       dvPredFacOne,dvPredFacTwo,duDelta,duPredDelta );
+#endif
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i,++p) {
+#ifdef GASOLINE
+#ifdef DEBUG
+		if (pkdIsGas(pkd,p) && (p->iOrder % 300)==0) {
+		        printf("Kicking %i: %i %i %i %f %f %f %f   %f %f %f %f %f %f\n",
+			       p->iOrder,TYPEQueryACTIVE(p),
+                               TYPEQueryTREEACTIVE(p),p->iRung,
+			       p->r[0],p->fDensity,p->u,p->uPred,
+			       p->a[0],p->a[1],p->a[2],p->PdV,
+			       p->PdVpres,p->PdVvisc);
+		}
+#endif
+#endif
+	    if(TYPEQueryACTIVE(p)) {
+#ifdef GASOLINE
+	                if(pkdIsGas(pkd, p)) {
+				for (j=0;j<3;++j) {
+					p->vPred[j] = p->v[j]*dvPredFacOne + 
+						p->a[j]*dvPredFacTwo;
+					}
+				if (bCool) {
+				       pkdPARTICLE2PERBARYON(&Y, p, cl->Y_H, cl->Y_He);
+				       E = p->u * cl->dErgPerGmUnit;
+#ifdef COOLDEBUG
+				       if ((p->iOrder % 300)==0) {
+					    printf("COOL: %i ",p->iOrder);
+					    clIntegrateEnergyDEBUG(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							   p->fDensity*cl->dComovingGmPerCcUnit, dtPred);
+					    printf("\n");
+				            }
+				       else {
+					    clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							   p->fDensity*cl->dComovingGmPerCcUnit, dtPred);
+				            }
+#else				       
+				       clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							 p->fDensity*cl->dComovingGmPerCcUnit, dtPred);
+#endif
+				       p->uPred = E * cl->diErgPerGmUnit;
+
+				       pkdPARTICLE2PERBARYON(&Y, p, cl->Y_H, cl->Y_He);
+				       E = p->u * cl->dErgPerGmUnit;
+#ifdef COOLDEBUG
+				       if ((p->iOrder % 300)==0) {
+					    printf("COOL: %i ",p->iOrder);
+					    clIntegrateEnergyDEBUG(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							   p->fDensity*cl->dComovingGmPerCcUnit, dt);
+					    printf("\n");
+				            }
+				       else {
+					    clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							   p->fDensity*cl->dComovingGmPerCcUnit, dt);
+				            }
+#else				       
+				       clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							 p->fDensity*cl->dComovingGmPerCcUnit, dt);
+#endif
+				       pkdPERBARYON2PARTICLE(&Y, p);
+				       p->u = E * cl->diErgPerGmUnit;
+				       }
+				else { 
+ 				       if (p->PdV*duPredDelta < duDotLimit*p->u) 
+					      p->uPred = p->u * exp(p->PdV*duPredDelta/p->u);
+				       else 
+					      p->uPred = p->u + p->PdV*duPredDelta;
+
+ 				       if (p->PdV*duDelta < duDotLimit*p->u) 
+					      p->u = p->u * exp(p->PdV*duDelta/p->u);
+				       else 
+				              p->u = p->u + p->PdV*duDelta;
+				       }
+				}
+			
 #ifdef SLIDING_PATCH
 			for (j=0;j<3;++j)
 				p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
@@ -2498,6 +2621,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
 				}
 			}
+#endif
 	    }
 
 	pkdStopTimer(pkd,1);
@@ -3299,6 +3423,65 @@ int pkdIsStar(PKD pkd,PARTICLE *p) {
 	}
 
 #ifdef GASOLINE
+#ifdef SUPERNOVA
+
+struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCut)
+{
+    PARTICLE *p;
+    int i;
+    struct outCountSupernova ret;
+
+    ret.dMassMetalRhoCut=0;
+    ret.dMassMetalTotal=0;
+    ret.dMassNonMetalRhoCut=0;
+    ret.dMassNonMetalTotal=0;
+    ret.dMassTotal=0;
+
+    p = pkd->pStore;
+    for(i=0;i<pkdLocal(pkd);++i,++p) {
+                ret.dMassTotal += p->fMass;
+                if (pkdIsGas(pkd,p)) {
+		        if (p->fMetals > dMetal) {
+			        ret.dMassMetalTotal += p->fMass;
+			        if (p->fDensity > dRhoCut)
+				       ret.dMassMetalRhoCut += p->fMass;
+			        }
+			else {
+			        ret.dMassNonMetalTotal += p->fMass;
+			        if (p->fDensity > dRhoCut)
+				       ret.dMassNonMetalRhoCut += p->fMass;
+			        }
+		        }
+                }
+    return ret;
+    }
+
+void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dPdVMetal, double dPdVNonMetal)
+{
+    PARTICLE *p;
+    int i;
+
+    p = pkd->pStore;
+    for(i=0;i<pkdLocal(pkd);++i,++p) {
+                if (TYPEQueryACTIVE(p) && pkdIsGas(pkd,p)) {
+		        if (p->fMetals > dMetal) {
+			        if (p->fDensity > dRhoCut) {
+                                       if ((p->iOrder%1000)==0) printf("Cluster: %i fDensity %g u %g PdV %g SN_PdV %g\n",p->iOrder,p->fDensity,p->u,p->PdV, dPdVMetal);
+				       p->PdV += dPdVMetal;
+				       }
+			        }
+			else {
+			        if (p->fDensity > dRhoCut) {
+                                       if ((p->iOrder%1000)==0) printf("Non-Cluster: %i fDensity %g u %g PdV %g SN_PdV %g\n",p->iOrder,p->fDensity,p->u,p->PdV, dPdVNonMetal);
+				       p->PdV += dPdVNonMetal;
+				       }
+			        }
+		        }
+                }
+    }
+
+
+#endif
 
 void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdateY )
 {
@@ -3402,10 +3585,68 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z)
 					   Y.HI,Y.HeI,Y.HeII,p->fDensity*cl->dComovingGmPerCcUnit);
 				} 
 #endif            
-			}
-		}
+		        }
+                }
     }
 
+#ifdef GLASS
+/* Currently wired to have no more than two regions with different
+   Pressures (densities) split by x=0 with a linear connection */
+void pkdGlassGasPressure(PKD pkd, void *vin)
+{
+    PARTICLE *p;
+    double PoverRho,xx,nsp=2.5;
+    int i;
+    struct inGetGasPressure *in = vin;
+
+    for(i=0;i<pkdLocal(pkd);++i) {
+                p = &pkd->pStore[i];
+                if (TYPEQueryTREEACTIVE(p)) {
+    		        if (p->r[0] < -nsp*in->dGlassxL) {
+			  if (p->r[0] > in->dxBoundL + nsp*in->dGlassxL)
+			       PoverRho=in->dGlassPoverRhoL;  
+			  else {
+			       xx = ( p->r[0] - in->dxBoundL + nsp*in->dGlassxR )
+				 / ( nsp*in->dGlassxL+nsp*in->dGlassxR );
+			       xx = xx*xx* ( -2*xx + 3 );
+		               PoverRho = in->dGlassPoverRhoR + xx
+				 *(in->dGlassPoverRhoL - in->dGlassPoverRhoR);
+              		       }
+			  }
+                        else if (p->r[0] > nsp*in->dGlassxR) {
+			  if (p->r[0] < in->dxBoundR - nsp*in->dGlassxR)
+			       PoverRho=in->dGlassPoverRhoR;  
+			  else {
+			       xx = ( p->r[0] - in->dxBoundR + nsp*in->dGlassxR )
+				 / ( nsp*in->dGlassxL+nsp*in->dGlassxR );
+			       xx = xx*xx* ( -2*xx + 3 );
+		               PoverRho = in->dGlassPoverRhoR + xx
+				 *(in->dGlassPoverRhoL - in->dGlassPoverRhoR);
+			       }
+			  }
+			else {
+			       xx = ( p->r[0] + nsp*in->dGlassxL )
+				 / ( nsp*in->dGlassxL+nsp*in->dGlassxR );
+			       xx = xx*xx* ( -2*xx + 3 );
+		               PoverRho = in->dGlassPoverRhoL + xx
+				 *(in->dGlassPoverRhoR - in->dGlassPoverRhoL);
+			       }
+
+			p->u = PoverRho;
+			p->uPred = PoverRho;
+			p->PoverRho2 = PoverRho/p->fDensity;
+   			p->c = sqrt(in->gamma*PoverRho);
+		        }
+#ifdef DEBUG
+		if (pkdIsGas(pkd,p) && (p->iOrder % 1000)==0) 
+		        printf("Glass P %i: %i %i %f %f %f  %f %f %f %f %f\n",
+			       p->iOrder,TYPEQueryACTIVE(p),TYPEQueryTREEACTIVE(p),
+			       p->r[0],p->r[1],p->r[2],sqrt(0.25*p->fBall2),p->fDensity,p->uPred,p->PoverRho2*p->fDensity*p->fDensity,p->c);
+#endif
+                }
+    }
+
+#endif
 
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int iGasModel,
 		  double z, double duDotLimit)
