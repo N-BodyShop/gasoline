@@ -1861,6 +1861,7 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
 {
 	int pj;
 	double m,dx,dy,dz,d2,d1;
+	struct pkdCalcCellStruct cc;
 
 	/*
 	 ** Initialize moments.
@@ -1868,46 +1869,46 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
 	 */
 	switch (iOrder) {	
 	case 4:
-		pcc->Hxxxx = 0.0;
-		pcc->Hxyyy = 0.0;
-		pcc->Hxxxy = 0.0;
-		pcc->Hyyyy = 0.0;
-		pcc->Hxxxz = 0.0;
-		pcc->Hyyyz = 0.0;
-		pcc->Hxxyy = 0.0;
-		pcc->Hxxyz = 0.0;
-		pcc->Hxyyz = 0.0;
-		pcc->Hxxzz = 0.0;
-		pcc->Hxyzz = 0.0;
-		pcc->Hxzzz = 0.0;
-		pcc->Hyyzz = 0.0;
-		pcc->Hyzzz = 0.0;
-		pcc->Hzzzz = 0.0;
-		pcc->B6 = 0.0;
+		cc.Hxxxx = 0.0;
+		cc.Hxyyy = 0.0;
+		cc.Hxxxy = 0.0;
+		cc.Hyyyy = 0.0;
+		cc.Hxxxz = 0.0;
+		cc.Hyyyz = 0.0;
+		cc.Hxxyy = 0.0;
+		cc.Hxxyz = 0.0;
+		cc.Hxyyz = 0.0;
+		cc.Hxxzz = 0.0;
+		cc.Hxyzz = 0.0;
+		cc.Hxzzz = 0.0;
+		cc.Hyyzz = 0.0;
+		cc.Hyzzz = 0.0;
+		cc.Hzzzz = 0.0;
+		cc.B6 = 0.0;
 	case 3:
-		pcc->Oxxx = 0.0;
-		pcc->Oxyy = 0.0;
-		pcc->Oxxy = 0.0;
-		pcc->Oyyy = 0.0;
-		pcc->Oxxz = 0.0;
-		pcc->Oyyz = 0.0;
-		pcc->Oxyz = 0.0;
-		pcc->Oxzz = 0.0;
-		pcc->Oyzz = 0.0;
-		pcc->Ozzz = 0.0;
-		pcc->B5 = 0.0;
+		cc.Oxxx = 0.0;
+		cc.Oxyy = 0.0;
+		cc.Oxxy = 0.0;
+		cc.Oyyy = 0.0;
+		cc.Oxxz = 0.0;
+		cc.Oyyz = 0.0;
+		cc.Oxyz = 0.0;
+		cc.Oxzz = 0.0;
+		cc.Oyzz = 0.0;
+		cc.Ozzz = 0.0;
+		cc.B5 = 0.0;
 	default:
-		pcc->Qxx = 0.0;
-		pcc->Qyy = 0.0;
-		pcc->Qzz = 0.0;
-		pcc->Qxy = 0.0;
-		pcc->Qxz = 0.0;
-		pcc->Qyz = 0.0;
-		pcc->B2 = 0.0;
-		pcc->B3 = 0.0;
-		pcc->B4 = 0.0;
+		cc.Qxx = 0.0;
+		cc.Qyy = 0.0;
+		cc.Qzz = 0.0;
+		cc.Qxy = 0.0;
+		cc.Qxz = 0.0;
+		cc.Qyz = 0.0;
+		cc.B2 = 0.0;
+		cc.B3 = 0.0;
+		cc.B4 = 0.0;
 		}
-	pcc->Bmax = 0.0;
+	cc.Bmax = 0.0;
 	/*
 	 ** Calculate moments and B numbers about center-of-mass.
 	 */
@@ -1919,12 +1920,12 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
 		dz = pkd->pStore[pj].r[2] - rcm[2];
 		d2 = dx*dx + dy*dy + dz*dz;
 		d1 = sqrt(d2);
-		if (d1 > pcc->Bmax) pcc->Bmax = d1;
-		pcc->B2 += m*d2;
-		pcc->B3 += m*d2*d1;
-		pcc->B4 += m*d2*d2;
-		pcc->B5 += m*d2*d2*d1;
-		pcc->B6 += m*d2*d2*d2;
+		if (d1 > cc.Bmax) cc.Bmax = d1;
+		cc.B2 += m*d2;
+		cc.B3 += m*d2*d1;
+		cc.B4 += m*d2*d2;
+		cc.B5 += m*d2*d2*d1;
+		cc.B6 += m*d2*d2*d2;
 #ifdef COMPLETE_LOCAL
 		d2 = 0.0;
 #endif
@@ -1933,47 +1934,48 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
 			/*
 			 ** Calculate reduced hexadecapole moment...
 			 */
-			pcc->Hxxxx += m*(dx*dx*dx*dx - 6.0/7.0*d2*(dx*dx - 0.1*d2));
-			pcc->Hxyyy += m*(dx*dy*dy*dy - 3.0/7.0*d2*dx*dy);
-			pcc->Hxxxy += m*(dx*dx*dx*dy - 3.0/7.0*d2*dx*dy);
-			pcc->Hyyyy += m*(dy*dy*dy*dy - 6.0/7.0*d2*(dy*dy - 0.1*d2));
-			pcc->Hxxxz += m*(dx*dx*dx*dz - 3.0/7.0*d2*dx*dz);
-			pcc->Hyyyz += m*(dy*dy*dy*dz - 3.0/7.0*d2*dy*dz);
-			pcc->Hxxyy += m*(dx*dx*dy*dy - 1.0/7.0*d2*(dx*dx + dy*dy - 0.2*d2));
-			pcc->Hxxyz += m*(dx*dx*dy*dz - 1.0/7.0*d2*dy*dz);
-			pcc->Hxyyz += m*(dx*dy*dy*dz - 1.0/7.0*d2*dx*dz);
-			pcc->Hxxzz += m*(dx*dx*dz*dz - 1.0/7.0*d2*(dx*dx + dz*dz - 0.2*d2));
-			pcc->Hxyzz += m*(dx*dy*dz*dz - 1.0/7.0*d2*dx*dy);
-			pcc->Hxzzz += m*(dx*dz*dz*dz - 3.0/7.0*d2*dx*dz);
-			pcc->Hyyzz += m*(dy*dy*dz*dz - 1.0/7.0*d2*(dy*dy + dz*dz - 0.2*d2));
-			pcc->Hyzzz += m*(dy*dz*dz*dz - 3.0/7.0*d2*dy*dz);
-			pcc->Hzzzz += m*(dz*dz*dz*dz - 6.0/7.0*d2*(dz*dz - 0.1*d2));
+			cc.Hxxxx += m*(dx*dx*dx*dx - 6.0/7.0*d2*(dx*dx - 0.1*d2));
+			cc.Hxyyy += m*(dx*dy*dy*dy - 3.0/7.0*d2*dx*dy);
+			cc.Hxxxy += m*(dx*dx*dx*dy - 3.0/7.0*d2*dx*dy);
+			cc.Hyyyy += m*(dy*dy*dy*dy - 6.0/7.0*d2*(dy*dy - 0.1*d2));
+			cc.Hxxxz += m*(dx*dx*dx*dz - 3.0/7.0*d2*dx*dz);
+			cc.Hyyyz += m*(dy*dy*dy*dz - 3.0/7.0*d2*dy*dz);
+			cc.Hxxyy += m*(dx*dx*dy*dy - 1.0/7.0*d2*(dx*dx + dy*dy - 0.2*d2));
+			cc.Hxxyz += m*(dx*dx*dy*dz - 1.0/7.0*d2*dy*dz);
+			cc.Hxyyz += m*(dx*dy*dy*dz - 1.0/7.0*d2*dx*dz);
+			cc.Hxxzz += m*(dx*dx*dz*dz - 1.0/7.0*d2*(dx*dx + dz*dz - 0.2*d2));
+			cc.Hxyzz += m*(dx*dy*dz*dz - 1.0/7.0*d2*dx*dy);
+			cc.Hxzzz += m*(dx*dz*dz*dz - 3.0/7.0*d2*dx*dz);
+			cc.Hyyzz += m*(dy*dy*dz*dz - 1.0/7.0*d2*(dy*dy + dz*dz - 0.2*d2));
+			cc.Hyzzz += m*(dy*dz*dz*dz - 3.0/7.0*d2*dy*dz);
+			cc.Hzzzz += m*(dz*dz*dz*dz - 6.0/7.0*d2*(dz*dz - 0.1*d2));
 		case 3:
 			/*
 			 ** Calculate reduced octopole moment...
 			 */
-			pcc->Oxxx += m*(dx*dx*dx - 0.6*d2*dx);
-			pcc->Oxyy += m*(dx*dy*dy - 0.2*d2*dx);
-			pcc->Oxxy += m*(dx*dx*dy - 0.2*d2*dy);
-			pcc->Oyyy += m*(dy*dy*dy - 0.6*d2*dy);
-			pcc->Oxxz += m*(dx*dx*dz - 0.2*d2*dz);
-			pcc->Oyyz += m*(dy*dy*dz - 0.2*d2*dz);
-			pcc->Oxyz += m*dx*dy*dz;
-			pcc->Oxzz += m*(dx*dz*dz - 0.2*d2*dx);
-			pcc->Oyzz += m*(dy*dz*dz - 0.2*d2*dy);
-			pcc->Ozzz += m*(dz*dz*dz - 0.6*d2*dz);;
+			cc.Oxxx += m*(dx*dx*dx - 0.6*d2*dx);
+			cc.Oxyy += m*(dx*dy*dy - 0.2*d2*dx);
+			cc.Oxxy += m*(dx*dx*dy - 0.2*d2*dy);
+			cc.Oyyy += m*(dy*dy*dy - 0.6*d2*dy);
+			cc.Oxxz += m*(dx*dx*dz - 0.2*d2*dz);
+			cc.Oyyz += m*(dy*dy*dz - 0.2*d2*dz);
+			cc.Oxyz += m*dx*dy*dz;
+			cc.Oxzz += m*(dx*dz*dz - 0.2*d2*dx);
+			cc.Oyzz += m*(dy*dz*dz - 0.2*d2*dy);
+			cc.Ozzz += m*(dz*dz*dz - 0.6*d2*dz);;
 		default:
 			/*
 			 ** Calculate quadrupole moment...
 			 */
-			pcc->Qxx += m*dx*dx;
-			pcc->Qyy += m*dy*dy;
-			pcc->Qzz += m*dz*dz;
-			pcc->Qxy += m*dx*dy;
-			pcc->Qxz += m*dx*dz;
-			pcc->Qyz += m*dy*dz;
+			cc.Qxx += m*dx*dx;
+			cc.Qyy += m*dy*dy;
+			cc.Qzz += m*dz*dz;
+			cc.Qxy += m*dx*dy;
+			cc.Qxz += m*dx*dz;
+			cc.Qyz += m*dy*dz;
 			}
 		}
+	*pcc = cc;
 	}
 
 
@@ -2282,6 +2284,8 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 	FLOAT fm;
 	double dOpen;
 	int bGoodBounds;	/* Is the cell a finite size? */
+	BND bnd, bndBall;
+	PARTICLE *pStore;
 
 	if (pLower > pUpper) return(-1);
 	else {
@@ -2293,40 +2297,45 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 		pkdn = &pkd->kdNodes[c];
 		pkdn->pLower = pLower;
 		pkdn->pUpper = pUpper;
+		pStore = pkd->pStore;
 		/*
 		 ** We need to find the bounding box.
 		 */
 		for (j=0;j<3;++j) {
-			pkdn->bnd.fMin[j] = pkd->pStore[pLower].r[j];
-			pkdn->bnd.fMax[j] = pkd->pStore[pLower].r[j];
-			pkdn->bndBall.fMin[j] = pkd->pStore[pLower].r[j]-pkd->pStore[pLower].fBallMax;
-			pkdn->bndBall.fMax[j] = pkd->pStore[pLower].r[j]+pkd->pStore[pLower].fBallMax;
+			bnd.fMin[j] = pStore[pLower].r[j];
+			bnd.fMax[j] = pStore[pLower].r[j];
+			bndBall.fMin[j] = pStore[pLower].r[j]-pStore[pLower].fBallMax;
+			bndBall.fMax[j] = pStore[pLower].r[j]+pStore[pLower].fBallMax;
 			}
 		for (i=pLower+1;i<=pUpper;++i) {
 			for (j=0;j<3;++j) {
-				if (pkd->pStore[i].r[j] < pkdn->bnd.fMin[j]) 
-					pkdn->bnd.fMin[j] = pkd->pStore[i].r[j];
-				else if (pkd->pStore[i].r[j] > pkdn->bnd.fMax[j])
-					pkdn->bnd.fMax[j] = pkd->pStore[i].r[j];
-				if (pkd->pStore[i].r[j]-pkd->pStore[i].fBallMax < pkdn->bndBall.fMin[j]) 
-					pkdn->bndBall.fMin[j] = pkd->pStore[i].r[j]-pkd->pStore[i].fBallMax;
-				if (pkd->pStore[i].r[j]+pkd->pStore[i].fBallMax > pkdn->bndBall.fMax[j])
-					pkdn->bndBall.fMax[j] = pkd->pStore[i].r[j]+pkd->pStore[i].fBallMax;
+				if (pStore[i].r[j] < bnd.fMin[j]) 
+					bnd.fMin[j] = pStore[i].r[j];
+				else if (pStore[i].r[j] > bnd.fMax[j])
+					bnd.fMax[j] = pStore[i].r[j];
+				if (pStore[i].r[j]-pStore[i].fBallMax < bndBall.fMin[j]) 
+					bndBall.fMin[j] = pStore[i].r[j]-pStore[i].fBallMax;
+				if (pStore[i].r[j]+pStore[i].fBallMax > bndBall.fMax[j])
+					bndBall.fMax[j] = pStore[i].r[j]+pStore[i].fBallMax;
 				}
 			}	
 		bGoodBounds = 0;
 		for (j=0;j<3;++j) {
-			if (pkdn->bnd.fMax[j] > pkdn->bnd.fMin[j])
+			if (bnd.fMax[j] > bnd.fMin[j])
 			    bGoodBounds = 1;
 			}
+
+		pkdn->bnd = bnd;
+		pkdn->bndBall = bndBall;
+		
 		if ((pUpper-pLower+1 > nBucket) && bGoodBounds) {
 			/*
 			 ** Now we need to determine the longest axis.
 			 */
 			d = 0;
 			for (j=1;j<3;++j) {
-				if (pkdn->bnd.fMax[j]-pkdn->bnd.fMin[j] > 
-					pkdn->bnd.fMax[d]-pkdn->bnd.fMin[d]) {
+				if (bnd.fMax[j]-bnd.fMin[j] > 
+					bnd.fMax[d]-bnd.fMin[d]) {
 					d = j;
 					}
 				}
@@ -2334,7 +2343,7 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 			/*
 			 ** Now we do the split.
 			 */
-			pkdn->fSplit = 0.5*(pkdn->bnd.fMin[d]+pkdn->bnd.fMax[d]);
+			pkdn->fSplit = 0.5*(bnd.fMin[d]+bnd.fMax[d]);
 			m = pkdUpperPart(pkd,d,pkdn->fSplit,pLower,pUpper);
 			pkdn->iLower = BuildBinary(pkd,nBucket,pLower,m-1,
 						   iOpenType, dCrit,iOrder,
@@ -2393,11 +2402,11 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 				pkdn->r[j] = 0.0;
 				}
 			for (i=pkdn->pLower;i<=pkdn->pUpper;++i) {
-				fm = pkd->pStore[i].fMass;
+				fm = pStore[i].fMass;
 				pkdn->fMass += fm;
-				pkdn->fSoft += fm*pkd->pStore[i].fSoft;
+				pkdn->fSoft += fm*pStore[i].fSoft;
 				for (j=0;j<3;++j) {
-					pkdn->r[j] += fm*pkd->pStore[i].r[j];
+					pkdn->r[j] += fm*pStore[i].r[j];
 					}
 				}
 			if (pkdn->fMass > 0) {
@@ -3781,8 +3790,9 @@ double pkdMassCheck(PKD pkd)
 {
 	double dMass=0.0;
 	int i,iRej;
+	int nLocal = pkdLocal(pkd);
 
-	for (i=0;i<pkdLocal(pkd);++i) {
+	for (i=0;i<nLocal;++i) {
 		dMass += pkd->pStore[i].fMass;
 		}
 	iRej = pkdFreeStore(pkd) - pkd->nRejects;
@@ -3845,14 +3855,10 @@ pkdActiveRung(PKD pkd, int iRung, int bGreater)
     int i;
     int nActive;
     char out[128];
+    int nLocal = pkdLocal(pkd);
     
     nActive = 0;
-    for (i=0;i<pkdLocal(pkd);++i) {
-#ifdef COOLDEBUG
-		if (pkd->pStore[i].iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i] (Rung)\n",pkd->pStore[i].iOrder, i);
-		assert(pkd->pStore[i].u >= 0);
-		assert(pkd->pStore[i].uPred >= 0);
-#endif
+    for (i=0;i<nLocal;++i) {
 		if(pkd->pStore[i].iRung == iRung ||
 		   (bGreater && pkd->pStore[i].iRung > iRung)) {
 			TYPESet(&(pkd->pStore[i]),TYPE_ACTIVE);
@@ -4232,8 +4238,9 @@ int pkdActiveExactType(PKD pkd, unsigned int iFilterMask, unsigned int iTestMask
 {
     PARTICLE *p;
     int i, nActive = 0;
+    int nLocal = pkdLocal(pkd);
 
-    for(i=0;i<pkdLocal(pkd);++i) { 
+    for(i=0;i<nLocal;++i) { 
 		p = &pkd->pStore[i];
 		/* DEBUG: Paranoia check */
 		mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
@@ -4305,8 +4312,9 @@ int pkdCountType(PKD pkd, unsigned int iFilterMask, unsigned int iTestMask)
 {
     PARTICLE *p;
     int i, nActive = 0;
+    int nLocal = pkdLocal(pkd);
 
-    for(i=0;i<pkdLocal(pkd);++i) {
+    for(i=0;i<nLocal;++i) {
 		p = &pkd->pStore[i];
 		if (TYPEFilter(p,iFilterMask,iTestMask)) {
 			nActive++;
@@ -4324,16 +4332,12 @@ int pkdActiveType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
 {
     PARTICLE *p;
     int i, nActive = 0;
+    int nLocal = pkdLocal(pkd);
 
-    for(i=0;i<pkdLocal(pkd);++i) {
+    for(i=0;i<nLocal;++i) {
 		p = &pkd->pStore[i];
-#ifdef COOLDEBUG
-		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i] Active Type\n",p->iOrder,(int) (p-pkd->pStore));
-		assert(p->u >= 0);
-		assert(p->uPred >= 0);
-#endif
 		/* DEBUG: Paranoia check */
-		mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
+		/* mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL)); */
 		if (TYPETest(p,iTestMask)) {
 			TYPESet(p,iSetMask);
 			nActive++;
@@ -4382,9 +4386,10 @@ pkdActiveTypeRung(PKD pkd, unsigned iTestMask, unsigned iSetMask, int iRung, int
     int i;
     int nActive;
     char out[128];
+    int nLocal = pkdLocal(pkd);
     
     nActive = 0;
-    for(i=0;i<pkdLocal(pkd);++i) {
+    for(i=0;i<nLocal;++i) {
         p = &pkd->pStore[i];
         /* DEBUG: Paranoia check */
         mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
