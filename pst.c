@@ -111,6 +111,8 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_RUNGSTATS,pst,pstRungStats,
 				  sizeof(struct inRungStats),
 				  sizeof(struct outRungStats));
+	mdlAddService(mdl,PST_GETMAP,pst,pstGetMap,
+				  sizeof(struct inGetMap),nThreads*sizeof(int));
 	}
 
 
@@ -191,6 +193,31 @@ void pstLevelize(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		plcl->nPstLvl = pst->iLvl+1;
 		}
 	if (pnOut) *pnOut = 0;
+	}
+
+void pstGetMap(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inGetMap *in = vin;
+	int *out = vout;
+	int *tmp,i;
+
+	assert(nIn == sizeof(struct inGetMap));
+	if (pst->nLeaves > 1) {
+		tmp = malloc(mdlThreads(pst->mdl)*sizeof(int));
+		assert(tmp != NULL);
+		pstGetMap(pst->pstLower,in,nIn,vout,pnOut);
+		in->nStart += pst->nLower;
+		mdlReqService(pst->mdl,pst->idUpper,PST_GETMAP,in,nIn);
+		mdlGetReply(pst->mdl,pst->idUpper,tmp,pnOut);
+		for (i=0;i<pst->nUpper;++i) {
+			out[in->nStart+i] = tmp[in->nStart+i];
+			}
+		free(tmp);
+		}
+	else {
+		out[in->nStart] = pst->idSelf;
+		}
+	if (pnOut) *pnOut = mdlThreads(pst->mdl)*sizeof(int);
 	}
 
 void pstOneNodeReadInit(PST pst,void *vin,int nIn,void *vout,int *pnOut)

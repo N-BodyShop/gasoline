@@ -378,5 +378,11 @@ struct outRungStats {
 	};
 void pstRungStats(PST,void *,int,void *,int *);
 
+#define PST_GETMAP			45
+struct inGetMap {
+	int nStart;
+	};
+void pstGetMap(PST,void *,int,void *,int *);
+
 #endif
 

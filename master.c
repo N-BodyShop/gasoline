@@ -56,7 +56,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	int id;
 	struct inSetAdd inAdd;
 	struct inLevelize inLvl;
-	
+	struct inGetMap inGM;
+
 	msr = (MSR)malloc(sizeof(struct msrContext));
 	assert(msr != NULL);
 	msr->mdl = mdl;
@@ -280,6 +281,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	 */
 	inLvl.iLvl = 0;
 	pstLevelize(msr->pst,&inLvl,sizeof(inLvl),NULL,NULL);
+	/*
+	 ** Create the processor mapping array for the one-node output
+	 ** routines.
+	 */
+	msr->pMap = malloc(msr->nThreads*sizeof(int));
+	assert(msr->pMap != NULL);
+	inGM.nStart = 0;
+	pstGetMap(msr->pst,&inGM,sizeof(inGM),msr->pMap,NULL);
 	}
 
 
@@ -388,6 +397,7 @@ void msrFinish(MSR msr)
 	 ** finish with parameter stuff, dealocate and exit.
 	 */
 	prmFinish(msr->prm);
+	free(msr->pMap);
 	free(msr);
 	}
 
@@ -631,7 +641,7 @@ double msrComoveKickFac(MSR msr,double dTime,double dDelta)
 
 void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
 {
-    int id;
+    int i,id;
     int *nParts;		/* number of particles for each processor */
     int nStart;
     PST pst0;
@@ -639,21 +649,21 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
     char achInFile[PST_FILENAME_SIZE];
     int nid;
     int inswap;
-
+	
     nParts = malloc(msr->nThreads*sizeof(*nParts));
     for (id=0;id<msr->nThreads;++id) {
-	nParts[id] = -1;
-	}
-
+		nParts[id] = -1;
+		}
+	
     pstOneNodeReadInit(msr->pst, in, sizeof(*in), nParts, &nid);
     assert(nid/sizeof(*nParts) == msr->nThreads);
     for (id=0;id<msr->nThreads;++id) {
-	assert(nParts[id] > 0);
-	}
-
+		assert(nParts[id] > 0);
+		}
+	
     pst0 = msr->pst;
     while(pst0->nLeaves > 1)
-	pst0 = pst0->pstLower;
+		pst0 = pst0->pstLower;
     plcl = pst0->plcl;
     /*
      ** Add the local Data Path to the provided filename.
@@ -664,22 +674,24 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
 	    strcat(achInFile,"/");
 	    }
     strcat(achInFile,in->achInFile);
-
+	
     nStart = nParts[0];
-    for (id=1;id<msr->nThreads;++id) {
-	/* 
-	 * Read particles into the local storage.
-	 */
-	assert(plcl->pkd->nStore >= nParts[id]);
-	pkdReadTipsy(plcl->pkd,achInFile,nStart,nParts[id],in->dvFac);
-	nStart += nParts[id];
-	/* 
-	 * Now shove them over to the remote processor.
-	 */
-	inswap = 0;
-	mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-	pkdSwapAll(plcl->pkd, id);
-	mdlGetReply(pst0->mdl,id,NULL,NULL);
+	assert(msr->pMap[0] == 0);
+    for (i=1;i<msr->nThreads;++i) {
+		id = msr->pMap[i];
+		/* 
+		 * Read particles into the local storage.
+		 */
+		assert(plcl->pkd->nStore >= nParts[id]);
+		pkdReadTipsy(plcl->pkd,achInFile,nStart,nParts[id],in->dvFac);
+		nStart += nParts[id];
+		/* 
+		 * Now shove them over to the remote processor.
+		 */
+		inswap = 0;
+		mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+		pkdSwapAll(plcl->pkd, id);
+		mdlGetReply(pst0->mdl,id,NULL,NULL);
     	}
     assert(nStart == msr->N);
     /* 
@@ -867,7 +879,7 @@ int xdrWriteHeader(XDR *pxdrs,struct dump *ph)
 
 void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
 {
-    int id;
+    int i,id;
     int nStart;
     PST pst0;
     LCL *plcl;
@@ -876,7 +888,7 @@ void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
 
     pst0 = msr->pst;
     while(pst0->nLeaves > 1)
-	pst0 = pst0->pstLower;
+		pst0 = pst0->pstLower;
     plcl = pst0->plcl;
     /*
      ** Add the local Data Path to the provided filename.
@@ -892,30 +904,32 @@ void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
      * First write our own particles.
      */
     pkdWriteTipsy(plcl->pkd,achOutFile,0,plcl->pkd->nLocal - 1,in->bStandard,
-		  in->dvFac); 
+				  in->dvFac); 
     nStart = plcl->pkd->nLocal;
-    for (id=1;id<msr->nThreads;++id) {
-	/* 
-	 * Swap particles with the remote processor.
-	 */
-	inswap = 0;
-	mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-	pkdSwapAll(plcl->pkd, id);
-	mdlGetReply(pst0->mdl,id,NULL,NULL);
-	/* 
-	 * Write the swapped particles.
-	 */
-	pkdWriteTipsy(plcl->pkd,achOutFile,nStart,
-		      nStart + plcl->pkd->nLocal - 1,
-		      in->bStandard, in->dvFac); 
-	nStart += plcl->pkd->nLocal;
-	/* 
-	 * Swap them back again.
-	 */
-	inswap = 0;
-	mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-	pkdSwapAll(plcl->pkd, id);
-	mdlGetReply(pst0->mdl,id,NULL,NULL);
+	assert(msr->pMap[0] == 0);
+    for (i=1;i<msr->nThreads;++i) {
+		id = msr->pMap[i];
+		/* 
+		 * Swap particles with the remote processor.
+		 */
+		inswap = 0;
+		mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+		pkdSwapAll(plcl->pkd, id);
+		mdlGetReply(pst0->mdl,id,NULL,NULL);
+		/* 
+		 * Write the swapped particles.
+		 */
+		pkdWriteTipsy(plcl->pkd,achOutFile,nStart,
+					  nStart + plcl->pkd->nLocal - 1,
+					  in->bStandard, in->dvFac); 
+		nStart += plcl->pkd->nLocal;
+		/* 
+		 * Swap them back again.
+		 */
+		inswap = 0;
+		mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+		pkdSwapAll(plcl->pkd, id);
+		mdlGetReply(pst0->mdl,id,NULL,NULL);
     	}
     assert(nStart == msr->N);
     }
@@ -1130,7 +1144,7 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 	LCL *plcl;
 	PST pst0;
 	FILE *fp;
-	int id;
+	int id,i;
 	int inswap;
 
 	pst0 = msr->pst;
@@ -1174,8 +1188,10 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 	/* 
 	 * First write our own particles.
 	 */
+	assert(msr->pMap[0] == 0);
 	pkdOutArray(plcl->pkd,achOutFile,iType); 
-	for (id=1;id<msr->nThreads;++id) {
+	for (i=1;i<msr->nThreads;++i) {
+		id = msr->pMap[i];
 	    /* 
 	     * Swap particles with the remote processor.
 	     */
@@ -1205,7 +1221,7 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	LCL *plcl;
 	PST pst0;
 	FILE *fp;
-	int id;
+	int id,i;
 	int inswap;
 
 	pst0 = msr->pst;
@@ -1249,10 +1265,12 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	/* 
 	 * First write our own particles.
 	 */
+	assert(msr->pMap[0] == 0);
 	pkdOutVector(plcl->pkd,achOutFile,0, iType); 
 	pkdOutVector(plcl->pkd,achOutFile,1, iType); 
 	pkdOutVector(plcl->pkd,achOutFile,2, iType); 
-	for (id=1;id<msr->nThreads;++id) {
+	for (i=1;i<msr->nThreads;++i) {
+		id = msr->pMap[i];
 	    /* 
 	     * Swap particles with the remote processor.
 	     */
@@ -1424,8 +1442,8 @@ void msrKick(MSR msr,double dTime,double dDelta)
 
 void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
 {
-    int id;
-    int *nParts;		/* number of particles for each processor */
+    int i,id;
+    int *nParts;				/* number of particles for each processor */
     int nStart;
     PST pst0;
     LCL *plcl;
@@ -1437,25 +1455,25 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
 
     nParts = malloc(msr->nThreads*sizeof(*nParts));
     for (id=0;id<msr->nThreads;++id) {
-	nParts[id] = -1;
-	}
+		nParts[id] = -1;
+		}
 
     tin.nStart = in->nStart;
     tin.nEnd = in->nEnd;
     tin.iOrder = in->iOrder;
     tin.fExtraStore = in->fExtraStore;
     for(j = 0; j < 3; j++)
-	tin.fPeriod[j] = in->fPeriod[j];
+		tin.fPeriod[j] = in->fPeriod[j];
 
     pstOneNodeReadInit(msr->pst, &tin, sizeof(tin), nParts, &nid);
     assert(nid == msr->nThreads);
     for (id=0;id<msr->nThreads;++id) {
-	assert(nParts[id] > 0);
-	}
+		assert(nParts[id] > 0);
+		}
 
     pst0 = msr->pst;
     while(pst0->nLeaves > 1)
-	pst0 = pst0->pstLower;
+		pst0 = pst0->pstLower;
     plcl = pst0->plcl;
     /*
      ** Add the local Data Path to the provided filename.
@@ -1468,21 +1486,23 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
     strcat(achInFile,in->achInFile);
 
     nStart = nParts[0];
-    for (id=1;id<msr->nThreads;++id) {
-	/* 
-	 * Read particles into the local storage.
-	 */
-	assert(plcl->pkd->nStore >= nParts[id]);
-	pkdReadCheck(plcl->pkd,achInFile,in->iVersion, in->iOffset,
-		     in->nStart, nParts[id]);
-	nStart += nParts[id];
-	/* 
-	 * Now shove them over to the remote processor.
-	 */
-	inswap = 0;
-	mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-	pkdSwapAll(plcl->pkd, id);
-	mdlGetReply(pst0->mdl,id,NULL,NULL);
+	assert(msr->pMap[0] == 0);
+    for (i=1;i<msr->nThreads;++i) {
+		id = msr->pMap[i];
+		/* 
+		 * Read particles into the local storage.
+		 */
+		assert(plcl->pkd->nStore >= nParts[id]);
+		pkdReadCheck(plcl->pkd,achInFile,in->iVersion, in->iOffset,
+					 in->nStart, nParts[id]);
+		nStart += nParts[id];
+		/* 
+		 * Now shove them over to the remote processor.
+		 */
+		inswap = 0;
+		mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+		pkdSwapAll(plcl->pkd, id);
+		mdlGetReply(pst0->mdl,id,NULL,NULL);
     	}
     assert(nStart == msr->N);
     /* 
@@ -1623,7 +1643,7 @@ double msrReadCheck(MSR msr,int *piStep)
 
 void msrOneNodeWriteCheck(MSR msr, struct inWriteCheck *in)
 {
-    int id;
+    int i,id;
     int nStart;
     PST pst0;
     LCL *plcl;
@@ -1632,7 +1652,7 @@ void msrOneNodeWriteCheck(MSR msr, struct inWriteCheck *in)
 
     pst0 = msr->pst;
     while(pst0->nLeaves > 1)
-	pst0 = pst0->pstLower;
+		pst0 = pst0->pstLower;
     plcl = pst0->plcl;
     /*
      ** Add the local Data Path to the provided filename.
@@ -1649,26 +1669,28 @@ void msrOneNodeWriteCheck(MSR msr, struct inWriteCheck *in)
      */
     pkdWriteCheck(plcl->pkd,achOutFile,in->iOffset, 0); 
     nStart = plcl->pkd->nLocal;
-    for (id=1;id<msr->nThreads;++id) {
-	/* 
-	 * Swap particles with the remote processor.
-	 */
-	inswap = 0;
-	mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-	pkdSwapAll(plcl->pkd, id);
-	mdlGetReply(pst0->mdl,id,NULL,NULL);
-	/* 
-	 * Write the swapped particles.
-	 */
-	pkdWriteCheck(plcl->pkd,achOutFile,in->iOffset, nStart); 
-	nStart += plcl->pkd->nLocal;
-	/* 
-	 * Swap them back again.
-	 */
-	inswap = 0;
-	mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-	pkdSwapAll(plcl->pkd, id);
-	mdlGetReply(pst0->mdl,id,NULL,NULL);
+	assert(msr->pMap[0] == 0);
+    for (i=1;i<msr->nThreads;++i) {
+		id = msr->pMap[i];
+		/* 
+		 * Swap particles with the remote processor.
+		 */
+		inswap = 0;
+		mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+		pkdSwapAll(plcl->pkd, id);
+		mdlGetReply(pst0->mdl,id,NULL,NULL);
+		/* 
+		 * Write the swapped particles.
+		 */
+		pkdWriteCheck(plcl->pkd,achOutFile,in->iOffset, nStart); 
+		nStart += plcl->pkd->nLocal;
+		/* 
+		 * Swap them back again.
+		 */
+		inswap = 0;
+		mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+		pkdSwapAll(plcl->pkd, id);
+		mdlGetReply(pst0->mdl,id,NULL,NULL);
     	}
     assert(nStart == msr->N);
     }

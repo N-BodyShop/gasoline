@@ -24,7 +24,7 @@ typedef struct msrContext {
 	 */
 	int nThreads;
 	int N;
-        int iCurrMaxRung;
+	int iCurrMaxRung;
 	int bOpenSpec;	/* was an opening parameter specified (used by +restart) */
 	int iOpenType;
 	double dCrit;
@@ -41,6 +41,10 @@ typedef struct msrContext {
 	int nOuts;
 	double *pdOutTime;
 	int iOut;
+	/*
+	 ** Processor mapping for one-node-output functions.
+	 */
+	int *pMap;
 	} * MSR;
 
 
