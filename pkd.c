@@ -2231,13 +2231,15 @@ pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 	    }
 	else if(p->iOrder < -1){
 	    --newnLocal;
-	    p->iOrder = 2 - p->iOrder;
+	    p->iOrder = -2 - p->iOrder;
 	    if(pkdIsGas(pkd, p))
 		--ndGas;
 	    else if(pkdIsDark(pkd, p))
 		--ndDark;
-	    else
+	    else if(pkdIsStar(pkd, p))
 		--ndStar;
+	    else
+		assert(0);
 	    }
 	else {
 	    ++pj;
