@@ -3817,8 +3817,8 @@ void msrTopStepKDK(MSR msr,
 		dTime += 0.5*dDelta;
 		dStep += 1.0/(2 << iRung);
 
-                msrDomainDecomp(msr);
 		msrActiveMaskRung(msr, TYPE_ACTIVE, iKickRung, 1);
+                msrDomainDecomp(msr);
 		msrInitAccel(msr);
 #ifdef GASOLINE
 		if (msr->param.bVDetails)
