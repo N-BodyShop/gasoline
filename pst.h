@@ -8,7 +8,7 @@
 
 #ifdef PLANETS
 #include "collision.h"
-#endif
+#endif /* PLANETS */
 
 typedef struct lclBlock {
 	char *pszDataPath;
@@ -552,12 +552,13 @@ void pstFindCollision(PST,void *,int,void *,int *);
 
 #define PST_DOCOLLISION		65
 struct inDoCollision {
-	int iPid1,iPid2;
+	int iPid1,iPid2,iOutcomes;
+	double dEpsN,dEpsT;
 	};
 struct outDoCollision {
 	COLLIDER Collider1,Collider2,Out[MAX_NUM_FRAG];
 	double dImpactEnergy;
-	int nOut;
+	int iOutcome,nOut;
 	};
 void pstDoCollision(PST,void *,int,void *,int *);
 

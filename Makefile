@@ -1,13 +1,13 @@
 #
 # Makefile for pkdgrav or gasoline (specify below)
 #
-#CC = gcc -Wall
-EXE = pkdgrav
-CODEDEF =
-#CODEDEF = -DPLANETS -DNO_STDOUT_BUF -DSOFT_HACK
+CC = gcc -Wall
+EXTRADEF = -DNO_STDOUT_BUF #-DVERY_QUIET -DNO_RUNG_STATS
+CODEDEF = -DPLANETS $(EXTRADEF) #-DRUBBLE_TEST
 #CODEDEF = -DSUPERCOOL
-#EXE = gasoline
 #CODEDEF = -DGASOLINE
+EXE = pkdgrav
+#EXE = gasoline
 #
 # PVM defines
 #
@@ -25,7 +25,8 @@ PVM_LIBMDL	=	v_sqrt1.o $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
 #       NULL MDL defines
 #
 NULL_MDL = ../mdl/null
-NULL_CFLAGS = -O3 -g -I$(NULL_MDL) $(CODEDEF)
+NULL_CFLAGS = -g -I$(NULL_MDL) $(CODEDEF)
+#NULL_CFLAGS = -O3 -g -I$(NULL_MDL) $(CODEDEF)
 #NULL_LD_FLAGS = -Wl,-s
 NULL_LIBMDL = erf.o v_sqrt1.o $(NULL_MDL)/mdl.o -lm
 
@@ -156,20 +157,25 @@ pkdgrav: $(OBJS) $(EXTRA_OBJ)
 gasoline: $(OBJS) $(EXTRA_OBJ)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -DGASOLINE -o gasoline $(OBJS) $(LIBMDL)
 
+$(OBJS) $(EXTRA_OBJ): Makefile
+
 # DO NOT DELETE
 
+collision.o: pkd.h floattype.h collision.h
 ewald.o: ewald.h pkd.h floattype.h meval.h qeval.h
 fdl.o: htable.h fdl.h
 grav.o: pkd.h floattype.h grav.h meval.h qeval.h
 htable.o: htable.h
-main.o: pst.h pkd.h floattype.h smoothfcn.h master.h param.h parameters.h
-main.o: outtype.h
-master.o: master.h param.h pst.h pkd.h floattype.h smoothfcn.h parameters.h
-master.o: tipsydefs.h opentype.h fdl.h htable.h outtype.h
+main.o: pst.h pkd.h floattype.h smoothfcn.h collision.h master.h param.h
+main.o: parameters.h outtype.h
+master.o: master.h param.h pst.h pkd.h floattype.h smoothfcn.h collision.h
+master.o: parameters.h tipsydefs.h opentype.h fdl.h htable.h outtype.h
+master.o: ssdefs.h
 outtype.o: pkd.h floattype.h outtype.h
 param.o: param.h
 pkd.o: pkd.h floattype.h ewald.h grav.h walk.h opentype.h tipsydefs.h
-pst.o: pst.h pkd.h floattype.h smoothfcn.h outtype.h smooth.h
+pkd.o: ssdefs.h
+pst.o: pst.h pkd.h floattype.h smoothfcn.h collision.h outtype.h smooth.h
 smooth.o: smooth.h pkd.h floattype.h smoothfcn.h
-smoothfcn.o: smoothfcn.h pkd.h floattype.h
+smoothfcn.o: smoothfcn.h pkd.h floattype.h ssdefs.h collision.h
 walk.o: walk.h pkd.h floattype.h

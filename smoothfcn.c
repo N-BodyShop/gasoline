@@ -5,7 +5,7 @@
 #ifdef PLANETS
 #include "ssdefs.h"
 #include "collision.h"
-#endif
+#endif /* PLANETS */
 
 void initDensity(void *p)
 {
@@ -481,11 +481,10 @@ void SetTimeStep(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		if (pn == p)
 			continue;
 		r2 = nnList[i].fDist2;
-		dt = DT_TSC * sqrt(r2 * sqrt(r2) / pn->fMass);
+		dt = 0.2 /*DEBUG!*/ * sqrt(r2 * sqrt(r2) / (p->fMass + pn->fMass));
 		if (dt < p->dt) p->dt = dt;
 		}
 	}
-
 
 void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
@@ -515,6 +514,7 @@ void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			 pkd->Collider1.id.iIndex == nnList[i].iIndex &&
 			 pkd->Collider2.id.iPid == pkd->idSelf &&
 			 pkd->Collider2.id.iIndex == p - pkd->pStore))
+			/*DEBUG does this work in parallel???*/
 			continue; /* skip if same colliders but order reversed */
 		vx = p->v[0] - pn->v[0];
 		vy = p->v[1] - pn->v[1];
@@ -523,21 +523,19 @@ void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		if (rdotv >= 0)
 			continue; /* skip if particle not approaching */
 		v2 = vx*vx + vy*vy + vz*vz;
-		sr = (p->fSoft + pn->fSoft); /* softening length <=> particle radius */
-#ifdef SOFT_HACK
-		sr *= 2;
-#endif
+		sr = 2*(p->fSoft + pn->fSoft); /* softening = 0.5 * particle radius */
 		D = 1 - v2*(nnList[i].fDist2 - sr*sr)/(rdotv*rdotv);
 		if (D < 0)
 			continue; /* no real solutions ==> no collision */
 		D = sqrt(D);
-		if (smf->dStart == 0)
-			{/*DEBUG*/
-			if (D>=1) fprintf(stderr,"OVERLAP! %i (r=%e,%e,%e,iRung=%i) &"
-							  " %i (r=%e,%e,%e,iRung=%i)"
-							  " v=%e,%e,%e rv=%e D=%e\n",p->iOrder,p->r[0],p->r[1],p->r[2],
-							  p->iRung,pn->iOrder,pn->r[0],pn->r[1],pn->r[2],
-							  pn->iRung,vx,vy,vz,rdotv,D);
+		if (smf->dStart == 0) {
+			if (D >= 1)
+				fprintf(stderr,"OVERLAP! %i (r=%e,%e,%e,iRung=%i) &"
+						" %i (r=%e,%e,%e,iRung=%i)"
+						" v=%e,%e,%e rv=%e sr=%e d=%e D=%e\n",
+						p->iOrder,p->r[0],p->r[1],p->r[2],p->iRung,
+						pn->iOrder,pn->r[0],pn->r[1],pn->r[2],pn->iRung,
+						vx,vy,vz,rdotv,sr,sqrt(nnList[i].fDist2) - sr,D);
 			assert(D < 1); /* particles must not touch or overlap initially */
 			}
 		dt = rdotv*(D - 1)/v2; /* minimum time to surface contact */
@@ -551,12 +549,24 @@ void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				 */
 				assert(dt < pkd->dImpactTime);
 				}
+			/* currently only support collisions between planetesimals... */
 			assert(p->iColor == PLANETESIMAL && pn->iColor == PLANETESIMAL);
 			pkd->dImpactTime = dt;
 			partToCollider(p,pkd->idSelf,p - pkd->pStore,&pkd->Collider1);
 			partToCollider(pn,nnList[i].iPid,nnList[i].iIndex,&pkd->Collider2);
 			}
 		}
+
+#ifdef RUBBLE_TEST
+	if (p->v[2] < 0) {
+		dt = (2*p->fSoft - p->r[2]) / p->v[2];
+		if (dt > smf->dStart && dt <= smf->dEnd && dt < pkd->dImpactTime) {
+			pkd->dImpactTime = dt;
+			partToCollider(p,pkd->idSelf,p - pkd->pStore,&pkd->Collider1);
+			pkd->Collider2.id.iPid = -1;
+			}
+		}
+#endif /* RUBBLE_TEST */
 	}
 
 #endif /* PLANETS */

@@ -32,4 +32,3 @@ int prmArgSpecified(PRM,char *);
 int prmFileSpecified(PRM,char *);
 
 #endif
-

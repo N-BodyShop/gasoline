@@ -116,9 +116,11 @@ int main(int argc,char **argv)
 	 */
 #ifdef PLANETS
 	dTime = msrReadSS(msr);
-#else
+	if (msr->param.nSmooth > msr->N)
+		printf("WARNING: nSmooth > N\n");
+#else /* PLANETS */
 	dTime = msrReadTipsy(msr);
-#endif
+#endif /* !PLANETS */
 	msrInitStep(msr);
 #ifdef GASOLINE
 	msrInitSph(msr,dTime);
@@ -132,7 +134,7 @@ int main(int argc,char **argv)
 	 */
 #ifdef PLANETS
 	/* This also checks for initial particle overlaps! */
-#endif
+#endif /* PLANETS */
 	msrDrift(msr,dTime,0.0);
 	msrMassCheck(msr,dMass,"After initial msrDrift");
 
@@ -252,10 +254,17 @@ int main(int argc,char **argv)
 #ifdef PLANETS
 				msrWriteSS(msr,achFile,dTime);
 				msrMassCheck(msr,dMass,"After msrWriteSS in OutTime");
-#else
+#ifdef OUTPUT_DT
+				{
+				char achFileDt[256/*MAXPATHLEN*/];
+				(void) sprintf(achFileDt,"%sdt.%05d",msrOutName(msr),iStep);
+				msrOutArray(msr,achFileDt,OUT_DT_ARRAY);
+				}
+#endif
+#else /* PLANETS */
 				msrWriteTipsy(msr,achFile,dTime);
 				msrMassCheck(msr,dMass,"After msrWriteTipsy in OutTime");
-#endif
+#endif /* !PLANETS */
 				if (msrDoDensity(msr)) {
 					sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
@@ -283,10 +292,17 @@ int main(int argc,char **argv)
 #ifdef PLANETS
 				msrWriteSS(msr,achFile,dTime);
 				msrMassCheck(msr,dMass,"After msrWriteSS in OutFinal");
-#else
+#ifdef OUTPUT_DT
+				{
+				char achFileDt[256/*MAXPATHLEN*/];
+				(void) sprintf(achFileDt,"%sdt.%05d",msrOutName(msr),iStep);
+				msrOutArray(msr,achFileDt,OUT_DT_ARRAY);
+				}
+#endif
+#else /* PLANETS */
 				msrWriteTipsy(msr,achFile,dTime);
 				msrMassCheck(msr,dMass,"After msrWriteTipsy in OutFinal");
-#endif
+#endif /* !PLANETS */
 				if (msrDoDensity(msr)) {
 					sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
@@ -308,10 +324,17 @@ int main(int argc,char **argv)
 #ifdef PLANETS
 					msrWriteSS(msr,achFile,dTime);
 					msrMassCheck(msr,dMass,"After msrWriteSS in OutInt");
-#else
+#ifdef OUTPUT_DT
+					{
+					char achFileDt[256/*MAXPATHLEN*/];
+					(void) sprintf(achFileDt,"%sdt.%05d",msrOutName(msr),iStep);
+					msrOutArray(msr,achFileDt,OUT_DT_ARRAY);
+					}
+#endif
+#else /* PLANETS */
 					msrWriteTipsy(msr,achFile,dTime);
 					msrMassCheck(msr,dMass,"After msrWriteTipsy in OutInt");
-#endif
+#endif /* !PLANETS */
 					if (msrDoDensity(msr)) {
 						sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
 						msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);

@@ -24,7 +24,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	smx->pkd = pkd;
 #ifdef PLANETS
 	smf->pkd = pkd;
-#endif
+#endif /* PLANETS */
 	smx->nSmooth = nSmooth;
 	smx->bPeriodic = bPeriodic;
 

@@ -19,7 +19,7 @@
 
 #ifdef PLANETS
 #include "ssdefs.h"
-#endif
+#endif /* PLANETS */
 
 double pkdGetTimer(PKD pkd,int iTimer)
 {
@@ -1874,6 +1874,12 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo, double dvPredFacOne,
 #endif
 			for (j=0;j<3;++j) {
 				p[i].v[j] = p[i].v[j]*dvFacOne + p[i].a[j]*dvFacTwo;
+#ifdef RUBBLE_TEST
+				if (p[i].r[2] > 2*p[i].fSoft)
+					p[i].v[2] -= 0.25*dvFacTwo; /* uniform 0.25 -z accel. */
+				if (p[i].r[2] > 10)
+					p[i].v[2] = -1; /* uniform velocity above z = 10 */
+#endif /* RUBBLE_TEST */
 				}
 			}
 	    }
@@ -1912,7 +1918,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		for (j=0;j<3;++j)
 			pkd->pStore[i].w[j] = cp.w[j];
 		pkd->pStore[i].iColor = cp.iColor;
-#endif
+#endif /* PLANETS */
 		pkd->pStore[i].iActive = 1;
 		pkd->pStore[i].iRung = 0;
 		pkd->pStore[i].fWeight = 1.0;	/* set the initial weight to 1.0 */
@@ -1953,7 +1959,7 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 		for (j=0;j<3;++j)
 			cp.w[j] = pkd->pStore[i].w[j];
 		cp.iColor = pkd->pStore[i].iColor;
-#endif
+#endif /* PLANETS */
 		fwrite(&cp,sizeof(CHKPART),1,fp);
 		}
 	fclose(fp);
@@ -2204,6 +2210,10 @@ pkdAdotStep(PKD pkd, double dEta, double dVelFac)
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
 		if(pkd->pStore[i].iActive) {
+#ifdef PLANETS
+			if (pkd->pStore[i].iColor != PLANETESIMAL)
+				continue; /* non planetesimals get max step via pkdInitDt() */
+#endif /* PLANETS */
 			adot = 0;
             acc = 0;
 			for(j = 0; j < 3; j++) {
@@ -2452,26 +2462,6 @@ int pkdIsStar(PKD pkd,PARTICLE *p) {
 	else return 0;
 	}
 
-#ifdef PLANETS
-int pkdIsPlanet(PKD pkd,PARTICLE *p) {
-	if (p->fMass > 1e-4) return 1;
-	else return 0;
-	}
-
-void pkdActiveNotPlanet(PKD pkd)
-{
-	PARTICLE *p;
-    int i;
-    
-    for(i=0;i<pkdLocal(pkd);++i) {
-		p = &pkd->pStore[i];
-		if (!pkdIsPlanet(pkd,p)) p->iActive = 1;
-		else p->iActive = 0;
-		}
-    }
-
-#endif
-
 #ifdef GASOLINE
 
 void pkdActiveGas(PKD pkd)
@@ -2601,7 +2591,10 @@ void pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 		p->fWeight = 1.0;
 		p->fDensity = 0.0;
 		p->fBall2 = 0.0;
-		p->fPot = 0.0;	/*DEBUG?*/
+		p->fPot = 0.0;
+#ifdef RUBBLE_TEST
+		p->bStuck = 0;
+#endif /* RUBBLE_TEST */
 		}
 	/*
 	 ** Seek past the header and up to nStart.
@@ -2611,7 +2604,7 @@ void pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	/*
 	 ** Seek to right place in file.
 	 */
-	fseek(fp,sizeof(struct ss_head) + nStart*sizeof(struct ss_data),SEEK_SET);
+	fseek(fp,SS_HEAD_SIZE + nStart*SS_DATA_SIZE,SEEK_SET);
 	/*
 	 ** Read Stuff!
 	 */
@@ -2621,10 +2614,7 @@ void pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 		p->iOrder = nStart + i;
 		if (!pkdIsDark(pkd,p)) assert(0);
 		xdr_double(&xdrs,&dDum); p->fMass = dDum; /* SS format always double */
-		xdr_double(&xdrs,&dDum); p->fSoft = dDum;
-#ifdef SOFT_HACK
-		p->fSoft *= 0.5;
-#endif
+		xdr_double(&xdrs,&dDum); p->fSoft = 0.5*dDum;
 		for (j=0;j<3;++j)
 			{xdr_double(&xdrs,&dDum); p->r[j] = dDum;}
 		for (j=0;j<3;++j)
@@ -2651,7 +2641,7 @@ void pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
 	 */
 	fp = fopen(pszFileName,"r+");
 	assert(fp != NULL);
-	fseek(fp,sizeof(struct ss_head) + nStart*sizeof(struct ss_data),SEEK_SET);
+	fseek(fp,SS_HEAD_SIZE + nStart*SS_DATA_SIZE,SEEK_SET);
 	/* 
 	 ** Write Stuff!
 	 */
@@ -2660,13 +2650,7 @@ void pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
 		p = &pkd->pStore[i];
 		if (!pkdIsDark(pkd,p)) assert(0);
 		dDum = p->fMass; xdr_double(&xdrs,&dDum); /* SS format always double */
-#ifdef SOFT_HACK
-		p->fSoft *= 2;
-#endif
-		dDum = p->fSoft; xdr_double(&xdrs,&dDum);
-#ifdef SOFT_HACK
-		p->fSoft *= 0.5;
-#endif
+		dDum = 2*p->fSoft; xdr_double(&xdrs,&dDum);
 		for (j=0;j<3;++j)
 			{dDum = p->r[j]; xdr_double(&xdrs,&dDum);}
 		for (j=0;j<3;++j)

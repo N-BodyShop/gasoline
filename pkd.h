@@ -60,6 +60,9 @@ typedef struct particle {
 #ifdef PLANETS
 	FLOAT w[3];			/* spin vector */
 	int iColor;			/* handy color tag */
+#ifdef RUBBLE_TEST
+	int bStuck;
+#endif /* RUBBLE_TEST */
 #endif /* PLANETS */
 	} PARTICLE;
 
@@ -75,7 +78,7 @@ typedef struct chkParticle {
 #ifdef PLANETS
     FLOAT w[3];
 	int iColor;
-#endif
+#endif /* PLANETS */
 	} CHKPART;
 
 
@@ -150,18 +153,20 @@ typedef struct ewaldTable {
 typedef struct {
 	int iPid;
 	int iIndex;
+	int iOrder;
 	} COLLIDER_ID;
 
 typedef struct {
 	COLLIDER_ID id;
 	FLOAT fMass;
-	FLOAT fRadius;
+	FLOAT fRadius;/*DEBUG = 2*fSoft so spline not used in force calcs*/
 	FLOAT r[3];
 	FLOAT v[3];
 	FLOAT w[3];
+	FLOAT dt;
 	} COLLIDER;
 
-#endif
+#endif /* PLANETS */
 
 typedef struct pkdContext {
 	MDL mdl;
@@ -360,25 +365,16 @@ void pkdNewOrder(PKD pkd, int nStart);
 void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int nMaxOrderGas,
 		  int nMaxOrderDark);
 
-#ifdef PLANETS
-
-int pkdIsPlanet(PKD,PARTICLE *);
-void pkdActiveNotPlanet(PKD);
-
-#endif
-
 #ifdef GASOLINE
-
 void pkdActiveGas(PKD);
 void pkdCalcEthdot(PKD);
 void pkdKickVpred(PKD pdk, double dvFacOne, double dvFacTwo);
 int pkdSphCurrRung(PKD pkd, int iRung);
-
 #endif
 
 #ifdef PLANETS
 void pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal);
 void pkdWriteSS(PKD,char *pszFileName,int nStart);
-#endif
+#endif /* PLANETS */
 
 #endif

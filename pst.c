@@ -2671,7 +2671,6 @@ void pstDoCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct inDoCollision *in = vin;
 	struct outDoCollision local,*out = vout;
 
-
 	assert(nIn == sizeof(*in));
 	local.nOut = out->nOut = 0;
 	if (pst->nLeaves > 1) {
@@ -2685,8 +2684,10 @@ void pstDoCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		PKD pkd = plcl->pkd;
 		if (in->iPid1 == pkd->idSelf || in->iPid2 == pkd->idSelf)
-			pkdDoCollision(pkd,&out->Collider1,&out->Collider2,
-						   &out->dImpactEnergy,out->Out,&out->nOut);
+			pkdDoCollision(pkd,in->iOutcomes,in->dEpsN,in->dEpsT,
+						   &out->Collider1,&out->Collider2,
+						   &out->dImpactEnergy,&out->iOutcome,
+						   out->Out,&out->nOut);
 		}
 	if (pnOut) *pnOut = sizeof(*out);
 	}

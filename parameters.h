@@ -71,6 +71,16 @@ struct parameters {
 	double dGasConst;
 	double dMsolUnit;
 	double dKpcUnit;
+#ifdef PLANETS
+	/*
+	 ** Additional parameters for planet code...
+	 */
+	int iOutcomes;
+	double dEpsN;
+	double dEpsT;
+	int bDoCollLog;
+	char achCollLog[256];
+#endif /* PLANETS */
 	};
 
 

@@ -13,9 +13,9 @@ typedef struct smfParameters {
 	double algam;
 	int bGeometric;
 #ifdef PLANETS
-	double dStart; /* collision search time interval */
+	double dStart;	/* collision search time interval */
 	double dEnd;
-	PKD pkd; /* pointer to processor's PKD structure */
+	PKD pkd;		/* pointer to processor's PKD structure */
 #endif /* PLANETS */
 	} SMF;
 
@@ -73,7 +73,7 @@ void AccsphBVSym(PARTICLE *,int,NN *,SMF *);
 #ifdef PLANETS
 
 #define SMX_TIMESTEP	7
-void SetTimeStep(PARTICLE *,int,NN *,SMF *);
+void SetTimeStep(PARTICLE *,int,NN *,SMF *); /*DEBUG only used if SMOOTH_STEP*/
 
 #define SMX_COLLISION	8
 void CheckForCollision(PARTICLE *,int,NN *,SMF *);
@@ -81,16 +81,3 @@ void CheckForCollision(PARTICLE *,int,NN *,SMF *);
 #endif /* PLANETS */
 
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-

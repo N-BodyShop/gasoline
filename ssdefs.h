@@ -5,11 +5,20 @@
 #define N_DIM 3
 #endif
 
+/*
+ ** Following structures intended for use with xdr I/O routines. Note that
+ ** internal representations may differ from format written to disk. As a
+ ** result, for now use hardwired sizes for seeking. Is there an xdr routine
+ ** to figure this out automatically?...
+ */
+
 struct ss_head {
 	double	time;
 	int		n_data;
 	int		pad;	/* unused: pad to 8 byte boundary */
 	};
+
+#define SS_HEAD_SIZE 16	/* sizeof(ss_head) */
 
 struct ss_data {
 	double	mass;
@@ -20,6 +29,8 @@ struct ss_data {
 	int		color;
 	int		pad;	/* unused: pad to 8 byte boundary */
 	};
+
+#define SS_DATA_SIZE 96	/* sizeof(ss_data) */
 
 /* Object color identifiers */
 

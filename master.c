@@ -24,7 +24,7 @@
 #ifdef PLANETS
 #include "ssdefs.h"
 #include "collision.h"
-#endif
+#endif /* PLANETS */
 
 void _msrLeader(void)
 {
@@ -280,6 +280,20 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				sizeof(double),"kpcu",
 		    		"<Kiloparsec/system length unit>");
 #endif
+#ifdef PLANETS
+	msr->param.iOutcomes = 0;
+	prmAddParam(msr->prm,"iOutcomes",1,&msr->param.iOutcomes,
+				sizeof(int),"outcomes","<Allowed collision outcomes>");
+	msr->param.dEpsN = 1.0;
+	prmAddParam(msr->prm,"dEpsN",2,&msr->param.dEpsN,
+				sizeof(double),"epsn","<Coefficient of restitution>");
+	msr->param.dEpsT = 1.0;
+	prmAddParam(msr->prm,"dEpsT",2,&msr->param.dEpsT,
+				sizeof(double),"epst","<Coefficient of surface friction>");
+	msr->param.bDoCollLog = 0;
+	prmAddParam(msr->prm,"bDoCollLog",1,&msr->param.bDoCollLog,
+				sizeof(int),"clog","<Collision logging toggle>");
+#endif /* PLANETS */
 	/*
 	 ** Set the box center to (0,0,0) for now!
 	 */
@@ -396,7 +410,31 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		/MHYDR/GCGS/msr->param.dMsolUnit/MSOLG;
 	      }
 #endif
-        
+
+#ifdef PLANETS
+	/*
+	 ** Parameter checks and initialization.
+	 */
+	if (msr->param.nSmooth < 2)
+		printf("WARNING: collision detection disabled (nSmooth < 2)\n");
+	if (!(msr->param.iOutcomes & (MERGE | BOUNCE | FRAG))) {/*DEBUG temporary*/
+		printf("ERROR: must specify one of MERGE/BOUNCE/FRAG\n");
+		_msrExit(msr);
+		}
+	if (msr->param.dEpsN <= 0 || msr->param.dEpsN > 1) {
+		printf("ERROR: coef of rest must be > 0 and <= 1\n");
+		_msrExit(msr);
+		}
+	if (msr->param.dEpsT < -1 || msr->param.dEpsT > 1) {
+		printf("ERROR: coef of surf frict must be >= -1 and <= 1\n");
+		_msrExit(msr);
+		}
+	if (msr->param.bDoCollLog) {
+		sprintf(msr->param.achCollLog,"%s.collisions",msr->param.achOutName);
+		printf("Logging collisions to \"%s\"\n",msr->param.achCollLog);
+		}
+#endif /* PLANETS */
+
 	pstInitialize(&msr->pst,msr->mdl,&msr->lcl);
 
 	pstAddServices(msr->pst,msr->mdl);
@@ -479,6 +517,13 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dMsolUnit: %g",msr->param.dMsolUnit);
 	fprintf(fp," dKpcUnit: %g",msr->param.dKpcUnit);
 #endif
+#ifdef PLANETS
+	fprintf(fp,"\n# Planets:");
+    fprintf(fp," iOutcomes: %d",msr->param.iOutcomes);
+    fprintf(fp," dEpsN: %g",msr->param.dEpsN);
+    fprintf(fp," dEpsT: %g",msr->param.dEpsT);
+	fprintf(fp," bDoCollLog: %d",msr->param.bDoCollLog);
+#endif /* PLANETS */
 	switch (msr->iOpenType) {
 	case OPEN_JOSH:
 		fprintf(fp,"\n# iOpenType: JOSH");
@@ -1553,7 +1598,9 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	sec = time(0);
 	pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
 	dsec = time(0) - sec;
+#ifndef VERY_QUIET
 	printf("Smooth Calculated, Wallclock:%d secs\n\n",dsec);
+#endif /* VERY_QUIET */
 	}
 
 
@@ -1581,7 +1628,9 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	sec = time(0);
 	pstReSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
 	dsec = time(0) - sec;
+#ifndef VERY_QUIET
 	printf("ReSmooth Calculated, Wallclock:%d secs\n\n",dsec);
+#endif /* VERY_QUIET */
 	}
 
 
@@ -1602,7 +1651,9 @@ void msrGravity(MSR msr,double dStep,
 
 	assert(msr->iTreeType == MSR_TREE_SPATIAL || 
 		   msr->iTreeType == MSR_TREE_DENSITY);
-	printf("Calculating Gravity, Step:%.1f\n",dStep);
+#ifndef VERY_QUIET
+	printf("Calculating Gravity, Step:%f\n",dStep);
+#endif /* VERY_QUIET */
     in.nReps = msr->param.nReplicas;
     in.bPeriodic = msr->param.bPeriodic;
 	in.iOrder = msr->param.iOrder;
@@ -1612,6 +1663,7 @@ void msrGravity(MSR msr,double dStep,
 	sec = time(0);
 	pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
 	dsec = time(0) - sec;
+#ifndef VERY_QUIET
  	if(dsec > 0.0) {
  	    dMFlops = out.dFlop/dsec*1e-6;
 	    printf("Gravity Calculated, Wallclock:%d secs, MFlops:%.1f, Flop:%.3g\n",
@@ -1621,6 +1673,7 @@ void msrGravity(MSR msr,double dStep,
  	    printf("Gravity Calculated, Wallclock:%d secs, MFlops:unknown, Flop:%.3g\n",
  		   dsec,out.dFlop);
  	    }
+#endif /* VERY_QUIET */
 	*piSec = dsec;
 	if (out.nActive > 0) {
 		dPartAvg = out.dPartSum/out.nActive;
@@ -1628,7 +1681,14 @@ void msrGravity(MSR msr,double dStep,
 		}
 	else {
 		dPartAvg = dCellAvg = 0;
+#ifdef PLANETS
+		/*
+		 ** This is allowed to happen in the Solar System model because a
+		 ** time-step rung may be left vacant following a merger event.
+		 */
+#else /* PLANETS */
 		printf("WARNING: no particles found!\n");
+#endif /* !PLANETS */
 		}
 	*pnActive = out.nActive;
 	iP = 1.0/msr->nThreads;
@@ -1644,6 +1704,7 @@ void msrGravity(MSR msr,double dStep,
 	dWMin = out.dWMin;
 	dIMin = out.dIMin;
 	dEMin = out.dEMin;
+#ifndef VERY_QUIET
 	printf("dPartAvg:%f dCellAvg:%f\n",dPartAvg,dCellAvg);
 	printf("Walk CPU     Avg:%10f Max:%10f Min:%10f\n",dWAvg,dWMax,dWMin);
 	printf("Interact CPU Avg:%10f Max:%10f Min:%10f\n",dIAvg,dIMax,dIMin);
@@ -1661,6 +1722,7 @@ void msrGravity(MSR msr,double dStep,
 		printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
 		printf("\n");
 		}
+#endif /* VERY_QUIET */
 	}
 
 
@@ -1707,7 +1769,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 
 #ifdef PLANETS
 	msrDoCollisions(msr,dTime,dDelta);
-#endif
+#endif /* PLANETS */
 
 	if (msr->param.bCannonical) {
 		in.dDelta = msrComoveDriftFac(msr,dTime,dDelta);
@@ -2706,7 +2768,7 @@ void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta,
 			dTime += 0.5*dDelta;
 			msrInitDt(msr);
 			msrDensityStep(msr, dTime);
-#ifdef PLANETS
+#ifdef SMOOTH_STEP
 			msrSmooth(msr,dTime,SMX_TIMESTEP,0);
 #endif
 			msrDtToRung(msr, iRung, dDelta, 0);
@@ -2757,6 +2819,7 @@ void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta,
 
 void msrRungStats(MSR msr)
 {
+#ifndef NO_RUNG_STATS
 	struct inRungStats in;
 	struct outRungStats out;
 	int i;
@@ -2769,6 +2832,7 @@ void msrRungStats(MSR msr)
 		printf("%d",out.nParticles);
 		}
 	printf(")\n");
+#endif /* NO_RUNG_STATS */
 	}
 
 
@@ -2798,7 +2862,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			    msrBuildTree(msr,0,dMass,1);
 			    msrDensityStep(msr, dTime);
 			    }
-#ifdef PLANETS
+#ifdef SMOOTH_STEP
 			msrBuildTree(msr,0,dMass,1);
 			msrSmooth(msr,dTime,SMX_TIMESTEP,0);
 #endif
@@ -2886,18 +2950,9 @@ void msrTopStepKDK(MSR msr,
 		    msrAccelStep(msr, dTime);
 		if(msr->param.bAAdot)
 		    msrAdotStep(msr, dTime);
-#ifdef PLANETS
+#ifdef SMOOTH_STEP
 		msrBuildTree(msr,0,dMass,1);
 		msrSmooth(msr,dTime,SMX_TIMESTEP,0);
-#endif
-#ifdef PLANETS /*DEBUG -- diagnostic for testing
-		{
-		char achFile[256];
-		msrReorder(msr);
-		(void) sprintf(achFile,"%s.pl1",msrOutName(msr));
-		msrOutArray(msr,achFile,OUT_DT_ARRAY);
-		exit(0);
-		}*/
 #endif
 		msrDtToRung(msr, iRung, dDelta, 1);
 		if (iRung == 0) msrRungStats(msr);
@@ -3157,7 +3212,7 @@ double msrReadSS(MSR msr)
 	if (msr->param.bParaRead)
 	    pstReadSS(msr->pst,&in,sizeof(in),NULL,NULL);
 	else {
-		printf("Only parallel read supported for PLANETS\n");
+		printf("Only parallel read supported for Planets\n");
 		_msrExit(msr);
 		}
 	if (msr->param.bVerbose) puts("Input file successfully read.");
@@ -3227,7 +3282,7 @@ void msrWriteSS(MSR msr,char *pszFileName,double dTime)
 	if(msr->param.bParaWrite)
 	    pstWriteSS(msr->pst,&in,sizeof(in),NULL,NULL);
 	else {
-		printf("Only parallel write supported for PLANETS\n");
+		printf("Only parallel write supported for Planets\n");
 		_msrExit(msr);
 		}
 
@@ -3241,73 +3296,83 @@ void msrDoCollisions(MSR msr,double dTime,double dDelta)
 	struct inDoCollision inDo;
 	struct outDoCollision outDo;
 	int iDum;
-
-#ifdef VERBOSE_COLLISION
+#ifndef VERY_QUIET
 	int sec,dsec;
-#endif
+#endif /* VERY_QUIET */
 
-	msrActiveRung(msr,0,1); /* must consider all particles *//*DEBUG really?*/
+	msrActiveRung(msr,0,1); /* must consider ALL particles! */
 	smooth.nSmooth = msr->param.nSmooth;
 	smooth.bPeriodic = msr->param.bPeriodic;
 	smooth.bSymmetric = 0;
 	smooth.iSmoothType = SMX_COLLISION;
 	smooth.smf.pkd = NULL; /* set in smInitialize() */
-#ifdef VERBOSE_COLLISION
-	(void) printf("Beginning collision search (dTime=%e,dDelta=%e)...\n",dTime,dDelta);
+#ifndef VERY_QUIET
+	printf("Start collision search (dTime=%e,dDelta=%e)...\n",dTime,dDelta);
 	sec = time(0);
-#endif
+#endif /* VERY_QUIET */
 	smooth.smf.dStart = 0;
 	smooth.smf.dEnd = dDelta;
 	do {
-		if (msr->iTreeType != MSR_TREE_DENSITY)
-			msrBuildTree(msr,0,-1.0,1);
+		if (msr->iTreeType != MSR_TREE_DENSITY) msrBuildTree(msr,0,-1.0,1);
 		pstSmooth(msr->pst,&smooth,sizeof(smooth),NULL,NULL);
 		pstFindCollision(msr->pst,NULL,0,&find,&iDum);
 		if (COLLISION(find.dImpactTime)) {
+			COLLIDER *p1=&outDo.Collider1,*p2=&outDo.Collider2,*pOut=outDo.Out;
+
 			inDo.iPid1 = find.Collider1.id.iPid;
 			inDo.iPid2 = find.Collider2.id.iPid;
+			inDo.iOutcomes = msr->param.iOutcomes;
+			inDo.dEpsN = msr->param.dEpsN;
+			inDo.dEpsT = msr->param.dEpsT;
 			pstDoCollision(msr->pst,&inDo,sizeof(inDo),&outDo,&iDum);
 			msrAddDelParticles(msr);
 			smooth.smf.dStart = find.dImpactTime;
-#ifdef VERBOSE_COLLISION
-			{
-			FILE *fp = fopen("collision.log","a");/*DEBUG should add DataSubPath, etc.*/
-			COLLIDER *p1=&outDo.Collider1,*p2=&outDo.Collider2,*pOut=outDo.Out;
-			int i;
+			if (msr->param.bDoCollLog) { /* log collision if requested */
+				FILE *fp = NULL;
+				int i;
 
-			(void) fprintf(fp,"#COLLISION#T=%e\n",dTime + find.dImpactTime);
-			(void) fprintf(fp,"#COLLISION#(%i:%i):M=%e,R=%e,r=(%e,%e,%e),"
-						   "v=(%e,%e,%e),w=(%e,%e,%e)\n",p1->id.iPid,
-						   p1->id.iIndex,p1->fMass,p1->fRadius,p1->r[0],
-						   p1->r[1],p1->r[2],p1->v[0],p1->v[1],p1->v[2],
-						   p1->w[0],p1->w[1],p1->w[2]);
-			(void) fprintf(fp,"#COLLISION#(%i:%i):M=%e,R=%e,r=(%e,%e,%e),"
-						   "v=(%e,%e,%e),w=(%e,%e,%e)\n",p2->id.iPid,
-						   p2->id.iIndex,p2->fMass,p2->fRadius,p2->r[0],
-						   p2->r[1],p2->r[2],p2->v[0],p2->v[1],p2->v[2],
-						   p2->w[0],p2->w[1],p2->w[2]);
-			(void) fprintf(fp,"#COLLISION#IMPACT ENERGY=%e==>outcome %s\n",
-						   outDo.dImpactEnergy,
-						   outDo.dImpactEnergy < E_BOUNCE ? "MERGE" :
-						   outDo.dImpactEnergy < E_FRAG ? "BOUNCE" : "FRAG");
-			for (i=0;i<outDo.nOut;++i) {
-				(void) fprintf(fp,"#COLLISION#out%i:M=%e,R=%e,r=(%e,%e,%e),"
-							   "v=(%e,%e,%e),w=(%e,%e,%e)\n",i,pOut[i].fMass,
-							   pOut[i].fRadius,pOut[i].r[0],pOut[i].r[1],
-							   pOut[i].r[2],pOut[i].v[0],pOut[i].v[1],
-							   pOut[i].v[2],pOut[i].w[0],pOut[i].w[1],
-							   pOut[i].w[2]);
-				}
-			(void) fclose(fp);
-			}
-#endif
-			}
+				if (dTime == 0) fp = fopen(msr->param.achCollLog,"w");
+				else fp = fopen(msr->param.achCollLog,"a");
+				assert(fp);
+				p1->id.iOrder,p2->id.iOrder);
+				fprintf(fp,"COLLISION:T=%e\n",dTime + find.dImpactTime);
+				fprintf(fp,"***1:pid=%i,idx=%i,ord=%i,M=%e,R=%e,dt=%e,"
+						"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
+						p1->id.iPid,p1->id.iIndex,p1->id.iOrder,
+						p1->fMass,p1->fRadius,p1->dt,
+						p1->r[0],p1->r[1],p1->r[2],
+						p1->v[0],p1->v[1],p1->v[2],
+						p1->w[0],p1->w[1],p1->w[2]);
+				fprintf(fp,"***2:pid=%i,idx=%i,ord=%i,M=%e,R=%e,dt=%e,"
+						"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
+						p2->id.iPid,p2->id.iIndex,p2->id.iOrder,
+						p2->fMass,p2->fRadius,p2->dt,
+						p2->r[0],p2->r[1],p2->r[2],
+						p2->v[0],p2->v[1],p2->v[2],
+						p2->w[0],p2->w[1],p2->w[2]);
+				fprintf(fp,"***IMPACT ENERGY=%e outcome=%s\n",
+						outDo.dImpactEnergy,
+						outDo.iOutcome & MERGE ? "MERGE" :
+						outDo.iOutcome & BOUNCE ? "BOUNCE" :
+						outDo.iOutcome & FRAG ? "FRAG" : "UNKNOWN");
+				for (i=0;i<outDo.nOut;++i) {
+					fprintf(fp,"***out%i:pid=%i,idx=%i,ord=%i,M=%e,R=%e,"
+							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",i,
+							pOut[i].id.iPid,pOut[i].id.iIndex,pOut[i].id.iOrder,
+							pOut[i].fMass,pOut[i].fRadius,
+							pOut[i].r[0],pOut[i].r[1],pOut[i].r[2],
+							pOut[i].v[0],pOut[i].v[1],pOut[i].v[2],
+							pOut[i].w[0],pOut[i].w[1],pOut[i].w[2]);
+					}
+				fclose(fp);
+				} /* if logging */
+			} /* if collision */
 		} while (COLLISION(find.dImpactTime) &&
 				 smooth.smf.dStart < smooth.smf.dEnd);
-#ifdef VERBOSE_COLLISION
+#ifndef VERY_QUIET
 	dsec = time(0) - sec;
-	(void) printf("Collision search completed, time = %i sec\n",dsec);
-#endif
+	printf("Collision search completed, time = %i sec\n",dsec);
+#endif /* VERY_QUIET */
 	}
 
 #endif /* PLANETS */
