@@ -242,9 +242,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoDensity = 1;
 	prmAddParam(msr->prm,"bDoDensity",0,&msr->param.bDoDensity,sizeof(int),
 				"den","enable/disable density outputs = +den");
-	msr->param.bDohOutput = 1;
+	msr->param.bDohOutput = 0;
 	prmAddParam(msr->prm,"bDohOutput",0,&msr->param.bDohOutput,sizeof(int),
 				"hout","enable/disable h outputs = +hout");
+	msr->param.bDoSphhOutput = 0;
+	prmAddParam(msr->prm,"bDoSphhOutput",0,&msr->param.bDoSphhOutput,sizeof(int),
+				"sphhout","enable/disable Sph h outputs = +sphhout");
 	msr->param.bDodtOutput = 0;
 	prmAddParam(msr->prm,"bDodtOutput",0,&msr->param.bDodtOutput,sizeof(int),
 				"dtout","enable/disable dt outputs = -dtout");

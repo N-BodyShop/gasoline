@@ -37,10 +37,7 @@ int main(int argc,char **argv)
 	long lSec,lStart;
 	int i,iStep,iSec,nActive,iStop = 0;
 
-	char achDenMask[256],achdtMask[256];
-#ifdef GASOLINE
-	char achHMask[256],achHIMask[256],achHeIMask[256],achHeIIMask[256];
-#endif
+	char achBaseMask[256];
 
 #ifdef TINY_PTHREAD_STACK
 	static int first = 1;
@@ -180,20 +177,7 @@ int main(int argc,char **argv)
 	msrDrift(msr,dTime,0.0); /* also finds initial overlaps for COLLISIONS */
 	msrMassCheck(msr,dMass,"After initial msrDrift");
 
-	(void) strncpy(achDenMask,msr->param.achDigitMask,256);
-	(void) strncat(achDenMask,".den",256);
-	(void) strncpy(achdtMask,msr->param.achDigitMask,256);
-	(void) strncat(achdtMask,".dt",256);
-#ifdef GASOLINE
-	(void) strncpy(achHMask,msr->param.achDigitMask,256);
-	(void) strncat(achHMask,".H",256);
-	(void) strncpy(achHIMask,msr->param.achDigitMask,256);
-	(void) strncat(achHIMask,".HI",256);
-	(void) strncpy(achHeIMask,msr->param.achDigitMask,256);
-	(void) strncat(achHeIMask,".HeI",256);
-	(void) strncpy(achHeIIMask,msr->param.achDigitMask,256);
-	(void) strncat(achHeIIMask,".HeII",256);
-#endif
+	(void) strncpy(achBaseMask,msr->param.achDigitMask,256);
 
 	if (msrSteps(msr) > 0) {
 		/*
@@ -332,40 +316,56 @@ int main(int argc,char **argv)
 #else
 				msrWriteTipsy(msr,achFile,dTime);
 #endif
-				if (msrDoDensity(msr)) {
+				if (msrDoDensity(msr) || msr->param.bDohOutput) {
 					msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 					msrDomainDecomp(msr,0,1);
-					msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 					msrBuildTree(msr,0,dMass,1);
 					msrSmooth(msr,dTime,SMX_DENSITY,1);
-					msrReorder(msr);
-					sprintf(achFile,achDenMask,msrOutName(msr),iStep);
+				        }
+				if (msrDoDensity(msr)) {
+				        msrReorder(msr);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".den",256);
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
-					msrMassCheck(msr,dMass,"After msrOutArray in OutTime");
-					}
-				if (msr->param.bDodtOutput) {
-					msrReorder(msr);
-					sprintf(achFile,achdtMask,msrOutName(msr),iStep);
-					msrReorder(msr);
-					msrOutArray(msr,achFile,OUT_DT_ARRAY);
-					}
-#ifdef GASOLINE				
+				        }
 				if (msr->param.bDohOutput) {
 					msrReorder(msr);
-					sprintf(achFile,achHMask,msrOutName(msr),iStep);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".H",256);
+					msrOutArray(msr,achFile,OUT_H_ARRAY);
+					}
+#ifdef GASOLINE				
+				if (msrDoDensity(msr) || msr->param.bDohOutput || msr->param.bDoSphhOutput) {
+					msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+					msrDomainDecomp(msr,0,1);
+					msrBuildTree(msr,1,-1.0,1);
+					msrSmooth(msr,dTime,SMX_DENSITY,1);
+					}
+				if (msr->param.bDoSphhOutput) {
 					msrReorder(msr);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".SPHH",256);
 					msrOutArray(msr,achFile,OUT_H_ARRAY);
 					}
 				if (msr->param.bDoIonOutput) {
 					msrReorder(msr);
-					sprintf(achFile,achHIMask,msrOutName(msr),iStep);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".HI",256);
 					msrOutArray(msr,achFile,OUT_HI_ARRAY);
-					sprintf(achFile,achHeIMask,msrOutName(msr),iStep);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".HeI",256);
 					msrOutArray(msr,achFile,OUT_HeI_ARRAY);
-					sprintf(achFile,achHeIIMask,msrOutName(msr),iStep);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".HeII",256);
 					msrOutArray(msr,achFile,OUT_HeII_ARRAY);
 					}
 #endif
+				if (msr->param.bDodtOutput) {
+					msrReorder(msr);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".dt",256);
+					msrOutArray(msr,achFile,OUT_DT_ARRAY);
+					}
 				/*
 				 ** Don't allow duplicate outputs.
 				 */
@@ -397,18 +397,72 @@ int main(int argc,char **argv)
 			}
 		if (msrLogInterval(msr)) (void) fclose(fpLog);
 		}
+	
 	else {
+		struct inInitDt in;
+		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+
+		in.dDelta = 1e37; /* large number */
+		pstInitDt(msr->pst,&in,sizeof(in),NULL,NULL);
+	        msrInitAccel(msr);
+    
+		fprintf(stderr,"Initialized Accel and dt\n");
+#ifdef GASOLINE				
+		if (msr->nGas > 0) {
+		        msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+			msrDomainDecomp(msr,0,1);
+			msrBuildTree(msr,1,-1.0,1);
+			msrSmooth(msr,dTime,SMX_DENSITY,1);
+			if (msr->param.bBulkViscosity) {
+			  msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+			  msrGetGasPressure(msr);
+			  msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
+			  } 
+			else {
+			  if (msr->param.bViscosityLimiter)
+			    msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+			  msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime);
+			  msrGetGasPressure(msr);
+			  msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
+			  }
+			if (msr->param.bSN) msrAddSupernova(msr, dTime);
+
+			if (msr->param.bSphStep) {
+		          fprintf(stderr,"Adding SphStep dt\n");
+			  msrSphStep(msr,dTime);
+			  }
+		        }
+
+		if (msr->param.bDoSphhOutput) {
+		        msrReorder(msr);
+			sprintf(achFile,"%s.SPHH",msrOutName(msr));
+			msrOutArray(msr,achFile,OUT_H_ARRAY);
+		        }
+		if (msr->param.bDoIonOutput) {
+		        msrReorder(msr);
+			sprintf(achFile,"%s.HI",msrOutName(msr));
+			msrOutArray(msr,achFile,OUT_HI_ARRAY);
+
+			sprintf(achFile,"%s.HeI",msrOutName(msr));
+			msrOutArray(msr,achFile,OUT_HeI_ARRAY);
+
+			sprintf(achFile,"%s.HeII",msrOutName(msr));
+			msrOutArray(msr,achFile,OUT_HeII_ARRAY);
+		        }
+#endif
 		/*
 		 ** Build tree, activating all particles first (just in case).
 		 */
-		if (msrDoDensity(msr)) {
+		if (msrDoDensity(msr) || msr->param.bDensityStep) {
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 			msrDomainDecomp(msr,0,1);
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-			msrBuildTree(msr,0,dMass,1);
+			msrBuildTree(msr,0,-1.0,1);
 			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Density");
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
 			msrMassCheck(msr,dMass,"After msrSmooth in OutSingle Density");
+		        } 
+		if (msrDoDensity(msr)) {
 			msrReorder(msr);
 			msrMassCheck(msr,dMass,"After msrReorder in OutSingle Density");
 			sprintf(achFile,"%s.den",msrOutName(msr));
@@ -450,7 +504,6 @@ int main(int argc,char **argv)
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Gravity");
-			msrInitAccel(msr);
 			msrGravity(msr,0.0,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			msrMassCheck(msr,dMass,"After msrGravity in OutSingle Gravity");
 			msrReorder(msr);
@@ -462,8 +515,6 @@ int main(int argc,char **argv)
 			msrReorder(msr);
 			msrOutArray(msr,achFile,OUT_POT_ARRAY);
 			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Gravity");
-			msrInitDt(msr);
-			fprintf(stderr,"Initialized dt\n");
 			if (msr->param.bGravStep) {
 			        fprintf(stderr,"Adding GravStep dt\n");
 				msrGravStep(msr,dTime);
@@ -473,31 +524,22 @@ int main(int argc,char **argv)
 				msrAccelStep(msr,dTime);
 				}
 			}
-		if (msr->param.bDodtOutput) {
-			msrReorder(msr);
-			sprintf(achFile,achdtMask,msrOutName(msr),0);
-			msrOutArray(msr,achFile,OUT_DT_ARRAY);
-			msrDtToRung(msr,0,msrDelta(msr),1);
-			msrRungStats(msr);
-			}
-#ifdef GASOLINE				
-		if (msr->param.bDohOutput) {
-			msrReorder(msr);
-			sprintf(achFile,achHMask,msrOutName(msr),0);
-			msrOutArray(msr,achFile,OUT_H_ARRAY);
-			}
-		if (msr->param.bDoIonOutput) {
-			msrReorder(msr);
-			sprintf(achFile,achHIMask,msrOutName(msr),0);
-			msrOutArray(msr,achFile,OUT_HI_ARRAY);
-			sprintf(achFile,achHeIMask,msrOutName(msr),0);
-			msrOutArray(msr,achFile,OUT_HeI_ARRAY);
-			sprintf(achFile,achHeIIMask,msrOutName(msr),0);
-			msrOutArray(msr,achFile,OUT_HeII_ARRAY);
-			}
-#endif
+
+		if (msr->param.bDensityStep) {
+		    fprintf(stderr,"Adding DensStep dt\n");
+		    msrDensityStep(msr,dTime);
+		        }
+
+		msrReorder(msr);
+		sprintf(achFile,"%s.dt",msrOutName(msr));
+		msrOutArray(msr,achFile,OUT_DT_ARRAY);
+		msrDtToRung(msr,0,msrDelta(msr),1);
+		msrRungStats(msr);
 		}
+	
 	msrFinish(msr);
 	mdlFinish(mdl);
 	return 0;
 	}
+
+

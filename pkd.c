@@ -2141,7 +2141,11 @@ void pkdThreadTree(PKD pkd,int iCell,int iNext)
 		}
 	}
 
-
+/*
+ * Builds a binary tree by splitting the largest spatial axis in half
+ * The bounds for each subcell are recalculated (squeezed) to be exact
+ *
+ */
 void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		    int iOrder,int bTreeActiveOnly,int bGravity, KDN *pRoot)
 {
@@ -2203,6 +2207,12 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	}
 
 
+/*
+ * Builds a binary tree by splitting on the largest spatial axis
+ * so as to equal divide the particle by number
+ * After the tree is built the bounds for each subcell are later recalculated (squeezed) to be exact
+ *
+ */
 void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		   int iOrder,int bTreeActiveOnly,int bGravity, KDN *pRoot)
 {

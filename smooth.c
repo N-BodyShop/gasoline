@@ -1124,7 +1124,9 @@ void smSmooth(SMX smx,SMF *smf)
 				}
 			}
 		}
+	/*
 	printf("nSmoothed: %d\n",nSmoothed);
+	*/
 	}
 
 

@@ -30,7 +30,8 @@ struct parameters {
 	int bDensityStep;
 	int bNonSymp;
 	int bDoDensity;
-	int bDohOutput;
+ 	int bDohOutput;
+ 	int bDoSphhOutput;
 	int bDodtOutput;
 	int bDoIonOutput;
 	int bSymCool;
