@@ -3071,8 +3071,14 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
     tin.nFileEnd = in->nFileEnd;
     tin.iOrder = in->iOrder;
     tin.fExtraStore = in->fExtraStore;
+    tin.nDark = in->nDark;
+    tin.nGas = in->nGas;
+    tin.nStar = in->nStar;
     for(j = 0; j < 3; j++)
 		tin.fPeriod[j] = in->fPeriod[j];
+    tin.bStandard = 0;
+    tin.dvFac = 1;
+    tin.dTuFac = 1;
 
     pstOneNodeReadInit(msr->pst, &tin, sizeof(tin), nParts, &nid);
     assert(nid == msr->nThreads*sizeof(*nParts));

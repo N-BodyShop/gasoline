@@ -15,7 +15,7 @@ EXE = gasoline
 #CODEDEF = -DDEBUG -HSHRINK
 
 #ev6
-CC = ccc
+#CC = ccc
 #CODEDEF = -DGASOLINE -DCCC
 
 #CC = cc

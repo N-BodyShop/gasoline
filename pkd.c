@@ -2980,6 +2980,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 	CHKPART cp;
 	long lStart;
 	int i,j;
+	char out[128];
 
 	pkd->nLocal = nLocal;
 	/*
@@ -3011,6 +3012,11 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		p->uPred = cp.u;
 		p->fMetals = cp.fMetals;
 		p->fTimeForm = 0.0;
+		if (pkdIsStar(pkd, p)) {
+		    sprintf(out,"iOrder: %d\n",p->iOrder);
+		    mdlDiag(pkd->mdl, out);
+		    fprintf(stderr,"iOrder: %d\n",p->iOrder);
+		}
 		mdlassert(pkd->mdl, !pkdIsStar(pkd, p));
 #ifndef NOCOOLING		
 		/* Place holders -- later fixed in pkdInitEnergy */
