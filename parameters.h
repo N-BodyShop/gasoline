@@ -156,7 +156,7 @@ struct parameters {
 	double dhMinOverSoft;
 	int    bDoGas;
 	int    bSphStep;
-#ifndef NOCOOLING
+#if defined(GASOLINE) && !defined(NOCOOLING)
 	COOLPARAM CoolParam;
 #endif
 	int    bSN;
