@@ -1169,6 +1169,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		puts("ERROR: must specify positive x period");
 		_msrExit(msr,1);
 		}
+	if (msr->param.bPatch && msr->param.bHeliocentric) {
+		puts("ERROR: Patch and Helocentric are incompatible");
+		_msrExit(msr,1);
+		}
 #else
 	if (msr->param.bPatch) {
 		puts("ERROR: bPatch set without SLIDING_PATCH");
