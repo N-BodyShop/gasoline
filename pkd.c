@@ -3829,7 +3829,7 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,int bAll, int *pnMaxRun
 			if(bAll) {          /* Assign all rungs at iRung and above */
 			        assert(pkd->pStore[i].fSoft > 0);
 			        assert(pkd->pStore[i].dt > 0);
-				iSteps = dDelta/pkd->pStore[i].dt;
+				iSteps = floor(dDelta/pkd->pStore[i].dt);
 				/* insure that integer boundary goes
 				   to the lower rung. */
 				if(fmod(dDelta,pkd->pStore[i].dt) == 0.0)
