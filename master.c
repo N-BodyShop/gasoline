@@ -109,9 +109,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDiag = 0;
 	prmAddParam(msr->prm,"bDiag",0,&msr->param.bDiag,sizeof(int),"d",
 		"enable/disable per thread diagnostic output");
-	msr->param.bOverwrite = 0;
+	msr->param.bOverwrite = 1;
 	prmAddParam(msr->prm,"bOverwrite",0,&msr->param.bOverwrite,sizeof(int),
-				"overwrite","enable/disable overwrite safety lock = -overwrite");
+				"overwrite","enable/disable overwrite safety lock = +overwrite");
 	msr->param.bVWarnings = 1;
 	prmAddParam(msr->prm,"bVWarnings",0,&msr->param.bVWarnings,sizeof(int),
 				"vwarnings","enable/disable warnings = +vwarnings");
