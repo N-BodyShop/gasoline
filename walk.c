@@ -51,9 +51,6 @@
 		ilcn.x = x;\
 		ilcn.y = y;\
 		ilcn.z = z;\
-		ilcn.vx = pkdn->v[0];\
- 		ilcn.vy = pkdn->v[1];\
- 		ilcn.vz = pkdn->v[2];\
 		}\
 	}
 #else
@@ -102,9 +99,6 @@
 		ilcn.x = x;\
 		ilcn.y = y;\
 		ilcn.z = z;\
-		ilcn.vx = pkdn->v[0];\
- 		ilcn.vy = pkdn->v[1];\
- 		ilcn.vz = pkdn->v[2];\
 		}\
 	}
 #endif
@@ -162,9 +156,6 @@ void pkdLocalWalk(PKD pkd,int iBucket,FLOAT fSoftMax,int bRep,FLOAT rOffset[3],
 						pkd->ilp[nPart].x = p[pj].r[0] + rOffset[0];
 						pkd->ilp[nPart].y = p[pj].r[1] + rOffset[1];
 						pkd->ilp[nPart].z = p[pj].r[2] + rOffset[2];
-						pkd->ilp[nPart].vx = p[pj].v[0];
-						pkd->ilp[nPart].vy = p[pj].v[1];
-						pkd->ilp[nPart].vz = p[pj].v[2];
 						pkd->ilp[nPart].m = p[pj].fMass;
 						pkd->ilp[nPart].h = p[pj].fSoft;
 						}
@@ -201,9 +192,6 @@ void pkdLocalWalk(PKD pkd,int iBucket,FLOAT fSoftMax,int bRep,FLOAT rOffset[3],
 				pkd->ilcs[nCellSoft].x = x;
 				pkd->ilcs[nCellSoft].y = y;
 				pkd->ilcs[nCellSoft].z = z;
-				pkd->ilcs[nCellSoft].vx = pkdn->v[0];
-				pkd->ilcs[nCellSoft].vy = pkdn->v[1];
-				pkd->ilcs[nCellSoft].vz = pkdn->v[2];
 				pkd->ilcs[nCellSoft].xx = pkdn->mom.Qxx;
 				pkd->ilcs[nCellSoft].yy = pkdn->mom.Qyy;
 				pkd->ilcs[nCellSoft].zz = pkdn->mom.Qzz;
@@ -292,9 +280,6 @@ void pkdRemoteWalk(PKD pkd,int iBucket,FLOAT fSoftMax,int id,FLOAT rOffset[3],
 					pkd->ilp[nPart].x = p->r[0] + rOffset[0];
 					pkd->ilp[nPart].y = p->r[1] + rOffset[1];
 					pkd->ilp[nPart].z = p->r[2] + rOffset[2];
-					pkd->ilp[nPart].vx = p->v[0];
-					pkd->ilp[nPart].vy = p->v[1];
-					pkd->ilp[nPart].vz = p->v[2];
 					pkd->ilp[nPart].m = p->fMass;
 					pkd->ilp[nPart].h = p->fSoft;
 					mdlRelease(pkd->mdl,CID_PARTICLE,p);
@@ -332,9 +317,6 @@ void pkdRemoteWalk(PKD pkd,int iBucket,FLOAT fSoftMax,int id,FLOAT rOffset[3],
 				pkd->ilcs[nCellSoft].x = x;
 				pkd->ilcs[nCellSoft].y = y;
 				pkd->ilcs[nCellSoft].z = z;
-				pkd->ilcs[nCellSoft].vx = pkdn->v[0];
-				pkd->ilcs[nCellSoft].vy = pkdn->v[1];
-				pkd->ilcs[nCellSoft].vz = pkdn->v[2];
 				pkd->ilcs[nCellSoft].xx = pkdn->mom.Qxx;
 				pkd->ilcs[nCellSoft].yy = pkdn->mom.Qyy;
 				pkd->ilcs[nCellSoft].zz = pkdn->mom.Qzz;
@@ -460,9 +442,6 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
 								pkd->ilcs[pkd->nCellSoft].x = x;
 								pkd->ilcs[pkd->nCellSoft].y = y;
 								pkd->ilcs[pkd->nCellSoft].z = z;
-								pkd->ilcs[pkd->nCellSoft].vx = pkdn->v[0];
-								pkd->ilcs[pkd->nCellSoft].vy = pkdn->v[1];
-								pkd->ilcs[pkd->nCellSoft].vz = pkdn->v[2];
 								pkd->ilcs[pkd->nCellSoft].xx = pkdn->mom.Qxx;
 								pkd->ilcs[pkd->nCellSoft].yy = pkdn->mom.Qyy;
 								pkd->ilcs[pkd->nCellSoft].zz = pkdn->mom.Qzz;

@@ -106,7 +106,6 @@ typedef struct kdNode {
 	double fMass;
 	double fSoft;
 	FLOAT r[3];
-	FLOAT v[3];
 	struct pkdCalcCellStruct mom;
 	double fOpen2;
 	} KDN;
@@ -114,13 +113,11 @@ typedef struct kdNode {
 typedef struct ilPart {
 	double m,h;
 	double x,y,z;
-	double vx,vy,vz;
 	} ILP;
 
 typedef struct ilCellSoft {
 	double m,h;
 	double x,y,z;
-	double vx,vy,vz;
 	double xx,yy,zz,xy,xz,yz;
 	} ILCS;
 
@@ -130,7 +127,6 @@ typedef struct ilCellSoft {
 typedef struct ilCellNewt {
 	double m;
 	double x,y,z;
-	double vx,vy,vz;
 	double xx,yy,xy,xz,yz;
 	double zz;
 	double xxx,xyy,xxy,yyy,xxz,yyz,xyz;
