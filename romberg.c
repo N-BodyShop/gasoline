@@ -51,7 +51,8 @@ dRombergO(void *CTX,double (*func)(void *, double),double a,double b,
 			double tlknew = (pow(9.0, i+1.)*tlk[i] - tlktmp)
 				/(pow(9.0, i+1.) - 1.0);
 	    
-			tlktmp = tlk[i+1];
+			if(i+1 < n)
+			    tlktmp = tlk[i+1];
 			tlk[i+1] = tlknew;
 			}
 		tll = tllnew;
