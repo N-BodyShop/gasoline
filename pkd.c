@@ -1694,6 +1694,9 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		mdlFinishCache(pkd->mdl,CID_CELL);
 		mdlFree(pkd->mdl,pkd->kdNodes);
 		}
+
+	assert(n > 0);		/* XXX should be fixed */
+	
 	if(n == 0) {
 	    pkd->kdNodes = NULL;
 	    return;
@@ -2366,6 +2369,10 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 			pkd->pStore[i].r[j] = cp.r[j];
 			pkd->pStore[i].v[j] = cp.v[j];
 			}
+#ifdef GASOLINE
+		pkd->pStore[i].u = cp.u;
+		pkd->pStore[i].uPred = cp.u;
+#endif
 #ifdef COLLISIONS
 		for (j=0;j<3;++j)
 			pkd->pStore[i].w[j] = cp.w[j];
@@ -2407,6 +2414,9 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 			cp.r[j] = pkd->pStore[i].r[j];
 			cp.v[j] = pkd->pStore[i].v[j];
 			}
+#ifdef GASOLINE
+		cp.u = pkd->pStore[i].u;
+#endif
 #ifdef COLLISIONS
 		for (j=0;j<3;++j)
 			cp.w[j] = pkd->pStore[i].w[j];

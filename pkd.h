@@ -85,6 +85,9 @@ typedef struct chkParticle {
 	FLOAT fSoft;
 	FLOAT r[3];
 	FLOAT v[3];
+#ifdef GASOLINE
+	FLOAT u;
+#endif
 #ifdef COLLISIONS
         FLOAT w[3];
 	int iColor;

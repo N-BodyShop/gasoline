@@ -101,11 +101,11 @@ int main(int argc,char **argv)
 #endif /* COLLISIONS */
 			}
 		if(msrKDK(msr) || msr->param.bEpsVel) {
+			msrActiveRung(msr,0,1);
 			msrInitAccel(msr);
 #ifdef GASOLINE
 			msrInitSph(msr, dTime);
 #endif
-			msrActiveRung(msr,0,1);
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree");
 			if (msrDoGravity(msr)) {
@@ -178,11 +178,11 @@ int main(int argc,char **argv)
 		/*
 		 ** Build tree, activating all particles first (just in case).
 		 */
+		msrActiveRung(msr,0,1);
 		msrInitAccel(msr);
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
 #endif
-		msrActiveRung(msr,0,1);
 		msrBuildTree(msr,0,dMass,0);
 		msrMassCheck(msr,dMass,"After msrBuildTree");
 		if (msrDoGravity(msr)) {
