@@ -2950,13 +2950,13 @@ void pkdNFWSpheroid(PKD pkd)
 			double A, fPot;
 			double cx = r*(c/r_200);
 			
-			if (r < eps) {
+			if (cx < eps) {
 			  fPot = G*M_const*c/r_200* ((1./6.)*( cx*cx - eps*eps )/(eps*(1+eps)*(1+eps)) 
 			    - (1./3.)*eps/(1+eps)/(1+eps) - 1/(1+eps));
 
 			  A = G*M_const* 		
 			    (1./3.)/(eps*(1+eps)*(1+eps))
-			    *r_200*r_200*r_200/(c*c*c);
+			    *(c*c*c)/(r_200*r_200*r_200);
 			}			  
 			else {
 			  fPot = G*M_const*c/r_200 * 
