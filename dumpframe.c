@@ -514,7 +514,7 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 			nitem = sscanf( line, "%s %lf %lf %lf", command, &fs.target[0], &fs.target[1], &fs.target[2] );
 			assert( nitem == 4 );
 			}
-		else if (!strcmp( command, "eye") ) {
+		else if (!strcmp( command, "eye") || !strcmp( command, "eye1") ) {
 			nitem = sscanf( line, "%s %lf %lf %lf", command, &fs.eye[0], &fs.eye[1], &fs.eye[2] );
 			assert( nitem == 4 );
 			}
@@ -726,7 +726,7 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
 	if (ifs == -1) {
 		assert( df->nFrameSetup > 1 );
 		if (dTime < df->fs[1].dTime) { /* Outside range */
-			fprintf(stderr,"DF Initial Time outside camera direction table: %g < %g\n",dTime,df->fs[1].dTime);
+			fprintf(stderr,"DF WARNING Initial Time outside camera direction table: %g < %g\n",dTime,df->fs[1].dTime);
 			df->iFrameSetup = ifs = 0;
 			}
 		else {
@@ -735,7 +735,7 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
 			if (ifs >= df->nFrameSetup-1) { /* Outside Range */
 				if (dTime == df->fs[df->nFrameSetup-1].dTime && ifs > 1) ifs--;
 				else {
-					fprintf(stderr,"DF Initial Time outside camera direction table: %g > %g\n",dTime,df->fs[df->nFrameSetup-1].dTime);
+					fprintf(stderr,"DF WARNING Initial Time outside camera direction table: %g > %g\n",dTime,df->fs[df->nFrameSetup-1].dTime);
 					df->iFrameSetup = ifs = 0;
 					}
 				}
@@ -743,11 +743,11 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
 			dfGetCoeff( df, ifs );
 			}
 		}
-	else if (ifs) {
-		while (dTime > df->fs[ifs+1].dTime) { 
+	else if (df->nFrameSetup > 1) {
+		while (dTime > df->fs[ifs+1].dTime && (!ifs && dTime >= df->fs[ifs+1].dTime)) { 
 			ifs++;
 			if (ifs >= df->nFrameSetup-1) {
-				fprintf(stderr,"DF Time outside camera direction table: %g > %g\n",dTime,df->fs[df->nFrameSetup-1].dTime);
+				fprintf(stderr,"DF WARNING Time outside camera direction table: %g > %g\n",dTime,df->fs[df->nFrameSetup-1].dTime);
 				df->iFrameSetup = ifs = 0;
 				break;
 				}
