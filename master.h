@@ -106,7 +106,12 @@ void msrTopStepKDK(MSR msr,
 		   int iKickRung, /* Gravity on all rungs from iRung
 				     to iKickRung */
 		   int iAdjust,	/* Do an adjust? */
-		   double *pdActiveSum);
+		   double *pdActiveSum,
+		   double *pdWMax,
+		   double *pdIMax,
+		   double *pdEMax,
+		   int *piSec);
+
 void msrRungStats(MSR);
 void msrActiveRung(MSR msr, int iRung, int bGreater);
 void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime,

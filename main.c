@@ -134,7 +134,8 @@ int main(int argc,char **argv)
 				dMultiEff = 0.0;
 				msrTopStepKDK(msr, iStep-1, dTime,
 					      msrDelta(msr), 0, 0, 1,
-					      &dMultiEff);
+					      &dMultiEff, &dWMax,
+					      &dIMax, &dEMax, &iSec);
 				msrRungStats(msr);
 				msrCoolVelocity(msr,dTime,dMass);	/* Supercooling if specified */
 				msrMassCheck(msr,dMass,"After CoolVelocity in KDK");

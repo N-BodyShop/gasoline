@@ -2530,11 +2530,13 @@ void msrTopStepKDK(MSR msr,
 		   int iKickRung, /* Gravity on all rungs from iRung
 				     to iKickRung */
 		   int iAdjust,	/* Do an adjust? */
-		   double *pdActiveSum)
+		   double *pdActiveSum,
+		   double *pdWMax,
+		   double *pdIMax,
+		   double *pdEMax,
+		   int *piSec)
 {
     double dMass = -1.0;
-    int iSec;
-    double dWMax, dIMax, dEMax;
     int nActive;
 
     if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
@@ -2555,11 +2557,13 @@ void msrTopStepKDK(MSR msr,
 	** Recurse.
 	*/
 	msrTopStepKDK(msr, dStep, dTime, 0.5*dDelta, iRung+1,
-		      iRung+1, 0, pdActiveSum);
+		      iRung+1, 0, pdActiveSum, pdWMax, pdIMax, pdEMax,
+		      piSec);
 	dStep += 1.0/(2 << iRung);
 	dTime += 0.5*dDelta;
 	msrTopStepKDK(msr, dStep, dTime, 0.5*dDelta, iRung+1,
-		      iKickRung, 1, pdActiveSum);
+		      iKickRung, 1, pdActiveSum, pdWMax, pdIMax, pdEMax,
+		      piSec);
 	}
     else {
 	if (msr->param.bVerbose) {
@@ -2573,7 +2577,7 @@ void msrTopStepKDK(MSR msr,
 	    }
 	msrActiveRung(msr, iKickRung, 1);
 	msrBuildTree(msr,0,dMass,0);
-	msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+	msrGravity(msr,dStep,piSec,pdWMax,pdIMax,pdEMax,&nActive);
 	*pdActiveSum += (double)nActive/msr->N;
 	}
     if (msr->param.bVerbose) {
