@@ -149,8 +149,10 @@ struct parameters {
 	double dSNHeatFraction;
 	int    bStarForm;
 	int    bFeedBack;
+#ifdef STARFORM
 	STFM   stfm;
 	FB     fb;
+#endif
 #ifdef GLASS
 	/*
 	 ** Additional parameters for GLASS.
