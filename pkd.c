@@ -1190,6 +1190,7 @@ void pkdFamily(PKD pkd,int iCell)
 {
     int l,u;
 
+    if (iCell == pkd->iRoot) pkd->kdNodes[iCell].iParent = -1;
     if (iCell == -1) return;
     else if (pkd->kdNodes[iCell].iDim != -1) {
 	l = pkd->kdNodes[iCell].iLower;

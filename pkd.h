@@ -186,51 +186,82 @@ typedef struct CacheStatistics {
 #define pkdRoot(iCell,id)\
 {\
 	id = -1;\
-	iCell = pkd->iRoot;\
+	iCell = ROOT;\
 	}
 
-#define pkdIsRoot(iCell,id)		((id==-1)?((iCell==pkd->iRoot)?1:0):0)
+#define pkdIsRoot(iCell,id)		((id==-1)?((iCell==ROOT)?1:0):0)
 
 #define pkdLower(pkd,iCell,id)\
 {\
 	if (id == -1) {\
 		id = pkd->kdTop[iCell].pLower;\
-		if (id != -1) iCell = pkd->iRoot;\
+		if (id != -1) {\
+		    iCell = pkd->iRoot;\
+		    iCell = pkd->kdNodes[iCell].iLower;\
+		    }\
+		else {\
+		    iCell = LOWER(iCell);\
+		    }\
 		}\
-	iCell = pkd->kdNodes[iCell].iLower;\
+	else {\
+  	   iCell = pkd->kdNodes[iCell].iLower;\
+	   }\
 	}
 
 #define pkdUpper(pkd,iCell,id)\
 {\
 	if (id == -1) {\
 		id = pkd->kdTop[iCell].pLower;\
-		if (id != -1) iCell = pkd->iRoot;\
+		if (id != -1) {\
+		    iCell = pkd->iRoot;\
+		    iCell = pkd->kdNodes[iCell].iUpper;\
+		    }\
+		else {\
+		    iCell = UPPER(iCell);\
+		    }\
 		}\
-	iCell = pkd->kdNodes[iCell].iUpper;\
+	else {\
+  	   iCell = pkd->kdNodes[iCell].iUpper;\
+	   }\
 	}
+
+#define pkdSibling(pkd,iCell,id)\
+{\
+    if (id == -1) {iCell = SIBLING(iCell);}\
+    else {iCell = pkd->kdNodes[iCell].iSibling;}\
+}
+
 
 #define pkdParent(pkd,iCell,id)\
 {\
+     if (id == -1) {\
+	iCell = PARENT(iCell);\
+	}\
+     else {\
 	iCell = pkd->kdNodes[iCell].iParent;\
-	if (iCell == pkd->iRoot) {\
-		if (id != -1) {\
-			iCell = pkd->piLeaf[id];\
-			id = -1;\
-			}\
-		}\
-	}
+	if (iCell == -1) {\
+		iCell = pkd->piLeaf[id];\
+		id = -1;\
+		iCell = PARENT(iCell);\
+   	        }\
+	}\
+     }
+
 
 #define pkdNext(pkd,iCell,id)\
 {\
-	iCell = pkd->kdNodes[iCell].iUpper;\
-	if (iCell == pkd->iRoot) {\
-		if (id != -1) {\
-			iCell = pkd->piLeaf[id];\
-			id = -1;\
-			iCell = pkd->kdNodes[iCell].iUpper;\
-			}\
-		}\
-	}
+     if (id == -1) {\
+	SETNEXT(iCell);\
+	}\
+     else {\
+	iCell = pkd->kdNodes[iCell].iNext;\
+	if (iCell == -1) {\
+		iCell = pkd->piLeaf[id];\
+		id = -1;\
+		SETNEXT(iCell);\
+   	        }\
+	}\
+     }
 
 
 double pkdGetTimer(PKD,int);

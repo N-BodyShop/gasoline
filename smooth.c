@@ -187,7 +187,7 @@ void smFinish(SMX smx)
 	}
 
 
-PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
+PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int pi)
 {
 	MDL mdl = smx->pkd->mdl;
 	KDN *c = smx->pkd->kdNodes;
@@ -209,9 +209,10 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 	 ** This could mearly be the closest to ri[3]! 
 	 ** Warning: in parallel ri[3] SHOULD be contained in the LOCAL DOMAIN!
 	 */
+/*	if (pi==15076) fprintf(stderr,"In smBallSearch.  r[3]=%g, %g, %g\n",x,y,z); */
 	while (c[cell].iDim >= 0) {
 		if (ri[c[cell].iDim] < c[cell].fSplit) cell = c[cell].iLower;
-		else cell = c[c[cell].iLower].iUpper;
+		else cell = c[cell].iUpper;
 		}
 	pUpper = c[cell].pUpper;
 	for (pj=c[cell].pLower;pj<=pUpper;++pj) {
@@ -238,15 +239,24 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 			fBall2 = pq->fKey;
 			}
 		}
-	while (cell != smx->pkd->iRoot) {
-	    if (c[cell].iSibling != -1) {
+/*	if (pi==15076) {
+	    fprintf(stderr,"After pq.  cell=%d, iRoot=%d\n",cell,smx->pkd->iRoot);
+	    ct=-100;
+	    cp=-100;
+	} */
+	if (cell == smx->pkd->iRoot) return(pq);
+	while (c[cell].iParent != -1) {
+	    if (c[cell].iSibling != -1) { 
+/*	    if (pi==15076 && ct !=-100 && cp !=-100)
+		fprintf(stderr,"in while...cell=%d, iSibling=%d, iNext=%d, ct=%d\n",
+			 cell,c[cell].iSibling,c[ct].iNext,ct); */
 		cp = c[cell].iSibling;
 		ct = cp;
-		ct = c[ct].iUpper;
+		ct = c[ct].iNext;
 		while (1) {
 			INTERSECT(&c[cp],fBall2,lx,ly,lz,x,y,z,sx,sy,sz,GetNext_1);
 			if (c[cp].iDim >= 0) {
-				cp = c[cp].iLower;
+			        cp = c[cp].iLower;
 				continue;
 				}
 			else {
@@ -277,10 +287,12 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 					}
 				}
 		GetNext_1:
-			cp = c[cp].iUpper;
+/*			if (pi==15076 && cell==1) fprintf(stderr,"cell=%d, cp=%d, iNext=%d\n",
+							    cell,cp,c[cp].iNext); */
+			cp = c[cp].iNext;
 			if (cp == ct) break;
 			}
-	            }
+	            } 
 		cell = c[cell].iParent;
 		}
 	return(pq);
@@ -327,7 +339,7 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	cell = pkd->iRoot;
 	while (c[cell].iDim >= 0) {
 		if (p[pi].r[c[cell].iDim] < c[cell].fSplit) cell = c[cell].iLower;
-		else cell = c[c[cell].iLower].iUpper;
+		else cell = c[cell].iUpper;
 		}
 	/*
 	 ** Add local stuff to the prioq.
@@ -356,7 +368,11 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	/*
 	 ** Priority Queue must be built. 'pi' must be defined.
 	 */
-	pq = smBallSearch(smx,pq,p[pi].r);
+	if (pi==15076) fprintf(stderr,"before smBallSearch\n.  pi=%d, r[3]=%g,%g,%g\n",pi,
+		        p[pi].r[0],p[pi].r[1],p[pi].r[2]);
+	pq = smBallSearch(smx,pq,p[pi].r,pi);
+	if (pi==15076) fprintf(stderr,"after smBallSearch\n.  pi=%d, r[3]=%g,%g,%g\n",pi,
+		        p[pi].r[0],p[pi].r[1],p[pi].r[2]);
 	/*
 	 ** Start non-local search.
 	 */
@@ -364,8 +380,8 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	idcell = -1;	/* We are in the LTT now ! */
 	cell = pkd->piLeaf[pkd->idSelf];
 	while (!pkdIsRoot(cell,idcell)) {
-	    if (c[cell].iSibling != -1) {
-		cp = c[cell].iSibling;
+		cp = cell;
+		pkdSibling(pkd,cp,idcell);
 		id = idcell;
 		ct = cp;
 		idct = id;
@@ -418,7 +434,6 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 			pkdNext(pkd,cp,id);
 			if (cp == ct && id == idct) break;
 			}
-	           }
 		pkdParent(pkd,cell,idcell);
 	        }
 	/*
