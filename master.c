@@ -2071,7 +2071,21 @@ void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung)
 		}
 	}
 
+void msrRungStats(MSR msr)
+{
+	struct inRungStats in;
+	struct outRungStats out;
+	int i;
 
+	printf("Rung distribution: (");
+	for (i=0;i<msr->param.iMaxRung;++i) {
+		if (i != 0) printf(",");
+		in.iRung = i;
+		pstRungStats(msr->pst,&in,sizeof(in),&out,NULL);
+		printf("%d",out.nParticles);
+		}
+	printf(")\n");
+	};
 
 
 

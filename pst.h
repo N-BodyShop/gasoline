@@ -369,5 +369,14 @@ struct outDensityRung {
     };
 void pstDensityRung(PST,void *,int,void *,int *);
 
+#define PST_RUNGSTATS		44
+struct inRungStats {
+	int iRung;
+	};
+struct outRungStats {
+	int nParticles;
+	};
+void pstRungStats(PST,void *,int,void *,int *);
+
 #endif
 

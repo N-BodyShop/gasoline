@@ -1925,3 +1925,14 @@ pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta, double dRhoFac)
 	}
     return iMaxRung;
     }
+
+int pkdRungParticles(PKD pkd,int iRung)
+{
+	int i,n;
+
+	n = 0;
+	for (i=0;i<pkdLocal(pkd);++i) {
+		if (pkd->pStore[i].iRung == iRung) ++n;
+		}
+	return n;
+	}

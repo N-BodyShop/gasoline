@@ -108,6 +108,9 @@ void pstAddServices(PST pst,MDL mdl)
 		      (void (*)(void *,void *,int,void *,int *))pstDensityRung,
 		      sizeof(struct inDensityRung),
 		      sizeof(struct outDensityRung));
+	mdlAddService(mdl,PST_RUNGSTATS,pst,pstRungStats,
+				  sizeof(struct inRungStats),
+				  sizeof(struct outRungStats));
 	}
 
 
@@ -1912,4 +1915,26 @@ pstDensityRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	if (pnOut) *pnOut = sizeof(*out);
 	}
+
+
+void pstRungStats(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inRungStats *in = vin;
+	struct outRungStats *out = vout;
+	int nParticles;
+
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_RUNGSTATS,vin,nIn);
+		pstRungStats(pst->pstLower,vin,nIn,out,NULL);
+		nParticles = out->nParticles;
+		mdlGetReply(pst->mdl,pst->idUpper,out,NULL);
+		out->nParticles += nParticles;
+		}
+	else {
+		out->nParticles = pkdRungParticles(plcl->pkd,in->iRung);
+		}
+	if (pnOut) *pnOut = sizeof(struct outRungStats);
+	}
+
 

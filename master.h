@@ -73,6 +73,7 @@ int msrOutTime(MSR,double);
 void msrReadOuts(MSR,double);
 double msrMassCheck(MSR,double,char *);
 void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung);
+void msrRungStats(MSR);
 /*
  ** Interface functions.
  */

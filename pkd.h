@@ -284,4 +284,6 @@ void pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
 int pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta,
 				   double dRhoFac);
+int pkdRungParticles(PKD,int);
+
 #endif
