@@ -163,9 +163,10 @@ pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
 		c->w[k] = ang_mom[k]/i;
 		}
 
-	/* Set merger's timestep to shortest of two colliders' (largest iRung) */
-
-	c->iRung = (c2->iRung > c1->iRung ? c2->iRung : c1->iRung);
+	/* Set merger's timestep to iRung of largest mass. */
+	/* XXX there is a bug in changing timesteps during a collision 
+	   but this makes it less bothersome. */
+	c->iRung = (c2->fMass > c1->fMass ? c2->iRung : c1->iRung);
 	}
 
 int
