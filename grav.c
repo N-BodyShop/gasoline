@@ -176,9 +176,9 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 #endif
 			}
 		p[i].fPot = fPot;
-		p[i].a[0] = ax;
-		p[i].a[1] = ay;
-		p[i].a[2] = az;
+		p[i].a[0] += ax;
+		p[i].a[1] += ay;
+		p[i].a[2] += az;
 		/*
 		 ** Try a cache check to improve responsiveness.
 		 */
