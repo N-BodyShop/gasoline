@@ -2865,6 +2865,7 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
 					 in->bSymmetric,in->iSmoothType,0,in->dfBall2OverSoft2);
 		smReSmooth(smx,&in->smf);
+		smFinish(smx,&in->smf, &cs);
 		/*
 		 ** Cache statistics
 		 */
@@ -2876,7 +2877,6 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->dcMSum = cs.dcMissRatio;
 		out->dcCSum = cs.dcCollRatio;
 		out->dcTSum = cs.dcMinRatio;
-		smFinish(smx,&in->smf, &cs);
 		}
 	if (pnOut) *pnOut = sizeof(struct outReSmooth);
 	}
