@@ -253,7 +253,7 @@ pvm:
 	mv -f $(EXE) $(XDIR)
 
 pthread:
-	cd $(PTHREAD_MDL); make "CC=$(CC) CFLAGS=$(CFLAGS)"
+	cd $(PTHREAD_MDL); make "CC=$(CC)" "CFLAGS=$(CFLAGS)"
 	make $(EXE) "CFLAGS=$(PTHREAD_CFLAGS)" "LD_FLAGS=$(PTHREAD_LD_FLAGS)"\
 		"MDL=$(PTHREAD_MDL)" "XOBJ=$(PTHREAD_XOBJ)" "LIBMDL=$(PTHREAD_LIBMDL)"
 
