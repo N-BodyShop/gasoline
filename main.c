@@ -36,7 +36,29 @@ int main(int argc,char **argv)
 	double dMass;
 	int nActive;
 	double dMultiEff;
-
+#ifdef TINY_PTHREAD_STACK
+	static int first = 1;
+	static char **save_argv;
+	
+	/*
+	 * Hackery to get around SGI's tiny pthread stack.
+	 * Main will be called twice.  The second time, argc and argv
+	 * will be garbage, so we have to save them from the first.
+	 * Another way to do this would involve changing the interface
+	 * to mdlInitialize(), so that this hackery could be hidden
+	 * down there.
+	 */
+	if(first) {
+	    save_argv = malloc((argc+1)*sizeof(*save_argv));
+	    for(i = 0; i < argc; i++)
+	        save_argv[i] = strdup(argv[i]);
+	    save_argv[argc] = NULL;
+	    }
+	else {
+	    argv = save_argv;
+	    }
+	first = 0;
+#endif /* TINY_PTHREAD_STACK */
 #ifdef PLANETS
 	setbuf(stdout, (char *) NULL); /* disable stdout buffering */
 #endif /* PLANETS */
