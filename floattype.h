@@ -1,6 +1,8 @@
 #ifndef FLOATTYPE_INCLUDED
 #define FLOATTYPE_INCLUDED
 
+#include <limits.h>
+
 #ifndef SINGLE
 
 #define FLOAT	double
