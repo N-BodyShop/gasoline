@@ -2026,7 +2026,7 @@ void pkdCalcE(PKD pkd,double *T,double *U)
 /* 
  * Use the f and g functions to advance an unperturbed orbit.
  */
-void fg(MDL mdl,double mu,double *x,double *v,double dt) {
+void fg(MDL mdl,double mu,FLOAT *x,FLOAT *v,double dt) {
 	double f,g,fd,gd;			/* Gauss's f, g, fdot and gdot */
 	double r,vsq;
 	double u;					/* r v cos(phi) */
