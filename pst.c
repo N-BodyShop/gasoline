@@ -233,12 +233,18 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_UPDATEUDOT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstUpdateuDot,
 				  sizeof(struct inUpdateuDot),sizeof(struct outUpdateuDot));
+	mdlAddService(mdl,PST_UPDATESHOCKTRACKER,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstUpdateShockTracker,
+				  sizeof(struct inUpdateShockTracker),0);
 	mdlAddService(mdl,PST_SPHCURRRUNG,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSphCurrRung,
 				  sizeof(struct inSphCurrRung),sizeof(struct outSphCurrRung));
 	mdlAddService(mdl,PST_GETGASPRESSURE,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGetGasPressure,
 				  sizeof(struct inGetGasPressure),0);
+	mdlAddService(mdl,PST_LOWERSOUNDSPEED,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstLowerSoundSpeed,
+				  sizeof(struct inLowerSoundSpeed),0);
 	mdlAddService(mdl,PST_INITENERGY,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstInitEnergy,
 				  sizeof(struct inInitEnergy),0);
@@ -634,7 +640,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 	int d,ittr,nOut;
 	int nLow=-1,nHigh=-1,nLowerStore,nUpperStore;
 	FLOAT fLow,fHigh;
-	FLOAT fl,fu,fm=-1,fmopp,fm2,fmm;
+	FLOAT fl,fu,fm=-1,fmm;
 	struct outFreeStore outFree;
 	struct inWeight inWt;
 	struct inWeightWrap inWtWrap;
@@ -644,7 +650,6 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 	OREJ *pLowerRej,*pUpperRej;
 	int *pidSwap,iRet;
 	int nLowTot,nHighTot;
-	int nActive;
 	int nLast;		/* number of particles at the last split
 					   iteration */
 	int nDiff=0;	/* Difference between one iteration and the next */
@@ -782,7 +787,6 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 
 	pst->fSplit = fm;
 
- DoneRootFind:
 	mdlprintf(pst->mdl, "id: %d (%d) Chose split: %f (%f,%f) %d %d\n",
 		  pst->mdl->idSelf, pst->iLvl, fm, pst->bnd.fMin[dBnd],
 		  pst->bnd.fMax[dBnd], pst->nLower, pst->nUpper);
@@ -1474,7 +1478,6 @@ void _pstRootSplit_Active_Inactive(PST pst,int iSplitDim,double dMass, int bDoRo
 		}
 	pst->fSplit = fm;
 
- DoneRootFind:
 	if(pFlag) {
 	    if (!bDoRootFind) fm = pst->fSplitInactive;
 	    /*
@@ -1813,7 +1816,7 @@ void _pstRootSplit_Active_Inactive(PST pst,int iSplitDim,double dMass, int bDoRo
 
 void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
-	int nOut,d,j;
+	int nOut,d=0,j;
 	double dimsize;
 	struct outCalcBound outBnd;
 	struct outMassCheck outMass;
@@ -1821,7 +1824,6 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct inDomainDecomp *in = vin;
 	int nActive;
 	
-	char ach[256]; /* debug */
 	mdlTimer t;
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inDomainDecomp));
@@ -3531,7 +3533,7 @@ pstAccelStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdAccelStep(plcl->pkd,in->dEta,in->dVelFac,in->dAccFac,
-					 in->bDoGravity,in->bEpsAcc,in->bSqrtPhi);
+					 in->bDoGravity,in->bEpsAcc,in->bSqrtPhi,in->dhMinOverSoft);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -3917,6 +3919,24 @@ void pstUpdateuDot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = sizeof(struct outUpdateuDot);
 	}
 
+void pstUpdateShockTracker(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inUpdateShockTracker *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inUpdateShockTracker));
+
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_UPDATESHOCKTRACKER,vin,nIn);
+		pstUpdateShockTracker(pst->pstLower,vin,nIn,vout,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,vout,NULL);
+		}
+	else {
+		pkdUpdateShockTracker(plcl->pkd,in->dDelta,in->dShockTrackerA,in->dShockTrackerB);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
 void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -3945,6 +3965,23 @@ void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 #endif
 			break;
 			}
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstLowerSoundSpeed(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inLowerSoundSpeed *in = vin;
+	
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_LOWERSOUNDSPEED,vin,nIn);
+		pstLowerSoundSpeed(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdLowerSoundSpeed(plcl->pkd,in->dhMinOverSoft);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -4036,7 +4073,7 @@ void pstSphViscosityLimiter(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdSphViscosityLimiter(plcl->pkd,in->bOn);
+		pkdSphViscosityLimiter(plcl->pkd,in->bOn,in->bShockTracker);
 		}
 	if (pnOut) *pnOut = 0;
 	}

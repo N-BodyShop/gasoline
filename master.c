@@ -396,11 +396,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"<input file name> (file in TIPSY binary format)");
 #ifdef GASOLINE
 	strcpy(msr->param.achOutName,"gasoline");
-	prmAddParam(msr->prm,"achOutName",3,&msr->param.achOutName,256,"o",
+	prmAddParam(msr->prm,"achOutName",3,msr->param.achOutName,256,"o",
 				"<output name for snapshots and logfile> = \"gasoline\"");
 #else
 	strcpy(msr->param.achOutName,"pkdgrav");
-	prmAddParam(msr->prm,"achOutName",3,&msr->param.achOutName,256,"o",
+	prmAddParam(msr->prm,"achOutName",3,msr->param.achOutName,256,"o",
 				"<output name for snapshots and logfile> = \"pkdgrav\"");
 #endif
 	msr->param.csm->bComove = 0;
@@ -422,7 +422,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dOmegab",2,&msr->param.csm->dOmegab,
 				sizeof(double),"Omb", "<dOmegab> = 0.0");
 	strcpy(msr->param.achDataSubPath,".");
-	prmAddParam(msr->prm,"achDataSubPath",3,&msr->param.achDataSubPath,256,
+	prmAddParam(msr->prm,"achDataSubPath",3,msr->param.achDataSubPath,256,
 				NULL,NULL);
 	msr->param.dExtraStore = 0.1;
 	prmAddParam(msr->prm,"dExtraStore",2,&msr->param.dExtraStore,
@@ -569,6 +569,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bUV = 1;
 	prmAddParam(msr->prm,"bUV",0,&msr->param.bUV,sizeof(int),"UV",
 				"read in an Ultra Violet file = +UV");
+	msr->param.dShockTrackerA = 0.16; 
+	prmAddParam(msr->prm,"dShockTrackerA",2,&msr->param.dShockTrackerA,
+				sizeof(double),"STA",
+				"<Shock Tracker A constant> = 0.16");
+	msr->param.dShockTrackerB = 0.4; 
+	prmAddParam(msr->prm,"dShockTrackerB",2,&msr->param.dShockTrackerB,
+				sizeof(double),"STB",
+				"<Shock Tracker B constant> = 0.4");
 	msr->param.dConstAlpha = 1.0; 	/* Default changed to 0.5 later if bBulkViscosity */
 	prmAddParam(msr->prm,"dConstAlpha",2,&msr->param.dConstAlpha,
 				sizeof(double),"alpha",
@@ -607,12 +615,18 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bViscosityLimitdt = 0;
 	prmAddParam(msr->prm,"bViscosityLimitdt",0,&msr->param.bViscosityLimitdt,sizeof(int),
 				"vlim","<Balsara Viscosity Limit dt> = 0");
+	msr->param.bShockTracker = 0;
+	prmAddParam(msr->prm,"bShockTracker",0,&msr->param.bShockTracker,sizeof(int),
+				"st","<Shock Tracker> = 0");
 	msr->param.bBulkViscosity = 0;
 	prmAddParam(msr->prm,"bBulkViscosity",0,&msr->param.bBulkViscosity,sizeof(int),
 				"bulk","<Bulk Viscosity> = 0");
 	msr->param.bGasDomainDecomp = 0;
 	prmAddParam(msr->prm,"bGasDomainDecomp",0,&msr->param.bGasDomainDecomp,sizeof(int),
 				"gasDD","<Gas Domain Decomp> = 0");
+	msr->param.bLowerSoundSpeed = 0;
+	prmAddParam(msr->prm,"bLowerSoundSpeed",0,&msr->param.bLowerSoundSpeed,sizeof(int),
+				"bLowc","<Lower Sound Speed> = 0");
 	msr->param.bFastGas = 1;
 	prmAddParam(msr->prm,"bFastGas",0,&msr->param.bFastGas,sizeof(int),
 				"Fgas","<Fast Gas Method> = 1");
@@ -1258,6 +1272,13 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dhMinOverSoft: %g",msr->param.dhMinOverSoft);
 	fprintf(fp," bRungDD: %d",msr->param.bRungDD);
 	fprintf(fp," dRungDDWeight: %g ",msr->param.dRungDDWeight);
+	fprintf(fp,"\n# nTruncateRung: %d",msr->param.nTruncateRung);
+	fprintf(fp," bLowerSoundSpeed: %d",msr->param.bLowerSoundSpeed);
+	fprintf(fp," bShockTracker: %d",msr->param.bShockTracker);
+	fprintf(fp," bShockTracker: %d",msr->param.bShockTracker);
+	fprintf(fp," bShockTracker: %d",msr->param.bShockTracker);
+	fprintf(fp," dShockTrackerA: %f",msr->param.dShockTrackerA);
+	fprintf(fp," dShockTrackerB: %f",msr->param.dShockTrackerB);
 #ifdef GROWMASS
 	fprintf(fp,"\n# GROWMASS: nGrowMass: %d",msr->param.nGrowMass);
 	fprintf(fp," dGrowDeltaM: %g",msr->param.dGrowDeltaM);
@@ -1924,7 +1945,6 @@ void msrSetSoft(MSR msr,double dSoft)
 void msrDomainDecomp(MSR msr, int iRung, int bGreater)
 {
 	struct inDomainDecomp in;
-	struct inClearTimer inCT;
 	int iRungDD,iRungSD,nActive;
 
 #ifdef GASOLINE
@@ -2310,7 +2330,8 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
-	in.dfBall2OverSoft2 = 4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft;
+	in.dfBall2OverSoft2 = (msr->param.bLowerSoundSpeed ? 0 :
+			       4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft);
 	if (msrComove(msr)) {
 		in.smf.H = csmTime2Hub(msr->param.csm,dTime);
 		in.smf.a = csmTime2Exp(msr->param.csm,dTime);
@@ -2362,7 +2383,8 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
-	in.dfBall2OverSoft2 = 4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft;
+	in.dfBall2OverSoft2 = (msr->param.bLowerSoundSpeed ? 0 :
+			       4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft);
 	if (msrComove(msr)) {
 		in.smf.H = csmTime2Hub(msr->param.csm,dTime);
 		in.smf.a = csmTime2Exp(msr->param.csm,dTime);
@@ -2678,6 +2700,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	int j;
 #ifdef NEED_VPRED
 	struct inKickVpred invpr;
+	struct outKick out;
 	double a;
 #endif
 
@@ -3967,6 +3990,7 @@ msrAccelStep(MSR msr,double dTime)
     in.bDoGravity = msrDoGravity(msr);
     in.bEpsAcc = msr->param.bEpsAccStep;
     in.bSqrtPhi = msr->param.bSqrtPhiStep;
+    in.dhMinOverSoft = (msr->param.bLowerSoundSpeed ? msr->param.dhMinOverSoft : 0);
     pstAccelStep(msr->pst,&in,sizeof(in),NULL,NULL);
     }
 
@@ -4005,7 +4029,7 @@ void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
 
     pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
 
-    if (out.nMaxRung <= msr->param.nTruncateRung) {
+    if (out.nMaxRung <= msr->param.nTruncateRung && out.iMaxRung > iRung) {
       if (msr->param.bVDetails) printf("n_CurrMaxRung = %d  (iCurrMaxRung = %d):  Promoting particles to iCurrMaxrung = %d\n",
 				       out.nMaxRung,out.iMaxRung,out.iMaxRung-1);
 
@@ -4071,17 +4095,18 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
            	        msrActiveType(msr, TYPE_GAS, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 			msrBuildTree(msr,1,-1.0,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
+			msrGetGasPressure(msr);
 			if (msrDoGas(msr)) {
 			  if (msr->param.bBulkViscosity) {
   			    msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-			    msrGetGasPressure(msr);
 			    msrActiveRung(msr, iRung, 0);
 			    msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
 			    }
 			  else {
-                            if (msr->param.bViscosityLimiter) msrReSmooth(msr, dTime, SMX_DIVVORT, 1);
-  			    msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime);
-			    msrGetGasPressure(msr);
+                            if (msr->param.bViscosityLimiter || msr->param.bShockTracker) 
+			      msrReSmooth(msr, dTime, SMX_DIVVORT, 1);
+			    msrUpdateShockTracker(msr, dDelta);
+  			    msrSphViscosityLimiter(msr, dTime);
 			    msrActiveRung(msr, iRung, 0);
 			    msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
                             }
@@ -4180,17 +4205,17 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 			msrBuildTree(msr,1,-1.0,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
+			msrGetGasPressure(msr);
 			if (msrDoGas(msr)) {
  			   if (msr->param.bBulkViscosity) {
   			       msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-			       msrGetGasPressure(msr);
 			       msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
 			       } 
 			   else {
-				   if (msr->param.bViscosityLimiter)
+			       if (msr->param.bViscosityLimiter || msr->param.bShockTracker)
 					   msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-			       msrSphViscosityLimiter(msr,msr->param.bViscosityLimiter,dTime);
-			       msrGetGasPressure(msr);
+			       msrUpdateShockTracker(msr, dDelta);
+			       msrSphViscosityLimiter(msr, dTime);
 			       msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
 			       }
   		           if (msr->param.bSN) msrAddSupernova(msr, dTime);
@@ -4254,11 +4279,6 @@ void msrTopStepKDK(MSR msr,
 {
     double dMass = -1.0;
     int nActive;
-
-#ifdef GASOLINE
-    struct inDensCheck in;
-    struct outDensCheck out;
-#endif
 
     if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
 		if (msr->param.bVDetails) printf("Adjust, iRung: %d\n",iRung);
@@ -4335,104 +4355,6 @@ void msrTopStepKDK(MSR msr,
 		msrActiveMaskRung(msr,TYPE_ACTIVE,iKickRung,1);
 		msrDomainDecomp(msr,iKickRung,1);
 		msrInitAccel(msr);
-#ifdef GASOLINE
-		if (msr->param.bVDetails)
-			printf("SPH, iRung: %d to %d\n",iRung,iKickRung);
-		msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
-		msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-		printf("nActive %d nTreeActive %d nSmoothActive %d\n",msr->nActive,
-			   msr->nTreeActive,msr->nSmoothActive);
-		if(msrDoGas(msr) && msrSphCurrRung(msr,iKickRung,1)) {
-			msrBuildTree(msr,1,-1.0,1);
-			if (msr->param.bBulkViscosity) {
-				msrSmooth(msr,dTime,SMX_DENSITY,1);
-				msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE );
-				msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-				msrGetGasPressure(msr);
-				msrActiveRung(msr,iKickRung,1);
-				msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
-				}
-			else {
-				msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
-				if (msr->param.bFastGas && msr->nActive < msr->nGas*msr->param.dFracFastGas) {
-					msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE|TYPE_Scatter|TYPE_DensZeroed );
-					msrActiveType(msr,TYPE_ACTIVE,TYPE_SMOOTHACTIVE|TYPE_DensACTIVE );
-					if (msr->param.bVDetails)
-						printf("Dens Active Particles: %d\n",msr->nSmoothActive );
-					/* Density for Actives and mark Gather neighbours */
-					msrSmooth(msr,dTime,SMX_MARKDENSITY,1); 
-					/* mark Scatter Neighbours */
-					msrMarkSmooth(msr,dTime,1,TYPE_Scatter); 
-					/* They need density too... */
-					msrActiveType(msr,TYPE_ACTIVE|TYPE_NbrOfACTIVE|TYPE_Scatter, TYPE_DensACTIVE );
-					/* ...but don't redo Actives in smooth*/
-					msrActiveExactType(msr,TYPE_DensACTIVE|TYPE_ACTIVE, 
-									   TYPE_DensACTIVE,TYPE_SMOOTHACTIVE);
-					/* Density for Neighbours and mark scatter neighbours of actives */
-					msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1);
-					/* mark Scatter Neighbours of Neighbours */
-					msrMarkSmooth(msr,dTime,1,TYPE_Scatter);
-					/* Scatter Density contribution from those particles... */
-					msrActiveExactType(msr,TYPE_Scatter|TYPE_DensACTIVE, 
-									   TYPE_Scatter,TYPE_SMOOTHACTIVE);
-					msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1); 
-#if (0)
-					/* initialize density comparison */
-					if (msr->param.bVDetails) {
-						/* in.iRung = iKickRung; */
-						in.iRung = 0;
-						in.bGreater = 1;
-						in.iMeasure = 0;
-						pstDensCheck(msr->pst,&in,sizeof(in),&out,NULL);
-						}
-#endif
-					/* We want direct neighbours of Actives only */
-					msrActiveType(msr,TYPE_NbrOfACTIVE,TYPE_SMOOTHACTIVE);
-					if (msr->param.bVDetails)
-						printf("Density Zeroed: %d ",
-							   msrCountType(msr,TYPE_DensZeroed,TYPE_DensZeroed));
-					if (msr->param.bVDetails)
-						printf("Neighbours: %d ",
-							   msrCountType(msr,TYPE_ACTIVE|TYPE_NbrOfACTIVE,TYPE_NbrOfACTIVE));
-					}
-				else {
-					msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE );
-					msrActiveType(msr,TYPE_ACTIVE,TYPE_SMOOTHACTIVE|TYPE_DensACTIVE );
-					if (msr->param.bVDetails)
-						printf("Dens Active Particles: %d\n",msr->nSmoothActive );
-					msrActiveType(msr,TYPE_GAS,TYPE_SMOOTHACTIVE );
-					msrSmooth(msr,dTime,SMX_MARKDENSITY,1);
-					if (msr->param.bVDetails)
-						printf("Neighbours: %d ",
-							   msrCountType(msr,TYPE_NbrOfACTIVE,TYPE_NbrOfACTIVE ) );
-					msrActiveType(msr,TYPE_NbrOfACTIVE,TYPE_SMOOTHACTIVE);
-					}
-				if (msr->param.bVDetails)
-					printf("Smooth Active Particles: %d\n",msr->nSmoothActive);
-				if (msr->param.bViscosityLimiter) {
-					msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-					}
-				msrSphViscosityLimiter(msr,msr->param.bViscosityLimiter,dTime);
-				msrGetGasPressure(msr);
-				msrActiveRung(msr,iKickRung,1); 
-				msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1); 
-#if (0)
-				/* For density comparison */
-				if (msr->param.bVDetails) {
-					/* in.iRung = iKickRung; */
-					in.iRung = 0;
-					in.bGreater = 1;
-					in.iMeasure = 1;
-					pstDensCheck(msr->pst,&in,sizeof(in),&out,NULL);
-					printf("Dens Check results: Max %g Avg %g nErr %d nTot %d\n",
-						   out.dMaxDensError,out.dAvgDensError,out.nError,out.nTotal);
-					}
-#endif
-				msrBallMax(msr,iKickRung,1);
-				}
-			if (msr->param.bSN) msrAddSupernova(msr, dTime);
-			}
-#endif /* GASOLINE */
 
 		if(msrDoGravity(msr)) {
 			msrActiveRung(msr,iKickRung,1);
@@ -4443,6 +4365,95 @@ void msrTopStepKDK(MSR msr,
 			msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
 			}
+
+#ifdef GASOLINE
+		if (msr->param.bVDetails)
+			printf("SPH, iRung: %d to %d\n",iRung,iKickRung);
+		msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
+		msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+		printf("nActive %d nTreeActive %d nSmoothActive %d\n",msr->nActive,
+			   msr->nTreeActive,msr->nSmoothActive);
+		if(msrDoGas(msr) && msrSphCurrRung(msr,iKickRung,1)) {
+			msrBuildTree(msr,1,-1.0,1);
+			msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
+			if (msr->param.bFastGas && msr->nActive < msr->nGas*msr->param.dFracFastGas) {
+			        msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE|TYPE_Scatter|TYPE_DensZeroed );
+				msrActiveType(msr,TYPE_ACTIVE,TYPE_SMOOTHACTIVE|TYPE_DensACTIVE );
+				if (msr->param.bVDetails)
+				  printf("Dens Active Particles: %d\n",msr->nSmoothActive );
+				/* Density for Actives and mark Gather neighbours */
+				msrSmooth(msr,dTime,SMX_MARKDENSITY,1); 
+				/* mark Scatter Neighbours */
+				msrMarkSmooth(msr,dTime,1,TYPE_Scatter); 
+				/* They need density too... */
+				msrActiveType(msr,TYPE_ACTIVE|TYPE_NbrOfACTIVE|TYPE_Scatter, TYPE_DensACTIVE );
+				/* ...but don't redo Actives in smooth*/
+				msrActiveExactType(msr,TYPE_DensACTIVE|TYPE_ACTIVE, 
+						   TYPE_DensACTIVE,TYPE_SMOOTHACTIVE);
+				/* Density for Neighbours and mark scatter neighbours of actives */
+				msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1);
+				/* mark Scatter Neighbours of Neighbours */
+				msrMarkSmooth(msr,dTime,1,TYPE_Scatter);
+				/* Scatter Density contribution from those particles... */
+				msrActiveExactType(msr,TYPE_Scatter|TYPE_DensACTIVE, 
+						   TYPE_Scatter,TYPE_SMOOTHACTIVE);
+				msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1); 
+				
+				/* We want direct neighbours of Actives only */
+				msrActiveType(msr,TYPE_NbrOfACTIVE,TYPE_SMOOTHACTIVE);
+				if (msr->param.bVDetails)
+				  printf("Density Zeroed: %d ",
+					 msrCountType(msr,TYPE_DensZeroed,TYPE_DensZeroed));
+				if (msr->param.bVDetails)
+				  printf("Neighbours: %d ",
+					 msrCountType(msr,TYPE_ACTIVE|TYPE_NbrOfACTIVE,TYPE_NbrOfACTIVE));
+			        }
+			else {
+				msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE );
+				msrActiveType(msr,TYPE_ACTIVE,TYPE_SMOOTHACTIVE|TYPE_DensACTIVE );
+				if (msr->param.bVDetails)
+				  printf("Dens Active Particles: %d\n",msr->nSmoothActive );
+				msrActiveType(msr,TYPE_GAS,TYPE_SMOOTHACTIVE );
+
+				msrSmooth(msr,dTime,SMX_MARKDENSITY,1);
+
+				if (msr->param.bVDetails)
+				  printf("Neighbours: %d ",
+					 msrCountType(msr,TYPE_NbrOfACTIVE,TYPE_NbrOfACTIVE ) );
+				msrActiveType(msr,TYPE_NbrOfACTIVE,TYPE_SMOOTHACTIVE);
+			        }
+
+			if (msr->param.bVDetails)
+			  printf("Smooth Active Particles: %d\n",msr->nSmoothActive);
+
+			if (msr->param.bViscosityLimiter || msr->param.bBulkViscosity || msr->param.bShockTracker) {
+			  msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+			}
+			msrSphViscosityLimiter(msr, dTime);
+
+			msrGetGasPressure(msr);
+			
+			if (msr->param.bShockTracker) { 
+			        msrReSmooth(msr,dTime,SMX_SPHPRESSURE,1);
+				msrUpdateShockTracker(msr, dDelta);
+			        if (msr->param.bBulkViscosity) 
+				         msrReSmooth(msr,dTime,SMX_HKVISCOSITY,1);
+				else
+				         msrReSmooth(msr,dTime,SMX_SPHVISCOSITY,1);
+			        }
+			else {
+			        if (msr->param.bBulkViscosity) 
+				         msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);     
+				else
+				         msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1); 
+			        }
+
+			msrBallMax(msr,iKickRung,1);
+			if (msr->param.bSN) msrAddSupernova(msr, dTime);
+
+			}
+#endif /* GASOLINE */
+
 		}
     if (msr->param.bVDetails) printf("Kick, iRung: %d\n",iRung);
     msrActiveRung(msr,iRung,0);
@@ -4590,7 +4601,19 @@ void msrGetGasPressure(MSR msr)
 		}
 
 	pstGetGasPressure(msr->pst,&in,sizeof(in),NULL,NULL);
+
+	if (msr->param.bLowerSoundSpeed) msrLowerSoundSpeed(msr);
 	}
+
+void msrLowerSoundSpeed(MSR msr)
+{
+	struct inLowerSoundSpeed in;
+  
+	in.dhMinOverSoft = msr->param.dhMinOverSoft;
+
+	pstLowerSoundSpeed(msr->pst,&in,sizeof(in),NULL,NULL);
+	}
+
 
 void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateY)
 {
@@ -4609,6 +4632,21 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateY)
 
 	printf("UpdateUdot: Avg Wallclock %f, Max Wallclock %f\n",
 	       out.SumTime/out.nSum,out.MaxTime);
+	}
+
+void msrUpdateShockTracker(MSR msr,double dDelta)
+{
+        struct inUpdateShockTracker in;
+
+        if (!msr->param.bShockTracker) return;
+
+	in.dDelta = dDelta;
+	in.dShockTrackerA = msr->param.dShockTrackerA;
+	in.dShockTrackerB = msr->param.dShockTrackerB;
+
+	pstUpdateShockTracker(msr->pst,&in,sizeof(struct inUpdateShockTracker),NULL,NULL);
+
+	printf("UpdateShockTracker Done.\n");
 	}
 
 void msrInitSph(MSR msr,double dTime)
@@ -4639,22 +4677,33 @@ void msrInitSph(MSR msr,double dTime)
 		}
 
 	if (msrDoGas(msr)) {
-		if (msr->param.bBulkViscosity) {
-			msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-			msrGetGasPressure(msr);
-			msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
-			} 
-		else {
-			if (msr->param.bViscosityLimiter)
-				msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-			msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime);
-			msrGetGasPressure(msr);
-			msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
+	        if (msr->param.bViscosityLimiter || msr->param.bBulkViscosity) {
+		        msrReSmooth(msr,dTime,SMX_DIVVORT,1);
 			}
+		msrSphViscosityLimiter(msr, dTime);
+
+		msrGetGasPressure(msr);
+			
+		if (msr->param.bShockTracker) { 
+			msrReSmooth(msr,dTime,SMX_SPHPRESSURE,1);
+			msrUpdateShockTracker(msr, 0.0);
+			if (msr->param.bBulkViscosity) 
+			        msrReSmooth(msr,dTime,SMX_HKVISCOSITY,1);
+			else
+			        msrReSmooth(msr,dTime,SMX_SPHVISCOSITY,1);
+		        }
+		else {
+			if (msr->param.bBulkViscosity) 
+				msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);     
+			else
+				msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1); 
+		        }
+
                 if (msr->param.bSN) msrAddSupernova(msr, dTime);
+
+   	        msrUpdateuDot(msr,dTime,0.5*msr->param.dDelta,0);
 		}
 
-	msrUpdateuDot(msr,dTime,0.5*msr->param.dDelta,0);
 	}
 
 int msrSphCurrRung(MSR msr, int iRung, int bGreater)
@@ -4681,11 +4730,13 @@ void msrSphStep(MSR msr, double dTime)
     pstSphStep(msr->pst,&in,sizeof(in),NULL,NULL);
     }
 
-void msrSphViscosityLimiter(MSR msr, int bOn, double dTime)
+void msrSphViscosityLimiter(MSR msr, double dTime)
 {
     struct inSphViscosityLimiter in;
     
-    in.bOn = bOn;
+    in.bOn = msr->param.bViscosityLimiter;
+    in.bShockTracker = msr->param.bShockTracker;
+
     pstSphViscosityLimiter(msr->pst,&in,sizeof(in),NULL,NULL);
     }
 

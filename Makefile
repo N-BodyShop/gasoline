@@ -3,9 +3,9 @@
 #
 
 #CC = gcc -Wall
-CC = pgcc
+#CC = pgcc 
 #CC = gcc
-#CC = cc
+CC = cc
 #EXE = pkdgrav
 EXE = gasoline
 #CODEDEF = -DCOLLISIONS -DSLIDING_PATCH
@@ -15,7 +15,7 @@ EXE = gasoline
 #CODEDEF = -DDEBUG -HSHRINK
 
 #ev6
-#CC = ccc
+CC = ccc
 #CODEDEF = -DGASOLINE -DCCC
 
 #CC = cc
@@ -30,7 +30,7 @@ NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(CODEDEF)
 
 #ev6 flags:
 #NULL_CFLAGS		= -O3 -g3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
-#NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
+NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS            = -fast -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -O2 -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -g -I$(NULL_MDL) $(CODEDEF)
@@ -46,7 +46,7 @@ SGI_CFLAGS		= -O2 -I$(SGI_MDL) $(CODEDEF) -mips4 -64 -r10000
 SGI_LD_FLAGS	= -mips4 -64 -r10000
 SGI_XOBJ		=
 SGI_LIBMDL		= $(SGI_MDL)/mdl.o -lmpi -lm
-SGI_MDL_CFLAGS	= -O2 -mips4 -64 -r10000
+SGI_MDL_CFLAGS	= -g2 -O2 -mips4 -64 -r10000
 
 #
 #       LINUX LAM MPI defines
@@ -196,6 +196,11 @@ pvm:
 pthread:
 	cd $(PTHREAD_MDL); make
 	make $(EXE) "CFLAGS=$(PTHREAD_CFLAGS)" "LD_FLAGS=$(PTHREAD_LD_FLAGS)"\
+		"MDL=$(PTHREAD_MDL)" "XOBJ=$(PTHREAD_XOBJ)" "LIBMDL=$(PTHREAD_LIBMDL)"
+
+pthread_dec:
+	cd $(PTHREAD_MDL); make CC=ccc
+	make $(EXE) CC=ccc "CFLAGS=$(PTHREAD_CFLAGS) -fast -arch ev6" "LD_FLAGS=$(PTHREAD_LD_FLAGS)"\
 		"MDL=$(PTHREAD_MDL)" "XOBJ=$(PTHREAD_XOBJ)" "LIBMDL=$(PTHREAD_LIBMDL)"
 
 pthread_sgi:

@@ -39,6 +39,20 @@ FLOAT ArrType(PARTICLE *p,int iType)
 		return(p->Y_HeI);
 	case OUT_HeII_ARRAY:
 		return(p->Y_HeII);
+	case OUT_BALSARASWITCH_ARRAY:
+		return(p->BalsaraSwitch);
+	case OUT_DIVV_ARRAY:
+		return(p->divv);
+	case OUT_MUMAX_ARRAY:
+		return(p->mumax);
+	case OUT_SHOCKTRACKER_ARRAY:
+	        return(p->ShockTracker);
+	case OUT_DIVONCONH_ARRAY:
+	        return(p->divv/(p->c/sqrt(p->fBall2*0.25)));
+	case OUT_DIVONCONX_ARRAY:
+	        return(p->divv/(p->c/pow(p->fMass/p->fDensity,1./3.)));
+	case OUT_DIVRHOV_ARRAY:
+	        return(p->divrhov);
 #endif
 #endif
 	case OUT_H_ARRAY:
@@ -66,6 +80,10 @@ FLOAT VecType(PARTICLE *p,int iDim,int iType)
 #ifdef NEED_VPRED
 	case OUT_VPRED_VECTOR:
 		return(p->vPred[iDim]);
+	case OUT_GRADRHO_VECTOR:
+		return(p->gradrho[iDim]);
+	case OUT_ACCELPRES_VECTOR:
+		return(p->aPres[iDim]);
 #endif
 	default:
 		return(0.0);

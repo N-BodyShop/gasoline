@@ -111,6 +111,7 @@ void msrReorder(MSR);
 void msrOutArray(MSR,char *,int);
 void msrOutVector(MSR,char *,int);
 void msrGetGasPressure(MSR);
+void msrLowerSoundSpeed(MSR);
 void msrSmooth(MSR,double,int,int);
 void msrReSmooth(MSR,double,int,int);
 void msrMarkSmooth(MSR,double,int,int);
@@ -220,10 +221,11 @@ void msrInitTimeSteps(MSR,double,double);
 
 #ifdef GASOLINE
 void msrUpdateuDot(MSR,double,double,int);
+void msrUpdateShockTracker(MSR,double);
 void msrInitSph(MSR,double);
 int msrSphCurrRung(MSR msr, int iRung, int bGreater);
 void msrSphStep(MSR msr, double dTime);
-void msrSphViscosityLimiter(MSR msr, int bOn, double dTime);
+void msrSphViscosityLimiter(MSR msr, double dTime);
 void msrInitCooling(MSR msr);
 #endif
 #ifdef GLASS

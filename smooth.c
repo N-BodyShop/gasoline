@@ -85,11 +85,39 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		comb = combDivVort;
 		smx->fcnPost = NULL;
 		break;
+	case SMX_SHOCKTRACK:
+		smx->fcnSmooth = bSymmetric?ShockTrackSym:ShockTrack;
+		initParticle = initShockTrack;
+		init = initShockTrack;
+		comb = combShockTrack;
+		smx->fcnPost = NULL;
+		break;
 	case SMX_HKPRESSURETERMS:
 		smx->fcnSmooth = bSymmetric?HKPressureTermsSym:HKPressureTerms;
 		initParticle = initHKPressureTermsParticle; /* Original Particle */
 		init = initHKPressureTerms; /* Cached copies */
 		comb = combHKPressureTerms;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_SPHPRESSURE:
+		smx->fcnSmooth = bSymmetric?SphPressureSym:SphPressure;
+		initParticle = initSphPressureParticle; /* Original Particle */
+		init = initSphPressure; /* Cached copies */
+		comb = combSphPressure;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_SPHVISCOSITY:
+		smx->fcnSmooth = bSymmetric?SphViscositySym:SphViscosity;
+		initParticle = initSphViscosityParticle; /* Original Particle */
+		init = initSphViscosity; /* Cached copies */
+		comb = combSphViscosity;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_HKVISCOSITY:
+		smx->fcnSmooth = bSymmetric?HKViscositySym:HKViscosity;
+		initParticle = initHKViscosityParticle; /* Original Particle */
+		init = initHKViscosity; /* Cached copies */
+		comb = combHKViscosity;
 		smx->fcnPost = NULL;
 		break;
 #endif	       

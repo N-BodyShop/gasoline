@@ -126,7 +126,9 @@ enum pst_service {
       PST_NEWORDER,
       PST_SETNPARTS,
       PST_UPDATEUDOT,
+      PST_UPDATESHOCKTRACKER,
       PST_GETGASPRESSURE,
+      PST_LOWERSOUNDSPEED,
       PST_INITENERGY,
       PST_KICKVPRED,
       PST_KICKRHOPRED,
@@ -633,6 +635,7 @@ struct inAccelStep {
     int    bDoGravity;
     int    bEpsAcc;
     int    bSqrtPhi;
+    double dhMinOverSoft;
     };
 void pstAccelStep(PST,void *,int,void *,int *);
 
@@ -824,8 +827,17 @@ struct inGetGasPressure {
 #endif
 	};
 
+
+
 /* PST_GETGASPRESSURE */
 void pstGetGasPressure(PST, void *,int,void *,int *);
+
+struct inLowerSoundSpeed {
+	double dhMinOverSoft;
+	};
+
+void pstLowerSoundSpeed(PST, void *,int,void *,int *);
+
 
 struct inInitEnergy {
 	double dTuFac;
@@ -985,8 +997,17 @@ void pstSphStep(PST,void *,int,void *,int *);
 
 struct inSphViscosityLimiter {
     int bOn;
+    int bShockTracker;
     };
 void pstSphViscosityLimiter(PST,void *,int,void *,int *);
+
+struct inUpdateShockTracker {
+    double dDelta;
+    double dShockTrackerA;
+    double dShockTrackerB;
+};
+
+void pstUpdateShockTracker(PST,void *,int,void *,int *);
 
 struct inInitCooling {
     double dGmPerCcUnit;

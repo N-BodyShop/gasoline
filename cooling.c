@@ -126,7 +126,7 @@ void clRatesTableError( CL *cl ) {
     p1 = (CL_RT_FLOAT *) &((cl->RT+i-1)->Rate_Coll_HI);
     p2 = (CL_RT_FLOAT *) &((cl->RT+i+1)->Rate_Coll_HI);
     if (i==10001) {
-      printf(" Comp %i %i %e %e\n",i,sizeof(CL_RT_FLOAT),p[1],(cl->RT+i)->Rate_Coll_HeI);
+      printf(" Comp %i %i %e %e\n",i,(int) sizeof(CL_RT_FLOAT),p[1],(cl->RT+i)->Rate_Coll_HeI);
     }
     for (j=0;j<15;j++) {
       if (p[j] < min[j]) min[j]=p[j];
@@ -831,7 +831,7 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
   int i;
   /* brent */
   int iter;
-  double d,e,min1,min2;
+  double d=0,e=0,min1,min2;
   double p,q,r,s,tol1,xm;
 
   /* debug */  /*

@@ -66,9 +66,13 @@ typedef struct particle {
 	FLOAT PdVvisc;		/* P dV from shock (testing) */
 	FLOAT PdVpres;		/* P dV from adiabatic compression (testing) */
 #endif
-	FLOAT divv;			/* Balsara viscosity reduction */
+        FLOAT ShockTracker;     /* Shock tracker */
+        FLOAT divrhov;
+        FLOAT gradrho[3];
+	FLOAT divv;		/* Balsara viscosity reduction */
 	FLOAT curlv[3];         
 	FLOAT BalsaraSwitch;
+        FLOAT aPres[3];
 /*	FLOAT fDensSave;*/	/* Used by diagnostic DensCheck funcs */
 #ifndef NOCOOLING
 	FLOAT uDot;			/* Rate of change of u -- for predicting */
@@ -452,7 +456,7 @@ int pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
 void pkdGravStep(PKD pkd, double dEta);
 void pkdAccelStep(PKD pkd, double dEta, double dVelFac, double
-				  dAccFac, int bDoGravity, int bEpsAcc, int bSqrtPhi);
+				  dAccFac, int bDoGravity, int bEpsAcc, int bSqrtPhi, double dhMinOverSoft);
 void pkdDensityStep(PKD pkd, double dEta, double dRhoFac);
 int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll, int *pnMaxRung);
 void pkdInitDt(PKD pkd, double dDelta);
@@ -501,12 +505,14 @@ struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCu
 void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dPdVMetal, double dPdVNonMetal);
 #endif
 void pkdUpdateuDot(PKD,double,double,int,int);
+void pkdUpdateShockTracker(PKD,double, double, double);
 void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma);
+void pkdLowerSoundSpeed(PKD, double);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z);
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);
 int pkdSphCurrRung(PKD pkd, int iRung, int bGreater);
 void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int bViscosityLimitdt);
-void pkdSphViscosityLimiter(PKD pkd, int bOn);
+void pkdSphViscosityLimiter(PKD pkd, int bOn, int bShockTracker);
 
 void pkdPARTICLE2PERBARYON(PERBARYON *Y, PARTICLE *p, double HTotal, double HeTotal);
 

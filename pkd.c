@@ -21,6 +21,13 @@
 #include "collision.h"
 #endif
 
+/*
+ BalsaraSwitch hackery
+*/
+/*
+#define VISCSWITCHCUT 0.6
+*/
+
 double pkdGetTimer(PKD pkd,int iTimer)
 {
 	return(pkd->ti[iTimer].sec);
@@ -270,6 +277,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef GASOLINE
 		p->u = 0.0;
 		p->uPred = 0.0;
+		p->ShockTracker = 0.0;
 #ifndef NOCOOLING		
 		/* Place holders -- later fixed in pkdInitEnergy */
 		p->Y_HI = 0.75;
@@ -1145,8 +1153,7 @@ int pkdColRejects_Active_Inactive(PKD pkd,int d,FLOAT fSplit,FLOAT fSplitInactiv
 int pkdColRejects(PKD pkd,int d,FLOAT fSplit,FLOAT fSplitInactive,
 				  int iSplitSide)
 {
-	PARTICLE pTemp;
-	int nSplit,nSplitInactive,iRejects,i,j;
+	int nSplit,iRejects,i;
 
 	mdlassert(pkd->mdl,pkd->nRejects == 0);
 	if (!iSplitSide) {
@@ -3295,7 +3302,7 @@ pkdGravStep(PKD pkd,double dEta)
 
 void
 pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
-             int bEpsAcc,int bSqrtPhi)
+             int bEpsAcc,int bSqrtPhi,double dhMinOverSoft)
 {
     int i;
     double vel;
@@ -3317,15 +3324,20 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 			dT = FLOAT_MAXVAL;
 			if (bEpsAcc && acc>0) {
 #ifdef GASOLINE
-				if (pkdIsGas(pkd, &(pkd->pStore[i])) &&
-					pkd->pStore[i].fBall2*0.25 < pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
-					dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
-				else
-					dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
-#else
-				dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
+#ifdef DEBUG
+			     if ((pkd->pStore[i].iOrder % 1000) == 0) printf("dT %i: %g %g %g, %g %g %g\n",pkd->pStore[i].iOrder,pkd->pStore[i].fBall2,4.0*dhMinOverSoft*pkd->pStore[i].fSoft*pkd->pStore[i].fSoft,acc,dhMinOverSoft,dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc),dEta*sqrt((dhMinOverSoft*pkd->pStore[i].fSoft)/acc));
 #endif
-				}
+			     if (pkdIsGas(pkd, &(pkd->pStore[i])) && dhMinOverSoft < 1 && pkd->pStore[i].fBall2<4.0*pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) {
+			        if (pkd->pStore[i].fBall2 > 4.0*dhMinOverSoft
+				    *pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
+				   dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
+			        else 
+				   dT = dEta*sqrt((dhMinOverSoft*pkd->pStore[i].fSoft)/acc);
+			        }
+		             else 
+#endif
+			        dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
+			        }
 			if (bSqrtPhi) {
 				/*
 				 ** NOTE: The factor of 3.5 keeps this criterion in sync
@@ -3758,6 +3770,9 @@ void pkdInitAccel(PKD pkd)
 		if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
 			for (j=0;j<3;++j) {
 				pkd->pStore[i].a[j] = 0;
+#ifdef GASOLINE
+				pkd->pStore[i].aPres[j] = 0;
+#endif
 				pkd->pStore[i].dtGrav = 0;
 				}
 			}
@@ -3844,13 +3859,11 @@ void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dPdVMetal, d
 void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdateY )
 {
 	PARTICLE *p;
-	int i,j,n;
+	int i,n;
 	int bCool = 0;
-	CL *cl;
+	CL *cl = NULL;
 	PERBARYON Y;
-	double E,dt;
-
-	char ach[256];
+	double E,dt = 0;
 
 	pkdClearTimer(pkd,1);
 	pkdStartTimer(pkd,1);
@@ -3888,6 +3901,71 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdate
 	pkdStopTimer(pkd,1);
 	}
 
+void pkdUpdateShockTracker(PKD pkd, double dDelta, double dShockTrackerA, double dShockTrackerB )
+{
+	PARTICLE *p;
+	int i,n;
+	double conh,factor,a[3];
+	double dv2,a2,ap2,adotap=1;
+
+        if (dShockTrackerB == 0) printf("Doing cheap shock tracking\n");
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i,++p) {
+		if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
+		        p->ShockTracker = 0;
+
+		        a[0] = p->a[0]+p->aPres[0];
+		        a[1] = p->a[1]+p->aPres[1];
+		        a[2] = p->a[2]+p->aPres[2];
+			a2 = ((a[0]*a[0])+(a[1]*a[1])+(a[2]*a[2]));
+			ap2 = ((p->aPres[0]*p->aPres[0])+(p->aPres[1]*p->aPres[1])+(p->aPres[2]*p->aPres[2]));
+			adotap = ((a[0]*p->aPres[0])+(a[1]*p->aPres[1])+(a[2]*p->aPres[2]));
+
+#if 0
+			if (!(i%2000)) {
+			  /*
+printf("aP %d: %g %g %g %g %g %g\n",i,a[0],a[1],a[2],p->aPres[0],p->aPres[1],p->aPres[2]);
+			  */
+printf("r %g PdV %g a %g %g %g SW %g %g %g\n",sqrt(p->r[0]*p->r[0]+p->r[1]*p->r[1]+p->r[2]*p->r[2]),
+       p->PdV,((a[0]*p->aPres[0])+(a[1]*p->aPres[1])+(a[2]*p->aPres[2])),sqrt(a2),sqrt(ap2),
+       sqrt(a2*0.25*p->fBall2)/(p->c*p->c),
+       (a[0]*p->gradrho[0]+a[1]*p->gradrho[1]+a[2]*p->gradrho[2])/
+       (p->gradrho[0]*p->gradrho[0]+p->gradrho[1]*p->gradrho[1]+p->gradrho[2]*p->gradrho[2]+
+	0.4/p->fBall2)/(p->c*p->c),p->BalsaraSwitch );
+			}
+#endif
+
+			/* Rarefaction or Gravity dominated compression */
+			if ( p->PdV < 0 || adotap < 0.5*a2) p->ShockTracker = 0;
+			else {
+			 if (dShockTrackerB == 0) {
+			  if (a2 < ap2) 
+			    dv2 = sqrt(a2*0.25*p->fBall2);
+			  else
+			    dv2 = sqrt(ap2*0.25*p->fBall2);
+			 }
+			 else {
+			  if (a2 < ap2) 
+			    dv2 = -p->fDensity*(a[0]*p->gradrho[0]+a[1]*p->gradrho[1]+a[2]*p->gradrho[2])/
+			      (p->gradrho[0]*p->gradrho[0]+p->gradrho[1]*p->gradrho[1]+p->gradrho[2]*p->gradrho[2]+
+			       p->fDensity*p->fDensity*dShockTrackerB/p->fBall2);
+			  else
+			    dv2 = -p->fDensity*(p->aPres[0]*p->gradrho[0]+p->aPres[1]*p->gradrho[1]+p->aPres[2]*p->gradrho[2])/
+			      (p->gradrho[0]*p->gradrho[0]+p->gradrho[1]*p->gradrho[1]+p->gradrho[2]*p->gradrho[2]+
+			       p->fDensity*p->fDensity*dShockTrackerB/p->fBall2);
+
+			  }
+			 /*
+			  if (dv2 < dShockTrackerA*p->c*p->c) p->ShockTracker = 0;
+			 */
+			 p->ShockTracker = dv2/(dShockTrackerA*p->c*p->c);
+			 if (p->ShockTracker > 1) p->ShockTracker = 1;
+			 }
+			}
+		}
+        }
+
 /* Note: Uses uPred */
 void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma)
 {
@@ -3897,7 +3975,7 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma)
 
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
-		if (TYPEQueryTREEACTIVE(p)) {
+		if (pkdIsGas(pkd,p)) {
 			PoverRho = gammam1*p->uPred;
 			p->PoverRho2 = PoverRho/p->fDensity;
    			p->c = sqrt(gamma*PoverRho);
@@ -3910,6 +3988,38 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma)
 			       p->PoverRho2*p->fDensity*p->fDensity,p->c);
 			}
 #endif            
+		}
+    }
+
+
+void pkdLowerSoundSpeed(PKD pkd, double dhMinOverSoft)
+{
+    PARTICLE *p;
+    double PoverRho;
+    double dfBall2MinOverSoft,dfBall2Min,ratio;
+    int i;
+
+    dfBall2MinOverSoft = 4*dhMinOverSoft*dhMinOverSoft;
+
+    p = pkd->pStore;
+    for(i=0;i<pkdLocal(pkd);++i,++p) {
+		if (pkdIsGas(pkd,p)) {
+		        dfBall2Min = dfBall2MinOverSoft*p->fSoft*p->fSoft;
+			if (p->fBall2 < dfBall2Min) {
+			  ratio = p->fBall2/dfBall2Min;
+			  p->PoverRho2 *= ratio;
+			  p->c *= sqrt(ratio);
+#ifdef DEBUG
+		if ((p->iOrder % 100)==0) {
+			printf("Pressure %i: %g %g, %g %g, %g %g\n",
+			       p->iOrder,
+			       sqrt(p->fBall2),sqrt(dfBall2Min),
+			       p->PoverRho2,p->PoverRho2/ratio,
+			       p->c,p->c/sqrt(ratio));
+			}
+#endif            
+			  }
+			}
 		}
     }
 
@@ -4012,10 +4122,43 @@ void pkdGlassGasPressure(PKD pkd, void *vin)
 
 #endif
 
-void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta)
+/*
+void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int iGasModel,
+		  double z, double duDotLimit)
 {
 	PARTICLE *p;
 	int i,j,n;
+
+	mdlDiag(pkd->mdl, "Into Vpred\n");
+
+	pkdClearTimer(pkd,1);
+	pkdStartTimer(pkd,1);
+
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i,++p) {
+		if (pkdIsGas(pkd,p)) {
+			for (j=0;j<3;++j) {
+				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;
+				}
+#ifndef NOCOOLING
+			p->uPred = p->uPred + p->uDot*duDelta;
+#else
+			p->uPred = p->uPred + p->PdV*duDelta;
+#endif
+			mdlassert(pkd->mdl,p->uPred > 0);
+			}
+		}
+
+	pkdStopTimer(pkd,1);
+	mdlDiag(pkd->mdl, "Done Vpred\n");
+	}
+*/
+
+void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta)
+{
+	PARTICLE *p;
+	int i,n;
 
 #ifdef DEBUG
 	printf("pkdKickRhopred: %g %g\n",dHubbFac,dDelta);
@@ -4062,10 +4205,6 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
     PARTICLE *p;    
     double dT,dTu;
 
-    char ach[256];
-    int j;
-    double acc;
-
     for(i=0;i<pkdLocal(pkd);++i) {
         p = &pkd->pStore[i];
         if(pkdIsGas(pkd, p) && TYPEQueryACTIVE(p)) {
@@ -4093,23 +4232,16 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
     }
 
 void 
-pkdSphViscosityLimiter(PKD pkd, int bOn)
+pkdSphViscosityLimiter(PKD pkd, int bOn, int bShockTracker)
 {
     int i;
     PARTICLE *p;    
-    double frog;
 
     if (bOn) {
         for(i=0;i<pkdLocal(pkd);++i) {
 			p = &pkd->pStore[i];
+
 			if(pkdIsGas(pkd, p)) {
-#ifdef DEBUG
-				if ((p->iOrder % 300) == 0) 
-					printf("Particle %i: %i %i %i %f %f %f %f %f %f   Curl\n",
-						   p->iOrder,TYPEQueryACTIVE(p),TYPEQueryTREEACTIVE(p),p->iRung,
-						   sqrt(0.25*p->fBall2),p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]
-						   );
-#endif		
 				if (p->divv!=0.0) {         	 
 					p->BalsaraSwitch = fabs(p->divv)/
 						(fabs(p->divv)+sqrt(p->curlv[0]*p->curlv[0]+
@@ -4117,7 +4249,7 @@ pkdSphViscosityLimiter(PKD pkd, int bOn)
 											p->curlv[2]*p->curlv[2]));
 					}
 				else { 
-					p->BalsaraSwitch = 0.0;
+					p->BalsaraSwitch = 0;
 					}
 				}
 			}
@@ -4126,7 +4258,7 @@ pkdSphViscosityLimiter(PKD pkd, int bOn)
         for(i=0;i<pkdLocal(pkd);++i) {
 			p = &pkd->pStore[i];
 			if(pkdIsGas(pkd, p)) {
-				p->BalsaraSwitch = 1.0;
+			        p->BalsaraSwitch = 1;
 				}
 			}
         }
@@ -4482,8 +4614,6 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int 
 	PARTICLE *p;
 	int i,j,n;
 
-	char ach[256];
-
 	mdlDiag(pkd->mdl, "Into Vpred\n");
 
 	pkdClearTimer(pkd,1);
@@ -4523,3 +4653,5 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo)
 	}
 #endif
 #endif /* NEED_VPRED */
+
+

@@ -94,12 +94,39 @@ void combDivVort(void *,void *);
 void DivVort(PARTICLE *,int,NN *,SMF *);
 void DivVortSym(PARTICLE *,int,NN *,SMF *);
 
+#define SMX_SHOCKTRACK				18
+void initShockTrack(void *);
+void combShockTrack(void *,void *);
+void ShockTrack(PARTICLE *,int,NN *,SMF *);
+void ShockTrackSym(PARTICLE *,int,NN *,SMF *);
+
 #define SMX_HKPRESSURETERMS		5
 void initHKPressureTermsParticle(void *);
 void initHKPressureTerms(void *);
 void combHKPressureTerms(void *,void *);
 void HKPressureTerms(PARTICLE *,int,NN *,SMF *);
 void HKPressureTermsSym(PARTICLE *,int,NN *,SMF *);
+
+#define SMX_SPHPRESSURE    19
+void initSphPressureParticle(void *);
+void initSphPressure(void *);
+void combSphPressure(void *,void *);
+void SphPressure(PARTICLE *,int,NN *,SMF *);
+void SphPressureSym(PARTICLE *,int,NN *,SMF *);
+
+#define SMX_SPHVISCOSITY    20
+void initSphViscosityParticle(void *);
+void initSphViscosity(void *);
+void combSphViscosity(void *,void *);
+void SphViscosity(PARTICLE *,int,NN *,SMF *);
+void SphViscositySym(PARTICLE *,int,NN *,SMF *);
+
+#define SMX_HKVISCOSITY    21
+void initHKViscosityParticle(void *);
+void initHKViscosity(void *);
+void combHKViscosity(void *,void *);
+void HKViscosity(PARTICLE *,int,NN *,SMF *);
+void HKViscositySym(PARTICLE *,int,NN *,SMF *);
 
 #endif
 

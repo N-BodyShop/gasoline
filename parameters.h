@@ -104,6 +104,8 @@ struct parameters {
 	double dEtaCourant;
 	double dEtauDot;
 	double duDotLimit;
+        double dShockTrackerA;
+        double dShockTrackerB;
 	double dConstAlpha;
 	double dConstBeta;
 	double dConstGamma;
@@ -122,8 +124,10 @@ struct parameters {
 	int    nCoolingTable;
 	int    bViscosityLimiter;
 	int    bViscosityLimitdt;
+        int    bShockTracker;
 	int    bBulkViscosity;
 	int    bGasDomainDecomp;
+        int    bLowerSoundSpeed;
 	int    bFastGas;
 	double dFracFastGas;
 	double dhMinOverSoft;

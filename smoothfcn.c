@@ -7,6 +7,26 @@
 #include "collision.h"
 #endif /* COLLISIONS */
 
+/*
+ Change the way the Balsara Switch is applied:
+*/
+/*
+#define SWITCHCOMBINE(a,b) (0.5*(a->BalsaraSwitch+b->BalsaraSwitch))
+#define SWITCHCOMBINE(a,b) (a->BalsaraSwitch > b->BalsaraSwitch ? a->BalsaraSwitch : b->BalsaraSwitch)
+#define SWITCHCOMBINE(a,b) (a->BalsaraSwitch*b->BalsaraSwitch)
+#define SWITCHCOMBINE(a,b) ((a->BalsaraSwitch*b->BalsaraSwitch > 0.5 || \
+           (a->BalsaraSwitch > 0.5 && (dx*a->aPres[0]+dy*a->aPres[1]+dz*a->aPres[2]) > 0) || \
+           (b->BalsaraSwitch > 0.5 && (dx*b->aPres[0]+dy*b->aPres[1]+dz*b->aPres[2]) < 0)) ? 1 : 0)
+#define SWITCHCOMBINEA(a,b) (a->BalsaraSwitch >= 1 || b->BalsaraSwitch >= 1 ? 1 : 0)
+#define SWITCHCOMBINEA(a,b) ((a->BalsaraSwitch*b->BalsaraSwitch)*(a->ShockTracker > b->ShockTracker ? a->ShockTracker : b->ShockTracker))
+*/
+#define SWITCHCOMBINE(a,b) (0.5*(a->BalsaraSwitch+b->BalsaraSwitch))
+#define SWITCHCOMBINEA(a,b) ((a->BalsaraSwitch*b->BalsaraSwitch)*a->ShockTracker*b->ShockTracker)
+#define SWITCHCOMBINEB(a,b) (a->BalsaraSwitch*b->BalsaraSwitch)
+
+#define ACCEL_PRES(p,j) (((PARTICLE *)(p))->aPres[j])
+#define ACCEL(p,j) (((PARTICLE *)(p))->a[j])
+
 #ifdef M43D
 /* M43D Creates a 3D kernel by convolution of 3D tophats the way M4(1D) is made in 1D */
 #define BALL2(a) ((a)->fBall2)
@@ -379,9 +399,9 @@ void initSphPressureTerms(void *p)
 		((PARTICLE *)p)->PdVvisc = 0.0;
 		((PARTICLE *)p)->PdVpres = 0.0;
 #endif
-		((PARTICLE *)p)->a[0] = 0.0;
-		((PARTICLE *)p)->a[1] = 0.0;
-		((PARTICLE *)p)->a[2] = 0.0;
+		ACCEL(p,0) = 0.0;
+		ACCEL(p,1) = 0.0;
+		ACCEL(p,2) = 0.0;
 		}
 	}
 
@@ -395,9 +415,9 @@ void combSphPressureTerms(void *p1,void *p2)
 #endif
 		if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
 			((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
-		((PARTICLE *)p1)->a[0] += ((PARTICLE *)p2)->a[0];
-		((PARTICLE *)p1)->a[1] += ((PARTICLE *)p2)->a[1];
-		((PARTICLE *)p1)->a[2] += ((PARTICLE *)p2)->a[2];	
+		ACCEL(p1,0) += ACCEL(p2,0);
+		ACCEL(p1,1) += ACCEL(p2,1);
+		ACCEL(p1,2) += ACCEL(p2,2);
 		}
 	}
 
@@ -409,7 +429,7 @@ void SphPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
 	FLOAT pPoverRho2,pPdV,pa[3],pmumax;
 	FLOAT ph,pc,pDensity,visc,hav,vFac,absmu;
-	FLOAT fNorm,fNorm1,fNorm2,fTmp;
+	FLOAT fNorm,fNorm1,fNorm2;
 	int i;
 
 	if (!TYPEQueryACTIVE(p)) return;
@@ -458,7 +478,8 @@ void SphPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			/* mu terms for gas time step */
 			if (absmu>pmumax) pmumax=absmu;
 			/* viscosity term */
-			visc = 0.5*(p->BalsaraSwitch+q->BalsaraSwitch)*
+
+			visc = SWITCHCOMBINE(p,q)*
 				(smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
 					*absmu/(pDensity + q->fDensity);
 		        pPdV += rs1 * (pPoverRho2 + 0.5*visc)*dvdotdr;
@@ -470,19 +491,19 @@ void SphPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
  		}
 	p->PdV += fNorm1*pPdV;
 	p->mumax = pmumax;
-	p->a[0] += fNorm2*pa[0];
-	p->a[1] += fNorm2*pa[1];
-	p->a[2] += fNorm2*pa[2];
+	ACCEL(p,0) += fNorm2*pa[0];
+	ACCEL(p,0) += fNorm2*pa[1];
+	ACCEL(p,0) += fNorm2*pa[2];
 	}
 
 void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	FLOAT ih2,r2,r,rs1,rq,rp;
+	FLOAT ih2,r2,rs1,rq,rp;
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
 	FLOAT pPoverRho2,pPdV,pa[3],pMass,pmumax;
 	FLOAT ph,pc,pDensity,visc,hav,absmu;
-	FLOAT fNorm,fNorm1,aFac,vFac,fTmp;
+	FLOAT fNorm,fNorm1,aFac,vFac;
 	int i;
 
 #ifdef PDVCHECK
@@ -546,11 +567,11 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					pa[0] -= rq * dx;
 					pa[1] -= rq * dy;
 					pa[2] -= rq * dz;
-					q->a[0] += rp * dx;
-					q->a[1] += rp * dy;
-					q->a[2] += rp * dz;
+					ACCEL(q,0) += rp * dx;
+					ACCEL(q,1) += rp * dy;
+					ACCEL(q,2) += rp * dz;
 #ifdef PDVCHECK
-					if (p->iOrder==880556 || q->iOrder==880556 || fabs(rq) > 1e50 || fabs(rp) > 1e50 || fabs(p->a[0])+fabs(p->a[1])+fabs(p->a[2])+fabs(pa[0])+fabs(pa[1])+fabs(pa[2]) > 1e50 || fabs(q->a[0])+fabs(q->a[1])+fabs(q->a[2]) > 1e50) {
+					if (p->iOrder==880556 || q->iOrder==880556 || fabs(rq) > 1e50 || fabs(rp) > 1e50 || fabs(ACCEL(p,0))+fabs(ACCEL(p,1))+fabs(ACCEL(p,2))+fabs(pa[0])+fabs(pa[1])+fabs(pa[2]) > 1e50 || fabs(ACCEL(q,0))+fabs(ACCEL(q,1))+fabs(ACCEL(q,2)) > 1e50) {
 						sprintf(ach,"PDV-ACC-1 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
 						mdlDiag(smf->pkd->mdl,ach);
 						}
@@ -566,9 +587,10 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					if (absmu>pmumax) pmumax=absmu;
 					if (absmu>q->mumax) q->mumax=absmu;
 					/* viscosity term */
-					visc = 0.5*(p->BalsaraSwitch+q->BalsaraSwitch)*
-						(smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
-							*absmu/(pDensity + q->fDensity);
+
+					visc = SWITCHCOMBINE(p,q)*
+					  (smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
+					  *absmu/(pDensity + q->fDensity);
 #ifdef PDVCHECK
 					if (p->iOrder==880556 || q->iOrder==880556 || !finite(rq * (pPoverRho2 + 0.5*visc) * dvdotdr) || !finite(rp * (q->PoverRho2 + 0.5*visc) * dvdotdr) || fabs(rq * (pPoverRho2 + 0.5*visc) * dvdotdr * 1e-5) > p->u || fabs(rp * (q->PoverRho2 + 0.5*visc) * dvdotdr *1e-5) > q->u) {
 						sprintf(ach,"PDV-ERR-2 %d - %d: Den %g - %g u %g %g PdV+ %g %g %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * (pPoverRho2 + 0.5*visc) * dvdotdr,rq * (pPoverRho2) * dvdotdr,rq * (0.5*visc) * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax);
@@ -593,12 +615,12 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					pa[0] -= rq*dx;
 					pa[1] -= rq*dy;
 					pa[2] -= rq*dz;
-					q->a[0] += rp*dx;
-					q->a[1] += rp*dy;
-					q->a[2] += rp*dz;
+					ACCEL(q,0) += rp*dx;
+					ACCEL(q,1) += rp*dy;
+					ACCEL(q,2) += rp*dz;
 #ifdef PDVCHECK
-					if (p->iOrder==880556 || q->iOrder==880556 || fabs(rq) > 1e50 || fabs(rp) > 1e50 || fabs(p->a[0])+fabs(p->a[1])+fabs(p->a[2])+fabs(pa[0])+fabs(pa[1])+fabs(pa[2]) > 1e50 || fabs(q->a[0])+fabs(q->a[1])+fabs(q->a[2]) > 1e50) {
-						sprintf(ach,"PDV-ACC-2 %d - %d: Den %g - %g u %g - %g PdV+ %g a %g %g %g %g %g %g vPred %g %g %g a %g %g %g vPred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->a[0],p->a[1],p->a[2],p->vPred[0],p->vPred[1],p->vPred[2],q->a[0],q->a[1],q->a[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
+					if (p->iOrder==880556 || q->iOrder==880556 || fabs(rq) > 1e50 || fabs(rp) > 1e50 || fabs(ACCEL(p,0))+fabs(ACCEL(p,1))+fabs(ACCEL(p,2))+fabs(pa[0])+fabs(pa[1])+fabs(pa[2]) > 1e50 || fabs(ACCEL(q,0))+fabs(ACCEL(q,1))+fabs(ACCEL(q,2)) > 1e50) {
+						sprintf(ach,"PDV-ACC-2 %d - %d: Den %g - %g u %g - %g PdV+ %g a %g %g %g %g %g %g vPred %g %g %g a %g %g %g vPred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,ACCEL(p,0),ACCEL(p,1),ACCEL(p,2),p->vPred[0],p->vPred[1],p->vPred[2],ACCEL(q,0),ACCEL(q,1),ACCEL(q,2),q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
 						mdlDiag(smf->pkd->mdl,ach);
 						}
 #endif
@@ -622,7 +644,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					pa[1] -= rq*dy;
 					pa[2] -= rq*dz;
 #ifdef PDVCHECK
-					if (p->iOrder==880556 || q->iOrder==880556 || fabs(rq) > 1e50 || fabs(p->a[0])+fabs(p->a[1])+fabs(p->a[2])+fabs(pa[0])+fabs(pa[1])+fabs(pa[2]) > 1e50) {
+					if (p->iOrder==880556 || q->iOrder==880556 || fabs(rq) > 1e50 || fabs(ACCEL(p,0))+fabs(ACCEL(p,1))+fabs(ACCEL(p,2))+fabs(pa[0])+fabs(pa[1])+fabs(pa[2]) > 1e50) {
 						sprintf(ach,"PDV-ACC-3 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
 						mdlDiag(smf->pkd->mdl,ach);
 						}
@@ -637,9 +659,10 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					/* mu terms for gas time step */
 					if (absmu>pmumax) pmumax=absmu;
 					/* viscosity term */
-					visc = 0.5*(p->BalsaraSwitch+q->BalsaraSwitch)*
-						(smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
-							*absmu/(pDensity + q->fDensity);
+
+					visc = SWITCHCOMBINE(p,q)*
+					  (smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
+					  *absmu/(pDensity + q->fDensity);
 #ifdef PDVCHECK
 					if (p->iOrder==880556 || q->iOrder==880556 || !finite(rq * (pPoverRho2 + 0.5*visc) * dvdotdr) || !finite(rp * (q->PoverRho2 + 0.5*visc) * dvdotdr) || fabs(rq * (pPoverRho2 + 0.5*visc) * dvdotdr * 1e-5) > p->u || fabs(rp * (q->PoverRho2 + 0.5*visc) * dvdotdr *1e-5) > q->u) {
 						sprintf(ach,"PDV-ERR-4 %d - %d: Den %g - %g u %g - %g PdV+ %g %g %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g \n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * (pPoverRho2 + 0.5*visc) * dvdotdr,rq * (pPoverRho2) * dvdotdr,rq * (0.5*visc) * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax);
@@ -659,7 +682,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					pa[1] -= rq*dy;
 					pa[2] -= rq*dz; 
 #ifdef PDVCHECK
-					if (p->iOrder==880556 || q->iOrder==880556 || fabs(rq) > 1e50 || fabs(p->a[0])+fabs(p->a[1])+fabs(p->a[2])+fabs(pa[0])+fabs(pa[1])+fabs(pa[2]) > 1e50 ) {
+					if (p->iOrder==880556 || q->iOrder==880556 || fabs(rq) > 1e50 || fabs(ACCEL(p,0))+fabs(ACCEL(p,1))+fabs(ACCEL(p,2))+fabs(pa[0])+fabs(pa[1])+fabs(pa[2]) > 1e50 ) {
 						sprintf(ach,"PDV-ACC-4 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
 						mdlDiag(smf->pkd->mdl,ach);
 						}
@@ -669,9 +692,9 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	        }
 		p->PdV += pPdV;
 		p->mumax = pmumax;
-		p->a[0] += pa[0];
-		p->a[1] += pa[1];
-		p->a[2] += pa[2];
+		ACCEL(p,0) += pa[0];
+		ACCEL(p,1) += pa[1];
+		ACCEL(p,2) += pa[2];
 		}
 	else {
 		/* p not active */
@@ -699,11 +722,11 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				rp *= (pPoverRho2 + q->PoverRho2);
 				rp *= aFac; /* convert to comoving acceleration */
 
-		        q->a[0] += rp*dx;
-		        q->a[1] += rp*dy;
-		        q->a[2] += rp*dz;
+		        ACCEL(q,0) += rp*dx;
+		        ACCEL(q,1) += rp*dy;
+		        ACCEL(q,2) += rp*dz;
 #ifdef PDVCHECK
-				if (p->iOrder==880556 || q->iOrder==880556 || fabs(rp) > 1e50 || fabs(q->a[0])+fabs(q->a[1])+fabs(q->a[2]) > 1e50) {
+				if (p->iOrder==880556 || q->iOrder==880556 || fabs(rp) > 1e50 || fabs(ACCEL(q,0))+fabs(ACCEL(q,1))+fabs(ACCEL(q,2)) > 1e50) {
 					sprintf(ach,"PDV-ACC-5 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
 					mdlDiag(smf->pkd->mdl,ach);
 					}
@@ -718,9 +741,10 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				/* mu terms for gas time step */
 				if (absmu>q->mumax) q->mumax=absmu;
 				/* viscosity */
-		        visc = 0.5*(p->BalsaraSwitch+q->BalsaraSwitch)*
-					(smf->alpha*(pc + q->c) + smf->beta*2*absmu)
-						*absmu/(pDensity + q->fDensity);
+
+				visc = SWITCHCOMBINE(p,q)*
+				  (smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
+				  *absmu/(pDensity + q->fDensity);
 #ifdef PDVCHECK
 #endif
 				q->PdV += rp*(q->PoverRho2 + 0.5*visc)*dvdotdr;
@@ -731,11 +755,11 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 				rp *= aFac; /* convert to comoving acceleration */
 
-		        q->a[0] += rp*dx;
-		        q->a[1] += rp*dy;
-		        q->a[2] += rp*dz;
+		        ACCEL(q,0) += rp*dx;
+		        ACCEL(q,1) += rp*dy;
+		        ACCEL(q,2) += rp*dz;
 #ifdef PDVCHECK
-				if (p->iOrder==880556 || q->iOrder==880556 || fabs(rp) > 1e50 || fabs(q->a[0])+fabs(q->a[1])+fabs(q->a[2]) > 1e50) {
+				if (p->iOrder==880556 || q->iOrder==880556 || fabs(rp) > 1e50 || fabs(ACCEL(q,0))+fabs(ACCEL(q,1))+fabs(ACCEL(q,2)) > 1e50) {
 					sprintf(ach,"PDV-ACC-6 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
 					mdlDiag(smf->pkd->mdl,ach);
 					}
@@ -745,6 +769,420 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		} 
 	}
 
+/* Original Particle */
+void initSphPressureParticle(void *p)
+{
+	if (TYPEQueryACTIVE((PARTICLE *) p)) {
+		((PARTICLE *)p)->mumax = 0.0;
+		((PARTICLE *)p)->PdV = 0.0;
+		}
+	}
+
+/* Cached copies of particle */
+void initSphPressure(void *p)
+{
+	if (TYPEQueryACTIVE((PARTICLE *) p)) {
+		((PARTICLE *)p)->mumax = 0.0;
+		((PARTICLE *)p)->PdV = 0.0;
+		ACCEL_PRES(p,0) = 0.0;
+		ACCEL_PRES(p,1) = 0.0;
+		ACCEL_PRES(p,2) = 0.0;
+		}
+	}
+
+void combSphPressure(void *p1,void *p2)
+{
+	if (TYPEQueryACTIVE((PARTICLE *) p1)) {
+		((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
+#ifdef DEBUG
+		((PARTICLE *)p1)->PdVvisc += ((PARTICLE *)p2)->PdVvisc;
+		((PARTICLE *)p1)->PdVpres += ((PARTICLE *)p2)->PdVpres;
+#endif
+		if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
+			((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
+		ACCEL_PRES(p1,0) += ACCEL_PRES(p2,0);
+		ACCEL_PRES(p1,1) += ACCEL_PRES(p2,1);
+		ACCEL_PRES(p1,2) += ACCEL_PRES(p2,2);
+		}
+	}
+
+/* Gather only version -- untested */
+void SphPressure(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT ih2,r2,rs1;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT pPoverRho2,pPdV,pa[3],pmumax;
+	FLOAT ph,pc,pDensity,visc,hav,vFac,absmu;
+	FLOAT fNorm,fNorm1,fNorm2;
+	int i;
+
+	if (!TYPEQueryACTIVE(p)) return;
+
+	pc = p->c;
+	pDensity = p->fDensity;
+	pPoverRho2 = p->PoverRho2;
+	pmumax = p->mumax;
+	ph = sqrt(0.25*BALL2(p));
+	ih2 = 4.0/BALL2(p);
+	fNorm = M_1_PI*ih2/ph;
+	fNorm1 = fNorm*ih2;	
+	fNorm2 = fNorm1*(smf->a);    /* Comoving accelerations */
+	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
+
+	pPdV=0.0;
+	pa[0]=0.0;
+	pa[1]=0.0;
+	pa[2]=0.0;
+	for (i=0;i<nSmooth;++i) {
+		q = nnList[i].pPart;
+		r2 = nnList[i].fDist2*ih2;
+		DKERNEL(rs1,r2);
+		rs1 *= q->fMass;
+
+		dx = nnList[i].dx;
+		dy = nnList[i].dy;
+		dz = nnList[i].dz;
+		dvx = p->vPred[0] - q->vPred[0];
+		dvy = p->vPred[1] - q->vPred[1];
+		dvz = p->vPred[2] - q->vPred[2];
+		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
+		if (dvdotdr>0.0) {
+			pPdV += rs1 * pPoverRho2 * dvdotdr;
+			rs1 *= (pPoverRho2 + q->PoverRho2);
+			pa[0] -= rs1 * dx;
+			pa[1] -= rs1 * dy;
+			pa[2] -= rs1 * dz;
+			}
+		else {
+			hav = 0.5*(ph+sqrt(0.25*BALL2(q)));
+			/* mu 
+			   multiply by a to be consistent with physical c */
+			absmu = -hav*dvdotdr*smf->a 
+			    / (nnList[i].fDist2+0.01*hav*hav);
+			/* mu terms for gas time step */
+			if (absmu>pmumax) pmumax=absmu;
+			/* viscosity term */
+
+			visc = SWITCHCOMBINE(p,q)*
+			  (smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
+			  *absmu/(pDensity + q->fDensity);
+		        pPdV += rs1 * (pPoverRho2 + 0.5*visc)*dvdotdr;
+			rs1 *= (pPoverRho2 + q->PoverRho2 + visc);
+			pa[0] -= rs1 * dx;
+			pa[1] -= rs1 * dy;
+			pa[2] -= rs1 * dz;
+			}
+ 		}
+	p->PdV += fNorm1*pPdV;
+	p->mumax = pmumax;
+	ACCEL_PRES(p,0) += fNorm2*pa[0];
+	ACCEL_PRES(p,0) += fNorm2*pa[1];
+	ACCEL_PRES(p,0) += fNorm2*pa[2];
+	}
+
+void SphPressureSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT ih2,r2,rs1,rq,rp;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT pPoverRho2,pPdV,pa[3],pMass,pmumax;
+	FLOAT ph,pc,pDensity,visc,hav,absmu;
+	FLOAT fNorm,fNorm1,aFac,vFac;
+	int i;
+
+	pc = p->c;
+	pDensity = p->fDensity;
+	pMass = p->fMass;
+	pPoverRho2 = p->PoverRho2;
+	ph = sqrt(0.25*BALL2(p));
+	ih2 = 4.0/BALL2(p);
+	fNorm = 0.5*M_1_PI*ih2/ph;
+	fNorm1 = fNorm*ih2;	/* converts to physical u */
+	aFac = (smf->a);    /* comoving acceleration factor */
+	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
+
+	if (TYPEQueryACTIVE(p)) {
+		/* p active */
+		pmumax = p->mumax;
+		pPdV=0.0;
+		pa[0]=0.0;
+		pa[1]=0.0;
+		pa[2]=0.0;
+		for (i=0;i<nSmooth;++i) {
+			q = nnList[i].pPart;
+			r2 = nnList[i].fDist2*ih2;
+			DKERNEL(rs1,r2);
+			rs1 *= fNorm1;
+			rq = rs1 * q->fMass;
+
+			dx = nnList[i].dx;
+			dy = nnList[i].dy;
+			dz = nnList[i].dz;
+			dvx = p->vPred[0] - q->vPred[0];
+			dvy = p->vPred[1] - q->vPred[1];
+			dvz = p->vPred[2] - q->vPred[2];
+			dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz)
+				+ nnList[i].fDist2*smf->H;
+
+			if (TYPEQueryACTIVE(q)) {
+				/* q active */
+			        rp = rs1 * pMass;
+				pPdV += rq*pPoverRho2*dvdotdr;
+				q->PdV += rp*q->PoverRho2*dvdotdr;
+				rq *= (pPoverRho2 + q->PoverRho2);
+				rp *= (pPoverRho2 + q->PoverRho2);
+				rp *= aFac; /* convert to comoving acceleration */
+				rq *= aFac;
+				pa[0] -= rq * dx;
+				pa[1] -= rq * dy;
+				pa[2] -= rq * dz;
+				ACCEL_PRES(q,0) += rp * dx;
+				ACCEL_PRES(q,1) += rp * dy;
+				ACCEL_PRES(q,2) += rp * dz;
+              		        }
+			else {
+				/* q not active */
+			        pPdV += rq*pPoverRho2*dvdotdr;
+				rq *= (pPoverRho2 + q->PoverRho2);
+				rq *= aFac; /* convert to comoving acceleration */
+
+				pa[0] -= rq*dx;
+				pa[1] -= rq*dy;
+				pa[2] -= rq*dz;
+              		        }
+             		}
+		p->PdV += pPdV;
+		p->mumax = pmumax;
+		ACCEL_PRES(p,0) += pa[0];
+		ACCEL_PRES(p,1) += pa[1];
+		ACCEL_PRES(p,2) += pa[2];
+		}
+	else {
+		/* p not active */
+		for (i=0;i<nSmooth;++i) {
+	                q = nnList[i].pPart;
+                        if (!TYPEQueryACTIVE(q)) continue; /* neither active */
+
+                        r2 = nnList[i].fDist2*ih2;
+                        DKERNEL(rs1,r2);
+                        rs1 *= fNorm1;
+			rp = rs1 * pMass;
+
+			dx = nnList[i].dx;
+			dy = nnList[i].dy;
+			dz = nnList[i].dz;
+			dvx = p->vPred[0] - q->vPred[0];
+			dvy = p->vPred[1] - q->vPred[1];
+			dvz = p->vPred[2] - q->vPred[2];
+			dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) +
+				nnList[i].fDist2*smf->H;
+			q->PdV += rp*q->PoverRho2*dvdotdr;
+			rp *= (pPoverRho2 + q->PoverRho2);
+			rp *= aFac; /* convert to comoving acceleration */
+
+		        ACCEL_PRES(q,0) += rp*dx;
+		        ACCEL_PRES(q,1) += rp*dy;
+		        ACCEL_PRES(q,2) += rp*dz;
+	                }
+		} 
+	}
+
+/* Original Particle */
+void initSphViscosityParticle(void *p)
+{
+	ACCEL(p,0) += ACCEL_PRES(p,0);
+	ACCEL(p,1) += ACCEL_PRES(p,1);
+	ACCEL(p,2) += ACCEL_PRES(p,2);
+}
+
+/* Cached copies of particle */
+void initSphViscosity(void *p)
+{
+	if (TYPEQueryACTIVE((PARTICLE *) p)) {
+		((PARTICLE *)p)->mumax = 0.0;
+		((PARTICLE *)p)->PdV = 0.0;
+		ACCEL(p,0) = 0.0;
+		ACCEL(p,1) = 0.0;
+		ACCEL(p,2) = 0.0;
+		}
+	}
+
+void combSphViscosity(void *p1,void *p2)
+{
+	if (TYPEQueryACTIVE((PARTICLE *) p1)) {
+		((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
+		if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
+			((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
+		ACCEL(p1,0) += ACCEL(p2,0);
+		ACCEL(p1,1) += ACCEL(p2,1);
+		ACCEL(p1,2) += ACCEL(p2,2);
+		}
+	}
+
+/* Gather only */
+void SphViscosity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+        assert(0);
+	}
+
+/* Symmetric Gather/Scatter version */
+void SphViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT ih2,r2,rs1,rq,rp;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT pPoverRho2,pPdV,pa[3],pMass,pmumax;
+	FLOAT ph,pc,pDensity,visc,hav,absmu;
+	FLOAT fNorm,fNorm1,aFac,vFac;
+	int i;
+
+	pc = p->c;
+	pDensity = p->fDensity;
+	pMass = p->fMass;
+	ph = sqrt(0.25*BALL2(p));
+	ih2 = 4.0/BALL2(p);
+	fNorm = 0.5*M_1_PI*ih2/ph;
+	fNorm1 = fNorm*ih2;	/* converts to physical u */
+	aFac = (smf->a);    /* comoving acceleration factor */
+	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
+
+	if (TYPEQueryACTIVE(p)) {
+		/* p active */
+		pmumax = p->mumax;
+		pPdV=0.0;
+		pa[0]=0.0;
+		pa[1]=0.0;
+		pa[2]=0.0;
+		for (i=0;i<nSmooth;++i) {
+			q = nnList[i].pPart;
+			r2 = nnList[i].fDist2*ih2;
+			DKERNEL(rs1,r2);
+			rs1 *= fNorm1;
+			rq = rs1 * q->fMass;
+
+			dx = nnList[i].dx;
+			dy = nnList[i].dy;
+			dz = nnList[i].dz;
+			dvx = p->vPred[0] - q->vPred[0];
+			dvy = p->vPred[1] - q->vPred[1];
+			dvz = p->vPred[2] - q->vPred[2];
+			dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz)
+				+ nnList[i].fDist2*smf->H;
+			if (dvdotdr > 0.0) continue;
+
+			if (TYPEQueryACTIVE(q)) {
+				/* q active */
+				rp = rs1 * pMass;
+				/* h mean - using just hp probably ok */
+				hav=0.5*(ph+sqrt(0.25*BALL2(q)));
+				/* mu multiply by a to be consistent with physical c */
+				absmu = -hav*dvdotdr*smf->a 
+				  /(nnList[i].fDist2+0.01*hav*hav);
+				/* mu terms for gas time step */
+				if (absmu>pmumax) pmumax=absmu;
+				if (absmu>q->mumax) q->mumax=absmu;
+				/* viscosity term */
+
+				visc = 
+				  (SWITCHCOMBINEA(p,q)*smf->alpha*(pc + q->c) 
+				   + SWITCHCOMBINEB(p,q)*smf->beta*2*absmu) 
+				  *absmu/(pDensity + q->fDensity);
+
+				pPdV += rq*0.5*visc*dvdotdr;
+				
+				q->PdV += rp*0.5*visc*dvdotdr;
+				rq *= visc;
+				rp *= visc;
+				rp *= aFac; /* convert to comoving acceleration */
+				rq *= aFac;
+				
+				pa[0] -= rq*dx;
+				pa[1] -= rq*dy;
+				pa[2] -= rq*dz;
+				ACCEL(q,0) += rp*dx;
+				ACCEL(q,1) += rp*dy;
+				ACCEL(q,2) += rp*dz;
+				}
+			else {
+				/* q not active */
+			        /* h mean */
+			        hav = 0.5*(ph+sqrt(0.25*BALL2(q)));
+				/* mu multiply by a to be consistent with physical c */
+				absmu = -hav*dvdotdr*smf->a 
+				  /(nnList[i].fDist2+0.01*hav*hav);
+				/* mu terms for gas time step */
+				if (absmu>pmumax) pmumax=absmu;
+				/* viscosity term */
+
+				visc = 
+				  (SWITCHCOMBINEA(p,q)*smf->alpha*(pc + q->c) 
+				   + SWITCHCOMBINEB(p,q)*smf->beta*2*absmu) 
+				  *absmu/(pDensity + q->fDensity);
+				
+				pPdV += rq*0.5*visc*dvdotdr;
+				rq *= visc;
+				rq *= aFac; /* convert to comoving acceleration */
+				
+				pa[0] -= rq*dx;
+				pa[1] -= rq*dy;
+				pa[2] -= rq*dz; 
+				}
+	                }
+		p->PdV += pPdV;
+		p->mumax = pmumax;
+		ACCEL(p,0) += pa[0];
+		ACCEL(p,1) += pa[1];
+		ACCEL(p,2) += pa[2];
+		}
+	else {
+		/* p not active */
+		for (i=0;i<nSmooth;++i) {
+           	        q = nnList[i].pPart;
+			if (!TYPEQueryACTIVE(q)) continue; /* neither active */
+
+	                r2 = nnList[i].fDist2*ih2;
+			DKERNEL(rs1,r2);
+			rs1 *= fNorm1;
+			rp = rs1 * pMass;
+
+			dx = nnList[i].dx;
+			dy = nnList[i].dy;
+			dz = nnList[i].dz;
+			dvx = p->vPred[0] - q->vPred[0];
+			dvy = p->vPred[1] - q->vPred[1];
+			dvz = p->vPred[2] - q->vPred[2];
+			dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) +
+				nnList[i].fDist2*smf->H;
+			if (dvdotdr > 0.0) continue;
+
+			/* h mean */
+		        hav = 0.5*(ph+sqrt(0.25*BALL2(q)));
+			/* mu multiply by a to be consistent with physical c */
+		        absmu = -hav*dvdotdr*smf->a 
+			  /(nnList[i].fDist2+0.01*hav*hav);
+				/* mu terms for gas time step */
+			if (absmu>q->mumax) q->mumax=absmu;
+				/* viscosity */
+
+			visc = 
+			  (SWITCHCOMBINEA(p,q)*smf->alpha*(pc + q->c) 
+			   + SWITCHCOMBINEB(p,q)*smf->beta*2*absmu) 
+			  *absmu/(pDensity + q->fDensity);
+
+			q->PdV += rp*0.5*visc*dvdotdr;
+			rp *= visc;
+			rp *= aFac; /* convert to comoving acceleration */
+
+			ACCEL(q,0) += rp*dx;
+			ACCEL(q,1) += rp*dy;
+			ACCEL(q,2) += rp*dz;
+	                }
+		} 
+	}
+
+
+
 void initDivVort(void *p)
 {
 	if (TYPEQueryACTIVE((PARTICLE *) p )) {
@@ -752,6 +1190,10 @@ void initDivVort(void *p)
 		((PARTICLE *)p)->curlv[0] = 0.0;
 		((PARTICLE *)p)->curlv[1] = 0.0;
 		((PARTICLE *)p)->curlv[2] = 0.0;
+		((PARTICLE *)p)->divrhov = 0.0;
+		((PARTICLE *)p)->gradrho[0] = 0.0;
+		((PARTICLE *)p)->gradrho[1] = 0.0;
+		((PARTICLE *)p)->gradrho[2] = 0.0;
 		}
 	}
 
@@ -762,6 +1204,10 @@ void combDivVort(void *p1,void *p2)
 		((PARTICLE *)p1)->curlv[0] += ((PARTICLE *)p2)->curlv[0];
 		((PARTICLE *)p1)->curlv[1] += ((PARTICLE *)p2)->curlv[1];
 		((PARTICLE *)p1)->curlv[2] += ((PARTICLE *)p2)->curlv[2];
+		((PARTICLE *)p1)->divrhov += ((PARTICLE *)p2)->divrhov;
+		((PARTICLE *)p1)->gradrho[0] += ((PARTICLE *)p2)->gradrho[0];
+		((PARTICLE *)p1)->gradrho[1] += ((PARTICLE *)p2)->gradrho[1];
+		((PARTICLE *)p1)->gradrho[2] += ((PARTICLE *)p2)->gradrho[2];
 		}
 	}
 
@@ -820,7 +1266,6 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
 	FLOAT pMass,pDensity;
 	FLOAT fNorm,dv,vFac,a2;
-	FLOAT pcurlv[3],pdivv;
 	int i;
  
 	pDensity = p->fDensity;
@@ -862,6 +1307,15 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				dv=vFac*(dvy*dx - dvx*dy);
 				p->curlv[2] += rq*dv;
 				q->curlv[2] += rp*dv;
+
+				p->divrhov -= rs1*dvdotdr*q->fMass;
+				q->divrhov -= rs1*dvdotdr*pMass;
+				p->gradrho[0] += rs1*q->fMass*dx;
+				q->gradrho[0] -= rs1*pMass*dx;
+				p->gradrho[1] += rs1*q->fMass*dy;
+				q->gradrho[1] -= rs1*pMass*dy;
+				p->gradrho[2] += rs1*q->fMass*dz;
+				q->gradrho[2] -= rs1*pMass*dz;
 		        }
 			else {
 		        /* q inactive */
@@ -872,6 +1326,11 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				p->curlv[1] += rq*dv;
 				dv=vFac*(dvy*dx - dvx*dy);
 				p->curlv[2] += rq*dv;
+
+				p->divrhov -= rs1*dvdotdr*q->fMass;
+				p->gradrho[0] += rs1*q->fMass*dx;
+				p->gradrho[1] += rs1*q->fMass*dy;
+				p->gradrho[2] += rs1*q->fMass*dz;
 		        }
 	        }
 		} 
@@ -883,7 +1342,8 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	        r2 = nnList[i].fDist2*ih2;
 			DKERNEL(rs1,r2);
-			rp = rs1*fNorm*pMass/pDensity;
+			rs1 *=fNorm;
+			rp = rs1*pMass/pDensity;
 
 			dx = nnList[i].dx;
 			dy = nnList[i].dy;
@@ -901,6 +1361,77 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			q->curlv[1] += rp*dv;
 			dv=vFac*(dvy*dx - dvx*dy);
 			q->curlv[2] += rp*dv;
+
+			q->divrhov -= rs1*dvdotdr*pMass;
+			q->gradrho[0] -= rs1*pMass*dx;
+			q->gradrho[1] -= rs1*pMass*dy;
+			q->gradrho[2] -= rs1*pMass*dz;
+	        }
+		} 
+	}
+
+void initShockTrack(void *p)
+{
+	if (TYPEQueryACTIVE((PARTICLE *) p )) {
+		((PARTICLE *)p)->divrhov = 0.0;
+		}
+	}
+
+void combShockTrack(void *p1,void *p2)
+{
+	if (TYPEQueryACTIVE((PARTICLE *) p1 )) {
+	        if (((PARTICLE *)p2)->divrhov > ((PARTICLE *)p2)->divrhov) 
+		  ((PARTICLE *)p1)->divrhov = ((PARTICLE *)p2)->divrhov;
+		}
+	}
+
+/* Gather only version -- untested */
+void ShockTrack(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	assert(0);
+	}
+
+/* Output is physical divv and curlv -- thus a*h_co*divv is physical */
+void ShockTrackSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	double Mach,dv;
+	int i,j;
+
+	if (TYPEQueryACTIVE( p )) {
+		/* p active */
+		for (i=0;i<nSmooth;++i) {
+	                q = nnList[i].pPart;
+			Mach = 0;
+			for (j=0;j<3;j++) {
+			  dv = p->vPred[j] - q->gradrho[j];
+			  Mach += dv*dv;
+			}
+			Mach = sqrt(Mach)/p->c;
+			if (Mach > p->divrhov) p->divrhov = Mach;
+			if (TYPEQueryACTIVE(q)) {
+			  Mach = 0;
+			  for (j=0;j<3;j++) {
+			    dv = q->vPred[j] - p->gradrho[j];
+			    Mach += dv*dv;
+			  }
+			  Mach = sqrt(Mach)/q->c;
+			  if (Mach > q->divrhov) q->divrhov = Mach;
+		        }
+	        }
+		} 
+	else {
+		/* p not active */
+		for (i=0;i<nSmooth;++i) {
+ 	                q = nnList[i].pPart;
+			if (!TYPEQueryACTIVE(q)) continue; /* neither active */
+			Mach = 0;
+			for (j=0;j<3;j++) {
+			  dv = q->vPred[j] - p->gradrho[j];
+			  Mach += dv*dv;
+			}
+			Mach = sqrt(Mach)/q->c;
+			if (Mach > q->divrhov) q->divrhov = Mach;
 	        }
 		} 
 	}
@@ -928,9 +1459,9 @@ void initHKPressureTerms(void *p)
 		((PARTICLE *)p)->PdVvisc = 0.0;
 		((PARTICLE *)p)->PdVpres = 0.0;
 #endif
-		((PARTICLE *)p)->a[0] = 0.0;
-		((PARTICLE *)p)->a[1] = 0.0;
-		((PARTICLE *)p)->a[2] = 0.0;
+		ACCEL(p,0) = 0.0;
+		ACCEL(p,1) = 0.0;
+		ACCEL(p,2) = 0.0;
 		}
 	}
 
@@ -944,9 +1475,9 @@ void combHKPressureTerms(void *p1,void *p2)
 #endif
 		if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
 			((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
-		((PARTICLE *)p1)->a[0] += ((PARTICLE *)p2)->a[0];
-		((PARTICLE *)p1)->a[1] += ((PARTICLE *)p2)->a[1];
-		((PARTICLE *)p1)->a[2] += ((PARTICLE *)p2)->a[2];	
+		ACCEL(p1,0) += ACCEL(p2,0);
+		ACCEL(p1,1) += ACCEL(p2,1);
+		ACCEL(p1,2) += ACCEL(p2,2);
 		}
 	}
 
@@ -954,11 +1485,11 @@ void combHKPressureTerms(void *p1,void *p2)
 void HKPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	FLOAT ih2,r2,rs1,rq,rp;
+	FLOAT ih2,r2,rs1;
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
 	FLOAT pPoverRho2,pQonRho2,qQonRho2,qhdivv;
 	FLOAT ph,pc,pDensity,visc,absmu,qh,pMass,hav;
-	FLOAT fNorm,fNorm1,aFac,vFac,fTmp;
+	FLOAT fNorm,fNorm1,aFac,vFac;
 	int i;
 
 	if (!TYPEQueryACTIVE(p)) return;
@@ -995,9 +1526,9 @@ void HKPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			p->PdV += rs1*pPoverRho2*dvdotdr;
 			rs1 *= (pPoverRho2 + q->PoverRho2);
 			rs1 *= aFac;
-			p->a[0] -= rs1*dx;
-			p->a[1] -= rs1*dy;
-			p->a[2] -= rs1*dz;
+			ACCEL(p,0) -= rs1*dx;
+			ACCEL(p,1) -= rs1*dy;
+			ACCEL(p,2) -= rs1*dz;
 			}
 		else {
 			qh=sqrt(0.25*BALL2(q));
@@ -1013,9 +1544,9 @@ void HKPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			p->PdV += rs1 * (pPoverRho2 + 0.5*visc) * dvdotdr;
 			rs1 *= (pPoverRho2 + q->PoverRho2 + visc);
 			rs1 *= aFac; /* convert to comoving acceleration */
-			p->a[0] -= rs1*dx;
-			p->a[1] -= rs1*dy;
-			p->a[2] -= rs1*dz;
+			ACCEL(p,0) -= rs1*dx;
+			ACCEL(p,1) -= rs1*dy;
+			ACCEL(p,2) -= rs1*dz;
 			}
 		}
 	}
@@ -1028,7 +1559,7 @@ void HKPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
 	FLOAT pPoverRho2,pQonRho2,qQonRho2,qhdivv;
 	FLOAT ph,pc,pDensity,visc,absmu,qh,pMass,hav;
-	FLOAT fNorm,fNorm1,aFac,vFac,fTmp;
+	FLOAT fNorm,fNorm1,aFac,vFac;
 	int i;
 
 	pc = p->c;
@@ -1066,17 +1597,17 @@ void HKPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		        p->PdV += rq*pPoverRho2*dvdotdr;
 			rq *= (pPoverRho2 + q->PoverRho2);
 			rq *= aFac;
-		        p->a[0] -= rq*dx;
-		        p->a[1] -= rq*dy;
-		        p->a[2] -= rq*dz;
+		        ACCEL(p,0) -= rq*dx;
+		        ACCEL(p,1) -= rq*dy;
+		        ACCEL(p,2) -= rq*dz;
 		        }
 			if (TYPEQueryACTIVE(q)) {
 				q->PdV += rp*q->PoverRho2*dvdotdr;
 				rp *= (pPoverRho2 + q->PoverRho2);
 				rp *= aFac; /* convert to comoving acceleration */
-				q->a[0] += rp*dx;
-		        q->a[1] += rp*dy;
-		        q->a[2] += rp*dz;
+				ACCEL(q,0) += rp*dx;
+		        ACCEL(q,1) += rp*dy;
+		        ACCEL(q,2) += rp*dz;
 				}
 			}
 		else {
@@ -1093,18 +1624,128 @@ void HKPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		        p->PdV += rq*(pPoverRho2 + 0.5*visc)*dvdotdr;
 				rq *= (pPoverRho2 + q->PoverRho2 + visc);
 				rq *= aFac; /* convert to comoving acceleration */
-		        p->a[0] -= rq*dx;
-		        p->a[1] -= rq*dy;
-		        p->a[2] -= rq*dz;
+		        ACCEL(p,0) -= rq*dx;
+		        ACCEL(p,1) -= rq*dy;
+		        ACCEL(p,2) -= rq*dz;
 		        }
 			if (TYPEQueryACTIVE(q)) {
 				if (absmu>q->mumax) q->mumax=absmu;
 				q->PdV += rp*(q->PoverRho2 + 0.5*visc)*dvdotdr;
 				rp *= (pPoverRho2 + q->PoverRho2 + visc);
 				rp *= aFac; /* convert to comoving acceleration */
-		        q->a[0] += rp*dx;
-		        q->a[1] += rp*dy;
-		        q->a[2] += rp*dz;
+		        ACCEL(q,0) += rp*dx;
+		        ACCEL(q,1) += rp*dy;
+		        ACCEL(q,2) += rp*dz;
+				}
+			}
+		}
+	}
+
+/* Original Particle */
+void initHKViscosityParticle(void *p)
+{
+	ACCEL(p,0) += ACCEL_PRES(p,0);
+	ACCEL(p,1) += ACCEL_PRES(p,1);
+	ACCEL(p,2) += ACCEL_PRES(p,2);
+	}
+
+/* Cached copies of particle */
+void initHKViscosity(void *p)
+{
+	if (TYPEQueryACTIVE((PARTICLE *) p)) {
+		((PARTICLE *)p)->mumax = 0.0;
+		((PARTICLE *)p)->PdV = 0.0;
+		ACCEL(p,0) = 0.0;
+		ACCEL(p,1) = 0.0;
+		ACCEL(p,2) = 0.0;
+		}
+	}
+
+void combHKViscosity(void *p1,void *p2)
+{
+	if (TYPEQueryACTIVE((PARTICLE *) p1)) {
+		((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
+		if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
+			((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
+		ACCEL(p1,0) += ACCEL(p2,0);
+		ACCEL(p1,1) += ACCEL(p2,1);
+		ACCEL(p1,2) += ACCEL(p2,2);
+		}
+	}
+
+/* Gather only version */
+void HKViscosity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+        assert(0);
+	}
+
+/* Bulk viscosity */
+void HKViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT ih2,r2,rs1,rq,rp;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT pPoverRho2,pQonRho2,qQonRho2,qhdivv;
+	FLOAT ph,pc,pDensity,visc,absmu,qh,pMass,hav;
+	FLOAT fNorm,fNorm1,aFac,vFac;
+	int i;
+
+	pc = p->c;
+	pDensity = p->fDensity;
+	pMass = p->fMass;
+	ph = sqrt(0.25*BALL2(p));
+	/* QonRho2 given same scaling with a as PonRho2 */
+	pQonRho2 = (p->divv>0.0 ? 0.0 : fabs(p->divv)*ph*smf->a
+				*(smf->alpha*pc + smf->beta*fabs(p->divv)*ph*smf->a)/pDensity );
+	ih2 = 4.0/BALL2(p);
+	fNorm = 0.5*M_1_PI*ih2/ph;
+	fNorm1 = fNorm*ih2;	/* converts to physical u */
+	aFac = (smf->a);        /* comoving acceleration factor */
+	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
+
+	for (i=0;i<nSmooth;++i) {
+		q = nnList[i].pPart;
+		r2 = nnList[i].fDist2*ih2;
+		DKERNEL(rs1,r2);
+		rs1 *= fNorm1;
+		rq = rs1*q->fMass;
+		rp = rs1*pMass;
+
+		dx = nnList[i].dx;
+		dy = nnList[i].dy;
+		dz = nnList[i].dz;
+		dvx = p->vPred[0] - q->vPred[0];
+		dvy = p->vPred[1] - q->vPred[1];
+		dvz = p->vPred[2] - q->vPred[2];
+		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
+
+		if (dvdotdr<0.0) {
+			qh=sqrt(0.25*BALL2(q));
+			qhdivv = qh*fabs(q->divv)*smf->a; /* units of physical velocity */
+			qQonRho2 = (qhdivv>0.0 ? 0.0 : 
+						qhdivv*(smf->alpha*q->c + smf->beta*qhdivv)/q->fDensity);
+
+			visc = SWITCHCOMBINE(p,q)*(pQonRho2 + qQonRho2);
+			/* mu -- same timestep criteria as standard sph above (for now) */
+			hav=0.5*(qh + ph);
+			absmu = -hav*dvdotdr*smf->a/(nnList[i].fDist2+0.01*hav*hav);
+			if (TYPEQueryACTIVE(p)) {
+				if (absmu>p->mumax) p->mumax=absmu;
+		        p->PdV += rq*0.5*visc*dvdotdr;
+				rq *= visc;
+				rq *= aFac; /* convert to comoving acceleration */
+		        ACCEL(p,0) -= rq*dx;
+		        ACCEL(p,1) -= rq*dy;
+		        ACCEL(p,2) -= rq*dz;
+		        }
+			if (TYPEQueryACTIVE(q)) {
+				if (absmu>q->mumax) q->mumax=absmu;
+				q->PdV += rp*0.5*visc*dvdotdr;
+				rp *= visc;
+				rp *= aFac; /* convert to comoving acceleration */
+		        ACCEL(q,0) += rp*dx;
+		        ACCEL(q,1) += rp*dy;
+		        ACCEL(q,2) += rp*dz;
 				}
 			}
 		}
