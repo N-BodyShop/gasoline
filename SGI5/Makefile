@@ -23,7 +23,7 @@ MDL		=	$(SDIR)/../mdl/pvm
 CFLAGS	=	-32 -O2 -fullwarn -I$(PVMDIR)/include -I$(MDL)
 LIBS	=	$(MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
 
-default:	pkdgrav
+default:	mdl pkdgrav
 
 $(XDIR):
 	- mkdir $(BDIR)
@@ -32,6 +32,8 @@ $(XDIR):
 clean:
 	rm -f *.o
 
+mdl:
+	cd $(MDL); aimk
 
 pkdgrav: main.o master.o param.o outtype.o pkd.o pst.o smooth.o grav.o \
 	ewald.o walk.o
