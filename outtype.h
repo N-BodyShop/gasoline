@@ -20,6 +20,10 @@
 
 #define OUT_DT_ARRAY		10
 
+#ifdef COLLISIONS
+#define OUT_REJECTS_ARRAY	11
+#endif /* COLLISIONS */
+
 #define OUT_POS_VECTOR		1
 #define OUT_VEL_VECTOR		2
 #define OUT_ACCEL_VECTOR	3
@@ -34,10 +38,3 @@ void pkdOutArray(PKD,char *,int);
 void pkdOutVector(PKD,char *,int,int);
 
 #endif
-
-
-
-
-
-
-

@@ -274,9 +274,10 @@ void smSmooth(SMX,SMF *);
 void smReSmooth(SMX,SMF *);
 void smGrowList(SMX smx);
 
-#ifdef PLANETS
-void smQQSmooth(SMX smx,SMF *smf);
-#endif
+#ifdef COLLISIONS
+void smQQSmooth(SMX smx, SMF *smf);
+#endif /* COLLISIONS */
+
 #endif
 
 

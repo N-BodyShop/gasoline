@@ -5,6 +5,10 @@
 #include "outtype.h"
 #include "floattype.h"
 
+#ifdef COLLISIONS
+#include "collision.h"
+#endif /* COLLISIONS */
+
 FLOAT ArrType(PARTICLE *p,int iType)
 {
 	switch (iType) {
@@ -30,6 +34,11 @@ FLOAT ArrType(PARTICLE *p,int iType)
 	case OUT_HSMDIVV_ARRAY:
 		return(p->fHsmDivv);
 #endif
+#ifdef COLLISIONS
+	case OUT_REJECTS_ARRAY:
+		/* Rejected particles indicated by their iOrder, otherwise -1 */
+		return(REJECT(p) ? p->iOrder : -1);
+#endif /* COLLISIONS */
 	default:
 		return(0.0);
 		}
@@ -99,17 +108,3 @@ void pkdOutVector(PKD pkd,char *pszFileName,int iDim,int iVecType)
 		exit(1);
 		}
 	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -15,147 +15,226 @@ void pstAddServices(PST pst,MDL mdl)
 	int nThreads,nCell;
 
 	nThreads = mdlThreads(mdl);
-	mdlAddService(mdl,PST_SETADD,pst,pstSetAdd,
+	mdlAddService(mdl,PST_SETADD,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSetAdd,
 				  sizeof(struct inSetAdd),0);
-	mdlAddService(mdl,PST_LEVELIZE,pst,pstLevelize,
+	mdlAddService(mdl,PST_LEVELIZE,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstLevelize,
 				  sizeof(struct inLevelize),0);
-	mdlAddService(mdl,PST_READTIPSY,pst,pstReadTipsy,
+	mdlAddService(mdl,PST_READTIPSY,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstReadTipsy,
 				  sizeof(struct inReadTipsy),0);
-	mdlAddService(mdl,PST_DOMAINDECOMP,pst,pstDomainDecomp,
+	mdlAddService(mdl,PST_DOMAINDECOMP,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDomainDecomp,
 				  0,0);
-	mdlAddService(mdl,PST_CALCBOUND,pst,pstCalcBound,
+	mdlAddService(mdl,PST_CALCBOUND,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstCalcBound,
 				  0,sizeof(struct outCalcBound));
-	mdlAddService(mdl,PST_WEIGHT,pst,pstWeight,
+	mdlAddService(mdl,PST_WEIGHT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstWeight,
 				  sizeof(struct inWeight),sizeof(struct outWeight));
-	mdlAddService(mdl,PST_ORDWEIGHT,pst,pstOrdWeight,
+	mdlAddService(mdl,PST_ORDWEIGHT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstOrdWeight,
 				  sizeof(struct inOrdWeight),sizeof(struct outOrdWeight));
-	mdlAddService(mdl,PST_FREESTORE,pst,pstFreeStore,
+	mdlAddService(mdl,PST_FREESTORE,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstFreeStore,
 				  0,sizeof(struct outFreeStore));
-	mdlAddService(mdl,PST_COLREJECTS,pst,pstColRejects,
+	mdlAddService(mdl,PST_COLREJECTS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstColRejects,
 				  sizeof(struct inColRejects),nThreads*sizeof(OREJ));
-	mdlAddService(mdl,PST_SWAPREJECTS,pst,pstSwapRejects,
+	mdlAddService(mdl,PST_SWAPREJECTS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSwapRejects,
 				  nThreads*sizeof(int),nThreads*sizeof(OREJ));
-	mdlAddService(mdl,PST_DOMAINCOLOR,pst,pstDomainColor,
+	mdlAddService(mdl,PST_DOMAINCOLOR,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDomainColor,
 				  0,0);
-	mdlAddService(mdl,PST_COLORDREJECTS,pst,pstColOrdRejects,
+	mdlAddService(mdl,PST_COLORDREJECTS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstColOrdRejects,
 				  sizeof(struct inColOrdRejects),nThreads*sizeof(OREJ));
-	mdlAddService(mdl,PST_DOMAINORDER,pst,pstDomainOrder,
+	mdlAddService(mdl,PST_DOMAINORDER,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDomainOrder,
 				  sizeof(struct inDomainOrder),0);
-	mdlAddService(mdl,PST_LOCALORDER,pst,pstLocalOrder,
+	mdlAddService(mdl,PST_LOCALORDER,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstLocalOrder,
 				  0,0);
-	mdlAddService(mdl,PST_OUTARRAY,pst,pstOutArray,
+	mdlAddService(mdl,PST_OUTARRAY,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstOutArray,
 				  sizeof(struct inOutArray),0);
-	mdlAddService(mdl,PST_OUTVECTOR,pst,pstOutVector,
+	mdlAddService(mdl,PST_OUTVECTOR,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstOutVector,
 				  sizeof(struct inOutVector),0);
-	mdlAddService(mdl,PST_WRITETIPSY,pst,pstWriteTipsy,
+	mdlAddService(mdl,PST_WRITETIPSY,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstWriteTipsy,
 				  sizeof(struct inWriteTipsy),0);
-	mdlAddService(mdl,PST_BUILDTREE,pst,pstBuildTree,
+	mdlAddService(mdl,PST_BUILDTREE,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstBuildTree,
 				  sizeof(struct inBuildTree),sizeof(struct outBuildTree));
-	mdlAddService(mdl,PST_SMOOTH,pst,pstSmooth,
+	mdlAddService(mdl,PST_SMOOTH,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSmooth,
 				  sizeof(struct inSmooth),0);
-	mdlAddService(mdl,PST_GRAVITY,pst,pstGravity,
+	mdlAddService(mdl,PST_GRAVITY,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstGravity,
 				  sizeof(struct inGravity),sizeof(struct outGravity));
-	mdlAddService(mdl,PST_CALCE,pst,pstCalcE,
+	mdlAddService(mdl,PST_CALCE,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstCalcE,
 				  0,sizeof(struct outCalcE));
-	mdlAddService(mdl,PST_DRIFT,pst,pstDrift,
+	mdlAddService(mdl,PST_DRIFT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDrift,
 				  sizeof(struct inDrift),0);
-	mdlAddService(mdl,PST_KICK,pst,pstKick,
+	mdlAddService(mdl,PST_KICK,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstKick,
 				  sizeof(struct inKick),0);
-	mdlAddService(mdl,PST_READCHECK,pst,pstReadCheck,
-		      sizeof(struct inReadCheck), 0);
-	mdlAddService(mdl,PST_WRITECHECK,pst,pstWriteCheck,
+	mdlAddService(mdl,PST_READCHECK,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstReadCheck,
+				  sizeof(struct inReadCheck), 0);
+	mdlAddService(mdl,PST_WRITECHECK,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstWriteCheck,
 				  sizeof(struct inWriteCheck),0);
-	mdlAddService(mdl,PST_SETSOFT,pst,pstSetSoft,
+	mdlAddService(mdl,PST_SETSOFT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSetSoft,
 				  sizeof(struct inSetSoft),0);
-	mdlAddService(mdl,PST_SETTOTAL,pst,pstSetTotal,
+	mdlAddService(mdl,PST_SETTOTAL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSetTotal,
 				  0,sizeof(struct outSetTotal));
-	mdlAddService(mdl,PST_SETWRITESTART,pst,pstSetWriteStart,
+	mdlAddService(mdl,PST_SETWRITESTART,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSetWriteStart,
 				  sizeof(struct inSetWriteStart),0);
-	mdlAddService(mdl,PST_CALCCELL,pst,pstCalcCell,
+	mdlAddService(mdl,PST_CALCCELL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstCalcCell,
 				  sizeof(struct inCalcCell),sizeof(struct outCalcCell));
 	/*
 	 ** Calculate the number of levels in the top tree and use it to 
 	 ** define the size of the messages.
 	 */
 	nCell = 1<<(1+(int)ceil(log((double)nThreads)/log(2.0)));
-	mdlAddService(mdl,PST_COLCELLS,pst,pstColCells,
+	mdlAddService(mdl,PST_COLCELLS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstColCells,
 				  sizeof(struct inColCells),nCell*sizeof(KDN));
-	mdlAddService(mdl,PST_DISTRIBCELLS,pst,pstDistribCells,
+	mdlAddService(mdl,PST_DISTRIBCELLS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDistribCells,
 				  nCell*sizeof(KDN),0);
-	mdlAddService(mdl,PST_CALCROOT,pst,pstCalcRoot,
+	mdlAddService(mdl,PST_CALCROOT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstCalcRoot,
 				  0,sizeof(struct ioCalcRoot));
-	mdlAddService(mdl,PST_DISTRIBROOT,pst,pstDistribRoot,
+	mdlAddService(mdl,PST_DISTRIBROOT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDistribRoot,
 				  sizeof(struct ioCalcRoot),0);
-	mdlAddService(mdl,PST_ONENODEREADINIT,pst,pstOneNodeReadInit,
-		      sizeof(struct inReadTipsy), nThreads*sizeof(int));
-	mdlAddService(mdl,PST_SWAPALL,pst,pstSwapAll,
+	mdlAddService(mdl,PST_ONENODEREADINIT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstOneNodeReadInit,
+				  sizeof(struct inReadTipsy), nThreads*sizeof(int));
+	mdlAddService(mdl,PST_SWAPALL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSwapAll,
 				  sizeof(int),0);
 	mdlAddService(mdl,PST_MASSCHECK,pst,
-		      (void (*)(void *,void *,int,void *,int *))pstMassCheck,
+				  (void (*)(void *,void *,int,void *,int *)) pstMassCheck,
 				  0,sizeof(struct outMassCheck));
 	mdlAddService(mdl,PST_ACTIVEORDER,pst,
-		      (void (*)(void *,void *,int,void *,int *))pstActiveOrder,
-		      0,0);
+				  (void (*)(void *,void *,int,void *,int *)) pstActiveOrder,
+				  0,0);
 	mdlAddService(mdl,PST_SETRUNG,pst,
-		      (void (*)(void *,void *,int,void *,int *))pstSetRung,
-		      sizeof(struct inSetRung), 0);
+				  (void (*)(void *,void *,int,void *,int *)) pstSetRung,
+				  sizeof(struct inSetRung),0);
 	mdlAddService(mdl,PST_ACTIVERUNG,pst,
-		      (void (*)(void *,void *,int,void *,int *))pstActiveRung,
-		      sizeof(struct inActiveRung), 0);
+				  (void (*)(void *,void *,int,void *,int *)) pstActiveRung,
+				  sizeof(struct inActiveRung),0);
 	mdlAddService(mdl,PST_CURRRUNG,pst,
-		      (void (*)(void *,void *,int,void *,int *))pstCurrRung,
-		      sizeof(struct inCurrRung), sizeof(struct outCurrRung));
+				  (void (*)(void *,void *,int,void *,int *)) pstCurrRung,
+				  sizeof(struct inCurrRung),sizeof(struct outCurrRung));
 	mdlAddService(mdl,PST_DENSITYSTEP,pst,
-		      (void (*)(void *,void *,int,void *,int *))pstDensityStep,
-		      sizeof(struct inDensityStep), 0);
-	mdlAddService(mdl,PST_RUNGSTATS,pst,pstRungStats,
-				  sizeof(struct inRungStats),
-				  sizeof(struct outRungStats));
-	mdlAddService(mdl,PST_GETMAP,pst,pstGetMap,
+				  (void (*)(void *,void *,int,void *,int *)) pstDensityStep,
+				  sizeof(struct inDensityStep),0);
+	mdlAddService(mdl,PST_RUNGSTATS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstRungStats,
+				  sizeof(struct inRungStats),sizeof(struct outRungStats));
+	mdlAddService(mdl,PST_GETMAP,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstGetMap,
 				  sizeof(struct inGetMap),nThreads*sizeof(int));
-	mdlAddService(mdl,PST_ACCELSTEP,pst,pstAccelStep,
-		      sizeof(struct inAccelStep), 0);
-	mdlAddService(mdl,PST_COOLVELOCITY,pst,pstCoolVelocity,
+	mdlAddService(mdl,PST_ACCELSTEP,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAccelStep,
+				  sizeof(struct inAccelStep), 0);
+	mdlAddService(mdl,PST_COOLVELOCITY,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstCoolVelocity,
 				  sizeof(struct inCoolVelocity),0);
-	mdlAddService(mdl,PST_ACTIVECOOL,pst,pstActiveCool,
+	mdlAddService(mdl,PST_ACTIVECOOL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstActiveCool,
 				  sizeof(struct inActiveCool),0);
-	mdlAddService(mdl,PST_RESMOOTH,pst,pstReSmooth,
+	mdlAddService(mdl,PST_RESMOOTH,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstReSmooth,
 				  sizeof(struct inReSmooth),0);
-	mdlAddService(mdl,PST_INITACCEL,pst,pstInitAccel,0,0);
-	mdlAddService(mdl,PST_DTTORUNG,pst,pstDtToRung,
-		      sizeof(struct inDtToRung), sizeof(struct outDtToRung));
-	mdlAddService(mdl,PST_INITDT,pst,pstInitDt, sizeof(struct inInitDt),0);
+	mdlAddService(mdl,PST_INITACCEL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstInitAccel,
+				  0,0);
+	mdlAddService(mdl,PST_DTTORUNG,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDtToRung,
+				  sizeof(struct inDtToRung),sizeof(struct outDtToRung));
+	mdlAddService(mdl,PST_INITDT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstInitDt,
+				  sizeof(struct inInitDt),0);
 #ifdef GASOLINE
-	mdlAddService(mdl,PST_ACTIVEGAS,pst,pstActiveGas,0,0);
-	mdlAddService(mdl,PST_CALCETHDOT,pst,pstCalcEthdot,0,0);
-	mdlAddService(mdl,PST_KICKVPRED,pst,pstKickVpred, 
-		      sizeof(struct inKickVpred),0);
+	mdlAddService(mdl,PST_ACTIVEGAS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstActiveGas,
+				  0,0);
+	mdlAddService(mdl,PST_CALCETHDOT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstCalcEthdot,
+				  0,0);
+	mdlAddService(mdl,PST_KICKVPRED,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstKickVpred, 
+				  sizeof(struct inKickVpred),0);
 #endif
-	mdlAddService(mdl,PST_COLNPARTS,pst,pstColNParts, 0,
-		      nThreads*sizeof(struct outColNParts));
-	mdlAddService(mdl,PST_NEWORDER,pst,pstNewOrder,
-		      nThreads*sizeof(int), 0);
-	mdlAddService(mdl,PST_SETNPARTS,pst,pstSetNParts,
-		      sizeof(struct inSetNParts), 0);
-	mdlAddService(mdl,PST_GRAVEXTERNAL,pst,pstGravExternal,
+	mdlAddService(mdl,PST_COLNPARTS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstColNParts,
+				  0,nThreads*sizeof(struct outColNParts));
+	mdlAddService(mdl,PST_NEWORDER,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstNewOrder,
+				  nThreads*sizeof(int),0);
+	mdlAddService(mdl,PST_SETNPARTS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSetNParts,
+				  sizeof(struct inSetNParts),0);
+	mdlAddService(mdl,PST_GRAVEXTERNAL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstGravExternal,
 				  sizeof(struct inGravExternal),0);
-#ifdef PLANETS
-	mdlAddService(mdl,PST_READSS,pst,pstReadSS,sizeof(struct inReadSS),0);
-	mdlAddService(mdl,PST_WRITESS,pst,pstWriteSS,sizeof(struct inWriteSS),0);
-	mdlAddService(mdl,PST_FINDCOLLISION,pst,pstFindCollision,0,
-				  sizeof(struct outFindCollision));
-	mdlAddService(mdl,PST_DOCOLLISION,pst,pstDoCollision,
+#ifdef COLLISIONS
+	mdlAddService(mdl,PST_NUMREJECTS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstNumRejects,
+				  0,sizeof(struct outNumRejects));
+	mdlAddService(mdl,PST_READSS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstReadSS,
+				  sizeof(struct inReadSS),0);
+	mdlAddService(mdl,PST_WRITESS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstWriteSS,
+				  sizeof(struct inWriteSS),0);
+	mdlAddService(mdl,PST_CALCHILL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstCalcHill,
+				  sizeof(struct inCalcHill),0);
+	mdlAddService(mdl,PST_HILLSTEP,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstHillStep,
+				  sizeof(struct inHillStep),0);
+	mdlAddService(mdl,PST_FINDENCOUNTER,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstFindEncounter,
+				  0,sizeof(struct outFindEncounter));
+	mdlAddService(mdl,PST_MARKENCOUNTERS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstMarkEncounters,
+				  sizeof(struct inMarkEncounters),0);
+	mdlAddService(mdl,PST_FINDCOLLISION,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstFindCollision,
+				  0,sizeof(struct outFindCollision));
+	mdlAddService(mdl,PST_DOCOLLISION,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDoCollision,
 				  sizeof(struct inDoCollision),sizeof(struct outDoCollision));
-	mdlAddService(mdl,PST_QQCALCBOUND,pst,pstQQCalcBound,0,
-				  sizeof(struct outCalcBound));
-	mdlAddService(mdl,PST_QQDOMAINDECOMP,pst,pstQQDomainDecomp,0,0);
-	mdlAddService(mdl,PST_QQBUILDTREE,pst,pstQQBuildTree,
+	mdlAddService(mdl,PST_QQCALCBOUND,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstQQCalcBound,
+				  0,sizeof(struct outCalcBound));
+	mdlAddService(mdl,PST_QQDOMAINDECOMP,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstQQDomainDecomp,
+				  0,0);
+	mdlAddService(mdl,PST_QQBUILDTREE,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstQQBuildTree,
 				  sizeof(struct inBuildTree),sizeof(struct outBuildTree));
-	mdlAddService(mdl,PST_QQSMOOTH,pst,pstQQSmooth,
+	mdlAddService(mdl,PST_QQSMOOTH,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstQQSmooth,
 				  sizeof(struct inSmooth),0);
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 	}
-
 
 void pstInitialize(PST *ppst,MDL mdl,LCL *plcl)
 {
@@ -356,7 +435,7 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 {
-	int id,i,i1,i2,nLarge,id1,id2;
+	int id,i,i1=-1,i2=-1,nLarge,id1,id2;
 	int s1,s2,r1,r2;
 
 	/*
@@ -452,9 +531,9 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 {
 	int d,ittr,nOut;
-	int nLow,nHigh,nLowerStore,nUpperStore;
+	int nLow=-1,nHigh=-1,nLowerStore,nUpperStore;
 	FLOAT fLow,fHigh;
-	FLOAT fl,fu,fm,fmm;
+	FLOAT fl,fu,fm=-1,fmm;
 	struct outFreeStore outFree;
 	struct inWeight inWt;
 	struct outWeight outWtLow;
@@ -488,12 +567,12 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 
 	d = dBnd = iSplitDim;
-#ifdef PLANETS
+#ifdef COLLISIONS
 	if(d > 2)
 	    dBnd -= 3;
-#else
+#else /* COLLISIONS */
 	assert(d < 3);
-#endif
+#endif /* !COLLISIONS */
 	fl = pst->bnd.fMin[dBnd];
 	fu = pst->bnd.fMax[dBnd];
 	fmm = (fl + fu)/2;
@@ -1324,8 +1403,8 @@ void _pstOrdSplit(PST pst,int iMaxOrder)
 	struct outFreeStore outFree;
 	struct inOrdWeight inWt;
 	struct outOrdWeight outWtLow,outWtHigh;
-	int im,imm,il,iu;
-	int nLowerStore,nUpperStore,nLow,nHigh;
+	int im=-1,imm,il,iu;
+	int nLowerStore,nUpperStore,nLow=-1,nHigh=-1;
 	struct inColOrdRejects inCol;
 	OREJ *pLowerRej,*pUpperRej;
 	int *pidSwap,iRet,nOut,ittr;
@@ -2300,60 +2379,60 @@ void pstDensityStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 void pstAccelStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
-      LCL *plcl = pst->plcl;
-      struct inAccelStep *in = vin;
+	LCL *plcl = pst->plcl;
+	struct inAccelStep *in = vin;
 
-      assert(nIn == sizeof(struct inAccelStep));
-      if (pst->nLeaves > 1) {
-              mdlReqService(pst->mdl,pst->idUpper,PST_ACCELSTEP,vin,nIn);
-              pstAccelStep(pst->pstLower,vin,nIn,vout,pnOut);
-              mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
-              }
-      else {
-              pkdAccelStep(plcl->pkd, in->dEta, in->dVelFac, in->dAccFac);
-              }
-      if (pnOut) *pnOut = 0;
-      }
+	assert(nIn == sizeof(struct inAccelStep));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_ACCELSTEP,vin,nIn);
+		pstAccelStep(pst->pstLower,vin,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		}
+	else {
+		pkdAccelStep(plcl->pkd, in->dEta, in->dVelFac, in->dAccFac);
+		}
+	if (pnOut) *pnOut = 0;
+	}
 
 void pstDtToRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
-      LCL *plcl = pst->plcl;
-      struct inDtToRung *in = vin;
-      struct outDtToRung *out = vout;
-      int iMaxRung;
+	LCL *plcl = pst->plcl;
+	struct inDtToRung *in = vin;
+	struct outDtToRung *out = vout;
+	int iMaxRung;
 
-      assert(nIn == sizeof(*in));
-      if (pst->nLeaves > 1) {
-              mdlReqService(pst->mdl,pst->idUpper,PST_DTTORUNG,vin,nIn);
-              pstDtToRung(pst->pstLower,vin,nIn,vout,pnOut);
-              iMaxRung = out->iMaxRung;
-              mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
-              if(iMaxRung > out->iMaxRung)
-                  out->iMaxRung = iMaxRung;
-              }
-      else {
-              out->iMaxRung = pkdDtToRung(plcl->pkd, in->iRung,
-					  in->dDelta, in->iMaxRung, in->bAll);
-              }
-      if (pnOut) *pnOut = sizeof(*out);
-      }
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DTTORUNG,vin,nIn);
+		pstDtToRung(pst->pstLower,vin,nIn,vout,pnOut);
+		iMaxRung = out->iMaxRung;
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		if(iMaxRung > out->iMaxRung)
+			out->iMaxRung = iMaxRung;
+		}
+	else {
+		out->iMaxRung = pkdDtToRung(plcl->pkd, in->iRung,
+									in->dDelta, in->iMaxRung, in->bAll);
+		}
+	if (pnOut) *pnOut = sizeof(*out);
+	}
 
 void pstInitDt(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
-      LCL *plcl = pst->plcl;
-      struct inInitDt *in = vin;
+	LCL *plcl = pst->plcl;
+	struct inInitDt *in = vin;
 
-      assert(nIn == sizeof(*in));
-      if (pst->nLeaves > 1) {
-              mdlReqService(pst->mdl,pst->idUpper,PST_INITDT,vin,nIn);
-              pstInitDt(pst->pstLower,vin,nIn,vout,pnOut);
-              mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
-              }
-      else {
-              pkdInitDt(plcl->pkd, in->dDelta);
-              }
-      if (pnOut) *pnOut = 0;
-      }
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_INITDT,vin,nIn);
+		pstInitDt(pst->pstLower,vin,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		}
+	else {
+		pkdInitDt(plcl->pkd, in->dDelta);
+		}
+	if (pnOut) *pnOut = 0;
+	}
 
 void pstRungStats(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -2601,9 +2680,31 @@ pstSetNParts(PST pst,void *vin,int nIn,void *vout,int *pnOut)
     if(pnOut) *pnOut = 0;
     }
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 
-void pstReadSS(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+void
+pstNumRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct outNumRejects *out = vout;
+	int nRej;
+
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_NUMREJECTS,NULL,0);
+		pstNumRejects(pst->pstLower,NULL,0,vout,pnOut);
+		nRej = out->nRej;
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		out->nRej += nRej;
+		}
+	else {
+		out->nRej = pkdNumRejects(plcl->pkd);
+		}
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+void
+pstReadSS(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	struct inReadSS *in = vin;
@@ -2617,10 +2718,10 @@ void pstReadSS(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pst->nLeaves > 1) {
 		nFileSplit = nFileStart + pst->nLower*(nFileTotal/pst->nLeaves);
 		in->nFileStart = nFileSplit;
-		mdlReqService(pst->mdl,pst->idUpper,PST_READSS,in,nIn);
+		mdlReqService(pst->mdl,pst->idUpper,PST_READSS,vin,nIn);
 		in->nFileStart = nFileStart;
 		in->nFileEnd = nFileSplit - 1;
-		pstReadSS(pst->pstLower,in,nIn,NULL,NULL);
+		pstReadSS(pst->pstLower,vin,nIn,NULL,NULL);
 		in->nFileEnd = nFileEnd;
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
@@ -2645,7 +2746,8 @@ void pstReadSS(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
-void pstWriteSS(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+void
+pstWriteSS(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	struct inWriteSS *in = vin;
@@ -2653,8 +2755,8 @@ void pstWriteSS(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 	assert(nIn == sizeof(struct inWriteSS));
 	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_WRITESS,in,nIn);
-		pstWriteSS(pst->pstLower,in,nIn,NULL,NULL);
+		mdlReqService(pst->mdl,pst->idUpper,PST_WRITESS,vin,nIn);
+		pstWriteSS(pst->pstLower,vin,nIn,NULL,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
@@ -2672,14 +2774,93 @@ void pstWriteSS(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
-void pstFindCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+void
+pstCalcHill(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inCalcHill *in = vin;
+
+	assert(nIn == sizeof(struct inCalcHill));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_CALCHILL,vin,nIn);
+		pstCalcHill(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdCalcHill(plcl->pkd,in->dCentMass);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void
+pstHillStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inHillStep *in = vin;
+
+	assert(nIn == sizeof(struct inHillStep));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_HILLSTEP,vin,nIn);
+		pstHillStep(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdHillStep(plcl->pkd,in->dEta);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void
+pstFindEncounter(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	/*
+	 ** NOTE: out->dNext must be initialized to a maximum value.
+	 */
+
+	LCL *plcl = pst->plcl;
+	struct outFindEncounter local,*out = vout;
+
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_FINDENCOUNTER,NULL,0);
+		pstFindEncounter(pst->pstLower,NULL,0,vout,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vout,NULL);
+		if (local.dNext < out->dNext) out->dNext = local.dNext;
+		}
+	else {
+		pkdFindEncounter(plcl->pkd,&out->dNext);
+		}
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+void
+pstMarkEncounters(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inMarkEncounters *in = vin;
+	
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_MARKENCOUNTERS,vin,nIn);
+		pstMarkEncounters(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdMarkEncounters(plcl->pkd,in->dTMax);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void
+pstFindCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	/*
 	 ** NOTE: If the impact time matches a previous impact time, we check to
 	 ** ensure that the two colliders are not local to the same processor.
 	 ** If they are, then that means two (or more) different collisions
-	 ** occured at the same time, which should be exceedingly rare, so we
-	 ** don't allow it.
+	 ** occured at the same time (simultaneous collisions are not allowed
+	 ** among particles on the same processor -- see CheckForCollision()).
 	 */
 
 	LCL *plcl = pst->plcl;
@@ -2689,9 +2870,9 @@ void pstFindCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	out->dImpactTime = DBL_MAX;
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_FINDCOLLISION,NULL,0);
-		pstFindCollision(pst->pstLower,NULL,0,vout,pnOut);
+		pstFindCollision(pst->pstLower,NULL,0,vout,NULL);
 		local = *out;
-		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,vout,NULL);
 		if (COLLISION(local.dImpactTime) &&
 			local.dImpactTime <= out->dImpactTime) {
 			if (local.dImpactTime == out->dImpactTime)
@@ -2713,7 +2894,8 @@ void pstFindCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = sizeof(*out);
 	}
 
-void pstDoCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+void
+pstDoCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	struct inDoCollision *in = vin;
@@ -2723,10 +2905,9 @@ void pstDoCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	local.nOut = out->nOut = 0;
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_DOCOLLISION,vin,nIn);
-		pstDoCollision(pst->pstLower,vin,nIn,vout,pnOut);
+		pstDoCollision(pst->pstLower,vin,nIn,vout,NULL);
 		if (out->nOut) local = *out;
-		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
-		assert(*pnOut == sizeof(*out));
+		mdlGetReply(pst->mdl,pst->idUpper,vout,NULL);
 		if (local.nOut) *out = local;
 		}
 	else {
@@ -2888,4 +3069,4 @@ pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
-#endif /* PLANETS */
+#endif /* COLLISIONS */

@@ -23,9 +23,9 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	smx = (SMX)malloc(sizeof(struct smContext));
 	assert(smx != NULL);
 	smx->pkd = pkd;
-#ifdef PLANETS
+#ifdef COLLISIONS
 	smf->pkd = pkd;
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 	smx->nSmooth = nSmooth;
 	smx->bPeriodic = bPeriodic;
 
@@ -79,10 +79,26 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		smx->fcnPost = NULL;
 		break;
 #endif
-#ifdef PLANETS
+#ifdef COLLISIONS
+	case SMX_REJECTS:
+		assert(bSymmetric == 0);
+		smx->fcnSmooth = FindRejects;
+		initParticle = NULL;
+		init = NULL;
+		comb = NULL;
+		smx->fcnPost = NULL;
+		break;
 	case SMX_TIMESTEP:
 		assert(bSymmetric == 0);
 		smx->fcnSmooth = SetTimeStep;
+		initParticle = NULL;
+		init = NULL;
+		comb = NULL;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_ENCOUNTER:
+		assert(bSymmetric == 0);
+		smx->fcnSmooth = CheckForEncounter;
 		initParticle = NULL;
 		init = NULL;
 		comb = NULL;
@@ -97,15 +113,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		comb = NULL;
 		smx->fcnPost = NULL;
 		break;
-	case SMX_ENCOUNTER:
-		assert(bSymmetric == 0);
-		smx->fcnSmooth = CheckForEncounter;
-		initParticle = NULL;
-		init = NULL;
-		comb = NULL;
-		smx->fcnPost = NULL;
-		break;
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 	default:
 		assert(0);
 		}
@@ -501,7 +509,7 @@ int smBallGather(SMX smx,FLOAT fBall2,FLOAT *ri)
 				dz = sz - p[pj].r[2];
 				fDist2 = dx*dx + dy*dy + dz*dz;
 				if (fDist2 <= fBall2) {
-				        if(nCnt >= smx->nListSize)
+					if(nCnt >= smx->nListSize)
 					    smGrowList(smx);
 					smx->nnList[nCnt].fDist2 = fDist2;
 					smx->nnList[nCnt].dx = dx;
@@ -551,7 +559,7 @@ int smBallGatherNP(SMX smx,FLOAT fBall2,FLOAT *ri,int cp)
 				dz = z - p[pj].r[2];
 				fDist2 = dx*dx + dy*dy + dz*dz;
 				if (fDist2 <= fBall2) {
-				        if(nCnt >= smx->nListSize)
+					if(nCnt >= smx->nListSize)
 					    smGrowList(smx);
 					smx->nnList[nCnt].fDist2 = fDist2;
 					smx->nnList[nCnt].dx = dx;
@@ -771,7 +779,7 @@ void smSmooth(SMX smx,SMF *smf)
 	pqn = NULL;
 	nCnt = 0;
 	h2 = 2.0*pq->fKey;   /* arbitrarily bigger than pq->fKey! */
-	p[pi].fBall2 = h2;
+	p[pi].fBall2 = pq->fKey;
 	for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
 /*
  ** There are cases like in collisions where we do want to include the
@@ -953,7 +961,3 @@ void smReSmooth(SMX smx,SMF *smf)
 			}
 		}
 	}
-
-
-
-

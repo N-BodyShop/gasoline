@@ -41,4 +41,8 @@ struct ss_data {
 #define NEPTUNE			7	/* Cyan */
 #define PLANETESIMAL	3	/* Green */
 
+/* Filename for list of particles with rejected initial positions */
+
+#define REJECTS_FILE "rejects.out"
+
 #endif /* !SSDEFS_HINCLUDED */

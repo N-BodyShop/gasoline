@@ -12,11 +12,14 @@ typedef struct smfParameters {
 	double gamma;
 	double algam;
 	int bGeometric;
-#ifdef PLANETS
+#ifdef COLLISIONS
+	double dTime;
+	double dDelta;
+	double dCentMass;
 	double dStart;	/* collision search time interval */
 	double dEnd;
 	PKD pkd;		/* pointer to processor's PKD structure */
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 	} SMF;
 
 
@@ -70,17 +73,20 @@ void AccsphBVSym(PARTICLE *,int,NN *,SMF *);
 
 #endif
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 
-#define SMX_TIMESTEP	7
-void SetTimeStep(PARTICLE *,int,NN *,SMF *); /*DEBUG only used if SMOOTH_STEP*/
+#define SMX_REJECTS		7
+void FindRejects(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
 
-#define SMX_COLLISION	8
-void CheckForCollision(PARTICLE *,int,NN *,SMF *);
+#define SMX_TIMESTEP	8
+void SetTimeStep(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
 
 #define SMX_ENCOUNTER	9
-void CheckForEncounter(PARTICLE *,int,NN *,SMF *);
+void CheckForEncounter(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
 
-#endif /* PLANETS */
+#define SMX_COLLISION	10
+void CheckForCollision(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
+
+#endif /* COLLISIONS */
 
 #endif

@@ -1,11 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h> /* for unlink() */
 #include <stddef.h>
 #include <string.h>
 #include <malloc.h>
 #include <assert.h>
 #include <time.h>
 #include <math.h>
+
+#include <sys/param.h> /* for MAXHOSTNAMELEN, if available */
 
 #include <rpc/types.h>
 #include <rpc/xdr.h>
@@ -21,10 +24,13 @@
 #include "outtype.h"
 #include "smoothfcn.h"
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 #include "ssdefs.h"
 #include "collision.h"
-#endif /* PLANETS */
+#endif /* COLLISIONS */
+
+#define LOCKFILE ".lockfile"	/* for safety lock */
+#define STOPFILE "STOP"			/* for user interrupt */
 
 void _msrLeader(void)
 {
@@ -58,6 +64,23 @@ void _msrExit(MSR msr)
 	exit(1);
 	}
 
+void _msrMakePath(const char *dir, const char *base, char *path)
+{
+	/*
+	 ** Prepends "dir" to "base" and returns the result in "path". It is the
+	 ** caller's responsibility to ensure enough memory has been allocated
+	 ** for "path".
+	 */
+
+	if (!path) return;
+	path[0] = 0;
+	if (dir) {
+		strcat(path,dir);
+		strcat(path,"/");
+		}
+	if (!base) return;
+	strcat(path,base);
+	}
 
 void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 {
@@ -77,16 +100,30 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	/*
 	 ** Now setup for the input parameters.
 	 */
+	/*DEBUG I deleted bDiag because master.c didn't use it. Is it necessary
+	  for correct parsing of command line arguments? [bDiag is in mdl] -- DCR*/
 	prmInitialize(&msr->prm,_msrLeader,_msrTrailer);
 	msr->param.nThreads = 1;
 	prmAddParam(msr->prm,"nThreads",1,&msr->param.nThreads,sizeof(int),"sz",
 				"<nThreads>");
-	msr->param.bDiag = 0;
-	prmAddParam(msr->prm,"bDiag",0,&msr->param.bDiag,sizeof(int),"d",
-				"enable/disable per thread diagnostic output");
-	msr->param.bVerbose = 0;
-	prmAddParam(msr->prm,"bVerbose",0,&msr->param.bVerbose,sizeof(int),"v",
-				"enable/disable verbose output");
+	msr->param.bOverwrite = 0;
+	prmAddParam(msr->prm,"bOverwrite",0,&msr->param.bOverwrite,sizeof(int),
+				"overwrite","enable/disable overwrite safety lock = -overwrite");
+	msr->param.bVWarnings = 1;
+	prmAddParam(msr->prm,"bVWarnings",0,&msr->param.bVWarnings,sizeof(int),
+				"vwarnings","enable/disable warnings = +vwarnings");
+	msr->param.bVStart = 1;
+	prmAddParam(msr->prm,"bVStart",0,&msr->param.bVStart,sizeof(int),
+				"vstart","enable/disable verbose start = +vstart");
+	msr->param.bVStep = 1;
+	prmAddParam(msr->prm,"bVStep",0,&msr->param.bVStep,sizeof(int),
+				"vstep","enable/disable verbose step = +vstep");
+	msr->param.bVRungStat = 1;
+	prmAddParam(msr->prm,"bVRungStat",0,&msr->param.bVRungStat,sizeof(int),
+				"vrungstat","enable/disable rung statistics = +vrungstat");
+	msr->param.bVDetails = 0;
+	prmAddParam(msr->prm,"bVDetails",0,&msr->param.bVDetails,sizeof(int),
+				"vdetails","enable/disable verbose details = +vdetails");
 	msr->param.bPeriodic = 0;
 	prmAddParam(msr->prm,"bPeriodic",0,&msr->param.bPeriodic,sizeof(int),"p",
 				"periodic/non-periodic = -p");
@@ -298,7 +335,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				sizeof(double),"kpcu",
 				"<Kiloparsec/system length unit>");
 #endif
-#ifdef PLANETS
+#ifdef COLLISIONS
+	msr->param.bFindRejects = 1;
+	prmAddParam(msr->prm,"bFindRejects",1,&msr->param.bFindRejects,
+				sizeof(int),"rejects","<Find rejects toggle>");
+	msr->param.dSmallStep = 0.0;
+	prmAddParam(msr->prm,"dSmallStep",2,&msr->param.dSmallStep,
+				sizeof(double),"sstep","<Rectilinear time-step>");
 	msr->param.iOutcomes = 0;
 	prmAddParam(msr->prm,"iOutcomes",1,&msr->param.iOutcomes,
 				sizeof(int),"outcomes","<Allowed collision outcomes>");
@@ -311,7 +354,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoCollLog = 0;
 	prmAddParam(msr->prm,"bDoCollLog",1,&msr->param.bDoCollLog,
 				sizeof(int),"clog","<Collision logging toggle>");
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 	/*
 	 ** Set the box center to (0,0,0) for now!
 	 */
@@ -346,6 +389,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	 ** Should we have restarted, maybe?
 	 */
 	if (!msr->param.bRestart) {
+		/*DEBUG why is this here? -- DCR*/
 		}
 	msr->nThreads = mdlThreads(mdl);
 	/*
@@ -437,29 +481,63 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		}
 #endif
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 	/*
 	 ** Parameter checks and initialization.
 	 */
-	if (msr->param.nSmooth < 2)
+#ifdef GASOLINE
+	printf("ERROR: can't mix COLLISIONS and GASOLINE!\n");
+	_msrExit(msr);
+#endif
+	if (msr->param.bVWarnings && msr->param.nSmooth < 2)
 		printf("WARNING: collision detection disabled (nSmooth < 2)\n");
-	if (!(msr->param.iOutcomes & (MERGE | BOUNCE | FRAG))) {/*DEBUG temporary*/
-		printf("ERROR: must specify one of MERGE/BOUNCE/FRAG\n");
-		_msrExit(msr);
+	assert(msr->param.dCentMass >= 0);
+	if (msr->param.bFandG) {
+		assert(msr->param.bHeliocentric);
+		/* note: ok to be heliocentric _without_ FandG... */
+		if (!msr->param.bKDK) {
+			printf("ERROR: must use KDK scheme with FandG collision model\n");
+			_msrExit(msr);
+			}
+		if (!msr->param.bCannonical) {
+			printf("ERROR: must use cannonical momentum in FandG collision model\n");
+			_msrExit(msr);
+			}
+		if (msr->param.iMaxRung > 1) {
+			printf("ERROR: multistepping not currently supported in FandG collision model\n");
+			_msrExit(msr);
+			}
+		if (msr->param.dSmallStep < 0) {
+			printf("ERROR: dSmallStep cannot be negative\n");
+			_msrExit(msr);
+			}
+		if (msr->param.bVWarnings && msr->param.dSmallStep == 0)
+			printf("WARNING: encounter detection disabled (dSmallStep = 0)\n");
+		if (msr->param.dSmallStep > msr->param.dDelta) {
+			printf("ERROR: inner step must be less than dDelta\n");
+			_msrExit(msr);
+			}
 		}
-	if (msr->param.dEpsN <= 0 || msr->param.dEpsN > 1) {
-		printf("ERROR: coef of rest must be > 0 and <= 1\n");
-		_msrExit(msr);
+	if (msr->param.nSmooth >= 2) {
+		if (!(msr->param.iOutcomes & (MERGE | BOUNCE | FRAG))) {
+			printf("ERROR: must specify one of MERGE/BOUNCE/FRAG\n");
+			_msrExit(msr);
+			}
+		if (msr->param.dEpsN <= 0 || msr->param.dEpsN > 1) {
+			printf("ERROR: coef of rest must be > 0 and <= 1\n");
+			_msrExit(msr);
+			}
+		if (msr->param.dEpsT < -1 || msr->param.dEpsT > 1) {
+			printf("ERROR: coef of surf frict must be >= -1 and <= 1\n");
+			_msrExit(msr);
+			}
+		if (msr->param.bDoCollLog) {
+			sprintf(msr->param.achCollLog,"%s.collisions",msr->param.achOutName);
+			if (msr->param.bVStart)
+				printf("Collision log: \"%s\"\n",msr->param.achCollLog);
+			}
 		}
-	if (msr->param.dEpsT < -1 || msr->param.dEpsT > 1) {
-		printf("ERROR: coef of surf frict must be >= -1 and <= 1\n");
-		_msrExit(msr);
-		}
-	if (msr->param.bDoCollLog) {
-		sprintf(msr->param.achCollLog,"%s.collisions",msr->param.achOutName);
-		printf("Logging collisions to \"%s\"\n",msr->param.achCollLog);
-		}
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 
 	pstInitialize(&msr->pst,msr->mdl,&msr->lcl);
 
@@ -468,11 +546,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	 ** Create the processor subset tree.
 	 */
 	for (id=1;id<msr->nThreads;++id) {
-		if (msr->param.bVerbose) printf("Adding %d to the pst\n",id);
+		if (msr->param.bVDetails) printf("Adding %d to the pst\n",id);
 		inAdd.id = id;
 		pstSetAdd(msr->pst,&inAdd,sizeof(inAdd),NULL,NULL);
 		}
-	if (msr->param.bVerbose) printf("\n");
+	if (msr->param.bVDetails) printf("\n");
 	/*
 	 ** Levelize the PST.
 	 */
@@ -498,11 +576,60 @@ void msrLogParams(MSR msr,FILE *fp)
 {
 	double z;
 	int i;
-  	
+
+#ifdef __DATE__
+#ifdef __TIME__
+	fprintf(fp,"# Compiled: %s %s\n",__DATE__,__TIME__);
+#endif
+#endif
+	fprintf(fp,"# Preprocessor macros:");
+#ifdef GASOLINE
+	fprintf(fp," GASOLINE");
+#endif
+#ifdef SUPERCOOL
+	fprintf(fp," SUPERCOOL");
+#endif
+#ifdef COLLISIONS
+	fprintf(fp," COLLISIONS");
+#endif
+#ifdef FIX_COLLAPSE
+	fprintf(fp," FIX_COLLAPSE");
+#endif
+#ifdef IN_A_BOX
+	fprintf(fp," IN_A_BOX");
+#endif
+#ifdef SAND_PILE
+	fprintf(fp," SAND_PILE");
+#endif
+#ifdef SMOOTH_STEP
+	fprintf(fp," SMOOTH_STEP");
+#endif
+#ifdef HILL_STEP
+	fprintf(fp," HILL_STEP");
+#endif
+#ifdef _REENTRANT
+	fprintf(fp," _REENTRANT");
+#endif
+#ifdef CRAY_T3D
+	fprintf(fp," CRAY_T3D");
+#endif
+#ifdef MAXHOSTNAMELEN
+	{
+		char hostname[MAXHOSTNAMELEN];
+		fprintf(fp,"# Master host: ");
+		if (gethostname(hostname,MAXHOSTNAMELEN))
+			fprintf(fp,"unknown");
+		else
+			fprintf(fp,"%s",hostname);
+		fprintf(fp,"\n");
+	}
+#endif
+	fprintf(fp,"\n");
 	fprintf(fp,"# N: %d",msr->N);
 	fprintf(fp," nThreads: %d",msr->param.nThreads);
-	fprintf(fp," bDiag: %d",msr->param.bDiag);
-	fprintf(fp," bVerbose: %d",msr->param.bVerbose);
+	fprintf(fp," Verbosity flags: (%d,%d,%d,%d,%d)",msr->param.bVWarnings,
+			msr->param.bVStart,msr->param.bVStep,msr->param.bVRungStat,
+			msr->param.bVDetails);
 	fprintf(fp,"\n# bPeriodic: %d",msr->param.bPeriodic);
 	fprintf(fp," bRestart: %d",msr->param.bRestart);
 	fprintf(fp," bComove: %d",msr->param.bComove);
@@ -532,6 +659,10 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," iMaxRung: %d",msr->param.iMaxRung);
 	fprintf(fp," bEpsVel: %d",msr->param.bEpsVel);
 	fprintf(fp," bNonSymp: %d",msr->param.bNonSymp);
+	fprintf(fp,"\n# bDoGravity: %d",msr->param.bDoGravity);
+	fprintf(fp," bFandG: %d",msr->param.bFandG);
+	fprintf(fp," bHeliocentric: %d",msr->param.bHeliocentric);
+	fprintf(fp," dCentMass: %g",msr->param.dCentMass);
 #ifdef GASOLINE
 	fprintf(fp,"\n# SPH: bGeometric: %d",msr->param.bGeometric);
 	fprintf(fp," dConstAlpha: %g",msr->param.dConstAlpha);
@@ -542,13 +673,15 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dMsolUnit: %g",msr->param.dMsolUnit);
 	fprintf(fp," dKpcUnit: %g",msr->param.dKpcUnit);
 #endif
-#ifdef PLANETS
-	fprintf(fp,"\n# Planets:");
+#ifdef COLLISIONS
+	fprintf(fp,"\n# Collisions:");
+	fprintf(fp," bFindRejects: %d",msr->param.bFindRejects);
+	fprintf(fp," dSmallStep: %g",msr->param.dSmallStep);
     fprintf(fp," iOutcomes: %d",msr->param.iOutcomes);
-    fprintf(fp," dEpsN: %g",msr->param.dEpsN);
+    fprintf(fp,"\n# dEpsN: %g",msr->param.dEpsN);
     fprintf(fp," dEpsT: %g",msr->param.dEpsT);
 	fprintf(fp," bDoCollLog: %d",msr->param.bDoCollLog);
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 	switch (msr->iOpenType) {
 	case OPEN_JOSH:
 		fprintf(fp,"\n# iOpenType: JOSH");
@@ -588,7 +721,6 @@ void msrLogParams(MSR msr,FILE *fp)
 			fprintf(fp," %f",z);
 			}
 		fprintf(fp,"\n");
-		fflush(fp);
 		}
 	else {
 		fprintf(fp,"\n# TimeOut:");
@@ -598,23 +730,82 @@ void msrLogParams(MSR msr,FILE *fp)
 			fprintf(fp," %f",msr->pdOutTime[i]);
 			}
 		fprintf(fp,"\n");
-		fflush(fp);
 		}
 	}
 
+int msrGetLock(MSR msr)
+{
+	/*
+	 ** Attempts to lock run directory to prevent overwriting. If an old lock
+	 ** is detected, an abort is signaled. Otherwise a new lock is created.
+	 ** The bOverwrite parameter flag can be used to suppress lock checking.
+	 */
+
+	FILE *fp = NULL;
+	char achTmp[256],achFile[256];
+
+	_msrMakePath(msr->param.achDataSubPath,LOCKFILE,achTmp);
+	_msrMakePath(msr->lcl.pszDataPath,achTmp,achFile);
+	if (!msr->param.bOverwrite && (fp = fopen(achFile,"r"))) {
+		(void) printf("ABORT: %s detected.\nPlease ensure data is safe to "
+					  "overwrite. Delete lockfile and try again.\n",achFile);
+		fclose(fp);
+		return 0;
+		}
+	if (!(fp = fopen(achFile,"w"))) {
+		if (msr->param.bOverwrite && msr->param.bVWarnings) {
+			(void) printf("WARNING: Unable to create %s...ignored.\n",achFile);
+			return 1;
+			}
+		else {
+			(void) printf("Unable to create %s\n",achFile);
+			return 0;
+			}
+		}
+	fclose(fp);
+	return 1;
+	}
+
+int msrCheckForStop(MSR msr)
+{
+	/*
+	 ** Checks for existence of STOPFILE in run directory. If found, the file
+	 ** is removed and the return status is set to 1, otherwise 0.
+	 */
+
+	static char achFile[256];
+	static int first_call = 1;
+
+	FILE *fp = NULL;
+
+	if (first_call) {
+		char achTmp[256];
+
+		_msrMakePath(msr->param.achDataSubPath,STOPFILE,achTmp);
+		_msrMakePath(msr->lcl.pszDataPath,achTmp,achFile);
+		first_call = 0;
+		}
+	if ((fp = fopen(achFile,"r"))) {
+		(void) printf("User interrupt detected.\n");
+		(void) fclose(fp);
+		(void) unlink(achFile);
+		return 1;
+		}
+	return 0;
+	}
 
 void msrFinish(MSR msr)
 {
 	int id;
 
 	for (id=1;id<msr->nThreads;++id) {
-		if (msr->param.bVerbose) printf("Stopping thread %d\n",id);		
+		if (msr->param.bVDetails) printf("Stopping thread %d\n",id);		
 		mdlReqService(msr->mdl,id,SRV_STOP,NULL,0);
 		mdlGetReply(msr->mdl,id,NULL,NULL);
 		}
 	pstFinish(msr->pst);
 	/*
-	 ** finish with parameter stuff, dealocate and exit.
+	 ** finish with parameter stuff, deallocate and exit.
 	 */
 	prmFinish(msr->prm);
 	free(msr->pMap);
@@ -888,12 +1079,7 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
     /*
      ** Add the local Data Path to the provided filename.
      */
-    achInFile[0] = 0;
-    if (plcl->pszDataPath) {
-	    strcat(achInFile,plcl->pszDataPath);
-	    strcat(achInFile,"/");
-	    }
-    strcat(achInFile,in->achInFile);
+	_msrMakePath(plcl->pszDataPath,in->achInFile,achInFile);
 	
     nStart = nParts[0];
 	assert(msr->pMap[0] == 0);
@@ -950,20 +1136,11 @@ double msrReadTipsy(MSR msr)
 		/*
 		 ** Add Data Subpath for local and non-local names.
 		 */
-		achInFile[0] = 0;
-		strcat(achInFile,msr->param.achDataSubPath);
-		strcat(achInFile,"/");
-		strcat(achInFile,msr->param.achInFile);
-		strcpy(in.achInFile,achInFile);
+		_msrMakePath(msr->param.achDataSubPath,msr->param.achInFile,in.achInFile);
 		/*
 		 ** Add local Data Path.
 		 */
-		achInFile[0] = 0;
-		if (plcl->pszDataPath) {
-			strcat(achInFile,plcl->pszDataPath);
-			strcat(achInFile,"/");
-			}
-		strcat(achInFile,in.achInFile);
+		_msrMakePath(plcl->pszDataPath,in.achInFile,achInFile);
 
 		fp = fopen(achInFile,"r");
 		if (!fp) {
@@ -1011,15 +1188,17 @@ double msrReadTipsy(MSR msr)
 			}
 		dTime = msrExp2Time(msr,h.time);
 		z = 1.0/h.time - 1.0;
-		printf("Input file, Time:%g Redshift:%g Expansion factor:%g\n",
-			   dTime,z,h.time);
+		if (msr->param.bVStart)
+			printf("Input file, Time:%g Redshift:%g Expansion factor:%g\n",
+				   dTime,z,h.time);
 		if (prmSpecified(msr->prm,"dRedTo")) {
 			if (!prmArgSpecified(msr->prm,"nSteps") &&
 				prmArgSpecified(msr->prm,"dDelta")) {
 				aTo = 1.0/(msr->param.dRedTo + 1.0);
 				tTo = msrExp2Time(msr,aTo);
-				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
-					   tTo,1.0/aTo-1.0,aTo);
+				if (msr->param.bVStart)
+					printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
+						   tTo,1.0/aTo-1.0,aTo);
 				if (tTo < dTime) {
 					printf("Badly specified final redshift, check -zto parameter.\n");
 					_msrExit(msr);
@@ -1030,8 +1209,9 @@ double msrReadTipsy(MSR msr)
 					 prmArgSpecified(msr->prm,"nSteps")) {
 				aTo = 1.0/(msr->param.dRedTo + 1.0);
 				tTo = msrExp2Time(msr,aTo);
-				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
-					   tTo,1.0/aTo-1.0,aTo);
+				if (msr->param.bVStart)
+					printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
+						   tTo,1.0/aTo-1.0,aTo);
 				if (tTo < dTime) {
 					printf("Badly specified final redshift, check -zto parameter.\n");	
 					_msrExit(msr);
@@ -1045,8 +1225,9 @@ double msrReadTipsy(MSR msr)
 					 prmFileSpecified(msr->prm,"dDelta")) {
 				aTo = 1.0/(msr->param.dRedTo + 1.0);
 				tTo = msrExp2Time(msr,aTo);
-				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
-					   tTo,1.0/aTo-1.0,aTo);
+				if (msr->param.bVStart)
+					printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
+						   tTo,1.0/aTo-1.0,aTo);
 				if (tTo < dTime) {
 					printf("Badly specified final redshift, check -zto parameter.\n");
 					_msrExit(msr);
@@ -1057,8 +1238,9 @@ double msrReadTipsy(MSR msr)
 					 prmFileSpecified(msr->prm,"nSteps")) {
 				aTo = 1.0/(msr->param.dRedTo + 1.0);
 				tTo = msrExp2Time(msr,aTo);
-				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
-					   tTo,1.0/aTo-1.0,aTo);
+				if (msr->param.bVStart)
+					printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
+						   tTo,1.0/aTo-1.0,aTo);
 				if (tTo < dTime) {
 					printf("Badly specified final redshift, check -zto parameter.\n");	
 					_msrExit(msr);
@@ -1072,11 +1254,13 @@ double msrReadTipsy(MSR msr)
 		else {
 			tTo = dTime + msr->param.nSteps*msr->param.dDelta;
 			aTo = msrTime2Exp(msr,tTo);
-			printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
-				   tTo,1.0/aTo-1.0,aTo);
+			if (msr->param.bVStart)
+				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
+					   tTo,1.0/aTo-1.0,aTo);
 			}
-		printf("Reading file...\nN:%d nDark:%d nGas:%d nStar:%d\n",msr->N,
-			   msr->nDark,msr->nGas,msr->nStar);
+		if (msr->param.bVStart)
+			printf("Reading file...\nN:%d nDark:%d nGas:%d nStar:%d\n",msr->N,
+				   msr->nDark,msr->nGas,msr->nStar);
 		if (msr->param.bCannonical) {
 			in.dvFac = h.time*h.time;
 			}
@@ -1086,11 +1270,13 @@ double msrReadTipsy(MSR msr)
 		}
 	else {
 		dTime = h.time;
-		printf("Input file, Time:%g\n",dTime);
+		if (msr->param.bVStart) printf("Input file, Time:%g\n",dTime);
 		tTo = dTime + msr->param.nSteps*msr->param.dDelta;
-		printf("Simulation to Time:%g\n",tTo);
-		printf("Reading file...\nN:%d nDark:%d nGas:%d nStar:%d Time:%g\n",
-			   msr->N,msr->nDark,msr->nGas,msr->nStar,dTime);
+		if (msr->param.bVStart) {
+			printf("Simulation to Time:%g\n",tTo);
+			printf("Reading file...\nN:%d nDark:%d nGas:%d nStar:%d Time:%g\n",
+				   msr->N,msr->nDark,msr->nGas,msr->nStar,dTime);
+			}
 		in.dvFac = 1.0;
 		}
 	in.nFileStart = 0;
@@ -1124,7 +1310,7 @@ double msrReadTipsy(MSR msr)
 	    pstReadTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
 	    msrOneNodeReadTipsy(msr, &in);
-	if (msr->param.bVerbose) puts("Input file has been successfully read.");
+	if (msr->param.bVDetails) puts("Input file has been successfully read.");
 	/*
 	 ** Now read in the output points, passing the initial time.
 	 ** We do this only if nSteps is not equal to zero.
@@ -1161,12 +1347,7 @@ void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
     /*
      ** Add the local Data Path to the provided filename.
      */
-    achOutFile[0] = 0;
-    if (plcl->pszDataPath) {
-	    strcat(achOutFile,plcl->pszDataPath);
-	    strcat(achOutFile,"/");
-	    }
-    strcat(achOutFile,in->achOutFile);
+	_msrMakePath(plcl->pszDataPath,in->achOutFile,achOutFile);
 
     /* 
      * First write our own particles.
@@ -1230,20 +1411,11 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	/*
 	 ** Add Data Subpath for local and non-local names.
 	 */
-	achOutFile[0] = 0;
-	strcat(achOutFile,msr->param.achDataSubPath);
-	strcat(achOutFile,"/");
-	strcat(achOutFile,pszFileName);
-	strcpy(in.achOutFile,achOutFile);
+	_msrMakePath(msr->param.achDataSubPath,pszFileName,in.achOutFile);
 	/*
 	 ** Add local Data Path.
 	 */
-	achOutFile[0] = 0;
-	if (plcl->pszDataPath) {
-		strcat(achOutFile,plcl->pszDataPath);
-		strcat(achOutFile,"/");
-		}
-	strcat(achOutFile,in.achOutFile);
+	_msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
 	
 	fp = fopen(achOutFile,"w");
 	if (!fp) {
@@ -1278,7 +1450,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		in.dvFac = 1.0;
 		}
 	h.ndim = 3;
-	if (msr->param.bVerbose) {
+	if (msr->param.bVDetails) {
 		if (msr->param.bComove) {
 			printf("Writing file...\nTime:%g Redshift:%g\n",
 				   dTime,(1.0/h.time - 1.0));
@@ -1302,9 +1474,8 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	    pstWriteTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
 	    msrOneNodeWriteTipsy(msr, &in);
-	if (msr->param.bVerbose) {
+	if (msr->param.bVDetails)
 		puts("Output file has been successfully written.");
-		}
 	}
 
 
@@ -1312,7 +1483,7 @@ void msrSetSoft(MSR msr,double dSoft)
 {
 	struct inSetSoft in;
   
-	if (msr->param.bVerbose) printf("Set Softening...\n");
+	if (msr->param.bVDetails) printf("Set Softening...\n");
 	in.dSoft = dSoft;
 	pstSetSoft(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
@@ -1325,18 +1496,23 @@ void msrBuildTree(MSR msr,int bActiveOnly,double dMass,int bSmooth)
 	struct inColCells inc;
 	struct ioCalcRoot root;
 	KDN *pkdn;
-	int sec,dsec;
 	int iDum,nCell;
 
-	if (msr->param.bVerbose) printf("Domain Decomposition...\n");
-	sec = time(0);
-	pstDomainDecomp(msr->pst,NULL,0,NULL,NULL);
-	msrMassCheck(msr,dMass,"After pstDomainDecomp in msrBuildTree");
-	dsec = time(0) - sec;
-	if (msr->param.bVerbose) {
+	if (msr->param.bVDetails) {
+		int sec,dsec;
+		printf("Domain Decomposition...\n");
+		sec = time(0);
+		pstDomainDecomp(msr->pst,NULL,0,NULL,NULL);
+		msrMassCheck(msr,dMass,"After pstDomainDecomp in msrBuildTree");
+		dsec = time(0) - sec;
 		printf("Domain Decomposition complete, Wallclock: %d secs\n\n",dsec);
+		printf("Building local trees...\n");
 		}
-	if (msr->param.bVerbose) printf("Building local trees...\n");
+	else {
+		pstDomainDecomp(msr->pst,NULL,0,NULL,NULL);
+		msrMassCheck(msr,dMass,"After pstDomainDecomp in msrBuildTree");
+		}
+
 	/*
 	 ** First make sure the particles are in Active/Inactive order.
 	 */
@@ -1364,12 +1540,17 @@ void msrBuildTree(MSR msr,int bActiveOnly,double dMass,int bSmooth)
 			}
 		}
 	in.bActiveOnly = bActiveOnly;
-	sec = time(0);
-	pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
-	msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
-	dsec = time(0) - sec;
-	if (msr->param.bVerbose) {
+	if (msr->param.bVDetails) {
+		int sec,dsec;
+		sec = time(0);
+		pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
+		msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
+		dsec = time(0) - sec;
 		printf("Tree built, Wallclock: %d secs\n\n",dsec);
+		}
+	else {
+		pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
+		msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
 		}
 	nCell = 1<<(1+(int)ceil(log((double)msr->nThreads)/log(2.0)));
 	pkdn = malloc(nCell*sizeof(KDN));
@@ -1424,16 +1605,20 @@ void msrDomainColor(MSR msr)
 void msrReorder(MSR msr)
 {
 	struct inDomainOrder in;
-	int sec,dsec;
 
-	if (msr->param.bVerbose) printf("Ordering...\n");
-	sec = time(0);
 	in.iMaxOrder = msrMaxOrder(msr);
-	pstDomainOrder(msr->pst,&in,sizeof(in),NULL,NULL);
-	pstLocalOrder(msr->pst,NULL,0,NULL,NULL);
-	dsec = time(0) - sec;
-	if (msr->param.bVerbose) {
+	if (msr->param.bVDetails) {
+		int sec,dsec;
+		printf("Ordering...\n");
+		sec = time(0);
+		pstDomainOrder(msr->pst,&in,sizeof(in),NULL,NULL);
+		pstLocalOrder(msr->pst,NULL,0,NULL,NULL);
+		dsec = time(0) - sec;
 		printf("Order established, Wallclock: %d secs\n\n",dsec);
+		}
+	else {
+		pstDomainOrder(msr->pst,&in,sizeof(in),NULL,NULL);
+		pstLocalOrder(msr->pst,NULL,0,NULL,NULL);
 		}
 	/*
 	 ** Mark tree as void.
@@ -1460,20 +1645,11 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 		/*
 		 ** Add Data Subpath for local and non-local names.
 		 */
-		achOutFile[0] = 0;
-		strcat(achOutFile,msr->param.achDataSubPath);
-		strcat(achOutFile,"/");
-		strcat(achOutFile,pszFile);
-		strcpy(in.achOutFile,achOutFile);
+		_msrMakePath(msr->param.achDataSubPath,pszFile,in.achOutFile);
 		/*
 		 ** Add local Data Path.
 		 */
-		achOutFile[0] = 0;
-		if (plcl->pszDataPath) {
-			strcat(achOutFile,plcl->pszDataPath);
-			strcat(achOutFile,"/");
-			}
-		strcat(achOutFile,in.achOutFile);
+		_msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
 
 		fp = fopen(achOutFile,"w");
 		if (!fp) {
@@ -1539,20 +1715,11 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 		/*
 		 ** Add Data Subpath for local and non-local names.
 		 */
-		achOutFile[0] = 0;
-		strcat(achOutFile,msr->param.achDataSubPath);
-		strcat(achOutFile,"/");
-		strcat(achOutFile,pszFile);
-		strcpy(in.achOutFile,achOutFile);
+		_msrMakePath(msr->param.achDataSubPath,pszFile,in.achOutFile);
 		/*
 		 ** Add local Data Path.
 		 */
-		achOutFile[0] = 0;
-		if (plcl->pszDataPath) {
-			strcat(achOutFile,plcl->pszDataPath);
-			strcat(achOutFile,"/");
-			}
-		strcat(achOutFile,in.achOutFile);
+		_msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
 
 		fp = fopen(achOutFile,"w");
 		if (!fp) {
@@ -1604,7 +1771,6 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 {
 	struct inSmooth in;
-	int sec,dsec;
 
 	/*
 	 ** Make sure that the type of tree is a density binary tree!
@@ -1623,20 +1789,23 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
 	in.smf.bGeometric = msr->param.bGeometric;
 #endif
-	if (msr->param.bVerbose) printf("Smoothing...\n");
-	sec = time(0);
-	pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
-	dsec = time(0) - sec;
-#ifndef VERY_QUIET
-	printf("Smooth Calculated, Wallclock:%d secs\n\n",dsec);
-#endif /* VERY_QUIET */
+	if (msr->param.bVStep) {
+		int sec,dsec;
+		printf("Smoothing...\n");
+		sec = time(0);
+		pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
+		dsec = time(0) - sec;
+		printf("Smooth Calculated, Wallclock:%d secs\n\n",dsec);
+		}
+	else {
+		pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
+		}
 	}
 
 
 void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 {
 	struct inReSmooth in;
-	int sec,dsec;
 
 	/*
 	 ** Make sure that the type of tree is a density binary tree!
@@ -1653,13 +1822,17 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.gamma = msr->param.dConstGamma;
 	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
 	in.smf.bGeometric = msr->param.bGeometric;
-	if (msr->param.bVerbose) printf("ReSmoothing...\n");
-	sec = time(0);
-	pstReSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
-	dsec = time(0) - sec;
-#ifndef VERY_QUIET
-	printf("ReSmooth Calculated, Wallclock:%d secs\n\n",dsec);
-#endif /* VERY_QUIET */
+	if (msr->param.bVStep) {
+		int sec,dsec;
+		printf("ReSmoothing...\n");
+		sec = time(0);
+		pstReSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
+		dsec = time(0) - sec;
+		printf("ReSmooth Calculated, Wallclock:%d secs\n\n",dsec);
+		}
+	else {
+		pstReSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
+		}
 	}
 
 
@@ -1672,19 +1845,11 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	struct inGravExternal inExt;
 	int iDum,j;
 	int sec,dsec;
-	double dPartAvg,dCellAvg;
-	double dMFlops;
-	double dWAvg,dWMax,dWMin;
-	double dIAvg,dIMax,dIMin;
-	double dEAvg,dEMax,dEMin;
-	double iP;
 
 	assert(msr->bGravityTree == 1);
 	assert(msr->iTreeType == MSR_TREE_SPATIAL || 
 		   msr->iTreeType == MSR_TREE_DENSITY);
-#ifndef VERY_QUIET
-	printf("Calculating Gravity, Step:%f\n",dStep);
-#endif /* VERY_QUIET */
+	if (msr->param.bVStep) printf("Calculating Gravity, Step:%f\n",dStep);
     in.nReps = msr->param.nReplicas;
     in.bPeriodic = msr->param.bPeriodic;
 	in.iOrder = msr->param.iOrder;
@@ -1720,69 +1885,74 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
 		}
-	/*
-	 ** Output some info...
-	 */
-#ifndef VERY_QUIET
- 	if(dsec > 0.0) {
- 	    dMFlops = out.dFlop/dsec*1e-6;
-	    printf("Gravity Calculated, Wallclock:%d secs, MFlops:%.1f, Flop:%.3g\n",
-			   dsec,dMFlops,out.dFlop);
- 	    }
- 	else {
- 	    printf("Gravity Calculated, Wallclock:%d secs, MFlops:unknown, Flop:%.3g\n",
-			   dsec,out.dFlop);
- 	    }
-#endif /* VERY_QUIET */
 	*piSec = dsec;
-	if (out.nActive > 0) {
-		dPartAvg = out.dPartSum/out.nActive;
-		dCellAvg = out.dCellSum/out.nActive;
-		}
-	else {
-		dPartAvg = dCellAvg = 0;
-#ifdef PLANETS
-		/*
-		 ** This is allowed to happen in the Solar System model because a
-		 ** time-step rung may be left vacant following a merger event.
-		 */
-#else /* PLANETS */
-		printf("WARNING: no particles found!\n");
-#endif /* !PLANETS */
-		}
 	*pnActive = out.nActive;
-	iP = 1.0/msr->nThreads;
-	dWAvg = out.dWSum*iP;
-	dIAvg = out.dISum*iP;
-	dEAvg = out.dESum*iP;
-	dWMax = out.dWMax;
-	*pdWMax = dWMax;
-	dIMax = out.dIMax;
-	*pdIMax = dIMax;
-	dEMax = out.dEMax;
-	*pdEMax = dEMax;
-	dWMin = out.dWMin;
-	dIMin = out.dIMin;
-	dEMin = out.dEMin;
-#ifndef VERY_QUIET
-	printf("dPartAvg:%f dCellAvg:%f\n",dPartAvg,dCellAvg);
-	printf("Walk CPU     Avg:%10f Max:%10f Min:%10f\n",dWAvg,dWMax,dWMin);
-	printf("Interact CPU Avg:%10f Max:%10f Min:%10f\n",dIAvg,dIMax,dIMin);
-	printf("Ewald CPU    Avg:%10f Max:%10f Min:%10f\n",dEAvg,dEMax,dEMin);	
-	if (msr->nThreads > 1) {
-		printf("Particle Cache Statistics (average per processor):\n");
-		printf("    Accesses:    %10g\n",out.dpASum*iP);
-		printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
-		printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
-		printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
-		printf("Cell Cache Statistics (average per processor):\n");
-		printf("    Accesses:    %10g\n",out.dcASum*iP);
-		printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
-		printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
-		printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
-		printf("\n");
+	*pdWMax = out.dWMax;
+	*pdIMax = out.dIMax;
+	*pdEMax = out.dEMax;
+	if (msr->param.bVStep) {
+		double dPartAvg,dCellAvg;
+		double dWAvg,dWMax,dWMin;
+		double dIAvg,dIMax,dIMin;
+		double dEAvg,dEMax,dEMin;
+		double iP;
+
+		/*
+		 ** Output some info...
+		 */
+		if(dsec > 0.0) {
+			double dMFlops = out.dFlop/dsec*1e-6;
+			printf("Gravity Calculated, Wallclock:%d secs, MFlops:%.1f, Flop:%.3g\n",
+				   dsec,dMFlops,out.dFlop);
+			}
+		else {
+			printf("Gravity Calculated, Wallclock:%d secs, MFlops:unknown, Flop:%.3g\n",
+				   dsec,out.dFlop);
+			}
+		if (out.nActive > 0) {
+			dPartAvg = out.dPartSum/out.nActive;
+			dCellAvg = out.dCellSum/out.nActive;
+			}
+		else {
+			dPartAvg = dCellAvg = 0;
+#ifdef COLLISIONS
+			/*
+			 ** This is allowed to happen in the collision model because a
+			 ** time-step rung may be left vacant following a merger event.
+			 */
+#else /* COLLISIONS */
+			if (msr->param.bVWarnings)
+				printf("WARNING: no particles found!\n");
+#endif /* !COLLISIONS */
+			}
+		iP = 1.0/msr->nThreads;
+		dWAvg = out.dWSum*iP;
+		dIAvg = out.dISum*iP;
+		dEAvg = out.dESum*iP;
+		dWMax = out.dWMax;
+		dIMax = out.dIMax;
+		dEMax = out.dEMax;
+		dWMin = out.dWMin;
+		dIMin = out.dIMin;
+		dEMin = out.dEMin;
+		printf("dPartAvg:%f dCellAvg:%f\n",dPartAvg,dCellAvg);
+		printf("Walk CPU     Avg:%10f Max:%10f Min:%10f\n",dWAvg,dWMax,dWMin);
+		printf("Interact CPU Avg:%10f Max:%10f Min:%10f\n",dIAvg,dIMax,dIMin);
+		printf("Ewald CPU    Avg:%10f Max:%10f Min:%10f\n",dEAvg,dEMax,dEMin);
+		if (msr->nThreads > 1) {
+			printf("Particle Cache Statistics (average per processor):\n");
+			printf("    Accesses:    %10g\n",out.dpASum*iP);
+			printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
+			printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
+			printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
+			printf("Cell Cache Statistics (average per processor):\n");
+			printf("    Accesses:    %10g\n",out.dcASum*iP);
+			printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
+			printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
+			printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
+			printf("\n");
+			}
 		}
-#endif /* VERY_QUIET */
 	}
 
 
@@ -1827,9 +1997,9 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	struct inKickVpred invpr;
 #endif
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 	msrDoCollisions(msr,dTime,dDelta);
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 
 	if (msr->param.bCannonical) {
 		in.dDelta = msrComoveDriftFac(msr,dTime,dDelta);
@@ -2093,12 +2263,7 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
     /*
      ** Add the local Data Path to the provided filename.
      */
-    achInFile[0] = 0;
-    if (plcl->pszDataPath) {
-	    strcat(achInFile,plcl->pszDataPath);
-	    strcat(achInFile,"/");
-	    }
-    strcat(achInFile,in->achInFile);
+	_msrMakePath(plcl->pszDataPath,in->achInFile,achInFile);
 
     nStart = nParts[0];
     assert(msr->pMap[0] == 0);
@@ -2151,7 +2316,7 @@ double msrReadCheck(MSR msr,int *piStep)
 		}
 	fdl = FDL_open(achInFile);
 	FDL_read(fdl,"version",&iVersion);
-	if (msr->param.bVerbose) 
+	if (msr->param.bVDetails)
 		printf("Reading Version-%d Checkpoint file.\n",iVersion);
 	FDL_read(fdl,"not_corrupt_flag",&iNotCorrupt);
 	if (iNotCorrupt != 1) {
@@ -2301,9 +2466,8 @@ double msrReadCheck(MSR msr,int *piStep)
 		msr->param.bMiyamotoDisk = 0;
 		}
 	
-	if (msr->param.bVerbose) {
+	if (msr->param.bVDetails)
 		printf("Reading checkpoint file...\nN:%d Time:%g\n",msr->N,dTime);
-		}
 	in.nFileStart = 0;
 	in.nFileEnd = msr->N - 1;
 	in.nDark = msr->nDark;
@@ -2330,7 +2494,8 @@ double msrReadCheck(MSR msr,int *piStep)
 	    pstReadCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
 	    msrOneNodeReadCheck(msr,&in);
-	if (msr->param.bVerbose) puts("Checkpoint file has been successfully read.");
+	if (msr->param.bVDetails)
+		puts("Checkpoint file has been successfully read.");
 	inset.nGas = msr->nGas;
 	inset.nDark = msr->nDark;
 	inset.nStar = msr->nStar;
@@ -2362,12 +2527,7 @@ void msrOneNodeWriteCheck(MSR msr, struct inWriteCheck *in)
     /*
      ** Add the local Data Path to the provided filename.
      */
-    achOutFile[0] = 0;
-    if (plcl->pszDataPath) {
-	    strcat(achOutFile,plcl->pszDataPath);
-	    strcat(achOutFile,"/");
-	    }
-    strcat(achOutFile,in->achOutFile);
+	_msrMakePath(plcl->pszDataPath,in->achOutFile,achOutFile);
 
     /* 
      * First write our own particles.
@@ -2414,27 +2574,18 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	/*
 	 ** Add Data Subpath for local and non-local names.
 	 */
-	achOutFile[0] = 0;
-	strcat(achOutFile,msr->param.achDataSubPath);
-	strcat(achOutFile,"/");
 	if(first) {
 	    sprintf(achTmp,"%s.chk0",msr->param.achOutName);
 	    first = 0;
-		} else {
-			sprintf(achTmp,"%s.chk1",msr->param.achOutName);
-			first = 1;
-			}
-	strcat(achOutFile,achTmp);
-	strcpy(in.achOutFile,achOutFile);
+	} else {
+		sprintf(achTmp,"%s.chk1",msr->param.achOutName);
+		first = 1;
+		}
+	_msrMakePath(msr->param.achDataSubPath,achTmp,in.achOutFile);
 	/*
 	 ** Add local Data Path.
 	 */
-	achOutFile[0] = 0;
-	if (plcl->pszDataPath) {
-		strcat(achOutFile,plcl->pszDataPath);
-		strcat(achOutFile,"/");
-		}
-	strcat(achOutFile,in.achOutFile);
+	_msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
 	pszFdl = getenv("PKDGRAV_CHECKPOINT_FDL");
 	assert(pszFdl != NULL);
 	fdl = FDL_create(achOutFile,pszFdl);
@@ -2504,10 +2655,9 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"dOmega0",&msr->param.dOmega0);
 	FDL_write(fdl,"dTheta",&msr->param.dTheta);
 	FDL_write(fdl,"dTheta2",&msr->param.dTheta2);
-	FDL_write(fdl,"dCentMass",&msr->param.dTheta2);
-	if (msr->param.bVerbose) {
+	FDL_write(fdl,"dCentMass",&msr->param.dCentMass);
+	if (msr->param.bVDetails)
 		printf("Writing checkpoint file...\nTime:%g\n",dTime);
-		}
 	/*
 	 ** Do a parallel or serial write to the output file.
 	 */
@@ -2517,9 +2667,8 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	    pstWriteCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
 	    msrOneNodeWriteCheck(msr, &in);
-	if (msr->param.bVerbose) {
+	if (msr->param.bVDetails)
 		puts("Checkpoint file has been successfully written.");
-		}
 	iNotCorrupt = 1;
 	FDL_write(fdl,"not_corrupt_flag",&iNotCorrupt);
 	FDL_finish(fdl);
@@ -2574,7 +2723,8 @@ void msrReadOuts(MSR msr,double dTime)
 		}
 	fp = fopen(achFile,"r");
 	if (!fp) {
-		printf("WARNING: Could not open redshift input file:%s\n",achFile);
+		if (msr->param.bVWarnings)
+			printf("WARNING: Could not open redshift input file:%s\n",achFile);
 		msr->nOuts = 0;
 		return;
 		}
@@ -2706,7 +2856,7 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 {
 	struct outMassCheck out;
 	
-	if (msr->param.bVerbose) puts("doing mass check...");
+	if (msr->param.bVDetails) puts("doing mass check...");
 	pstMassCheck(msr->pst,NULL,0,&out,NULL);
 	if (dMass < 0.0) return(out.dMass);
 #if 0
@@ -2784,7 +2934,7 @@ void msrDensityStep(MSR msr, double dTime)
     struct inDensityStep in;
     double expand;
 
-    if (msr->param.bVerbose) printf("Calculating Rung Densities...\n");
+    if (msr->param.bVDetails) printf("Calculating Rung Densities...\n");
     msrSmooth(msr, dTime, SMX_DENSITY, 0);
     in.dEta = msrEta(msr);
     expand = msrTime2Exp(msr, dTime);
@@ -2842,13 +2992,14 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 
 	if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
 	    if(iRung < msrMaxRung(msr)-1) {
-			if (msr->param.bVerbose) {
-				printf("Adjust, iRung: %d\n", iRung);
-				}
+			if (msr->param.bVDetails) printf("Adjust, iRung: %d\n", iRung);
 			msrDrift(msr,dTime,0.5*dDelta);
 			msrActiveRung(msr, iRung, 1);
 			dTime += 0.5*dDelta;
 			msrInitDt(msr);
+#ifdef COLLISIONS
+			assert(0); /* DKD multi-stepping unsupported for COLLISIONS */
+#endif
 			if(msr->param.bEpsVel) {
 			    msrInitAccel(msr);
 			    msrBuildTree(msr,0,dMass,0);
@@ -2859,9 +3010,6 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 			    msrBuildTree(msr,0,dMass,1);
 			    msrDensityStep(msr, dTime);
 			    }
-#ifdef SMOOTH_STEP
-			msrSmooth(msr,dTime,SMX_TIMESTEP,0);
-#endif
 			msrDtToRung(msr, iRung, dDelta, 0);
 			msrDrift(msr,dTime,-0.5*dDelta);
 			dTime -= 0.5*dDelta;
@@ -2875,34 +3023,26 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 		msrInitAccel(msr);
 #ifdef GASOLINE
 		if(msrSphCurrRung(msr, iRung)) {
-			if (msr->param.bVerbose) {
-			    printf("SPH, iRung: %d\n", iRung);
-			    }
+			if (msr->param.bVDetails) printf("SPH, iRung: %d\n", iRung);
 			msrStepSph(msr, dTime, dDelta);
 			}
 #endif
 		if(msrCurrRung(msr, iRung)) {
 		    if(msrDoGravity(msr)) {
-			if (msr->param.bVerbose) {
-				printf("Gravity, iRung: %d\n", iRung);
-				}
+			if (msr->param.bVDetails) printf("Gravity, iRung: %d\n", iRung);
 			msrBuildTree(msr,0,dMass,0);
 			msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
 			}
 		    }
-		if (msr->param.bVerbose) {
-		    printf("Kick, iRung: %d\n", iRung);
-		    }
+		if (msr->param.bVDetails) printf("Kick, iRung: %d\n", iRung);
 		msrKickDKD(msr, dTime, dDelta);
 		msrRungStats(msr);
 		msrTopStepSym(msr,dStep,dTime+0.5*dDelta,0.5*dDelta,iRung+1,
 					  pdActiveSum);
 		}
 	else {    
-		if (msr->param.bVerbose) {
-		    printf("Drift, iRung: %d\n",iRung-1);
-		    }
+		if (msr->param.bVDetails) printf("Drift, iRung: %d\n",iRung-1);
 		msrDrift(msr,dTime,dDelta);
 		}
 	}
@@ -2910,22 +3050,21 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 
 void msrRungStats(MSR msr)
 {
-#ifndef NO_RUNG_STATS
-	struct inRungStats in;
-	struct outRungStats out;
-	int i;
+	if (msr->param.bVRungStat) {
+		struct inRungStats in;
+		struct outRungStats out;
+		int i;
 
-	printf("Rung distribution: (");
-	for (i=0;i<msr->param.iMaxRung;++i) {
-		if (i != 0) printf(",");
-		in.iRung = i;
-		pstRungStats(msr->pst,&in,sizeof(in),&out,NULL);
-		printf("%d",out.nParticles);
+		printf("Rung distribution: (");
+		for (i=0;i<msr->param.iMaxRung;++i) {
+			if (i != 0) printf(",");
+			in.iRung = i;
+			pstRungStats(msr->pst,&in,sizeof(in),&out,NULL);
+			printf("%d",out.nParticles);
+			}
+		printf(")\n");
 		}
-	printf(")\n");
-#endif /* NO_RUNG_STATS */
 	}
-
 
 void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 				  iRung, int iAdjust, double *pdActiveSum)
@@ -2937,12 +3076,12 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 
 	if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
 		if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
-			if (msr->param.bVerbose) {
-				printf("Adjust, iRung: %d\n", iRung);
-				}
-
+			if (msr->param.bVDetails) printf("Adjust, iRung: %d\n", iRung);
 			msrActiveRung(msr, iRung, 1);
 			msrInitDt(msr);
+#ifdef HILL_STEP
+			msrHillStep(msr);
+#else
 			if(msr->param.bEpsVel) {
 			    msrAccelStep(msr, dTime);
 			    }
@@ -2950,10 +3089,13 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			    msrBuildTree(msr,0,dMass,1);
 			    msrDensityStep(msr, dTime);
 			    }
+#endif
+/*DEBUG out of date
 #ifdef SMOOTH_STEP
 			msrBuildTree(msr,0,dMass,1);
 			msrSmooth(msr,dTime,SMX_TIMESTEP,0);
 #endif
+*/
 			msrDtToRung(msr, iRung, dDelta, 1);
 			}
 		/*
@@ -2965,33 +3107,25 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 		msrInitAccel(msr);
 #ifdef GASOLINE
 		if(msrSphCurrRung(msr, iRung)) {
-			if (msr->param.bVerbose) {
-			    printf("SPH, iRung: %d\n", iRung);
-			    }
+			if (msr->param.bVDetails) printf("SPH, iRung: %d\n", iRung);
 			msrStepSph(msr, dTime, dDelta);
 			}
 #endif
 		if(msrCurrRung(msr, iRung)) {
 		    if(msrDoGravity(msr)) {
-			if (msr->param.bVerbose) {
-				printf("Gravity, iRung: %d\n", iRung);
-				}
+			if (msr->param.bVDetails) printf("Gravity, iRung: %d\n", iRung);
 			msrBuildTree(msr,0,dMass,0);
 			msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
 			}
 		    }
-		if (msr->param.bVerbose) {
-			printf("Kick, iRung: %d\n", iRung);
-			}
+		if (msr->param.bVDetails) printf("Kick, iRung: %d\n", iRung);
 		msrKickDKD(msr, dTime, dDelta);
 		msrTopStepNS(msr, dStep, dTime+0.5*dDelta,
 					 0.5*dDelta,iRung+1, 1, pdActiveSum);
 		}
 	else {    
-		if (msr->param.bVerbose) {
-			printf("Drift, iRung: %d\n", iRung-1);
-			}
+		if (msr->param.bVDetails) printf("Drift, iRung: %d\n", iRung-1);
 		msrDrift(msr,dTime,dDelta);
 		}
 	}
@@ -3006,8 +3140,9 @@ void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta,
 		msrTopStepNS(msr,dStep,dTime,dDelta,iRung,1,pdMultiEff);
 	else
 		msrTopStepSym(msr,dStep,dTime,dDelta,iRung,pdMultiEff);
-	printf("Multistep Efficiency (average number of microsteps per step):%f\n",
-		   *pdMultiEff);
+	if (msr->param.bVStep)
+		printf("Multistep Efficiency (average number of microsteps per step):%f\n",
+			   *pdMultiEff);
 	}
 
 void msrTopStepKDK(MSR msr,
@@ -3028,24 +3163,25 @@ void msrTopStepKDK(MSR msr,
     int nActive;
 
     if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
-		if(msr->param.bVerbose) {
-			printf("Adjust, iRung: %d\n", iRung);
-			}
-
+		if (msr->param.bVDetails) printf("Adjust, iRung: %d\n",iRung);
 		msrActiveRung(msr, iRung, 1);
 		msrInitDt(msr);
+#ifdef HILL_STEP
+		msrHillStep(msr);
+#else
 		if(msr->param.bEpsVel)
 		    msrAccelStep(msr, dTime);
+#endif
+/*DEBUG out of date
 #ifdef SMOOTH_STEP
 		msrBuildTree(msr,0,dMass,1);
 		msrSmooth(msr,dTime,SMX_TIMESTEP,0);
 #endif
+*/
 		msrDtToRung(msr, iRung, dDelta, 1);
 		if (iRung == 0) msrRungStats(msr);
 		}
-    if (msr->param.bVerbose) {
-		printf("Kick, iRung: %d\n", iRung);
-		}
+    if (msr->param.bVDetails) printf("Kick, iRung: %d\n", iRung);
     msrActiveRung(msr, iRung, 0);
     msrKickKDKOpen(msr,dTime,0.5*dDelta);
     if (msrCurrMaxRung(msr) > iRung) {
@@ -3062,9 +3198,7 @@ void msrTopStepKDK(MSR msr,
 					  piSec);
 		}
     else {
-		if (msr->param.bVerbose) {
-			printf("Drift, iRung: %d\n", iRung);
-			}
+		if (msr->param.bVDetails) printf("Drift, iRung: %d\n", iRung);
 		msrDrift(msr,dTime,dDelta);
 		dTime += 0.5*dDelta;
 		dStep += 1.0/(1 << iRung);
@@ -3072,24 +3206,20 @@ void msrTopStepKDK(MSR msr,
 		msrInitAccel(msr);
 #ifdef GASOLINE
 		if(msrSphCurrRung(msr, iRung)) {
-			if (msr->param.bVerbose) {
+			if (msr->param.bVDetails)
 				printf("SPH, iRung: %d to %d\n", iRung, iKickRung);
-				}
 			msrStepSph(msr, dTime, dDelta);
 			}
 #endif
 		if(msrDoGravity(msr)) {
-			if (msr->param.bVerbose) {
+			if (msr->param.bVDetails)
 				printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
-				}
 			msrBuildTree(msr,0,dMass,0);
 			msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
 			}
 		}
-    if (msr->param.bVerbose) {
-		printf("Kick, iRung: %d\n", iRung);
-		}
+    if (msr->param.bVDetails) printf("Kick, iRung: %d\n", iRung);
     msrActiveRung(msr, iRung, 0);
     msrKickKDKClose(msr, dTime, 0.5*dDelta);
 	}
@@ -3109,9 +3239,7 @@ msrAddDelParticles(MSR msr)
     int iOut;
     int i;
     
-    if(msr->param.bVerbose) {
-	printf("Changing Particle number\n");
-	}
+    if (msr->param.bVDetails) printf("Changing Particle number\n");
     pColNParts = malloc(msr->nThreads*sizeof(*pColNParts));
     pstColNParts(msr->pst, NULL, 0, pColNParts, &iOut);
     /*
@@ -3210,16 +3338,59 @@ int msrSphCurrRung(MSR msr, int iRung)
 
 #endif
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 
-void xdrSSHeader(XDR *pxdrs,struct ss_head *ph)
+int
+msrNumRejects(MSR msr)
+{
+	struct outNumRejects out;
+
+	pstNumRejects(msr->pst,NULL,0,&out,NULL);
+	return out.nRej;
+	}
+
+void
+msrFindRejects(MSR msr)
+{
+	/*
+	 ** Checks initial conditions for particles with overlapping Hill
+	 ** spheres. This only makes sense for particles orbiting a massive
+	 ** central body, like the Sun. Rejects are written to REJECTS_FILE.
+	 ** The value of nSmooth here should be chosen to be at least as large
+	 ** as the maximum number of neighbours expected within the rejection
+	 ** zone of any two particles. However, if this procedure is called
+	 ** iteratively from an external initial-conditions program, all rejects
+	 ** are guaranteed eventually to be found.
+	 */
+
+	int nSmooth = msr->param.nSmooth,nRej = 0;
+
+	if (msr->param.bVStart)	puts("Checking for rejected ICs...");
+	msrActiveRung(msr,0,1); /* redundant if particles just loaded */
+	msrBuildTree(msr,0,-1.0,1);
+	msr->param.nSmooth = 8; /*DEBUG nicer if we could pass this directly...*/
+	msrSmooth(msr,0.0,SMX_REJECTS,0);
+	msr->param.nSmooth = nSmooth;
+	nRej = msrNumRejects(msr);
+	if (nRej) {
+		printf("%i reject%s found!\n",nRej,(nRej == 1 ? "" : "s"));
+		msrReorder(msr);
+		msrOutArray(msr,REJECTS_FILE,OUT_REJECTS_ARRAY);
+		_msrExit(msr);
+		}
+	else if (msr->param.bVStart) puts("No rejects found.");
+	}
+
+void
+xdrSSHeader(XDR *pxdrs,struct ss_head *ph)
 {
 	xdr_double(pxdrs,&ph->time);
 	xdr_int(pxdrs,&ph->n_data);
 	xdr_int(pxdrs,&ph->pad);
 	}
 
-double msrReadSS(MSR msr)
+double
+msrReadSS(MSR msr)
 {
 	FILE *fp;
 	XDR xdrs;
@@ -3227,26 +3398,17 @@ double msrReadSS(MSR msr)
 	struct inReadSS in;
 	char achInFile[PST_FILENAME_SIZE];
 	LCL *plcl = msr->pst->plcl;
-	double dTime,tTo;
+	double dTime;
 	
 	if (msr->param.achInFile[0]) {
 		/*
 		 ** Add Data Subpath for local and non-local names.
 		 */
-		achInFile[0] = 0;
-		strcat(achInFile,msr->param.achDataSubPath);
-		strcat(achInFile,"/");
-		strcat(achInFile,msr->param.achInFile);
-		strcpy(in.achInFile,achInFile);
+		_msrMakePath(msr->param.achDataSubPath,msr->param.achInFile,in.achInFile);
 		/*
 		 ** Add local Data Path.
 		 */
-		achInFile[0] = 0;
-		if (plcl->pszDataPath) {
-			strcat(achInFile,plcl->pszDataPath);
-			strcat(achInFile,"/");
-			}
-		strcat(achInFile,in.achInFile);
+		_msrMakePath(plcl->pszDataPath,in.achInFile,achInFile);
 
 		fp = fopen(achInFile,"r");
 		if (!fp) {
@@ -3273,9 +3435,12 @@ double msrReadSS(MSR msr)
 	msr->nMaxOrderDark = msr->nDark - 1;
 
 	dTime = head.time;
-	printf("Input file...N=%i,Time=%g\n",msr->N,dTime);
-	tTo = dTime + msr->param.nSteps*msr->param.dDelta;
-	printf("Simulation to Time:%g\n",tTo);
+	if (msr->param.bVStart) {
+		double tTo;
+		printf("Input file...N=%i,Time=%g\n",msr->N,dTime);
+		tTo = dTime + msr->param.nSteps*msr->param.dDelta;
+		printf("Simulation to Time:%g\n",tTo);
+		}
 
 	in.nFileStart = 0;
 	in.nFileEnd = msr->N - 1;
@@ -3298,10 +3463,10 @@ double msrReadSS(MSR msr)
 	if (msr->param.bParaRead)
 	    pstReadSS(msr->pst,&in,sizeof(in),NULL,NULL);
 	else {
-		printf("Only parallel read supported for Planets\n");
+		printf("Only parallel read supported for collision code\n");
 		_msrExit(msr);
 		}
-	if (msr->param.bVerbose) puts("Input file successfully read.");
+	if (msr->param.bVDetails) puts("Input file successfully read.");
 	/*
 	 ** Now read in the output points, passing the initial time.
 	 ** We do this only if nSteps is not equal to zero.
@@ -3316,7 +3481,8 @@ double msrReadSS(MSR msr)
 	return(dTime);
 	}
 
-void msrWriteSS(MSR msr,char *pszFileName,double dTime)
+void
+msrWriteSS(MSR msr,char *pszFileName,double dTime)
 {
 	FILE *fp;
 	XDR xdrs;
@@ -3324,7 +3490,7 @@ void msrWriteSS(MSR msr,char *pszFileName,double dTime)
 	struct inWriteSS in;
 	char achOutFile[PST_FILENAME_SIZE];
 	LCL *plcl = msr->pst->plcl;
-	
+
 	/*
 	 ** Calculate where each processor should start writing.
 	 ** This sets plcl->nWriteStart.
@@ -3333,20 +3499,11 @@ void msrWriteSS(MSR msr,char *pszFileName,double dTime)
 	/*
 	 ** Add Data Subpath for local and non-local names.
 	 */
-	achOutFile[0] = 0;
-	strcat(achOutFile,msr->param.achDataSubPath);
-	strcat(achOutFile,"/");
-	strcat(achOutFile,pszFileName);
-	strcpy(in.achOutFile,achOutFile);
+	_msrMakePath(msr->param.achDataSubPath,pszFileName,in.achOutFile);
 	/*
 	 ** Add local Data Path.
 	 */
-	achOutFile[0] = 0;
-	if (plcl->pszDataPath) {
-		strcat(achOutFile,plcl->pszDataPath);
-		strcat(achOutFile,"/");
-		}
-	strcat(achOutFile,in.achOutFile);
+	_msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
 	
 	fp = fopen(achOutFile,"w");
 	if (!fp) {
@@ -3368,40 +3525,204 @@ void msrWriteSS(MSR msr,char *pszFileName,double dTime)
 	if(msr->param.bParaWrite)
 	    pstWriteSS(msr->pst,&in,sizeof(in),NULL,NULL);
 	else {
-		printf("Only parallel write supported for Planets\n");
+		printf("Only parallel write supported for collision code\n");
 		_msrExit(msr);
 		}
 
-	if (msr->param.bVerbose) puts("Output file successfully written.");
+	if (msr->param.bVDetails) puts("Output file successfully written.");
 	}
 
-void msrDoCollisions(MSR msr,double dTime,double dDelta)
+void
+msrCalcHill(MSR msr)
+{
+	struct inCalcHill in;
+
+	in.dCentMass = msr->param.dCentMass;
+	pstCalcHill(msr->pst,&in,sizeof(in),NULL,NULL);
+	}
+
+void
+msrHillStep(MSR msr)
+{
+	struct inHillStep in;
+
+	in.dEta = 1.3; /*DEBUG (20 PI / n0) N^1/6...this should be a parameter*/
+	pstHillStep(msr->pst,&in,sizeof(in),NULL,NULL);
+	}
+
+void
+msrPlanetsKDK(MSR msr,double dStep,double dTime,double dDelta,double *pdWMax,
+			  double *pdIMax,double *pdEMax,int *piSec)
+{
+	struct inKick in;
+
+	msrActiveRung(msr,0,1); /* just in case */
+	in.dvFacOne = 1.0;
+	in.dvFacTwo = 0.5*dDelta;
+    if (msr->param.bVDetails) printf("Planets Kick\n");
+	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
+	if (msr->param.bVDetails) printf("Planets Drift\n");
+	msrPlanetsDrift(msr,dStep,dTime,dDelta);
+	dTime += 0.5*dDelta; /* not used */
+	dStep += 1.0;
+	msrActiveRung(msr,0,1);
+	msrInitAccel(msr);
+	if(msrDoGravity(msr)) {
+		int nDum;
+		if (msr->param.bVDetails) printf("Planets Gravity\n");
+		msrBuildTree(msr,0,-1.0,0);
+		msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nDum);
+		}
+    if (msr->param.bVDetails) printf("Planets Kick\n");
+	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
+	}
+
+void
+msrPlanetsDrift(MSR msr,double dStep,double dTime,double dDelta)
+{
+	struct inDrift in;
+	double dSmall,dSubTime,dNext;
+
+	msrMarkEncounters(msr,0); /* initialize */
+
+	dSmall = msr->param.dSmallStep;
+	dSubTime = 0;
+
+	do {
+		if (dSmall > 0)
+			msrFindEncounter(msr,dSubTime,dDelta,&dNext);
+		else
+			dNext = dDelta;
+		if (dNext > 0) { /* Kepler drift to next encounter or end of step */
+			in.dDelta = dNext;
+			in.bPeriodic = 0; /* (in.fCenter[] unused) */
+			in.bFandG = 1;/*DEBUG redundant: iDriftType already KEPLER*/
+			in.fCentMass = msr->param.dCentMass;
+			pstDrift(msr->pst,&in,sizeof(in),NULL,NULL);
+			msr->iTreeType = MSR_TREE_NONE;
+			dTime += dNext;
+			dSubTime += dNext;
+			}
+		if (dSubTime < dDelta) { /* Handle "normal-step" encounters */
+			msrMarkEncounters(msr,dSubTime + dSmall);
+			msr->param.bFandG = 0; /* force direct Sun term included */
+			msrLinearKDK(msr,dStep + dSubTime/dDelta,dTime,dSmall);
+			msr->param.bFandG = 1; /* restore flag */
+			dTime += dSmall;
+			dSubTime += dSmall;
+			}
+		} while (dSubTime < dDelta);
+	}
+
+void
+msrFindEncounter(MSR msr,double dStart,double dEnd,double *dNext)
+{
+	struct outFindEncounter out;
+	int sec = time(0);
+
+	if (msr->param.bVStep)
+		printf("Start encounter search (dStart=%g,dEnd=%g)...\n",dStart,dEnd);
+
+	/* construct q-Q tree -- must do this every time */
+
+	/*
+	 ** walk q-Q tree to get neighbour lists. each list is pruned via the
+	 ** "lambda-a" phase space criterion, then further refined by solving
+	 ** for intersecting ellipsoidal toroids. finally, a minimum encounter
+	 ** time is assigned to each particle and the global minimum is returned.
+	 ** dStart is checked to see whether this is an update or the first call
+	 ** this step.
+	 */
+
+	/* new smooth operation goes here */
+
+	/*** IF DSTART > 0, WE WANT TO DO AN UPDATE! ***/
+	/* ie. RECONSIDER ALL PAIRS WITH 0 < dTEnc < dStart */
+
+	out.dNext = dEnd - dStart; /* Kepler drift if no more encounters */
+
+	pstFindEncounter(msr->pst,NULL,0,&out,NULL);
+
+	/* dNext could be zero, indicating still working on NORMAL steps */
+
+	*dNext = out.dNext;
+
+	if (msr->param.bVStep)
+		printf("Encounter search completed, time = %ld sec\n",time(0) - sec);
+	}
+
+void
+msrMarkEncounters(MSR msr,double dTMax)
+{
+	struct inMarkEncounters in;
+
+	/* initializes if dTMax <= 0 */
+	/* SET iDriftType to NORMAL and iActive to 1; otherwise iActive to 0 */
+	/* note msrMarkEncounters() is necessary because msrFindEncounter()
+	   must be called *before* the Kepler drift (to see how long to drift
+	   for) and all particles must be updated at that time */
+	in.dTMax = dTMax;
+	pstMarkEncounters(msr->pst,&in,sizeof(in),NULL,NULL);
+	}
+
+void
+msrLinearKDK(MSR msr,double dStep,double dTime,double dDelta)
+{
+    if (msr->param.bVDetails) printf("Linear Kick\n");
+    msrKickKDKOpen(msr,dTime,0.5*dDelta);
+	if (msr->param.bVDetails) printf("Linear Drift\n");
+	msrDrift(msr,dTime,dDelta);
+	dTime += 0.5*dDelta;
+	dStep += 1.0;
+	msrInitAccel(msr);
+	if(msrDoGravity(msr)) {
+		double dDum;
+		int iDum;
+		if (msr->param.bVDetails) printf("Linear Gravity\n");
+		msrBuildTree(msr,0,-1.0,0);
+		msrGravity(msr,dStep,msrDoSun(msr),&iDum,&dDum,&dDum,&dDum,&iDum);
+		}
+    if (msr->param.bVDetails) printf("Linear Kick\n");
+    msrKickKDKClose(msr,dTime,0.5*dDelta);
+	}
+
+void
+msrDoCollisions(MSR msr,double dTime,double dDelta)
 {
 	struct inSmooth smooth;
 	struct outFindCollision find;
 	struct inDoCollision inDo;
 	struct outDoCollision outDo;
-	int iDum;
-#ifndef VERY_QUIET
-	int sec,dsec;
-#endif /* VERY_QUIET */
+	int sec,first_pass;
 
-	msrActiveRung(msr,0,1); /* must consider ALL particles! */
+	if (msr->param.nSmooth < 2) return;
+	if (msr->param.bVStep)
+		printf("Start collision search (dTime=%e,dDelta=%e)...\n",
+			   dTime,dDelta);
+	sec = time(0);
+	/*DEBUG comment out following line as a hack to prevent activating all
+	  particles in FandG scheme -- bFandG is turned off during small steps!*/
+	msrActiveRung(msr,0,1);
 	smooth.nSmooth = msr->param.nSmooth;
 	smooth.bPeriodic = msr->param.bPeriodic;
 	smooth.bSymmetric = 0;
 	smooth.iSmoothType = SMX_COLLISION;
 	smooth.smf.pkd = NULL; /* set in smInitialize() */
-#ifndef VERY_QUIET
-	printf("Start collision search (dTime=%e,dDelta=%e)...\n",dTime,dDelta);
-	sec = time(0);
-#endif /* VERY_QUIET */
 	smooth.smf.dStart = 0;
 	smooth.smf.dEnd = dDelta;
+	first_pass = 1;
 	do {
-		if (msr->iTreeType != MSR_TREE_DENSITY) msrBuildTree(msr,0,-1.0,1);
-		pstSmooth(msr->pst,&smooth,sizeof(smooth),NULL,NULL);
-		pstFindCollision(msr->pst,NULL,0,&find,&iDum);
+		if (first_pass) {
+			if (msr->iTreeType != MSR_TREE_DENSITY)	msrBuildTree(msr,0,-1.0,1);
+			pstSmooth(msr->pst,&smooth,sizeof(smooth),NULL,NULL);
+			first_pass = 0;
+			}
+		else {
+			assert(msr->iTreeType == MSR_TREE_DENSITY);
+			/*DEBUG assumes inSmooth and inReSmooth are identical!...*/
+			pstReSmooth(msr->pst,&smooth,sizeof(smooth),NULL,NULL);
+			}
+		pstFindCollision(msr->pst,NULL,0,&find,NULL);
 		if (COLLISION(find.dImpactTime)) {
 			COLLIDER *p1=&outDo.Collider1,*p2=&outDo.Collider2,*pOut=outDo.Out;
 
@@ -3410,16 +3731,33 @@ void msrDoCollisions(MSR msr,double dTime,double dDelta)
 			inDo.iOutcomes = msr->param.iOutcomes;
 			inDo.dEpsN = msr->param.dEpsN;
 			inDo.dEpsT = msr->param.dEpsT;
-			pstDoCollision(msr->pst,&inDo,sizeof(inDo),&outDo,&iDum);
-			msrAddDelParticles(msr);
+			pstDoCollision(msr->pst,&inDo,sizeof(inDo),&outDo,NULL);
+			/*
+			 ** If there's a merger, the deleted particle has iActive set
+			 ** to zero, so we can still use the old tree and ReSmooth().
+			 ** Deleted particles are cleaned up outside this loop.
+			 */
+			if (outDo.iOutcome & FRAG) {
+				/* note this sets msr->iTreeType to MSR_TREE_NONE */
+				msrAddDelParticles(msr);
+				/* have to rebuild tree here and do new smooth... */
+				}
 			smooth.smf.dStart = find.dImpactTime;
 			if (msr->param.bDoCollLog) { /* log collision if requested */
 				FILE *fp = NULL;
 				int i;
-
-				if (dTime == 0) fp = fopen(msr->param.achCollLog,"w");
-				else fp = fopen(msr->param.achCollLog,"a");
+				fp = fopen(msr->param.achCollLog,"a");
 				assert(fp);
+#ifdef SAND_PILE
+				if (p2->id.iPid < 0)
+					fprintf(fp,"FLOOR COLLISION:T=%e\n",dTime + find.dImpactTime);
+				else
+#endif /* SAND_PILE */
+#ifdef IN_A_BOX
+				if (p2->id.iPid < 0)
+					fprintf(fp,"WALL COLLISION:T=%e\n",dTime + find.dImpactTime);
+				else
+#endif /* IN_A_BOX */
 				fprintf(fp,"COLLISION:T=%e\n",dTime + find.dImpactTime);
 				fprintf(fp,"***1:pid=%i,idx=%i,ord=%i,M=%e,R=%e,dt=%e,"
 						"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
@@ -3454,13 +3792,16 @@ void msrDoCollisions(MSR msr,double dTime,double dDelta)
 			} /* if collision */
 		} while (COLLISION(find.dImpactTime) &&
 				 smooth.smf.dStart < smooth.smf.dEnd);
-#ifndef VERY_QUIET
-	dsec = time(0) - sec;
-	printf("Collision search completed, time = %i sec\n",dsec);
-#endif /* VERY_QUIET */
+	msrAddDelParticles(msr); /* clean up any deletions */
+	msrCalcHill(msr); /* recalculate reduced Hill spheres */
+	if (msr->param.bVStep) {
+		int dsec = time(0) - sec;
+		printf("Collision search completed, time = %i sec\n",dsec);
+		}
 	}
 
-void msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
+void
+msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 {
 	struct inBuildTree in;
 	struct outBuildTree out;
@@ -3469,15 +3810,15 @@ void msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 	int sec,dsec;
 	int iDum,nCell;
 
-	if (msr->param.bVerbose) printf("Domain Decomposition...\n");
+	if (msr->param.bVDetails) printf("Domain Decomposition...\n");
 	sec = time(0);
 	pstQQDomainDecomp(msr->pst,NULL,0,NULL,NULL);
 	msrMassCheck(msr,dMass,"After pstDomainDecomp in msrBuildTree");
 	dsec = time(0) - sec;
-	if (msr->param.bVerbose) {
+	if (msr->param.bVDetails) {
 		printf("Domain Decomposition complete, Wallclock: %d secs\n\n",dsec);
 		}
-	if (msr->param.bVerbose) printf("Building local trees...\n");
+	if (msr->param.bVDetails) printf("Building local trees...\n");
 	/*
 	 ** First make sure the particles are in Active/Inactive order.
 	 */
@@ -3490,7 +3831,7 @@ void msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 	pstQQBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
 	msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildQQ");
 	dsec = time(0) - sec;
-	if (msr->param.bVerbose) {
+	if (msr->param.bVDetails) {
 		printf("Tree built, Wallclock: %d secs\n\n",dsec);
 		}
 	nCell = 1<<(1+(int)ceil(log((double)msr->nThreads)/log(2.0)));
@@ -3504,4 +3845,4 @@ void msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 	msrMassCheck(msr,dMass,"After pstDistribCells in msrBuildQQ");
 	}
 
-#endif /* PLANETS */
+#endif /* COLLISIONS */

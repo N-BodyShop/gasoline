@@ -1,4 +1,4 @@
-#ifdef PLANETS
+#ifdef COLLISIONS
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,10 +10,8 @@
 #include "pkd.h"
 #include "smoothfcn.h"
 
-/* XXX this needs to be reconciled to msr->param.dCenterMass. */
-#define DCENTERMASS 1.0
+#define CENTRAL_MASS 1.0 /*DEBUG needs to be reconciled with dCentMass*/
 
-inline
 FLOAT PARTQQ(PARTICLE *p, int d)
 {
     double r2, v2;
@@ -38,7 +36,7 @@ FLOAT PARTQQ(PARTICLE *p, int d)
     hz = x*vy - vx*y;
     
     ir = 1.0/sqrt(r2);
-    imu = 1.0/(DCENTERMASS + p->fMass);
+    imu = 1.0/(CENTRAL_MASS + p->fMass);
     
     ex = (vy*hz - hy*vz)*imu - ir*x;
     ey = (vz*hx - hz*vx)*imu - ir*y;
@@ -51,10 +49,12 @@ FLOAT PARTQQ(PARTICLE *p, int d)
     if(d == 1)
 	return a*(1+e);
     assert(0);
+	return 0;
 }
 
 void pkdQQCalcBound(PKD pkd,BND *pbnd,BND *pbndActive)
 {
+	double fq,fQ,fh;
 	int i,j;
 
 	/*
@@ -71,31 +71,38 @@ void pkdQQCalcBound(PKD pkd,BND *pbnd,BND *pbndActive)
 	pbndActive->fMin[2] = 0.0;
 	pbndActive->fMax[2] = 0.0;
 	/*
-	 ** Calculate Local Bounds.
-	 */
-	/*
-	 ** XXX These should be adjusted for the Hill's radius.
+	 ** Calculate Local Bounds, adjusted for Hill radius.
 	 */
 	for (i=0;i<pkd->nLocal;++i) {
-		for (j=0;j<2;++j) {
-			if (PARTQQ(&pkd->pStore[i], j) < pbnd->fMin[j]) 
-				pbnd->fMin[j] = PARTQQ(&pkd->pStore[i], j);
-			if (PARTQQ(&pkd->pStore[i], j)> pbnd->fMax[j])
-				pbnd->fMax[j] = PARTQQ(&pkd->pStore[i], j);
-			}
+		fq = PARTQQ(&pkd->pStore[i], 0);
+		fQ = PARTQQ(&pkd->pStore[i], 1);
+		fh = 0.5*(fq + fQ)*pkd->pStore[i].fRedHill;
+		if (fq - fh < pbnd->fMin[0]) 
+			pbnd->fMin[0] = fq - fh;
+		if (fq > pbnd->fMax[0])
+			pbnd->fMax[0] = fq;
+		if (fQ < pbnd->fMin[1]) 
+			pbnd->fMin[1] = fQ;
+		if (fQ + fh > pbnd->fMax[1])
+			pbnd->fMax[1] = fQ + fh;
 		}
 	/*
 	 ** Calculate Active Bounds.
 	 */
 	for (i=0;i<pkd->nLocal;++i) {
 	    if (pkd->pStore[i].iActive) {
-		for (j=0;j<2;++j) {
-		    if (PARTQQ(&pkd->pStore[i], j) < pbndActive->fMin[j]) 
-			    pbndActive->fMin[j] = PARTQQ(&pkd->pStore[i], j);
-		    if (PARTQQ(&pkd->pStore[i], j) > pbndActive->fMax[j])
-			    pbndActive->fMax[j] = PARTQQ(&pkd->pStore[i], j);
-		    }
-		}
+			fq = PARTQQ(&pkd->pStore[i], 0);
+			fQ = PARTQQ(&pkd->pStore[i], 1);
+			fh = 0.5*(fq + fQ)*pkd->pStore[i].fRedHill;
+			if (fq - fh < pbndActive->fMin[0]) 
+				pbndActive->fMin[0] = fq - fh;
+			if (fq > pbndActive->fMax[0])
+				pbndActive->fMax[0] = fq;
+			if (fQ < pbndActive->fMin[1]) 
+				pbndActive->fMin[1] = fQ;
+			if (fQ + fh > pbndActive->fMax[1])
+				pbndActive->fMax[1] = fQ + fh;
+			}
 	    }
 	}
 
@@ -143,6 +150,7 @@ pkdQQUpPass(PKD pkd,int iCell)
 {
 	KDN *c;
 	PARTICLE *p;
+	double fq,fQ,fh;
 	int l,u,pj,j;
 
 	c = pkd->kdNodes;
@@ -157,20 +165,24 @@ pkdQQUpPass(PKD pkd,int iCell)
 	else {
 		c[iCell].fMass = 0.0;
 		c[iCell].fSoft = 0.0;
-	/*
-	 ** XXX These should be adjusted for the Hill's radius.
-	 */
 		for (j=0;j<2;++j) {
-			c[iCell].bnd.fMin[j] = PARTQQ(&p[u], j);
-			c[iCell].bnd.fMax[j] = PARTQQ(&p[u], j);
+			c[iCell].bnd.fMin[j] = FLOAT_MAXVAL;
+			c[iCell].bnd.fMax[j] = -FLOAT_MAXVAL;
 			}
+		c[iCell].bnd.fMin[2] = 0.0;
+		c[iCell].bnd.fMax[2] = 0.0;
 		for (pj=l;pj<=u;++pj) {
-			for (j=0;j<2;++j) {
-				if (PARTQQ(&p[pj],j) < c[iCell].bnd.fMin[j])
-				    c[iCell].bnd.fMin[j] = PARTQQ(&p[pj],j);
-				if (PARTQQ(&p[pj],j) > c[iCell].bnd.fMax[j])
-				    c[iCell].bnd.fMax[j] = PARTQQ(&p[pj],j);
-				}
+			fq = PARTQQ(&p[pj], 0);
+			fQ = PARTQQ(&p[pj], 1);
+			fh = 0.5*(fq + fQ)*p[pj].fRedHill;
+			if (fq - fh < c[iCell].bnd.fMin[0])
+				c[iCell].bnd.fMin[0] = fq - fh;
+			if (fq > c[iCell].bnd.fMax[0])
+				c[iCell].bnd.fMax[0] = fq;
+			if (fQ < c[iCell].bnd.fMin[1])
+				c[iCell].bnd.fMin[1] = fQ;
+			if (fQ + fh > c[iCell].bnd.fMax[1])
+				c[iCell].bnd.fMax[1] = fQ + fh;
 			/*
 			 ** Find center of mass and total mass and mass weighted softening.
 			 */
@@ -334,6 +346,7 @@ int smGatherQQ(SMX smx,FLOAT fq,FLOAT fQ,int cp)
 {
 	KDN *c = smx->pkd->kdNodes;
 	PARTICLE *p = smx->pkd->pStore;
+	double fqp,fQp,fhp;
 	int pj,nCnt,pUpper;
 
 	nCnt = 0;
@@ -349,8 +362,10 @@ int smGatherQQ(SMX smx,FLOAT fq,FLOAT fQ,int cp)
 		else {
 			pUpper = c[cp].pUpper;
 			for (pj=c[cp].pLower;pj<=pUpper;++pj) {
-				if(PARTQQ(&p[pj], 0) < fQ &&
-				   PARTQQ(&p[pj], 1) > fq) {
+				fqp = PARTQQ(&p[pj], 0);
+				fQp = PARTQQ(&p[pj], 1);
+				fhp = 0.5*(fqp + fQp)*p[pj].fRedHill;
+				if (fqp - fhp < fQ && fQp + fhp > fq) {
 					if(nCnt >= smx->nListSize)
 					    smGrowList(smx);
 					smx->nnList[nCnt].pPart = &p[pj];
@@ -376,18 +391,21 @@ void smQQSmooth(SMX smx,SMF *smf)
 	PARTICLE *pPart;
 	KDN *pkdn;
 	int pi,pj,nCnt,cp,id,i;
-	FLOAT fq, fQ;		/* peri, apo */
+	FLOAT fq,fQ,fh;		/* peri, apo, Hill radius */
+	double fqp,fQp,fhp;
 	int nTree;
 	
 	nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
 	for (pi=0;pi<nTree;++pi) {
 		if (p[pi].iActive == 0) continue;
 		/*
-		 ** Do a Gather on q and Q.
-		 ** XXX - add Hill's radius to these.
+		 ** Do a Gather on q and Q, adjusted for Hill sphere.
 		 */
 		fq = PARTQQ(&p[pi], 0);
 		fQ = PARTQQ(&p[pi], 1);
+		fh = 0.5*(fq + fQ)*p[pi].fRedHill;
+		fq -= fh;
+		fQ += fh;
 		nCnt = smGatherQQ(smx,fq,fQ,ROOT);
 		/*
 		 ** Start non-local search.
@@ -406,8 +424,10 @@ void smQQSmooth(SMX smx,SMF *smf)
 				}
 			for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
 				pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
-				if(PARTQQ(pPart, 0) < fQ &&
-				   PARTQQ(pPart, 1) > fq) {
+				fqp = PARTQQ(pPart, 0);
+				fQp = PARTQQ(pPart, 1);
+				fhp = 0.5*(fqp + fQp)*pPart->fRedHill;
+				if(fqp - fhp < fQ && fQp + fhp > fq) {
 					if(nCnt >= smx->nListSize)
 					    smGrowList(smx);
 					smx->nnList[nCnt].pPart = pPart;
@@ -437,9 +457,33 @@ void smQQSmooth(SMX smx,SMF *smf)
 	}
 
 void
-CheckForEncounter(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
+CheckForEncounter(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
-    p->fDensity = nSmooth;
+	double dInteract(double dTime,double dDelta,double dCentMass,
+					 PARTICLE *pi,PARTICLE *pj);
+
+	double min_enc_time = HUGE_VAL,enc_time;
+	int i;
+
+/*
+	p->fDensity = nSmooth;
+	return;
+*/
+
+/*	(void) printf("CheckForEncounter: p->iOrder = %i, nSmooth = %i\n",
+				  p->iOrder,nSmooth);*/
+	for (i=0;i<nSmooth;i++) {
+		if (p == nnList[i].pPart) continue;
+		/* could replace above with "if (p->iOrder >= nnList[i].pPart->iOrder)
+		   continue" to save time, assuming multiple encounters are rare */
+/*		(void) printf("Checking %i\n",nnList[i].pPart->iOrder);*/
+		enc_time = dInteract(smf->dTime,smf->dDelta,smf->dCentMass,p,nnList[i].pPart);
+/*		(void) printf("   enc_time = %e\n",enc_time);*/
+		if (enc_time == 0) continue;
+		if (enc_time < min_enc_time) min_enc_time = enc_time;
+		}
+    p->fDensity = (min_enc_time == HUGE_VAL ? 0 : min_enc_time);
+/*	(void) printf("CheckForEncounter: min_enc_time = %e\n",p->fDensity);*/
     }
 
-#endif
+#endif /* COLLISIONS */

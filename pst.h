@@ -6,9 +6,9 @@
 #include "smoothfcn.h"
 #include "floattype.h"
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 #include "collision.h"
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 
 typedef struct lclBlock {
 	char *pszDataPath;
@@ -534,7 +534,13 @@ void pstSphCurrRung(PST,void *,int,void *,int *);
 
 #endif
 
-#ifdef PLANETS
+#ifdef COLLISIONS
+
+#define PST_NUMREJECTS		62
+struct outNumRejects {
+	int nRej;
+	};
+void pstNumRejects(PST,void *,int,void *,int *);
 
 #define PST_READSS			63
 struct inReadSS {
@@ -556,14 +562,38 @@ struct inWriteSS {
 	};
 void pstWriteSS(PST,void *,int,void *,int *);
 
-#define PST_FINDCOLLISION  	65
+#define PST_CALCHILL		65
+struct inCalcHill {
+	double dCentMass;
+	};
+void pstCalcHill(PST,void *,int,void *,int *);
+
+#define PST_HILLSTEP		66
+struct inHillStep {
+	double dEta;
+	};
+void pstHillStep(PST,void *,int,void *,int *);
+
+#define PST_FINDENCOUNTER	67
+struct outFindEncounter {
+	double dNext;
+	};
+void pstFindEncounter(PST,void *,int,void *,int *);
+
+#define PST_MARKENCOUNTERS	68
+struct inMarkEncounters {
+	double dTMax;
+	};
+void pstMarkEncounters(PST,void *,int,void *,int *);
+
+#define PST_FINDCOLLISION  	69
 struct outFindCollision {
 	double dImpactTime;
 	COLLIDER Collider1,Collider2;
 	};
 void pstFindCollision(PST,void *,int,void *,int *);
 
-#define PST_DOCOLLISION		66
+#define PST_DOCOLLISION		70
 struct inDoCollision {
 	int iPid1,iPid2,iOutcomes;
 	double dEpsN,dEpsT;
@@ -575,19 +605,18 @@ struct outDoCollision {
 	};
 void pstDoCollision(PST,void *,int,void *,int *);
 
-#define PST_QQCALCBOUND		67
+#define PST_QQCALCBOUND		71
 void pstQQCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
-#define PST_QQDOMAINDECOMP	68
-void pstQQDomainDecomp(PST pst,void *vin,int nIn,void *vout,int
-		       *pnOut);
+#define PST_QQDOMAINDECOMP	72
+void pstQQDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
-#define PST_QQBUILDTREE		69
+#define PST_QQBUILDTREE		73
 void pstQQBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
-#define PST_QQSMOOTH		70
+#define PST_QQSMOOTH		74
 void pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 
 #endif

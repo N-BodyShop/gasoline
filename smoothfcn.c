@@ -2,10 +2,10 @@
 #include <assert.h>
 #include "smoothfcn.h"
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 #include "ssdefs.h"
 #include "collision.h"
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 
 void initDensity(void *p)
 {
@@ -388,11 +388,42 @@ void AccsphBVSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 #endif
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 
-void SetTimeStep(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+void
+FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
-	/*DEBUG out of date -- needs testing
+	/*
+	 ** Checks "nSmooth" neighbours of "p" for Hill radius (or physical
+	 ** radius) overlap. Note that only planetesimals with "iOrder"s larger
+	 ** than "p->iOrder" are considered. This means at most N/2 particles
+	 ** will be rejected.
+	 */
+
+	PARTICLE *pn;
+	double a,r2,sh,sr;
+	int i;
+
+	if (p->iColor != PLANETESIMAL) return;
+
+	a = sqrt(p->r[0]*p->r[0] + p->r[1]*p->r[1]); /* approx. orbital distance */
+	for (i=0;i<nSmooth;++i) {
+		pn = nnList[i].pPart;
+		if (pn->iColor != PLANETESIMAL || pn->iOrder <= p->iOrder) continue;
+		r2 = nnList[i].fDist2;
+		sh = a*(p->fRedHill + pn->fRedHill);
+		sr = 2*(p->fSoft + pn->fSoft); /* radius = 2 * softening */
+		if (r2 < sh*sh || r2 < sr*sr) {
+			p->dTEnc = -1.0; /* rejects have dTEnc < 0 (see REJECT() macro) */
+			return; /* one reject is enough */
+			}
+		}
+	}
+
+void
+SetTimeStep(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	/*DEBUG out of date
 	 * Determines time-step for particle "p" based on distance and relative
 	 * radial velocity of the "nSmooth" nearby particles given in "nnList"
 	 * [that are currently approaching the target particle]. The time step is
@@ -410,23 +441,22 @@ void SetTimeStep(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		if (pn == p)
 			continue;
 		r2 = nnList[i].fDist2;
-		dt = 0.2 /*DEBUG!*/ * sqrt(r2 * sqrt(r2) / (p->fMass + pn->fMass));
+		dt = 0.2 * sqrt(r2 * sqrt(r2) / (p->fMass + pn->fMass));
 		if (dt < p->dt) p->dt = dt;
 		}
 	}
 
-void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+void
+CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	/*
-	 * Checks whether particle "p" will collide with any of its "nSmooth"
-	 * nearest neighbours in "nnList" during drift interval smf->dStart to
-	 * smf->dEnd, relative to current time. If any collisions are found,
-	 * the relative time to the one that will occur first is noted in
-	 * pkd->dImpactTime and relevant info of the particle and its collider
-	 * are stored in the pkd->Collider1 & pkd->Collider2 structures.
-	 *
-	 * NOTE: the iIndex of particle "p" is calculated as (p - pkd->pStore).
-	 *
+	 ** Checks whether particle "p" will collide with any of its "nSmooth"
+	 ** nearest neighbours in "nnList" during drift interval smf->dStart to
+	 ** smf->dEnd, relative to current time. If any collisions are found,
+	 ** the relative time to the one that will occur first is noted in
+	 ** pkd->dImpactTime and relevant info of the particle and its collider
+	 ** are stored in the pkd->Collider1 & pkd->Collider2 structures.
+	 ** NOTE: the iIndex of particle "p" is calculated as (p - pkd->pStore).
 	 */
 
 	PKD pkd = smf->pkd;
@@ -434,16 +464,17 @@ void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT vx,vy,vz,rdotv,v2,sr,D,dt;
 	int i;
 
+	assert(p->iActive);
+
 	for (i=0;i<nSmooth;++i) {
 		pn = nnList[i].pPart;
-		if (pn == p)
+		if (pn == p || !(pn->iActive))
 			continue;
 		if (COLLISION(pkd->dImpactTime) &&
 			(pkd->Collider1.id.iPid == nnList[i].iPid &&
 			 pkd->Collider1.id.iIndex == nnList[i].iIndex &&
 			 pkd->Collider2.id.iPid == pkd->idSelf &&
 			 pkd->Collider2.id.iIndex == p - pkd->pStore))
-			/*DEBUG does this work in parallel???*/
 			continue; /* skip if same colliders but order reversed */
 		vx = p->v[0] - pn->v[0];
 		vy = p->v[1] - pn->v[1];
@@ -458,6 +489,23 @@ void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			continue; /* no real solutions ==> no collision */
 		D = sqrt(D);
 		if (smf->dStart == 0) {
+#ifdef FIX_COLLAPSE
+			if (D >= 1) {
+				dt = rdotv*(D - 1)/v2;
+				if (dt < pkd->dImpactTime) {/* take most negative */
+					int k;
+					if (sqrt(nnList[i].fDist2)/sr - 1 > 0.01)
+						(void) fprintf(stderr,"***LARGE OVERLAP (%f%%)***\n",
+									   100*(sqrt(nnList[i].fDist2)/sr - 1));
+					fprintf(stderr,"POSITION FIX %i & %i D=%e dt=%e\n",
+							p->iOrder,pn->iOrder,D,dt);
+					pkd->dImpactTime = dt;
+					partToCollider(p,pkd->idSelf,p - pkd->pStore,&pkd->Collider1);
+					partToCollider(pn,nnList[i].iPid,nnList[i].iIndex,&pkd->Collider2);
+					continue;
+					}
+				}
+#else /* FIX_COLLAPSE */
 			if (D >= 1)
 				fprintf(stderr,"OVERLAP! %i (r=%e,%e,%e,iRung=%i) &"
 						" %i (r=%e,%e,%e,iRung=%i)"
@@ -466,6 +514,7 @@ void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 						pn->iOrder,pn->r[0],pn->r[1],pn->r[2],pn->iRung,
 						vx,vy,vz,rdotv,sr,sqrt(nnList[i].fDist2) - sr,D);
 			assert(D < 1); /* particles must not touch or overlap initially */
+#endif /* !FIX_COLLAPSE */
 			}
 		dt = rdotv*(D - 1)/v2; /* minimum time to surface contact */
 		if (dt > smf->dStart && dt <= smf->dEnd) {
@@ -473,8 +522,7 @@ void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				if (dt > pkd->dImpactTime)
 					continue; /* skip if this one will happen later */
 				/*
-				 ** ASSERT: Can't handle multiple simultaneous collisions
-				 ** involving the same particle(s)...
+				 ** ASSERT: Can't handle multiple simultaneous collisions...
 				 */
 				assert(dt < pkd->dImpactTime);
 				}
@@ -486,8 +534,8 @@ void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			}
 		}
 
-#ifdef RUBBLE_TEST
-	if (p->v[2] < 0) {
+#ifdef SAND_PILE
+	if (p->v[2] < 0) { /* check for floor collision */
 		dt = (2*p->fSoft - p->r[2]) / p->v[2];
 		if (dt > smf->dStart && dt <= smf->dEnd && dt < pkd->dImpactTime) {
 			pkd->dImpactTime = dt;
@@ -495,7 +543,25 @@ void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			pkd->Collider2.id.iPid = -1;
 			}
 		}
-#endif /* RUBBLE_TEST */
+#endif /* SAND_PILE */
+
+#ifdef IN_A_BOX
+	{
+	int j;
+	for (i=0;i<3;i++) {
+		for (j=-1;j<=1;j+=2) {
+			if (j*p->v[i] > 0) { /* possible wall collision */
+				dt = (BOX_HALF_SIZE - j*p->r[i] - 2*p->fSoft) / (j*p->v[i]);
+				if (dt > smf->dStart && dt <= smf->dEnd && dt < pkd->dImpactTime) {
+					pkd->dImpactTime = dt;
+					partToCollider(p,pkd->idSelf,p - pkd->pStore,&pkd->Collider1);
+					pkd->Collider2.id.iPid = -1 - i;
+					}
+				}
+			}
+		}
+	}
+#endif /* IN_A_BOX */
 	}
 
-#endif /* PLANETS */
+#endif /* COLLISIONS */

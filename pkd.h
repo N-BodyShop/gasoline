@@ -53,13 +53,17 @@ typedef struct particle {
 	FLOAT fMetals;
 	FLOAT fTimeForm;
 #endif
-#ifdef PLANETS
+#ifdef COLLISIONS
+	FLOAT fRedHill;		/* radius of reduced Hill sphere, times HILL_SCALE */
 	FLOAT w[3];			/* spin vector */
 	int iColor;			/* handy color tag */
-#ifdef RUBBLE_TEST
+	int iDriftType;		/* either NORMAL or KEPLER */
+	double dTEnc;		/* time to next encounter */
+/*DEBUG	PARTICLE_ID idNbr;*/	/* encounter neighbor id */
+#ifdef SAND_PILE
 	int bStuck;
-#endif /* RUBBLE_TEST */
-#endif /* PLANETS */
+#endif /* SAND_PILE */
+#endif /* COLLISIONS */
 	} PARTICLE;
 
 
@@ -71,10 +75,10 @@ typedef struct chkParticle {
 	FLOAT fSoft;
 	FLOAT r[3];
 	FLOAT v[3];
-#ifdef PLANETS
+#ifdef COLLISIONS
     FLOAT w[3];
 	int iColor;
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 	} CHKPART;
 
 
@@ -140,25 +144,25 @@ typedef struct ewaldTable {
 	double hCfac,hSfac;
 	} EWT;
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 
 typedef struct {
 	int iPid;
 	int iIndex;
 	int iOrder;
-	} COLLIDER_ID;
+	} PARTICLE_ID;
 
 typedef struct {
-	COLLIDER_ID id;
+	PARTICLE_ID id;
 	FLOAT fMass;
-	FLOAT fRadius;/*DEBUG = 2*fSoft so spline not used in force calcs*/
+	FLOAT fRadius; /*DEBUG = 2*fSoft so spline not used in force calcs*/
 	FLOAT r[3];
 	FLOAT v[3];
 	FLOAT w[3];
 	FLOAT dt;
 	} COLLIDER;
 
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 
 typedef struct pkdContext {
 	MDL mdl;
@@ -215,10 +219,10 @@ typedef struct pkdContext {
 		double sec;
 		double stamp;
 		} ti[MAX_TIMERS];
-#ifdef PLANETS
+#ifdef COLLISIONS
 	double dImpactTime;
 	COLLIDER Collider1,Collider2;
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 	} * PKD;
 
 
@@ -359,28 +363,28 @@ void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int nMaxOrderGas,
 		  int nMaxOrderDark);
 void pkdSunIndirect(PKD,double *,int,double);
 void pkdLogHalo(PKD);
-
-#ifdef PLANETS
-
-int pkdIsPlanet(PKD,PARTICLE *);
-void pkdActiveNotPlanet(PKD);
-
-#endif
+void pkdHernquistSpheroid(PKD pkd);
+void pkdMiyamotoDisk(PKD pkd);
 
 #ifdef GASOLINE
 void pkdActiveGas(PKD);
 void pkdCalcEthdot(PKD);
-void pkdKickVpred(PKD pdk, double dvFacOne, double dvFacTwo);
+void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
 int pkdSphCurrRung(PKD pkd, int iRung);
 #endif
 
-#ifdef PLANETS
-void pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal);
-void pkdWriteSS(PKD,char *pszFileName,int nStart);
-int pkdLowerQQPart(PKD pkd,int d,FLOAT fSplit,int i,int j);
-int pkdUpperQQPart(PKD pkd,int d,FLOAT fSplit,int i,int j);
-void pkdQQCalcBound(PKD pkd,BND *pbnd,BND *pbndActive);
-void pkdQQBuild(PKD pkd,int nBucket, int bActiveOnly,KDN *pRoot);
-#endif /* PLANETS */
+#ifdef COLLISIONS
+int pkdNumRejects(PKD pkd);
+void pkdReadSS(PKD pkd, char *pszFileName, int nStart, int nLocal);
+void pkdWriteSS(PKD pkd, char *pszFileName, int nStart);
+void pkdCalcHill(PKD pkd, double dCentMass);
+void pkdHillStep(PKD pkd, double dEta);
+void pkdFindEncounter(PKD pkd, double *dNext);
+void pkdMarkEncounters(PKD pkd, double dt);
+int pkdLowerQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);
+int pkdUpperQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);
+void pkdQQCalcBound(PKD pkd, BND *pbnd, BND *pbndActive);
+void pkdQQBuild(PKD pkd, int nBucket, int bActiveOnly, KDN *pRoot);
+#endif /* COLLISIONS */
 
 #endif

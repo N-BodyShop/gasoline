@@ -17,9 +17,10 @@
 #include "mdl.h"
 #include "tipsydefs.h"
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 #include "ssdefs.h"
-#endif /* PLANETS */
+#include "collision.h"
+#endif /* COLLISIONS */
 
 double pkdGetTimer(PKD pkd,int iTimer)
 {
@@ -488,13 +489,13 @@ int pkdLowerPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 {
 	PARTICLE pTemp;
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 	assert(d < 5);
 	if(d > 2)
 	    return pkdLowerQQPart(pkd, d, fSplit, i, j);
-#else
+#else /* COLLISIONS */
 	assert(d < 3);
-#endif
+#endif /* !COLLISIONS */
 	if (i > j) goto done;
     while (1) {
         while (pkd->pStore[i].r[d] >= fSplit)
@@ -514,13 +515,13 @@ int pkdUpperPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 {
 	PARTICLE pTemp;
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 	assert(d < 5);
 	if(d > 2)
 	    return pkdUpperQQPart(pkd, d, fSplit, i, j);
-#else
+#else /* COLLISIONS */
 	assert(d < 3);
-#endif
+#endif /* !COLLISIONS */
 	if (i > j) goto done;
     while (1) {
         while (pkd->pStore[i].r[d] < fSplit)
@@ -1915,7 +1916,7 @@ void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass)
 void pkdLogHalo(PKD pkd)
 {
 	PARTICLE *p;
-	int i,j,n;
+	int i,n;
 
 	/* v in (kpc)/(4.691822922e16s) 128 km/s x 1.5233 */
 	const double v = 194.9848486;
@@ -1945,7 +1946,7 @@ void pkdLogHalo(PKD pkd)
 void pkdHernquistSpheroid(PKD pkd)
 {
 	PARTICLE *p;
-	int i,j,n;
+	int i,n;
 
 	const double M_s = 3.4e5;	/* in 10^5 M_sun */
 	const double c = 0.7;		/* in kpc */
@@ -1973,7 +1974,7 @@ void pkdHernquistSpheroid(PKD pkd)
 void pkdMiyamotoDisk(PKD pkd)
 {
 	PARTICLE *p;
-	int i,j,n;
+	int i,n;
 
 	const double M_d = 1.0e6;	/* in 10^5 M_sun */
 	const double aa = 6.5;		/* in kpc */
@@ -2133,9 +2134,12 @@ void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
-		if (bFandG) {
+#ifdef COLLISIONS
+		if (p[i].iDriftType == KEPLER) /*DEBUG a bit ugly...*/
+#else /* COLLISIONS */
+		if (bFandG)
+#endif /* !COLLISIONS */
 			fg(pkd->mdl,fCentMass + p[i].fMass,p[i].r,p[i].v,dDelta);
-			}
 		else {
 			for (j=0;j<3;++j) {
 				p[i].r[j] += dDelta*p[i].v[j];
@@ -2150,9 +2154,8 @@ void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 		}
 	}
 
-
-void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo, double dvPredFacOne,
-	     double dvPredFacTwo)
+void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
+			 double dvPredFacTwo)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -2161,8 +2164,6 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo, double dvPredFacOne,
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
 	    if(p[i].iActive) {
-/* DEBUG	printf("%d a:%.15g %.15g %.15g\n",p[i].iOrder,
-				   p[i].a[0],p[i].a[1],p[i].a[2]); */
 #ifdef GASOLINE
 	        if(pkdIsGas(pkd, &p[i])) {
 				for (j=0;j<3;++j) {
@@ -2174,12 +2175,12 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo, double dvPredFacOne,
 #endif
 			for (j=0;j<3;++j) {
 				p[i].v[j] = p[i].v[j]*dvFacOne + p[i].a[j]*dvFacTwo;
-#ifdef RUBBLE_TEST
+#ifdef SAND_PILE
 				if (p[i].r[2] > 2*p[i].fSoft)
 					p[i].v[2] -= 0.25*dvFacTwo; /* uniform 0.25 -z accel. */
 				if (p[i].r[2] > 10)
 					p[i].v[2] = -1; /* uniform velocity above z = 10 */
-#endif /* RUBBLE_TEST */
+#endif /* SAND_PILE */
 				}
 			}
 	    }
@@ -2214,11 +2215,11 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 			pkd->pStore[i].r[j] = cp.r[j];
 			pkd->pStore[i].v[j] = cp.v[j];
 			}
-#ifdef PLANETS
+#ifdef COLLISIONS
 		for (j=0;j<3;++j)
 			pkd->pStore[i].w[j] = cp.w[j];
 		pkd->pStore[i].iColor = cp.iColor;
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 		pkd->pStore[i].iActive = 1;
 		pkd->pStore[i].iRung = 0;
 		pkd->pStore[i].fWeight = 1.0;	/* set the initial weight to 1.0 */
@@ -2255,11 +2256,11 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 			cp.r[j] = pkd->pStore[i].r[j];
 			cp.v[j] = pkd->pStore[i].v[j];
 			}
-#ifdef PLANETS
+#ifdef COLLISIONS
 		for (j=0;j<3;++j)
 			cp.w[j] = pkd->pStore[i].w[j];
 		cp.iColor = pkd->pStore[i].iColor;
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 		fwrite(&cp,sizeof(CHKPART),1,fp);
 		}
 	fclose(fp);
@@ -2568,6 +2569,7 @@ void
 pkdDeleteParticle(PKD pkd, int i)
 {
     pkd->pStore[i].iOrder = -2 - pkd->pStore[i].iOrder;
+	pkd->pStore[i].iActive = 0;
     }
 
 void
@@ -2834,9 +2836,21 @@ int pkdSphCurrRung(PKD pkd, int iRung)
 
 #endif
 
-#ifdef PLANETS
+#ifdef COLLISIONS
 
-void pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
+int
+pkdNumRejects(PKD pkd)
+{
+	int i,nRej = 0;
+
+	for (i=0;i<pkd->nLocal;++i)
+		if (REJECT(&pkd->pStore[i])) ++nRej;
+
+	return nRej;
+	}
+
+void
+pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 {
 	FILE *fp;
 	XDR xdrs;
@@ -2857,9 +2871,11 @@ void pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 		p->fDensity = 0.0;
 		p->fBall2 = 0.0;
 		p->fPot = 0.0;
-#ifdef RUBBLE_TEST
+		p->iDriftType = NORMAL; /*DEBUG must initialize b/c pkdDrift()...*/
+		p->dTEnc = 0.0; /*DEBUG must be initialized >= 0 (reject ==> -1) */
+#ifdef SAND_PILE
 		p->bStuck = 0;
-#endif /* RUBBLE_TEST */
+#endif /* SAND_PILE */
 		}
 	/*
 	 ** Seek past the header and up to nStart.
@@ -2893,7 +2909,8 @@ void pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	fclose(fp);
 	}
 
-void pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
+void
+pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
 {
 	FILE *fp;
 	XDR xdrs;
@@ -2930,4 +2947,96 @@ void pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
 	assert(nout == 0);
 	}
 
-#endif /* PLANETS */
+void
+pkdCalcHill(PKD pkd,double dCentMass)
+{
+	/*
+	 ** Note: normally the reduced Hill sphere contains the SUM of the masses
+	 ** of the two interacting bodies, relative to the central mass. Here only
+	 ** one mass is used. This is equivalent to assuming the mass of the third
+	 ** body is negligible. Alternatively, if the masses are comparable, the
+	 ** factor HILL_SCALE could be multiplied by 2^1/3.
+	 */
+
+	const double OneThird = 1.0/3.0;
+
+	PARTICLE *p;
+	int i;
+
+	for (i=0;i<pkdLocal(pkd);i++) {
+		p = &pkd->pStore[i];
+		if (dCentMass == 0)
+			p->fRedHill = HUGE_VAL;
+		else
+			p->fRedHill = HILL_SCALE*pow(OneThird*p->fMass/dCentMass,OneThird);
+		}
+	}
+
+void
+pkdHillStep(PKD pkd,double dEta)
+{
+	/*DEBUG assumes heliocentric coords...still good approx otherwise*/
+
+	PARTICLE *p;
+	double r2,a2,dt;
+	int i,j;
+
+	for (i=0;i<pkdLocal(pkd);i++) {
+		p = &pkd->pStore[i];
+		if (p->iActive) {
+			r2 = a2 = 0;
+			/*DEBUG could use Manhattan metric here...*/
+			for (j=0;j<3;j++) {
+				r2 += p->r[j]*p->r[j];
+				a2 += p->a[j]*p->a[j];
+				}
+			dt = dEta*sqrt(p->fRedHill*sqrt(r2/a2));
+			if (dt < p->dt)
+				p->dt = dt;
+			}
+		}
+	}
+
+void
+pkdFindEncounter(PKD pkd,double *dNext)
+{
+	PARTICLE *p;
+	int i;
+
+	for (i=0;i<pkdLocal(pkd);++i) {
+		p = &pkd->pStore[i];
+		if (p->dTEnc < *dNext) *dNext = p->dTEnc;
+		}
+	}
+
+void
+pkdMarkEncounters(PKD pkd,double dt)
+{
+	PARTICLE *p;
+	int i;
+
+	if (dt <= 0) { /* initialize */
+		for (i=0;i<pkdLocal(pkd);++i) {
+			p = &pkd->pStore[i];
+			p->iActive = 1;/*DEBUG redundant?*/
+			p->iDriftType = KEPLER;
+			p->dTEnc = HUGE_VAL;
+/*DEBUG			p->idNbr.iPid = p->idNbr.iIndex =
+				p->idNbr.iOrder = -1; */
+			}
+		}
+	else {
+		for (i=0;i<pkdLocal(pkd);++i) {
+			if (p->dTEnc < dt) {
+				p->iActive = 1;
+				p->iDriftType = NORMAL;
+				}
+			else {
+				p->iActive = 0;
+				p->iDriftType = KEPLER;
+				}
+			}
+		}
+	}
+
+#endif /* COLLISIONS */

@@ -78,6 +78,8 @@ typedef struct msrContext {
 
 void msrInitialize(MSR *,MDL,int,char **);
 void msrLogParams(MSR msr, FILE *fp);
+int msrGetLock(MSR msr);
+int msrCheckForStop(MSR msr);
 void msrFinish(MSR);
 double msrTime2Exp(MSR,double);
 double msrExp2Time(MSR,double);
@@ -126,6 +128,10 @@ void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime,
 void msrCoolVelocity(MSR,double,double);
 void msrCalcWriteStart(MSR);
 void msrAddDelParticles(MSR msr);
+void msrAccelStep(MSR msr, double dTime);
+void msrInitDt(MSR msr);
+void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll);
+
 /*
  ** Interface functions.
  */
@@ -153,10 +159,19 @@ void msrStepSph(MSR msr,double dTime, double dDelta);
 int msrSphCurrRung(MSR msr, int iRung);
 #endif
 
-#ifdef PLANETS
+#ifdef COLLISIONS
+void msrFindRejects(MSR msr);
 double msrReadSS(MSR msr);
-void msrWriteSS(MSR msr,char *pszFileName,double dTime);
-void msrDoCollisions(MSR msr,double dTime,double dDelta);
-#endif /* PLANETS */
+void msrWriteSS(MSR msr, char *pszFileName, double dTime);
+void msrCalcHill(MSR msr);
+void msrHillStep(MSR msr);
+void msrPlanetsKDK(MSR msr, double dStep, double dTime, double dDelta,
+				   double *pdWMax, double *pdIMax, double *pdEMax, int *piSec);
+void msrPlanetsDrift(MSR msr, double dStep, double dTime, double dDelta);
+void msrFindEncounter(MSR msr, double dStart, double dEnd, double *dNext);
+void msrMarkEncounters(MSR msr, double dTmax);
+void msrLinearKDK(MSR msr, double dStep, double dTime, double dDelta);
+void msrDoCollisions(MSR msr, double dTime, double dDelta);
+#endif /* COLLISIONS */
 
 #endif

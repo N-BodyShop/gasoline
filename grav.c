@@ -24,7 +24,7 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	ILCN *ilcn;
 	int n,i,j;
 	double fPot,ax,ay,az;
-	double x,y,z,dx,dy,dz,dir,d2,h,twoh,a,b,c,d;
+	double x,y,z,dx,dy,dz,d2,h,twoh,a,b,c,d;
 	double dir2,qirx,qiry,qirz,qir,tr,qir3;
 	double gam[6];
 	int nFlop;
@@ -33,6 +33,9 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	int nMultiFlop[5] = MEVAL_FLOP;
 #else
 	int nMultiFlop[5] = QEVAL_FLOP;
+#endif
+#if (NATIVE_SQRT)
+	double dir;
 #endif
 
 	/*

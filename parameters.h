@@ -7,8 +7,12 @@ struct parameters {
 	 ** Parameters for PKDGRAV.
 	 */
 	int nThreads;
-	int bDiag;
-	int bVerbose;
+	int bOverwrite;
+	int bVWarnings;
+	int bVStart;
+	int bVStep;
+	int bVRungStat;
+	int bVDetails;
 	int bPeriodic;
 	int bRestart;
 	int bComove;
@@ -77,16 +81,18 @@ struct parameters {
 	double dGasConst;
 	double dMsolUnit;
 	double dKpcUnit;
-#ifdef PLANETS
+#ifdef COLLISIONS
 	/*
-	 ** Additional parameters for planet code...
+	 ** Additional parameters for collision code...
 	 */
+	int bFindRejects;
+	double dSmallStep;
 	int iOutcomes;
 	double dEpsN;
 	double dEpsT;
 	int bDoCollLog;
 	char achCollLog[256];
-#endif /* PLANETS */
+#endif /* COLLISIONS */
 	};
 
 

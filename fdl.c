@@ -49,6 +49,8 @@ int FDL_error(FDL_CTX *CTX,int err,char *file,int line)
         FDL_finish(CTX);
         exit(1);
         }
+	assert(0); /* can't be here */
+	return 0;
     }
 
 
@@ -117,7 +119,7 @@ void *e;
     unsigned char *p;
     unsigned int i;
     
-    p = ((ENTRY *)e)->ident;
+    p = (unsigned char *) ((ENTRY *)e)->ident;
     i = SCATTER+MAGIC;
     while (*p) i += (*(p++))*SCATTER;
     return(i);
@@ -406,6 +408,7 @@ int FDL_expr(FDL_CTX *CTX,FDL_NODE **E,char *retsyms)
         if (err) return(FDL_error(CTX,err,__FILE__,__LINE__));
         else return(0);
         }
+	return -1; /* should really be an error check here */
     }
 
 
@@ -786,7 +789,7 @@ int FDL_elemsize(FDL_CTX *CTX,FDL_NODE *p)
 void FDL_seek(FDL_CTX *CTX,FDL_NODE *p)
 {
     FDL_NODE *pp,*cc,*q;
-    ENTRY e,*el;
+    ENTRY e,*el=NULL;
     int clvl,plvl;
     int pdist,cdist;
     int dist;
@@ -926,7 +929,7 @@ void FDL_seek(FDL_CTX *CTX,FDL_NODE *p)
 int FDL_offsetp(FDL_CTX *CTX,FDL_NODE *p)
 {
     FDL_NODE *pp,*cc,*q;
-    ENTRY e,*el;
+    ENTRY e,*el=NULL;
     int clvl,plvl;
     int pdist,cdist;
     int dist;

@@ -4,6 +4,8 @@
  */
 void v_sqrt1(int n,double *r2,double *a)
 {
+	extern double _fsqrta(double);
+
     int i;
     double s;
     
