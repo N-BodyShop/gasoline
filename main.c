@@ -119,9 +119,7 @@ int main(int argc,char **argv)
 			msrDomainDecomp(msr,0,1);
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE);
 			msrInitAccel(msr);
-#ifdef GASOLINE
-			msrInitSph(msr,dTime);
-#endif
+
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree");
@@ -129,6 +127,9 @@ int main(int argc,char **argv)
 				msrGravity(msr,iStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 				}
 			}
+#ifdef GASOLINE
+			msrInitSph(msr,dTime);
+#endif
 		goto Restart;
 		}
 	/*
@@ -209,9 +210,6 @@ int main(int argc,char **argv)
 		msrDomainDecomp(msr,0,1);
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE);
 		msrInitAccel(msr);
-#ifdef GASOLINE
-		msrInitSph(msr,dTime);
-#endif
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
 		msrBuildTree(msr,0,dMass,0);
 		msrMassCheck(msr,dMass,"After msrBuildTree");
@@ -229,6 +227,9 @@ int main(int argc,char **argv)
 							   dMultiEff);
 				}
 			}
+#ifdef GASOLINE
+		msrInitSph(msr,dTime);
+#endif
 
 		for (iStep=msr->param.iStartStep+1;iStep<=msrSteps(msr);++iStep) {
 			if (msrComove(msr)) {
@@ -512,9 +513,16 @@ int main(int argc,char **argv)
 
 			       sprintf(achFile,"%s.accp",msrOutName(msr));
 			       msrOutVector(msr,achFile,OUT_ACCELPRES_VECTOR);
-			       sprintf(achFile,"%s.acc",msrOutName(msr));
-			       msrOutVector(msr,achFile,OUT_ACCEL_VECTOR);
-			       }
+			  }
+
+			  sprintf(achFile,"%s.acc",msrOutName(msr));
+			  msrOutVector(msr,achFile,OUT_ACCEL_VECTOR);
+			  sprintf(achFile,"%s.PdV",msrOutName(msr));
+			  msrOutArray(msr,achFile,OUT_PDV_ARRAY);
+			  sprintf(achFile,"%s.PdVpres",msrOutName(msr));
+			  msrOutArray(msr,achFile,OUT_PDVPRES_ARRAY);
+			  sprintf(achFile,"%s.PdVvisc",msrOutName(msr));
+			  msrOutArray(msr,achFile,OUT_PDVVISC_ARRAY);
 			  }
 			if (msr->param.bSN) msrAddSupernova(msr, dTime);
 

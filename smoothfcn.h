@@ -111,6 +111,7 @@ void HKPressureTermsSym(PARTICLE *,int,NN *,SMF *);
 void initSphPressureParticle(void *);
 void initSphPressure(void *);
 void combSphPressure(void *,void *);
+void postSphPressure(PARTICLE *,SMF *);
 void SphPressure(PARTICLE *,int,NN *,SMF *);
 void SphPressureSym(PARTICLE *,int,NN *,SMF *);
 

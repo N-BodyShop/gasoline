@@ -25,6 +25,9 @@
 #define OUT_DIVONCONH_ARRAY     24
 #define OUT_DIVONCONX_ARRAY     25
 #define OUT_DIVRHOV_ARRAY       26
+#define OUT_PDV_ARRAY           27
+#define OUT_PDVPRES_ARRAY       28
+#define OUT_PDVVISC_ARRAY       29
 #endif
 
 #define OUT_H_ARRAY			19

@@ -62,17 +62,19 @@ typedef struct particle {
 	FLOAT c;			/* sound speed */
 	FLOAT mumax;		/* sound speed like viscosity term */
 	FLOAT PdV;	        /* P dV heating (includes shocking) */
-#ifdef DEBUG
+#ifdef PDVDEBUG
 	FLOAT PdVvisc;		/* P dV from shock (testing) */
 	FLOAT PdVpres;		/* P dV from adiabatic compression (testing) */
 #endif
-        FLOAT ShockTracker;     /* Shock tracker */
-        FLOAT divrhov;
-        FLOAT gradrho[3];
 	FLOAT divv;		/* Balsara viscosity reduction */
 	FLOAT curlv[3];         
 	FLOAT BalsaraSwitch;
+#ifdef SHOCKTRACK
         FLOAT aPres[3];
+        FLOAT ShockTracker;     /* Shock tracker */
+        FLOAT divrhov;          /* debug */
+        FLOAT gradrho[3];       /* debug */
+#endif
 /*	FLOAT fDensSave;*/	/* Used by diagnostic DensCheck funcs */
 #ifndef NOCOOLING
 	FLOAT uDot;			/* Rate of change of u -- for predicting */

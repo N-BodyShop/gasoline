@@ -20,12 +20,29 @@
 #define SWITCHCOMBINEA(a,b) (a->BalsaraSwitch >= 1 || b->BalsaraSwitch >= 1 ? 1 : 0)
 #define SWITCHCOMBINEA(a,b) ((a->BalsaraSwitch*b->BalsaraSwitch)*(a->ShockTracker > b->ShockTracker ? a->ShockTracker : b->ShockTracker))
 */
+
+#define ACCEL(p,j) (((PARTICLE *)(p))->a[j])
+
+#ifdef SHOCKTRACK
+/* Shock Tracking on: p->ShockTracker and p->aPres are defined */
+
 #define SWITCHCOMBINE(a,b) (0.5*(a->BalsaraSwitch+b->BalsaraSwitch))
 #define SWITCHCOMBINEA(a,b) ((a->BalsaraSwitch*b->BalsaraSwitch)*a->ShockTracker*b->ShockTracker)
 #define SWITCHCOMBINEB(a,b) (a->BalsaraSwitch*b->BalsaraSwitch)
 
 #define ACCEL_PRES(p,j) (((PARTICLE *)(p))->aPres[j])
-#define ACCEL(p,j) (((PARTICLE *)(p))->a[j])
+#define ACCEL_COMB_PRES(p,j) ((((PARTICLE *)(p))->a[j])+=(((PARTICLE *)(p))->aPres[j]))
+
+#else
+
+#define SWITCHCOMBINE(a,b) (0.5*(a->BalsaraSwitch+b->BalsaraSwitch))
+#define SWITCHCOMBINEA(a,b) SWITCHCOMBINE(a,b)
+#define SWITCHCOMBINEB(a,b) SWITCHCOMBINE(a,b)
+
+#define ACCEL_PRES(p,j) (((PARTICLE *)(p))->a[j])
+#define ACCEL_COMB_PRES(p,j) 
+
+#endif
 
 #ifdef M43D
 /* M43D Creates a 3D kernel by convolution of 3D tophats the way M4(1D) is made in 1D */
@@ -382,7 +399,7 @@ void initSphPressureTermsParticle(void *p)
 	if (TYPEQueryACTIVE((PARTICLE *) p)) {
 		((PARTICLE *)p)->mumax = 0.0;
 		((PARTICLE *)p)->PdV = 0.0;
-#ifdef DEBUG
+#ifdef PDVDEBUG
 		((PARTICLE *)p)->PdVvisc = 0.0;
 		((PARTICLE *)p)->PdVpres = 0.0;
 #endif
@@ -395,7 +412,7 @@ void initSphPressureTerms(void *p)
 	if (TYPEQueryACTIVE((PARTICLE *) p)) {
 		((PARTICLE *)p)->mumax = 0.0;
 		((PARTICLE *)p)->PdV = 0.0;
-#ifdef DEBUG
+#ifdef PDVDEBUG
 		((PARTICLE *)p)->PdVvisc = 0.0;
 		((PARTICLE *)p)->PdVpres = 0.0;
 #endif
@@ -409,7 +426,7 @@ void combSphPressureTerms(void *p1,void *p2)
 {
 	if (TYPEQueryACTIVE((PARTICLE *) p1)) {
 		((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
-#ifdef DEBUG
+#ifdef PDVDEBUG
 		((PARTICLE *)p1)->PdVvisc += ((PARTICLE *)p2)->PdVvisc;
 		((PARTICLE *)p1)->PdVpres += ((PARTICLE *)p2)->PdVpres;
 #endif
@@ -556,12 +573,12 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 					pPdV += rq*pPoverRho2*dvdotdr;
 					q->PdV += rp*q->PoverRho2*dvdotdr;
-					rq *= (pPoverRho2 + q->PoverRho2);
-					rp *= (pPoverRho2 + q->PoverRho2);
-#ifdef DEBUG
+#ifdef PDVDEBUG
 					p->PdVpres += rq*(pPoverRho2)*dvdotdr;
 					q->PdVpres += rp*(q->PoverRho2)*dvdotdr;
 #endif
+					rq *= (pPoverRho2 + q->PoverRho2);
+					rp *= (pPoverRho2 + q->PoverRho2);
 					rp *= aFac; /* convert to comoving acceleration */
 					rq *= aFac;
 					pa[0] -= rq * dx;
@@ -601,14 +618,14 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 					pPdV += rq*(pPoverRho2 + 0.5*visc)*dvdotdr;
 					q->PdV += rp*(q->PoverRho2 + 0.5*visc)*dvdotdr;
-					rq *= (pPoverRho2 + q->PoverRho2 + visc);
-					rp *= (pPoverRho2 + q->PoverRho2 + visc);
-#ifdef DEBUG			
+#ifdef PDVDEBUG			
 					p->PdVpres += rq*(pPoverRho2)*dvdotdr;
 					q->PdVpres += rp*(q->PoverRho2)*dvdotdr;
 					p->PdVvisc += rq*(0.5*visc)*dvdotdr;
 					q->PdVvisc += rp*(0.5*visc)*dvdotdr;
 #endif
+					rq *= (pPoverRho2 + q->PoverRho2 + visc);
+					rp *= (pPoverRho2 + q->PoverRho2 + visc);
 					rp *= aFac; /* convert to comoving acceleration */
 					rq *= aFac;
 
@@ -671,11 +688,11 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 
 					pPdV += rq*(pPoverRho2 + 0.5*visc)*dvdotdr;
-					rq *= (pPoverRho2 + q->PoverRho2 + visc);
-#ifdef DEBUG			
+#ifdef PDVDEBUG			
 					p->PdVpres += rq*(pPoverRho2)*dvdotdr;
 					p->PdVvisc += rq*(0.5*visc)*dvdotdr;
 #endif
+					rq *= (pPoverRho2 + q->PoverRho2 + visc);
 					rq *= aFac; /* convert to comoving acceleration */
 
 					pa[0] -= rq*dx;
@@ -748,11 +765,11 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef PDVCHECK
 #endif
 				q->PdV += rp*(q->PoverRho2 + 0.5*visc)*dvdotdr;
-				rp *= (pPoverRho2 + q->PoverRho2 + visc);
-#ifdef DEBUG			
+#ifdef PDVDEBUG			
 				q->PdVpres += rp*(q->PoverRho2)*dvdotdr;
 				q->PdVvisc += rp*(0.5*visc)*dvdotdr;
 #endif
+				rp *= (pPoverRho2 + q->PoverRho2 + visc);
 				rp *= aFac; /* convert to comoving acceleration */
 
 		        ACCEL(q,0) += rp*dx;
@@ -769,12 +786,22 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		} 
 	}
 
+/* NB: ACCEL_PRES used here -- 
+   with shock tracking disabled: #define NOSHOCKTRACK
+   it is: a->aPres
+   otherwise it is identical to p->a 
+   The postSphPressure function combines p->a and p->aPres
+*/
+
 /* Original Particle */
 void initSphPressureParticle(void *p)
 {
 	if (TYPEQueryACTIVE((PARTICLE *) p)) {
 		((PARTICLE *)p)->mumax = 0.0;
 		((PARTICLE *)p)->PdV = 0.0;
+#ifdef PDVDEBUG
+		((PARTICLE *)p)->PdVpres = 0.0;
+#endif
 		}
 	}
 
@@ -784,6 +811,9 @@ void initSphPressure(void *p)
 	if (TYPEQueryACTIVE((PARTICLE *) p)) {
 		((PARTICLE *)p)->mumax = 0.0;
 		((PARTICLE *)p)->PdV = 0.0;
+#ifdef PDVDEBUG
+		((PARTICLE *)p)->PdVpres = 0.0;
+#endif
 		ACCEL_PRES(p,0) = 0.0;
 		ACCEL_PRES(p,1) = 0.0;
 		ACCEL_PRES(p,2) = 0.0;
@@ -794,8 +824,7 @@ void combSphPressure(void *p1,void *p2)
 {
 	if (TYPEQueryACTIVE((PARTICLE *) p1)) {
 		((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
-#ifdef DEBUG
-		((PARTICLE *)p1)->PdVvisc += ((PARTICLE *)p2)->PdVvisc;
+#ifdef PDVDEBUG
 		((PARTICLE *)p1)->PdVpres += ((PARTICLE *)p2)->PdVpres;
 #endif
 		if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
@@ -803,6 +832,15 @@ void combSphPressure(void *p1,void *p2)
 		ACCEL_PRES(p1,0) += ACCEL_PRES(p2,0);
 		ACCEL_PRES(p1,1) += ACCEL_PRES(p2,1);
 		ACCEL_PRES(p1,2) += ACCEL_PRES(p2,2);
+		}
+	}
+
+void postSphPressure(PARTICLE *p, SMF *smf)
+{
+	if (TYPEQueryACTIVE((PARTICLE *) p)) {
+		ACCEL_COMB_PRES(p,0);
+		ACCEL_COMB_PRES(p,1);
+		ACCEL_COMB_PRES(p,2);
 		}
 	}
 
@@ -816,6 +854,8 @@ void SphPressure(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT ph,pc,pDensity,visc,hav,vFac,absmu;
 	FLOAT fNorm,fNorm1,fNorm2;
 	int i;
+
+	assert(0);
 
 	if (!TYPEQueryACTIVE(p)) return;
 
@@ -849,6 +889,9 @@ void SphPressure(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
 		if (dvdotdr>0.0) {
 			pPdV += rs1 * pPoverRho2 * dvdotdr;
+#ifdef PDVDEBUG
+			p->PdVpres += fNorm1*rs1 * (pPoverRho2)*dvdotdr;
+#endif
 			rs1 *= (pPoverRho2 + q->PoverRho2);
 			pa[0] -= rs1 * dx;
 			pa[1] -= rs1 * dy;
@@ -868,6 +911,9 @@ void SphPressure(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			  (smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
 			  *absmu/(pDensity + q->fDensity);
 		        pPdV += rs1 * (pPoverRho2 + 0.5*visc)*dvdotdr;
+#ifdef PDVDEBUG
+			p->PdVpres += fNorm1*rs1 * (pPoverRho2 + 0.5*visc)*dvdotdr;
+#endif
 			rs1 *= (pPoverRho2 + q->PoverRho2 + visc);
 			pa[0] -= rs1 * dx;
 			pa[1] -= rs1 * dy;
@@ -930,6 +976,10 @@ void SphPressureSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			        rp = rs1 * pMass;
 				pPdV += rq*pPoverRho2*dvdotdr;
 				q->PdV += rp*q->PoverRho2*dvdotdr;
+#ifdef PDVDEBUG
+				p->PdVpres += rq*pPoverRho2*dvdotdr;
+				q->PdVpres += rp*q->PoverRho2*dvdotdr;
+#endif
 				rq *= (pPoverRho2 + q->PoverRho2);
 				rp *= (pPoverRho2 + q->PoverRho2);
 				rp *= aFac; /* convert to comoving acceleration */
@@ -944,6 +994,9 @@ void SphPressureSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			else {
 				/* q not active */
 			        pPdV += rq*pPoverRho2*dvdotdr;
+#ifdef PDVDEBUG
+			        p->PdVpres += rq*pPoverRho2*dvdotdr;
+#endif
 				rq *= (pPoverRho2 + q->PoverRho2);
 				rq *= aFac; /* convert to comoving acceleration */
 
@@ -978,6 +1031,9 @@ void SphPressureSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) +
 				nnList[i].fDist2*smf->H;
 			q->PdV += rp*q->PoverRho2*dvdotdr;
+#ifdef PDVDEBUG
+			q->PdVpres += rp*q->PoverRho2*dvdotdr;
+#endif
 			rp *= (pPoverRho2 + q->PoverRho2);
 			rp *= aFac; /* convert to comoving acceleration */
 
@@ -991,9 +1047,11 @@ void SphPressureSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 /* Original Particle */
 void initSphViscosityParticle(void *p)
 {
-	ACCEL(p,0) += ACCEL_PRES(p,0);
-	ACCEL(p,1) += ACCEL_PRES(p,1);
-	ACCEL(p,2) += ACCEL_PRES(p,2);
+#ifdef PDVDEBUG
+	if (TYPEQueryACTIVE((PARTICLE *) p)) {
+		 ((PARTICLE *)p)->PdVvisc = 0.0;
+	         }
+#endif
 }
 
 /* Cached copies of particle */
@@ -1002,6 +1060,9 @@ void initSphViscosity(void *p)
 	if (TYPEQueryACTIVE((PARTICLE *) p)) {
 		((PARTICLE *)p)->mumax = 0.0;
 		((PARTICLE *)p)->PdV = 0.0;
+#ifdef PDVDEBUG
+		((PARTICLE *)p)->PdVvisc = 0.0;
+#endif
 		ACCEL(p,0) = 0.0;
 		ACCEL(p,1) = 0.0;
 		ACCEL(p,2) = 0.0;
@@ -1012,6 +1073,9 @@ void combSphViscosity(void *p1,void *p2)
 {
 	if (TYPEQueryACTIVE((PARTICLE *) p1)) {
 		((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
+#ifdef PDVDEBUG
+		((PARTICLE *)p1)->PdVvisc += ((PARTICLE *)p2)->PdVvisc;
+#endif
 		if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
 			((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
 		ACCEL(p1,0) += ACCEL(p2,0);
@@ -1090,8 +1154,11 @@ void SphViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				  *absmu/(pDensity + q->fDensity);
 
 				pPdV += rq*0.5*visc*dvdotdr;
-				
 				q->PdV += rp*0.5*visc*dvdotdr;
+#ifdef PDVDEBUG
+				p->PdVvisc += rq*0.5*visc*dvdotdr;
+				q->PdVvisc += rp*0.5*visc*dvdotdr;
+#endif
 				rq *= visc;
 				rp *= visc;
 				rp *= aFac; /* convert to comoving acceleration */
@@ -1121,6 +1188,9 @@ void SphViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				  *absmu/(pDensity + q->fDensity);
 				
 				pPdV += rq*0.5*visc*dvdotdr;
+#ifdef PDVDEBUG
+				p->PdVvisc += rq*0.5*visc*dvdotdr;
+#endif
 				rq *= visc;
 				rq *= aFac; /* convert to comoving acceleration */
 				
@@ -1171,6 +1241,9 @@ void SphViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			  *absmu/(pDensity + q->fDensity);
 
 			q->PdV += rp*0.5*visc*dvdotdr;
+#ifdef PDVDEBUG
+			q->PdVvisc += rp*0.5*visc*dvdotdr;
+#endif
 			rp *= visc;
 			rp *= aFac; /* convert to comoving acceleration */
 
@@ -1190,10 +1263,12 @@ void initDivVort(void *p)
 		((PARTICLE *)p)->curlv[0] = 0.0;
 		((PARTICLE *)p)->curlv[1] = 0.0;
 		((PARTICLE *)p)->curlv[2] = 0.0;
+#ifdef SHOCKTRACK
 		((PARTICLE *)p)->divrhov = 0.0;
 		((PARTICLE *)p)->gradrho[0] = 0.0;
 		((PARTICLE *)p)->gradrho[1] = 0.0;
 		((PARTICLE *)p)->gradrho[2] = 0.0;
+#endif
 		}
 	}
 
@@ -1204,10 +1279,12 @@ void combDivVort(void *p1,void *p2)
 		((PARTICLE *)p1)->curlv[0] += ((PARTICLE *)p2)->curlv[0];
 		((PARTICLE *)p1)->curlv[1] += ((PARTICLE *)p2)->curlv[1];
 		((PARTICLE *)p1)->curlv[2] += ((PARTICLE *)p2)->curlv[2];
+#ifdef SHOCKTRACK
 		((PARTICLE *)p1)->divrhov += ((PARTICLE *)p2)->divrhov;
 		((PARTICLE *)p1)->gradrho[0] += ((PARTICLE *)p2)->gradrho[0];
 		((PARTICLE *)p1)->gradrho[1] += ((PARTICLE *)p2)->gradrho[1];
 		((PARTICLE *)p1)->gradrho[2] += ((PARTICLE *)p2)->gradrho[2];
+#endif
 		}
 	}
 
@@ -1308,6 +1385,7 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				p->curlv[2] += rq*dv;
 				q->curlv[2] += rp*dv;
 
+#ifdef SHOCKTRACK
 				p->divrhov -= rs1*dvdotdr*q->fMass;
 				q->divrhov -= rs1*dvdotdr*pMass;
 				p->gradrho[0] += rs1*q->fMass*dx;
@@ -1316,6 +1394,7 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				q->gradrho[1] -= rs1*pMass*dy;
 				p->gradrho[2] += rs1*q->fMass*dz;
 				q->gradrho[2] -= rs1*pMass*dz;
+#endif
 		        }
 			else {
 		        /* q inactive */
@@ -1327,10 +1406,12 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				dv=vFac*(dvy*dx - dvx*dy);
 				p->curlv[2] += rq*dv;
 
+#ifdef SHOCKTRACK
 				p->divrhov -= rs1*dvdotdr*q->fMass;
 				p->gradrho[0] += rs1*q->fMass*dx;
 				p->gradrho[1] += rs1*q->fMass*dy;
 				p->gradrho[2] += rs1*q->fMass*dz;
+#endif
 		        }
 	        }
 		} 
@@ -1362,27 +1443,33 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			dv=vFac*(dvy*dx - dvx*dy);
 			q->curlv[2] += rp*dv;
 
+#ifdef SHOCKTRACK
 			q->divrhov -= rs1*dvdotdr*pMass;
 			q->gradrho[0] -= rs1*pMass*dx;
 			q->gradrho[1] -= rs1*pMass*dy;
 			q->gradrho[2] -= rs1*pMass*dz;
+#endif
 	        }
 		} 
 	}
 
 void initShockTrack(void *p)
 {
+#ifdef SHOCKTRACK
 	if (TYPEQueryACTIVE((PARTICLE *) p )) {
 		((PARTICLE *)p)->divrhov = 0.0;
 		}
+#endif
 	}
 
 void combShockTrack(void *p1,void *p2)
 {
+#ifdef SHOCKTRACK
 	if (TYPEQueryACTIVE((PARTICLE *) p1 )) {
 	        if (((PARTICLE *)p2)->divrhov > ((PARTICLE *)p2)->divrhov) 
 		  ((PARTICLE *)p1)->divrhov = ((PARTICLE *)p2)->divrhov;
 		}
+#endif
 	}
 
 /* Gather only version -- untested */
@@ -1398,6 +1485,7 @@ void ShockTrackSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	double Mach,dv;
 	int i,j;
 
+#ifdef SHOCKTRACK
 	if (TYPEQueryACTIVE( p )) {
 		/* p active */
 		for (i=0;i<nSmooth;++i) {
@@ -1434,6 +1522,7 @@ void ShockTrackSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			if (Mach > q->divrhov) q->divrhov = Mach;
 	        }
 		} 
+#endif
 	}
 
 /* Original Particle */

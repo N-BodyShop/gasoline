@@ -277,7 +277,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef GASOLINE
 		p->u = 0.0;
 		p->uPred = 0.0;
+#ifdef SHOCKTRACK
 		p->ShockTracker = 0.0;
+#endif
 #ifndef NOCOOLING		
 		/* Place holders -- later fixed in pkdInitEnergy */
 		p->Y_HI = 0.75;
@@ -2980,7 +2982,6 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 	CHKPART cp;
 	long lStart;
 	int i,j;
-	char out[128];
 
 	pkd->nLocal = nLocal;
 	/*
@@ -3012,11 +3013,6 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		p->uPred = cp.u;
 		p->fMetals = cp.fMetals;
 		p->fTimeForm = 0.0;
-		if (pkdIsStar(pkd, p)) {
-		    sprintf(out,"iOrder: %d\n",p->iOrder);
-		    mdlDiag(pkd->mdl, out);
-		    fprintf(stderr,"iOrder: %d\n",p->iOrder);
-		}
 		mdlassert(pkd->mdl, !pkdIsStar(pkd, p));
 #ifndef NOCOOLING		
 		/* Place holders -- later fixed in pkdInitEnergy */
@@ -3776,7 +3772,7 @@ void pkdInitAccel(PKD pkd)
 		if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
 			for (j=0;j<3;++j) {
 				pkd->pStore[i].a[j] = 0;
-#ifdef GASOLINE
+#if defined(GASOLINE) && defined(SHOCKTRACK)
 				pkd->pStore[i].aPres[j] = 0;
 #endif
 				pkd->pStore[i].dtGrav = 0;
@@ -3911,9 +3907,10 @@ void pkdUpdateShockTracker(PKD pkd, double dDelta, double dShockTrackerA, double
 {
 	PARTICLE *p;
 	int i,n;
-	double conh,factor,a[3];
+	double conh,factor;
 	double dv2,a2,ap2,adotap=1;
 
+#ifdef SHOCKTRACK
         if (dShockTrackerB == 0) printf("Doing cheap shock tracking\n");
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
@@ -3921,22 +3918,19 @@ void pkdUpdateShockTracker(PKD pkd, double dDelta, double dShockTrackerA, double
 		if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
 		        p->ShockTracker = 0;
 
-		        a[0] = p->a[0]+p->aPres[0];
-		        a[1] = p->a[1]+p->aPres[1];
-		        a[2] = p->a[2]+p->aPres[2];
-			a2 = ((a[0]*a[0])+(a[1]*a[1])+(a[2]*a[2]));
+			a2 = ((p->a[0]*p->a[0])+(p->a[1]*p->a[1])+(p->a[2]*p->a[2]));
 			ap2 = ((p->aPres[0]*p->aPres[0])+(p->aPres[1]*p->aPres[1])+(p->aPres[2]*p->aPres[2]));
-			adotap = ((a[0]*p->aPres[0])+(a[1]*p->aPres[1])+(a[2]*p->aPres[2]));
+			adotap = ((p->a[0]*p->aPres[0])+(p->a[1]*p->aPres[1])+(p->a[2]*p->aPres[2]));
 
 #if 0
 			if (!(i%2000)) {
 			  /*
-printf("aP %d: %g %g %g %g %g %g\n",i,a[0],a[1],a[2],p->aPres[0],p->aPres[1],p->aPres[2]);
+printf("aP %d: %g %g %g %g %g %g\n",i,p->a[0],p->a[1],p->a[2],p->aPres[0],p->aPres[1],p->aPres[2]);
 			  */
 printf("r %g PdV %g a %g %g %g SW %g %g %g\n",sqrt(p->r[0]*p->r[0]+p->r[1]*p->r[1]+p->r[2]*p->r[2]),
-       p->PdV,((a[0]*p->aPres[0])+(a[1]*p->aPres[1])+(a[2]*p->aPres[2])),sqrt(a2),sqrt(ap2),
+       p->PdV,((p->a[0]*p->aPres[0])+(p->a[1]*p->aPres[1])+(p->a[2]*p->aPres[2])),sqrt(a2),sqrt(ap2),
        sqrt(a2*0.25*p->fBall2)/(p->c*p->c),
-       (a[0]*p->gradrho[0]+a[1]*p->gradrho[1]+a[2]*p->gradrho[2])/
+       (p->a[0]*p->gradrho[0]+p->a[1]*p->gradrho[1]+p->a[2]*p->gradrho[2])/
        (p->gradrho[0]*p->gradrho[0]+p->gradrho[1]*p->gradrho[1]+p->gradrho[2]*p->gradrho[2]+
 	0.4/p->fBall2)/(p->c*p->c),p->BalsaraSwitch );
 			}
@@ -3953,7 +3947,7 @@ printf("r %g PdV %g a %g %g %g SW %g %g %g\n",sqrt(p->r[0]*p->r[0]+p->r[1]*p->r[
 			 }
 			 else {
 			  if (a2 < ap2) 
-			    dv2 = -p->fDensity*(a[0]*p->gradrho[0]+a[1]*p->gradrho[1]+a[2]*p->gradrho[2])/
+			    dv2 = -p->fDensity*(p->a[0]*p->gradrho[0]+p->a[1]*p->gradrho[1]+p->a[2]*p->gradrho[2])/
 			      (p->gradrho[0]*p->gradrho[0]+p->gradrho[1]*p->gradrho[1]+p->gradrho[2]*p->gradrho[2]+
 			       p->fDensity*p->fDensity*dShockTrackerB/p->fBall2);
 			  else
@@ -3970,6 +3964,8 @@ printf("r %g PdV %g a %g %g %g SW %g %g %g\n",sqrt(p->r[0]*p->r[0]+p->r[1]*p->r[
 			 }
 			}
 		}
+
+#endif
         }
 
 /* Note: Uses uPred */

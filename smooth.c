@@ -104,7 +104,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		initParticle = initSphPressureParticle; /* Original Particle */
 		init = initSphPressure; /* Cached copies */
 		comb = combSphPressure;
-		smx->fcnPost = NULL;
+		smx->fcnPost = postSphPressure;
 		break;
 	case SMX_SPHVISCOSITY:
 		smx->fcnSmooth = bSymmetric?SphViscositySym:SphViscosity;

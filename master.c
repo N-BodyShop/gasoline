@@ -754,6 +754,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 
 	(void) sprintf(msr->param.achDigitMask,"%%s.%%0%ii",nDigits);
 
+	if ( getenv("PKDGRAV_CHECKPOINT_FDL") == NULL ) { 
+          fprintf(stderr,"PKDGRAV_CHECKPOINT_FDL environment variable not set\n");
+	}
 	/*
 	 ** Don't allow periodic BC's for Kepler orbital problems.
 	 ** It just doesn't make sense, does it?
@@ -832,6 +835,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		if (!prmSpecified(msr->prm,"dConstBeta"))
 			msr->param.dConstBeta=0.5;
 		}
+#ifndef SHOCKTRACK
+	if (msr->param.bShockTracker != 0) {
+	        fprintf(stderr,"Compile with -DSHOCKTRACK for Shock Tracking.\n");
+		assert(0);
+	        }
+#endif
 #endif
 	/*
 	 ** Determine opening type.
@@ -1274,8 +1283,6 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dRungDDWeight: %g ",msr->param.dRungDDWeight);
 	fprintf(fp,"\n# nTruncateRung: %d",msr->param.nTruncateRung);
 	fprintf(fp," bLowerSoundSpeed: %d",msr->param.bLowerSoundSpeed);
-	fprintf(fp," bShockTracker: %d",msr->param.bShockTracker);
-	fprintf(fp," bShockTracker: %d",msr->param.bShockTracker);
 	fprintf(fp," bShockTracker: %d",msr->param.bShockTracker);
 	fprintf(fp," dShockTrackerA: %f",msr->param.dShockTrackerA);
 	fprintf(fp," dShockTrackerB: %f",msr->param.dShockTrackerB);
@@ -3071,14 +3078,8 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
     tin.nFileEnd = in->nFileEnd;
     tin.iOrder = in->iOrder;
     tin.fExtraStore = in->fExtraStore;
-    tin.nDark = in->nDark;
-    tin.nGas = in->nGas;
-    tin.nStar = in->nStar;
     for(j = 0; j < 3; j++)
 		tin.fPeriod[j] = in->fPeriod[j];
-    tin.bStandard = 0;
-    tin.dvFac = 1;
-    tin.dTuFac = 1;
 
     pstOneNodeReadInit(msr->pst, &tin, sizeof(tin), nParts, &nid);
     assert(nid == msr->nThreads*sizeof(*nParts));
@@ -3467,7 +3468,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	_msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
 	pszFdl = getenv("PKDGRAV_CHECKPOINT_FDL");
 	if (pszFdl == NULL) {
-          fprintf(stderr,"PKDGRAV_CHECKPOINT_FDL environment variable not set\n");
+          fprintf(stderr,"PKDGRAV_CHECKPOINT_FDL environment variable not set: no Checkpoint written\n");
           return;
         }	  
 	fdl = FDL_create(achOutFile,pszFdl);
