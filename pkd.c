@@ -459,6 +459,8 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pb
 		pbndActive->fMax[j] = -FLOAT_MAXVAL;
 		pbndTreeActive->fMin[j] = FLOAT_MAXVAL;
 		pbndTreeActive->fMax[j] = -FLOAT_MAXVAL;
+		pbndBall->fMin[j] = FLOAT_MAXVAL;
+		pbndBall->fMax[j] = -FLOAT_MAXVAL;
 		}
 	/*
 	 ** Calculate Local Bounds.
