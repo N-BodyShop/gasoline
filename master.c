@@ -245,7 +245,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
         
 	pstInitialize(&msr->pst,msr->mdl,&msr->lcl);
 
-	AddServices(msr->mdl,msr->pst);
+	pstAddServices(msr->pst,msr->mdl);
 	/*
 	 ** Create the processor subset tree.
 	 */

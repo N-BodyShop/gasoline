@@ -45,6 +45,7 @@ typedef struct pstContext {
 #define PST_SERVICES		50
 #define PST_FILENAME_SIZE	512
 
+void pstAddServices(PST,MDL);
 void pstInitialize(PST *,MDL,LCL *);
 void pstFinish(PST);
 

@@ -11,6 +11,81 @@
 #include "smooth.h"
 
 
+void pstAddServices(PST pst,MDL mdl)
+{
+	int nThreads,nCell;
+
+	nThreads = mdlThreads(mdl);
+	mdlAddService(mdl,PST_SETADD,pst,pstSetAdd,
+				  sizeof(struct inSetAdd),0);
+	mdlAddService(mdl,PST_LEVELIZE,pst,pstLevelize,
+				  sizeof(struct inLevelize),0);
+	mdlAddService(mdl,PST_READTIPSY,pst,pstReadTipsy,
+				  sizeof(struct inReadTipsy),0);
+	mdlAddService(mdl,PST_DOMAINDECOMP,pst,pstDomainDecomp,
+				  0,0);
+	mdlAddService(mdl,PST_CALCBOUND,pst,pstCalcBound,
+				  0,sizeof(struct outCalcBound));
+	mdlAddService(mdl,PST_WEIGHT,pst,pstWeight,
+				  sizeof(struct inWeight),sizeof(struct outWeight));
+	mdlAddService(mdl,PST_FREESTORE,pst,pstFreeStore,
+				  0,sizeof(struct outFreeStore));
+	mdlAddService(mdl,PST_COLREJECTS,pst,pstColRejects,
+				  sizeof(struct inColRejects),nThreads*sizeof(OREJ));
+	mdlAddService(mdl,PST_SWAPREJECTS,pst,pstSwapRejects,
+				  nThreads*sizeof(int),nThreads*sizeof(OREJ));
+	mdlAddService(mdl,PST_DOMAINCOLOR,pst,pstDomainColor,
+				  0,0);
+	mdlAddService(mdl,PST_COLORDREJECTS,pst,pstColOrdRejects,
+				  sizeof(struct inColOrdRejects),nThreads*sizeof(OREJ));
+	mdlAddService(mdl,PST_DOMAINORDER,pst,pstDomainOrder,
+				  0,0);
+	mdlAddService(mdl,PST_LOCALORDER,pst,pstLocalOrder,
+				  0,0);
+	mdlAddService(mdl,PST_OUTARRAY,pst,pstOutArray,
+				  sizeof(struct inOutArray),0);
+	mdlAddService(mdl,PST_OUTVECTOR,pst,pstOutVector,
+				  sizeof(struct inOutVector),0);
+	mdlAddService(mdl,PST_WRITETIPSY,pst,pstWriteTipsy,
+				  sizeof(struct inWriteTipsy),0);
+	mdlAddService(mdl,PST_BUILDTREE,pst,pstBuildTree,
+				  sizeof(struct inBuildTree),sizeof(struct outBuildTree));
+	mdlAddService(mdl,PST_DENSITY,pst,pstDensity,
+				  sizeof(struct inDensity),0);
+	mdlAddService(mdl,PST_GRAVITY,pst,pstGravity,
+				  sizeof(struct inGravity),sizeof(struct outGravity));
+	mdlAddService(mdl,PST_CALCE,pst,pstCalcE,
+				  0,sizeof(struct outCalcE));
+	mdlAddService(mdl,PST_DRIFT,pst,pstDrift,
+				  sizeof(struct inDrift),0);
+	mdlAddService(mdl,PST_KICK,pst,pstKick,
+				  sizeof(struct inKick),0);
+	mdlAddService(mdl,PST_READCHECK,pst,pstReadCheck,
+				  sizeof(struct inReadCheck),0);
+	mdlAddService(mdl,PST_WRITECHECK,pst,pstWriteCheck,
+				  sizeof(struct inWriteCheck),0);
+	mdlAddService(mdl,PST_SETSOFT,pst,pstSetSoft,
+				  sizeof(struct inSetSoft),0);
+	mdlAddService(mdl,PST_SETTOTAL,pst,pstSetTotal,
+				  0,sizeof(struct outSetTotal));
+	mdlAddService(mdl,PST_CALCCELL,pst,pstCalcCell,
+				  sizeof(struct inCalcCell),sizeof(struct outCalcCell));
+	/*
+	 ** Calculate the number of levels in the top tree and use it to 
+	 ** define the size of the messages.
+	 */
+	nCell = 1<<(1+(int)ceil(log(nThreads)/log(2.0)));
+	mdlAddService(mdl,PST_COLCELLS,pst,pstColCells,
+				  sizeof(struct inColCells),nCell*sizeof(KDN));
+	mdlAddService(mdl,PST_DISTRIBCELLS,pst,pstDistribCells,
+				  nCell*sizeof(KDN),0);
+	mdlAddService(mdl,PST_CALCROOT,pst,pstCalcRoot,
+				  0,sizeof(struct ioCalcRoot));
+	mdlAddService(mdl,PST_DISTRIBROOT,pst,pstDistribRoot,
+				  sizeof(struct ioCalcRoot),0);
+	}
+
+
 void pstInitialize(PST *ppst,MDL mdl,LCL *plcl)
 {
 	PST pst;
