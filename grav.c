@@ -14,9 +14,6 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 	double fPot,ax,ay,az;
 	double x,y,z,dx,dy,dz,d2,h,twoh,a,b,c,d;
 	double qirx,qiry,qirz,qir,tr,qir3;
-#if 0
-        double fIMass;
-#endif
 
 	/*
 	 ** Now process the two interaction lists for each particle.
@@ -31,9 +28,6 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 		ay = 0.0;
 		az = 0.0;
 		fPot = 0.0;
-#if 0
-                fIMass = p[i].fMass;
-#endif
 		x = p[i].r[0];
 		y = p[i].r[1];
 		z = p[i].r[2];
@@ -51,41 +45,53 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 			ax -= dx*b;
 			ay -= dy*b;
 			az -= dz*b;
-#if 0
-			fIMass += ilp[j].m;
-#endif
 			}
-		for (j=0;j<pkd->nCell;++j) {
-			dx = x - ilc[j].x;
-			dy = y - ilc[j].y;
-			dz = z - ilc[j].z;
-			d2 = dx*dx + dy*dy + dz*dz;
-			twoh = h + ilc[j].h;
-			SPLINE(d2,twoh,a,b,c,d);
-#if 0
-			fIMass += ilc[j].m;
-#endif
+		if (pkd->iOrder == 2) {	
 			/*
-			 ** Monopole and Quadrupole interaction.
+			 ** Monopole and Quadrupole interactions.
 			 */
-			qirx = ilc[j].xx*dx + ilc[j].xy*dy + ilc[j].xz*dz;
-			qiry = ilc[j].xy*dx + ilc[j].yy*dy + ilc[j].yz*dz;
-			qirz = ilc[j].xz*dx + ilc[j].yz*dy + ilc[j].zz*dz;
-			qir = 0.5*(qirx*dx + qiry*dy + qirz*dz);
-			tr = 0.5*(ilc[j].xx + ilc[j].yy + ilc[j].zz);
-			qir3 = b*ilc[j].m + d*qir - c*tr;
-			fPot -= a*ilc[j].m + c*qir - b*tr;
-			ax -= qir3*dx - c*qirx;
-			ay -= qir3*dy - c*qiry;
-			az -= qir3*dz - c*qirz;
+			for (j=0;j<pkd->nCell;++j) {
+				dx = x - ilc[j].x;
+				dy = y - ilc[j].y;
+				dz = z - ilc[j].z;
+				d2 = dx*dx + dy*dy + dz*dz;
+				twoh = h + ilc[j].h;
+				SPLINE(d2,twoh,a,b,c,d);
+				qirx = ilc[j].xx*dx + ilc[j].xy*dy + ilc[j].xz*dz;
+				qiry = ilc[j].xy*dx + ilc[j].yy*dy + ilc[j].yz*dz;
+				qirz = ilc[j].xz*dx + ilc[j].yz*dy + ilc[j].zz*dz;
+				qir = 0.5*(qirx*dx + qiry*dy + qirz*dz);
+				tr = 0.5*(ilc[j].xx + ilc[j].yy + ilc[j].zz);
+				qir3 = b*ilc[j].m + d*qir - c*tr;
+				fPot -= a*ilc[j].m + c*qir - b*tr;
+				ax -= qir3*dx - c*qirx;
+				ay -= qir3*dy - c*qiry;
+				az -= qir3*dz - c*qirz;
+				}
+			}
+		else {
+			/*
+			 ** Monopole interactions.
+			 */
+			for (j=0;j<pkd->nCell;++j) {
+				dx = x - ilc[j].x;
+				dy = y - ilc[j].y;
+				dz = z - ilc[j].z;
+				d2 = dx*dx + dy*dy + dz*dz;
+				twoh = h + ilc[j].h;
+				SPLINE(d2,twoh,a,b,c,d);
+				a *= ilc[j].m;
+				b *= ilc[j].m;
+				fPot -= a;
+				ax -= dx*b;
+				ay -= dy*b;
+				az -= dz*b;
+				}
 			}
 		p[i].fPot = fPot;
 		p[i].a[0] = ax;
 		p[i].a[1] = ay;
 		p[i].a[2] = az;
-#if 0
-		p[i].fIMass = fIMass;
-#endif
 		}
 	/*
 	 ** Do the inter-bucket interactions.
@@ -102,16 +108,10 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 			p[j].a[0] -= dx*b*p[i].fMass;
 			p[j].a[1] -= dy*b*p[i].fMass;
 			p[j].a[2] -= dz*b*p[i].fMass;
-#if 0
-			p[j].fIMass += p[i].fMass;
-#endif
 			p[i].fPot -= a*p[j].fMass;
 			p[i].a[0] += dx*b*p[j].fMass;
 			p[i].a[1] += dy*b*p[j].fMass;
 			p[i].a[2] += dz*b*p[j].fMass;
-#if 0
-			p[i].fIMass += p[j].fMass;
-#endif
 			}
 		}
 	}

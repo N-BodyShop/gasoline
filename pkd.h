@@ -34,9 +34,6 @@ typedef struct particle {
 	float fBall2;
 	float fDensity;
 	float fColor;
-#if 0
-        float fIMass;
-#endif
 	} PARTICLE;
 
 typedef struct bndBound {

@@ -364,7 +364,7 @@ int pkdColOrdRejects(PKD pkd,int nOrdSplit,int iSplitSide)
 	}
 
 
-int _pkdCmp(const void *pva,const void *pvb)
+int cmpParticles(const void *pva,const void *pvb)
 {
 	PARTICLE *pa = (PARTICLE *)pva;
 	PARTICLE *pb = (PARTICLE *)pvb;
@@ -400,9 +400,13 @@ void _pkdOrder(PKD pkd,PARTICLE *pTemp,int nStart,int i,int j)
 
 void pkdLocalOrder(PKD pkd,int nStart)
 {
-	PARTICLE pTemp[PKD_ORDERTEMP];
-
-	_pkdOrder(pkd,pTemp,nStart,0,pkd->nLocal-1);
+	/*
+	 ** My ordering function seems to break on some machines, but
+	 ** I still don't understand why. Use qsort instead.
+	 **	PARTICLE pTemp[PKD_ORDERTEMP];
+	 ** _pkdOrder(pkd,pTemp,nStart,0,pkd->nLocal-1);
+	 */
+	qsort(pkd->pStore,pkdLocal(pkd),sizeof(PARTICLE),cmpParticles);
 	}
 
 
@@ -487,7 +491,7 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 		pOut->r[j] = (p1->fMass*p1->r[j] + p2->fMass*p2->r[j])/pOut->fMass;
 		}
 	/*
-	 ** Calculate the quadrupole, octopole and hexadecapole moment tensors.
+	 ** Calculate the quadrupole moment tensor.
 	 */
 	p = p1;
 	dx = p->r[0] - pOut->r[0];

@@ -81,7 +81,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 				"oc","<number of timesteps between checkpoints> = 10");
 	msr->param.iOrder = 2;
 	prmAddParam(msr->prm,"iOrder",1,&msr->param.iOrder,"or",
-				"<multipole expansion order: 1, 2, or 3> = 2");
+				"<multipole expansion order: 1 or 2> = 2");
 	msr->param.nReplicas = 0;
 	prmAddParam(msr->prm,"nReplicas",1,&msr->param.nReplicas,"nrep",
 				"<nReplicas> = 0 for -p, or 1 for +p");
