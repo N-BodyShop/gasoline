@@ -101,9 +101,13 @@ int main(int argc,char **argv)
 #endif /* COLLISIONS */
 			}
 		if(msrKDK(msr) || msr->param.bEpsVel) {
+			msrInitAccel(msr);
+#ifdef GASOLINE
+			msrInitSph(msr, dTime);
+#endif
+			msrActiveRung(msr,0,1);
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree");
-			msrInitAccel(msr);
 			if (msrDoGravity(msr)) {
 				msrGravity(msr,iStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 				}
@@ -197,7 +201,8 @@ int main(int argc,char **argv)
 		
 		fprintf(stderr,"WallRunTime: %d\n",msr->param.iWallRunTime);
 
-		for (iStep=1;iStep<=msrSteps(msr);++iStep) {
+		for (iStep=msr->param.iStartStep+1;
+		     iStep<=msrSteps(msr); ++iStep) {
 			if (msrComove(msr)) {
 				msrSwitchTheta(msr,dTime);
 				}

@@ -154,6 +154,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.nBucket = 8;
 	prmAddParam(msr->prm,"nBucket",1,&msr->param.nBucket,sizeof(int),"b",
 				"<max number of particles in a bucket> = 8");
+        msr->param.iStartStep = 0;
+        prmAddParam(msr->prm,"iStartStep",1,&msr->param.iStartStep,
+                     sizeof(int),"nstart","<initial step numbering> = 0");
 	msr->param.nSteps = 0;
 	prmAddParam(msr->prm,"nSteps",1,&msr->param.nSteps,sizeof(int),"n",
 				"<number of timesteps> = 0");
@@ -760,7 +763,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," nReplicas: %d",msr->param.nReplicas);
 	fprintf(fp,"\n# dEwCut: %f",msr->param.dEwCut);
 	fprintf(fp," dEwhCut: %f",msr->param.dEwhCut);
-	fprintf(fp,"\n# nSteps: %d",msr->param.nSteps);
+        fprintf(fp,"\n# iStartStep: %d",msr->param.iStartStep);
+	fprintf(fp," nSteps: %d",msr->param.nSteps);
 	fprintf(fp," nSmooth: %d",msr->param.nSmooth);
 	fprintf(fp," dExtraStore: %f",msr->param.dExtraStore);
 	if (prmSpecified(msr->prm,"dSoft"))
@@ -788,7 +792,7 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef GASOLINE
 	fprintf(fp,"\n# SPH: bGeometric: %d",msr->param.bGeometric);
-	fprintf(fp," iGasModel: %g",msr->param.iGasModel);
+	fprintf(fp," iGasModel: %d",msr->param.iGasModel);
 	fprintf(fp," dConstAlpha: %g",msr->param.dConstAlpha);
 	fprintf(fp," dConstBeta: %g",msr->param.dConstBeta);
 	fprintf(fp," dConstGamma: %g",msr->param.dConstGamma);
@@ -1064,7 +1068,7 @@ double msrReadTipsy(MSR msr)
 	msr->nStar = h.nstar;
 	msr->nMaxOrder = msr->N - 1;
 	msr->nMaxOrderGas = msr->nGas - 1;
-	msr->nMaxOrderDark = msr->nDark - 1;
+	msr->nMaxOrderDark = msr->nGas + msr->nDark - 1;
 #ifdef GASOLINE
 	assert(msr->N == msr->nDark+msr->nGas+msr->nStar);
 #else
@@ -1108,7 +1112,10 @@ double msrReadTipsy(MSR msr)
 					_msrExit(msr);
 					}
 				if(msr->param.nSteps != 0)
-				    msr->param.dDelta = (tTo-dTime)/msr->param.nSteps;
+				    msr->param.dDelta =
+					(tTo-dTime)/(msr->param.nSteps -
+						     msr->param.iStartStep);
+				
 				else
 				    msr->param.dDelta = 0.0;
 				}
@@ -1137,7 +1144,9 @@ double msrReadTipsy(MSR msr)
 					_msrExit(msr);
 					}
 				if(msr->param.nSteps != 0)
-				    msr->param.dDelta = (tTo-dTime)/msr->param.nSteps;
+				    msr->param.dDelta =
+					(tTo-dTime)/(msr->param.nSteps
+						     - msr->param.iStartStep);
 				else
 				    msr->param.dDelta = 0.0;
 				}

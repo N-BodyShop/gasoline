@@ -43,6 +43,7 @@ struct parameters {
 	int iOrder;
 	int iEwOrder;
 	int nReplicas;
+        int iStartStep;
 	int nSteps;
 	int nSmooth;
 	int iMaxRung;
