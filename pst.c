@@ -143,9 +143,6 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_CURRRUNG,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstCurrRung,
 				  sizeof(struct inCurrRung),sizeof(struct outCurrRung));
-	mdlAddService(mdl,PST_SPHCURRRUNG,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstSphCurrRung,
-				  sizeof(struct inSphCurrRung),sizeof(struct outSphCurrRung));
 	mdlAddService(mdl,PST_DENSITYSTEP,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstDensityStep,
 				  sizeof(struct inDensityStep),0);
@@ -207,6 +204,9 @@ void pstAddServices(PST pst,MDL mdl)
 				  (void (*)(void *,void *,int,void *,int *)) pstInitDt,
 				  sizeof(struct inInitDt),0);
 #ifdef GASOLINE
+	mdlAddService(mdl,PST_SPHCURRRUNG,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSphCurrRung,
+				  sizeof(struct inSphCurrRung),sizeof(struct outSphCurrRung));
 	mdlAddService(mdl,PST_GETGASPRESSURE,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGetGasPressure,
 				  sizeof(struct inGetGasPressure),0);
@@ -3015,7 +3015,7 @@ void pstSphStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant);
+		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot);
 		}
 	if (pnOut) *pnOut = 0;
 	}

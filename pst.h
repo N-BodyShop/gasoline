@@ -824,6 +824,7 @@ void pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 struct inSphStep {
     double dCosmoFac;
     double dEtaCourant;
+    double dEtauDot;
     };
 void pstSphStep(PST,void *,int,void *,int *);
 

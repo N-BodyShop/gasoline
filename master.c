@@ -192,10 +192,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"<time step>");
 	msr->param.dEta = 0.1;
 	prmAddParam(msr->prm,"dEta",2,&msr->param.dEta,sizeof(double),"eta",
-				"<time step criterion>");
+				"<time step criterion> = 0.1");
 	msr->param.dEtaCourant = 0.4;
 	prmAddParam(msr->prm,"dEtaCourant",2,&msr->param.dEtaCourant,sizeof(double),"etaC",
-				"<Courant criterion>");
+				"<Courant criterion> = 0.4");
+	msr->param.dEtauDot = 0.1;
+	prmAddParam(msr->prm,"dEtauDot",2,&msr->param.dEtauDot,sizeof(double),"etau",
+				"<uDot criterion> = 0.1");
 	msr->param.duDotLimit = -0.2;
 	prmAddParam(msr->prm,"duDotLimit",2,&msr->param.duDotLimit,sizeof(double),"uDL",
 				"<uDotLimit:  Treat udot/u < duDotLimit specially> = -0.2 < 0");
@@ -3917,6 +3920,7 @@ void msrSphStep(MSR msr, double dTime)
 
     in.dCosmoFac = csmTime2Exp(msr->param.csm, dTime);
     in.dEtaCourant = msrEtaCourant(msr);
+    in.dEtauDot = msr->param.dEtauDot;
     pstSphStep(msr->pst, &in, sizeof(in), NULL, NULL);
     }
 

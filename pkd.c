@@ -3421,11 +3421,11 @@ int pkdSphCurrRung(PKD pkd, int iRung, int bGreater)
     }
 
 void
-pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant)
+pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot)
 {
     int i;
     PARTICLE *p;    
-    double dT;
+    double dT,dTu;
 
     for(i = 0; i < pkdLocal(pkd); ++i) {
         p = &pkd->pStore[i];
@@ -3438,6 +3438,11 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant)
 	       else
                         dT = dEtaCourant*dCosmoFac*( sqrt(0.25*p->fBall2)/(1.6*p->c) );
 
+	       if (dEtauDot > 0.0 && p->PdV != 0.0) {
+		 dTu = dEtauDot*p->u/fabs(p->PdV);
+		 if (dTu < dT) 
+		        dT = dTu;
+	       }
 #ifdef DEBUG	      
 	       if ((p->iOrder % 300) == 0 || dT<1e-6) 
 		        printf("dt_C %i: %i %i %i %f %f %f %f %f %f   dT_c %g\n",

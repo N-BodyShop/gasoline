@@ -63,10 +63,10 @@ int main(int argc,char **argv)
 	    }
 	first = 0;
 #endif /* TINY_PTHREAD_STACK */
-        /*
-	setbuf(stdout,(char *) NULL); 
-	*/
+#ifndef CCC
 	/* no stdout buffering */
+	setbuf(stdout,(char *) NULL); 
+#endif
 
 	lStart=time(0);
 	mdlInitialize(&mdl,argv,main_ch);
@@ -338,6 +338,7 @@ int main(int argc,char **argv)
 				        msrReorder(msr);
 					msrOutArray(msr,achFile,OUT_H_ARRAY);
 					}
+#ifdef GASOLINE				
 				if (msr->param.bDoIonOutput) {
 				        msrReorder(msr);
 					sprintf(achFile,"%s.%05d.HI",msrOutName(msr),iStep);
@@ -347,6 +348,7 @@ int main(int argc,char **argv)
 					sprintf(achFile,"%s.%05d.HeII",msrOutName(msr),iStep);
 					msrOutArray(msr,achFile,OUT_HeII_ARRAY);
 					}
+#endif
 				/*
 				 ** Don't allow duplicate outputs.
 				 */
@@ -390,6 +392,7 @@ int main(int argc,char **argv)
 				                msrReorder(msr);
 					        msrOutArray(msr,achFile,OUT_H_ARRAY);
 					        }
+#ifdef GASOLINE				
 				        if (msr->param.bDoIonOutput) {
 				                msrReorder(msr);
 						sprintf(achFile,"%s.%05d.HI",msrOutName(msr),iStep);
@@ -399,6 +402,7 @@ int main(int argc,char **argv)
 						sprintf(achFile,"%s.%05d.HeII",msrOutName(msr),iStep);
 						msrOutArray(msr,achFile,OUT_HeII_ARRAY);
 					        }
+#endif
 					}
 				}
 			if (msr->param.iWallRunTime > 0) {
@@ -502,6 +506,7 @@ int main(int argc,char **argv)
 			msrReorder(msr);
 			msrOutArray(msr,achFile,OUT_H_ARRAY);
 		        }
+#ifdef GASOLINE				
                 if (msr->param.bDoIonOutput) {
 			msrReorder(msr);
                         sprintf(achFile,"%s.%05d.HI",msrOutName(msr),iStep);
@@ -511,6 +516,7 @@ int main(int argc,char **argv)
 			sprintf(achFile,"%s.%05d.HeII",msrOutName(msr),iStep);
 			msrOutArray(msr,achFile,OUT_HeII_ARRAY);
 			}
+#endif
 		}
 	msrFinish(msr);
 	mdlFinish(mdl);

@@ -87,6 +87,7 @@ struct parameters {
 	int bGeometric;
         int iGasModel;
 	double dEtaCourant;
+	double dEtauDot;
         double duDotLimit;
 	double dConstAlpha;
 	double dConstBeta;
