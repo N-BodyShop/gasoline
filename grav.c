@@ -133,6 +133,10 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			az -= qir3*dz - c*qirz;
 			}
 		/*
+		 ** Try a cache check to improve responsiveness?
+		 */
+		mdlCacheCheck(pkd->mdl);
+		/*
 		 ** Scoring for CellNewt (+,*)
 		 ** 	Without sqrt = (5,13)
 		 **     1/sqrt est.  = (6,11)
@@ -177,8 +181,8 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 		p[i].a[2] += az;
 		/*
 		 ** Try a cache check to improve responsiveness?
-		 ** mdlCacheCheck(pkd->mdl);
 		 */
+		mdlCacheCheck(pkd->mdl);
 		}
 	/*
 	 ** Do the intra-bucket interactions.
