@@ -38,9 +38,9 @@ mdl:
 	cd $(MDL); aimk
 
 pkdgrav: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
-	ewald.o walk.o v_sqrt1.o
+	ewald.o walk.o v_sqrt1.o eccanom.o hypanom.o
 	$(CC) $(CFLAGS) -o pkdgrav main.o master.o param.o outtype.o pkd.o \
-	 pst.o grav.o ewald.o walk.o v_sqrt1.o $(LIBLRU)
+	 pst.o grav.o ewald.o walk.o v_sqrt1.o eccanom.o hypanom.o $(LIBLRU)
 	mv -f pkdgrav $(XDIR)
 
 main.o: $(SDIR)/main.c
@@ -72,6 +72,12 @@ walk.o: $(SDIR)/walk.c
 
 v_sqrt1.o: $(SDIR)/v_sqrt1.c
 	$(CC) $(CFLAGS) -c $(SDIR)/v_sqrt1.c
+
+eccanom.o: $(SDIR)/eccanom.c
+	$(CC) $(CFLAGS) -c $(SDIR)/eccanom.c
+
+hypanom.o: $(SDIR)/hypanom.c
+	$(CC) $(CFLAGS) -c $(SDIR)/hypanom.c
 
 
 

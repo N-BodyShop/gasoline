@@ -102,6 +102,16 @@ void main(int argc,char **argv)
 		while (msrRedshift(msr) <= msrRedOut(msr,iRed)) ++iRed;
 		goto Restart;
 		}
+	/*
+	 ** Read in the binary file, this may set the number of timesteps or
+	 ** the size of the timestep when the zto parameter is used.
+	 */
+	dTime = msrReadTipsy(msr);
+	if(prmArgSpecified(msr->prm,"dSoft")) msrSetSoft(msr,msrSoft(msr));
+	/*
+	 ** Now we have all the parameters for the simulation we can make a 
+	 ** log file entry.
+	 */
 	sprintf(achFile,"%s.log",msrOutName(msr));
 	fpLog = fopen(achFile,"w");
 	assert(fpLog != NULL);
@@ -113,12 +123,9 @@ void main(int argc,char **argv)
 	for (i=0;i<argc;++i) fprintf(fpLog,"%s ",argv[i]);
 	fprintf(fpLog,"\n");
 	fflush(fpLog);
-
 	msrLogParams(msr, fpLog);
 
-	dTime = msrReadTipsy(msr);
 	if (msrComove(msr)) msrStepCosmo(msr,dTime);
-	if(prmArgSpecified(msr->prm,"dSoft")) msrSetSoft(msr,msrSoft(msr));
 
 	msrBuildTree(msr);
 	msrGravity(msr,&iSec,&dWMax,&dIMax,&dEMax);

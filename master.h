@@ -17,8 +17,18 @@ typedef struct msrContext {
 	MDL mdl;
 	LCL lcl;
 	float fCenter[3];
-	struct parameters param;
+	/*
+	 ** Parameters.
+	 */
+	struct parameters param;	   
+	/*
+	 ** Parameters not in checkpoint file!
+	 */
 	int bStandard;
+	double dRedTo;
+	/*
+	 ** Other stuff...
+	 */
 	int nThreads;
 	int N;
 	int iOpenType;

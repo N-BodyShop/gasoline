@@ -20,9 +20,10 @@ mdl:
 	cd $(MDL); make
 
 pkdgrav : main.o master.o param.o pst.o pkd.o outtype.o \
-	grav.o ewald.o erf.o walk.o $(LD_MDL) $(MDL)/mdl.c $(MDL)/mdl.h
+	grav.o ewald.o erf.o walk.o eccanom.o hypanom.o \
+	$(LD_MDL) $(MDL)/mdl.c $(MDL)/mdl.h
 	cc $(LD_FLAGS) -o pkdgrav main.o master.o param.o pst.o pkd.o \
-    	outtype.o grav.o ewald.o erf.o walk.o $(LD_LIBS)
+    	outtype.o grav.o ewald.o erf.o walk.o eccanom.o hypanom.o $(LD_LIBS)
 
 main.o: main.c
 	cc $(CC_FLAGS) -c main.c
@@ -53,6 +54,12 @@ erf.o: erf.c
 
 walk.o: walk.c
 	cc $(CC_FLAGS) -c walk.c
+
+eccanom.o: eccanom.c
+	cc $(CC_FLAGS) -c eccanom.c
+
+hypanom.o: hypanom.c
+	cc $(CC_FLAGS) -c hypanom.c
 
 
 

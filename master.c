@@ -70,15 +70,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.bRestart = 0;
 	prmAddParam(msr->prm,"bRestart",0,&msr->param.bRestart,"restart",
 				"restart from checkpoint");
-	/*
-	 ** Added bStandard as a new parameter, but can't add it to 
-	 ** msr->params because this would change the checkpoint 
-	 ** format. Need to generalize the checkpoint format to handle
-	 ** these types of changes!
-	 */
-	msr->bStandard = 0;
-	prmAddParam(msr->prm,"bStandard",0,&msr->bStandard,"std",
-				"output in standard TIPSY binary format");
 	msr->param.nBucket = 8;
 	prmAddParam(msr->prm,"nBucket",1,&msr->param.nBucket,"b",
 				"<max number of particles in a bucket> = 8");
@@ -156,6 +147,19 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.bGatherScatter = 1;
 	prmAddParam(msr->prm,"bGatherScatter",0,&msr->param.bGatherScatter,"gs",
 				"gather-scatter/gather-only smoothing kernel = +gs");
+	/*
+	 ** Added bStandard as a new parameter, but can't add it to 
+	 ** msr->params because this would change the checkpoint 
+	 ** format. Need to generalize the checkpoint format to handle
+	 ** these types of changes!
+	 ** Now also dRedTo...
+	 */
+	msr->bStandard = 0;
+	prmAddParam(msr->prm,"bStandard",0,&msr->bStandard,"std",
+				"output in standard TIPSY binary format");
+	msr->dRedTo = 0.0;	
+	prmAddParam(msr->prm,"dRedTo",2,&msr->dRedTo,"zto",
+				"specifies final redshift for the simulation");
 	/*
 	 ** Set the box center to (0,0,0) for now!
 	 */
@@ -331,17 +335,112 @@ void msrFinish(MSR msr)
 	}
 
 
-double Expand2Time(double dExpansion,double dHubble0)
+/*
+ ** Link with code from file eccanom.c and hypanom.c.
+ */
+double dEccAnom(double,double);
+double dHypAnom(double,double);
+
+double msrTime2Exp(MSR msr,double dTime)
 {
-    if (dHubble0==0.0) return(0.0);
-    else return(2.0/(3.0*dHubble0)*pow(dExpansion,1.5));
+	double dOmega0 = msr->param.dOmega0;
+	double dHubble0 = msr->param.dHubble0;
+	double a0,A,B,eta;
+
+	if (!msr->param.bComove) return(1.0);
+	if (dOmega0 == 1.0) {
+		assert(dHubble0 > 0.0);
+		if (dTime == 0.0) return(0.0);
+		return(pow(3.0*dHubble0*dTime/2.0,2.0/3.0));
+		}
+	else if (dOmega0 > 1.0) {
+		assert(dHubble0 >= 0.0);
+		if (dHubble0 == 0.0) {
+			B = 1.0/sqrt(dOmega0);
+			eta = dEccAnom(dTime/B,1.0);
+			return(1.0-cos(eta));
+			}
+		if (dTime == 0.0) return(0.0);
+		a0 = 1.0/dHubble0/sqrt(dOmega0-1.0);
+		A = 0.5*dOmega0/(dOmega0-1.0);
+		B = A*a0;
+		eta = dEccAnom(dTime/B,1.0);
+		return(A*(1.0-cos(eta)));
+		}
+	else if (dOmega0 > 0.0) {
+		assert(dHubble0 > 0.0);
+		if (dTime == 0.0) return(0.0);
+		a0 = 1.0/dHubble0/sqrt(1.0-dOmega0);
+		A = 0.5*dOmega0/(1.0-dOmega0);
+		B = A*a0;
+		eta = dHypAnom(dTime/B,1.0);
+		return(A*(cosh(eta)-1.0));
+		}
+	else if (dOmega0 == 0.0) {
+		assert(dHubble0 > 0.0);
+		if (dTime == 0.0) return(0.0);
+		return(dTime*dHubble0);
+		}
+	else {
+		/*
+		 ** Bad value.
+		 */
+		assert(0);
+		}
 	}
 
 
-double Time2Expand(double dTime,double dHubble0)
+double msrExp2Time(MSR msr,double dExp)
 {
-	if (dHubble0==0.0 || dTime==0.0) return(1.0);
-	else return(pow(3.0*dHubble0*dTime/2.0,2.0/3.0));
+	double dOmega0 = msr->param.dOmega0;
+	double dHubble0 = msr->param.dHubble0;
+	double a0,A,B,eta;
+
+	if (!msr->param.bComove) {
+		/*
+		 ** Invalid call!
+		 */
+		assert(0);
+		}
+	if (dOmega0 == 1.0) {
+		assert(dHubble0 > 0.0);
+		if (dExp == 0.0) return(0.0);
+		return(2.0/(3.0*dHubble0)*pow(dExp,1.5));
+		}
+	else if (dOmega0 > 1.0) {
+		assert(dHubble0 >= 0.0);
+		if (dHubble0 == 0.0) {
+			B = 1.0/sqrt(dOmega0);
+			eta = acos(1.0-dExp); 
+			return(B*(eta-sin(eta)));
+			}
+		if (dExp == 0.0) return(0.0);
+		a0 = 1.0/dHubble0/sqrt(dOmega0-1.0);
+		A = 0.5*dOmega0/(dOmega0-1.0);
+		B = A*a0;
+		eta = acos(1.0-dExp/A);
+		return(B*(eta-sin(eta)));
+		}
+	else if (dOmega0 > 0.0) {
+		assert(dHubble0 > 0.0);
+		if (dExp == 0.0) return(0.0);
+		a0 = 1.0/dHubble0/sqrt(1.0-dOmega0);
+		A = 0.5*dOmega0/(1.0-dOmega0);
+		B = A*a0;
+		eta = acosh(dExp/A+1.0);
+		return(B*(sinh(eta)-eta));
+		}
+	else if (dOmega0 == 0.0) {
+		assert(dHubble0 > 0.0);
+		if (dExp == 0.0) return(0.0);
+		return(dExp/dHubble0);
+		}
+	else {
+		/*
+		 ** Bad value.
+		 */
+		assert(0);
+		}	
 	}
 
 
@@ -353,7 +452,7 @@ double msrReadTipsy(MSR msr)
 	char achInFile[PST_FILENAME_SIZE];
 	int j;
 	LCL *plcl = msr->pst->plcl;
-	double dTime;
+	double dTime,aTo,tTo;
 	
 	if (msr->param.achInFile[0]) {
 		/*
@@ -396,27 +495,61 @@ double msrReadTipsy(MSR msr)
 	msr->N = h.nbodies;
 	assert(msr->N == h.ndark);
 	if (msr->param.bComove) {
-                if(msr->param.dHubble0 == 0.0) {
-                    printf("No hubble constant specified\n");
-                    msrFinish(msr);
-                    mdlFinish(msr->mdl);
-                    exit(1);
-                    }
-		dTime = Expand2Time(h.time,msr->param.dHubble0);
+		if(msr->param.dHubble0 == 0.0) {
+			printf("No hubble constant specified\n");
+			msrFinish(msr);
+			mdlFinish(msr->mdl);
+			exit(1);
+			}
+		dTime = msrExp2Time(msr,h.time);
 		msr->dRedshift = 1.0/h.time - 1.0;
+		printf("Input file, Time:%g Redshift:%g Expansion factor:%g\n",
+			   dTime,msr->dRedshift,h.time);
+		if (prmArgSpecified(msr->prm,"dRedTo")) {
+			if (!prmArgSpecified(msr->prm,"nSteps") &&
+				prmArgSpecified(msr->prm,"dDelta")) {
+				aTo = 1.0/(msr->dRedTo + 1.0);
+				tTo = msrTime2Exp(msr,aTo);
+				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
+					   tTo,1.0/aTo-1.0,aTo);
+				if (tTo < dTime) {
+					printf("Badly specified final redshift, check -zto parameter.\n");
+					msrFinish(msr);
+					mdlFinish(msr->mdl);
+					exit(1);
+					}
+				msr->param.nSteps = (int)ceil((tTo-dTime)/msr->param.dDelta);
+				}
+			else if (!prmArgSpecified(msr->prm,"dDelta") &&
+					 prmArgSpecified(msr->prm,"nSteps")) {
+				aTo = 1.0/(msr->dRedTo + 1.0);
+				tTo = msrTime2Exp(msr,aTo);
+				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
+					   tTo,1.0/aTo-1.0,aTo);
+				if (tTo < dTime) {
+					printf("Badly specified final redshift, check -zto parameter.\n");	
+					msrFinish(msr);
+					mdlFinish(msr->mdl);
+					exit(1);
+					}
+				msr->param.dDelta = (tTo-dTime)/msr->param.nSteps;
+				}
+			}
+		else {
+			tTo = dTime + msr->param.nSteps*msr->param.dDelta;
+			aTo = msrTime2Exp(msr,tTo);
+			printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
+				   tTo,1.0/aTo-1.0,aTo);
+			}
+		printf("Reading file...\nN:%d\n",msr->N);
 		}
 	else {
 		dTime = h.time;
 		msr->dRedshift = 0.0;
-		}
-	if (msr->param.bVerbose) {
-		if (msr->param.bComove) {
-			printf("Reading file...\nN:%d Time:%g Redshift:%g\n",msr->N,
-				   dTime,msr->dRedshift);
-			}
-		else {
-			printf("Reading file...\nN:%d Time:%g\n",msr->N,dTime);
-			}
+		printf("Input file, Time:%g\n",dTime);
+		tTo = dTime + msr->param.nSteps*msr->param.dDelta;
+		printf("Simulation to Time:%g\n",tTo);
+		printf("Reading file...\nN:%d Time:%g\n",msr->N,dTime);
 		}
 	in.nStart = 0;
 	in.nEnd = msr->N - 1;
@@ -504,7 +637,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	h.nsph = 0;
 	h.nstar = 0;
 	if (msr->param.bComove)
-	  h.time = Time2Expand(dTime,msr->param.dHubble0);
+	  h.time = msrTime2Exp(msr,dTime);
 	else
 	  h.time = dTime;
 	h.ndim = 3;
@@ -791,7 +924,7 @@ void msrStepCosmo(MSR msr,double dTime)
 {
 	double a;
 	
-	a = Time2Expand(dTime,msr->param.dHubble0);
+	a = msrTime2Exp(msr,dTime);
 	msr->dRedshift = 1.0/a - 1.0;
 	msr->dHubble = msr->param.dHubble0*(1.0+msr->dRedshift)*
 		sqrt(1.0+msr->param.dOmega0*msr->dRedshift);

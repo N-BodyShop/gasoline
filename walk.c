@@ -270,7 +270,7 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps)
 			rOffset[1] = iy*pkd->fPeriod[1];
 			for (iz=-nReps;iz<=nReps;++iz) {
 				rOffset[2] = iz*pkd->fPeriod[2];
-				bRep = (ix==0) && (iy==0) && (iz==0);
+				bRep = ix || iy || iz;
 				/*
 				 ** Walk the top tree first, finding local trees to
 				 ** continue walking.
