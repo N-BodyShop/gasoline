@@ -2180,9 +2180,11 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.z = 1/a - 1;
 		invpr.duDotLimit = msr->param.duDotLimit;
 		}
-	pstKickVpred(msr->pst,&invpr,sizeof(invpr),&out,NULL);
-	printf("Drift (Vpred): Avg Wallclock %f, Max Wallclock %f\n",
-	       out.SumTime/out.nSum,out.MaxTime);
+	if(dDelta != 0.0) {
+	    pstKickVpred(msr->pst,&invpr,sizeof(invpr),&out,NULL);
+	    printf("Drift (Vpred): Avg Wallclock %f, Max Wallclock %f\n",
+		   out.SumTime/out.nSum,out.MaxTime);
+	    }
 #endif
 	}
 
