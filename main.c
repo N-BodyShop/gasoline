@@ -37,6 +37,7 @@ void main(int argc,char **argv)
 	double dMultiEff;
 
 	mdlInitialize(&mdl,argv,main_ch);
+	for(argc = 0; argv[argc]; argc++); /* some MDLs can trash argv */
 	msrInitialize(&msr,mdl,argc,argv,"pkdgrav");
 	/*
 	 ** Check if a restart has been requested.
@@ -44,6 +45,7 @@ void main(int argc,char **argv)
 	 */
 	if (msrRestart(msr)) {
 		dTime = msrReadCheck(msr,&iStep);
+		msrInitStep(msr);
 		dMass = msrMassCheck(msr,-1.0,"Initial");
 		printf("Restart Step:%d\n",iStep);
 		sprintf(achFile,"%s.log",msrOutName(msr));
@@ -61,6 +63,7 @@ void main(int argc,char **argv)
 	 ** the size of the timestep when the zto parameter is used.
 	 */
 	dTime = msrReadTipsy(msr);
+	msrInitStep(msr);
 	dMass = msrMassCheck(msr,-1.0,"Initial");
 	if (prmSpecified(msr->prm,"dSoft")) msrSetSoft(msr,msrSoft(msr));
 	msrMassCheck(msr,dMass,"After msrSetSoft");
