@@ -11,10 +11,12 @@ void v_sqrt1(int n,double *r2,double *a)
 {
 	static int bInit = 0;
 	static double u[2048],t[2048];
-	static double g0,g1,g2,g3,g4,g5;
-	static int bLittleEndian;
+	double g0,g1,g2,g3,g4,g5;
+	static double sg0,sg1,sg2,sg3,sg4,sg5;
+	static int sbLittleEndian;
+	int bLittleEndian;
 	int i,it;
-	float x,s;
+	double x,s;
 
 	if (!bInit) {
 		double xi,pi,zero,factor,sum;		
@@ -30,7 +32,7 @@ void v_sqrt1(int n,double *r2,double *a)
 		 ** Determine the Endian'ness of the architecture.
 		 */
 		ue.s = 1;
-		bLittleEndian = (ue.c[sizeof(short) - 1] == 1)?0:1;
+		sbLittleEndian = (ue.c[sizeof(short) - 1] == 1)?0:1;
 		/*
 		 ** Initialize exponent tables.
 		 */
@@ -40,8 +42,10 @@ void v_sqrt1(int n,double *r2,double *a)
 		for (i=1;i<1024;++i) {
 			xi *= 0.5;
 			t[1023+i] = sqrt(xi);
+			if(xi != 0.0)
 			t[1023-i] = 1.0/t[1023+i];
 			u[1023+i] = xi;
+			if(xi != 0.0)
 			u[1023-i] = 1.0/xi;
 			}
 		/*
@@ -74,17 +78,39 @@ void v_sqrt1(int n,double *r2,double *a)
 		/*
 		 ** Get coefficients of powers of x on 1 < x < 2.
 		 */
-		g0 = d0 - 3*d1 +  9*d2 - 27*d3 +  81*d4 -  243*d5;
-		g1 =      2*d1 - 12*d2 + 54*d3 - 216*d4 +  810*d5;
-		g2 =              4*d2 - 36*d3 + 216*d4 - 1080*d5;
-		g3 =                      8*d3 -  96*d4 +  720*d5;
-		g4 =                              16*d4 -  240*d5;
-		g5 =                                        32*d5;
+		sg0 = d0 - 3*d1 +  9*d2 - 27*d3 +  81*d4 -  243*d5;
+		sg1 =      2*d1 - 12*d2 + 54*d3 - 216*d4 +  810*d5;
+		sg2 =              4*d2 - 36*d3 + 216*d4 - 1080*d5;
+		sg3 =                      8*d3 -  96*d4 +  720*d5;
+		sg4 =                              16*d4 -  240*d5;
+		sg5 =                                        32*d5;
 		/*
 		 ** Flag that the static variables are initialized.
 		 */
 		bInit = 1;
 		}
+	/*
+	 * Load coefficients.
+	 */
+	g0 = sg0;
+	g1 = sg1;
+	g2 = sg2;
+	g3 = sg3;
+	g4 = sg4;
+	g5 = sg5;
+	bLittleEndian = sbLittleEndian;
+#if 1
+	/*
+	 ** Actual Calculation. Rolled loop.
+	 */
+	for(i = 0; i < n; i++) {
+		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
+		x = r2[i]*u[it];
+		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
+		s *= 1.5 - 0.5*x*s*s;
+		a[i] = s*t[it];
+		}
+#else
 	/*
 	 ** Actual Calculation. Loop unrooled 8 times.
 	 */
@@ -141,6 +167,7 @@ void v_sqrt1(int n,double *r2,double *a)
 	case 0:
 		if (i<n) goto loop;
 		}
+#endif
 	}
 
 
