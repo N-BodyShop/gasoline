@@ -472,7 +472,7 @@ int smBallGather(SMX smx,float fBall2,float *ri)
 				dy = sy - p[pj].r[1];
 				dz = sz - p[pj].r[2];
 				fDist2 = dx*dx + dy*dy + dz*dz;
-				if (fDist2 < fBall2) {
+				if (fDist2 <= fBall2) {
 					smx->nnList[nCnt].fDist2 = fDist2;
 					smx->nnList[nCnt].dx = dx;
 					smx->nnList[nCnt].dy = dy;
@@ -518,7 +518,7 @@ int smBallGatherNP(SMX smx,float fBall2,float *ri,int cp)
 				dy = y - p[pj].r[1];
 				dz = z - p[pj].r[2];
 				fDist2 = dx*dx + dy*dy + dz*dz;
-				if (fDist2 < fBall2) {
+				if (fDist2 <= fBall2) {
 					smx->nnList[nCnt].fDist2 = fDist2;
 					smx->nnList[nCnt].dx = dx;
 					smx->nnList[nCnt].dy = dy;
@@ -880,7 +880,7 @@ void smReSmooth(SMX smx,SMF *smf)
 					dy = sy - pPart->r[1];
 					dz = sz - pPart->r[2];
 					fDist2 = dx*dx + dy*dy + dz*dz;
-					if (fDist2 < fBall2) {
+					if (fDist2 <= fBall2) {
 						smx->nnList[nCnt].fDist2 = fDist2;
 						smx->nnList[nCnt].dx = dx;
 						smx->nnList[nCnt].dy = dy;
