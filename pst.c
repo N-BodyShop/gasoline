@@ -26,7 +26,7 @@ void pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inReadTipsy),0);
 	mdlAddService(mdl,PST_DOMAINDECOMP,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstDomainDecomp,
-				  0,0);
+				  sizeof(struct inDomainDecomp),0);
 	mdlAddService(mdl,PST_CALCBOUND,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstCalcBound,
 				  0,sizeof(struct outCalcBound));
@@ -591,7 +591,7 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 #define EPS_BOUND	0.01
 #define MASS_EPS	1e-11
 
-void _pstRootSplit(PST pst,int iSplitDim,double dMass)
+void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind)
 {
 	int NUM_SAFETY = 4; 	/* slop space when filling up memory */
 	int nSafeTot;		/* total slop space we have to play with */
@@ -635,6 +635,12 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	pstActiveOrder(pst->pstLower,NULL,0,&nActive,NULL);
 	mdlGetReply(pst->mdl,pst->idUpper,&nActive,NULL);
 
+	if(!bDoRootFind) {
+	    d = pst->iSplitDim;
+	    fm = pst->fSplit;
+	    goto DoneRootFind;
+	    }
+	    
 	d = dBnd = iSplitDim;
 #ifdef COLLISIONS
 	if(d > 2)
@@ -796,7 +802,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		}
 	pst->fSplit = fm;
 	pst->iSplitDim = d;
-	if(pFlag) {
+DoneRootFind:
+	if(pFlag || !bDoRootFind) {
 	    /*
 	     ** Now we see if the TOTAL number of particles in the lower and upper
 	     ** subsets exceeds the local pStores. If so then we need to find a new
@@ -1125,6 +1132,7 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct outCalcBound outBnd;
 	struct outMassCheck outMass;
 	double dMass;
+	struct inDomainDecomp *in = vin;
 
 	assert(nIn == 0);
 	if (pst->nLeaves > 1) {
@@ -1156,7 +1164,7 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
 		dMass = outMass.dMass;
-		_pstRootSplit(pst,d,dMass);
+		_pstRootSplit(pst,d,dMass, in->bDoRootFind);
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
 #if 0
 		if (dMass != outMass.dMass) {
@@ -1170,9 +1178,10 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 ** Now go on to DD of next levels.
 		 */
 		if (pst->nUpper > 1) 
-			mdlReqService(pst->mdl,pst->idUpper,PST_DOMAINDECOMP,NULL,0);
+			mdlReqService(pst->mdl,pst->idUpper,PST_DOMAINDECOMP,
+				      vin,sizeof(*in));
 		if (pst->nLower > 1) 
-			pstDomainDecomp(pst->pstLower,NULL,0,NULL,NULL);
+			pstDomainDecomp(pst->pstLower,vin,sizeof(*in),NULL,NULL);
 		if (pst->nUpper > 1) 
 			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}

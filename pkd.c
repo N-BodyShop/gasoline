@@ -2303,6 +2303,10 @@ void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 						p[i].r[j] -= pkd->fPeriod[j];
 					if (p[i].r[j] < fCenter[j]-0.5*pkd->fPeriod[j])
 						p[i].r[j] += pkd->fPeriod[j];
+					assert(p[i].r[j] >=
+					       fCenter[j]-0.5*pkd->fPeriod[j]);
+					assert(p[i].r[j] <
+					       fCenter[j]+0.5*pkd->fPeriod[j]);
 					}
 				}
 			}

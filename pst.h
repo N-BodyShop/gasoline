@@ -181,6 +181,10 @@ struct inReadTipsy {
 void pstReadTipsy(PST,void *,int,void *,int *);
 
 /* #define PST_DOMAINDECOMP	6 */ 
+struct inDomainDecomp {
+    int bDoRootFind;
+    };
+
 void pstDomainDecomp(PST,void *,int,void *,int *);
 
 /* #define PST_CALCBOUND		7 */ 

@@ -1468,6 +1468,8 @@ void msrSetSoft(MSR msr,double dSoft)
 
 void msrDomainDecomp(MSR msr)
 {
+	struct inDomainDecomp in;
+    
         /* Sanity check on Gas particles being present */
         if (msr->nGas==0 && (msr->param.bDoGas==1 || msr->param.bGasDomainDecomp)) {
 	        if (msr->param.bGasDomainDecomp) {
@@ -1481,10 +1483,12 @@ void msrDomainDecomp(MSR msr)
 		     }
 	        }
 
+	in.bDoRootFind = 1;
+	
         if (msr->bDoneDomainDecomp && msr->nActive < msr->N*msr->param.dFracNoDomainDecomp) {
-	        printf("Skipping Domain Decomposition (nActive = %d/%d)\n",
+	        printf("Skipping Root Finder (nActive = %d/%d)\n",
                      msr->nActive, msr->N );
-                return;
+		in.bDoRootFind = 0;
                 }
 
 	if (msr->param.bGasDomainDecomp) {
@@ -1497,13 +1501,13 @@ void msrDomainDecomp(MSR msr)
 		printf("nActive %d nTreeActive %d nSmoothActive %d\n",msr->nActive,msr->nTreeActive,msr->nSmoothActive);
 		printf("Domain Decomposition...\n");
 		sec = time(0);
-		pstDomainDecomp(msr->pst,NULL, 0,NULL,NULL);
+		pstDomainDecomp(msr->pst,&in, sizeof(in),NULL,NULL);
                 msr->bDoneDomainDecomp = 1; 
 		dsec = time(0) - sec;
 		printf("Domain Decomposition complete, Wallclock: %d secs\n\n",dsec);
 		}
 	else {
-		pstDomainDecomp(msr->pst,NULL, 0,NULL,NULL);
+		pstDomainDecomp(msr->pst, &in, sizeof(in),NULL,NULL);
                 msr->bDoneDomainDecomp = 1; 
 		}
         }
