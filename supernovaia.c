@@ -1,6 +1,7 @@
 #ifdef STARFORM
 #include <stdio.h>
 #include <math.h>
+#include <assert.h>
 #include "supernova.h"
 #include "millerscalo.h"
 #include "supernovaia.h"
