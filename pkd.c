@@ -375,22 +375,23 @@ int pkdColRejects(PKD pkd,int d,float fSplit,float fSplitInactive,
 		}
 	if (iSplitSide) {
 		nSplitInactive = pkdLowerPart(pkd,d,fSplitInactive,
-									  pkdActive(pkd),pkdLocal(pkd)-1);
+					      pkdActive(pkd),pkdLocal(pkd)-1);
 		}
 	else {
 		nSplitInactive = pkdUpperPart(pkd,d,fSplitInactive,
-									  pkdActive(pkd),pkdLocal(pkd)-1);
+					      pkdActive(pkd),pkdLocal(pkd)-1);
 		}
 	nSplitInactive -= pkdActive(pkd);
 	/*
 	 ** Now do some fancy rearrangement.
 	 */
-	i = pkdActive(pkd) - 1;
-	j = pkdActive(pkd) + nSplitInactive - 1;
-	while (i >= nSplit) {
+	i = nSplit - 1;
+	j = pkdActive(pkd) - 1;
+	while (j < pkdActive(pkd) + nSplitInactive) {
 		pTemp = pkd->pStore[i];
 		pkd->pStore[i] = pkd->pStore[j];
 		pkd->pStore[j] = pTemp;
+		++i; ++j;
 		}
 	pkd->nRejects = pkdLocal(pkd) - nSplit - nSplitInactive;
 	iRejects = pkdFreeStore(pkd) - pkd->nRejects;

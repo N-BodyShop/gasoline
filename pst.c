@@ -87,8 +87,25 @@ void pstAddServices(PST pst,MDL mdl)
 		      sizeof(struct inReadTipsy), nThreads*sizeof(int));
 	mdlAddService(mdl,PST_SWAPALL,pst,pstSwapAll,
 				  sizeof(int),0);
-	mdlAddService(mdl,PST_MASSCHECK,pst,pstMassCheck,
+	mdlAddService(mdl,PST_MASSCHECK,pst,
+		      (void (*)(void *,void *,int,void *,int *))pstMassCheck,
 				  0,sizeof(struct outMassCheck));
+	mdlAddService(mdl,PST_ACTIVEORDER,pst,
+		      (void (*)(void *,void *,int,void *,int *))pstActiveOrder,
+		      0,0);
+	mdlAddService(mdl,PST_SETRUNG,pst,
+		      (void (*)(void *,void *,int,void *,int *))pstSetRung,
+		      sizeof(struct inSetRung), 0);
+	mdlAddService(mdl,PST_ACTIVERUNG,pst,
+		      (void (*)(void *,void *,int,void *,int *))pstActiveRung,
+		      sizeof(struct inActiveRung), 0);
+	mdlAddService(mdl,PST_CURRRUNG,pst,
+		      (void (*)(void *,void *,int,void *,int *))pstCurrRung,
+		      sizeof(struct inCurrRung), sizeof(struct outCurrRung));
+	mdlAddService(mdl,PST_ACTIVERUNG,pst,
+		      (void (*)(void *,void *,int,void *,int *))pstDensityRung,
+		      sizeof(struct inDensityRung),
+		      sizeof(struct outDensityRung));
 	}
 
 
@@ -414,9 +431,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		nHigh = outWtLow.nHigh + outWtHigh.nHigh;
 		fLow = outWtLow.fLow + outWtHigh.fLow;
 		fHigh = outWtLow.fHigh + outWtHigh.fHigh;
-/*
 		printf("ittr:%d l:%d u:%d lw:%f uw:%f\n",ittr,nLow,nHigh,fLow,fHigh);
-*/
 		if (fLow/pst->nLower > fHigh/pst->nUpper) fu = fm;
 		else if (fLow/pst->nLower < fHigh/pst->nUpper) fl = fm;
 		else break;
@@ -450,9 +465,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			 */
 			nLow = outWtLow.nLow + outWtHigh.nLow;
 			nHigh = outWtLow.nHigh + outWtHigh.nHigh;
-/*
 			printf("Fit ittr:%d l:%d\n",ittr,nLow);
-*/
 			if (nLow > nLowerStore) fu = fm;
 			else if (nLow < nLowerStore) fl = fm;
 			else {
@@ -462,9 +475,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			fmm = (fl + fu)/2;
 			++ittr;
 			}
-		/*
 		printf("Fit ittr:%d l:%d <= %d\n",ittr,nLow,nLowerStore);
-		*/
 		assert(nLow <= nLowerStore);
 		}
 	else if (nHigh > nUpperStore-NUM_SAFETY) {
@@ -488,9 +499,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			 */
 			nLow = outWtLow.nLow + outWtHigh.nLow;
 			nHigh = outWtLow.nHigh + outWtHigh.nHigh;
-/*
 			printf("Fit ittr:%d u:%d\n",ittr,nHigh);
-*/
 			if (nHigh > nUpperStore) fl = fm;
 			else if (nHigh < nUpperStore) fu = fm;
 			else {
@@ -500,9 +509,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			fmm = (fl + fu)/2;
 			++ittr;
 			}
-		/*
 		printf("Fit ittr:%d u:%d <= %d\n",ittr,nHigh,nUpperStore);
-		*/
 		assert(nHigh <= nUpperStore);
 		}
 	pst->fSplit = fm;
@@ -531,7 +538,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		fl = pst->bnd.fMin[d];
 		fu = fm;
 		fmm = (fl + fu)/2;
-		ittr = 0;
+		ittr = 1;
 	    while (fl < fmm && fmm < fu) {
 			fm = fmm;
 			inWt.iSplitDim = d;
@@ -548,9 +555,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			 */
 			nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
 			nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
-/*
 			printf("Inactive Fit ittr:%d l:%d\n",ittr,nLowTot);
-*/
 			if (nLowTot > nLowerStore) fu = fm;
 			else if (nLowTot < nLowerStore) fl = fm;
 			else {
@@ -560,16 +565,14 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			fmm = (fl + fu)/2;
 			++ittr;
 			}
-		/*
 		printf("Inactive Fit ittr:%d l:%d <= %d\n",ittr,nLowTot,nLowerStore);
-		*/
 		assert(nLowTot <= nLowerStore);
 		}
 	else if (nHighTot > nUpperStore-NUM_SAFETY) {
 		fl = fm;
 		fu = pst->bnd.fMax[d];
 		fmm = (fl + fu)/2;
-		ittr = 0;
+		ittr = 1;
 	    while (fl < fmm && fmm < fu) {
 			fm = fmm;
 			inWt.iSplitDim = d;
@@ -586,9 +589,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			 */
 			nLowTot = outWtLow.nLow + outWtHigh.nLow;
 			nHighTot = outWtLow.nHigh + outWtHigh.nHigh;
-/*
 			printf("Inactive Fit ittr:%d u:%d\n",ittr,nHighTot);
-*/
 			if (nHighTot > nUpperStore) fl = fm;
 			else if (nHighTot < nUpperStore) fu = fm;
 			else {
@@ -598,9 +599,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			fmm = (fl + fu)/2;
 			++ittr;
 			}
-		/*
 		printf("Inactive Fit ittr:%d u:%d <= %d\n",ittr,nHighTot,nUpperStore);
-		*/
 		assert(nHighTot <= nUpperStore);
 		}
 	pst->fSplitInactive = fm;
@@ -824,7 +823,7 @@ void pstWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 				 ** Particles must be in the active-inactive order here!
 				 */
 				plcl->iWtFrom = pkdActive(plcl->pkd);
-				plcl->iWtTo = pkdInactive(plcl->pkd)-1;
+				plcl->iWtTo = pkdLocal(plcl->pkd)-1;
 				}
 			plcl->fWtLow = 0.0;
 			plcl->fWtHigh = 0.0;
@@ -852,6 +851,10 @@ void pstWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->fHigh = fHigh + plcl->fWtHigh;
 		plcl->fLow = fLow;
 		plcl->fHigh = fHigh;
+		if(in->pFlag < 0) {
+		    if(iSplitSide) out->nHigh -= pkdActive(plcl->pkd);
+		    else out->nLow -= pkdActive(plcl->pkd);
+		    }
 		}
 	if (pnOut) *pnOut = sizeof(struct outWeight); 
 	}
