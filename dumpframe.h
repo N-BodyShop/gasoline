@@ -83,12 +83,17 @@ struct inDumpFrame {
 
 	/* Rendering */
 	double pScale1,pScale2;
+	double dGasSoftMul,dDarkSoftMul,dStarSoftMul;
+	double xlim,ylim,hmul;
 	DFIMAGE ColStar,ColGas,ColDark;
 	int bColMassWeight;
 	int bLogScale;
 	int bGasSph;
-	double dGasSoftMul,dDarkSoftMul,dStarSoftMul;
 	int iRender;       
+	/* Render Particle interface */
+	int offsetp_r,offsetp_fMass,offsetp_fSoft,offsetp_fBall2,offsetp_iActive;
+	int sizeofp;
+	int iTypeGas,iTypeDark,iTypeStar;
 	
 	double dMassGasMin, dMassGasMax;
 	double dMassDarkMin,dMassDarkMax;
@@ -113,6 +118,7 @@ struct dfFrameSetup {
 	int bEye2;
 	int bzClipFrac; /* Is z clipping a fraction of eye to target distance? */
 	int bzEye,bzEye1,bzEye2; /* Is zEye a fixed distance? */
+	int bEyeAbsolute; /* Eye position is in absolute coordinates (default relative to target point) */
 	int bAnchor;
 	int nxPix,nyPix;    /* Pixmap dimensions */
 	int bPeriodic; /* Is it periodic? */
@@ -185,7 +191,27 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
 
 void dfMergeImage( struct inDumpFrame *in, void *Image1, int *nImage1, void *Image2, int *nImage2 );
 void dfClearImage( struct inDumpFrame *in, void *Image, int *nImage );
-void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *Image );
+
+void dfRenderParticlePoint( struct inDumpFrame *in, void *vImage, 
+						   double *r, double fMass, double fSoft, double fBall2, int iActive );
+void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage, 
+						 double *r, double fMass, double fSoft, double fBall2, int iActive );
+void dfRenderParticleSolid( struct inDumpFrame *in, void *vImage, 
+						 double *r, double fMass, double fSoft, double fBall2, int iActive );
+void dfRenderParticleInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark, int iTypeStar );
+void dfRenderParticle( struct inDumpFrame *in, void *vImage, 
+					  double *r, double fMass, double fSoft, double fBall2, int iActive );
+
+void dfRenderParticlesInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark, int iTypeStar,
+						   double *pr, double *pfMass, double *pfSoft, double *pfBall2, int *piActive, 
+						   void *p, int sizeofp );
+void dfRenderParticles( struct inDumpFrame *in, void *vImage, void *pStore, int n );
+
+/* Relies on PKD definition -- not portable */
+#ifdef PKD_HINCLUDED
+void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage );
+void dfRenderImageOld( PKD pkd, struct inDumpFrame *in, void *Image );
+#endif
 
 void dfFinishFrame( struct DumpFrameContext *df, double dTime, double dStep, struct inDumpFrame *in, void *Image );
 
@@ -200,6 +226,6 @@ void dfGetCoeff( struct DumpFrameContext *df, int ifs );
 
 void dfInterp( struct DumpFrameContext *df, struct dfFrameSetup *pfs, double x );
 
-#include "dumpvoxel.h"
+/* #include "dumpvoxel.h" */
 
 #endif

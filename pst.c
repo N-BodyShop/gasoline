@@ -410,9 +410,11 @@ pstAddServices(PST pst,MDL mdl)
 		      (void (*)(void *,void *,int,void *,int *))
 		      pstDumpFrame, sizeof(struct inDumpFrame),
 		      DF_NBYTEDUMPFRAME );
+#ifdef VOXEL
 	mdlAddService(mdl,PST_DUMPVOXEL,pst,
 		      (void (*)(void *,void *,int,void *,int *))
 		      pstDumpVoxel, sizeof(struct inDumpVoxel), 0);
+#endif
 	}
 
 void pstInitialize(PST *ppst,MDL mdl,LCL *plcl)
@@ -5098,11 +5100,16 @@ pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		free( Image2 );
 		}
 	else {
+		PARTICLE *p = pst->plcl->pkd->pStore;
 		dfClearImage( in, vout, pnOut );
-		dfRenderImage(pst->plcl->pkd, in, vout );
+		dfRenderParticlesInit( in, TYPE_GAS, TYPE_DARK, TYPE_STAR,
+							  &p->r[0], &p->fMass, &p->fSoft, &p->fBall2, &p->iActive,
+							  p, sizeof(p) );
+		dfRenderParticles( in, vout, p, pst->plcl->pkd->nLocal );
 		}
 	}
 
+#ifdef VOXEL
 void
 pstDumpVoxel(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -5118,3 +5125,4 @@ pstDumpVoxel(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		dfRenderVoxel(pst->plcl->pkd, in );
 		}
 	}
+#endif

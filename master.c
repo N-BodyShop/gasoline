@@ -5700,6 +5700,7 @@ void msrDumpFrame(MSR msr, double dTime, double dStep)
 	sec = msrTime();
 
 	if (msr->df->iDimension == DF_3D) {
+#ifdef VOXEL
 		/* 3D Voxel Projection */
 		struct inDumpVoxel in;
 		assert(0);
@@ -5715,6 +5716,7 @@ void msrDumpFrame(MSR msr, double dTime, double dStep)
 		
 		printf("DF Dumped Voxel %i at %g (Wallclock: Render %f tot %f secs).\n",
 			   msr->df->nFrame-1,dTime,dsec1,dsec2);
+#endif
 		}
 	else {
 		/* 2D Projection */

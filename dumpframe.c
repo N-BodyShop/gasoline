@@ -4,7 +4,15 @@
 #include <assert.h>
 #include <string.h>
 
+/* #define DEBUGTRACK 10 */
+
+/* Using pkd.h deprecated for greater portability */
 #include "pkd.h"
+
+#ifndef DBL_MAX
+#define DBL_MAX 1.7976931348623157E+308
+#endif
+
 #include "dumpframe.h"
 
 void dfInitialize( struct DumpFrameContext **pdf, double dTime, 
@@ -146,7 +154,14 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 	in->dStarSoftMul = fs->dStarSoftMul;
 	in->iRender = fs->iRender;
 	
-	DIFF( fs->eye, in->r, in->z );
+	if (fs->bEyeAbsolute) {
+		DIFF( fs->eye, in->r, in->z );
+		}
+	else {
+		double zero[3]={ 0, 0, 0 };
+		DIFF( fs->eye, zero, in->z );
+		}
+
 /*	fprintf(stderr,"eye2: %i  %lf %lf %lf,  %lf %lf %lf",fs->bEye2,fs->eye2[0],fs->eye2[1],fs->eye2[2], in->z[0],in->z[1],in->z[2] ); */
 
 	if (fs->bzEye1) SIZE( in->z, fs->zEye1 );
@@ -216,6 +231,11 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 		in->nzRepNeg = 0;  
 		in->nzRepPos = 0;
 		}
+	
+	/* Render helper variables */
+	in->xlim = (in->nxPix-1)*.5;
+	in->ylim = (in->nyPix-1)*.5;
+	in->hmul = 4*sqrt(in->x[0]*in->x[0] + in->x[1]*in->x[1] + in->x[2]*in->x[2]);
 
 	/* in->bNonLocal not set (an internal use only variable) */
 
@@ -436,6 +456,7 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 	fs.bzEye = 0;
 	fs.bzEye1 = 0;
 	fs.bzEye2 = 0;
+	fs.bEyeAbsolute = 0;
 	fs.FOV = 90.;
 	fs.zClipNear = 0.01;
 	fs.zClipFar = 2.0;
@@ -513,7 +534,20 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 			}
 		else if (!strcmp( command, "eye") || !strcmp( command, "eye1") ) {
 			nitem = sscanf( line, "%s %lf %lf %lf", command, &fs.eye[0], &fs.eye[1], &fs.eye[2] );
-			assert( nitem == 4 );
+			if ( nitem != 4 ) {
+				nitem = sscanf( line, "%s %s", command, word );
+				assert( nitem == 2 );
+				if (!strcmp( word, "rel") ) {
+					fs.bEyeAbsolute = 0;
+					}
+				else if (!strcmp( word, "abs") ) {
+					fs.bEyeAbsolute = 1;
+					}
+				else {
+					fprintf(stderr,"DF Unknown eye offset type: %s\n",word);
+					assert( 0 );
+					}
+				}
 			}
 		else if (!strcmp( command, "eye2") ) {
 			nitem = sscanf( line, "%s %lf %lf %lf", command, &fs.eye2[0], &fs.eye2[1], &fs.eye2[2] );
@@ -741,7 +775,7 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
 			}
 		}
 	else if (df->nFrameSetup > 1) {
-		while (dTime > df->fs[ifs+1].dTime && (!ifs && dTime >= df->fs[ifs+1].dTime)) { 
+		while (dTime > df->fs[ifs+1].dTime || (!ifs && dTime >= df->fs[ifs+1].dTime)) { 
 			ifs++;
 			if (ifs >= df->nFrameSetup-1) {
 				fprintf(stderr,"DF WARNING Time outside camera direction table: %g > %g\n",dTime,df->fs[df->nFrameSetup-1].dTime);
@@ -753,6 +787,7 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
 			}
 		}
 
+	
 	if (df->bVDetails) printf("DF Interpolating at t=%g Setups: %i (t=%g) %i (t=%g)\n",dTime,ifs,df->fs[ifs].dTime,ifs+1,df->fs[ifs+1].dTime);
 
 	/* Nothing to interpolate? */
@@ -787,7 +822,375 @@ void dfClearImage( struct inDumpFrame *in, void *vImage, int *nImage ) {
 	for (i=in->nxPix*in->nyPix-1;i>=0;i--) Image[i] = blank;
 	}
 
+#ifdef DEBUGTRACK
+int trackp = 0;
+int trackcnt = 0;
+#endif
+
+void dfRenderParticlePoint( struct inDumpFrame *in, void *vImage, 
+						 double *r, double fMass, double fSoft, double fBall2, int iActive ) {
+
+	DFIMAGE *Image = vImage;
+	DFIMAGE col; /* Colour */
+	double h;
+	double x,y,z,dr[3],br0;
+	int hint;
+	int j;
+	int xp,yp;
+
+	if ((iActive & in->iTypeGas)) {
+		 if (fMass < in->dMassGasMin || fMass > in->dMassGasMax) return;
+		 col = in->ColGas;
+		 }
+	else if ((iActive & in->iTypeDark)) {
+		if (fMass < in->dMassDarkMin || fMass > in->dMassDarkMax) return;
+		col = in->ColDark;
+		}
+	else if ((iActive & in->iTypeStar)) {
+		if (fMass < in->dMassStarMin || fMass > in->dMassStarMax) return;
+		col = in->ColStar;
+		}
+
+	for (j=0;j<3;j++) {
+		dr[j] = r[j]-in->r[j];
+		}
+	z = dr[0]*in->z[0] + dr[1]*in->z[1] + dr[2]*in->z[2] + in->zEye;
+	if (z >= in->zClipNear && z <= in->zClipFar) {
+		x = dr[0]*in->x[0] + dr[1]*in->x[1] + dr[2]*in->x[2];
+		if (in->iProject == DF_PROJECT_PERSPECTIVE) x/=z;
+		if (fabs(x)<in->xlim) {
+			y = dr[0]*in->y[0] + dr[1]*in->y[1] + dr[2]*in->y[2];
+			if (in->iProject == DF_PROJECT_PERSPECTIVE) y/=z;
+			if (fabs(y)<in->ylim) {
+				xp = x+in->xlim;
+				yp = in->ylim-y; /* standard screen convention */
+				Image[ xp + yp*in->nxPix ].r += col.r;
+				Image[ xp + yp*in->nxPix ].g += col.g;
+				Image[ xp + yp*in->nxPix ].b += col.b;
+				}
+			}
+		}
+	}
+
+void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage, 
+						 double *r, double fMass, double fSoft, double fBall2, int iActive ) {
+
+	DFIMAGE *Image = vImage;
+	DFIMAGE col; /* Colour */
+	double h;
+	double x,y,z,dr[3],br0;
+	int hint;
+	int j;
+	int xp,yp;
+
+	if ((iActive & in->iTypeGas)) {
+		if (fMass < in->dMassGasMin || fMass > in->dMassGasMax) return;
+		if (in->bGasSph) h = sqrt(fBall2)*0.5*in->dGasSoftMul;
+		else h = fSoft*in->dGasSoftMul;
+		col = in->ColGas;
+		}
+	else if ((iActive & in->iTypeDark)) {
+		if (fMass < in->dMassDarkMin || fMass > in->dMassDarkMax) return;
+		h = fSoft*in->dDarkSoftMul;
+		col = in->ColDark;
+		}
+	else if ((iActive & in->iTypeStar)) {
+		if (fMass < in->dMassStarMin || fMass > in->dMassStarMax) return;
+		h = fSoft*in->dStarSoftMul;
+		col = in->ColStar;
+		}
+	
+	if (in->bColMassWeight) br0=fMass;
+	
+	for (j=0;j<3;j++) {
+		dr[j] = r[j]-in->r[j];
+		}
+
+#ifdef DEBUGTRACK
+	trackp++;
+	if ((trackp<DEBUGTRACK)) {
+		printf("p %f %f %f  %f %f\n",r[0],r[1],r[2],fMass,fSoft);
+		}
+#endif
+
+	z = dr[0]*in->z[0] + dr[1]*in->z[1] + dr[2]*in->z[2] + in->zEye;
+	if (z >= in->zClipNear && z <= in->zClipFar) {
+		if (in->iProject == DF_PROJECT_PERSPECTIVE) h = h*in->hmul/z;
+		else h = h*in->hmul;
+		hint = h;
+		x = dr[0]*in->x[0] + dr[1]*in->x[1] + dr[2]*in->x[2];
+		if (in->iProject == DF_PROJECT_PERSPECTIVE) x/=z;
+		if (fabs(x)<in->xlim+hint) {
+			y = dr[0]*in->y[0] + dr[1]*in->y[1] + dr[2]*in->y[2];
+			if (in->iProject == DF_PROJECT_PERSPECTIVE) y/=z;
+			if (fabs(y)<in->ylim+hint) {
+				x = x+in->xlim;
+				xp = x;
+				y = in->ylim-y;  /* standard screen convention */
+				yp = y;
+				if (hint < 1) {
+					Image[ xp + yp*in->nxPix ].r += col.r;
+					Image[ xp + yp*in->nxPix ].g += col.g;
+					Image[ xp + yp*in->nxPix ].b += col.b;
+#ifdef DEBUGTRACK
+					trackcnt++;
+					if ((trackcnt<DEBUGTRACK)) {
+						printf("%i %i %f %f %f*\n",xp,yp,col.r,col.g,col.b );
+						}
+#endif
+					}
+				else {
+					int xpmin,xpmax,ypmin,ypmax,ix,iy;
+					DFIMAGE *Imagey;
+					double br,br1,r2,ih2;
+					ih2 = 1./(h*h);
+					br1 = (6/(2.0*3.1412))*ih2;
+					xpmin = xp - hint; if (xpmin<0) xpmin=0;
+					xpmax = xp + hint; if (xpmax>=in->nxPix) xpmax=in->nxPix-1;
+					ypmin = yp - hint; if (ypmin<0) ypmin=0;
+					ypmax = yp + hint; if (ypmax>=in->nyPix) ypmax=in->nyPix-1;
+					for (iy=ypmin,Imagey = Image + iy*in->nxPix;iy<=ypmax;iy++,Imagey += in->nxPix) {
+						for (ix=xpmin;ix<=xpmax;ix++) {
+							r2 = ((ix-x)*(ix-x)+(iy-y)*(iy-y))*ih2;
+							if (r2 > 1) continue;
+							br = br1*(1.0-sqrt(r2));
+							Imagey[ ix ].r += br*col.r;
+							Imagey[ ix ].g += br*col.g;
+							Imagey[ ix ].b += br*col.b;
+#ifdef DEBUGTRACK
+							trackcnt++;
+							if ((trackcnt<DEBUGTRACK)) {
+								printf("%i %i %f %f %f\n",ix,iy,br*col.r,br*col.g,br*col.b );
+								}
+#endif
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+void dfRenderParticleSolid( struct inDumpFrame *in, void *vImage, 
+						 double *r, double fMass, double fSoft, double fBall2, int iActive ) {
+
+	DFIMAGE *Image = vImage;
+	DFIMAGE col; /* Colour */
+	double h;
+	double x,y,z,dr[3],br0;
+	int hint;
+	int j;
+	int xp,yp;
+		
+	br0=1;
+
+	if ((iActive & in->iTypeGas )) {
+		if (fMass < in->dMassGasMin || fMass > in->dMassGasMax) return;
+		if (in->bGasSph) h = sqrt(fBall2)*0.5*in->dGasSoftMul;
+		else h = fSoft*in->dGasSoftMul;
+		col = in->ColGas;
+		}
+	else if ((iActive  & in->iTypeDark )) {
+		if (fMass < in->dMassDarkMin || fMass > in->dMassDarkMax) return;
+		h = fSoft*in->dDarkSoftMul;
+		col = in->ColDark;
+		}
+	else if ((iActive & in->iTypeStar )) {
+		if (fMass < in->dMassStarMin || fMass > in->dMassStarMax) return;
+		h = fSoft*in->dStarSoftMul;
+		col = in->ColStar;
+		}
+	
+	if (in->bColMassWeight) br0=fMass;
+	
+	for (j=0;j<3;j++) {
+		dr[j] = r[j]-in->r[j];
+		}
+	z = dr[0]*in->z[0] + dr[1]*in->z[1] + dr[2]*in->z[2] + in->zEye;
+	if (z >= in->zClipNear && z <= in->zClipFar) {
+		if (in->iProject == DF_PROJECT_PERSPECTIVE) h = h*in->hmul/z;
+		else h = h*in->hmul;
+		hint = h;
+		x = dr[0]*in->x[0] + dr[1]*in->x[1] + dr[2]*in->x[2];
+		if (in->iProject == DF_PROJECT_PERSPECTIVE) x/=z;
+		if (fabs(x)<in->xlim+hint) {
+			y = dr[0]*in->y[0] + dr[1]*in->y[1] + dr[2]*in->y[2];
+			if (in->iProject == DF_PROJECT_PERSPECTIVE) y/=z;
+			if (fabs(y)<in->ylim+hint) {
+				xp = x+in->xlim;
+				yp = in->ylim-y; /* standard screen convention */
+				if (hint < 1) {
+					double br = 0.523599*br0*h*h; /* integral of TSC to h */
+					Image[ xp + yp*in->nxPix ].r += br*col.r;
+					Image[ xp + yp*in->nxPix ].g += br*col.g;
+					Image[ xp + yp*in->nxPix ].b += br*col.b;
+					}
+				else {
+					int xpmin,xpmax,ypmin,ypmax,ix,iy;
+					DFIMAGE *Imagey;
+					double br,r2,ih2;
+					ih2 = 1./(h*h);
+					xpmin = xp - hint; if (xpmin<0) xpmin=0;
+					xpmax = xp + hint; if (xpmax>=in->nxPix) xpmax=in->nxPix-1;
+					ypmin = yp - hint; if (ypmin<0) ypmin=0;
+					ypmax = yp + hint; if (ypmax>=in->nyPix) ypmax=in->nyPix-1;
+					for (iy=ypmin,Imagey = Image + iy*in->nxPix;iy<=ypmax;iy++,Imagey += in->nxPix) {
+						for (ix=xpmin;ix<=xpmax;ix++) {
+							if (ix==xp && iy==yp) {
+								br = br0*(1.57080-1.04720/h); /* Integral of tsc disc to r=1 */
+								}
+							else {
+								r2 = ((ix-xp)*(ix-xp)+(iy-yp)*(iy-yp))*ih2;
+								if (r2 > 1) continue;
+								br = br0*(1.0-sqrt(r2));
+								}
+							Imagey[ ix ].r += br*col.r;
+							Imagey[ ix ].g += br*col.g;
+							Imagey[ ix ].b += br*col.b;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+void dfRenderParticleInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark, int iTypeStar )
+{
+	in->iTypeGas = iTypeGas;
+	in->iTypeDark = iTypeDark;
+	in->iTypeStar = iTypeStar;
+	}
+
+void dfRenderParticle( struct inDumpFrame *in, void *vImage, 
+					  double r[3], double fMass, double fSoft, double fBall2, int iActive ) 
+{
+
+	switch (in->iRender) {
+	case DF_RENDER_POINT:
+		dfRenderParticlePoint( in, vImage, r, fMass, fSoft, fBall2, iActive );
+		break;
+	case DF_RENDER_TSC:
+		dfRenderParticleTSC( in, vImage, r, fMass, fSoft, fBall2, iActive );
+		break;
+	case DF_RENDER_SOLID:
+		dfRenderParticleSolid( in, vImage, r, fMass, fSoft, fBall2, iActive );
+		break;
+	case DF_RENDER_SHINE: /* Not implemented -- just does point */
+		dfRenderParticlePoint( in, vImage, r, fMass, fSoft, fBall2, iActive );
+		break;
+		}
+	}
+
+
+/* 
+   This approach allows type checking
+   Notes: 
+     Structures and arrays are both supported --> a fixed stride is all that matters
+     Floats must be double precision
+     position must be three contiguous memory locations
+*/
+void dfRenderParticlesInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark, int iTypeStar,
+						   double *pr, double *pfMass, double *pfSoft, double *pfBall2, int *piActive, 
+						   void *p, int sizeofp )
+{
+	in->offsetp_r = ((char *) pr)-((char *) p);
+	in->offsetp_fMass = ((char *) pfMass)-((char *) p);
+	in->offsetp_fSoft = ((char *) pfSoft)-((char *) p);
+	in->offsetp_fBall2 = ((char *) pfBall2)-((char *) p);
+	in->offsetp_iActive = ((char *) piActive)-((char *) p);
+    in->sizeofp = sizeofp;
+	in->iTypeGas = iTypeGas;
+	in->iTypeDark = iTypeDark;
+	in->iTypeStar = iTypeStar;
+	}
+
+
+void dfRenderParticles( struct inDumpFrame *in, void *vImage, void *pStore, int n ) {
+	int i;
+	char *p = pStore;
+	int offsetp_r = in->offsetp_r;
+	int offsetp_fMass = in->offsetp_fMass;
+	int offsetp_fSoft = in->offsetp_fSoft;
+	int offsetp_fBall2 = in->offsetp_fBall2;
+	int offsetp_iActive = in->offsetp_iActive;
+	int sizeofp = in->sizeofp;
+
+	switch (in->iRender) {
+	case DF_RENDER_POINT:
+		for (i=0;i<n;i++) {
+			dfRenderParticlePoint( in, vImage, (double *) (p+offsetp_r), *((double *) (p+offsetp_fMass)), 0, 0, *((int *) (p+offsetp_iActive)) );
+			p += sizeofp;
+			}
+		break;
+	case DF_RENDER_TSC:
+		for (i=0;i<n;i++) {
+			dfRenderParticleTSC( in, vImage, (double *) (p+offsetp_r), *((double *) (p+offsetp_fMass)), *((double *) (p+offsetp_fSoft)), *((double *) (p+offsetp_fBall2)), *((int *) (p+offsetp_iActive)) );
+			p += sizeofp;
+			}
+		break;
+	case DF_RENDER_SOLID:
+		for (i=0;i<n;i++) {	
+			dfRenderParticleSolid( in, vImage, (double *) (p+offsetp_r), *((double *) (p+offsetp_fMass)), *((double *) (p+offsetp_fSoft)), *((double *) (p+offsetp_fBall2)), *((int *) (p+offsetp_iActive)) );
+			p += sizeofp;
+			}
+		break;
+	case DF_RENDER_SHINE: /* Not implemented -- just does point */
+		for (i=0;i<n;i++) {
+			dfRenderParticlePoint( in, vImage, (double *) (p+offsetp_r), *((double *) (p+offsetp_fMass)), 0, 0, *((int *) (p+offsetp_iActive)) );
+			p += sizeofp;
+			}
+		break;
+		}
+	}
+
+/* Relies on PKD definition -- not portable */
+#ifdef PKD_HINCLUDED
 void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage ) {
+	PARTICLE *p;
+	int i;
+
+	p = pkd->pStore;
+	if (in->iRender == DF_RENDER_POINT) {
+		for (i=0;i<pkd->nLocal;i++) {
+			double r[3];
+			r[0] = p[i].r[0];
+			r[1] = p[i].r[1];
+			r[2] = p[i].r[2];
+			dfRenderParticlePoint( in, vImage, r, p[i].fMass, 0, 0, p[i].iActive );
+			}
+		}
+	else if (in->iRender == DF_RENDER_TSC) {
+		
+		for (i=0;i<pkd->nLocal;i++) {
+			double r[3];
+			r[0] = p[i].r[0];
+			r[1] = p[i].r[1];
+			r[2] = p[i].r[2];
+			dfRenderParticleTSC( in, vImage, r, p[i].fMass, p[i].fSoft, p[i].fBall2, p[i].iActive );
+			}
+		}
+	else if (in->iRender == DF_RENDER_SOLID) {
+		for (i=0;i<pkd->nLocal;i++) {
+			double r[3];
+			r[0] = p[i].r[0];
+			r[1] = p[i].r[1];
+			r[2] = p[i].r[2];
+			dfRenderParticleSolid( in, vImage, r, p[i].fMass, p[i].fSoft, p[i].fBall2, p[i].iActive );
+			}
+		}
+	else if (in->iRender == DF_RENDER_SHINE) { /* Not implemented -- just does point */
+		for (i=0;i<pkd->nLocal;i++) {
+			double r[3];
+			r[0] = p[i].r[0];
+			r[1] = p[i].r[1];
+			r[2] = p[i].r[2];
+			dfRenderParticlePoint( in, vImage, r, p[i].fMass, 0, 0, p[i].iActive );
+			}
+		}
+	}
+
+void dfRenderImageOld( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 	PARTICLE *p;
 	DFIMAGE *Image = vImage;
 	DFIMAGE col; /* Colour */
@@ -860,6 +1263,14 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 			for (j=0;j<3;j++) {
 				dr[j] = p[i].r[j]-in->r[j];
 				}
+
+#ifdef DEBUGTRACK
+	trackp++;
+	if ((trackp<DEBUGTRACK)) {
+		printf("p %f %f %f  %f %f\n",p[i].r[0],p[i].r[1],p[i].r[2],p[i].fMass,p[i].fSoft);
+		}
+#endif
+
 			z = dr[0]*in->z[0] + dr[1]*in->z[1] + dr[2]*in->z[2] + in->zEye;
 			if (z >= in->zClipNear && z <= in->zClipFar) {
 				if (in->iProject == DF_PROJECT_PERSPECTIVE) h = h*hmul/z;
@@ -879,6 +1290,12 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 							Image[ xp + yp*in->nxPix ].r += col.r;
 							Image[ xp + yp*in->nxPix ].g += col.g;
 							Image[ xp + yp*in->nxPix ].b += col.b;
+#ifdef DEBUGTRACK
+					trackcnt++;
+					if ((trackcnt<DEBUGTRACK)) {
+						printf("%i %f %f %f*\n",xp,col.r,col.g,col.b );
+						}
+#endif
 							}
 						else {
 							int xpmin,xpmax,ypmin,ypmax,ix,iy;
@@ -898,6 +1315,12 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 									Imagey[ ix ].r += br*col.r;
 									Imagey[ ix ].g += br*col.g;
 									Imagey[ ix ].b += br*col.b;
+#ifdef DEBUGTRACK
+									trackcnt++;
+									if ((trackcnt<DEBUGTRACK)) {
+										printf("%i %f %f %f\n",ix,br*col.r,br*col.g,br*col.b );
+										}
+#endif
 									}
 								}
 							}
@@ -1020,6 +1443,7 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 			}
 		}
 	}
+#endif
 
 void dfMergeImage( struct inDumpFrame *in, void *vImage1, int *nImage1, void *vImage2, int *nImage2 ) {
 	int i;

@@ -156,8 +156,13 @@ int main(int argc,char **argv)
 				}
 			}
 #ifdef GASOLINE
-			msrInitSph(msr,dTime);
+		msrInitSph(msr,dTime);
 #endif
+		/* 
+		 ** Dump Frame Initialization
+		 */
+		msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep );
+
 		goto Restart;
 		}
 	/*

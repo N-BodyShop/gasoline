@@ -1,6 +1,10 @@
 #ifndef DUMPVOXEL_HINCLUDED
 #define DUMPVOXEL_HINCLUDED
 
+/* Rewrite to use particles Interface in dumpframe! so pkd can be avoided */
+#include "pkd.h"
+
+
 #include "dumpframe.h"
 /* PST */
 
