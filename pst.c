@@ -406,6 +406,7 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 
 
 #define NUM_SAFETY	2
+#define EPS_BOUND	0.01
 
 void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 {
@@ -493,10 +494,20 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		/*
 		printf("ittr:%d l:%d u:%d lw:%f uw:%f\n",ittr,nLow,nHigh,fLow,fHigh);
 		*/
-		if (fLow/pst->nLower > fHigh/pst->nUpper) fu = fm;
-		else if (fLow/pst->nLower < fHigh/pst->nUpper) fl = fm;
-		else break;
-
+		if(nLow == 1 && nHigh == 1) /* break on trivial case */
+		    break;
+		if(pFlag) {	/* split on work */
+		    if (fLow/pst->nLower > fHigh/pst->nUpper) fu = fm;
+		    else if (fLow/pst->nLower < fHigh/pst->nUpper) fl = fm;
+		    else break;
+		    }
+		else {		/* split on number */
+		    if (nLow/(float)pst->nLower >
+			nHigh/(float)pst->nUpper) fu = fm;
+		    else if (nLow/(float)pst->nLower <
+			     nHigh/(float)pst->nUpper) fl = fm;
+		    else break;
+		    }
 		fmm = (fl + fu)/2;
 		++ittr;
 		}
@@ -721,7 +732,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			    }
 		    }
 	    else if (nHighTot < pst->nUpper) {
-		    fl = pst->bnd.fMin[d];
+				/* Try to catch lowest particle if needed. */
+		    fl = pst->bnd.fMin[d]
+			- EPS_BOUND*(pst->bnd.fMax[d] - pst->bnd.fMin[d]);
 		    fu = fm;
 		    fmm = (fl + fu)/2;
 		    ittr = 1;

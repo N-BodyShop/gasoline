@@ -183,7 +183,7 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive)
 		for (j=0;j<3;++j) {
 			if (pkd->pStore[i].r[j] < pbnd->fMin[j]) 
 				pbnd->fMin[j] = pkd->pStore[i].r[j];
-			else if (pkd->pStore[i].r[j] > pbnd->fMax[j])
+			if (pkd->pStore[i].r[j] > pbnd->fMax[j])
 				pbnd->fMax[j] = pkd->pStore[i].r[j];
 			}
 		}
@@ -195,7 +195,7 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive)
 			for (j=0;j<3;++j) {
 				if (pkd->pStore[i].r[j] < pbndActive->fMin[j]) 
 					pbndActive->fMin[j] = pkd->pStore[i].r[j];
-				else if (pkd->pStore[i].r[j] > pbndActive->fMax[j])
+				if (pkd->pStore[i].r[j] > pbndActive->fMax[j])
 					pbndActive->fMax[j] = pkd->pStore[i].r[j];
 				}
 			}
