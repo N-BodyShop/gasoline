@@ -780,7 +780,7 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 				cOut[0].id.iOrder = pkd->pStore[iMrg].iOrder;
 				}
 			}
-		if (iDel > -1) pkdDeleteParticle(pkd,iDel);
+		if (iDel > -1) pkdDeleteParticle(pkd,&pkd->pStore[iDel]);
 		}
 	else if (n == 2) { /* bounce or mass transfer */
 		if (c1.id.iPid == pkd->idSelf)
