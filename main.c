@@ -81,6 +81,11 @@ int main(int argc,char **argv)
 #ifdef COLLISIONS
 		msrCalcHill(msr);
 #endif /* COLLISIONS */
+#ifdef GASOLINE
+		if (msr->param.iGasModel == GASMODEL_COOLING
+		    || msr->param.iGasModel == GASMODEL_COOLING_NONEQM) 
+		    msrInitCooling(msr);
+#endif
 		msrInitStep(msr);
 		dMass = msrMassCheck(msr,-1.0,"Initial");
 		if (msr->param.bVStart) printf("Restart Step:%d\n",iStep);
