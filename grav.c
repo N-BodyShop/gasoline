@@ -6,7 +6,7 @@
 
 
 void pkdBucketInteract(PKD pkd,int iBucket)
-{
+{	
 	PARTICLE *p;
 	KDN *pkdn;
 	ILP *ilp;

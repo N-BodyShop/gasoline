@@ -1,6 +1,6 @@
 #include <math.h>
 
-void v_sqrt1(double *pd2,double *pdir,int n)
+void v_sqrt1(int n,double *pd2,double *pdir)
 {
 	int i;
 	
