@@ -1,8 +1,8 @@
 #ifndef DUMPFRAME_HINCLUDED
 #define DUMPFRAME_HINCLUDED
 
-#define DF_NXPIXMAX 800
-#define DF_NYPIXMAX 600
+#define DF_NXPIXMAX 1024
+#define DF_NYPIXMAX 1024
 /* PST */
 
 #ifdef USE_PNG

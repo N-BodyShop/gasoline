@@ -8,6 +8,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <math.h>
+#include <sys/stat.h>
 
 #include <sys/param.h> /* for MAXPATHLEN and MAXHOSTNAMELEN, if available */
 #ifndef MAXPATHLEN
@@ -3873,6 +3874,57 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
     pkdReadCheck(plcl->pkd,achInFile,in->iVersion,in->iOffset,0,nParts[0]);
     }
 
+int msrFindCheck(MSR msr) {
+	char achCheckFile[PST_FILENAME_SIZE];
+	char achLatestCheckFile[PST_FILENAME_SIZE];
+	time_t latestTime;
+	char extraString[PST_FILENAME_SIZE];
+	int iNotCorrupt;
+	FDL_CTX* fdl;
+	struct stat statbuf;
+	char* suffixes[3] = {"chk0", "chk1", "chk"};
+	int i;
+	
+	latestTime = 0;
+	
+	for(i = 0; i < 3; ++i) {
+		/* Get the filename of the checkpoint file formatted properly. */
+		sprintf(achCheckFile, "%s/%s.%s", msr->param.achDataSubPath, msr->param.achOutName, suffixes[i]);
+		if(msr->pst->plcl->pszDataPath) {
+			strcpy(extraString, achCheckFile);
+			sprintf(achCheckFile,"%s/%s", msr->pst->plcl->pszDataPath, extraString);
+		}
+
+		/* Check if the checkpoint file exists. */
+		if(!stat(achCheckFile, &statbuf)) {
+			/* Check if the checkpoint file is corrupt. */
+			fdl = FDL_open(achCheckFile);
+			/* Read and ignore the version number. */
+			FDL_read(fdl, "version" ,&iNotCorrupt);
+			FDL_read(fdl, "not_corrupt_flag", &iNotCorrupt);
+			if(iNotCorrupt == 1) {
+				/* Get the file creation time. */
+				if(statbuf.st_mtime > latestTime) {
+					/* The checkpoint file exists, isn't corrupt, and is more recent, so mark it. */
+					latestTime = statbuf.st_mtime;
+					strcpy(achLatestCheckFile, achCheckFile);
+				}
+			}
+			FDL_finish(fdl);
+		}
+	}
+	
+	/* Did we find any checkpoint files? */
+	if(latestTime == 0)
+		return 0;
+	
+	/* Rename latest valid checkpoint file to .chk, return success. */
+	if(!rename(achLatestCheckFile, achCheckFile)) /* The last filename checked is the one we want. */
+		return 1;
+	else
+		return 0;
+}
+
 double msrReadCheck(MSR msr,int *piStep)
 {
 	struct inReadCheck in;
@@ -5754,7 +5806,7 @@ void msrAddSupernova(MSR msr, double dTime) { }
 
 #endif /* GASOLINE */
 
-void msrDumpFrameInit(MSR msr, double dTime, double dStep) {
+void msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart) {
 	LCL *plcl = &msr->lcl;
 	char achFile[160];
 	
@@ -5772,7 +5824,8 @@ void msrDumpFrameInit(MSR msr, double dTime, double dStep) {
 					 msr->param.iMaxRung, msr->param.bVDetails,
 					 achFile );
 
-		msrDumpFrame( msr, dTime, dStep );
+		if(!bRestart)
+			msrDumpFrame( msr, dTime, dStep );
 		}
 	}
 

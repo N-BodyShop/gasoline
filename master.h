@@ -131,6 +131,7 @@ void msrGravity(MSR,double,int,int *,double *,double *,double *,int *);
 void msrCalcEandL(MSR,int,double,double *,double *,double *,double *,double *);
 void msrDrift(MSR,double,double);
 void msrKick(MSR,double,double);
+int msrFindCheck(MSR);
 double msrReadCheck(MSR,int *);
 void msrWriteCheck(MSR,double,int);
 int msrOutTime(MSR,double);
@@ -245,7 +246,7 @@ void msrInitCooling(MSR msr);
 #endif
 #endif
 
-void msrDumpFrameInit(MSR msr, double dTime, double dStep);
+void msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart);
 void msrDumpFrame(MSR msr, double, double);
 
 

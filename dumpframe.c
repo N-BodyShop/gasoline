@@ -57,7 +57,7 @@ void dfInitialize( struct DumpFrameContext **pdf, double dTime,
 		tock = -log((dDumpFrameStep-floor(dDumpFrameStep))*0.50001+1e-60)
 			/log(2.0);
 		if (tock <= iMaxRung && tock >df->iMaxRung) {
-			df->iMaxRung = tock;
+			df->iMaxRung = floor(tock);
 			}
 		}
 /* General options */

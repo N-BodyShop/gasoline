@@ -84,10 +84,12 @@ int main(int argc,char **argv)
 	(void) strncpy(achBaseMask,msr->param.achDigitMask,256);
 
 	/*
-	 ** Check if a restart has been requested.
-	 ** Or if it might be required.
+	 Look for checkpoint files.  If not found, we start as normal.
+	 If found, msrFindCheck() will move most recent to .chk, and 
+	 we restart. bOverwrite means start from beginning, even if 
+	 checkpoints exist.
 	 */
-	if (msrRestart(msr)) {
+	if(!msr->param.bOverwrite && msrFindCheck(msr)) {
 		dTime = msrReadCheck(msr,&iStep);
 #ifdef COLLISIONS
 		if (msr->param.nSmooth > msr->N) {
@@ -163,7 +165,14 @@ int main(int argc,char **argv)
 		/* 
 		 ** Dump Frame Initialization
 		 */
-		msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep );
+		msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep, 1 );
+		/* Bring frame count up to correct place for restart. */
+		if(msr->df->dDumpFrameStep > 0) {
+			while(msr->df->dStep + msr->df->dDumpFrameStep < iStep) {
+				msr->df->dStep += msr->df->dDumpFrameStep;
+				msr->df->nFrame++;
+			}
+		}
 
 		if (msrSteps(msr) == 0) goto CheckForDiagnosticOutput;
 		goto Restart;
@@ -171,11 +180,13 @@ int main(int argc,char **argv)
 	/*
 	 ** Establish safety lock.
 	 */
+	/* Lockfile not used with automatic checkpoint finding
 	if (!msrGetLock(msr)) {
 	    msrFinish(msr);
 	    mdlFinish(mdl);
 	    return 1;
 	    }
+	*/
 	/*
 	 ** Read in the binary file, this may set the number of timesteps or
 	 ** the size of the timestep when the zto parameter is used.
@@ -294,7 +305,7 @@ int main(int argc,char **argv)
 		/* 
 		 ** Dump Frame Initialization
 		 */
-		msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep );
+		msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep, 0);
 
 		for (iStep=msr->param.iStartStep+1;iStep<=msrSteps(msr);++iStep) {
 			if (msrComove(msr)) {
