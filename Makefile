@@ -70,6 +70,16 @@ T3DMPI_LIBMDL = -O3 -L $(V_SQRT) -L $(V_SQRT1) -L $(RPC) hyperlib.o \
 	$(T3DMPI_MDL)/mdl.o -lv_sqrtc -lv_sqrtc1 -lmpi -lrpc -lm
 T3DMPI_LD_FLAGS = 
 
+#
+#       T3EMPI MPP defines
+#
+T3EMPI_MDL = ../mdl/t3empi
+
+T3EMPI_CFLAGS = -O3 -DCRAY_T3D -I$(T3EMPI_MDL) -I$(RPC) $(CODEDEF)
+T3EMPI_LIBMDL = hyperlib.o v_sqrt1.t3x.o \
+	$(T3EMPI_MDL)/mdl.o -lmpi -lm
+T3DMPI_LD_FLAGS = 
+
 OBJS	= 	main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 		ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
 		smoothfcn.o
@@ -110,6 +120,10 @@ t3d:
 t3dmpi:
 	cd $(T3DMPI_MDL); make
 	make $(EXE) "CFLAGS=$(T3DMPI_CFLAGS)" "LD_FLAGS=$(T3DMPI_LD_FLAGS)" "MDL=$(T3DMPI_MDL)" "LIBMDL=$(T3DMPI_LIBMDL)"
+
+t3empi:
+	cd $(T3EMPI_MDL); make
+	make $(EXE) "CFLAGS=$(T3EMPI_CFLAGS)" "LD_FLAGS=$(T3EMPI_LD_FLAGS)" "MDL=$(T3EMPI_MDL)" "LIBMDL=$(T3EMPI_LIBMDL)"
 
 pkdgrav: $(OBJS) $(EXTRA_OBJ)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -o pkdgrav $(OBJS) $(LIBMDL)
