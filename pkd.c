@@ -4537,6 +4537,12 @@ void pkdSetTypeFromFileSweep(PKD pkd, int iSetMask, char *file,
   }
  
 DoneSS:
+  /* Finish reading file to verify consistency across processors */
+  while ( (nRet=fscanf( fp, "%d\n", &iOrder )) == 1 ) {
+	niOrder++;
+	assert( iOrder > iOrderOld );
+	iOrderOld = iOrder;
+	}
   fclose(fp);
 
   *pniOrder += niOrder;
