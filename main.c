@@ -103,13 +103,15 @@ int main(int argc,char **argv)
 #endif /* COLLISIONS */
 			}
 		if(msrKDK(msr) || msr->param.bEpsVel) {
-			msrActiveRung(msr,0,1);
-                        msrDomainDecomp(msr);
-			msrActiveRung(msr,0,1);
+			msrActiveType(msr, TYPE_ALL, TYPE_ACTIVE);
+			msrDomainDecomp(msr);
+			msrActiveType(msr, TYPE_ALL, TYPE_ACTIVE);
 			msrInitAccel(msr);
 #ifdef GASOLINE
 			msrInitSph(msr, dTime);
 #endif
+			msrActiveType(msr, TYPE_ALL,
+				      TYPE_ACTIVE|TYPE_TREEACTIVE);
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree");
 			if (msrDoGravity(msr)) {
