@@ -2301,6 +2301,8 @@ double msrReadCheck(MSR msr,int *piStep)
 	double dTime;
 	int iVersion,iNotCorrupt;
 	FDL_CTX *fdl;
+	int nMaxOutsTmp,nOutsTmp;
+	double *pdOutTimeTmp;
 
 	/*
 	 ** Add Data Subpath for local and non-local names.
@@ -2466,6 +2468,28 @@ double msrReadCheck(MSR msr,int *piStep)
 		msr->param.bMiyamotoDisk = 0;
 		}
 	
+	/*
+	 * Check if redshift file is present, and if so reread it --JPG
+	 */
+	/* Store old values in temporary space */
+	pdOutTimeTmp = malloc(msr->nMaxOuts*sizeof(double));
+	nMaxOutsTmp = msr->nMaxOuts;
+	nOutsTmp = msr->nOuts;
+	for (i=0;i<msr->nOuts;++i) {
+	    pdOutTimeTmp[i] = msr->pdOutTime[i];
+	}
+	/* Calculate initial time to give to msrReadOuts*/
+	msrReadOuts(msr,dTime - (msr->param.nSteps*msr->param.dDelta));
+	if (msr->nOuts == 0) {   /* No redshift file...use old values */
+	    free(msr->pdOutTime);
+	    msr->pdOutTime = pdOutTimeTmp;
+	    msr->nMaxOuts = nMaxOutsTmp;
+	    msr->nOuts = nOutsTmp;
+	}
+
+
+
+
 	if (msr->param.bVDetails)
 		printf("Reading checkpoint file...\nN:%d Time:%g\n",msr->N,dTime);
 	in.nFileStart = 0;
