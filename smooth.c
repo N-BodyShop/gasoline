@@ -297,7 +297,6 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	int cell,idcell,cp,id,ct,idct;
 	float fBall2,fDist2,x,y,z,dx,dy,dz,lx,ly,lz,sx,sy,sz,h2;
 	PQ *pq,*pqi,*pqn;
-	char ach[80];
 
 	nSmooth = smx->nSmooth;
 	lx = smx->pkd->fPeriod[0];

@@ -746,8 +746,6 @@ void msrStepCosmo(MSR msr,double dTime)
 void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U)
 {
 	char out[SIZE(outCalcE)];
-	char *pDum;
-	double vx,vy,vz;
 	int iDum;
 
 	pstCalcE(msr->pst,NULL,0,out,&iDum);

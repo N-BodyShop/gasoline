@@ -25,7 +25,7 @@
 					 - 1.0/10.0*SPLINE_u*SPLINE_u*SPLINE_u*SPLINE_u*SPLINE_u);\
 			b = SPLINE_dih*SPLINE_dih*SPLINE_dih*(4.0/3.0 - 6.0/5.0*SPLINE_u*SPLINE_u + 1.0/2.0*SPLINE_u*SPLINE_u*SPLINE_u);\
 		    c = SPLINE_dih*SPLINE_dih*SPLINE_dih*SPLINE_dih*SPLINE_dih*(12.0/5.0 - 3.0/2.0*SPLINE_u);\
-			if (r > 0.0) d = 3.0/2.0*SPLINE_dih*SPLINE_dih*SPLINE_dih*SPLINE_dih*SPLINE_dih*SPLINE_dih/r;\
+			if (SPLINE_r > 0.0) d = 3.0/2.0*SPLINE_dih*SPLINE_dih*SPLINE_dih*SPLINE_dih*SPLINE_dih*SPLINE_dih/SPLINE_r;\
 			else d = 0.0;\
 			}\
 		else {\

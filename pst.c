@@ -14,7 +14,6 @@
 void pstInitialize(PST *ppst,MDL mdl,LCL *plcl)
 {
 	PST pst;
-	int i;
 
 	pst = (PST)malloc(sizeof(struct pstContext));
 	assert(pst != NULL);
@@ -906,8 +905,6 @@ void pstDensity(PST pst,char *in,int nIn,char *out,int *pnOut)
 void pstGravity(PST pst,char *in,int nIn,char *out,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
-	SMX smx;
-	double dPartSum,dCellSum;
 	char outUp[SIZE(outGravity)];
 	int iDum;
 

@@ -15,7 +15,7 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,float fEwCut)
 	float fEwCut2;
 	float Mass,Qxx,Qyy,Qzz,Qxy,Qxz,Qyz,Qtr;
 	float fPot,ax,ay,az;
-	float dx,dy,dz,dxo,dyo,dzo,r2,r,dir,dir2,aq,bq,dq,eq,eralph,t;
+	float dx,dy,dz,dxo,dyo,dzo,r2,r,dir,dir2,aq,bq,dq,eq,eralph;
 	float qirx,qiry,qirz,qir,qir3;
 	float hdotx,s;
 	

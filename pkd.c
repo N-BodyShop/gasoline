@@ -110,6 +110,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	FILE *fp;
 	int i,j;
 	struct dark_particle dp;
+	long lStart;
 
 	pkd->nLocal = nLocal;
 	/*
@@ -117,7 +118,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	 */
 	fp = fopen(pszFileName,"r");
 	assert(fp != NULL);
-	fseek(fp,sizeof(struct dump)+nStart*sizeof(struct dark_particle),0);
+	lStart = sizeof(struct dump)+nStart*sizeof(struct dark_particle);
+	fseek(fp,lStart,0);
 	/*
 	 ** Read Stuff!
 	 */
@@ -409,6 +411,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd)
 	FILE *fp;
 	int i,j;
 	struct dark_particle dp;
+	long lStart;
 
 	/*
 	 ** First verify order of the particles!
@@ -425,7 +428,8 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd)
 	 */
 	fp = fopen(pszFileName,"r+");
 	assert(fp != NULL);
-	fseek(fp,sizeof(struct dump)+nStart*sizeof(struct dark_particle),0);
+	lStart = sizeof(struct dump)+nStart*sizeof(struct dark_particle);
+	fseek(fp,lStart,0);
 	/* 
 	 ** Write Stuff!
 	 */
@@ -1105,6 +1109,7 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo)
 void pkdReadCheck(PKD pkd,char *pszFileName,int nStart,int nLocal)
 {
 	FILE *fp;
+	long lStart;
 
 	pkd->nLocal = nLocal;
 	/*
@@ -1112,7 +1117,8 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	 */
 	fp = fopen(pszFileName,"r");
 	assert(fp != NULL);
-	fseek(fp,sizeof(struct msrCheckPointHeader)+nStart*sizeof(PARTICLE),0);
+	lStart = sizeof(struct msrCheckPointHeader)+nStart*sizeof(PARTICLE);
+	fseek(fp,lStart,0);
 	/*
 	 ** Read Stuff!
 	 */
