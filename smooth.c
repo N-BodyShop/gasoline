@@ -550,7 +550,7 @@ void smSmooth(SMX smx,SMF *smf)
 	float fBall2,fDist2,x,y,z,dx,dy,dz,lx,ly,lz,sx,sy,sz,h2;
 	PQ *pq,*pqi,*pqn;
 	int iDum;
-	int nTree;
+	int nTree,nQueue,iLoad;
 
 	nSmooth = smx->nSmooth;
 	nTree = c[pkd->iRoot].pUpper + 1;
@@ -591,20 +591,55 @@ void smSmooth(SMX smx,SMF *smf)
 	/*
 	 ** Add local stuff to the prioq.
 	 */
-	pj = c[cell].pLower;
-	if (pj > nTree - nSmooth) pj = nTree - nSmooth;
-	for (i=0,pqi=smx->pq;i<nSmooth;++i,++pj,++pqi) {
-		smx->piMark[pj] = 1;
-		dx = x - p[pj].r[0];
-		dy = y - p[pj].r[1];
-		dz = z - p[pj].r[2];
+	iLoad = c[cell].pLower;
+	nQueue = 0;
+	if (iLoad > nTree - nSmooth) iLoad = nTree - nSmooth;
+	/*
+	 ** Have to add non-local particles to the queue?
+	 */
+	for (id=0;id<mdlThreads(pkd->mdl) && (iLoad < 0);++id) {
+		if (id = pkd->idSelf) continue;
+		pkdn = mdlAquire(mdl,CID_CELL,ROOT,id);
+		for (pj=pkdn->pLower;pj<=pkdn->pUpper && (iLoad < 0);++pj) {
+			pqi = &smx->pq[nQueue];
+			pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
+			dx = sx - pPart->r[0];
+			dy = sy - pPart->r[1];
+			dz = sz - pPart->r[2];
+			fDist2 = dx*dx + dy*dy + dz*dz;
+			pqi->fKey = fDist2;
+			pqi->dx = dx;
+			pqi->dy = dy;
+			pqi->dz = dz;
+			pqi->p = pj;
+			pqi->id = id;
+			pqi->pPart = pPart;
+			pqi->ax = 0.0;
+			pqi->ay = 0.0;
+			pqi->az = 0.0;
+			PQ_HASHADD(smx->pqHash,smx->nHash,pqi);
+			/*
+			 ** Note: in this case we DO NOT want to release pPart!
+			 */
+			++iLoad;
+			++nQueue;
+			}
+		mdlRelease(mdl,CID_CELL,pkdn);
+		}
+	assert(iLoad >= 0);
+	for (;nQueue<nSmooth;++nQueue,++iLoad) {
+		pqi = &smx->pq[nQueue];
+		smx->piMark[iLoad] = 1;
+		dx = x - p[iLoad].r[0];
+		dy = y - p[iLoad].r[1];
+		dz = z - p[iLoad].r[2];
 		pqi->fKey = dx*dx + dy*dy + dz*dz;
 		pqi->dx = dx;
 		pqi->dy = dy;
 		pqi->dz = dz;
 		pqi->p = pj;
 		pqi->id = pkd->idSelf;
-		pqi->pPart = &p[pj];
+		pqi->pPart = &p[iLoad];
 		pqi->ax = 0.0;
 		pqi->ay = 0.0;
 		pqi->az = 0.0;
@@ -699,10 +734,15 @@ void smSmooth(SMX smx,SMF *smf)
 	 */
 	pqn = NULL;
 	nCnt = 0;
-	h2 = pq->fKey;
+	h2 = 2.0*pq->fKey;   /* arbitrarily bigger than pq->fKey! */
 	p[pi].fBall2 = h2;
 	for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
+/*
+ ** There are cases like in collisions where we do want to include the
+ ** single nearest neighbor. So include the most distant particle.
+ **
 		if (pqi == pq) continue;
+*/
 		/*
 		 ** Move relevant data into Nearest Neighbor array.
 		 */
@@ -723,7 +763,7 @@ void smSmooth(SMX smx,SMF *smf)
 	/*
 	 ** Try a cache check to improve responsiveness.
 	 */
-        mdlCacheCheck(mdl);
+	mdlCacheCheck(mdl);
 	if (!pqn) {
 		/*
 		 ** Clean up piMark array, pqHash, and release all aquired
