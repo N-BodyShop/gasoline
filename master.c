@@ -3045,6 +3045,16 @@ void msrInitSph(MSR msr,double dTime)
 
 void msrStepSph(MSR msr,double dTime, double dDelta)
 {
+	pstActiveGas(msr->pst,NULL,0,NULL,NULL);
+	msrBuildTree(msr,1,-1.0,1);
+	msrSmooth(msr,dTime,SMX_DENSITY,1);
+	msrReSmooth(msr,dTime,SMX_HSMDIVV,1);
+	msrReSmooth(msr,dTime,SMX_GEOMBV,1);
+	pstCalcEthdot(msr->pst,NULL,0,NULL,NULL);
+	/* pstPredictEth(); XXX not written yet */
+	pstCalcEthdot(msr->pst,NULL,0,NULL,NULL);
+	/* pstCorrectEth(); XXX not written yet */
+	/* pstAccelSph(); XXX not written yet */
     }
 
 int msrSphCurrRung(MSR msr, int iRung)
