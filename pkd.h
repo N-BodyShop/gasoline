@@ -169,6 +169,19 @@ typedef struct pkdContext {
 		} ti[MAX_TIMERS];
 	} * PKD;
 
+
+typedef struct CacheStatistics {
+	double dpNumAccess;
+	double dpMissRatio;
+	double dpCollRatio;
+	double dpMinRatio;
+	double dcNumAccess;
+	double dcMissRatio;
+	double dcCollRatio;
+	double dcMinRatio;
+	} CASTAT;
+
+
 #define PKD_ORDERTEMP	256
 
 #define pkdRoot(iCell,id)\
@@ -250,7 +263,7 @@ void pkdCalcCell(PKD,KDN *,float *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);
 void pkdBuildLocal(PKD,int,int,double,int,KDN *);
 void pkdGravAll(PKD,int,int,int,int,double,double,
-				double *,double *,CASTAT *,CASTAT *); 
+				double *,double *,CASTAT *); 
 void pkdCalcE(PKD,double *,double *);
 void pkdDrift(PKD,double,float *,int);
 void pkdKick(PKD pkd,double,double);

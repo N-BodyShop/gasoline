@@ -79,7 +79,7 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	 ** Need to use mdlMalloc() since the particles will need to be
 	 ** visible to all other processors thru mdlAquire() later on.
 	 */
-	pkd->pStore = mdlMalloc(nStore*sizeof(PARTICLE));
+	pkd->pStore = mdlMalloc(pkd->mdl,nStore*sizeof(PARTICLE));
 	assert(pkd->pStore != NULL);
 	pkd->kdNodes = NULL;
 	pkd->piLeaf = NULL;
@@ -113,7 +113,7 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 
 void pkdFinish(PKD pkd)
 {
-	if (pkd->kdNodes) mdlFree(pkd->kdNodes);
+	if (pkd->kdNodes) mdlFree(pkd->mdl,pkd->kdNodes);
 	if (pkd->kdTop) free(pkd->kdTop);
 	if (pkd->piLeaf) free(pkd->piLeaf);
 	free(pkd->ilp);
@@ -122,7 +122,7 @@ void pkdFinish(PKD pkd)
 	free(pkd->sqrttmp);
 	free(pkd->d2a);
 	free(pkd->ewt);
-	mdlFree(pkd->pStore);
+	mdlFree(pkd->mdl,pkd->pStore);
 	free(pkd);
 	}
 
@@ -963,8 +963,8 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		}
 	pkd->nSplit = l;
 	pkd->nNodes = l<<1;
-	if (pkd->kdNodes) mdlFree(pkd->kdNodes);
-	pkd->kdNodes = mdlMalloc(pkd->nNodes*sizeof(KDN));
+	if (pkd->kdNodes) mdlFree(pkd->mdl,pkd->kdNodes);
+	pkd->kdNodes = mdlMalloc(pkd->mdl,pkd->nNodes*sizeof(KDN));
 	assert(pkd->kdNodes != NULL);
 	sprintf(ach,"nNodes:%d nSplit:%d nLevels:%d nBucket:%d\n",
 			pkd->nNodes,pkd->nSplit,pkd->nLevels,nBucket);
@@ -1030,8 +1030,7 @@ void pkdBucketWeight(PKD pkd,int iBucket,float fWeight)
 
 void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 				double fEwCut,double fEwhCut,
-				double *pdPartSum,double *pdCellSum,CASTAT *pcsPart,
-				CASTAT *pcsCell)
+				double *pdPartSum,double *pdCellSum,CASTAT *pcs)
 {
 	KDN *c;
 	int iCell,n;
@@ -1085,8 +1084,14 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	/*
 	 ** Get caching statistics.
 	 */
-	mdlCacheStat(pkd->mdl,CID_CELL,pcsCell);
-	mdlCacheStat(pkd->mdl,CID_PARTICLE,pcsPart);
+	pcs->dcNumAccess = mdlNumAccess(pkd->mdl,CID_CELL);
+	pcs->dcMissRatio = mdlMissRatio(pkd->mdl,CID_CELL);
+	pcs->dcCollRatio = mdlCollRatio(pkd->mdl,CID_CELL);
+	pcs->dcMinRatio = mdlMinRatio(pkd->mdl,CID_CELL);
+	pcs->dpNumAccess = mdlNumAccess(pkd->mdl,CID_PARTICLE);
+	pcs->dpMissRatio = mdlMissRatio(pkd->mdl,CID_PARTICLE);
+	pcs->dpCollRatio = mdlCollRatio(pkd->mdl,CID_PARTICLE);
+	pcs->dpMinRatio = mdlMinRatio(pkd->mdl,CID_PARTICLE);
 	/*
 	 ** Stop caching spaces.
 	 */
