@@ -2,6 +2,7 @@
 #define SMOOTHFCN_INCLUDED
 
 #include "pkd.h"
+#include "floattype.h"
 
 typedef struct smfParameters {
 	double H;
@@ -20,10 +21,10 @@ typedef struct smfParameters {
 
 typedef struct nNeighbor {
 	PARTICLE *pPart;
-	float fDist2;
-	float dx;
-	float dy;
-	float dz;
+	FLOAT fDist2;
+	FLOAT dx;
+	FLOAT dy;
+	FLOAT dz;
 	} NN;
 
 #define SMX_DENSITY		1
@@ -77,5 +78,16 @@ void CheckForCollision(PARTICLE *,int,NN *,SMF *);
 #endif /* PLANETS */
 
 #endif
+
+
+
+
+
+
+
+
+
+
+
 
 

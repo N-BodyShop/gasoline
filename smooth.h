@@ -3,13 +3,14 @@
 
 #include "pkd.h"
 #include "smoothfcn.h"
+#include "floattype.h"
 
 #define RESMOOTH_SAFE  10
 #define PQ_LOAD_FACTOR 0.50
 
 
 typedef struct pqNode {
-	float fKey;
+	FLOAT fKey;
 	struct pqNode *pqLoser;
 	struct pqNode *pqFromInt;
 	struct pqNode *pqFromExt;
@@ -19,12 +20,12 @@ typedef struct pqNode {
 	int p;
 	int id;
 	PARTICLE *pPart;
-	float dx;
-	float dy;
-	float dz;
-	float ax;
-	float ay;
-	float az;
+	FLOAT dx;
+	FLOAT dy;
+	FLOAT dz;
+	FLOAT ax;
+	FLOAT ay;
+	FLOAT az;
 	} PQ;
 
 
@@ -139,9 +140,9 @@ typedef struct smContext {
 
 #define INTERSECTNP(pkdn,fBall2,x,y,z,label)\
 {\
-	float INTRSCT_dx,INTRSCT_dy,INTRSCT_dz;\
-	float INTRSCT_dx1,INTRSCT_dy1,INTRSCT_dz1;\
-    float INTRSCT_fDist2;\
+	FLOAT INTRSCT_dx,INTRSCT_dy,INTRSCT_dz;\
+	FLOAT INTRSCT_dx1,INTRSCT_dy1,INTRSCT_dz1;\
+    FLOAT INTRSCT_fDist2;\
 	INTRSCT_dx = (pkdn)->bnd.fMin[0]-x;\
 	INTRSCT_dx1 = x-(pkdn)->bnd.fMax[0];\
 	INTRSCT_dy = (pkdn)->bnd.fMin[1]-y;\
@@ -161,9 +162,9 @@ typedef struct smContext {
 
 #define INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,bPeriodic,label)\
 {\
-	float INTRSCT_dx,INTRSCT_dy,INTRSCT_dz;\
-	float INTRSCT_dx1,INTRSCT_dy1,INTRSCT_dz1;\
-    float INTRSCT_fDist2;\
+	FLOAT INTRSCT_dx,INTRSCT_dy,INTRSCT_dz;\
+	FLOAT INTRSCT_dx1,INTRSCT_dy1,INTRSCT_dz1;\
+    FLOAT INTRSCT_fDist2;\
 	INTRSCT_dx = (pkdn)->bnd.fMin[0]-x;\
 	INTRSCT_dx1 = x-(pkdn)->bnd.fMax[0];\
 	INTRSCT_dy = (pkdn)->bnd.fMin[1]-y;\

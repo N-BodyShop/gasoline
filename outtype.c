@@ -3,8 +3,9 @@
 #include <assert.h>
 #include "pkd.h"
 #include "outtype.h"
+#include "floattype.h"
 
-float ArrType(PARTICLE *p,int iType)
+FLOAT ArrType(PARTICLE *p,int iType)
 {
 	switch (iType) {
 	case OUT_DENSITY_ARRAY:
@@ -39,7 +40,7 @@ float ArrType(PARTICLE *p,int iType)
 	}
 
 
-float VecType(PARTICLE *p,int iDim,int iType)
+FLOAT VecType(PARTICLE *p,int iDim,int iType)
 {
 	switch (iType) {
 	case OUT_POS_VECTOR:
@@ -61,7 +62,7 @@ float VecType(PARTICLE *p,int iDim,int iType)
 void pkdOutArray(PKD pkd,char *pszFileName,int iArrType)
 {
 	FILE *fp;
-	float fOut;
+	FLOAT fOut;
 	int i;
 
 	fp = fopen(pszFileName,"a");
@@ -71,7 +72,7 @@ void pkdOutArray(PKD pkd,char *pszFileName,int iArrType)
 	 */
 	for (i=0;i<pkd->nLocal;++i) {
 		fOut = ArrType(&pkd->pStore[i],iArrType);
-		fprintf(fp,"%.8g\n",fOut);
+		fprintf(fp,"%.14g\n",fOut);
 		}
 	i = fclose(fp);
 	if (i != 0) {
@@ -84,7 +85,7 @@ void pkdOutArray(PKD pkd,char *pszFileName,int iArrType)
 void pkdOutVector(PKD pkd,char *pszFileName,int iDim,int iVecType)
 {
 	FILE *fp;
-	float fOut;
+	FLOAT fOut;
 	int i;
 
 	fp = fopen(pszFileName,"a");
@@ -94,7 +95,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int iDim,int iVecType)
 	 */
 	for (i=0;i<pkd->nLocal;++i) {
 		fOut = VecType(&pkd->pStore[i],iDim,iVecType);
-		fprintf(fp,"%.8g\n",fOut);
+		fprintf(fp,"%.14g\n",fOut);
 		}
 	i = fclose(fp);
 	if (i != 0) {
@@ -102,6 +103,11 @@ void pkdOutVector(PKD pkd,char *pszFileName,int iDim,int iVecType)
 		exit(1);
 		}
 	}
+
+
+
+
+
 
 
 

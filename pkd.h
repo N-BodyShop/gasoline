@@ -3,6 +3,7 @@
 
 #include <sys/resource.h>
 #include "mdl.h"
+#include "floattype.h"
 
 #define CID_TOP		0
 #define CID_PARTICLE	0
@@ -26,37 +27,37 @@ typedef struct particle {
 	int iActive;
 	int iRung;
 	int cpStart;
-	float fWeight;
-	float fMass;
-	float fSoft;
-	float r[3];
-	float v[3];
-	float a[3];
-	float fPot;
-	float fBall2;
-	float fDensity;
-	float dt;			/* a time step suggestion */
+	FLOAT fWeight;
+	FLOAT fMass;
+	FLOAT fSoft;
+	FLOAT r[3];
+	FLOAT v[3];
+	FLOAT a[3];
+	FLOAT fPot;
+	FLOAT fBall2;
+	FLOAT fDensity;
+	FLOAT dt;			/* a time step suggestion */
 #ifdef SUPERCOOL
-	float vMean[3];
+	FLOAT vMean[3];
 #endif
 #ifdef COLORCODE
-	float fColor;
+	FLOAT fColor;
 #endif
 #ifdef GASOLINE
-	float vPred[3];		/* predicted velocity (time centered) */
-	float fHsmDivv;		/* 0.5*sqrt(fBall2)*div(vPred) */
-	float fRhoDivv;		/* <fDensity*div(vPred)_j> */
-	float fCutVisc;
-	float u;			/* New thermal energy */ 
-	float du;			/* time derivative of thermal energy */
-	float uOld;			/* Old thermal energy */ 
-	float A;			/* sqrt(uNew_i) prefactor in duNew/dt */
-	float B;			/* constant term in duNew/dt */
-	float fMetals;
-	float fTimeForm;
+	FLOAT vPred[3];		/* predicted velocity (time centered) */
+	FLOAT fHsmDivv;		/* 0.5*sqrt(fBall2)*div(vPred) */
+	FLOAT fRhoDivv;		/* <fDensity*div(vPred)_j> */
+	FLOAT fCutVisc;
+	FLOAT u;			/* New thermal energy */ 
+	FLOAT du;			/* time derivative of thermal energy */
+	FLOAT uOld;			/* Old thermal energy */ 
+	FLOAT A;			/* sqrt(uNew_i) prefactor in duNew/dt */
+	FLOAT B;			/* constant term in duNew/dt */
+	FLOAT fMetals;
+	FLOAT fTimeForm;
 #endif
 #ifdef PLANETS
-	float dCollTime;	/* time to next collision */
+	FLOAT dCollTime;	/* time to next collision */
 	int	iCollider;		/* iOrder of collider */
 #endif /* PLANETS */
 	} PARTICLE;
@@ -66,16 +67,16 @@ typedef struct particle {
 
 typedef struct chkParticle {
 	int iOrder;
-	float fMass;
-	float fSoft;
-	float r[3];
-	float v[3];
+	FLOAT fMass;
+	FLOAT fSoft;
+	FLOAT r[3];
+	FLOAT v[3];
 	} CHKPART;
 
 
 typedef struct bndBound {
-	float fMin[3];
-	float fMax[3];
+	FLOAT fMin[3];
+	FLOAT fMax[3];
 	} BND;
 
 struct pkdCalcCellStruct {
@@ -100,7 +101,7 @@ typedef struct kdNode {
 	int iUpper;
 	double fMass;
 	double fSoft;
-	float r[3];
+	FLOAT r[3];
 	struct pkdCalcCellStruct mom;
 	double fOpen2;
 	} KDN;
@@ -155,7 +156,7 @@ typedef struct pkdContext {
 	int iOrder;
 	int iFreeCell;
 	int iRoot;
-	float fPeriod[3];
+	FLOAT fPeriod[3];
 	int *piLeaf;
 	KDN *kdTop;
 	KDN *kdNodes;
@@ -260,18 +261,18 @@ double pkdGetTimer(PKD,int);
 void pkdClearTimer(PKD,int);
 void pkdStartTimer(PKD,int);
 void pkdStopTimer(PKD,int);
-void pkdInitialize(PKD *,MDL,int,int,int,float *,int,int,int);
+void pkdInitialize(PKD *,MDL,int,int,int,FLOAT *,int,int,int);
 void pkdFinish(PKD);
 void pkdReadTipsy(PKD,char *,int,int,int,double,double);
 void pkdSetSoft(PKD pkd,double dSoft);
 void pkdCalcBound(PKD,BND *,BND *);
-int pkdWeight(PKD,int,float,int,int,int,int *,int *,float *,float *);
-int pkdLowerPart(PKD,int,float,int,int);
-int pkdUpperPart(PKD,int,float,int,int);
+int pkdWeight(PKD,int,FLOAT,int,int,int,int *,int *,FLOAT *,FLOAT *);
+int pkdLowerPart(PKD,int,FLOAT,int,int);
+int pkdUpperPart(PKD,int,FLOAT,int,int);
 int pkdLowerOrdPart(PKD,int,int,int);
 int pkdUpperOrdPart(PKD,int,int,int);
 void pkdActiveOrder(PKD);
-int pkdColRejects(PKD,int,float,float,int);
+int pkdColRejects(PKD,int,FLOAT,FLOAT,int);
 int pkdSwapRejects(PKD,int);
 int pkdSwapSpace(PKD);
 int pkdFreeStore(PKD);
@@ -284,14 +285,14 @@ int pkdColOrdRejects(PKD,int,int);
 void pkdLocalOrder(PKD);
 void pkdWriteTipsy(PKD,char *,int,int,double,double);
 void pkdCombine(KDN *,KDN *,KDN *);
-void pkdCalcCell(PKD,KDN *,float *,int,struct pkdCalcCellStruct *);
+void pkdCalcCell(PKD,KDN *,FLOAT *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);
 void pkdBuildLocal(PKD,int,int,double,int,int,KDN *);
 void pkdBuildBinary(PKD,int,int,double,int,int,KDN *);
 void pkdGravAll(PKD,int,int,int,int,double,double,int *,
 				double *,double *,CASTAT *,double *); 
 void pkdCalcE(PKD,double *,double *);
-void pkdDrift(PKD,double,float *,int);
+void pkdDrift(PKD,double,FLOAT *,int);
 void pkdKick(PKD pkd,double,double, double, double);
 void pkdReadCheck(PKD,char *,int,int,int,int);
 void pkdWriteCheck(PKD,char *,int,int);
@@ -305,8 +306,7 @@ void pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
 void pkdDensityStep(PKD pkd, double dEta, double
 		    dRhoFac);
-void pkdVelocityStep(PKD pkd, double dEta, double dVelFac, double
-		     dAccFac);
+void pkdAccelStep(PKD pkd,double dEta,double a, double H);
 int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int
 		bAll);
 void pkdInitDt(PKD pkd, double dDelta);
@@ -326,6 +326,13 @@ void pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 void pkdNewOrder(PKD pkd, int nStart);
 void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int nMaxOrderGas,
 		  int nMaxOrderDark);
+
+#ifdef PLANETS
+
+int pkdIsPlanet(PKD,PARTICLE *);
+void pkdActiveNotPlanet(PKD);
+
+#endif
 
 #ifdef GASOLINE
 

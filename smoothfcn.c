@@ -14,7 +14,7 @@ void combDensity(void *p1,void *p2)
 
 void Density(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
-	float ih2,r2,rs,fDensity;
+	FLOAT ih2,r2,rs,fDensity;
 	int i;
 
 	ih2 = 4.0/p->fBall2;
@@ -32,7 +32,7 @@ void Density(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	float fNorm,ih2,r2,rs;
+	FLOAT fNorm,ih2,r2,rs;
 	int i;
 
 	ih2 = 4.0/p->fBall2;
@@ -72,7 +72,7 @@ void combMeanVel(void *p1,void *p2)
 void MeanVel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	float fNorm,ih2,r2,rs;
+	FLOAT fNorm,ih2,r2,rs;
 	int i,j;
 
 	ih2 = 4.0/p->fBall2;
@@ -93,7 +93,7 @@ void MeanVel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 void MeanVelSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	float fNorm,ih2,r2,rs;
+	FLOAT fNorm,ih2,r2,rs;
 	int i,j;
 
 	ih2 = 4.0/p->fBall2;
@@ -139,9 +139,9 @@ void postHsmDivv(PARTICLE *p,SMF *smf)
 void HsmDivv(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	float ih2,r2,r,rs;
-	float dx,dy,dz,dvx,dvy,dvz,dvdotdr,fHsmDivv,fRhoDivv,fCutVisc;
-	float fNorm,fTmp;
+	FLOAT ih2,r2,r,rs;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr,fHsmDivv,fRhoDivv,fCutVisc;
+	FLOAT fNorm,fTmp;
 	int i;
 
 	ih2 = 4.0/p->fBall2;
@@ -181,9 +181,9 @@ void HsmDivv(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 void HsmDivvSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	float ih2,r2,r,rs;
-	float dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	float fNorm;
+	FLOAT ih2,r2,r,rs;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT fNorm;
 	int i;
 
 	ih2 = 4.0/p->fBall2;
@@ -245,9 +245,9 @@ void postGeomBV(PARTICLE *p,SMF *smf)
 void GeomBVSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	float ih2,r2,r,rs;
-	float dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	float fNorm;
+	FLOAT ih2,r2,r,rs;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT fNorm;
 	int i;
 
 	ih2 = 4.0/p->fBall2;
@@ -301,11 +301,11 @@ void combEthdotBV(void *p1,void *p2)
 void EthdotBVSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	float ih2,r2,r,rs;
-	float dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	float fNorm;
+	FLOAT ih2,r2,r,rs;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT fNorm;
 	int i;
-	float qi,qj,Viscij,Eijp,Eijq;
+	FLOAT qi,qj,Viscij,Eijp,Eijq;
 
 	ih2 = 4.0/p->fBall2;
 	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2*ih2;
@@ -382,11 +382,11 @@ void combAccsph(void *p1,void *p2)
 void AccsphBVSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	float ih2,r2,r,rs;
-	float dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	float fNorm;
+	FLOAT ih2,r2,r,rs;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT fNorm;
 	int i;
-	float qi,qj,Viscij,aij;
+	FLOAT qi,qj,Viscij,aij;
 
 	ih2 = 4.0/p->fBall2;
 	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2*ih2;
@@ -478,7 +478,7 @@ void SetTimeStep(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	/*DEBUG currently nSmooth = 63*/
 
 	PARTICLE *pn;
-	float vx,vy,vz,rdotv,dt; /* these ought to be doubles! */
+	FLOAT vx,vy,vz,rdotv,dt; /* these ought to be doubles! */
 	int i;
 
 	p->dt = 10.0; /*DEBUG!!!*/
@@ -521,7 +521,7 @@ void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	 */
 
 	PARTICLE *pn;
-	float vx,vy,vz,rdotv,v2,D,dt; /* these ought to be doubles! */
+	FLOAT vx,vy,vz,rdotv,v2,D,dt; /* these ought to be doubles! */
 	int i;
 
 	p->dCollTime = smf->dEnd; /* time interval cannot exceed smf->dEnd */
@@ -562,3 +562,7 @@ void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #undef X
 
 #endif /* PLANETS */
+
+
+
+

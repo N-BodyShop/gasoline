@@ -55,7 +55,7 @@ void pkdStopTimer(PKD pkd,int iTimer)
 
 
 void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
-				   float *fPeriod,int nDark,int nGas,int nStar)
+				   FLOAT *fPeriod,int nDark,int nGas,int nStar)
 {
 	PKD pkd;
 	int j;
@@ -180,6 +180,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	struct dark_particle dp;
 	struct gas_particle gp;
 	struct star_particle sp;
+	float fTmp;
 
 	pkd->nLocal = nLocal;
 	pkd->nActive = nLocal;
@@ -222,70 +223,91 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	 ** Read Stuff!
 	 */
 	if (bStandard) {
-		float vTemp;
+		FLOAT vTemp;
 		XDR xdrs;
 		xdrstdio_create(&xdrs,fp,XDR_DECODE);
 		for (i=0;i<nLocal;++i) {
 			p = &pkd->pStore[i];
 			p->iOrder = nStart + i;
 			if (pkdIsDark(pkd,p)) {
-				xdr_float(&xdrs,&p->fMass);
+				xdr_float(&xdrs,&fTmp);
+				p->fMass = fTmp;
 				for (j=0;j<3;++j) {
-					xdr_float(&xdrs,&p->r[j]);
+					xdr_float(&xdrs,&fTmp);
+					p->r[j] = fTmp;
 					}
 				for (j=0;j<3;++j) {
-					xdr_float(&xdrs,&vTemp);
+					xdr_float(&xdrs,&fTmp);
+					vTemp = fTmp;
 					p->v[j] = dvFac*vTemp;			
 					}
-				xdr_float(&xdrs,&p->fSoft);
-				xdr_float(&xdrs,&p->fPot);
+				xdr_float(&xdrs,&fTmp);
+				p->fSoft = fTmp;
+				xdr_float(&xdrs,&fTmp);
+				p->fPot = fTmp;
 				}
 			else if (pkdIsGas(pkd,p)) {
-				xdr_float(&xdrs,&p->fMass);
+				xdr_float(&xdrs,&fTmp);
+				p->fMass = fTmp;
 				for (j=0;j<3;++j) {
-					xdr_float(&xdrs,&p->r[j]);
+					xdr_float(&xdrs,&fTmp);
+					p->r[j] = fTmp;
 					}
 				for (j=0;j<3;++j) {
-					xdr_float(&xdrs,&vTemp);
+					xdr_float(&xdrs,&fTmp);
+					vTemp = fTmp;
 					p->v[j] = dvFac*vTemp;			
 #ifdef GASOLINE
 					p->vPred[j] = dvFac*vTemp;
 #endif
 					}
-				xdr_float(&xdrs,&p->fDensity);
+				xdr_float(&xdrs,&fTmp);
+				p->fDensity = fTmp;
 #ifdef GASOLINE
 				/*
 				 ** Convert Temperature to Thermal energy.
 				 */
-				xdr_float(&xdrs,&vTemp);
+				xdr_float(&xdrs,&fTmp);
+				vTemp = fTmp;
 				p->u = dTuFac*vTemp;
-				xdr_float(&xdrs,&p->fSoft);
-				xdr_float(&xdrs,&p->fMetals);
+				xdr_float(&xdrs,&fTmp);
+				p->fSoft = fTmp;
+				xdr_float(&xdrs,&fTmp);
+				p->fMetals = fTmp;
 #else
-				xdr_float(&xdrs,&vTemp);
-				xdr_float(&xdrs,&p->fSoft);
-				xdr_float(&xdrs,&vTemp);
+				xdr_float(&xdrs,&fTmp);
+				xdr_float(&xdrs,&fTmp);
+				p->fSoft = fTmp;
+				xdr_float(&xdrs,&fTmp);
 #endif
-				xdr_float(&xdrs,&p->fPot);
+				xdr_float(&xdrs,&fTmp);
+				p->fPot = fTmp;
 				}
 			else if (pkdIsStar(pkd,p)) {
-				xdr_float(&xdrs,&p->fMass);
+				xdr_float(&xdrs,&fTmp);
+				p->fMass = fTmp;
 				for (j=0;j<3;++j) {
-					xdr_float(&xdrs,&p->r[j]);
+					xdr_float(&xdrs,&fTmp);
+					p->r[j] = fTmp;
 					}
 				for (j=0;j<3;++j) {
-					xdr_float(&xdrs,&vTemp);
+					xdr_float(&xdrs,&fTmp);
+					vTemp = fTmp;
 					p->v[j] = dvFac*vTemp;			
 					}
 #ifdef GASOLINE
-				xdr_float(&xdrs,&p->fMetals);
-				xdr_float(&xdrs,&p->fTimeForm);
+				xdr_float(&xdrs,&fTmp);
+				p->fMetals = fTmp;
+				xdr_float(&xdrs,&fTmp);
+				p->fTimeForm = fTmp;
 #else
-				xdr_float(&xdrs,&vTemp);
-				xdr_float(&xdrs,&vTemp);
+				xdr_float(&xdrs,&fTmp);
+				xdr_float(&xdrs,&fTmp);
 #endif
-				xdr_float(&xdrs,&p->fSoft);
-				xdr_float(&xdrs,&p->fPot);
+				xdr_float(&xdrs,&fTmp);
+				p->fSoft = fTmp;
+				xdr_float(&xdrs,&fTmp);
+				p->fPot = fTmp;
 				}
 			else assert(0);
 			}
@@ -352,10 +374,10 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive)
 	 ** Initialize the bounds to 0 at the beginning
 	 */
 	for (j=0;j<3;++j) {
-		pbnd->fMin[j] = FLT_MAX;
-		pbnd->fMax[j] = -FLT_MAX;
-		pbndActive->fMin[j] = FLT_MAX;
-		pbndActive->fMax[j] = -FLT_MAX;
+		pbnd->fMin[j] = FLOAT_MAXVAL;
+		pbnd->fMax[j] = -FLOAT_MAXVAL;
+		pbndActive->fMin[j] = FLOAT_MAXVAL;
+		pbndActive->fMax[j] = -FLOAT_MAXVAL;
 		}
 	/*
 	 ** Calculate Local Bounds.
@@ -388,11 +410,11 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive)
  ** Partition particles between iFrom and iTo into those < fSplit and
  ** those >= to fSplit.  Find number and weight in each partition.
  */
-int pkdWeight(PKD pkd,int d,float fSplit,int iSplitSide,int iFrom,int iTo,
-			  int *pnLow,int *pnHigh,float *pfLow,float *pfHigh)
+int pkdWeight(PKD pkd,int d,FLOAT fSplit,int iSplitSide,int iFrom,int iTo,
+			  int *pnLow,int *pnHigh,FLOAT *pfLow,FLOAT *pfHigh)
 {
 	int i,iPart;
-	float fLower,fUpper;
+	FLOAT fLower,fUpper;
 	
 	/*
 	 ** First partition the memory about fSplit for particles iFrom to iTo.
@@ -453,7 +475,7 @@ int pkdOrdWeight(PKD pkd,int iOrdSplit,int iSplitSide,int iFrom,int iTo,
 	}
 
 
-int pkdLowerPart(PKD pkd,int d,float fSplit,int i,int j)
+int pkdLowerPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 {
 	PARTICLE pTemp;
 
@@ -472,7 +494,7 @@ int pkdLowerPart(PKD pkd,int d,float fSplit,int i,int j)
 	}
 
 
-int pkdUpperPart(PKD pkd,int d,float fSplit,int i,int j)
+int pkdUpperPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 {
 	PARTICLE pTemp;
 
@@ -550,7 +572,7 @@ void pkdActiveOrder(PKD pkd)
 	}
 
 
-int pkdColRejects(PKD pkd,int d,float fSplit,float fSplitInactive,
+int pkdColRejects(PKD pkd,int d,FLOAT fSplit,FLOAT fSplitInactive,
 				  int iSplitSide)
 {
 	PARTICLE pTemp;
@@ -678,7 +700,7 @@ void pkdDomainColor(PKD pkd)
 	int i;
 	
 	for (i=0;i<pkd->nLocal;++i) {
-		pkd->pStore[i].fColor = (float)pkd->idSelf;
+		pkd->pStore[i].fColor = (FLOAT)pkd->idSelf;
 		}
 #endif
 	}
@@ -727,6 +749,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	struct gas_particle gp;
 	struct star_particle sp;
 	int nout;
+	float fTmp;
 
 	/*
 	 ** Seek past the header and up to nStart.
@@ -735,7 +758,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	assert(fp != NULL);
 	pkdSeek(pkd,fp,nStart,bStandard);
 	if (bStandard) {
-		float vTemp;
+		FLOAT vTemp;
 		XDR xdrs;
 		/* 
 		 ** Write Stuff!
@@ -744,62 +767,84 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 		for (i=0;i<pkdLocal(pkd);++i) {
 			p = &pkd->pStore[i];
 			if (pkdIsDark(pkd,p)) {
-				xdr_float(&xdrs,&p->fMass);
+				fTmp = p->fMass;
+				xdr_float(&xdrs,&fTmp);
 				for (j=0;j<3;++j) {
-					xdr_float(&xdrs,&p->r[j]);
+					fTmp = p->r[j];
+					xdr_float(&xdrs,&fTmp);
 					}
 				for (j=0;j<3;++j) {
 					vTemp = dvFac*p->v[j];			
-					xdr_float(&xdrs,&vTemp);
+					fTmp = vTemp;
+					xdr_float(&xdrs,&fTmp);
 					}
-				xdr_float(&xdrs,&p->fSoft);
-				xdr_float(&xdrs,&p->fPot);
+				fTmp = p->fSoft;
+				xdr_float(&xdrs,&fTmp);
+				fTmp = p->fPot;
+				xdr_float(&xdrs,&fTmp);
 				}
 			else if (pkdIsGas(pkd,p)) {
-				xdr_float(&xdrs,&p->fMass);
+				fTmp = p->fMass;
+				xdr_float(&xdrs,&fTmp);
 				for (j=0;j<3;++j) {
-					xdr_float(&xdrs,&p->r[j]);
+					fTmp = p->r[j];
+					xdr_float(&xdrs,&fTmp);
 					}
 				for (j=0;j<3;++j) {
 					vTemp = dvFac*p->v[j];			
-					xdr_float(&xdrs,&vTemp);
+					fTmp = vTemp;
+					xdr_float(&xdrs,&fTmp);
 					}
-				xdr_float(&xdrs,&p->fDensity);
+				fTmp = p->fDensity;
+				xdr_float(&xdrs,&fTmp);
 #ifdef GASOLINE
 				/*
 				 ** Convert thermal energy to tempertature.
 				 */
 				vTemp = duTFac*p->u;
-				xdr_float(&xdrs,&vTemp);
-				xdr_float(&xdrs,&p->fSoft);
-				xdr_float(&xdrs,&p->fMetals);
+				fTmp = vTemp;
+				xdr_float(&xdrs,&fTmp);
+				fTmp = p->fSoft;
+				xdr_float(&xdrs,&fTmp);
+				fTmp = p->fMetals;
+				xdr_float(&xdrs,&fTmp);
 #else
-				vTemp = 0.0;
-				xdr_float(&xdrs,&vTemp);
-				xdr_float(&xdrs,&p->fSoft);
-				xdr_float(&xdrs,&vTemp);
+				fTmp = 0.0;
+				xdr_float(&xdrs,&fTmp);
+				fTmp = p->fSoft;
+				xdr_float(&xdrs,&fTmp);
+				fTmp = 0.0;
+				xdr_float(&xdrs,&fTmp);
 #endif
-				xdr_float(&xdrs,&p->fPot);
+				fTmp = p->fPot;
+				xdr_float(&xdrs,&fTmp);
 				}
 			else if (pkdIsStar(pkd,p)) {
-				xdr_float(&xdrs,&p->fMass);
+				fTmp = p->fMass;
+				xdr_float(&xdrs,&fTmp);
 				for (j=0;j<3;++j) {
-					xdr_float(&xdrs,&p->r[j]);
+					fTmp = p->r[j];
+					xdr_float(&xdrs,&fTmp);
 					}
 				for (j=0;j<3;++j) {
 					vTemp = dvFac*p->v[j];			
-					xdr_float(&xdrs,&vTemp);
+					fTmp = vTemp;
+					xdr_float(&xdrs,&fTmp);
 					}
 #ifdef GASOLINE
-				xdr_float(&xdrs,&p->fMetals);
-				xdr_float(&xdrs,&p->fTimeForm);
+				fTmp = p->fMetals;
+				xdr_float(&xdrs,&fTmp);
+				fTmp = p->fTimeForm;
+				xdr_float(&xdrs,&fTmp);
 #else
-				vTemp = 0.0;
-				xdr_float(&xdrs,&vTemp);
-				xdr_float(&xdrs,&vTemp);			
+				fTmp = 0.0;
+				xdr_float(&xdrs,&fTmp);
+				xdr_float(&xdrs,&fTmp);			
 #endif
-				xdr_float(&xdrs,&p->fSoft);
-				xdr_float(&xdrs,&p->fPot);
+				fTmp = p->fSoft;
+				xdr_float(&xdrs,&fTmp);
+				fTmp = p->fPot;
+				xdr_float(&xdrs,&fTmp);
 				}
 			else assert(0);
 			}
@@ -908,7 +953,7 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 	}
 
 
-void pkdCalcCell(PKD pkd,KDN *pkdn,float *rcm,int iOrder,
+void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
 				 struct pkdCalcCellStruct *pcc)
 {
 	int pj;
@@ -1216,7 +1261,7 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,int iOrder)
 void pkdSelect(PKD pkd,int d,int k,int l,int r)
 {
 	PARTICLE *p,t;
-	float v;
+	FLOAT v;
 	int i,j;
 
 	p = pkd->pStore;
@@ -1248,7 +1293,7 @@ int NumBinaryNodes(PKD pkd,int nBucket,int pLower,int pUpper)
 {
 	BND bnd;
 	int i,j,m,d,l,u;
-	float fSplit;
+	FLOAT fSplit;
 
 	if (pLower > pUpper) return(0);
 	else {
@@ -1306,7 +1351,7 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 {
 	KDN *pkdn;
 	int i,j,m,d,c;
-	float fm;
+	FLOAT fm;
 	double dOpen;
 
 	if (pLower > pUpper) return(-1);
@@ -1627,7 +1672,7 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	}
 
 
-void pkdBucketWeight(PKD pkd,int iBucket,float fWeight)
+void pkdBucketWeight(PKD pkd,int iBucket,FLOAT fWeight)
 {
 	KDN *pbuc;
 	int pj;
@@ -1640,7 +1685,7 @@ void pkdBucketWeight(PKD pkd,int iBucket,float fWeight)
 	}
 
 
-void pkdColorCell(PKD pkd,int iCell,float fColor)
+void pkdColorCell(PKD pkd,int iCell,FLOAT fColor)
 {
 #ifdef COLORCODE
 	KDN *pkdn;
@@ -1661,7 +1706,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 {
 	KDN *c = pkd->kdNodes;
 	int iCell,n;
-	float fWeight;
+	FLOAT fWeight;
 	double dFlopI, dFlopE;
 	int i;
 
@@ -1756,7 +1801,7 @@ void pkdCalcE(PKD pkd,double *T,double *U)
 {
 	PARTICLE *p;
 	int i,n;
-	float vx,vy,vz;
+	FLOAT vx,vy,vz;
 
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
@@ -1772,7 +1817,7 @@ void pkdCalcE(PKD pkd,double *T,double *U)
 	}
 
 
-void pkdDrift(PKD pkd,double dDelta,float fCenter[3],int bPeriodic)
+void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -1805,16 +1850,17 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo, double dvPredFacOne,
 	    if(p[i].iActive) {
 #ifdef GASOLINE
 	        if(pkdIsGas(pkd, &p[i])) {
-		    for (j=0;j<3;++j) {
-			p[i].vPred[j] = p[i].v[j]*dvPredFacOne + p[i].a[j]*dvPredFacTwo;
-			}
-		    }
+				for (j=0;j<3;++j) {
+					p[i].vPred[j] = p[i].v[j]*dvPredFacOne + 
+						p[i].a[j]*dvPredFacTwo;
+					}
+				}
 	      
 #endif
-		for (j=0;j<3;++j) {
-			p[i].v[j] = p[i].v[j]*dvFacOne + p[i].a[j]*dvFacTwo;
+			for (j=0;j<3;++j) {
+				p[i].v[j] = p[i].v[j]*dvFacOne + p[i].a[j]*dvFacTwo;
+				}
 			}
-		}
 	    }
 	}
 
@@ -2088,38 +2134,42 @@ pkdDensityStep(PKD pkd, double dEta, double dRhoFac)
     double dT;
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
-	if(pkd->pStore[i].iActive) {
-	    dT = dEta/sqrt(pkd->pStore[i].fDensity*dRhoFac);
-	    if(dT < pkd->pStore[i].dt)
-		pkd->pStore[i].dt = dT;
-	    }
-	}
+		if(pkd->pStore[i].iActive) {
+			dT = dEta/sqrt(pkd->pStore[i].fDensity*dRhoFac);
+			if(dT < pkd->pStore[i].dt)
+				pkd->pStore[i].dt = dT;
+			}
+		}
     }
 
-void
-pkdVelocityStep(PKD pkd, double dEta, double dVelFac, double dAccFac)
+
+
+#define DT_ITER		1
+
+void pkdAccelStep(PKD pkd, double dEta, double a, double H)
 {
-    int i;
-    double vel;
+    int i,j,iter;
     double acc;
-    int j;
-    double dT;
+    double dt0,dt;
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
-	if(pkd->pStore[i].iActive) {
-	    vel = 0;
+		if(pkd->pStore[i].iActive) {
             acc = 0;
-	    for(j = 0; j < 3; j++) {
-		vel += pkd->pStore[i].v[j]*pkd->pStore[i].v[j];
-                acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
+			for(j=0;j<3;++j) {
+				acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
+				}
+			dt0 = dEta*sqrt(pkd->pStore[i].fSoft*a*a*a/acc);
+			dt = dt0;
+#ifdef CORRECT_DT
+			for (iter=0;iter<DT_ITER;++iter) {
+				if (1.5*H*dt >= 1) break;
+				dt = dt0/sqrt((1 - 1.5*H*dt));
+				}
+#endif
+			if(dt < pkd->pStore[i].dt)
+				pkd->pStore[i].dt = dt;
+			}
 		}
-	    vel = sqrt(vel)*dVelFac;
-	    acc = sqrt(acc)*dAccFac;
-	    dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
-	    if(dT < pkd->pStore[i].dt)
-		pkd->pStore[i].dt = dT;
-	    }
-	}
     }
 
 #define STEP_EPS 1e-6
@@ -2134,31 +2184,31 @@ pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll)
     
     iMaxRungOut = 0;
     for(i = 0; i < pkdLocal(pkd); ++i) {
-	if(pkd->pStore[i].iRung >= iRung) {
-	    assert(pkd->pStore[i].iActive == 1);
-	    if(bAll) {          /* Assign all rungs at iRung and above */
-		iSteps = dDelta/pkd->pStore[i].dt - STEP_EPS;
-		iTempRung = iRung;
-		while(iSteps) {
-		    ++iTempRung;
-		    iSteps >>= 1;
-		    }
-		if(iTempRung >= iMaxRung)
-		    iTempRung = iMaxRung-1;
-		pkd->pStore[i].iRung = iTempRung;
-		}
-	    else {
-		if(dDelta <= pkd->pStore[i].dt) {
-		    pkd->pStore[i].iRung = iRung;
-		    }
-		else {
-		    pkd->pStore[i].iRung = iRung+1;
-		    }
+		if(pkd->pStore[i].iRung >= iRung) {
+			assert(pkd->pStore[i].iActive == 1);
+			if(bAll) {          /* Assign all rungs at iRung and above */
+				iSteps = dDelta/pkd->pStore[i].dt - STEP_EPS;
+				iTempRung = iRung;
+				while(iSteps) {
+					++iTempRung;
+					iSteps >>= 1;
+					}
+				if(iTempRung >= iMaxRung)
+					iTempRung = iMaxRung-1;
+				pkd->pStore[i].iRung = iTempRung;
+				}
+			else {
+				if(dDelta <= pkd->pStore[i].dt) {
+					pkd->pStore[i].iRung = iRung;
+					}
+				else {
+					pkd->pStore[i].iRung = iRung+1;
+					}
                 }
-	    }
-	if(pkd->pStore[i].iRung > iMaxRungOut)
-	    iMaxRungOut = pkd->pStore[i].iRung;
-	}
+			}
+		if(pkd->pStore[i].iRung > iMaxRungOut)
+			iMaxRungOut = pkd->pStore[i].iRung;
+		}
     return iMaxRungOut;
     }
 
@@ -2168,9 +2218,9 @@ pkdInitDt(PKD pkd, double dDelta)
     int i;
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
-	if(pkd->pStore[i].iActive)
-	    pkd->pStore[i].dt = dDelta;
-	}
+		if(pkd->pStore[i].iActive)
+			pkd->pStore[i].dt = dDelta;
+		}
     }
 
     
@@ -2347,6 +2397,26 @@ int pkdIsStar(PKD pkd,PARTICLE *p) {
 	if (p->iOrder > pkd->nMaxOrderDark) return 1;
 	else return 0;
 	}
+
+#ifdef PLANETS
+int pkdIsPlanet(PKD pkd,PARTICLE *p) {
+	if (p->fMass > 1e-4) return 1;
+	else return 0;
+	}
+
+void pkdActiveNotPlanet(PKD pkd)
+{
+	PARTICLE *p;
+    int i;
+    
+    for(i=0;i<pkdLocal(pkd);++i) {
+		p = &pkd->pStore[i];
+		if (!pkdIsPlanet(pkd,p)) p->iActive = 1;
+		else p->iActive = 0;
+		}
+    }
+
+#endif
 
 #ifdef GASOLINE
 

@@ -220,13 +220,13 @@ void smFinish(SMX smx,SMF *smf)
 	}
 
 
-PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int *cpStart)
+PQ *smBallSearch(SMX smx,PQ *pq,FLOAT *ri,int *cpStart)
 {
 	MDL mdl = smx->pkd->mdl;
 	KDN *c = smx->pkd->kdNodes;
 	PARTICLE *p = smx->pkd->pStore;
 	int cell,cp,ct,pj,pUpper,idSelf,bPeriodic;
-	float fBall2,fDist2,dx,dy,dz,lx,ly,lz,sx,sy,sz,x,y,z;
+	FLOAT fBall2,fDist2,dx,dy,dz,lx,ly,lz,sx,sy,sz,x,y,z;
 
 	x = ri[0];
 	y = ri[1];
@@ -237,9 +237,9 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int *cpStart)
 	    lz = smx->pkd->fPeriod[2];
 	    }
 	else {
-	    lx = FLT_MAX;
-	    ly = FLT_MAX;
-	    lz = FLT_MAX;
+	    lx = FLOAT_MAXVAL;
+	    ly = FLOAT_MAXVAL;
+	    lz = FLOAT_MAXVAL;
 	    }
 	idSelf = smx->pkd->idSelf;
 	fBall2 = pq->fKey;
@@ -336,13 +336,13 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int *cpStart)
 	}
 
 
-PQ *smBallSearchNP(SMX smx,PQ *pq,float *ri,int *cpStart)
+PQ *smBallSearchNP(SMX smx,PQ *pq,FLOAT *ri,int *cpStart)
 {
 	MDL mdl = smx->pkd->mdl;
 	KDN *c = smx->pkd->kdNodes;
 	PARTICLE *p = smx->pkd->pStore;
 	int cell,cp,ct,pj,pUpper,idSelf;
-	float fBall2,fDist2,dx,dy,dz,x,y,z;
+	FLOAT fBall2,fDist2,dx,dy,dz,x,y,z;
 
 	x = ri[0];
 	y = ri[1];
@@ -433,12 +433,12 @@ PQ *smBallSearchNP(SMX smx,PQ *pq,float *ri,int *cpStart)
 	}
 
 
-int smBallGather(SMX smx,float fBall2,float *ri)
+int smBallGather(SMX smx,FLOAT fBall2,FLOAT *ri)
 {
 	KDN *c = smx->pkd->kdNodes;
 	PARTICLE *p = smx->pkd->pStore;
 	int pj,nCnt,cp,pUpper;
-	float dx,dy,dz,x,y,z,lx,ly,lz,sx,sy,sz,fDist2;
+	FLOAT dx,dy,dz,x,y,z,lx,ly,lz,sx,sy,sz,fDist2;
 	int iDum;
 
 	x = ri[0];
@@ -450,9 +450,9 @@ int smBallGather(SMX smx,float fBall2,float *ri)
 	    lz = smx->pkd->fPeriod[2];
 	    }
 	else {
-	    lx = FLT_MAX;
-	    ly = FLT_MAX;
-	    lz = FLT_MAX;
+	    lx = FLOAT_MAXVAL;
+	    ly = FLOAT_MAXVAL;
+	    lz = FLOAT_MAXVAL;
 	    }
 	nCnt = 0;
 	cp = ROOT;
@@ -491,12 +491,12 @@ int smBallGather(SMX smx,float fBall2,float *ri)
 	}
 
 
-int smBallGatherNP(SMX smx,float fBall2,float *ri,int cp)
+int smBallGatherNP(SMX smx,FLOAT fBall2,FLOAT *ri,int cp)
 {
 	KDN *c = smx->pkd->kdNodes;
 	PARTICLE *p = smx->pkd->pStore;
 	int pj,nCnt,pUpper;
-	float dx,dy,dz,x,y,z,fDist2;
+	FLOAT dx,dy,dz,x,y,z,fDist2;
 
 	x = ri[0];
 	y = ri[1];
@@ -547,7 +547,7 @@ void smSmooth(SMX smx,SMF *smf)
 	PARTICLE *pPart;
 	int nSmooth,i,j,pi,pj,pNext,nCnt;
 	int cell,idcell,cp,id,ct,idct;
-	float fBall2,fDist2,x,y,z,dx,dy,dz,lx,ly,lz,sx,sy,sz,h2;
+	FLOAT fBall2,fDist2,x,y,z,dx,dy,dz,lx,ly,lz,sx,sy,sz,h2;
 	PQ *pq,*pqi,*pqn;
 	int iDum;
 	int nTree,nQueue,iLoad;
@@ -560,9 +560,9 @@ void smSmooth(SMX smx,SMF *smf)
 	    lz = smx->pkd->fPeriod[2];
 	    }
 	else {
-	    lx = FLT_MAX;
-	    ly = FLT_MAX;
-	    lz = FLT_MAX;
+	    lx = FLOAT_MAXVAL;
+	    ly = FLOAT_MAXVAL;
+	    lz = FLOAT_MAXVAL;
 	    }
 	/*
 	 ** Clear Mark array and pqHash.
@@ -823,7 +823,7 @@ void smReSmooth(SMX smx,SMF *smf)
 	PARTICLE *pPart;
 	KDN *pkdn;
 	int pi,pj,nCnt,cp,id,i;
-	float x,y,z,lx,ly,lz,sx,sy,sz,dx,dy,dz,fDist2,fBall2;
+	FLOAT x,y,z,lx,ly,lz,sx,sy,sz,dx,dy,dz,fDist2,fBall2;
 	int iDum;
 	int nTree;
 	
@@ -833,9 +833,9 @@ void smReSmooth(SMX smx,SMF *smf)
 	    lz = pkd->fPeriod[2];
 	    }
 	else {
-	    lx = FLT_MAX;
-	    ly = FLT_MAX;
-	    lz = FLT_MAX;
+	    lx = FLOAT_MAXVAL;
+	    ly = FLOAT_MAXVAL;
+	    lz = FLOAT_MAXVAL;
 	    }
 	nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
 	for (pi=0;pi<nTree;++pi) {

@@ -5,6 +5,7 @@
 #include "pst.h"
 #include "mdl.h"
 #include "parameters.h"
+#include "floattype.h"
 
 #define MSR_INIT_ECOSMO		1
 #define MSR_STEP_ECOSMO		0
@@ -24,7 +25,7 @@ typedef struct msrContext {
 	PST pst;
 	MDL mdl;
 	LCL lcl;
-	float fCenter[3];
+	FLOAT fCenter[3];
 	/*
 	 ** Parameters.
 	 */

@@ -2614,21 +2614,15 @@ void msrDensityStep(MSR msr, double dTime)
     }
 
 
-void msrVelocityStep(MSR msr, double dTime)
+void msrAccelStep(MSR msr, double dTime)
 {
-    struct inVelocityStep in;
+    struct inAccelStep in;
     double a;
 
     in.dEta = msrEta(msr);
-    a = msrTime2Exp(msr,dTime);
-    if(msr->param.bCannonical) {
-	in.dVelFac = 1.0/(a*a);
-	}
-    else {
-	in.dVelFac = 1.0;
-	}
-    in.dAccFac = 1.0/(a*a*a);
-    pstVelocityStep(msr->pst, &in, sizeof(in), NULL, NULL);
+    in.a = msrTime2Exp(msr,dTime);
+	in.H = msrTime2Hub(msr,dTime);
+    pstAccelStep(msr->pst, &in, sizeof(in), NULL, NULL);
     }
 
 void
@@ -2755,7 +2749,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			msrActiveRung(msr, iRung, 1);
 			msrInitDt(msr);
 			if(msr->param.bEpsVel) {
-			    msrVelocityStep(msr, dTime);
+			    msrAccelStep(msr, dTime);
 			    }
 			else {
 			    msrBuildTree(msr,0,dMass,1);
@@ -2824,86 +2818,87 @@ void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta,
 	}
 
 void msrTopStepKDK(MSR msr,
-		   double dStep, /* Current step */
-		   double dTime, /* Current time */
-		   double dDelta, /* Time step */
-		   int iRung,	/* Rung level */
-		   int iKickRung, /* Gravity on all rungs from iRung
-				     to iKickRung */
-		   int iAdjust,	/* Do an adjust? */
-		   double *pdActiveSum,
-		   double *pdWMax,
-		   double *pdIMax,
-		   double *pdEMax,
-		   int *piSec)
+				   double dStep, /* Current step */
+				   double dTime, /* Current time */
+				   double dDelta, /* Time step */
+				   int iRung,	/* Rung level */
+				   int iKickRung, /* Gravity on all rungs from iRung
+									 to iKickRung */
+				   int iAdjust,	/* Do an adjust? */
+				   double *pdActiveSum,
+				   double *pdWMax,
+				   double *pdIMax,
+				   double *pdEMax,
+				   int *piSec)
 {
     double dMass = -1.0;
     int nActive;
 
     if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
-	if(msr->param.bVerbose) {
-	    printf("Adjust, iRung: %d\n", iRung);
-	    }
+		if(msr->param.bVerbose) {
+			printf("Adjust, iRung: %d\n", iRung);
+			}
 
-	msrActiveRung(msr, iRung, 1);
-	msrInitDt(msr);
-	msrVelocityStep(msr, dTime);
+		msrActiveRung(msr, iRung, 1);
+		msrInitDt(msr);
+		msrAccelStep(msr, dTime);
 #ifdef PLANETS
-	msrBuildTree(msr,0,dMass,1);
-	msrSmooth(msr,dTime,SMX_TIMESTEP,0);
+		msrBuildTree(msr,0,dMass,1);
+		msrSmooth(msr,dTime,SMX_TIMESTEP,0);
 #endif
-	msrDtToRung(msr, iRung, dDelta, 1);
-	}
+		msrDtToRung(msr, iRung, dDelta, 1);
+		if (iRung == 0) msrRungStats(msr);
+		}
     if (msr->param.bVerbose) {
-	printf("Kick, iRung: %d\n", iRung);
-	}
+		printf("Kick, iRung: %d\n", iRung);
+		}
     msrActiveRung(msr, iRung, 0);
     msrKickKDKOpen(msr,dTime,0.5*dDelta);
     if (msrCurrMaxRung(msr) > iRung) {
-	/*
-	** Recurse.
-	*/
-	msrTopStepKDK(msr, dStep, dTime, 0.5*dDelta, iRung+1,
-		      iRung+1, 0, pdActiveSum, pdWMax, pdIMax, pdEMax,
-		      piSec);
-	dStep += 1.0/(2 << iRung);
-	dTime += 0.5*dDelta;
-	msrTopStepKDK(msr, dStep, dTime, 0.5*dDelta, iRung+1,
-		      iKickRung, 1, pdActiveSum, pdWMax, pdIMax, pdEMax,
-		      piSec);
-	}
+		/*
+		 ** Recurse.
+		 */
+		msrTopStepKDK(msr, dStep, dTime, 0.5*dDelta, iRung+1,
+					  iRung+1, 0, pdActiveSum, pdWMax, pdIMax, pdEMax,
+					  piSec);
+		dStep += 1.0/(2 << iRung);
+		dTime += 0.5*dDelta;
+		msrTopStepKDK(msr, dStep, dTime, 0.5*dDelta, iRung+1,
+					  iKickRung, 1, pdActiveSum, pdWMax, pdIMax, pdEMax,
+					  piSec);
+		}
     else {
-	if (msr->param.bVerbose) {
-	    printf("Drift, iRung: %d\n", iRung);
-	    }
-	msrDrift(msr,dTime,dDelta);
-	dTime += 0.5*dDelta;
-	dStep += 1.0/(1 << iRung);
-	msrActiveRung(msr, iKickRung, 1);
-	msrInitAccel(msr);
+		if (msr->param.bVerbose) {
+			printf("Drift, iRung: %d\n", iRung);
+			}
+		msrDrift(msr,dTime,dDelta);
+		dTime += 0.5*dDelta;
+		dStep += 1.0/(1 << iRung);
+		msrActiveRung(msr, iKickRung, 1);
+		msrInitAccel(msr);
 #ifdef GASOLINE
-	if(msrSphCurrRung(msr, iRung)) {
-	    if (msr->param.bVerbose) {
-		printf("SPH, iRung: %d to %d\n", iRung, iKickRung);
-		}
-	    msrStepSph(msr, dTime, dDelta);
-	    }
+		if(msrSphCurrRung(msr, iRung)) {
+			if (msr->param.bVerbose) {
+				printf("SPH, iRung: %d to %d\n", iRung, iKickRung);
+				}
+			msrStepSph(msr, dTime, dDelta);
+			}
 #endif
-	if(msrDoGravity(msr)) {
-	    if (msr->param.bVerbose) {
-		printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
+		if(msrDoGravity(msr)) {
+			if (msr->param.bVerbose) {
+				printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
+				}
+			msrBuildTree(msr,0,dMass,0);
+			msrGravity(msr,dStep,piSec,pdWMax,pdIMax,pdEMax,&nActive);
+			*pdActiveSum += (double)nActive/msr->N;
+			}
 		}
-	    msrBuildTree(msr,0,dMass,0);
-	    msrGravity(msr,dStep,piSec,pdWMax,pdIMax,pdEMax,&nActive);
-	    *pdActiveSum += (double)nActive/msr->N;
-	    }
-	}
     if (msr->param.bVerbose) {
-	printf("Kick, iRung: %d\n", iRung);
-	}
+		printf("Kick, iRung: %d\n", iRung);
+		}
     msrActiveRung(msr, iRung, 0);
     msrKickKDKClose(msr, dTime, 0.5*dDelta);
-}
+	}
 
 int
 msrMaxOrder(MSR msr)

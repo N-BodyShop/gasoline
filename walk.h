@@ -2,6 +2,7 @@
 #define WALK_HINCLUDED
 
 #include "pkd.h"
+#include "floattype.h"
 
 #define CID_PARTICLE	0
 #define CID_CELL		1
@@ -9,8 +10,8 @@
 
 #define INTERSECTNP(pkdn,fBall2,x,y,z,bIntersect)\
 {\
-	float INTRSCT_dx,INTRSCT_dy,INTRSCT_dz;\
-	float INTRSCT_dx1,INTRSCT_dy1,INTRSCT_dz1,INTRSCT_fDist2;\
+	FLOAT INTRSCT_dx,INTRSCT_dy,INTRSCT_dz;\
+	FLOAT INTRSCT_dx1,INTRSCT_dy1,INTRSCT_dz1,INTRSCT_fDist2;\
 	INTRSCT_dx = (pkdn)->bnd.fMin[0] - x;\
 	INTRSCT_dx1 = x - (pkdn)->bnd.fMax[0];\
 	INTRSCT_dy = (pkdn)->bnd.fMin[1] - y;\

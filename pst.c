@@ -114,9 +114,8 @@ void pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct outRungStats));
 	mdlAddService(mdl,PST_GETMAP,pst,pstGetMap,
 				  sizeof(struct inGetMap),nThreads*sizeof(int));
-	mdlAddService(mdl,PST_VELOCITYSTEP,pst,
-		      (void (*)(void *,void *,int,void *,int *))pstVelocityStep,
-		      sizeof(struct inVelocityStep), 0);
+	mdlAddService(mdl,PST_ACCELSTEP,pst,pstAccelStep,
+		      sizeof(struct inAccelStep), 0);
 	mdlAddService(mdl,PST_COOLVELOCITY,pst,pstCoolVelocity,
 				  sizeof(struct inCoolVelocity),0);
 	mdlAddService(mdl,PST_ACTIVECOOL,pst,pstActiveCool,
@@ -438,8 +437,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 {
 	int d,ittr,nOut;
 	int nLow,nHigh,nLowerStore,nUpperStore;
-	float fLow,fHigh;
-	float fl,fu,fm,fmm;
+	FLOAT fLow,fHigh;
+	FLOAT fl,fu,fm,fmm;
 	struct outFreeStore outFree;
 	struct inWeight inWt;
 	struct outWeight outWtLow;
@@ -528,10 +527,10 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		    else break;
 		    }
 		else {		/* split on number */
-		    if (nLow/(float)pst->nLower >
-			nHigh/(float)pst->nUpper) fu = fm;
-		    else if (nLow/(float)pst->nLower <
-			     nHigh/(float)pst->nUpper) fl = fm;
+		    if (nLow/(double)pst->nLower >
+			nHigh/(double)pst->nUpper) fu = fm;
+		    else if (nLow/(double)pst->nLower <
+			     nHigh/(double)pst->nUpper) fl = fm;
 		    else break;
 		    }
 		fmm = (fl + fu)/2;
@@ -1035,7 +1034,7 @@ void pstWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct inWeight *in = vin;
 	struct outWeight *out = vout;
 	struct outWeight outWt;
-	float fSplit,fLow,fHigh;
+	FLOAT fSplit,fLow,fHigh;
 	int iSplitSide;
 
 	assert(nIn == sizeof(struct inWeight));
@@ -1346,10 +1345,10 @@ void _pstOrdSplit(PST pst,int iMaxOrder)
 		if(nLow == 1 && nHigh == 1) /* break on trivial case */
 		    break;
 		else {		/* split on number */
-		    if (nLow/(float)pst->nLower >
-			nHigh/(float)pst->nUpper) iu = im;
-		    else if (nLow/(float)pst->nLower <
-			     nHigh/(float)pst->nUpper) il = im;
+		    if (nLow/(double)pst->nLower >
+			nHigh/(double)pst->nUpper) iu = im;
+		    else if (nLow/(double)pst->nLower <
+			     nHigh/(double)pst->nUpper) il = im;
 		    else break;
 		    }
 		imm = (il + iu)/2;
@@ -1568,7 +1567,7 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct inCalcCell inc;
 	struct outCalcCell outc;
 	int j;
-	float dOpen;
+	double dOpen;
 	
 	assert(nIn == sizeof(struct inBuildTree));
 	if (pst->nLeaves > 1) {
@@ -2253,19 +2252,19 @@ void pstDensityStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
-void pstVelocityStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+void pstAccelStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
       LCL *plcl = pst->plcl;
-      struct inVelocityStep *in = vin;
+      struct inAccelStep *in = vin;
 
-      assert(nIn == sizeof(*in));
+      assert(nIn == sizeof(struct inAccelStep));
       if (pst->nLeaves > 1) {
-              mdlReqService(pst->mdl,pst->idUpper,PST_VELOCITYSTEP,vin,nIn);
-              pstVelocityStep(pst->pstLower,vin,nIn,vout,pnOut);
+              mdlReqService(pst->mdl,pst->idUpper,PST_ACCELSTEP,vin,nIn);
+              pstAccelStep(pst->pstLower,vin,nIn,vout,pnOut);
               mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
               }
       else {
-              pkdVelocityStep(plcl->pkd, in->dEta, in->dVelFac, in->dAccFac);
+              pkdAccelStep(plcl->pkd,in->dEta,in->a,in->H);
               }
       if (pnOut) *pnOut = 0;
       }

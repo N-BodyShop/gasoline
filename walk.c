@@ -103,12 +103,13 @@
 	}
 #endif
 
-void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3],int iOrder)
+void pkdLocalWalk(PKD pkd,int iBucket,FLOAT fSoftMax,int bRep,FLOAT rOffset[3],
+				  int iOrder)
 {
 	PARTICLE *p;
 	KDN *pkdn,*pbuc;
 	int iCell,nPart,nCellSoft,nCellNewt,n,pj,bIntersect;
-	float x,y,z,twoh2;
+	FLOAT x,y,z,twoh2;
 
 	nPart = pkd->nPart;
 	nCellSoft = pkd->nCellSoft;
@@ -225,12 +226,13 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3],i
 	}
 
 
-void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3],int iOrder)
+void pkdRemoteWalk(PKD pkd,int iBucket,FLOAT fSoftMax,int id,FLOAT rOffset[3],
+				   int iOrder)
 {
 	PARTICLE *p;
 	KDN *pkdn,*pbuc;
 	int iCell,nPart,nCellSoft,nCellNewt,n,j,bIntersect;
-	float x,y,z,twoh2;
+	FLOAT x,y,z,twoh2;
 
 	assert(id != pkd->idSelf);
 	nPart = pkd->nPart;
@@ -354,7 +356,7 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
 {
 	KDN *pbuc,*pkdn;
 	int iCell,id,ix,iy,iz,bRep,bIntersect,pj;
-	float x,y,z,rOffset[3],fSoftMax,twoh2;
+	FLOAT x,y,z,rOffset[3],fSoftMax,twoh2;
 	
 	pkd->nPart = 0;
 	pkd->nCellSoft = 0;

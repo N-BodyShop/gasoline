@@ -4,6 +4,7 @@
 #include "pkd.h"
 #include "mdl.h"
 #include "smoothfcn.h"
+#include "floattype.h"
 
 typedef struct lclBlock {
 	char *pszDataPath;
@@ -13,11 +14,11 @@ typedef struct lclBlock {
 	int iWtTo;
 	int iPart;
 	int iOrdSplit;
-	float fSplit;
-	float fWtLow;
-	float fWtHigh;
-	float fLow;
-	float fHigh;
+	FLOAT fSplit;
+	FLOAT fWtLow;
+	FLOAT fWtHigh;
+	FLOAT fLow;
+	FLOAT fHigh;
 	int nWriteStart;
 	} LCL;
 
@@ -35,8 +36,8 @@ typedef struct pstContext {
 	BND bndActive;
 	int iSplitDim;
 	int iOrdSplit;
-	float fSplit;
-	float fSplitInactive;
+	FLOAT fSplit;
+	FLOAT fSplitInactive;
 	int nTotal;
 	/*
 	 ** The PST node is also a valid cell for the tree.
@@ -73,7 +74,7 @@ struct inReadTipsy {
 	int nStar;
 	int iOrder;
 	float fExtraStore;
-	float fPeriod[3];
+	FLOAT fPeriod[3];
 	int bStandard;
 	double dvFac;
 	double dTuFac;
@@ -94,7 +95,7 @@ void pstCalcBound(PST,void *,int,void *,int *);
 #define PST_WEIGHT			8
 struct inWeight {
 	int iSplitDim;
-	float fSplit;
+	FLOAT fSplit;
 	int iSplitSide;
 	int ittr;
 	int pFlag;
@@ -102,8 +103,8 @@ struct inWeight {
 struct outWeight {
 	int nLow;
 	int nHigh;
-	float fLow;
-	float fHigh;
+	FLOAT fLow;
+	FLOAT fHigh;
 	};
 void pstWeight(PST,void *,int,void *,int *);
 
@@ -126,8 +127,8 @@ typedef struct outReject {
 #define PST_COLREJECTS		10
 struct inColRejects {
 	int iSplitDim;
-	float fSplit;
-	float fSplitInactive;
+	FLOAT fSplit;
+	FLOAT fSplitInactive;
 	int iSplitSide;
 	};
 void pstColRejects(PST,void *,int,void *,int *);
@@ -252,7 +253,7 @@ void pstCalcE(PST,void *,int,void *,int *);
 #define PST_DRIFT			23
 struct inDrift {
 	double dDelta;
-	float fCenter[3];
+	FLOAT fCenter[3];
 	int bPeriodic;
 	};
 void pstDrift(PST,void *,int,void *,int *);
@@ -277,7 +278,7 @@ struct inReadCheck {
 	int nStar;
 	int iOrder;
 	float fExtraStore;
-	float fPeriod[3];
+	FLOAT fPeriod[3];
 	char achInFile[PST_FILENAME_SIZE];
 	};
 void pstReadCheck(PST,void *,int,void *,int *);
@@ -304,7 +305,7 @@ void pstSetTotal(PST,void *,int,void *,int *);
 #define PST_CALCCELL		30
 struct inCalcCell {
 	int iOrder;
-	float rcm[3];
+	FLOAT rcm[3];
 	};
 struct outCalcCell {
 	struct pkdCalcCellStruct mom;
@@ -389,13 +390,13 @@ struct inGetMap {
 	};
 void pstGetMap(PST,void *,int,void *,int *);
 
-#define PST_VELOCITYSTEP		45
-struct inVelocityStep {
+#define PST_ACCELSTEP		45
+struct inAccelStep {
     double dEta;
-    double dVelFac;
-    double dAccFac;
+    double a;
+    double H;
     };
-void pstVelocityStep(PST,void *,int,void *,int *);
+void pstAccelStep(PST,void *,int,void *,int *);
 
 #define PST_COOLVELOCITY		46
 struct inCoolVelocity {

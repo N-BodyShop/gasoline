@@ -3,6 +3,7 @@
 #
 #CC = gcc -Wall
 EXE = pkdgrav
+CODEDEF = -DCORRECT_DT
 #CODEDEF = -DPLANETS
 #CODEDEF = -DSUPERCOOL
 #EXE = gasoline
