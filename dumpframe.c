@@ -34,7 +34,7 @@ void dfInitialize( struct DumpFrameContext **pdf, double dTime,
 
 	df = *pdf;
 	df->iMaxRung = 0;
-			
+
 	df->dTime = 0;
 	df->dDumpFrameTime = 0;
 	if (dDumpFrameTime > 0) { 
@@ -264,6 +264,7 @@ void dfParseOptions( struct DumpFrameContext *df, char * filename ) {
 	df->dMassDarkMax = DBL_MAX;
 	df->dMassStarMin = 0;
 	df->dMassStarMax = DBL_MAX;
+	df->nFrame = 0;
 
 	fp = fopen( filename, "r" );
 	if (fp==NULL) return;
@@ -380,6 +381,10 @@ void dfParseOptions( struct DumpFrameContext *df, char * filename ) {
 				fprintf(stderr,"DF Unknown numbering type: %s\n",word);
 				assert( 0 );
 				} 
+			}
+		else if (!strcmp( command, "frame") ) {
+			nitem = sscanf( line, "%s %i", command, &df->nFrame );
+			assert( nitem == 2 );
 			}
 		}
 	
