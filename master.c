@@ -1037,6 +1037,12 @@ void msrReadRed(MSR msr)
 		ret = fscanf(fp,"%lf",&msr->dRedOut[iRed]);
 		if (ret != 1) break;
 		++iRed;
+		if(iRed > MAX_REDSHIFTS){
+		    printf("Too many output redshifts, recompile with greater MAX_REDSHIFTS\n");
+		    msrFinish(msr);
+		    mdlFinish(msr->mdl);
+		    exit(1);
+		    }
 		}
 	msr->nRed = iRed;
 	fclose(fp);
