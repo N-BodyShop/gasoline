@@ -7,8 +7,13 @@
 #include "meval.h"
 #include "qeval.h"
 
+/*
+ * Architectures for which the native sqrt() is faster.
+ */
+
 #define NATIVE_SQRT (defined(_MIPS_ISA) && (_MIPS_ISA == _MIPS_ISA_MIPS4) \
-	     || defined(__i486__) || defined(CCC) || defined(__ia64__)) 
+	     || defined(__i486__) || defined(CCC) || defined(__ia64__) \
+	     || defined(__crayx1))
 
 #if !(NATIVE_SQRT)
 void v_sqrt1(int,double *,double *);
