@@ -1495,18 +1495,22 @@ void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U)
 	 ** Do the comoving coordinates stuff.
 	 */
 	a = msrTime2Exp(msr,dTime);
-	*U *= a;
 	if (!msr->param.bCannonical) *T *= pow(a,4.0);
+	/*
+	 * Estimate integral (\dot a*U*dt) over the interval.
+	 * Note that this is equal to intregral (W*da) and the latter
+	 * is more accurate when a is changing rapidly.
+	 */
 	if (msr->param.bComove && !bFirst) {
-		msr->dEcosmo += 0.5*(dTime - msr->dTimeOld)*
-			(msrTime2Hub(msr,dTime)*(*U) + 
-			 msrTime2Hub(msr,msr->dTimeOld)*msr->dUOld);
+		msr->dEcosmo += 0.5*(a - msrTime2Exp(msr,msr->dTimeOld))
+				     *((*U) + msr->dUOld);
 		}
 	else {
 		msr->dEcosmo = 0.0;
 		}
 	msr->dTimeOld = dTime;
 	msr->dUOld = *U;
+	*U *= a;
 	*E = (*T) + (*U) - msr->dEcosmo;
 	}
 
