@@ -202,7 +202,7 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	 */
 #ifdef GASOLINE
 #ifndef NOCOOLING
-	pkd->cl = clInit();
+	pkd->Cool = CoolInit();
 #endif	
 #endif	
 
@@ -230,7 +230,7 @@ void pkdFinish(PKD pkd)
 	free(pkd->d2a);
 	free(pkd->ewt);
 #if defined(GASOLINE) && !defined(NOCOOLING)
-	clFinalize(pkd->cl);
+	CoolFinalize(pkd->Cool);
 #endif
 	mdlFree(pkd->mdl,pkd->pStore);
 	free(pkd);
@@ -326,9 +326,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
 #ifndef NOCOOLING		
 		/* Place holders -- later fixed in pkdInitEnergy */
-		p->Y_HI = 0.75;
-		p->Y_HeI = 0.0625;
-		p->Y_HeII = 0.0;
+        CoolDefaultParticleData( &p->CoolParticle );
 #endif
 		p->c = 0.0;
 		p->fMetals = 0.0;
@@ -1580,11 +1578,8 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 				 */
 				switch (iGasModel) {
 				case GASMODEL_COOLING:
-				case GASMODEL_COOLING_NONEQM:
 #ifndef NOCOOLING
-					vTemp = clTemperature(2*(pkd->cl)->Y_H - p->Y_HI + 
-										  3*(pkd->cl)->Y_He - 2*p->Y_HeI - p->Y_HeII,
-										  p->u*(pkd->cl)->dErgPerGmUnit);
+					vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u );
 #else
 					mdlassert(pkd->mdl,0);
 #endif
@@ -3529,9 +3524,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #endif
 		p->fMetals = cp.fMetals;
 #ifndef NOCOOLING		
-		p->Y_HI = cp.Y_HI;
-		p->Y_HeI = cp.Y_HeI;
-		p->Y_HeII = cp.Y_HeII;
+		p->CoolParticle = cp.CoolParticle;
 #endif
 #endif
 #ifdef COLLISIONS
@@ -3587,9 +3580,7 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 		cp.u = pkd->pStore[i].u;
 		cp.fMetals = pkd->pStore[i].fMetals;
 #ifndef NOCOOLING		
-		cp.Y_HI = pkd->pStore[i].Y_HI;
-		cp.Y_HeI = pkd->pStore[i].Y_HeI;
-		cp.Y_HeII = pkd->pStore[i].Y_HeII;
+		cp.CoolParticle = pkd->pStore[i].CoolParticle;
 #endif
 #ifdef STARFORM
 		cp.fTimeForm = pkd->pStore[i].fTimeForm;
@@ -4448,11 +4439,8 @@ struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCu
 	if (pkdIsGas(pkd,p)) {
 	  switch (iGasModel) {
 	  case GASMODEL_COOLING:
-	  case GASMODEL_COOLING_NONEQM:
 #ifndef NOCOOLING
-	    Temp = clTemperature(2*(pkd->cl)->Y_H - p->Y_HI + 
-			    3*(pkd->cl)->Y_He - 2*p->Y_HeI - p->Y_HeII,
-			    p->u*(pkd->cl)->dErgPerGmUnit);
+		  Temp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u );
 #endif
 	    break;
 	  default:
@@ -4505,11 +4493,8 @@ void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, doubl
 	if (TYPEQueryACTIVE(p) && pkdIsGas(pkd,p)) {
 	  switch (iGasModel) {
 	  case GASMODEL_COOLING:
-	  case GASMODEL_COOLING_NONEQM:
 #ifndef NOCOOLING
-	    Temp = clTemperature(2*(pkd->cl)->Y_H - p->Y_HI + 
-			    3*(pkd->cl)->Y_He - 2*p->Y_HeI - p->Y_HeII,
-			    p->u*(pkd->cl)->dErgPerGmUnit);
+		  Temp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u );
 #endif
 	    break;
 	  default:
@@ -4567,10 +4552,8 @@ void pkdSimpleStarForm(PKD pkd, double dRateCoeff, double dTMax, double dDenMin,
     PARTICLE *p;
     int n = pkdLocal(pkd);
 
-    double E;
-    PERBARYON Y;
     double T;
-    CL *cl = pkd->cl;
+    COOL *cl = pkd->Cool;
 
 	double mstardot;
     PARTICLE starp;
@@ -4590,9 +4573,7 @@ void pkdSimpleStarForm(PKD pkd, double dRateCoeff, double dTMax, double dDenMin,
 			/* Is particle in convergent part of flow?  */
 			if (p->divv >= 0.0 || p->fDensity < dDenMin) continue;
 			
-			E = p->u * cl->dErgPerGmUnit;
-			pkdPARTICLE2PERBARYON(&Y, p, cl->Y_H, cl->Y_He);
-			if ((T = clTemperature(Y.Total, E)) > dTMax) continue; 
+			if ((T = CoolCodeEnergyToTemperature(pkd->Cool,&p->CoolParticle, p->u)) > dTMax) continue; 
 			
 			mstardot = dRateCoeff*sqrt(p->fDensity)*(p->fMass-p->fMassStar); /* Predictor corrector for second order? */
 
@@ -4653,9 +4634,11 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 	PARTICLE *p;
 	int i,n;
 	int bCool = 0;
-	CL *cl = NULL;
-	PERBARYON Y;
+#ifndef NOCOOLING	
+	COOL *cl = NULL;
+	COOLPARTICLE cp;
 	double E,dt = 0;
+#endif
 
 	pkdClearTimer(pkd,1);
 	pkdStartTimer(pkd,1);
@@ -4663,11 +4646,10 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 #ifndef NOCOOLING
 	switch (iGasModel) {
 	case GASMODEL_COOLING:
-	case GASMODEL_COOLING_NONEQM:
 		bCool = 1;
-		cl = pkd->cl;
-		clRatesRedshift( cl, z, dTime );
-		dt = duDelta * cl->dSecUnit;
+		cl = pkd->Cool;
+		CoolSetTime( cl, dTime, z  );
+		dt = CoolCodeTimeToSeconds( cl, duDelta );
 		break;
 		}
 
@@ -4676,20 +4658,17 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 	for (i=0;i<n;++i,++p) {
 		if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
 			if (bCool) {
-				pkdPARTICLE2PERBARYON(&Y,p,cl->Y_H,cl->Y_He);
-				E = p->u*cl->dErgPerGmUnit;
+				cp = p->CoolParticle;
+				E = p->u;
 #ifdef STARFORM
 				cl->p = p;
-				clIntegrateEnergy(cl, &Y, &E, (p->fESNrate + p->PdV)
-								  *cl->dErgPerGmPerSecUnit, 
-								  p->fDensity*cl->dComovingGmPerCcUnit, dt);
+				CoolIntegrateEnergyEPDRCode(cl, &cp, &E, p->fESNrate + p->PdV, p->fDensity, p->r, dt);
 #else
-				clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
-								  p->fDensity*cl->dComovingGmPerCcUnit, dt);
+				CoolIntegrateEnergyEPDRCode(cl, &cp, &E, p->PdV, p->fDensity, p->r, dt);
 #endif
 
 
-				p->uDot = (E*cl->diErgPerGmUnit - p->u)/duDelta;
+				p->uDot = (E - p->u)/duDelta;
 #ifdef SSFDEBUG
 			    if (p->iOrder==5514) printf("udot %i: %f %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta,p->PdV);
 #endif
@@ -4706,7 +4685,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 				if (E*cl->diErgPerGmUnit<1e-6*p->u || p->iOrder == 784461 || p->iOrder == 602270 || p->iOrder == 96299 || p->iOrder == 722701) 
 					fprintf(stderr,"udot error? %i: %g %g %g -> %g %i\n",p->iOrder,p->uPred,p->uDot,duDelta,p->u + p->uDot*duDelta,p->iRung);
 #endif
-				if (bUpdateY) pkdPERBARYON2PARTICLE(&Y, p);
+				if (bUpdateY) p->CoolParticle = cp;
 				}
 			else { 
 #ifdef STARFORM
@@ -4811,6 +4790,36 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma)
 		}
     }
 
+#ifndef NOCOOLING
+/* Note: Uses uPred */
+void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma)
+{
+    PARTICLE *p;
+	COOL *cl = pkd->Cool;
+    double PoverRho;
+    int i;
+
+	/* Coolng Setup function required? 
+	   Abundances may be lagging by half a step ... */
+
+    p = pkd->pStore;
+    for(i=0;i<pkdLocal(pkd);++i,++p) {
+		if (pkdIsGas(pkd,p)) {
+			PoverRho = CoolCodePressureOnDensity( cl, &p->cp, p->uPred, p->fDensity, gammam1 );
+			p->PoverRho2 = PoverRho/p->fDensity;
+   			p->c = sqrt(gamma*PoverRho);
+			}
+#ifdef DEBUG
+		if (pkdIsGas(pkd,p) && (p->iOrder % 1000)==0) {
+			printf("Pressure %i: %i %i %f %f %f  %f %f %f %f %f\n",
+			       p->iOrder,TYPEQueryACTIVE(p),TYPEQueryTREEACTIVE(p),
+			       p->r[0],p->r[1],p->r[2],sqrt(0.25*p->fBall2),p->fDensity,p->uPred,
+			       p->PoverRho2*p->fDensity*p->fDensity,p->c);
+			}
+#endif            
+		}
+    }
+#endif
 
 void pkdLowerSoundSpeed(PKD pkd, double dhMinOverSoft)
 {
@@ -4847,14 +4856,12 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime )
 {
     PARTICLE *p;
     int i;
-    CL *cl;
-    PERBARYON Y;
-    RATE r;
-    double T;
-
 #ifndef NOCOOLING
-    cl = pkd->cl;
-    clRatesRedshift( cl, z, dTime );
+    COOL *cl;
+	double T,E;
+
+    cl = pkd->Cool;
+	CoolSetTime( cl, dTime, z  );
 #endif
 
     p = pkd->pStore;
@@ -4862,21 +4869,15 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime )
 		if (TYPEQueryTREEACTIVE(p) && pkdIsGas(pkd,p)) {
 #ifndef NOCOOLING
 			T = p->u / dTuFac;
-			p->Y_HI = cl->Y_H;
-			p->Y_HeI = cl->Y_He;
-			p->Y_HeII = 0.0;
-			pkdPARTICLE2PERBARYON(&Y,p,cl->Y_H,cl->Y_He);
-			clRates(cl,&r,T);
-			clAbunds(cl,&Y,&r,p->fDensity*cl->dComovingGmPerCcUnit);
-			pkdPERBARYON2PARTICLE(&Y,p);
-			p->u = clThermalEnergy(Y.Total,T)*cl->diErgPerGmUnit;
+			CoolInitEnergyAndParticleData( cl, &p->CoolParticle, &E, p->fDensity, T );
+			p->u = E;
 #endif
 			p->uPred = p->u;
 #ifdef DEBUG
 			if ((p->iOrder % 1000)==0) {
 				printf("InitEnergy %i: %f %g   %f %f %f %g\n",
 					   p->iOrder,T,p->u * cl->dErgPerGmUnit,
-					   Y.HI,Y.HeI,Y.HeII,p->fDensity*cl->dComovingGmPerCcUnit);
+					   p->CoolParticle.HI,p->CoolParticle.HeI,p->CoolParticle.HeII,p->fDensity*cl->dComovingGmPerCcUnit);
 				} 
 #endif            
 		        }

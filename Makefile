@@ -13,6 +13,16 @@ PNG_DEF =
 #PNG_OBJ = writepng.o
 #PNG_DEF = $(PNG_INCL) -DUSE_PNG
 
+COOLING_OBJ = cooling_cosmo.o
+COOLING_DEF = -DCOOLING_COSMO
+
+#COOLING_OBJ = cooling_planet.o
+#COOLING_DEF = -DCOOLING_PLANET
+
+#COOLING_OBJ = 
+#COOLING_DEF = -DNOCOOLING
+
+
 BASE_LD_FLAGS = $(PNG_LIB)
 
 
@@ -33,17 +43,18 @@ CC_DEF =
 #CODE_DEF = -DSTARFORM
 #CODE_DEF = -DDEBUG -HSHRINK
 
-#CODE_DEF = -DGASOLINE  -DSTARFORM -DPRES_HK
-CODE_DEF = -DGASOLINE -DSTARFORM -DCHANGESOFT
+#CODE_DEF = -DGASOLINE  -DSTARFORM -DPRES_HK -DPEAKKERNEL
+CODE_DEF = -DGASOLINE -DSTARFORM -DCHANGESOFT 
 #CODE_DEF = -DGASOLINE -DLARGEFBALL
 #CODE_DEF = -DGASOLINE -DSIMPLESF
+CODE_DEF = -DGASOLINE
 
 EXE = gasoline
 
 #CODE_DEF = 
 #EXE = pkdgrav
 
-BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF)
+BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 
 #
 #       NULL defines
@@ -211,7 +222,7 @@ KSR_LIBMDL		= $(KSR_MDL)/mdl.o -lm -lrpc
 
 OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
-	  smoothfcn.o collision.o qqsmooth.o cooling.o cosmo.o romberg.o \
+	  smoothfcn.o collision.o qqsmooth.o $(COOLING_OBJ) cosmo.o romberg.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
 	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o special.o ssio.o $(PNG_OBJ)
 

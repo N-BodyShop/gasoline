@@ -184,7 +184,7 @@ enum pst_service {
       PST_SPHSTEP,
       PST_SPHVISCOSITYLIMITER,
       PST_INITCOOLING,
-      PST_INITUV,
+      PST_COOLTABLEREAD,
       PST_GROWMASS,
       PST_COUNTSUPERNOVA,
       PST_ADDSUPERNOVA,
@@ -907,9 +907,8 @@ struct inGetGasPressure {
 	double gammam1;
   /* Isothermal */
 
-  /* Ion equilibrium */
-
   /* Ion evolving */
+
 #ifdef GLASS
   /* Glass */
 	double dGlassPoverRhoL;
@@ -932,14 +931,10 @@ struct inLowerSoundSpeed {
 
 void pstLowerSoundSpeed(PST, void *,int,void *,int *);
 
-
-struct inInitEnergy {
-	double dTuFac;
-	double z;
-	double dTime;
-};
-
+/* See cooling_*.h for details on input structs */
 void pstInitEnergy(PST, void *,int,void *,int *);
+void pstInitCooling(PST,void *,int,void *,int *);
+void pstCoolTableRead(PST,void *,int,void *,int *);
 
 /* PST_KICKVPRED */
 struct inKickRhopred {
@@ -1225,24 +1220,6 @@ struct inUpdateShockTracker {
 };
 
 void pstUpdateShockTracker(PST,void *,int,void *,int *);
-
-struct inInitCooling {
-    double dGmPerCcUnit;
-    double dComovingGmPerCcUnit;
-    double dErgPerGmUnit;
-    double dSecUnit;
-    double dMassFracHelium;
-    double Tmin;
-    double Tmax;
-    int    nTable;
-    double z;
-	double dTime;
-	int bUVTableUsesTime;
-    };
-
-void pstInitCooling(PST,void *,int,void *,int *);
-
-void pstInitUV(PST,void *,int,void *,int *);
 
 #ifdef STARFORM
 /* PST_FORMSTARS */

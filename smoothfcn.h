@@ -71,34 +71,69 @@ typedef struct nNeighbor {
 	FLOAT dz;
 	} NN;
 
-#define SMX_NULL                            0
+
+enum smx_smoothtype {
+  SMX_NULL,
+  SMX_DENSITY,
+  SMX_MARKDENSITY,
+  SMX_MARKIIDENSITY,
+  SMX_MARK,
+  SMX_MEANVEL,
+#ifdef GASOLINE
+  SMX_SPHPRESSURETERMS,
+  SMX_DIVVORT,
+  SMX_SHOCKTRACK,
+  SMX_HKPRESSURETERMS,
+  SMX_SPHPRESSURE,
+  SMX_SPHVISCOSITY,
+  SMX_HKVISCOSITY,
+#ifdef STARFORM
+  SMX_DIST_DELETED_GAS,
+  SMX_DELETE_GAS,
+  SMX_DIST_SN_ENERGY,
+#endif
+#ifdef SIMPLESF
+  SMX_SIMPLESF_FEEDBACK,
+#endif
+#endif
+#ifdef COLLISIONS
+  SMX_REJECTS,
+#ifdef OLD_KEPLER
+  SMX_ENCOUNTER,
+#endif
+  SMX_COLLISION
+#endif /* COLLISIONS */
+  };
+
+
+/*  SMX_NULL */
 void NullSmooth(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_DENSITY				1
+/* SMX_DENSITY */
 void initDensity(void *);
 void combDensity(void *,void *);
 void Density(PARTICLE *,int,NN *,SMF *);
 void DensitySym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_MARKDENSITY			6
+/* SMX_MARKDENSITY */
 void initParticleMarkDensity(void *);
 void initMarkDensity(void *);
 void combMarkDensity(void *,void *);
 void MarkDensity(PARTICLE *,int,NN *,SMF *);
 void MarkDensitySym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_MARKIIDENSITY		16
+/* SMX_MARKIIDENSITY */
 void initParticleMarkIIDensity(void *);
 void initMarkIIDensity(void *);
 void combMarkIIDensity(void *,void *);
 void MarkIIDensity(PARTICLE *,int,NN *,SMF *);
 void MarkIIDensitySym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_MARK				17
+/* SMX_MARK */
 void initMark(void *);
 void combMark(void *,void *);
 
-#define SMX_MEANVEL				2
+/* SMX_MEANVEL */
 void initMeanVel(void *);
 void combMeanVel(void *,void *);
 void MeanVel(PARTICLE *,int,NN *,SMF *);
@@ -106,33 +141,33 @@ void MeanVelSym(PARTICLE *,int,NN *,SMF *);
 
 #ifdef GASOLINE
 
-#define SMX_SPHPRESSURETERMS    3
+/* SMX_SPHPRESSURETERMS */
 void initSphPressureTermsParticle(void *);
 void initSphPressureTerms(void *);
 void combSphPressureTerms(void *,void *);
 void SphPressureTerms(PARTICLE *,int,NN *,SMF *);
 void SphPressureTermsSym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_DIVVORT				4
+/* SMX_DIVVORT */
 void initDivVort(void *);
 void combDivVort(void *,void *);
 void DivVort(PARTICLE *,int,NN *,SMF *);
 void DivVortSym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_SHOCKTRACK				18
+/* SMX_SHOCKTRACK */
 void initShockTrack(void *);
 void combShockTrack(void *,void *);
 void ShockTrack(PARTICLE *,int,NN *,SMF *);
 void ShockTrackSym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_HKPRESSURETERMS		5
+/* SMX_HKPRESSURETERMS */
 void initHKPressureTermsParticle(void *);
 void initHKPressureTerms(void *);
 void combHKPressureTerms(void *,void *);
 void HKPressureTerms(PARTICLE *,int,NN *,SMF *);
 void HKPressureTermsSym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_SPHPRESSURE    19
+/* SMX_SPHPRESSURE */
 void initSphPressureParticle(void *);
 void initSphPressure(void *);
 void combSphPressure(void *,void *);
@@ -140,14 +175,14 @@ void postSphPressure(PARTICLE *,SMF *);
 void SphPressure(PARTICLE *,int,NN *,SMF *);
 void SphPressureSym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_SPHVISCOSITY    20
+/* SMX_SPHVISCOSITY */
 void initSphViscosityParticle(void *);
 void initSphViscosity(void *);
 void combSphViscosity(void *,void *);
 void SphViscosity(PARTICLE *,int,NN *,SMF *);
 void SphViscositySym(PARTICLE *,int,NN *,SMF *);
 
-#define SMX_HKVISCOSITY    21
+/* SMX_HKVISCOSITY */
 void initHKViscosityParticle(void *);
 void initHKViscosity(void *);
 void combHKViscosity(void *,void *);
@@ -156,15 +191,15 @@ void HKViscositySym(PARTICLE *,int,NN *,SMF *);
 
 #ifdef STARFORM
 
-#define SMX_DIST_DELETED_GAS		22
+/* SMX_DIST_DELETED_GAS */
 void initDistDeletedGas(void *p1);
 void combDistDeletedGas(void *p1,void *p2);
 void DistDeletedGas(PARTICLE *, int, NN *, SMF *);
 
-#define SMX_DELETE_GAS		23
+/* SMX_DELETE_GAS */
 void DeleteGas(PARTICLE *, int, NN *, SMF *);
 
-#define SMX_DIST_SN_ENERGY	24
+/* SMX_DIST_SN_ENERGY */
 void initDistSNEnergy(void *p1);
 void combDistSNEnergy(void *p1,void *p2);
 void DistSNEnergy(PARTICLE *, int, NN *, SMF *);
@@ -172,7 +207,7 @@ void DistSNEnergy(PARTICLE *, int, NN *, SMF *);
 #endif
 
 #ifdef SIMPLESF
-#define SMX_SIMPLESF_FEEDBACK  24
+/* SMX_SIMPLESF_FEEDBACK */
 void initSimpleSF_Feedback(void *p1);
 void combSimpleSF_Feedback(void *p1,void *p2);
 void SimpleSF_Feedback(PARTICLE *, int, NN *, SMF *);
@@ -183,17 +218,17 @@ void SimpleSF_Feedback(PARTICLE *, int, NN *, SMF *);
 
 #ifdef COLLISIONS
 
-#define SMX_REJECTS			   	7
+/* SMX_REJECTS */
 void initFindRejects(void *p);
 void combFindRejects(void *p1, void *p2);
 void FindRejects(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
 
 #ifdef OLD_KEPLER
-#define SMX_ENCOUNTER			8
+/* SMX_ENCOUNTER */
 void CheckForEncounter(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
 #endif
 
-#define SMX_COLLISION			9
+/* SMX_COLLISION */
 void CheckForCollision(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
 
 #endif /* COLLISIONS */

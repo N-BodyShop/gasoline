@@ -103,10 +103,11 @@ int main(int argc,char **argv)
 		msrAggsFind(msr);
 #endif
 #ifdef GASOLINE
+#ifndef NOCOOLING
 		if (msr->param.iGasModel == GASMODEL_COOLING
-		    || msr->param.iGasModel == GASMODEL_COOLING_NONEQM
 			|| msr->param.bStarForm) 
 		    msrInitCooling(msr);
+#endif
 #ifdef SUPERNOVA
 		if (msr->param.bSN) msrInitSupernova(msr);
 #endif
@@ -163,6 +164,7 @@ int main(int argc,char **argv)
 		 */
 		msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep );
 
+		if (msrSteps(msr) == 0) goto CheckForDiagnosticOutput;
 		goto Restart;
 		}
 	/*
@@ -201,10 +203,11 @@ int main(int argc,char **argv)
 		}
 #endif
 #ifdef GASOLINE
+#ifndef NOCOOLING
 	if (msr->param.iGasModel == GASMODEL_COOLING ||
-	    msr->param.iGasModel == GASMODEL_COOLING_NONEQM ||
 		msr->param.bStarForm)
 		msrInitCooling(msr);
+#endif
 #ifdef SUPERNOVA
 	if (msr->param.bSN) msrInitSupernova(msr);
 #endif
@@ -235,6 +238,7 @@ int main(int argc,char **argv)
 	msrDrift(msr,dTime,0.0); /* also finds initial overlaps for COLLISIONS */
 	msrMassCheck(msr,dMass,"After initial msrDrift");
 
+ CheckForDiagnosticOutput:
 	if (msrSteps(msr) > 0) {
 		if (msrComove(msr)) {
 			msrSwitchTheta(msr,dTime);
@@ -481,18 +485,24 @@ int main(int argc,char **argv)
 					strncat(achFile,".uSN",256);
 					msrOutArray(msr,achFile,OUT_USN_ARRAY);
 				        }
-				if (msr->param.bDoIonOutput) {
-					msrReorder(msr);
+#ifndef NOCOOLING				
+				{
+				int ArrayCnt = 0;
+				char OutSuffix[20];
+				int OutType;
+				
+				msrReorder(msr);
+				for (;;) {	
+					CoolOutputArray( &msr->param.CoolParam, ArrayCnt, &OutType, OutSuffix );
+					if (OutType == OUT_NULL) break;
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".HI",256);
-					msrOutArray(msr,achFile,OUT_HI_ARRAY);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".HeI",256);
-					msrOutArray(msr,achFile,OUT_HeI_ARRAY);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".HeII",256);
-					msrOutArray(msr,achFile,OUT_HeII_ARRAY);
+					strncat(achFile,OutSuffix,256);
+					msrOutArray(msr,achFile, OutType);
+                    ArrayCnt++;
 					}
+				}
+#endif
+
 				if(msr->param.bStarForm) {
 					msrReorder(msr);
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
@@ -557,6 +567,7 @@ int main(int argc,char **argv)
 		if (msrLogInterval(msr)) (void) fclose(fpLog);
 		}
 	else {
+		/* Do DiagnosticOutput */
 		struct inInitDt in;
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 
@@ -564,6 +575,16 @@ int main(int argc,char **argv)
 		pstInitDt(msr->pst,&in,sizeof(in),NULL,NULL);
 	        msrInitAccel(msr);
     
+		if (msrRestart(msr)) {
+			msrReorder(msr);
+			sprintf(achFile,"%s.diag",msrOutName(msr));
+#ifndef COLLISIONS
+			msrWriteTipsy(msr,achFile,dTime);
+#else
+			msrWriteSS(msr,achFile,dTime);
+#endif
+			}
+
 		fprintf(stderr,"Initialized Accel and dt\n");
 		if (msrDoGravity(msr)) {
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
@@ -665,17 +686,21 @@ int main(int argc,char **argv)
 			sprintf(achFile,"%s.SPHH",msrOutName(msr));
 			msrOutArray(msr,achFile,OUT_H_ARRAY);
 		        }
-		if (msr->param.bDoIonOutput) {
-		        msrReorder(msr);
-			sprintf(achFile,"%s.HI",msrOutName(msr));
-			msrOutArray(msr,achFile,OUT_HI_ARRAY);
-
-			sprintf(achFile,"%s.HeI",msrOutName(msr));
-			msrOutArray(msr,achFile,OUT_HeI_ARRAY);
-
-			sprintf(achFile,"%s.HeII",msrOutName(msr));
-			msrOutArray(msr,achFile,OUT_HeII_ARRAY);
-		        }
+#ifndef NOCOOLING				
+				{
+				int ArrayCnt = 0;
+				char OutSuffix[20];
+				int OutType;
+				
+				for (;;) {	
+					CoolOutputArray( &msr->param.CoolParam, ArrayCnt, &OutType, OutSuffix );
+					if (OutType == OUT_NULL) break;
+					sprintf(achFile,"%s.%s",msrOutName(msr),OutSuffix);
+					msrOutArray(msr,achFile, OutType);
+                    ArrayCnt++;
+					}
+				}
+#endif
 #endif
 		/*
 		 ** Build tree, activating all particles first (just in case).

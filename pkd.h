@@ -83,12 +83,12 @@ typedef struct particle {
 #endif
 /*	FLOAT fDensSave;*/	/* Used by diagnostic DensCheck funcs */
 #ifndef NOCOOLING
-	FLOAT uDot;			/* Rate of change of u -- for predicting */
-	FLOAT Y_HI,Y_HeI,Y_HeII;	/* Abundance of ions */
+	FLOAT uDot;			/* Rate of change of u -- for predicting u */
+	COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
 #endif
 #ifdef SUPERNOVA
-        FLOAT PdVSN;
-        FLOAT uSN;
+    FLOAT PdVSN;
+	FLOAT uSN;
 #endif
 	FLOAT fMetals;
 	FLOAT fTimeForm;
@@ -100,12 +100,12 @@ typedef struct particle {
 	int iGasOrder;		/* gas from which star formed */
 #endif
 #ifdef STARFORM
-        FLOAT fESNrate;
-        FLOAT fMSN;
+	FLOAT fESNrate;
+	FLOAT fMSN;
 	FLOAT fSNMetals;
 	FLOAT rForm[3];		/* record pos and vel of star formation */
 	FLOAT vForm[3];
-        int iGasOrder;		/* gas from which star formed */
+	int iGasOrder;		/* gas from which star formed */
 #endif
 #endif
 #ifdef COLLISIONS
@@ -206,7 +206,7 @@ typedef struct chkParticle {
 	FLOAT u;
 	FLOAT fMetals;
 #ifndef NOCOOLING
-	FLOAT Y_HI,Y_HeI,Y_HeII;	/* Abundance of ions */
+	COOLPARTICLE CoolParticle;
 #endif
 #ifdef STARFORM
 	FLOAT fTimeForm;
@@ -363,7 +363,9 @@ typedef struct pkdContext {
 	/* 
 	 ** Cooling 
 	 */
-	CL *cl;
+#ifndef NOCOOLING
+	COOL *Cool;
+#endif
 #endif
 #ifdef SLIDING_PATCH
 	/*
@@ -404,7 +406,6 @@ enum GasModel {
 	GASMODEL_ADIABATIC, 
 	GASMODEL_ISOTHERMAL, 
 	GASMODEL_COOLING, 
-	GASMODEL_COOLING_NONEQM,
 	GASMODEL_GLASS
 	}; 
 
@@ -612,30 +613,13 @@ void pkdSimpleStarForm(PKD pkd, double dRateCoeff, double dTMax, double dDenMin,
 void pkdUpdateuDot(PKD,double,double,double,int,int);
 void pkdUpdateShockTracker(PKD,double, double, double);
 void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma);
+void pkdCoolingGasPressure(PKD, double gammam1, double gamma);
 void pkdLowerSoundSpeed(PKD, double);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime );
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);
 int pkdSphCurrRung(PKD pkd, int iRung, int bGreater);
 void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int bViscosityLimitdt);
 void pkdSphViscosityLimiter(PKD pkd, int bOn, int bShockTracker);
-
-void pkdPARTICLE2PERBARYON(PERBARYON *Y, PARTICLE *p, double HTotal, double HeTotal);
-
-#define pkdPARTICLE2PERBARYON(Y, p, HTotal, HeTotal) { \
-    (Y)->HI = (p)->Y_HI; \
-    (Y)->HII = HTotal - (Y)->HI; \
-    (Y)->HeI = (p)->Y_HeI; \
-    (Y)->HeII = (p)->Y_HeII; \
-    (Y)->HeIII = HeTotal - (Y)->HeI - (Y)->HeII; \
-    (Y)->e = (Y)->HII + (Y)->HeII + 2*(Y)->HeIII; \
-    (Y)->Total = (Y)->e + HTotal + HeTotal; }
-
-void pkdPERBARYON2PARTICLE(PERBARYON *Y, PARTICLE *p);
-
-#define pkdPERBARYON2PARTICLE(Y, p) { \
-    (p)->Y_HI = (Y)->HI; \
-    (p)->Y_HeI = (Y)->HeI; \
-    (p)->Y_HeII = (Y)->HeII; }
 
 void pkdDensCheck(PKD pkd, int iRung, int bGreater, int iMeasure, void *data);
 

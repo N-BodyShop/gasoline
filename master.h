@@ -240,10 +240,15 @@ void msrInitSph(MSR,double);
 int msrSphCurrRung(MSR msr, int iRung, int bGreater);
 void msrSphStep(MSR msr, double dTime);
 void msrSphViscosityLimiter(MSR msr, double dTime);
+#ifndef NOCOOLING
 void msrInitCooling(MSR msr);
 #endif
+#endif
+
 void msrDumpFrameInit(MSR msr, double dTime, double dStep);
 void msrDumpFrame(MSR msr, double, double);
+
+
 #ifdef GLASS
 void msrInitGlass(MSR);
 #endif

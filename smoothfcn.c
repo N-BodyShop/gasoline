@@ -48,6 +48,29 @@
 
 #endif
 
+#ifdef PEAKEDKERNEL
+/* Standard M_4 Kernel */
+#define BALL2(a) ((a)->fBall2)
+#define KERNEL(ak,ar2) { \
+		ak = 2.0 - sqrt(ar2); \
+		if (ar2 < 1.0) ak = (1.0 - 0.75*ak*ar2); \
+		else ak = 0.25*ak*ak*ak; \
+        }
+#define DKERNEL(adk,ar2) { \
+		adk = sqrt(ar2); \
+		if (ar2 < 1.0) { \
+            if (adk < 2./3.) { \
+               if (adk > 0) adk = -1/adk; \
+			   } \
+            else { \
+               adk = -3 + 2.25*adk; \
+			   } \
+			} \
+		else { \
+			adk = -0.75*(2.0-adk)*(2.0-adk)/adk; \
+			} \
+		}
+#else
 #ifdef M43D
 /* M43D Creates a 3D kernel by convolution of 3D tophats the way M4(1D) is made in 1D */
 #define BALL2(a) ((a)->fBall2)
@@ -107,6 +130,7 @@
                 }
 #endif
 #endif
+#endif
 
 void NullSmooth(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf) {
 }
@@ -154,6 +178,43 @@ void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	}
 
+/* Mark functions:
+   These functions calculate density and mark the particles in some way
+   at the same time.
+   Only SmoothActive particles do this gather operation (as always).
+
+   MarkDensity:
+	 Combination: if porig DensZeroed combine porig+pcopy into porig
+                  if pcopy DensZeroed set porig = pcopy 
+     Smooth:
+       Active particles get density, nbrofactive
+	   All gather neighbours are labelled as DensZeroed, get density
+       --> effectively all particles and gather neighbours get density and are labelled DensZeroed
+       --> These densities will potentially be lacking scatter neighbours so only correct
+           if all particles involved in this operation OR scatter later added
+       Gather/Scatter Neighbours of Active Particles get nbrofactive
+
+   MarkSmooth:
+     Go through full tree looking for particles than touch a smooth active particle
+     and mark them with specified label: eg. TYPE_Scatter
+
+   MarkIIDensity:
+     Init:        Densactive particles not dens zeroed get dens zeroed
+	 Combination: If pcopy is active make porig active
+	              Densactive particles only:
+                        if porig DensZeroed combine density porig+pcopy into porig
+                        if pcopy DensZeroed set density  porig = pcopy 
+     Smooth:
+       Densactive: get density
+                   Densactive gather neighbours get density, DensZeroed (Nbrofactive if reqd)
+	   Not Densactive, but Active:
+                   get nbrofactive
+			       Densactive gather neighbours get density, DensZeroed	(Nbrofactive)
+       Not Densactive, Not Active 
+                   get nbrofactive if gather neighbour active
+			       Densactive gather neighbours get density, DensZeroed	
+*/
+
 void initParticleMarkDensity(void *p)
 {
 	((PARTICLE *)p)->fDensity = 0.0;
@@ -197,7 +258,7 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			KERNEL(rs,r2);
 			rs *= fNorm;
 			q = nnList[i].pPart;
-	assert(TYPETest(q,TYPE_GAS));
+			assert(TYPETest(q,TYPE_GAS));
 			p->fDensity += rs*q->fMass;
 			if (TYPETest(q,TYPE_DensZeroed)) 
 				q->fDensity += rs*p->fMass;
@@ -215,7 +276,7 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			KERNEL(rs,r2);
 			rs *= fNorm;
 			q = nnList[i].pPart;
-	assert(TYPETest(q,TYPE_GAS));
+			assert(TYPETest(q,TYPE_GAS));
 			if (TYPETest(p,TYPE_DensZeroed)) 
 				p->fDensity += rs*q->fMass;
 			else {
@@ -331,6 +392,7 @@ void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		if (qiActive & TYPE_ACTIVE) TYPESet(p,TYPE_NbrOfACTIVE);
 		}
 	}
+
 
 void initMark(void *p)
 {

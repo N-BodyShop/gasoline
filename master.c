@@ -407,9 +407,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDodtOutput = 0;
 	prmAddParam(msr->prm,"bDodtOutput",0,&msr->param.bDodtOutput,sizeof(int),
 				"dtout","enable/disable dt outputs = -dtout");
-	msr->param.bDoIonOutput = 1;
-	prmAddParam(msr->prm,"bDoIonOutput",0,&msr->param.bDoIonOutput,sizeof(int),
-				"Iout","enable/disable Ion outputs (cooling only) = +Iout");
 	msr->param.nBucket = 8;
 	prmAddParam(msr->prm,"nBucket",1,&msr->param.nBucket,sizeof(int),"b",
 				"<max number of particles in a bucket> = 8");
@@ -638,21 +635,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dhMinOverSoft",2,&msr->param.dhMinOverSoft,
 				sizeof(double),"hmin",
 				"<Minimum h as a fraction of Softening> = 0.0");
-	msr->param.dMassFracHelium = 0.25;
-	prmAddParam(msr->prm,"dMassFracHelium",2,&msr->param.dMassFracHelium,
-				sizeof(double),"hmf",
-				"<Primordial Helium Fraction (by mass)> = 0.25");
-	msr->param.dCoolingTmin = 10;
-	prmAddParam(msr->prm,"dCoolingTmin",2,&msr->param.dCoolingTmin,
-				sizeof(double),"ctmin",
-				"<Minimum Temperature for Cooling> = 10K");
-	msr->param.dCoolingTmax = 1e9;
-	prmAddParam(msr->prm,"dCoolingTmax",2,&msr->param.dCoolingTmax,
-				sizeof(double),"ctmax",
-				"<Maximum Temperature for Cooling> = 1e9K");
-	msr->param.nCoolingTable = 15001;
-	prmAddParam(msr->prm,"nCoolingTable",0,&msr->param.nCoolingTable,
-				sizeof(int),"nctable","<# Cooling table elements> = 15001");
 	msr->param.bDoGravity = 1;
 	prmAddParam(msr->prm,"bDoGravity",0,&msr->param.bDoGravity,sizeof(int),"g",
 				"enable/disable gravity (interparticle and external potentials) = +g");
@@ -750,20 +732,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"bGasCooling",0,&msr->param.bGasCooling,
 				sizeof(int),"GasCooling",
 				"<Gas is Cooling> = +GasCooling");
-	msr->param.bGasCoolingNonEqm = 0;
-	prmAddParam(msr->prm,"bGasCooling",0,&msr->param.bGasCoolingNonEqm,
-				sizeof(int),"GasCoolingNonEqm",
-				"<Gas is Cooling Non-Equilibrium Abundances> = +GasCoolingNonEqm");
 	msr->param.iGasModel = GASMODEL_UNSET; /* Deprecated in for backwards compatibility */
 	prmAddParam(msr->prm,"iGasModel",0,&msr->param.iGasModel,
 				sizeof(int),"GasModel",
 				"<Gas model employed> = 0 (Adiabatic)");
-	msr->param.bUV = 1;
-	prmAddParam(msr->prm,"bUV",0,&msr->param.bUV,sizeof(int),"UV",
-				"read in an Ultra Violet file = +UV");
-	msr->param.bUVTableUsesTime = 0;
-	prmAddParam(msr->prm,"bUVTableUsesTime",0,&msr->param.bUVTableUsesTime,sizeof(int),"UVTableUsesTime",
-				"Ultra Violet Table uses time = +UVTableUsesTime");
+#ifndef NOCOOLING
+	CoolAddParams( &msr->param.CoolParam, msr->prm );
+#endif
 	msr->param.dShockTrackerA = 0.16; 
 	prmAddParam(msr->prm,"dShockTrackerA",2,&msr->param.dShockTrackerA,
 				sizeof(double),"STA",
@@ -1231,7 +1206,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	if (msr->param.bGasAdiabatic    ) msrSetGasModel( GASMODEL_ADIABATIC );
 	if (msr->param.bGasIsothermal   ) msrSetGasModel( GASMODEL_ISOTHERMAL );
 	if (msr->param.bGasCooling      ) msrSetGasModel( GASMODEL_COOLING );
-	if (msr->param.bGasCoolingNonEqm) msrSetGasModel( GASMODEL_COOLING_NONEQM );
 
 	if (msr->param.iGasModel == GASMODEL_UNSET) {
 		msr->param.iGasModel = GASMODEL_ADIABATIC;
@@ -1248,18 +1222,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	case GASMODEL_COOLING:
 		msr->param.bGasCooling = 1;
 		break;
-	case GASMODEL_COOLING_NONEQM:
-		msr->param.bGasCoolingNonEqm = 1;
-		break;
 		}
 
-	if(msr->param.iGasModel != GASMODEL_COOLING &&
-	   msr->param.iGasModel != GASMODEL_COOLING_NONEQM) {
-		/* Need these for units: */
-		msr->param.bDoIonOutput = 0;
-		msr->param.bUV = 0;
-		}
-	else {
+	if(msr->param.iGasModel == GASMODEL_COOLING) {
 		assert (prmSpecified(msr->prm, "dMsolUnit") &&
 				prmSpecified(msr->prm, "dKpcUnit"));
 		}
@@ -1295,8 +1260,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    assert (prmSpecified(msr->prm, "dMsolUnit") &&
 		    prmSpecified(msr->prm, "dKpcUnit"));
 
-		if (!(msr->param.iGasModel == GASMODEL_COOLING ||
-		   msr->param.iGasModel == GASMODEL_COOLING_NONEQM)) {
+		if (!(msr->param.iGasModel == GASMODEL_COOLING)) {
 			fprintf(stderr,"Warning: You are not running a cooling"
 					"EOS with starformation\n");
 			}
@@ -1616,11 +1580,20 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef SHOCKTRACK
 	fprintf(fp," SHOCKTRACK");
 #endif
+#ifdef PEAKEDKERNEL
+	fprintf(fp," PEAKEDKERNEL");
+#endif
 #ifdef CHANGESOFT
  	fprintf(fp," CHANGESOFT");
 #endif
 #ifdef NOCOOLING
  	fprintf(fp," NOCOOLING");
+#endif
+#ifdef COOLING_COSMO
+ 	fprintf(fp," COOLING_COSMO");
+#endif
+#ifdef COOLING_PLANET
+ 	fprintf(fp," COOLING_PLANET");
 #endif
 #ifdef GLASS
 	fprintf(fp," GLASS");
@@ -1775,9 +1748,6 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bGasAdiabatic: %d",msr->param.bGasAdiabatic);	
 	fprintf(fp," bGasIsothermal: %d",msr->param.bGasIsothermal);	
 	fprintf(fp," bGasCooling: %d",msr->param.bGasCooling);	
-	fprintf(fp," bGasCoolingNonEqm: %d",msr->param.bGasCoolingNonEqm);	
-    fprintf(fp," bUV: %d",msr->param.bUV);
-    fprintf(fp," bUVTableUsesTime: %d",msr->param.bUVTableUsesTime);
 	fprintf(fp," dConstAlpha: %g",msr->param.dConstAlpha);
 	fprintf(fp," dConstBeta: %g",msr->param.dConstBeta);
 	fprintf(fp,"\n# dConstGamma: %g",msr->param.dConstGamma);
@@ -1796,6 +1766,9 @@ void msrLogParams(MSR msr,FILE *fp)
         fprintf(fp," dSNTMax: %g",msr->param.dSNTMax);
 	fprintf(fp," dSNMetalCut: %g",msr->param.dSNMetalCut);
 	fprintf(fp," dSNHeatFraction: %g",msr->param.dSNHeatFraction);
+#ifndef NOCOOLING
+	CoolLogParams( &msr->param.CoolParam, fp );
+#endif
 #endif
 #ifdef STARFORM
 	fprintf(fp,"\n# Star Formation: bStarForm: %d",msr->param.bStarForm);
@@ -4069,8 +4042,12 @@ double msrReadCheck(MSR msr,int *piStep)
 			FDL_read(fdl,"iStartStep",&msr->param.iStartStep);
 		if (!prmSpecified(msr->prm,"dFracNoDomainDecomp"))
 			FDL_read(fdl,"dFracNoDomainDecomp",&msr->param.dFracNoDomainDecomp);
+#ifndef NOCOOLING
+#ifdef COOLING_COSMO
 		if (!prmSpecified(msr->prm,"dMassFracHelium"))
-			FDL_read(fdl,"dMassFracHelium",&msr->param.dMassFracHelium);
+			FDL_read(fdl,"dMassFracHelium",&msr->param.CoolParam.dMassFracHelium);
+#endif
+#endif
 		}
 	if (iVersion > 3) {
 	    FDL_read(fdl, "max_order", &msr->nMaxOrder);
@@ -4329,7 +4306,14 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"dTheta",&msr->param.dTheta);
 	FDL_write(fdl,"dTheta2",&msr->param.dTheta2);
 	FDL_write(fdl,"dCentMass",&msr->param.dCentMass);
-	FDL_write(fdl,"dMassFracHelium",&msr->param.dMassFracHelium);
+#if !defined(NOCOOLING) && defined(COOLING_COSMO)
+	FDL_write(fdl,"dMassFracHelium",&msr->param.CoolParam.dMassFracHelium);
+#else
+	{
+	FLOAT dummy = 0.75; /* Nasty! */
+	FDL_write(fdl,"dMassFracHelium",&dummy);
+	}
+#endif
 	FDL_write(fdl,"dFracNoDomainDecomp",&msr->param.dFracNoDomainDecomp);
 	if (msr->param.bVDetails)
 		printf("Writing checkpoint file...\nTime:%g\n",dTime);
@@ -5181,7 +5165,7 @@ void msrTopStepKDK(MSR msr,
 			msrDomainDecomp(msr,iKickRung,1);
 			msrInitAccel(msr);
 
-			if (msr->param.bVStep) printf("Forces, Step:%f\n",dStep);
+			if (msr->param.bVStep) printf("Forces, Step:%f nActive %i\n",dStep,msr->nActive);
 			if(msrDoGravity(msr)) {
 				if (msr->param.bDoSelfGravity) {
 					msrActiveRung(msr,iKickRung,1);
@@ -5426,7 +5410,6 @@ void msrGetGasPressure(MSR msr)
 	case GASMODEL_ADIABATIC:
 	case GASMODEL_ISOTHERMAL:
 	case GASMODEL_COOLING:
-	case GASMODEL_COOLING_NONEQM:
 		in.gamma = msr->param.dConstGamma;
 		in.gammam1 = in.gamma-1;
 		break;
@@ -5496,7 +5479,9 @@ void msrUpdateShockTracker(MSR msr,double dDelta)
 
 void msrInitSph(MSR msr,double dTime)
 {
+#ifndef NOCOOLING
 	struct inInitEnergy in;
+#endif
 	double a;
 
 	msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
@@ -5505,9 +5490,9 @@ void msrInitSph(MSR msr,double dTime)
 	msrSmooth(msr,dTime,SMX_DENSITY,1);
 	msrBallMax(msr, 0, 1);
 
+#ifndef NOCOOLING
 	switch (msr->param.iGasModel) {
 	case GASMODEL_COOLING:
-	case GASMODEL_COOLING_NONEQM:
 	    if(msr->param.bRestart)
 		break;		/* Already OK from checkpoint */
 		/*
@@ -5523,6 +5508,7 @@ void msrInitSph(MSR msr,double dTime)
 		pstInitEnergy(msr->pst, &in, sizeof(in), NULL, NULL);
 		break;
 		}
+#endif
 
 	if (msrDoGas(msr)) {
 	        if (msr->param.bViscosityLimiter || msr->param.bBulkViscosity
@@ -5554,6 +5540,46 @@ void msrInitSph(MSR msr,double dTime)
 		}
 
 	}
+
+#ifndef NOCOOLING
+void msrInitCooling(MSR msr)
+{
+	int cntTable;
+	int nTableRows, nTableColumns;
+	void *dTableData = NULL;
+	char TableFileSuffix[20];
+	struct inInitCooling in;
+
+	in.dGmPerCcUnit = msr->param.dGmPerCcUnit;
+	in.dComovingGmPerCcUnit = msr->param.dComovingGmPerCcUnit;
+	in.dErgPerGmUnit = msr->param.dErgPerGmUnit;
+	in.dSecUnit = msr->param.dSecUnit;
+	in.dKpcUnit = msr->param.dKpcUnit;
+	in.z = 60.0; /*dummy value*/
+	in.dTime = 0; /* dummy value */
+	in.CoolParam = msr->param.CoolParam;
+
+	pstInitCooling(msr->pst,&in,sizeof(struct inInitCooling),NULL,NULL);
+
+	/* Read in tables from files as necessary */
+	cntTable = 0;
+	for (;;) {
+		CoolTableReadInfo( &msr->param.CoolParam, cntTable, &nTableColumns, TableFileSuffix );
+		if (!nTableColumns) break;
+
+		cntTable++;
+		nTableRows = msrReadASCII(msr, TableFileSuffix, nTableColumns, NULL);
+		if (nTableRows) {
+			assert( sizeof(double)*nTableRows*nTableColumns <= CL_NMAXBYTETABLE );
+			dTableData = malloc(sizeof(double)*nTableRows*nTableColumns);
+			assert( dTableData != NULL );
+			nTableRows = msrReadASCII(msr,TableFileSuffix, 7, dTableData );
+			
+			pstCoolTableRead(msr->pst,dTableData,sizeof(double)*nTableRows*nTableColumns,NULL,NULL);
+			}
+		}
+	}
+#endif
 
 int msrSphCurrRung(MSR msr, int iRung, int bGreater)
 {
@@ -5720,39 +5746,6 @@ void msrAddSupernova(MSR msr, double dTime)
 void msrInitSupernova(MSR msr) { }
 void msrAddSupernova(MSR msr, double dTime) { }
 #endif
-
-void msrInitCooling(MSR msr)
-{
-	int nUV;
-	UVSPECTRUM *UVData = NULL;
-	struct inInitCooling in;
-
-	in.dGmPerCcUnit = msr->param.dGmPerCcUnit;
-	in.dComovingGmPerCcUnit = msr->param.dComovingGmPerCcUnit;
-	in.dErgPerGmUnit = msr->param.dErgPerGmUnit;
-	in.dSecUnit = msr->param.dSecUnit;
-	in.dMassFracHelium = msr->param.dMassFracHelium;
-	in.Tmin = msr->param.dCoolingTmin;
-	in.Tmax = msr->param.dCoolingTmax;
-	in.nTable = msr->param.nCoolingTable;
-	in.z = 60.0; /*dummy value*/
-	in.dTime = 0; /* dummy value */
-	in.bUVTableUsesTime = msr->param.bUVTableUsesTime;
-
-	pstInitCooling(msr->pst,&in,sizeof(struct inInitCooling),NULL,NULL);
-
-	if (msr->param.bUV) {
-		nUV = msrReadASCII(msr,"UV",7,NULL);
-		if (nUV) {
-			UVData = malloc(sizeof(UVSPECTRUM)*nUV);
-			nUV = msrReadASCII(msr,"UV",7,(double *) UVData);
-			assert( sizeof(UVSPECTRUM)*nUV <= CL_NMAXBYTETABLE );
-			/* Make sure the heating is in units of ergs per ionization */
-			assert( UVData->Heat_Phot_HI>1e-15 && UVData->Heat_Phot_HI<1e-10);
-			pstInitUV(msr->pst,UVData,sizeof(UVSPECTRUM)*nUV,NULL,NULL);
-			}
-		}
-	}
 
 #endif /* GASOLINE */
 

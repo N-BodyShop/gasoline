@@ -37,12 +37,12 @@ FLOAT ArrType(PARTICLE *p,int iType)
 #ifndef NOCOOLING
 	case OUT_UDOT_ARRAY:
 		return(p->uDot);
-	case OUT_HI_ARRAY:
-		return(p->Y_HI);
-	case OUT_HeI_ARRAY:
-		return(p->Y_HeI);
-	case OUT_HeII_ARRAY:
-		return(p->Y_HeII);
+	case OUT_COOL_ARRAY0:
+		return(COOL_ARRAY0(&p->CoolParticle));
+	case OUT_COOL_ARRAY1:
+		return(COOL_ARRAY1(&p->CoolParticle));
+	case OUT_COOL_ARRAY2:
+		return(COOL_ARRAY2(&p->CoolParticle));
 #endif
 	case OUT_BALSARASWITCH_ARRAY:
 		return(p->BalsaraSwitch);

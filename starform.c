@@ -1,4 +1,9 @@
 #ifdef STARFORM
+
+#ifdef NOCOOLING
+#error "STARFORM requires Cooling on"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -70,11 +75,8 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     double tform;
     double tsound;
     double tcool;
-    double E;
-    PERBARYON Y;
-    RATE Rate;
-    double T;
-    CL *cl = pkd->cl;
+    double E,T;
+    COOL *cl = pkd->Cool;
     double dExp = 1.0/(1.0 + cl->z);
     double dCosmoFac = dExp*dExp*dExp;
     PARTICLE starp;
@@ -99,14 +101,15 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     /*
      * Determine cooling time.
      */
-    E = p->u * cl->dErgPerGmUnit;
-    pkdPARTICLE2PERBARYON(&Y, p, cl->Y_H, cl->Y_He);
-    T = clTemperature(Y.Total, E); 
-    clRates(cl, &Rate, T);
-    tcool = E/(clCoolTotal(cl, &Y, &Rate, p->fDensity*cl->dComovingGmPerCcUnit)
-	       - clHeatTotal(cl, &Y)
-	       - p->PdV*cl->dErgPerGmPerSecUnit);
-    tcool /= cl->dSecUnit;
+
+	E = CoolCodeEnergyToErgPerGm( cl, p->u );
+    T = CoolEnergyToTemperature( cl, &p->CoolParticle, E );
+
+    tcool = E/(-CoolHeatingRate( cl, &p->CoolParticle, T, 
+								CodeDensityToComovingGmPerCc(cl,p->fDensity ))
+			   -CoolCodeWorkToErgPerGmPerSec( cl, p->PdV ));
+
+	tcool = CoolSecondsToCodeTime( cl, tcool ); 
 
     if(tcool < 0.0 && T > stfm->dTempMax) return;
     /*

@@ -145,10 +145,6 @@ struct parameters {
 	double dComovingGmPerCcUnit;
 	double dErgPerGmUnit;
 	double dSecUnit;
-	double dMassFracHelium;
-	double dCoolingTmin;
-	double dCoolingTmax;
-	int    nCoolingTable;
 	int    bViscosityLimiter;
 	int    bViscosityLimitdt;
 	int    bShockTracker;
@@ -160,8 +156,9 @@ struct parameters {
 	double dhMinOverSoft;
 	int    bDoGas;
 	int    bSphStep;
-	int    bUV;
-	int    bUVTableUsesTime;
+#ifndef NOCOOLING
+	COOLPARAM CoolParam;
+#endif
 	int    bSN;
 	double dSNRhoCut;
  	double dSNTMin;

@@ -257,9 +257,6 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_LOWERSOUNDSPEED,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstLowerSoundSpeed,
 				  sizeof(struct inLowerSoundSpeed),0);
-	mdlAddService(mdl,PST_INITENERGY,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstInitEnergy,
-				  sizeof(struct inInitEnergy),0);
 	mdlAddService(mdl,PST_KICKRHOPRED,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstKickRhopred, 
 				  sizeof(struct inKickRhopred),0);
@@ -270,12 +267,17 @@ pstAddServices(PST pst,MDL mdl)
 				  (void (*)(void *,void *,int,void *,int *)) 
 				  pstSphViscosityLimiter, 
 				  sizeof(struct inSphViscosityLimiter),0);
+#ifndef NOCOOLING
+	mdlAddService(mdl,PST_INITENERGY,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstInitEnergy,
+				  sizeof(struct inInitEnergy),0);
 	mdlAddService(mdl,PST_INITCOOLING,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstInitCooling,
 				  sizeof(struct inInitCooling),0);
-	mdlAddService(mdl,PST_INITUV,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstInitUV,
+	mdlAddService(mdl,PST_COOLTABLEREAD,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstCoolTableRead,
 				  CL_NMAXBYTETABLE,0);
+#endif
 	mdlAddService(mdl,PST_DENSCHECK,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstDensCheck,
 				  sizeof(struct inDensCheck),sizeof(struct outDensCheck));
@@ -3995,10 +3997,13 @@ void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		switch( in->iGasModel ) {
 		case GASMODEL_ADIABATIC: 
-		case GASMODEL_COOLING:
-		case GASMODEL_COOLING_NONEQM:
 		case GASMODEL_ISOTHERMAL:
 			pkdAdiabaticGasPressure(plcl->pkd, in->gammam1,in->gamma);
+			break;
+		case GASMODEL_COOLING:
+#ifndef NOCOOLING
+			pkdCoolingGasPressure(plcl->pkd, in->gammam1,in->gamma);
+#endif
 			break;
 		case GASMODEL_GLASS:
 #ifdef GLASS		  
@@ -4030,6 +4035,7 @@ void pstLowerSoundSpeed(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+#ifndef NOCOOLING
 void pstInitEnergy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -4045,6 +4051,45 @@ void pstInitEnergy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	if (pnOut) *pnOut = 0;
 	}
+
+void pstInitCooling(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inInitCooling *in = vin;
+
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_INITCOOLING,in,nIn);
+		pstInitCooling(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+#if defined(STARFORM) || defined(COOLDEBUG)
+		(plcl->pkd->Cool)->mdl = plcl->pkd->mdl;
+#endif
+		clInitConstants((plcl->pkd->Cool),in->dGmPerCcUnit,in->dComovingGmPerCcUnit,
+						in->dErgPerGmUnit,in->dSecUnit,in->dKpcUnit,in->CoolParam);
+		CoolInitRatesTable((plcl->pkd->Cool),in->CoolParam);
+		/* NOT DONE HERE: must be done before use: */
+        /* CoolSetTime( (plcl->pkd->Cool), in->dTime, in->z  );*/
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void pstCoolTableRead(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_COOLTABLEREAD,vin,nIn);
+		pstCoolTableRead(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		CoolTableRead( (plcl->pkd->Cool),nIn,vin);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+#endif
 
 
 void pstKickRhopred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
@@ -4118,47 +4163,6 @@ void pstSphViscosityLimiter(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		pkdSphViscosityLimiter(plcl->pkd,in->bOn,in->bShockTracker);
 		}
-	if (pnOut) *pnOut = 0;
-	}
-
-void pstInitCooling(PST pst,void *vin,int nIn,void *vout,int *pnOut)
-{
-	LCL *plcl = pst->plcl;
-	struct inInitCooling *in = vin;
-
-#ifndef NOCOOLING
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_INITCOOLING,in,nIn);
-		pstInitCooling(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-		}
-	else {
-#if defined(STARFORM) || defined(COOLDEBUG)
-		(plcl->pkd->cl)->mdl = plcl->pkd->mdl;
-#endif
-		clInitConstants((plcl->pkd->cl),in->dGmPerCcUnit,in->dComovingGmPerCcUnit,
-						in->dErgPerGmUnit,in->dSecUnit,in->dMassFracHelium,in->bUVTableUsesTime);
-		clInitRatesTable((plcl->pkd->cl),in->Tmin,in->Tmax,in->nTable);
-		clRatesRedshift((plcl->pkd->cl),in->z,in->dTime);
-		}
-#endif
-	if (pnOut) *pnOut = 0;
-	}
-
-void pstInitUV(PST pst,void *vin,int nIn,void *vout,int *pnOut)
-{
-	LCL *plcl = pst->plcl;
-
-#ifndef NOCOOLING
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_INITUV,vin,nIn);
-		pstInitUV(pst->pstLower,vin,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-		}
-	else {
-		clInitUV((plcl->pkd->cl),vin,nIn/sizeof(UVSPECTRUM));
-		}
-#endif
 	if (pnOut) *pnOut = 0;
 	}
 
