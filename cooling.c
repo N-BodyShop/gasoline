@@ -837,7 +837,7 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
   Tin = clTemperature( Yin.Total, Ein ); 
   clRates( cl, &Ratein, Tin );
   clAbunds( cl, &YY, &Ratein, rho );
-  Tin = clTemperature( Yin.Total, Ein ); 
+  Tin = clTemperature( YY.Total, Ein ); 
   clRates( cl, &Ratein, Tin );
   clAbunds( cl, &YY, &Ratein, rho );
 
