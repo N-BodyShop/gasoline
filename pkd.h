@@ -1,6 +1,7 @@
 #ifndef PKD_HINCLUDED
 #define PKD_HINCLUDED
 
+#include <sys/time.h>
 #include <sys/resource.h>
 #include "mdl.h"
 #include "floattype.h"

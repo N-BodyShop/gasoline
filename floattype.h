@@ -2,7 +2,7 @@
 #define FLOATTYPE_INCLUDED
 
 #include <limits.h>
-#include <values.h>
+#include <float.h>
 
 #ifndef FLT_MAX
 #define FLT_MAX 3.402823466E+38F
