@@ -648,6 +648,10 @@ int main(int argc,char **argv)
 		msrReorder(msr);
 		sprintf(achFile,"%s.dt",msrOutName(msr));
 		msrOutArray(msr,achFile,OUT_DT_ARRAY);
+		if(msr->param.bDensityStep || msrDoGravity(msr)) {
+			msrDtToRung(msr,0,msrDelta(msr),1);
+			msrRungStats(msr);
+			}
 		}
 	
 	msrFinish(msr);
