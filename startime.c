@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <math.h>
-#include <limits.h>
-#include <values.h>
 #include <assert.h>
 #include <stdlib.h>
+#include "floattype.h"
 #include "startime.h"
 
 #define max(A,B) ((A) > (B) ? (A) : (B))

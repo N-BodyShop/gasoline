@@ -10,7 +10,8 @@
 #include "outtype.h"
 #include "smooth.h"
 
-void pstAddServices(PST pst,MDL mdl)
+void
+pstAddServices(PST pst,MDL mdl)
 {
 	int nThreads,nCell;
 
@@ -293,6 +294,14 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_SETNPARTS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetNParts,
 				  sizeof(struct inSetNParts),0);
+#ifdef SPECIAL_PARTICLES
+	mdlAddService(mdl,PST_GETSPECIALPARTICLES,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstGetSpecialParticles,
+				  sizeof(struct inGetSpecial),sizeof(struct outGetSpecial));
+	mdlAddService(mdl,PST_DOSPECIALPARTICLES,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDoSpecialParticles,
+				  sizeof(struct inDoSpecial),0);
+#endif
 #ifdef COLLISIONS
 	mdlAddService(mdl,PST_NUMREJECTS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstNumRejects,
@@ -2896,6 +2905,12 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			pkdPatch(plcl->pkd,in->dOrbFreqZ2);
 			}
 #endif
+#ifdef SIMPLE_GAS_DRAG
+		if (in->bSimpleGasDrag) {
+			pkdSimpleGasDrag(plcl->pkd,in->iFlowOpt,in->bEpstein,in->dGamma,
+							 in->dOmegaZ);
+			}
+#endif
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -4195,6 +4210,61 @@ pstSetNParts(PST pst,void *vin,int nIn,void *vout,int *pnOut)
     if(pnOut) *pnOut = 0;
     }
 
+#ifdef SPECIAL_PARTICLES
+
+void
+pstGetSpecialParticles(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inGetSpecial *in = vin;
+	struct outGetSpecial local,*out = vout;
+	int i;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	for (i=0;i<in->nSpecial;i++)
+		local.sInfo[i].iOrder = out->sInfo[i].iOrder = -1;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_GETSPECIALPARTICLES,vin,nIn);
+		pstGetSpecialParticles(pst->pstLower,vin,nIn,vout,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vout,NULL);
+		for (i=0;i<in->nSpecial;i++)
+			if (local.sInfo[i].iOrder != -1)
+				out->sInfo[i] = local.sInfo[i];
+		}
+	else {
+		pkdGetSpecialParticles(plcl->pkd,in->nSpecial,in->iId,in->dCentMass,
+							   out->sInfo);
+		}
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+void
+pstDoSpecialParticles(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inDoSpecial *in = vin;
+	struct outDoSpecial *out = vout;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		double aFrame[3];
+		int k;
+		mdlReqService(pst->mdl,pst->idUpper,PST_NUMREJECTS,vin,nIn);
+		pstDoSpecialParticles(pst->pstLower,vin,nIn,vout,pnOut);
+		if (in->bNonInertial) for (k=0;k<3;k++) aFrame[k] = out->aFrame[k];
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		if (in->bNonInertial) for (k=0;k<3;k++) out->aFrame[k] += aFrame[k];
+		}
+	else {
+		pkdDoSpecialParticles(plcl->pkd,in->nSpecial,in->bNonInertial,
+							  in->sData,in->sInfo,out->aFrame);
+		}
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+#endif /* SPECIAL_PARTICLES */
+
 #ifdef COLLISIONS
 
 void
@@ -4333,7 +4403,7 @@ pstMarkEncounters(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	struct inMarkEncounters *in = vin;
-	
+
 	mdlassert(pst->mdl,nIn == sizeof(*in));
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_MARKENCOUNTERS,vin,nIn);

@@ -166,8 +166,8 @@ KSR_LIBMDL		= $(KSR_MDL)/mdl.o -lm -lrpc
 OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
 	  smoothfcn.o collision.o qqsmooth.o cooling.o cosmo.o romberg.o \
-	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
-	  startime.o stiff.o runge.o
+	  special.o starform.o feedback.o millerscalo.o supernova.o \
+	  supernovaia.o startime.o ssio.o stiff.o runge.o
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 
@@ -267,36 +267,33 @@ $(OBJ) $(EXTRA_OBJ): Makefile
 
 # DO NOT DELETE
 
-collision.o: pkd.h floattype.h collision.h
-ewald.o: ewald.h pkd.h floattype.h meval.h qeval.h
-fdl.o: htable.h fdl.h
-grav.o: pkd.h floattype.h grav.h meval.h qeval.h
-htable.o: htable.h
-main.o: pst.h pkd.h floattype.h smoothfcn.h collision.h master.h param.h
-main.o: parameters.h outtype.h
-master.o: master.h param.h pst.h pkd.h floattype.h smoothfcn.h collision.h
-master.o: parameters.h tipsydefs.h opentype.h fdl.h htable.h outtype.h
-master.o: ssdefs.h ssio.h
-outtype.o: pkd.h floattype.h outtype.h collision.h
-param.o: param.h
-pkd.o: pkd.h floattype.h ewald.h grav.h walk.h opentype.h tipsydefs.h
-pkd.o: ssdefs.h ssio.h collision.h
-pst.o: pst.h pkd.h floattype.h smoothfcn.h collision.h outtype.h smooth.h
-qqsmooth.o: smooth.h pkd.h floattype.h smoothfcn.h
-smooth.o: smooth.h pkd.h floattype.h smoothfcn.h
-smoothfcn.o: smoothfcn.h pkd.h floattype.h ssdefs.h ssio.h collision.h
-walk.o: walk.h pkd.h floattype.h
 cooling.o: pkd.h floattype.h cooling.h
+cosmo.o: cosmo.h
+ewald.o: ewald.h pkd.h floattype.h cooling.h meval.h qeval.h
+fdl.o: htable.h fdl.h
 feedback.o: pkd.h floattype.h cooling.h feedback.h supernova.h startime.h
 feedback.o: millerscalo.h
+grav.o: pkd.h floattype.h cooling.h grav.h meval.h qeval.h
+htable.o: htable.h
+main.o: master.h param.h pst.h pkd.h floattype.h cooling.h smoothfcn.h
+main.o: starform.h feedback.h parameters.h cosmo.h outtype.h
+master.o: master.h param.h pst.h pkd.h floattype.h cooling.h smoothfcn.h
+master.o: starform.h feedback.h parameters.h cosmo.h tipsydefs.h opentype.h
+master.o: fdl.h htable.h outtype.h
 millerscalo.o: millerscalo.h
+outtype.o: pkd.h floattype.h cooling.h outtype.h
+param.o: param.h
+pkd.o: pkd.h floattype.h cooling.h ewald.h grav.h walk.h opentype.h
+pkd.o: tipsydefs.h
+pst.o: pst.h pkd.h floattype.h cooling.h smoothfcn.h starform.h feedback.h
+pst.o: outtype.h smooth.h
+romberg.o: floattype.h
+smooth.o: smooth.h pkd.h floattype.h cooling.h smoothfcn.h
+smoothfcn.o: smoothfcn.h pkd.h floattype.h cooling.h
 starform.o: pkd.h floattype.h cooling.h starform.h millerscalo.h
-startime.o: startime.h
+startime.o: floattype.h startime.h
 supernova.o: pkd.h floattype.h cooling.h feedback.h supernova.h startime.h
 supernova.o: millerscalo.h supernovaia.h
 supernovaia.o: supernova.h startime.h millerscalo.h feedback.h pkd.h
 supernovaia.o: floattype.h cooling.h supernovaia.h
-
-
-
-
+walk.o: walk.h pkd.h floattype.h cooling.h

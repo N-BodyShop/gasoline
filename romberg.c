@@ -3,6 +3,7 @@
 #include <limits.h>
 #include <values.h>
 #include <assert.h>
+#include "floattype.h" /* because some systems don't define FLT_MAX */
 
 #define MAXLEV 13
 

@@ -2052,7 +2052,7 @@ FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	double a=0,r,r2,v2,an,rh,rn,sr;
 	int i;
 
-	if (p->iColor != PLANETESIMAL || p->dtCol < 0) return;
+	if (p->dtCol < 0) return;
 
 	r = 2*p->fSoft; /* radius = 2 * softening */
 
@@ -2067,8 +2067,7 @@ FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	for (i=0;i<nSmooth;i++) {
 		pn = nnList[i].pPart;
-		if (pn->iOrder == p->iOrder || pn->iColor != PLANETESIMAL ||
-			pn->dtCol < 0) continue;
+		if (pn->iOrder == p->iOrder || pn->dtCol < 0) continue;
 		rn = 2*pn->fSoft;
 		if (smf->dCentMass > 0) {
 			r2 = pn->r[0]*pn->r[0] + pn->r[1]*pn->r[1] + pn->r[2]*pn->r[2];
@@ -2103,7 +2102,9 @@ _CheckForCollapse(PARTICLE *p,double dt,double rdotv,double r2,SMF *smf)
 	double dRatio;
 
 	dRatio = rdotv*(p->dtPrevCol - dt)/r2;
+#ifndef FIX_COLLAPSE
 	assert(dRatio > 0);
+#endif
 	if (dRatio < smf->dCollapseLimit) {
 #ifdef VERBOSE_COLLAPSE
 		char ach[256];

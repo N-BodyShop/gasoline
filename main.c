@@ -88,6 +88,13 @@ int main(int argc,char **argv)
 	 */
 	if (msrRestart(msr)) {
 		dTime = msrReadCheck(msr,&iStep);
+#ifdef COLLISIONS
+	if (msr->param.nSmooth > msr->N) {
+		msr->param.nSmooth = msr->N;
+		if (msr->param.bVWarnings)
+			printf("WARNING: nSmooth reduced to %i\n",msr->N);
+		}
+#endif
 #ifdef GASOLINE
 #ifdef SUPERNOVA
 	        if (msr->param.bSN) msrInitSupernova(msr);
@@ -154,7 +161,7 @@ int main(int argc,char **argv)
 	    return 1;
 	    }
 #ifdef COLLISIONS
-	if (!msrRestart(msr) && msr->param.bDoCollLog) { /* erase any old log */
+	if (msr->param.bDoCollLog) { /* erase any old log */
 		FILE *fp = fopen(msr->param.achCollLog,"w");
 		assert(fp);
 		fclose(fp);
@@ -166,7 +173,11 @@ int main(int argc,char **argv)
 	 */
 #ifdef COLLISIONS /* must use "Solar System" (SS) I/O format... */
 	dTime = msrReadSS(msr);
-	assert(msr->N >= msr->param.nSmooth);
+	if (msr->param.nSmooth > msr->N) {
+		msr->param.nSmooth = msr->N;
+		if (msr->param.bVWarnings)
+			printf("WARNING: nSmooth reduced to %i\n",msr->N);
+		}
 #else
 	dTime = msrReadTipsy(msr);
 #endif

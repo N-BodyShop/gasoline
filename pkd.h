@@ -99,6 +99,7 @@ typedef struct particle {
 #endif
 #endif
 #ifdef COLLISIONS
+	int iOrgIdx;		/* for keeping track of mergers etc. */
 	FLOAT w[3];			/* spin vector */
 	int iColor;			/* handy color tag */
 	int iDriftType;		/* either NORMAL or KEPLER */
@@ -176,7 +177,7 @@ int TYPEClear( PARTICLE *a );
 #define TYPEClearACTIVE(a)       ((a)->iActive &= (TYPE_ALL|TYPE_SUPERCOOL))
 #define TYPEClear(a)             ((a)->iActive = 0)
 
-#define CHECKPOINT_VERSION 6
+#define CHECKPOINT_VERSION 7
 
 typedef struct chkParticle {
 	int iOrder;
@@ -192,6 +193,7 @@ typedef struct chkParticle {
         FLOAT fTimeForm;
 #endif
 #ifdef COLLISIONS
+	int iOrgIdx; /* added for version 7 */
 	FLOAT w[3];
 	int iColor;
 #endif /* COLLISIONS */
@@ -582,6 +584,10 @@ void pkdWriteSS(PKD pkd, char *pszFileName, int nStart);
 void pkdKickUnifGrav(PKD pkd, double dvx, double dvy, double dvz);
 void pkdNextEncounter(PKD pkd, double *dt);
 void pkdMarkEncounters(PKD pkd, double dt);
+#ifdef SIMPLE_GAS_DRAG
+void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
+					  double dOmegaZ);
+#endif
 #ifdef OLD_KEPLER/*DEBUG*/
 int pkdLowerQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);
 int pkdUpperQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);

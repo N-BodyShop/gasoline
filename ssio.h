@@ -8,8 +8,13 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/param.h>	/* for MAXPATHLEN */
 #include <rpc/rpc.h>	/* for XDR routines */
+
+#ifndef MAXPATHLEN
+#define MAXPATHLEN 256
+#endif
 
 #ifndef N_DIM
 #define N_DIM 3
@@ -25,10 +30,10 @@
 typedef struct ss_head {
 	double	time;
 	int		n_data;
-	int		pad;	/* unused: pad to 8 byte boundary */
+	int		pad;	/* unused: pad to 8-byte boundary */
 	} SSHEAD;
 
-#define SSHEAD_SIZE 16	/* sizeof(ss_head) */
+#define SSHEAD_SIZE 16	/* XDR assumes 8-byte doubles and 4-byte ints */
 
 typedef struct ss_data {
 	double	mass;
@@ -37,10 +42,10 @@ typedef struct ss_data {
 	double	vel[N_DIM];
 	double	spin[N_DIM];
 	int		color;
-	int		pad;	/* unused: pad to 8 byte boundary */
+	int		org_idx;
 	} SSDATA;
 
-#define SSDATA_SIZE 96	/* sizeof(ss_data) */
+#define SSDATA_SIZE 96	/* XDR assumes 8-byte doubles and 4-byte ints */
 
 typedef struct ssio {
 	FILE *fp;
@@ -55,13 +60,11 @@ typedef struct ssio {
 
 int ssioNewExt(const char *infile, const char *inext,
 			   char *outfile, const char *outext);
-int ssioOpen(char *filename, SSIO *ssio, const u_int mode);
+int ssioOpen(const char *filename, SSIO *ssio, u_int mode);
 int ssioHead(SSIO *ssio, SSHEAD *head);
 int ssioData(SSIO *ssio, SSDATA *data);
 int ssioClose(SSIO *ssio);
-int ssioSetPos(SSIO *ssio, const u_int pos);
+int ssioSetPos(SSIO *ssio, u_int pos);
 void ssioRewind(SSIO *ssio);
 
-#endif /* !SSIO_HINCLUDED */
-
-/* ssio.h */
+#endif

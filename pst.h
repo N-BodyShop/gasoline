@@ -143,6 +143,8 @@ enum pst_service {
       PST_SPHCURRRUNG,
       PST_RANDOMVELOCITIES,
       PST_DENSCHECK,
+	  PST_GETSPECIALPARTICLES,
+	  PST_DOSPECIALPARTICLES,
       PST_NUMREJECTS,
       PST_READSS,
       PST_WRITESS,
@@ -427,6 +429,13 @@ struct inGravExternal {
 	int bPatch;
 	double dOrbFreq;
 	double dOrbFreqZ2;
+#endif
+#ifdef SIMPLE_GAS_DRAG
+	int bSimpleGasDrag;
+	int iFlowOpt;
+	int bEpstein;
+	double dGamma;
+	double dOmegaZ;
 #endif
 	};
 void pstGravExternal(PST,void *,int,void *,int *);
@@ -911,7 +920,34 @@ struct inRandomVelocities {
     double dMaxVelocityL;
     double dMaxVelocityR;
     };
-void pstRandomVelocities(PST, void *,int,void *,int *);
+void pstRandomVelocities(PST,void *,int,void *,int *);
+#endif
+
+#ifdef SPECIAL_PARTICLES
+
+/* PST_GETSPECIALPARTICLES */
+struct inGetSpecial {
+	int nSpecial;
+	int iId[MAX_NUM_SPECIAL_PARTICLES];
+	double dCentMass;
+	};
+struct outGetSpecial {
+	SPECIAL_PARTICLE_INFO sInfo[MAX_NUM_SPECIAL_PARTICLES];
+	};
+void pstGetSpecialParticles(PST,void *,int,void *,int *);
+
+/* PST_DOSPECIALPARTICLES */
+struct inDoSpecial {
+	int nSpecial;
+	int bNonInertial;
+	SPECIAL_PARTICLE_DATA sData[MAX_NUM_SPECIAL_PARTICLES];
+	SPECIAL_PARTICLE_INFO sInfo[MAX_NUM_SPECIAL_PARTICLES];
+	};
+struct outDoSpecial {
+	FLOAT aFrame[3];
+	};
+void pstDoSpecialParticles(PST,void *,int,void *,int *);
+
 #endif
 
 #ifdef COLLISIONS

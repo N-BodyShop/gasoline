@@ -1,4 +1,4 @@
-FDL checkpoint_6 (
+FDL checkpoint_7 (
 	ELEMENT version (
 		TYPE int
 		)
@@ -239,8 +239,9 @@ FDL checkpoint_6 (
 			ELEMENT iColor (
 				TYPE int
 				)
+			ELEMENT iOrgIdx (
+				TYPE int
+				)
 			)
 		)
 	)
-
-

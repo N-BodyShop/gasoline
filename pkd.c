@@ -17,7 +17,7 @@
 #include "tipsydefs.h"
 
 #ifdef COLLISIONS
-#include "ssdefs.h"
+#include "ssdefs.h" /* in turn includes ssio.h */
 #include "collision.h"
 #endif
 
@@ -3314,6 +3314,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #endif
 #endif
 #ifdef COLLISIONS
+		p->iOrgIdx = cp.iOrgIdx;
 		for (j=0;j<3;++j)
 			p->w[j] = cp.w[j];
 		p->iColor = cp.iColor;
@@ -3368,6 +3369,7 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 #endif
 #endif
 #ifdef COLLISIONS
+		cp.iOrgIdx = pkd->pStore[i].iOrgIdx;
 		for (j=0;j<3;++j)
 			cp.w[j] = pkd->pStore[i].w[j];
 		cp.iColor = pkd->pStore[i].iColor;
@@ -4805,6 +4807,7 @@ pkdNumRejects(PKD pkd)
 	return nRej;
 	}
 
+#ifdef OLD_SS /*DEBUG original--can be deleted*/
 void
 pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 {
@@ -4913,6 +4916,109 @@ pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
 	nout = fclose(fp);
 	mdlassert(pkd->mdl,nout == 0);
 	}
+#endif /*OLD_SS*/
+
+void
+pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
+{
+	SSIO ssio;
+	SSDATA data;
+	PARTICLE *p;
+	int i,j;
+
+	pkd->nLocal = nLocal;
+	pkd->nActive = nLocal;
+	/*
+	 ** General initialization (modeled after pkdReadTipsy()).
+	 */
+	for (i=0;i<nLocal;++i) {
+		p = &pkd->pStore[i];
+		TYPEClear(p);
+		p->iRung = 0;
+		p->fWeight = 1.0;
+		p->fDensity = 0.0;
+		p->fBall2 = 0.0;
+		p->fBallMax = 0.0;
+		p->iDriftType = NORMAL; /*DEBUG must initialize b/c pkdDrift()...*/
+#ifdef SAND_PILE
+		p->bStuck = 0;
+#endif
+		}
+	/*
+	 ** Seek past the header and up to nStart.
+	 */
+	if (ssioOpen(pszFileName,&ssio,SSIO_READ))
+		mdlassert(pkd->mdl,0); /* unable to open ss file */
+	if (ssioSetPos(&ssio,SSHEAD_SIZE + nStart*SSDATA_SIZE))
+		mdlassert(pkd->mdl,0); /* unable to seek in ss file */
+	/*
+	 ** Read Stuff!
+	 */
+	for (i=0;i<nLocal;++i) {
+		p = &pkd->pStore[i];
+		p->iOrder = nStart + i;
+		if (!pkdIsDark(pkd,p)) /* determined by p->iOrder */
+			mdlassert(pkd->mdl,0); /* only dark particles allowed in ss file */
+		p->iOrgIdx = data.org_idx;
+		assert(p->iOrgIdx > -1); /* only new format supported */
+		if (ssioData(&ssio,&data))
+			mdlassert(pkd->mdl,0); /* error during read in ss file */
+		p->fMass = data.mass;
+		p->fSoft = 0.5*data.radius;
+#ifdef CHANGESOFT 
+ 		p->fSoft0 = p->fSoft;
+#endif
+		for (j=0;j<3;++j) p->r[j] = data.pos[j];
+		for (j=0;j<3;++j) p->v[j] = data.vel[j];
+		for (j=0;j<3;++j) p->w[j] = data.spin[j];
+		p->iColor = data.color;
+#ifdef NEED_VPRED
+		for (j=0;j<3;++j) p->vPred[j] = p->v[j];
+#endif
+		}
+	if (ssioClose(&ssio))
+		mdlassert(pkd->mdl,0); /* unable to close ss file */
+	}
+
+void
+pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
+{
+	SSIO ssio;
+	SSDATA data;
+	PARTICLE *p;
+	int i,j;
+
+	/*
+	 ** Seek past the header and up to nStart.
+	 */
+	if (ssioOpen(pszFileName,&ssio,SSIO_UPDATE))
+		mdlassert(pkd->mdl,0); /* unable to open ss file */
+	if (ssioSetPos(&ssio,SSHEAD_SIZE + nStart*SSDATA_SIZE))
+		mdlassert(pkd->mdl,0); /* unable to seek in ss file */
+	/* 
+	 ** Write Stuff!
+	 */
+	for (i=0;i<pkdLocal(pkd);++i) {
+		p = &pkd->pStore[i];
+		if (!pkdIsDark(pkd,p))
+			mdlassert(pkd->mdl,0); /* only dark particles allowed in ss file */
+		data.org_idx = p->iOrgIdx;
+		data.mass = p->fMass;
+#ifdef CHANGESOFT
+		data.radius = 2*p->fSoft0;
+#else
+		data.radius = 2*p->fSoft;
+#endif
+		for (j=0;j<3;++j) data.pos[j]  = p->r[j];
+		for (j=0;j<3;++j) data.vel[j]  = p->v[j];
+		for (j=0;j<3;++j) data.spin[j] = p->w[j];
+		data.color = p->iColor;
+		if (ssioData(&ssio,&data))
+			mdlassert(pkd->mdl,0); /* unable to write in ss file */
+		}
+	if (ssioClose(&ssio))
+		mdlassert(pkd->mdl,0); /* unable to close ss file */
+	}
 
 void
 pkdKickUnifGrav(PKD pkd,double dvx,double dvy,double dvz)
@@ -4981,29 +5087,87 @@ pkdMarkEncounters(PKD pkd,double dt)
 
 #ifdef SLIDING_PATCH
 
-void pkdPatch(PKD pkd,double dOrbFreqZ2)
+void
+pkdPatch(PKD pkd,double dOrbFreqZ2)
 {
 	PARTICLE *p;
 	int i;
 
-	p = pkd->pStore;
 	for (i=0;i<pkd->nLocal;i++) {
-		if (!TYPEQueryACTIVE(&p[i])) continue;
+		p = &pkd->pStore[i];
+		if (!TYPEQueryACTIVE(p)) continue;
 		/*
 		 ** Apply Hill's Equations, using *predicted* velocities...
 		 */
-		p[i].a[0] += pkd->dOrbFreq*(2*p[i].vPred[1] + 3*pkd->dOrbFreq*p[i].r[0]);
-		p[i].a[1] -= 2*pkd->dOrbFreq*p[i].vPred[0];
-		p[i].a[2] -= dOrbFreqZ2*p[i].r[2];
+		p->a[0] += pkd->dOrbFreq*(2*p->vPred[1] + 3*pkd->dOrbFreq*p->r[0]);
+		p->a[1] -= 2*pkd->dOrbFreq*p->vPred[0];
+		p->a[2] -= dOrbFreqZ2*p->r[2];
 		}
 	}
 
 #endif /* SLIDING_PATCH */
 
+#ifdef SIMPLE_GAS_DRAG
+void
+_pkdSimpleGasVel(double r[],int iFlowOpt,double u[])
+{
+	/* From Paolo Tanga's e-mail Feb 19, 2001: M, f_1 and f_2 are
+	   parameters (double precision) that can be considered internal
+	   to _pkdGasVel, since they define the streamfunction. It define
+	   the attached velocity field. f_1 and f_2 are scaling parameters
+	   that allow to control the size of the vortex and its
+	   width/length ratio.  Note that I have centered a vortex in 0,0,
+	   which should be good in the local coordinates of a single
+	   patch. Anyway, the given function is not suitable for the
+	   simulation of an entire disk...! */
+
+	switch (iFlowOpt) {
+	case 1: { /* PATCH_FLOW */
+		const double M	= 1.0e-7;
+		const double f1	= 1.0e7;
+		const double f2	= 1.0e7;
+#ifndef SLIDING_PATCH
+		assert(0); /* this formula only valid in patch frame */
+#endif
+
+		u[0] = M*cos(f2*r[1] - M_PI_2)*cos(f1*r[0] - M_PI);
+		u[1] = M*sin(f2*r[1] - M_PI_2)*sin(f1*r[0] - M_PI);
+		u[2] = 0.0;
+		break;
+		}
+	default:
+		assert(0); /* no other cases defined */
+		}
+}
+
+void
+pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
+				 double dOmegaZ)
+{
+	PARTICLE *p = pkd->pStore;
+	double u[3],dCoef;
+	int i;
+
+	for (i=0;i<pkd->nLocal;i++) {
+		if (!TYPEQueryACTIVE(&p[i])) continue;
+		_pkdSimpleGasVel(p[i].r,iFlowOpt,u); /* get gas velocity */
+		if (bEpstein)
+			dCoef = -dGamma/(2*p[i].fSoft); /* i.e. -gamma/R */
+		else
+			dCoef = -dGamma/(4*p[i].fSoft*p[i].fSoft); /* i.e. -gamma/R^2 */
+		/* note: following assumes dust density << gas density */
+		p[i].a[0] += dCoef*(p[i].vPred[0] - u[0]);
+		p[i].a[1] += dCoef*(p[i].vPred[1] - u[1]);
+		p[i].a[2] += dCoef*(p[i].vPred[2] - u[2]);
+		}
+	}
+#endif /* SIMPLE_GAS_DRAG */
+
 #ifdef NEED_VPRED
 #ifdef GASOLINE
-void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int iGasModel,
-		  double z, double duDotLimit)
+void
+pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
+			 int iGasModel,double z,double duDotLimit)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -5052,5 +5216,3 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo)
 	}
 #endif
 #endif /* NEED_VPRED */
-
-

@@ -51,6 +51,9 @@ struct parameters {
 	double dOmegaDot;
 	int bPatch;
 	double dOrbFreq;
+	int bSimpleGasDrag;
+	int bEpstein;
+	double dGamma;
 	int nBucket;
 	int iOutInterval;
 	int iLogInterval;
@@ -66,16 +69,16 @@ struct parameters {
 	int nSuperCool;
 	int nGrowMass;
 	int iWallRunTime;
-        int bPhysicalSoft;  
-        int bSoftMaxMul;
-        int bVariableSoft;
-        int nSoftNbr;
-        int bSoftByType;
-        int bDoSoftOutput;
+	int bPhysicalSoft;  
+	int bSoftMaxMul;
+	int bVariableSoft;
+	int nSoftNbr;
+	int bSoftByType;
+	int bDoSoftOutput;
 	double dEta;
 	double dExtraStore;
 	double dSoft;
-        double dSoftMax;
+	double dSoftMax;
 	double dDelta;
 	double dEwCut;
 	double dEwhCut;
@@ -119,8 +122,8 @@ struct parameters {
 	double dEtaCourant;
 	double dEtauDot;
 	double duDotLimit;
-        double dShockTrackerA;
-        double dShockTrackerB;
+	double dShockTrackerA;
+	double dShockTrackerB;
 	double dConstAlpha;
 	double dConstBeta;
 	double dConstGamma;
@@ -139,10 +142,10 @@ struct parameters {
 	int    nCoolingTable;
 	int    bViscosityLimiter;
 	int    bViscosityLimitdt;
-        int    bShockTracker;
+	int    bShockTracker;
 	int    bBulkViscosity;
 	int    bGasDomainDecomp;
-        int    bLowerSoundSpeed;
+	int    bLowerSoundSpeed;
 	int    bFastGas;
 	double dFracFastGas;
 	double dhMinOverSoft;
@@ -152,7 +155,7 @@ struct parameters {
 	int    bSN;
 	double dSNRhoCut;
  	double dSNTMin;
-        double dSNTMax;
+	double dSNTMax;
 	double dSNMetalCut;
 	double dSNHeatFraction;
 	int    bStarForm;
@@ -187,6 +190,11 @@ struct parameters {
 	double dzUnifGrav;
 	COLLISION_PARAMS CP;
 #endif /* COLLISIONS */
+#ifdef SPECIAL_PARTICLES
+	int nSpecial;
+	int iSpecialId[MAX_NUM_SPECIAL_PARTICLES];
+	SPECIAL_PARTICLE_DATA sSpecialData[MAX_NUM_SPECIAL_PARTICLES];
+#endif /* SPECIAL_PARTICLES */
 	};
 
 #endif

@@ -17,6 +17,9 @@
 #define URANUS			6	/* Magenta */
 #define NEPTUNE			7	/* Cyan */
 #define PLANETESIMAL	3	/* Green */
+#define TEST			4	/* Blue (test particle) */
+
+#define RESERVED_COLOR(c) ((c) == SUN || (c) == JUPITER)
 
 /* Filename for list of particles with rejected initial positions */
 
@@ -26,6 +29,4 @@
 
 #define COLLISION_LOG "ss.collisions"
 
-#endif /* !SSDEFS_HINCLUDED */
-
-/* ssdefs.h */
+#endif

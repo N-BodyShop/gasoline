@@ -50,6 +50,7 @@ pkdGetColliderInfo(PKD pkd,int iOrder,COLLIDER *c)
 			c->id.iPid = pkd->idSelf;
 			c->id.iOrder = iOrder;
 			c->id.iIndex = i;
+			c->id.iOrgIdx = p->iOrgIdx;
 			c->fMass = p->fMass;
 			c->fRadius = 2*p->fSoft;
 			for (j=0;j<3;j++) {
@@ -57,9 +58,9 @@ pkdGetColliderInfo(PKD pkd,int iOrder,COLLIDER *c)
 				c->v[j] = p->v[j];
 				c->w[j] = p->w[j];
 				}
+			c->iColor = p->iColor;
 			c->dt = p->dt;
 			c->iRung = p->iRung;
-			c->iColor = p->iColor;
 			c->bTinyStep = p->bTinyStep;
 			return;
 			}
@@ -75,12 +76,9 @@ PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt)
 	 **
 	 ** NOTE: Because colliding particles have their positions traced back to
 	 ** the start of the step using their NEW velocities, it is possible for
-	 ** a neighbour to no longer lie inside a collider's search ball. To fix
-	 ** this, the ball radius is expanded by the square root (assuming random
-	 ** walk) of a conservative estimate of the displacement amount (using
-	 ** the "Manhattan metric"). This is probably only needed when the number
-	 ** of particles is comparable to nSmooth, but we're going to do it anyway
-	 ** just in case...
+	 ** a neighbour to no longer lie inside a previous collider's search ball.
+	 ** To fix this, the ball radius is expanded by a conservative estimate of
+	 ** the displacement amount (using the "Manhattan metric").
 	 */
 
 	int i;
@@ -106,14 +104,17 @@ PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt)
 	}
 
 void
-pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
+pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,double dDensity,
 		 COLLIDER **cOut,int *pnOut)
 {
 	/*
-	 ** Merges colliders into new centre-of-mass particle (cOut[0]).
-	 ** The radius of the merged particle is determined by the bulk
-	 ** density of the largest of the colliders.
+	 ** Merges colliders into new centre-of-mass particle (cOut[0])
+	 ** with radius determined by the supplied fixed bulk density.
+	 ** If dDensity is zero, the radius of the merged particle is
+	 ** instead set by the bulk density of the largest collider.
 	 */
+
+	const double dDenFac = 4.0/3*M_PI;
 
 	COLLIDER *c;
 	FLOAT com_pos[3],com_vel[3],rc1[3],rc2[3],vc1[3],vc2[3],ang_mom[3];
@@ -125,7 +126,10 @@ pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
 	m = m1 + m2;
 	r1 = c1->fRadius;
 	r2 = c2->fRadius;
-	r = (m2 > m1 ? r2*pow(m/m2,1.0/3) : r1*pow(m/m1,1.0/3));
+	if (dDensity)
+		r = pow(m/(dDenFac*dDensity),1.0/3);
+	else
+		r = (m2 > m1 ? r2*pow(m/m2,1.0/3) : r1*pow(m/m1,1.0/3));
 	i1 = 0.4*m1*r1*r1;
 	i2 = 0.4*m2*r2*r2;
 	i = 0.4*m*r*r;
@@ -495,7 +499,7 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 			*piOutcome = MERGE;
 			}
 		else { /* bounce */
-			double m1,r1,i1,nx,nz,a,s1x,s1z,ux,uz,unx,unz,utx,utz;
+			double m1,r1,i1,nx=0,nz=0,a,s1x,s1z,ux,uz,unx,unz,utx,utz;
 			double dEpsN,dEpsT;
 			m1 = c1.fMass;
 			r1 = c1.fRadius;
@@ -624,7 +628,7 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 
 	if (CP->iOutcomes == MERGE || ((CP->iOutcomes & MERGE) && v2 <= ve2)) {
 		iOutcome = MERGE;
-		pkdMerge(pkd,&c1,&c2,&c,&n);
+		pkdMerge(pkd,&c1,&c2,CP->dDensity,&c,&n);
 		assert(n == 1);
 		if (CP->iOutcomes & (BOUNCE | FRAG)) { /* check if spinning too fast */
 			double w2max,w2=0;
@@ -746,42 +750,54 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 	/* Handle output cases */
 
 	if (n == 1) { /* merge */
-		int iMrg=-1,iDel=-1;
+		PARTICLE_ID *pMrg=NULL,*pDel=NULL,*pOth=NULL;
 		if (c1.id.iPid == pkd->idSelf) { /* local particle */
 			/*
 			 ** Keep this particle if it has larger mass, or, if both
 			 ** particles are the same mass, keep this particle if it
-			 ** has a lower processor number, or, if both particles are
-			 ** on same processor, keep particle with lower iOrder.
+			 ** has a lower original index, or, if both particles have
+			 ** same original index, keep this particle if it has a
+			 ** lower processor number, or, if both particles are on
+			 ** same processor, keep particle with lower iOrder.
 			 */
 			if (c1.fMass > c2.fMass ||
 				(c1.fMass == c2.fMass &&
-				 (c1.id.iPid < c2.id.iPid ||
-				  (c1.id.iPid == c2.id.iPid &&
-				   c1.id.iOrder < c2.id.iOrder))))
-				iMrg = c1.id.iIndex; /* new centre-of-mass particle */
+				 (c1.id.iOrgIdx < c2.id.iOrgIdx ||
+				  (c1.id.iOrgIdx == c2.id.iOrgIdx &&
+				   (c1.id.iPid < c2.id.iPid ||
+					(c1.id.iPid == c2.id.iPid &&
+					 c1.id.iOrder < c2.id.iOrder))))))
+				pMrg = &c1.id; /* new centre-of-mass particle */
 			else
-				iDel = c1.id.iIndex; /* this particle is removed */
+				pDel = &c1.id; /* this particle is removed */
+			pOth = &c2.id;
 			}
 		if (c2.id.iPid == pkd->idSelf) { /* same thing for other particle */
 			if (c2.fMass > c1.fMass ||
 				(c2.fMass == c1.fMass &&
-				 (c2.id.iPid < c1.id.iPid ||
-				  (c2.id.iPid == c1.id.iPid &&
-				   c2.id.iOrder < c1.id.iOrder))))
-				iMrg = c2.id.iIndex;
+				 (c2.id.iOrgIdx < c1.id.iOrgIdx ||
+				  (c2.id.iOrgIdx == c1.id.iOrgIdx &&
+				   (c2.id.iPid < c1.id.iPid ||
+					(c2.id.iPid == c1.id.iPid &&
+					 c2.id.iOrder < c1.id.iOrder))))))
+				pMrg = &c2.id;
 			else
-				iDel = c2.id.iIndex;
+				pDel = &c2.id;
+			pOth = &c1.id;
 			}
-		if (iMrg > -1) {
-			PutColliderInfo(&c[0],INT_MAX,&pkd->pStore[iMrg],dt);
-			if (bDiagInfo) {
-				cOut[0].id.iPid = pkd->idSelf;
-				cOut[0].id.iIndex = iMrg;
-				cOut[0].id.iOrder = pkd->pStore[iMrg].iOrder;
-				}
+		/* 
+		 ** Store or delete particle as appropriate, and make
+		 ** sure master knows ID of surviving particle for
+		 ** tracking purposes.
+		 */
+		if (pMrg) {
+			PutColliderInfo(&c[0],INT_MAX,&pkd->pStore[pMrg->iIndex],dt);
+			if (bDiagInfo) cOut[0].id = *pMrg; /* struct copy */
 			}
-		if (iDel > -1) pkdDeleteParticle(pkd,&pkd->pStore[iDel]);
+		if (pDel) {
+			pkdDeleteParticle(pkd,&pkd->pStore[pDel->iIndex]);
+			if (bDiagInfo) cOut[0].id = *pOth; /* may need merger info */
+			}
 		}
 	else if (n == 2) { /* bounce or mass transfer */
 		if (c1.id.iPid == pkd->idSelf)

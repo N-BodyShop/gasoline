@@ -25,7 +25,7 @@
 #include "smoothfcn.h"
 
 #ifdef COLLISIONS
-#include "ssdefs.h"
+#include "ssdefs.h" /* in turn includes ssio.h */
 #include "collision.h"
 #endif
 
@@ -36,18 +36,18 @@
 #ifdef NEWTIME 
 double msrTime() {
 	struct timeval tv;
-	struct timezone tz;
 
-	tz.tz_minuteswest=0; 
-	tz.tz_dsttime=0;
 	gettimeofday(&tv,NULL);
-	return (tv.tv_sec+(tv.tv_usec*1e-6));
+	return tv.tv_sec + tv.tv_usec*1e-6;
 	}
 #else
 double msrTime() {
-	return (1.0*time(0));
+	return time(NULL);
 	}
 #endif
+
+#define DEN_CGS_SYS 1.6831e6 /* multiply density in cgs by this to get
+								density in system units (AU, M_Sun) */
 
 void _msrLeader(void)
 {
@@ -101,19 +101,34 @@ _msrMakePath(const char *dir,const char *base,char *path)
 	strcat(path,base);
 	}
 
+void
+_msrStripQuotes(const char achIn[],char achOut[])
+{
+	/* Removes leading and trailing double quotes from string */
+
+	assert(achIn && achOut);
+	if (strlen(achIn) > 0 && achIn[0] == '"')
+		(void) strcpy(achOut,achIn + 1);
+	else
+		(void) strcpy(achOut,achIn);
+	if (strlen(achOut) > 0 && achOut[strlen(achOut) - 1] == '"')
+		achOut[strlen(achOut) - 1] = '\0';
+	}
+
 #ifdef SAND_PILE
 
 void
-_msrGetWallData(MSR msr,char achFilename[])
+_msrGetWallData(MSR msr,const char achFilenameWithQuotes[])
 {
 	FILE *fp;
 	WALLS *w = &msr->param.CP.walls;
-	char achTmp[256];
+	char achFilename[MAXPATHLEN],achTmp[MAXPATHLEN];
 	double dd;
 	int i,di;
 
-	assert(msr && achFilename);
-	if (!strlen(achFilename)) { /*DEBUG won't work: "" in string*/
+	assert(msr && achFilenameWithQuotes);
+	_msrStripQuotes(achFilenameWithQuotes,achFilename);
+	if (!strlen(achFilename)) {
 		w->nWalls = 0;
 		return;
 		}
@@ -192,6 +207,92 @@ _msrGetWallData(MSR msr,char achFilename[])
 
 #endif /* SAND_PILE */
 
+#ifdef SPECIAL_PARTICLES
+
+void
+_msrGetSpecialData(MSR msr,const char achFilenameWithQuotes[])
+{
+	FILE *fp;
+	struct parameters *p;
+	SPECIAL_PARTICLE_DATA *s;
+	char achFilename[MAXPATHLEN],achTmp[MAXPATHLEN];
+	int i,n=0;
+
+	assert(msr && achFilenameWithQuotes);
+	p = &msr->param;
+	_msrStripQuotes(achFilenameWithQuotes,achFilename);
+	if (!strlen(achFilename)) {
+		p->nSpecial = 0;
+		return;
+		}
+	_msrMakePath(p->achDataSubPath,achFilename,achTmp);
+	_msrMakePath(msr->lcl.pszDataPath,achTmp,achFilename);
+	if (!(fp = fopen(achFilename,"r"))) {
+		(void) fprintf(stderr,"Unable to open \"%s\"\n",achFilename);
+		goto abort;
+		}
+	if (fscanf(fp,"%i",&p->nSpecial) != 1) {
+		(void) fprintf(stderr,"Expected no. special particles in \"%s\"\n",achFilename);
+		goto abort;
+		}
+	if (p->nSpecial <= 0) {
+		(void) fprintf(stderr,"Invalid no. special particles in \"%s\"\n",achFilename);
+		goto abort;
+		}
+	if (p->nSpecial > MAX_NUM_SPECIAL_PARTICLES) {
+		(void) fprintf(stderr,"Number of special particles (%i) exceeds maximum (%i)\n",
+					   p->nSpecial,MAX_NUM_SPECIAL_PARTICLES);
+		goto abort;
+		}
+	s = p->sSpecialData;
+	for (i=0;i<p->nSpecial;i++) {
+		if (fscanf(fp,"%i%i",&p->iSpecialId[i],&s[i].iType) != 2) {
+			(void) fprintf(stderr,"Invalid/missing data in \"%s\" (entry %i)\n",
+						   achFilename,i);
+			goto abort;
+			}
+		if (p->iSpecialId[i] < -1) {
+			(void) fprintf(stderr,"Invalid original index (%i) in \"%s\", entry %i\n",
+						   p->iSpecialId[i],achFilename,i);
+			goto abort;
+			}
+		if (p->iSpecialId[i] == -1) {
+			if (!msr->param.bHeliocentric) {
+				puts("ERROR: Negative special particle index requires non-inertial frame");
+				goto abort;
+				}
+			if (++n > 1) {
+				puts("ERROR: Only one special particle can have index -1");
+				goto abort;
+				}
+			}
+		if (!((s[i].iType & SPECIAL_OBLATE) || (s[i].iType & SPECIAL_GR))) {
+			(void) fprintf(stderr,"Invalid data type (%i) in \"%s\", entry %i\n",
+						   s[i].iType,achFilename,i);
+			goto abort;
+			}
+		if (s[i].iType & SPECIAL_OBLATE) {
+			if (fscanf(fp,"%lf%lf%lf",&s[i].oblate.dRadEq,&s[i].oblate.J2,
+					   &s[i].oblate.J4) != 3) {
+				(void) fprintf(stderr,"Invalid/missing data in \"%s\" (entry %i)\n",
+							   achFilename,i);
+				goto abort;
+				}
+			}
+		if (s[i].iType & SPECIAL_GR) {
+			(void) fprintf(stderr,"GR not supported yet.\n");
+			goto abort;
+			}
+		}
+	(void) fclose(fp);
+	return;
+ abort:
+	if (fp) (void) fclose(fp);
+	_msrExit(msr,1);
+	}
+
+#endif /* SPECIAL_PARTICLES */
+
 void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 {
 	MSR msr;
@@ -201,8 +302,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	struct inLevelize inLvl;
 	struct inGetMap inGM;
 
-#ifdef COLLISIONS /* ideally just SAND_PILE (see comment below) */
-	char achWallFile[256];
+#ifdef COLLISIONS
+	char achWallFile[MAXPATHLEN]; /* needed for SAND_PILE only */
+	char achSpecialFile[MAXPATHLEN]; /* needed for SPECIAL_PARTICLES only */
 #endif
 
 	msr = (MSR)malloc(sizeof(struct msrContext));
@@ -752,11 +854,20 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"dGlassVR","Right Max Random Velocity = 0.0");
 #endif /* GLASS */
 	msr->param.bPatch = 0;
-	prmAddParam(msr->prm,"bPatch",0,&msr->param.bPatch,
-				sizeof(int),"patch","enable/disable patch reference frame = -patch");
+	prmAddParam(msr->prm,"bPatch",0,&msr->param.bPatch,sizeof(int),
+				"patch","enable/disable patch reference frame = -patch");
 	msr->param.dOrbFreq = 0.0;
 	prmAddParam(msr->prm,"dOrbFreq",2,&msr->param.dOrbFreq,
 				sizeof(double),"orbfreq","<Patch orbit frequency>");
+	msr->param.bSimpleGasDrag = 0;
+	prmAddParam(msr->prm,"bSimpleGasDrag",0,&msr->param.bSimpleGasDrag,
+				sizeof(int),"sgd","enable/disable simple gas drag = -sgd");
+	msr->param.bEpstein = 1;
+	prmAddParam(msr->prm,"bEpstein",0,&msr->param.bEpstein,sizeof(int),
+				"epstein","enable/disable Epstein regime for gas drag");
+	msr->param.dGamma = 1.0e-11;
+	prmAddParam(msr->prm,"dGamma",2,&msr->param.dGamma,sizeof(double),
+				"gamma","coefficient for inverse stopping time = 1.0e-11");
 #ifdef COLLISIONS
 	msr->param.bFindRejects = 0;
 	prmAddParam(msr->prm,"bFindRejects",0,&msr->param.bFindRejects,
@@ -777,6 +888,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.CP.iOutcomes = BOUNCE;
 	prmAddParam(msr->prm,"iOutcomes",1,&msr->param.CP.iOutcomes,
 				sizeof(int),"outcomes","<Allowed collision outcomes> = 0");
+	msr->param.CP.dDensity = 0.0;
+	prmAddParam(msr->prm,"dDensity",2,&msr->param.CP.dDensity,
+				sizeof(double),"density","<Merged particle density> = 0");
 	msr->param.CP.iBounceOption = ConstEps;
 	prmAddParam(msr->prm,"iBounceOption",1,&msr->param.CP.iBounceOption,
 				sizeof(int),"bopt","<Bounce option> = 0");
@@ -817,13 +931,16 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dCrushEpsT",2,&msr->param.CP.dCrushEpsT,
 				sizeof(double),"cepst","<epst if speed greater than maximum> = 1");
 	/*
-	 ** The following parameter is only relevant to SAND_PILE, but the parser
-	 ** is picky about unrecognized commands in parameters files, so we'll
-	 ** include it in the general COLLISIONS model for now.
+	 ** The following parameters are only relevant to SAND_PILE and SPECIAL_PARTICLES,
+	 ** but the parser is picky about unrecognized commands in parameter files, so
+	 ** we'll include them in the general COLLISIONS model for now.
 	 */
 	strcpy(achWallFile,"");
-	prmAddParam(msr->prm,"achWallFile",3,achWallFile,256,"walls",
+	prmAddParam(msr->prm,"achWallFile",3,achWallFile,MAXPATHLEN,"walls",
 				"<name of wall data file> = \"\"");
+	strcpy(achSpecialFile,"");
+	prmAddParam(msr->prm,"achSpecialFile",3,achSpecialFile,MAXPATHLEN,"special",
+				"<name of special particle file> = \"\"");
 #endif /* COLLISIONS */
 	/*
 	 ** Set the box center to (0,0,0) for now!
@@ -1149,12 +1266,17 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	if (msr->param.bVWarnings && msr->param.nSmooth < 1)
 		puts("WARNING: collision detection disabled (nSmooth < 1)");
 #else
+	if (msr->param.nSmooth < 1) {
+		puts("ERROR: nSmooth must be positive");
+		_msrExit(msr,1);
+		}
 	if (msr->param.bVWarnings && msr->param.nSmooth < 2)
 		puts("WARNING: collision detection disabled (nSmooth < 2)");
 #endif
+	if (!msr->param.bHeliocentric) msr->param.dCentMass = 0; /* just in case */
 	assert(msr->param.dCentMass >= 0);
 	if (msr->param.bFandG) {
-#ifdef PATCH
+#ifdef SLIDING_PATCH
 		assert(0);
 #endif
 #ifdef SAND_PILE
@@ -1243,6 +1365,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			puts("ERROR: must specify one of MERGE/BOUNCE/FRAG");
 			_msrExit(msr,1);
 			}
+		if (!(CP->iOutcomes & MERGE) && CP->dDensity)
+			puts("WARNING: merged particle density ignored (no merging)");
+		if ((CP->iOutcomes & MERGE) && CP->dDensity < 0) {
+			puts("ERROR: invalid merge density");
+			_msrExit(msr,1);
+			}
 		if (!(CP->iOutcomes & BOUNCE) && CP->dCollapseLimit) {
 			puts("WARNING: collapse detection disabled (no bouncing)");
 			CP->dCollapseLimit = 0;
@@ -1287,6 +1415,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			_msrExit(msr,1);
 			}
 		}
+	msr->param.CP.dDensity *= DEN_CGS_SYS; /* convert: cgs to system units */
 	if (msr->param.CP.iSlideOption == MaxTrv) {
 		double g = sqrt(msr->param.dxUnifGrav*msr->param.dxUnifGrav +
 						msr->param.dyUnifGrav*msr->param.dyUnifGrav +
@@ -1299,6 +1428,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 
 #ifdef SAND_PILE
 	_msrGetWallData(msr,achWallFile);
+#endif
+#ifdef SPECIAL_PARTICLES
+	_msrGetSpecialData(msr,achSpecialFile);
 #endif
 
 	pstInitialize(&msr->pst,msr->mdl,&msr->lcl);
@@ -1390,6 +1522,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef COLLISIONS
 	fprintf(fp," COLLISIONS");
 #endif
+#ifdef SPECIAL_PARTICLES
+	fprintf(fp," SPECIAL_PARTICLES");
+#endif
 #ifdef FIX_COLLAPSE
 	fprintf(fp," FIX_COLLAPSE");
 #endif
@@ -1401,6 +1536,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef TUMBLER
 	fprintf(fp," TUMBLER");
+#endif
+#ifdef SIMPLE_GAS_DRAG
+	fprintf(fp," SIMPLE_GAS_DRAG");
 #endif
 #ifdef _REENTRANT
 	fprintf(fp," _REENTRANT");
@@ -1541,8 +1679,11 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 	fprintf(fp,"\n# bPatch: %d",msr->param.bPatch);
 	fprintf(fp," dOrbFreq: %g",msr->param.dOrbFreq);
+	fprintf(fp,"\n# bSimpleGasDrag: %d",msr->param.bSimpleGasDrag);
+	fprintf(fp," bEpstein: %d",msr->param.bEpstein);
+	fprintf(fp," dGamma: %g",msr->param.dGamma);
 #ifdef COLLISIONS
-	fprintf(fp,"\n# Collisions:");
+	fprintf(fp,"\n# Collisions...");
 	fprintf(fp," bFindRejects: %d",msr->param.bFindRejects);
 	fprintf(fp," bDoCollLog: %d",msr->param.bDoCollLog);
 	fprintf(fp," dSmallStep: %g",msr->param.dSmallStep);
@@ -1550,6 +1691,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dyUnifGrav: %g",msr->param.dyUnifGrav);
 	fprintf(fp," dzUnifGrav: %g",msr->param.dzUnifGrav);
     fprintf(fp,"\n# iOutcomes: %d",msr->param.CP.iOutcomes);
+	fprintf(fp," dDensity: %g",msr->param.CP.dDensity/DEN_CGS_SYS);
 	fprintf(fp," iBounceOption: %d",msr->param.CP.iBounceOption);
     fprintf(fp," dEpsN: %g",msr->param.CP.dEpsN);
     fprintf(fp," dEpsT: %g",msr->param.CP.dEpsT);
@@ -1563,6 +1705,23 @@ void msrLogParams(MSR msr,FILE *fp)
     fprintf(fp,"\n# dCrushLimit: %g",msr->param.CP.dCrushLimit);
     fprintf(fp," dCrushEpsN: %g",msr->param.CP.dCrushEpsN);
     fprintf(fp," dCrushEpsT: %g",msr->param.CP.dCrushEpsT);
+#endif
+#ifdef SPECIAL_PARTICLES
+	{
+	SPECIAL_PARTICLE_DATA *s;
+	int i;
+	fprintf(fp,"\n# nSpecial: %i",msr->param.nSpecial);
+	for (i=0;i<msr->param.nSpecial;i++) {
+		s = &msr->param.sSpecialData[i];
+		fprintf(fp,"\n# Special %i: org_idx: %i type: %i ",i,
+				msr->param.iSpecialId[i],s->iType);
+		if (s->iType & SPECIAL_OBLATE)
+			fprintf(fp,"dRadEq: %g J2: %g J4: %g",s->oblate.dRadEq,
+					s->oblate.J2,s->oblate.J4);
+		if (s->iType & SPECIAL_GR)
+			fprintf(fp,"UNSUPPORTED");
+		}
+	}
 #endif
 #ifdef SAND_PILE
 	{
@@ -2772,25 +2931,52 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	  in.dOrbFreq = msr->param.dOrbFreq;
 	  in.dTime = dStep*msr->param.dDelta;
 #endif
-	  /*
-	  ** The meaning of 'bDoSun' here is that we want the accel on (0,0,0) to
-	  ** use in creating the indirect acceleration on each particle. This is
-	  ** why it looks inconsistent with the call to pstGravExternal below.
-	  */
-	  in.bDoSun = msr->param.bHeliocentric;
-	  in.dEwCut = msr->param.dEwCut;
-	  in.dEwhCut = msr->param.dEwhCut;
-	  sec = msrTime();
-	  pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
-	  dsec = msrTime() - sec;
-	}
-
+	/*
+	 ** The meaning of 'bDoSun' here is that we want the accel on (0,0,0) to
+	 ** use in creating the indirect acceleration on each particle. This is
+	 ** why it looks inconsistent with the call to pstGravExternal below.
+	 */
+	in.bDoSun = msr->param.bHeliocentric;
+    in.dEwCut = msr->param.dEwCut;
+    in.dEwhCut = msr->param.dEwhCut;
+	sec = msrTime();
+	pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
+	dsec = msrTime() - sec;
+#ifdef SPECIAL_PARTICLES
+	if (msr->param.nSpecial) {
+		/*
+		 ** Handle contributions from "special" particles now,
+		 ** e.g. oblateness effects, GR, etc.
+		 */
+		struct inGetSpecial inGetSpec;
+		struct outGetSpecial outGetSpec;
+		struct inDoSpecial inDoSpec;
+		struct outDoSpecial outDoSpec;
+		inGetSpec.nSpecial = msr->param.nSpecial;
+		for (j=0;j<msr->param.nSpecial;j++)
+			inGetSpec.iId[j] = msr->param.iSpecialId[j]; /* original indices */
+		inGetSpec.dCentMass = msr->param.dCentMass; /* in case frame is special */
+		pstGetSpecialParticles(msr->pst,&inGetSpec,sizeof(inGetSpec),&outGetSpec,NULL);
+		inDoSpec.nSpecial = msr->param.nSpecial;
+		for (j=0;j<msr->param.nSpecial;j++) {
+			inDoSpec.sData[j] = msr->param.sSpecialData[j]; /* struct copy */
+			inDoSpec.sInfo[j] = outGetSpec.sInfo[j]; /* ditto */
+			}
+		inDoSpec.bNonInertial = msr->param.bHeliocentric;
+		pstDoSpecialParticles(msr->pst,&inDoSpec,sizeof(inDoSpec),&outDoSpec,NULL);
+		for (j=0;j<3;j++)
+			out.aSun[j] += outDoSpec.aFrame[j]; /* add non-inertial term */
+		}
+#endif
 	/* enforced initialization */
 #ifdef ROT_FRAME
 	inExt.bRotFrame = 0;
 #endif
 #ifdef SLIDING_PATCH
 	inExt.bPatch = 0;
+#endif
+#ifdef SIMPLE_GAS_DRAG
+	inExt.bSimpleGasDrag = 0;
 #endif
 	/*
 	 ** Calculate any external potential stuff.
@@ -2825,24 +3011,37 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
 		}
 #endif
-#ifdef SLIDING_PATCH
-	if (msr->param.bPatch) { /* orbiting patch */
-		static int bFirstCall = 1;
-		static double dOrbFreqZ2 = 0;
+#if defined(SLIDING_PATCH) || defined(SIMPLE_GAS_DRAG)
+	if (msr->param.bPatch || msr->param.bSimpleGasDrag) {
 		inExt.bIndirect = inExt.bDoSun = inExt.bLogHalo = inExt.bNFWSpheroid =
 			inExt.bHernquistSpheroid = inExt.bMiyamotoDisk = 0;
-		inExt.bPatch = msr->param.bPatch;
-		inExt.dOrbFreq = msr->param.dOrbFreq;
-		if (bFirstCall) {
-			dOrbFreqZ2 = msr->param.dOrbFreq*msr->param.dOrbFreq +
-				2*M_PI*msrMassCheck(msr,-1.0,"")/msr->param.nReplicas/
-					pow(msr->param.dxPeriod*msr->param.dyPeriod,1.5);
-			bFirstCall = 0;
-			if (msr->param.bVStart)
-				(void) printf("Vertical frequency enhancement factor = %g\n",
-							  sqrt(dOrbFreqZ2)/msr->param.dOrbFreq);
+#ifdef SLIDING_PATCH
+		if (msr->param.bPatch) {
+			static int bFirstCall = 1;
+			static double dOrbFreqZ2 = 0;
+			inExt.bPatch = msr->param.bPatch;
+			inExt.dOrbFreq = msr->param.dOrbFreq;
+			if (bFirstCall) {
+				dOrbFreqZ2 = msr->param.dOrbFreq*msr->param.dOrbFreq +
+					2*M_PI*msrMassCheck(msr,-1.0,"")/msr->param.nReplicas/
+						pow(msr->param.dxPeriod*msr->param.dyPeriod,1.5);
+				bFirstCall = 0;
+				if (msr->param.bVStart)
+					(void) printf("Vertical frequency enhancement factor = %g\n",
+								  sqrt(dOrbFreqZ2)/msr->param.dOrbFreq);
+				}
+			inExt.dOrbFreqZ2 = dOrbFreqZ2;
 			}
-		inExt.dOrbFreqZ2 = dOrbFreqZ2;
+#endif
+#ifdef SIMPLE_GAS_DRAG
+		if (msr->param.bSimpleGasDrag) {
+			inExt.bSimpleGasDrag = msr->param.bSimpleGasDrag;
+			inExt.iFlowOpt	= 1; /* temporary */
+			inExt.bEpstein	= msr->param.bEpstein;
+			inExt.dGamma	= msr->param.dGamma;
+			inExt.dOmegaZ	= msr->param.dOrbFreq;
+			}
+#endif
 		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
 		}
 #endif
@@ -3207,6 +3406,8 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
  */
 void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 {
+	/* NOTE: dDelta should be 1/2 the drift step here... */
+
 	double H,a;
 	struct inKick in;
 	struct outKick out;
@@ -3280,6 +3481,8 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
  */
 void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 {
+	/* NOTE: dDelta should be 1/2 the drift step here... */
+
 	double H,a;
 	struct inKick in;
 	struct outKick out;
@@ -4055,7 +4258,7 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 	pstMassCheck(msr->pst,NULL,0,&out,NULL);
 	if (dMass < 0.0) return(out.dMass);
 	else if (fabs(dMass - out.dMass) > 1e-12*dMass) {
-		printf("ERROR: Mass not conserved (%s): %.15f != %.15f!\n",
+		printf("ERROR: Mass not conserved (%s): %.15e != %.15e!\n",
 			   pszWhere,dMass,out.dMass);
 		}
 #endif
@@ -5441,22 +5644,13 @@ msrOneNodeReadSS(MSR msr,struct inReadSS *in)
     pkdReadSS(plcl->pkd,achInFile,0,nParts[0]);
     }
 
-void
-xdrSSHeader(XDR *pxdrs,SSHEAD *ph)
-{
-	xdr_double(pxdrs,&ph->time);
-	xdr_int(pxdrs,&ph->n_data);
-	xdr_int(pxdrs,&ph->pad);
-	}
-
 double
 msrReadSS(MSR msr)
 {
-	FILE *fp = NULL;
-	XDR xdrs;
+	SSIO ssio;
 	SSHEAD head;
 	struct inReadSS in;
-    struct inSetParticleTypes intype;
+	struct inSetParticleTypes intype;
 	char achInFile[PST_FILENAME_SIZE];
 	LCL *plcl = msr->pst->plcl;
 	double dTime;
@@ -5471,8 +5665,7 @@ msrReadSS(MSR msr)
 		 */
 		_msrMakePath(plcl->pszDataPath,in.achInFile,achInFile);
 
-		fp = fopen(achInFile,"r");
-		if (!fp) {
+		if (ssioOpen(achInFile,&ssio,SSIO_READ)) {
 			printf("Could not open InFile:%s\n",achInFile);
 			_msrExit(msr,1);
 			}
@@ -5484,10 +5677,14 @@ msrReadSS(MSR msr)
 
 	/* Read header */
 
-	xdrstdio_create(&xdrs,fp,XDR_DECODE);
-	xdrSSHeader(&xdrs,&head);
-	xdr_destroy(&xdrs);
-	fclose(fp);
+	if (ssioHead(&ssio,&head)) {
+		printf("Could not read header of InFile:%s\n",achInFile);
+		_msrExit(msr,1);
+		}
+	if (ssioClose(&ssio)) {
+		printf("Could not close InFile:%s\n",achInFile);
+		_msrExit(msr,1);
+		}
 
 	msr->N = msr->nDark = head.n_data;
 	msr->nGas = msr->nStar = 0;
@@ -5531,7 +5728,7 @@ msrReadSS(MSR msr)
 	 */
 	intype.nSuperCool = msr->param.nSuperCool;
 	assert(intype.nSuperCool == 0); /* better be zero... */
-    pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL);
+	pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL);
 	/*
 	 ** Now read in the output points, passing the initial time.
 	 ** We do this only if nSteps is not equal to zero.
@@ -5599,8 +5796,7 @@ msrOneNodeWriteSS(MSR msr,struct inWriteSS *in)
 void
 msrWriteSS(MSR msr,char *pszFileName,double dTime)
 {
-	FILE *fp;
-	XDR xdrs;
+	SSIO ssio;
 	SSHEAD head;
 	struct inWriteSS in;
 	char achOutFile[PST_FILENAME_SIZE];
@@ -5620,8 +5816,7 @@ msrWriteSS(MSR msr,char *pszFileName,double dTime)
 	 */
 	_msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
 	
-	fp = fopen(achOutFile,"w");
-	if (!fp) {
+	if (ssioOpen(achOutFile,&ssio,SSIO_WRITE)) {
 		printf("Could not open OutFile:%s\n",achOutFile);
 		_msrExit(msr,1);
 		}
@@ -5632,10 +5827,14 @@ msrWriteSS(MSR msr,char *pszFileName,double dTime)
 	head.n_data = msr->N;
 	head.pad = -1;
 
-	xdrstdio_create(&xdrs,fp,XDR_ENCODE);
-	xdrSSHeader(&xdrs,&head);
-	xdr_destroy(&xdrs);
-	fclose(fp);
+	if (ssioHead(&ssio,&head)) {
+		printf("Could not write header of OutFile:%s\n",achOutFile);
+		_msrExit(msr,1);
+		}
+	if (ssioClose(&ssio)) {
+		printf("Could not close OutFile:%s\n",achOutFile);
+		_msrExit(msr,1);
+		}
 
 	if(msr->param.bParaWrite)
 	    pstWriteSS(msr->pst,&in,sizeof(in),NULL,NULL);
@@ -5894,6 +6093,8 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 		else {
 			assert(msr->iTreeType == MSR_TREE_DENSITY);
 			/* following assumes inSmooth and inReSmooth are identical... */
+			/*DEBUG pstReSmooth() has caused problems in parallel (MDL_CACHE_LINE):
+			  see DCR's e-mails in pkd folder around end of Oct '01.*/
 			pstReSmooth(msr->pst,&smooth,sizeof(smooth),NULL,NULL);
 			}
 		pstNextCollision(msr->pst,NULL,0,&next,NULL);
@@ -6001,16 +6202,16 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 				fprintf(fp,"%s-%s COLLISION:T=%e\n",
 						_msrParticleLabel(msr,c1->iColor),
 						_msrParticleLabel(msr,c2->iColor),dTime + next.dt);
-				fprintf(fp,"***1:p=%i,i=%i,o=%i,M=%e,R=%e,dt=%e,rung=%i,"
+				fprintf(fp,"***1:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,dt=%e,rung=%i,"
 						"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
-						c1->id.iPid,c1->id.iIndex,c1->id.iOrder,
+						c1->id.iPid,c1->id.iOrder,c1->id.iIndex,c1->id.iOrgIdx,
 						c1->fMass,c1->fRadius,c1->dt,c1->iRung,
 						c1->r[0],c1->r[1],c1->r[2],
 						c1->v[0],c1->v[1],c1->v[2],
 						c1->w[0],c1->w[1],c1->w[2]);
-				fprintf(fp,"***2:p=%i,i=%i,o=%i,M=%e,R=%e,dt=%e,rung=%i,"
+				fprintf(fp,"***2:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,dt=%e,rung=%i,"
 						"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
-						c2->id.iPid,c2->id.iIndex,c2->id.iOrder,
+						c2->id.iPid,c2->id.iOrder,c2->id.iIndex,c2->id.iOrgIdx,
 						c2->fMass,c2->fRadius,c2->dt,c2->iRung,
 						c2->r[0],c2->r[1],c2->r[2],
 						c2->v[0],c2->v[1],c2->v[2],
@@ -6024,9 +6225,9 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 						outDo.iOutcome == FRAG ? "FRAG" : "UNKNOWN",outDo.dT);
 				for (i=0;i<outDo.nOut;++i) {
 					c = &outDo.Out[i];
-					fprintf(fp,"***out%i:p=%i,i=%i,o=%i,M=%e,R=%e,rung=%i,"
+					fprintf(fp,"***out%i:p=%i,i=%i,o=%i,oi=%i,M=%e,R=%e,rung=%i,"
 							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",i,
-							c->id.iPid,c->id.iIndex,c->id.iOrder,
+							c->id.iPid,c->id.iOrder,c->id.iIndex,c->id.iOrgIdx,
 							c->fMass,c->fRadius,c->iRung,
 							c->r[0],c->r[1],c->r[2],
 							c->v[0],c->v[1],c->v[2],
@@ -6037,6 +6238,11 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 			} /* if collision */
 		} while (COLLISION(next.dt) && smooth.smf.dStart < smooth.smf.dEnd);
 	msrAddDelParticles(msr); /* clean up any deletions */
+	if (msr->param.nSmooth > msr->N) {
+		msr->param.nSmooth = msr->N;
+		if (msr->param.bVWarnings)
+			printf("WARNING: nSmooth reduced to %i\n",msr->N);
+		}
 	if (msr->param.bVStep) {
 		double dsec = msrTime() - sec;
 		printf("%i collision%s: %i miss%s, %i merger%s, %i bounce%s, %i frag%s\n",

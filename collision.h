@@ -5,6 +5,12 @@
 
 #include "pkd.h"
 
+#define SPECIAL_PARTICLES
+
+#ifdef SPECIAL_PARTICLES
+#include "special.h"
+#endif
+
 /*#define FIX_COLLAPSE*/
 
 #define NORMAL 0	/* drift types */
@@ -59,6 +65,7 @@ enum {EscVel,MaxTrv}; /* slide options */
 
 typedef struct {
 	int iOutcomes;
+	double dDensity;
 	int iBounceOption;
 	double dEpsN;
 	double dEpsT;
@@ -80,8 +87,9 @@ typedef struct {
 
 typedef struct {
 	int iPid;
-	int iIndex;
 	int iOrder;
+	int iIndex;
+	int iOrgIdx;
 	} PARTICLE_ID;
 
 typedef struct {
@@ -91,9 +99,9 @@ typedef struct {
 	FLOAT r[3];
 	FLOAT v[3];
 	FLOAT w[3];
+	int iColor;
 	FLOAT dt;
 	int iRung;
-	int iColor;
 	int bTinyStep;
 	} COLLIDER;
 

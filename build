@@ -8,7 +8,7 @@ endif
 #
 set template = Makefile.tmpl
 #
-set OBJ = ({collision,cooling,cosmo,eccanom,ewald,fdl,grav,htable,hypanom,main,master,millerscalo,outtype,param,pkd,pst,qqsmooth,romberg,smooth,smoothfcn,starform,walk}.o)
+set OBJ = ({collision,cooling,cosmo,eccanom,ewald,fdl,grav,htable,hypanom,main,master,millerscalo,outtype,param,pkd,pst,qqsmooth,romberg,smooth,smoothfcn,special,ssio,starform,walk}.o)
 #
 set mdl = ../mdl
 #
@@ -17,7 +17,7 @@ if !(-d $mdl) then
 	exit 1
 endif
 #
-set targets = (pkdgrav gasoline collisions sand_pile tumbler rot_frame sliding_patch clean archive)
+set targets = (pkdgrav gasoline collisions sand_pile tumbler rot_frame sliding_patch simple_gas_drag clean archive)
 set modes = (null mpi pthread pvm ALL)
 set options = (optimize debug profile depend)
 @ target_dflt = 1
@@ -167,6 +167,10 @@ foreach mode ($modes)
 	case sliding_patch:
 		set EXE = pkdgrav
 		set CODEDEF = "-DCOLLISIONS -DSLIDING_PATCH"
+		breaksw
+	case simple_gas_drag:
+		set EXE = pkdgrav
+		set CODEDEF = "-DCOLLISIONS -DSLIDING_PATCH -DSIMPLE_GAS_DRAG"
 		breaksw
 	default:
 		set EXE = pkdgrav
