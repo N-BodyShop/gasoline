@@ -52,7 +52,9 @@ enum df_encodestyle {
 enum df_renderstyle {
 	DF_RENDER_NULL,
 	DF_RENDER_POINT,
-	DF_RENDER_TSC
+	DF_RENDER_TSC,
+	DF_RENDER_SOLID,
+	DF_RENDER_SHINE
 	};
 
 enum df_numbering {
@@ -62,7 +64,7 @@ enum df_numbering {
 	};
 
 /* PST */
-
+/* There is a common subset with framesetup that needs it's own structure -- parent class even */
 struct inDumpFrame {
 	double dTime;
 	double dStep;
@@ -82,8 +84,10 @@ struct inDumpFrame {
 	/* Other info */
 	double pScale1,pScale2;
 	DFIMAGE ColStar,ColGas,ColDark;
+	int bColMassWeight;
 	int bLogScale;
-	int bGasSoftening;
+	int bGasSph;
+	double dGasSoftMul,dDarkSoftMul,dStarSoftMul;
 	int iRender;       /* Rendering */
 	
 	double dMassGasMin, dMassGasMax;
@@ -114,8 +118,10 @@ struct dfFrameSetup {
 	/* Rendering controllers */
 	double pScale1,pScale2;
 	DFIMAGE ColStar,ColGas,ColDark;
+	int bColMassWeight;
 	int bLogScale;
-	int bGasSoftening;
+	int bGasSph;
+	double dGasSoftMul,dDarkSoftMul,dStarSoftMul;
 	int iRender;       /* Rendering */
         
 

@@ -322,9 +322,9 @@ millerscalo.o: millerscalo.h
 outtype.o: pkd.h floattype.h cooling.h outtype.h
 param.o: param.h
 pkd.o: pkd.h floattype.h cooling.h ewald.h grav.h walk.h opentype.h
-pkd.o: tipsydefs.h
+pkd.o: tipsydefs.h dumpframe.h
 pst.o: pst.h pkd.h floattype.h cooling.h smoothfcn.h starform.h feedback.h
-pst.o: outtype.h smooth.h
+pst.o: outtype.h smooth.h dumpframe.h
 romberg.o: floattype.h
 smooth.o: smooth.h pkd.h floattype.h cooling.h smoothfcn.h
 smoothfcn.o: smoothfcn.h pkd.h floattype.h cooling.h
@@ -335,6 +335,7 @@ supernova.o: millerscalo.h supernovaia.h
 supernovaia.o: supernova.h startime.h millerscalo.h feedback.h pkd.h
 supernovaia.o: floattype.h cooling.h supernovaia.h
 dumpframe.o: dumpframe.c dumpframe.h
+dumpvoxel.o: dumpvoxel.c dumpframe.h dumpvoxel.h
 dffuncs.o: dffuncs.c dumpframe.h
 writepng.o: writepng.c writepng.h
 walk.o: walk.h pkd.h floattype.h cooling.h

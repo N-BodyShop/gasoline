@@ -131,8 +131,12 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 	in->ColStar = fs->ColStar;
 	in->ColGas = fs->ColGas;
 	in->ColDark = fs->ColDark;
+	in->bColMassWeight = fs->bColMassWeight;
 	in->bLogScale = fs->bLogScale;
-	in->bGasSoftening = fs->bGasSoftening;
+	in->bGasSph = fs->bGasSph;
+	in->dGasSoftMul = fs->dGasSoftMul;
+	in->dDarkSoftMul = fs->dDarkSoftMul;
+	in->dStarSoftMul = fs->dStarSoftMul;
 	in->iRender = fs->iRender;
 	
 	DIFF( fs->eye, in->r, in->z );
@@ -198,6 +202,7 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 		printf("DF eye %f %f %f, target %f %f %f, (separation %f)\n",fs->eye[0],fs->eye[1],fs->eye[2],fs->target[0],fs->target[1],fs->target[2],in->zEye );
 		printf("DF up %f %f %f  Z-Clipping: Near %f Far %f\n",fs->up[0],fs->up[1],fs->up[2],in->zClipNear,in->zClipFar);
 		printf("DF Vectors: x %f %f %f, y %f %f %f z %f %f %f\n",in->x[0],in->x[1],in->x[2], in->y[0],in->y[1],in->y[2], in->z[0],in->z[1],in->z[2] );
+		printf("DF Colours: star %f %f %f gas %f %f %f dark %f %f %f\n",in->ColStar.r,in->ColStar.g,in->ColStar.b,in->ColGas.r,in->ColGas.g,in->ColGas.b,in->ColDark.r,in->ColDark.g,in->ColDark.b);
 		}
 	}
 
@@ -254,7 +259,7 @@ void dfParseOptions( struct DumpFrameContext *df, char * filename ) {
 			}
 		else if (!strcmp( command, "gas") ) {
 			nitem = sscanf( line, "%s %s", command, word );
-			if (nitem == 2 && (!strcmp( command, "no") ||!strcmp( command, "off" ))) {
+			if (nitem == 2 && (!strcmp( word, "no") ||!strcmp( word, "off" ))) {
 				df->dMassGasMin = DBL_MAX;
 				}
 			else {
@@ -265,7 +270,7 @@ void dfParseOptions( struct DumpFrameContext *df, char * filename ) {
 			}
 		else if (!strcmp( command, "dark") ) {
 			nitem = sscanf( line, "%s %s", command, word );
-			if (nitem == 2 && (!strcmp( command, "no") ||!strcmp( command, "off" ))) {
+			if (nitem == 2 && (!strcmp( word, "no") ||!strcmp( word, "off" ))) {
 				df->dMassDarkMin = DBL_MAX;
 				}
 			else {
@@ -276,7 +281,7 @@ void dfParseOptions( struct DumpFrameContext *df, char * filename ) {
 			}
 		else if (!strcmp( command, "star") ) {
 			nitem = sscanf( line, "%s %s", command, word );
-			if (nitem == 2 && (!strcmp( command, "no") ||!strcmp( command, "off" ))) {
+			if (nitem == 2 && (!strcmp( word, "no") ||!strcmp( word, "off" ))) {
 				df->dMassStarMin = DBL_MAX;
 				}
 			else {
@@ -376,6 +381,9 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 	/*	struct inDumpFrame in; */
 	struct dfFrameSetup fs;
 	int n,nitem;
+#define CMWOFF 1
+#define CMWON  2
+	int bCMW = 0;
 	char line[81],command[40],word[40];
 
 	df->bLoop = 0;
@@ -414,8 +422,12 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 	fs.ColStar.r = 0.5;
 	fs.ColStar.g = 0.7;
 	fs.ColStar.b = 1.0;
+	fs.bColMassWeight = 0;
 	fs.bLogScale = 0;
-	fs.bGasSoftening = 1;
+	fs.bGasSph = 1;
+	fs.dGasSoftMul = 1;
+	fs.dDarkSoftMul = 1;
+	fs.dStarSoftMul = 1;
 	
 
 	fs.iRender = DF_RENDER_POINT;
@@ -524,6 +536,85 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 				assert( 0 );
 				} 
 			}
+		else if (!strcmp( command, "colgas" )) {
+			float scaler;
+			nitem = sscanf( line, "%s %f %f %f %f", command, &fs.ColGas.r, &fs.ColGas.g, &fs.ColGas.b, &scaler );
+			if (nitem == 5) {
+				assert( !(bCMW & CMWOFF) );
+				bCMW |= CMWON;
+				fs.bColMassWeight = 1;
+				fs.ColGas.r/=scaler;
+				fs.ColGas.g/=scaler;
+				fs.ColGas.b/=scaler;
+				}
+			else {
+				nitem = sscanf( line, "%s %f %f %f", command, &fs.ColGas.r, &fs.ColGas.g, &fs.ColGas.b );
+				assert( nitem == 4 );
+				assert( !(bCMW & CMWON) );
+				bCMW |= CMWOFF;
+				}
+			}
+		else if (!strcmp( command, "coldark" )) {
+			float scaler;
+			nitem = sscanf( line, "%s %f %f %f %f", command, &fs.ColDark.r, &fs.ColDark.g, &fs.ColDark.b, &scaler );
+			if (nitem == 5) {
+				assert( !(bCMW & CMWOFF) );
+				bCMW |= CMWON;
+				fs.bColMassWeight = 1;
+				fs.ColDark.r/=scaler;
+				fs.ColDark.g/=scaler;
+				fs.ColDark.b/=scaler;
+				}
+			else {
+				nitem = sscanf( line, "%s %f %f %f", command, &fs.ColDark.r, &fs.ColDark.g, &fs.ColDark.b );
+				assert( nitem == 4 );
+				assert( !(bCMW & CMWON) );
+				bCMW |= CMWOFF;
+				}
+			}
+		else if (!strcmp( command, "colstar" )) {
+			float scaler;
+			nitem = sscanf( line, "%s %f %f %f %f", command, &fs.ColStar.r, &fs.ColStar.g, &fs.ColStar.b, &scaler );
+			if (nitem == 5) {
+				assert( !(bCMW & CMWOFF) );
+				bCMW |= CMWON;
+				fs.bColMassWeight = 1;
+				fs.ColStar.r/=scaler;
+				fs.ColStar.g/=scaler;
+				fs.ColStar.b/=scaler;
+				}
+			else {
+				nitem = sscanf( line, "%s %f %f %f", command, &fs.ColStar.r, &fs.ColStar.g, &fs.ColStar.b );
+				assert( nitem == 4 );
+				assert( !(bCMW & CMWON) );
+				bCMW |= CMWOFF;
+				}
+			}
+		else if (!strcmp( command, "colmass" )) {
+			assert( !(bCMW & CMWOFF) );
+			bCMW |= CMWON;
+			fs.bColMassWeight = 1;
+			}
+		else if (!strcmp( command, "logscale" )) {
+			nitem = sscanf( line, "%s %lf %lf", command, &fs.pScale1, &fs.pScale2 );
+			assert( nitem == 3 );
+			fs.bLogScale = 1;
+			}
+		else if (!strcmp( command, "softgassph" )) {
+			fs.bGasSph = 1;
+			}
+		else if (!strcmp( command, "softgas" )) {
+			nitem = sscanf( line, "%s %lf", command, &fs.dGasSoftMul );
+			assert( nitem == 2 );
+			}
+		else if (!strcmp( command, "softdark" )) {
+			nitem = sscanf( line, "%s %lf", command, &fs.dDarkSoftMul );
+			assert( nitem == 2 );
+			}
+		else if (!strcmp( command, "softstar" )) {
+			nitem = sscanf( line, "%s %lf", command, &fs.dStarSoftMul );
+			assert( nitem == 2 );
+			}
 		else if (!strcmp( command, "render") ) {
 			nitem = sscanf( line, "%s %s", command, word );
 			assert( nitem == 2 );
@@ -533,22 +624,14 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 		    else if (!strcmp( word, "tsc") ) {
 				fs.iRender = DF_RENDER_TSC;
 			}
+		    else if (!strcmp( word, "solid") ) {
+				fs.iRender = DF_RENDER_SOLID;
+			}
+		    else if (!strcmp( word, "shine") ) {
+				fs.iRender = DF_RENDER_SHINE;
+			}
 			else {
 				fprintf(stderr,"DF Unknown rendering: %s\n",word);
-				assert( 0 );
-				} 
-			}
-		else if (!strcmp( command, "zEye") ) {
-			nitem = sscanf( line, "%s %s", command, word );
-			assert( nitem == 2 );
-		    if (!strcmp( word, "yes") || !strcmp( word, "on") ) {
-				fs.bzEye = 1;
-			}
-		    else if (!strcmp( word, "no") || !strcmp( word, "off") ) {
-				fs.bzEye = 0;
-			}
-			else {
-				fprintf(stderr,"DF Unknown zEye setting: %s\n",word);
 				assert( 0 );
 				} 
 			}
@@ -668,8 +751,9 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
 void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage, int *nImage ) {
 	PARTICLE *p;
 	DFIMAGE *Image = vImage;
+	DFIMAGE col; /* Colour */
 	int i,j;
-	double x,y,z,dr[3];
+	double x,y,z,dr[3],br0;
 	double xlim = (in->nxPix-1)*.5;
 	double ylim = (in->nyPix-1)*.5;
 	int xp,yp;
@@ -685,7 +769,18 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage, int *nImage )
 	p = pkd->pStore;
 	if (in->iRender == DF_RENDER_POINT) {
 		for (i=0;i<pkd->nLocal;i++) {
-/*			if (!TYPETest( &p[i], TYPE_STAR )) continue; */
+			if (TYPETest( &p[i], TYPE_GAS )) {
+				if (p[i].fMass < in->dMassGasMin || p[i].fMass > in->dMassGasMax) continue;
+				col = in->ColGas;
+				}
+			if (TYPETest( &p[i], TYPE_DARK )) {
+				if (p[i].fMass < in->dMassDarkMin || p[i].fMass > in->dMassDarkMax) continue;
+				col = in->ColDark;
+				}
+			if (TYPETest( &p[i], TYPE_STAR )) {
+				if (p[i].fMass < in->dMassStarMin || p[i].fMass > in->dMassStarMax) continue;
+				col = in->ColStar;
+				}
 			for (j=0;j<3;j++) {
 				dr[j] = p[i].r[j]-in->r[j];
 				}
@@ -699,9 +794,9 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage, int *nImage )
 					if (fabs(y)<ylim) {
 						xp = x+xlim;
 						yp = ylim-y; /* standard screen convention */
-						Image[ xp + yp*in->nxPix ].r += 1.0;
-						Image[ xp + yp*in->nxPix ].g += 1.0;
-						Image[ xp + yp*in->nxPix ].b += 1.0;
+						Image[ xp + yp*in->nxPix ].r += col.r;
+						Image[ xp + yp*in->nxPix ].g += col.g;
+						Image[ xp + yp*in->nxPix ].b += col.b;
 						}
 					}
 				}
@@ -710,26 +805,101 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage, int *nImage )
 	else if (in->iRender == DF_RENDER_TSC) {
 		double hmul = 4*sqrt(in->x[0]*in->x[0] + in->x[1]*in->x[1] + in->x[2]*in->x[2]),h;
 		int hint;
-		DFIMAGE col;
 		
-
 		for (i=0;i<pkd->nLocal;i++) {
 			if (TYPETest( &p[i], TYPE_GAS )) {
 				if (p[i].fMass < in->dMassGasMin || p[i].fMass > in->dMassGasMax) continue;
-				if (in->bGasSoftening) h = sqrt(p[i].fBall2)*0.5;
-				else h = p[i].fSoft;
+				if (in->bGasSph) h = sqrt(p[i].fBall2)*0.5*in->dGasSoftMul;
+				else h = p[i].fSoft*in->dGasSoftMul;
 				col = in->ColGas;
 				}
 			if (TYPETest( &p[i], TYPE_DARK )) {
 				if (p[i].fMass < in->dMassDarkMin || p[i].fMass > in->dMassDarkMax) continue;
-				h = p[i].fSoft;
+				h = p[i].fSoft*in->dDarkSoftMul;
 				col = in->ColDark;
 				}
 			if (TYPETest( &p[i], TYPE_STAR )) {
 				if (p[i].fMass < in->dMassStarMin || p[i].fMass > in->dMassStarMax) continue;
-				h = p[i].fSoft;
+				h = p[i].fSoft*in->dStarSoftMul;
 				col = in->ColStar;
 				}
+
+			if (in->bColMassWeight) br0=p[i].fMass;
+
+			for (j=0;j<3;j++) {
+				dr[j] = p[i].r[j]-in->r[j];
+				}
+			z = dr[0]*in->z[0] + dr[1]*in->z[1] + dr[2]*in->z[2] + in->zEye;
+			if (z >= in->zClipNear && z <= in->zClipFar) {
+				if (in->iProject == DF_PROJECT_PERSPECTIVE) h = h*hmul/z;
+				else h = h*hmul;
+				hint = h;
+				x = dr[0]*in->x[0] + dr[1]*in->x[1] + dr[2]*in->x[2];
+				if (in->iProject == DF_PROJECT_PERSPECTIVE) x/=z;
+				if (fabs(x)<xlim+hint) {
+					y = dr[0]*in->y[0] + dr[1]*in->y[1] + dr[2]*in->y[2];
+					if (in->iProject == DF_PROJECT_PERSPECTIVE) y/=z;
+					if (fabs(y)<ylim+hint) {
+						x = x+xlim;
+						xp = x;
+						y = ylim-y;  /* standard screen convention */
+						yp = y;
+						if (hint < 1) {
+							Image[ xp + yp*in->nxPix ].r += col.r;
+							Image[ xp + yp*in->nxPix ].g += col.g;
+							Image[ xp + yp*in->nxPix ].b += col.b;
+							}
+						else {
+							int xpmin,xpmax,ypmin,ypmax,ix,iy;
+							DFIMAGE *Imagey;
+							double br,br1,r2,ih2;
+							ih2 = 1./(h*h);
+							br1 = (6/(2.0*3.1412))*ih2;
+							xpmin = xp - hint; if (xpmin<0) xpmin=0;
+							xpmax = xp + hint; if (xpmax>=in->nxPix) xpmax=in->nxPix-1;
+							ypmin = yp - hint; if (ypmin<0) ypmin=0;
+							ypmax = yp + hint; if (ypmax>=in->nyPix) ypmax=in->nyPix-1;
+							for (iy=ypmin,Imagey = Image + iy*in->nxPix;iy<=ypmax;iy++,Imagey += in->nxPix) {
+								for (ix=xpmin;ix<=xpmax;ix++) {
+									r2 = ((ix-x)*(ix-x)+(iy-y)*(iy-y))*ih2;
+									if (r2 > 1) continue;
+									br = br1*(1.0-sqrt(r2));
+									Imagey[ ix ].r += br*col.r;
+									Imagey[ ix ].g += br*col.g;
+									Imagey[ ix ].b += br*col.b;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	else if (in->iRender == DF_RENDER_SOLID) {
+		double hmul = 4*sqrt(in->x[0]*in->x[0] + in->x[1]*in->x[1] + in->x[2]*in->x[2]),h;
+		int hint;
+		
+		br0=1;
+
+		for (i=0;i<pkd->nLocal;i++) {
+			if (TYPETest( &p[i], TYPE_GAS )) {
+				if (p[i].fMass < in->dMassGasMin || p[i].fMass > in->dMassGasMax) continue;
+				if (in->bGasSph) h = sqrt(p[i].fBall2)*0.5*in->dGasSoftMul;
+				else h = p[i].fSoft*in->dGasSoftMul;
+				col = in->ColGas;
+				}
+			if (TYPETest( &p[i], TYPE_DARK )) {
+				if (p[i].fMass < in->dMassDarkMin || p[i].fMass > in->dMassDarkMax) continue;
+				h = p[i].fSoft*in->dDarkSoftMul;
+				col = in->ColDark;
+				}
+			if (TYPETest( &p[i], TYPE_STAR )) {
+				if (p[i].fMass < in->dMassStarMin || p[i].fMass > in->dMassStarMax) continue;
+				h = p[i].fSoft*in->dStarSoftMul;
+				col = in->ColStar;
+				}
+
+			if (in->bColMassWeight) br0=p[i].fMass;
 
 			for (j=0;j<3;j++) {
 				dr[j] = p[i].r[j]-in->r[j];
@@ -748,7 +918,7 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage, int *nImage )
 						xp = x+xlim;
 						yp = ylim-y; /* standard screen convention */
 						if (hint < 1) {
-							double br = 0.523599*h*h; /* integral of TSC to h */
+							double br = 0.523599*br0*h*h; /* integral of TSC to h */
 							Image[ xp + yp*in->nxPix ].r += br*col.r;
 							Image[ xp + yp*in->nxPix ].g += br*col.g;
 							Image[ xp + yp*in->nxPix ].b += br*col.b;
@@ -765,12 +935,12 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage, int *nImage )
 							for (iy=ypmin,Imagey = Image + iy*in->nxPix;iy<=ypmax;iy++,Imagey += in->nxPix) {
 								for (ix=xpmin;ix<=xpmax;ix++) {
 									if (ix==xp && iy==yp) {
-										br = 1.57080-1.04720/h; /* Integral of TSC to r=1 */
+										br = br0*(1.57080-1.04720/h); /* Integral of tsc disc to r=1 */
 										}
 									else {
 										r2 = ((ix-xp)*(ix-xp)+(iy-yp)*(iy-yp))*ih2;
 										if (r2 > 1) continue;
-										br = 1.0-sqrt(r2);
+										br = br0*(1.0-sqrt(r2));
 										}
 									Imagey[ ix ].r += br*col.r;
 									Imagey[ ix ].g += br*col.g;
@@ -778,6 +948,41 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage, int *nImage )
 									}
 								}
 							}
+						}
+					}
+				}
+			}
+		}
+	else if (in->iRender == DF_RENDER_SHINE) {
+		for (i=0;i<pkd->nLocal;i++) {
+			if (TYPETest( &p[i], TYPE_GAS )) {
+				if (p[i].fMass < in->dMassGasMin || p[i].fMass > in->dMassGasMax) continue;
+				col = in->ColGas;
+				}
+			if (TYPETest( &p[i], TYPE_DARK )) {
+				if (p[i].fMass < in->dMassDarkMin || p[i].fMass > in->dMassDarkMax) continue;
+				col = in->ColDark;
+				}
+			if (TYPETest( &p[i], TYPE_STAR )) {
+				if (p[i].fMass < in->dMassStarMin || p[i].fMass > in->dMassStarMax) continue;
+				col = in->ColStar;
+				}
+			for (j=0;j<3;j++) {
+				dr[j] = p[i].r[j]-in->r[j];
+				}
+			z = dr[0]*in->z[0] + dr[1]*in->z[1] + dr[2]*in->z[2] + in->zEye;
+			if (z >= in->zClipNear && z <= in->zClipFar) {
+				x = dr[0]*in->x[0] + dr[1]*in->x[1] + dr[2]*in->x[2];
+				if (in->iProject == DF_PROJECT_PERSPECTIVE) x/=z;
+				if (fabs(x)<xlim) {
+					y = dr[0]*in->y[0] + dr[1]*in->y[1] + dr[2]*in->y[2];
+					if (in->iProject == DF_PROJECT_PERSPECTIVE) y/=z;
+					if (fabs(y)<ylim) {
+						xp = x+xlim;
+						yp = ylim-y; /* standard screen convention */
+						if (col.r > Image[ xp + yp*in->nxPix ].r) Image[ xp + yp*in->nxPix ].r = col.r;
+						if (col.g > Image[ xp + yp*in->nxPix ].r) Image[ xp + yp*in->nxPix ].g = col.g;
+						if (col.b > Image[ xp + yp*in->nxPix ].r) Image[ xp + yp*in->nxPix ].b = col.b;
 						}
 					}
 				}
@@ -792,6 +997,7 @@ void dfMergeImage( struct inDumpFrame *in, void *vImage1, int *nImage1, void *vI
 	switch (in->iRender) {
 	case DF_RENDER_POINT:
 	case DF_RENDER_TSC:
+	case DF_RENDER_SOLID:
 		assert( *nImage1 == in->nxPix*in->nyPix*sizeof(DFIMAGE) );
 		assert( *nImage1 == *nImage2 );
 
@@ -799,6 +1005,16 @@ void dfMergeImage( struct inDumpFrame *in, void *vImage1, int *nImage1, void *vI
 			Image1[i].r += Image2[i].r;
 			Image1[i].g += Image2[i].g;
 			Image1[i].b += Image2[i].b;
+			}
+		break;
+	case DF_RENDER_SHINE:
+		assert( *nImage1 == in->nxPix*in->nyPix*sizeof(DFIMAGE) );
+		assert( *nImage1 == *nImage2 );
+
+		for (i=in->nxPix*in->nyPix-1;i>=0;i--) {
+			if (Image2[i].r > Image1[i].r) Image1[i].r = Image2[i].r;
+			if (Image2[i].g > Image1[i].g) Image1[i].g = Image2[i].g;
+			if (Image2[i].b > Image1[i].b) Image1[i].b = Image2[i].b;
 			}
 		break;
 	default:
@@ -847,22 +1063,48 @@ void dfFinishFrame( struct DumpFrameContext *df, double dTime, double dStep, str
 				}
 			}
 		}
-	else if (in->iRender == DF_RENDER_TSC) {
-
-		for (i=0,g=gray;i<iMax;i++) {
-			int bing;
-			bing = 260*(1.-1./(0.1*Image[i].r+1));
-			*g = (bing < 255 ? bing : 255 );
-			g++;
-			bing = 260*(1.-1./(0.1*Image[i].g+1));
-			*g = (bing < 255 ? bing : 255 );
-			g++;
-			bing = 260*(1.-1./(0.1*Image[i].b+1));
-			*g = (bing < 255 ? bing : 255 );
-			g++;
+	else if (in->iRender == DF_RENDER_TSC || in->iRender == DF_RENDER_SOLID || in->iRender == DF_RENDER_SHINE) {
+		if (in->bLogScale) {
+			double lmin,factor;
+			lmin = log(in->pScale1);
+			factor = 255.999/(log(in->pScale2)-lmin);
+			for (i=0,g=gray;i<iMax;i++) {
+				int bing;
+				if (Image[i].r <= 0) *g = 0;
+				else { 
+					bing = factor*(log(Image[i].r)-lmin);
+					*g = (bing < 255 ? (bing < 0 ? 0 : bing) : 255 );
+					}
+				g++;
+				if (Image[i].g <= 0) *g = 0;
+				else { 
+					bing = factor*(log(Image[i].g)-lmin);
+					*g = (bing < 255 ? (bing < 0 ? 0 : bing) : 255 );
+					}
+				g++;
+				if (Image[i].b <= 0) *g = 0;
+				else { 
+					bing = factor*(log(Image[i].b)-lmin);
+					*g = (bing < 255 ? (bing < 0 ? 0 : bing) : 255 );
+					}
+				g++;
+				}
+			}
+		else {
+			for (i=0,g=gray;i<iMax;i++) {
+				int bing;
+				bing = 260*(1.-1./(0.1*Image[i].r+1));
+				*g = (bing < 255 ? bing : 255 );
+				g++;
+				bing = 260*(1.-1./(0.1*Image[i].g+1));
+				*g = (bing < 255 ? bing : 255 );
+				g++;
+				bing = 260*(1.-1./(0.1*Image[i].b+1));
+				*g = (bing < 255 ? bing : 255 );
+				g++;
+				}
 			}
 		}
-
 	fp = fopen(fileout,"w");
 	assert(fp!=NULL);
 
