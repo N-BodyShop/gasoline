@@ -235,7 +235,7 @@ void pkdSeek(PKD pkd,FILE *fp,int nStart,int bStandard)
 			else lStart += pkd->nDark*sizeof(struct dark_particle);
 			nStart -= pkd->nDark;
 			if (bStandard) lStart += nStart*44;
-			lStart += nStart*sizeof(struct star_particle);
+			else lStart += nStart*sizeof(struct star_particle);
 			}
 		else {
 			if (bStandard) lStart += nStart*36;
