@@ -100,6 +100,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		comb = combFindRejects;
 		smx->fcnPost = NULL;
 		break;
+#ifdef OLD_KEPLER
 	case SMX_ENCOUNTER:
 		assert(bSymmetric == 0);
 		smx->fcnSmooth = CheckForEncounter;
@@ -108,6 +109,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		comb = NULL;
 		smx->fcnPost = NULL;
 		break;
+#endif
 	case SMX_COLLISION:
 		assert(bSymmetric == 0);
 		smx->fcnSmooth = CheckForCollision;

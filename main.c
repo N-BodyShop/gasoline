@@ -81,9 +81,6 @@ int main(int argc,char **argv)
 	 */
 	if (msrRestart(msr)) {
 		dTime = msrReadCheck(msr,&iStep);
-#ifdef COLLISIONS
-		msrCalcHill(msr);
-#endif
 #ifdef GASOLINE
 #ifdef SUPERNOVA
 	        if (msr->param.bSN) msrInitSupernova(msr);
@@ -117,7 +114,7 @@ int main(int argc,char **argv)
 				}
 			}
 #endif
-		if(msrKDK(msr) || msr->param.bEpsVel) {
+		if(msrKDK(msr) || msr->param.bGravStep || msr->param.bAccelStep) {
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE);
 			msrDomainDecomp(msr);
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE);
@@ -156,7 +153,6 @@ int main(int argc,char **argv)
 #ifdef COLLISIONS /* must use "Solar System" (SS) I/O format... */
 	dTime = msrReadSS(msr);
 	assert(msr->N >= msr->param.nSmooth);
-	msrCalcHill(msr);
 #else
 	dTime = msrReadTipsy(msr);
 #endif
@@ -359,18 +355,18 @@ int main(int argc,char **argv)
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
 					msrMassCheck(msr,dMass,"After msrOutArray in OutTime");
 					}
+				if (msr->param.bDodtOutput) {
+					msrReorder(msr);
+					sprintf(achFile,achdtMask,msrOutName(msr),iStep);
+					msrReorder(msr);
+					msrOutArray(msr,achFile,OUT_DT_ARRAY);
+					}
 #ifdef GASOLINE				
 				if (msr->param.bDohOutput) {
 					msrReorder(msr);
 					sprintf(achFile,achHMask,msrOutName(msr),iStep);
 					msrReorder(msr);
 					msrOutArray(msr,achFile,OUT_H_ARRAY);
-					}
-				if (msr->param.bDodtOutput) {
-					msrReorder(msr);
-					sprintf(achFile,achdtMask,msrOutName(msr),iStep);
-					msrReorder(msr);
-					msrOutArray(msr,achFile,OUT_DT_ARRAY);
 					}
 				if (msr->param.bDoIonOutput) {
 					msrReorder(msr);
@@ -431,7 +427,7 @@ int main(int argc,char **argv)
 			msrReorder(msr);
 			msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
 			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Density");
-#if 0/*DEBUG -- QQ tree test stuff*/
+#if OLD_KEPLER/*DEBUG*/
 			{
 			struct inSmooth smooth;
 			int sec,dsec;
@@ -460,7 +456,7 @@ int main(int argc,char **argv)
 			}
 #endif
 			}
-		else if (msrDoGravity(msr)) {
+		if (msrDoGravity(msr)) {
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 			msrDomainDecomp(msr);
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
@@ -479,35 +475,35 @@ int main(int argc,char **argv)
 			msrOutArray(msr,achFile,OUT_POT_ARRAY);
 			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Gravity");
 			msrInitDt(msr);
-#ifdef HELIO_STEP
-			msrHelioStep(msr);
-#else
-			msrAccelStep(msr,dTime);
-#endif
+			if (msr->param.bGravStep) {
+				msrGravStep(msr);
+				}
+			if (msr->param.bAccelStep) {
+				msrAccelStep(msr,dTime);
+				}
 			msrDtToRung(msr,0,msrDelta(msr),1);
-			sprintf(achFile,"%s.dt",msrOutName(msr));
+			msrRungStats(msr);
+			}
+		if (msr->param.bDodtOutput) {
+			msrReorder(msr);
+			sprintf(achFile,achdtMask,msrOutName(msr),0);
+			msrReorder(msr);
 			msrOutArray(msr,achFile,OUT_DT_ARRAY);
 			}
 #ifdef GASOLINE				
 		if (msr->param.bDohOutput) {
 			msrReorder(msr);
-			sprintf(achFile,achHMask,msrOutName(msr),iStep);
+			sprintf(achFile,achHMask,msrOutName(msr),0);
 			msrReorder(msr);
 			msrOutArray(msr,achFile,OUT_H_ARRAY);
 			}
-		if (msr->param.bDodtOutput) {
-		        msrReorder(msr);
-			sprintf(achFile,achdtMask,msrOutName(msr),iStep);
-			msrReorder(msr);
-			msrOutArray(msr,achFile,OUT_DT_ARRAY);
-		        }
 		if (msr->param.bDoIonOutput) {
 			msrReorder(msr);
-			sprintf(achFile,achHIMask,msrOutName(msr),iStep);
+			sprintf(achFile,achHIMask,msrOutName(msr),0);
 			msrOutArray(msr,achFile,OUT_HI_ARRAY);
-			sprintf(achFile,achHeIMask,msrOutName(msr),iStep);
+			sprintf(achFile,achHeIMask,msrOutName(msr),0);
 			msrOutArray(msr,achFile,OUT_HeI_ARRAY);
-			sprintf(achFile,achHeIIMask,msrOutName(msr),iStep);
+			sprintf(achFile,achHeIIMask,msrOutName(msr),0);
 			msrOutArray(msr,achFile,OUT_HeII_ARRAY);
 			}
 #endif

@@ -1,3 +1,4 @@
+#ifdef OLD_KEPLER /*DEBUG these routines are now broken -- DCR 00-04-11*/
 #ifdef COLLISIONS
 
 #include <stdio.h>
@@ -487,3 +488,4 @@ CheckForEncounter(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     }
 
 #endif /* COLLISIONS */
+#endif /* OLD_KEPLER */

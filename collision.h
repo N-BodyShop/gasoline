@@ -7,13 +7,12 @@
 
 /*#define FIX_COLLAPSE*/
 
-#define HELIO_STEP
-
 #define NORMAL 0	/* drift types */
 #define KEPLER 1
 
-/*DEBUG HILL_SCALE should probably be a parameter*/
+#ifdef OLD_KEPLER
 #define HILL_SCALE 1.26 /* multiplies reduced Hill radius */
+#endif
 
 #define REJECT(p) ((p)->dtCol < 0)
 
@@ -55,10 +54,12 @@ typedef struct {
 	double dSlideLimit2;
 	double dSlideEpsN;
 	double dSlideEpsT;
+	double dCollapseLimit;
+	double dCollapseEpsN;
+	double dCollapseEpsT;
 	double dCrushLimit;
 	double dCrushEpsN;
 	double dCrushEpsT;
-	double dCollapse;
 #ifdef SAND_PILE
 	WALLS walls;
 #endif

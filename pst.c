@@ -282,12 +282,6 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_WRITESS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstWriteSS,
 				  sizeof(struct inWriteSS),0);
-	mdlAddService(mdl,PST_CALCHILL,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstCalcHill,
-				  sizeof(struct inCalcHill),0);
-	mdlAddService(mdl,PST_HELIOSTEP,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstHelioStep,
-				  sizeof(struct inHelioStep),0);
 	mdlAddService(mdl,PST_KICKUNIFGRAV,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstKickUnifGrav,
 				  sizeof(struct inKickUnifGrav),0);
@@ -310,6 +304,7 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_RESETCOLLIDERS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstResetColliders,
 				  sizeof(struct inResetColliders),0);
+#ifdef OLD_KEPLER
 	mdlAddService(mdl,PST_QQCALCBOUND,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstQQCalcBound,
 				  0,sizeof(struct outCalcBound));
@@ -322,6 +317,7 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_QQSMOOTH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstQQSmooth,
 				  sizeof(struct inSmooth),0);
+#endif
 #endif /* COLLISIONS */
 #ifdef SLIDING_PATCH
 	mdlAddService(mdl,PST_KICKVPRED,pst,
@@ -2734,26 +2730,26 @@ pstCurrRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = sizeof(*out);
 	}
 
-
-void pstDensityStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+void
+pstGravStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
-	struct inDensityStep *in = vin;
-	
-	assert(nIn == sizeof(*in));
+	struct inGravStep *in = vin;
+
+	assert(nIn == sizeof(struct inGravStep));
 	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_DENSITYSTEP,vin,nIn);
-		pstDensityStep(pst->pstLower,vin,nIn,vout,pnOut);
+		mdlReqService(pst->mdl,pst->idUpper,PST_GRAVSTEP,vin,nIn);
+		pstAccelStep(pst->pstLower,vin,nIn,vout,pnOut);
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
 		}
 	else {
-		pkdDensityStep(plcl->pkd, in->dEta, in->dRhoFac);
+		pkdGravStep(plcl->pkd,in->dEta);
 		}
 	if (pnOut) *pnOut = 0;
 	}
 
-
-void pstAccelStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+void
+pstAccelStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	struct inAccelStep *in = vin;
@@ -2765,8 +2761,26 @@ void pstAccelStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
 		}
 	else {
-		pkdAccelStep(plcl->pkd, in->dEta, in->dVelFac, in->dAccFac, in->bDoGravity,
-			     in->bEpsVel, in->bSqrtPhi);
+		pkdAccelStep(plcl->pkd,in->dEta,in->dVelFac,in->dAccFac,
+					 in->bDoGravity,in->bEpsAcc,in->bSqrtPhi);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void
+pstDensityStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inDensityStep *in = vin;
+	
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DENSITYSTEP,vin,nIn);
+		pstDensityStep(pst->pstLower,vin,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		}
+	else {
+		pkdDensityStep(plcl->pkd,in->dEta,in->dRhoFac);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2806,7 +2820,7 @@ void pstInitDt(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
 		}
 	else {
-		pkdInitDt(plcl->pkd, in->dDelta);
+		pkdInitDt(plcl->pkd,in->dDelta);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -3571,42 +3585,6 @@ pstWriteSS(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 void
-pstCalcHill(PST pst,void *vin,int nIn,void *vout,int *pnOut)
-{
-	LCL *plcl = pst->plcl;
-	struct inCalcHill *in = vin;
-
-	assert(nIn == sizeof(struct inCalcHill));
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_CALCHILL,vin,nIn);
-		pstCalcHill(pst->pstLower,vin,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-		}
-	else {
-		pkdCalcHill(plcl->pkd,in->dCentMass);
-		}
-	if (pnOut) *pnOut = 0;
-	}
-
-void
-pstHelioStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
-{
-	LCL *plcl = pst->plcl;
-	struct inHelioStep *in = vin;
-
-	assert(nIn == sizeof(struct inHelioStep));
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_HELIOSTEP,vin,nIn);
-		pstHelioStep(pst->pstLower,vin,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-		}
-	else {
-		pkdHelioStep(plcl->pkd,in->dEta);
-		}
-	if (pnOut) *pnOut = 0;
-	}
-
-void
 pstKickUnifGrav(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -3760,6 +3738,7 @@ pstResetColliders(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
+#ifdef OLD_KEPLER
 void
 pstQQCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -3907,6 +3886,7 @@ pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	if (pnOut) *pnOut = 0;
 	}
+#endif /* OLD_KEPLER */
 
 #endif /* COLLISIONS */
 

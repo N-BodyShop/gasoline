@@ -620,13 +620,12 @@ int pkdLowerPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 {
 	PARTICLE pTemp;
 
-#ifdef COLLISIONS
+#ifdef OLD_KEPLER
 	assert(d < 5);
-	if(d > 2)
-	    return pkdLowerQQPart(pkd, d, fSplit, i, j);
-#else /* COLLISIONS */
+	if (d > 2) return pkdLowerQQPart(pkd,d,fSplit,i,j);
+#else
 	assert(d < 3);
-#endif /* !COLLISIONS */
+#endif
 	if (i > j) goto done;
     while (1) {
         while (pkd->pStore[i].r[d] >= fSplit)
@@ -645,17 +644,10 @@ int pkdLowerPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 int pkdUpperPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 {
 	PARTICLE pTemp;
-	int i0,j0,k;
 
-	i0=i; j0=j;
-	if (i0==0 && j0==3557) {
-		k=0;
-		}
-
-#ifdef COLLISIONS
+#ifdef OLD_KEPLER
 	assert(d < 5);
-	if(d > 2)
-	    return pkdUpperQQPart(pkd, d, fSplit, i, j);
+	if (d > 2) return pkdUpperQQPart(pkd,d,fSplit,i,j);
 #else
 	assert(d < 3);
 #endif
@@ -2048,11 +2040,11 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 			if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
 			    ++n;
 			    for (j=0;j<3;++j) {
-				if (pkd->pStore[i].r[j] < bndActive.fMin[j]) 
-				    bndActive.fMin[j] = pkd->pStore[i].r[j];
-				if (pkd->pStore[i].r[j] > bndActive.fMax[j])
-				    bndActive.fMax[j] = pkd->pStore[i].r[j];
-				}
+					if (pkd->pStore[i].r[j] < bndActive.fMin[j]) 
+						bndActive.fMin[j] = pkd->pStore[i].r[j];
+					if (pkd->pStore[i].r[j] > bndActive.fMax[j])
+						bndActive.fMax[j] = pkd->pStore[i].r[j];
+					}
 			    }
 			}
 		if (n > 0) {
@@ -2170,7 +2162,7 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass)
 {
 	PARTICLE *p;
-	double t;
+	double t,idt2;
 	int i,j,n;
 
 	p = pkd->pStore;
@@ -2181,6 +2173,8 @@ void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass)
 			for (j=0;j<3;++j) t += p[i].r[j]*p[i].r[j];
 			t = 1.0/sqrt(t);
 			t = t*t*t;
+			idt2 = (p[i].fMass + dSunMass)*t;
+			if (idt2 > p[i].dtGrav) p[i].dtGrav = idt2;
 			/*
 			 ** The way that aSun[j] gets added in here is confusing, but this
 			 ** is the correct way!
@@ -2824,24 +2818,24 @@ pkdCurrRung(PKD pkd, int iRung)
     }
 
 void
-pkdDensityStep(PKD pkd, double dEta, double dRhoFac)
+pkdGravStep(PKD pkd,double dEta)
 {
+	double dt;
     int i;
-    double dT;
-    
-    for(i=0;i<pkdLocal(pkd);++i) {
-		if(TYPEQueryACTIVE(&(pkd->pStore[i]))) {
-			dT = dEta/sqrt(pkd->pStore[i].fDensity*dRhoFac);
-			if(dT < pkd->pStore[i].dt)
-				pkd->pStore[i].dt = dT;
+
+    for (i=0;i<pkdLocal(pkd);i++) {
+		if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
+			assert(pkd->pStore[i].dtGrav);
+			dt = dEta/sqrt(pkd->pStore[i].dtGrav);
+			if (dt < pkd->pStore[i].dt)
+				pkd->pStore[i].dt = dt;
 			}
 		}
     }
 
-
 void
-pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac, int bDoGravity,
-             int bEpsVel, int bSqrtPhi)
+pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
+             int bEpsAcc,int bSqrtPhi)
 {
     int i;
     double vel;
@@ -2849,11 +2843,11 @@ pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac, int bDoGravit
     int j;
     double dT;
 
-    for(i=0;i<pkdLocal(pkd);++i) {
-		if(TYPEQueryACTIVE(&(pkd->pStore[i]))) {
+    for (i=0;i<pkdLocal(pkd);++i) {
+		if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
 			vel = 0;
 			acc = 0;
-			for(j = 0; j < 3; j++) {
+			for (j=0;j<3;j++) {
 				vel += pkd->pStore[i].v[j]*pkd->pStore[i].v[j];
 				acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
 				}
@@ -2861,7 +2855,7 @@ pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac, int bDoGravit
 			vel = sqrt(vel)*dVelFac;
 			acc = sqrt(acc)*dAccFac;
 			dT = FLOAT_MAXVAL;
-			if(bEpsVel && acc>0) {
+			if (bEpsAcc && acc>0) {
 #ifdef GASOLINE
 				if (pkdIsGas(pkd, &(pkd->pStore[i])) &&
 					pkd->pStore[i].fBall2*0.25 < pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
@@ -2872,29 +2866,35 @@ pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac, int bDoGravit
 				dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
 #endif
 				}
-#ifdef DEBUG
-			if ((pkd->pStore[i].iOrder % 300)==0 || dT<1e-6) {
-				printf("dt_a %i: %i %i %f %g %g %g  %f %f %f %f   dt_a %g\n",
-				       pkd->pStore[i].iOrder,TYPEQueryACTIVE(&(pkd->pStore[i])),
-					   TYPEQueryTREEACTIVE(&(pkd->pStore[i])),
-				       sqrt(0.25*pkd->pStore[i].fBall2),pkd->pStore[i].PdV,pkd->pStore[i].u,pkd->pStore[i].PoverRho2,pkd->pStore[i].a[0],
-				       pkd->pStore[i].a[1],pkd->pStore[i].a[2],pkd->pStore[i].fSoft,dT);
-				}
-#endif
-			if(bSqrtPhi) {
+			if (bSqrtPhi) {
 				double dtemp =
 					dEta*3.5*sqrt(dAccFac*fabs(pkd->pStore[i].fPot))/acc;
-				if(dtemp < dT)
+				if (dtemp < dT)
 					dT = dtemp;
 				}
-			if(dT < pkd->pStore[i].dt)
+			if (dT < pkd->pStore[i].dt)
+				pkd->pStore[i].dt = dT;
+			}
+		}
+    }
+
+void
+pkdDensityStep(PKD pkd,double dEta,double dRhoFac)
+{
+    int i;
+    double dT;
+    
+    for (i=0;i<pkdLocal(pkd);++i) {
+		if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
+			dT = dEta/sqrt(pkd->pStore[i].fDensity*dRhoFac);
+			if (dT < pkd->pStore[i].dt)
 				pkd->pStore[i].dt = dT;
 			}
 		}
     }
 
 int
-pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll)
+pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,int bAll)
 {
     int i;
     int iMaxRungOut;
@@ -2938,7 +2938,7 @@ pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll)
     }
 
 void
-pkdInitDt(PKD pkd, double dDelta)
+pkdInitDt(PKD pkd,double dDelta)
 {
     int i;
     
@@ -2947,7 +2947,6 @@ pkdInitDt(PKD pkd, double dDelta)
 			pkd->pStore[i].dt = dDelta;
 		}
     }
-
     
 int pkdRungParticles(PKD pkd,int iRung)
 {
@@ -3303,6 +3302,7 @@ void pkdInitAccel(PKD pkd)
 		if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
 			for (j=0;j<3;++j) {
 				pkd->pStore[i].a[j] = 0;
+				pkd->pStore[i].dtGrav = 0;
 				}
 			}
 		}
@@ -3951,56 +3951,6 @@ pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
 	xdr_destroy(&xdrs);
 	nout = fclose(fp);
 	assert(nout == 0);
-	}
-
-void
-pkdCalcHill(PKD pkd,double dCentMass)
-{
-	/*
-	 ** Note: normally the reduced Hill sphere contains the SUM of the masses
-	 ** of the two interacting bodies, relative to the central mass. Here only
-	 ** one mass is used. This is equivalent to assuming the mass of the third
-	 ** body is negligible. Alternatively, if the masses are comparable, the
-	 ** factor HILL_SCALE could be multiplied by 2^1/3.
-	 */
-
-	const double OneThird = 1.0/3.0;
-
-	PARTICLE *p;
-	int i;
-
-	for (i=0;i<pkdLocal(pkd);i++) {
-		p = &pkd->pStore[i];
-		if (dCentMass == 0)
-			p->fHill = DBL_MAX;
-		else
-			p->fHill = HILL_SCALE*pow(OneThird*p->fMass/dCentMass,OneThird);
-		}
-	}
-
-void
-pkdHelioStep(PKD pkd,double dEta)
-{
-	/*DEBUG assumes heliocentric coords...still good approx otherwise*/
-
-	PARTICLE *p;
-	double r2,a2,dt;
-	int i,j;
-
-	for (i=0;i<pkdLocal(pkd);i++) {
-		p = &pkd->pStore[i];
-		if (TYPEQueryACTIVE(p)) {
-			r2 = a2 = 0;
-			/*DEBUG could use Manhattan metric here...*/
-			for (j=0;j<3;j++) {
-				r2 += p->r[j]*p->r[j];
-				a2 += p->a[j]*p->a[j];
-				}
-			dt = dEta*sqrt(sqrt(r2/a2));
-			if (dt < p->dt)
-				p->dt = dt;
-			}
-		}
 	}
 
 void

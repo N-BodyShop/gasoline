@@ -20,7 +20,9 @@
 #define MSR_TREE_NONE		0
 #define MSR_TREE_SPATIAL	1
 #define MSR_TREE_DENSITY	2
+#ifdef OLD_KEPLER/*DEBUG*/
 #define MSR_TREE_QQ			3
+#endif
 
 typedef struct msrContext {
 	PRM prm;
@@ -180,7 +182,9 @@ void msrCoolVelocity(MSR,double,double);
 void msrGrowMass(MSR msr, double dTime, double dDelta);
 void msrCalcWriteStart(MSR);
 void msrAddDelParticles(MSR msr);
+void msrGravStep(MSR msr);
 void msrAccelStep(MSR msr, double dTime);
+void msrDensityStep(MSR msr, double dTime);
 void msrInitDt(MSR msr);
 void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll);
 
@@ -225,8 +229,6 @@ void msrInitGlass(MSR);
 void msrFindRejects(MSR msr);
 double msrReadSS(MSR msr);
 void msrWriteSS(MSR msr, char *pszFileName, double dTime);
-void msrCalcHill(MSR msr);
-void msrHelioStep(MSR msr);
 void msrPlanetsKDK(MSR msr, double dStep, double dTime, double dDelta,
 				   double *pdWMax, double *pdIMax, double *pdEMax, int *piSec);
 void msrPlanetsDrift(MSR msr, double dStep, double dTime, double dDelta);

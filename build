@@ -1,0 +1,295 @@
+#!/bin/csh -f
+# Script for building pkdgrav -- DCR 98-12-04
+#
+if ($#argv != 0) then
+	echo build takes no arguments
+	exit 1
+endif
+#
+set template = Makefile.tmpl
+#
+set OBJ = ({collision,cooling,cosmo,eccanom,ewald,fdl,grav,htable,hypanom,main,master,outtype,param,pkd,pst,qqsmooth,romberg,smooth,smoothfcn,walk}.o)
+#
+set mdl = ../mdl
+#
+if !(-d $mdl) then
+	echo $mdl directory not found
+	exit 1
+endif
+#
+set targets = (pkdgrav gasoline collisions sand_pile sliding_patch clean archive)
+set modes = (null mpi pthread pvm ALL)
+set options = (optimize debug profile depend)
+@ target_dflt = 1
+@ mode_dflt = 1
+@ option_dflt = 1
+if (-e build.cfg) source build.cfg
+#
+set OS = `/bin/uname`
+if ($status) then
+	echo Unable to determine operating system
+	exit 1
+endif
+#
+if ($OS == Linux) set OS = $OS-`uname -a | awk '{print $(NF - 1)}'`
+#
+@ i = 1
+foreach choice ($targets)
+	echo -n $i. $choice
+	if ($i == $target_dflt) echo -n ' [DEFAULT]'
+	echo ''
+	@ i++
+end
+@ loop = 1
+while ($loop)
+	echo -n Select target by number:' '
+	set target = $<
+	if ("$target" == "") @ target = $target_dflt
+	if ($target >= 1 && $target <= $#targets) @ loop = 0
+end
+#
+set target = $targets[$target]
+#
+if ($target == archive) then
+	pushd ..
+	rm -f pkdgrav.tar{,.gz}
+	tar cvf pkdgrav.tar mdl/*/mdl.{c,h}	pkdgrav/{templates,build*,*.{c,h,fdl}}
+	gzip pkdgrav.tar
+	popd
+	exit 0
+endif
+#
+@ i = 1
+foreach choice ($modes)
+	echo -n $i. $choice
+	if ($i == $mode_dflt) echo -n ' [DEFAULT]'
+	echo ''
+	@ i++
+end
+@ loop = 1
+while ($loop)
+	echo -n Select mode:' '
+	set mode = $<
+	if ("$mode" == "") @ mode = $mode_dflt
+	if ($mode >= 1 && $mode <= $#modes) @ loop = 0
+end
+#
+set mode0 = $modes[$mode]
+#
+if ($target != clean) then
+	@ i = 1
+	foreach choice ($options)
+		echo -n $i. $choice
+		if ($i == $option_dflt) echo -n ' [DEFAULT]'
+		echo ''
+		@ i++
+	end
+	@ loop = 1
+	while ($loop)
+		echo -n Select option:' '
+		set option = $<
+		if ("$option" == "") @ option = $option_dflt
+		if ($option >= 1 && $option <= $#options) @ loop = 0
+	end
+	set option = $options[$option]
+else
+	set option = none
+endif
+#
+if !(-d templates) then
+	echo No Makefile templates directory\!
+	exit 1
+endif
+#
+foreach mode ($modes)
+	if ($mode == ALL || ($mode0 != ALL && $mode != $mode0)) continue
+	echo -n Making \"$target $mode
+	if ($option != none) echo -n ' '$option
+	echo \" on $OS...
+	#
+	if !(-d $mdl/$mode) then
+		echo $mdl/$mode subdirectory not found...skipping this mode
+		continue
+	endif
+	#
+	if !(-d $mode) then
+		echo $mode subdirectory not found...building
+		mkdir $mode
+	endif
+	#
+	if !(-e $mode/$template) then
+		echo $mode/$template not found...copying
+		if !(-e templates/Makefile.$mode) then
+			echo $mode Makefile template not found...skipping this mode
+			continue
+		endif
+		cp templates/Makefile.$mode $mode/$template
+		if ($option != depend) then
+			echo '*** Forcing depend...rerun build to compile'
+			set option = depend
+		endif
+	endif
+	#
+	if !(-e $mdl/$mode/$template) then
+		echo $mode/$template not found...copying
+		if !(-e templates/mdl/Makefile.$mode) then
+			echo $mode mdl Makefile template not found...skipping this mode
+			continue
+		endif
+		cp templates/mdl/Makefile.$mode $mdl/$mode/$template
+		if ($option != depend) then
+			echo '*** Forcing depend...rerun build to compile'
+			set option = depend
+		endif
+	endif
+	#
+	switch ($target)
+	case gasoline:
+		set EXE = gasoline
+		set CODEDEF = -DGASOLINE
+		breaksw
+	case collisions:
+		set EXE = pkdgrav
+		set CODEDEF = -DCOLLISIONS
+		breaksw
+	case sand_pile:
+		set EXE = pkdgrav
+		set CODEDEF = "-DCOLLISIONS -DSAND_PILE"
+		breaksw
+	case sliding_patch:
+		set EXE = pkdgrav
+		set CODEDEF = "-DCOLLISIONS -DSLIDING_PATCH"
+		breaksw
+	default:
+		set EXE = pkdgrav
+		set CODEDEF =
+	endsw
+	#
+	if ($option == depend) then
+		makedepend -f$mode/$template -Y -- $CODEDEF -- *.c >& /dev/null
+		pushd $mdl/$mode >& /dev/null
+		makedepend -f$template -Y -- $CODEDEF -- *.c >& /dev/null
+		popd >& /dev/null
+		continue
+	endif
+	#
+	if !(-d $mode/$OS) then
+		echo Creating $mode/$OS directory
+		mkdir $mode/$OS
+		if ($status) continue
+	endif
+	#
+	if !(-d $mdl/$mode/$OS) then
+		echo Creating $mdl/$mode/$OS directory
+		mkdir $mdl/$mode/$OS
+		if ($status) continue
+	endif
+	#
+	switch ($option)
+	case optimize:
+		set CFLAGS = -O2
+#		set LDFLAGS = -Wl,-s
+		set LDFLAGS =
+		breaksw
+	case debug:
+		set CFLAGS = -g
+		set LDFLAGS =
+		breaksw
+	case profile:
+		set CFLAGS = '-pg -O2'
+		set LDFLAGS = '-pg -static'
+		breaksw
+	default:
+		set CFLAGS =
+		set LDFLAGS =
+	endsw
+	#
+	set XLIB =
+	#
+	set MAKE = gmake
+	set CC = (gcc -Wall)
+	#
+	switch ($OS)
+	case IRIX:
+		set MAKE = /local/bin/gnu/make
+		if ($mode == pvm) set PVM_ARCH = SGI5
+		breaksw
+	case IRIX64:
+		set MAKE = /local/bin/make
+		set CC = cc
+		set CFLAGS = ($CFLAGS -mips4 -64)
+		if ($mode == mpi) set XLIB = -lmpi
+		if ($mode == pvm) set PVM_ARCH = SGI64
+		breaksw
+	case Linux-alpha:
+		set LDFLAGS = (-L/local/lib $LDFLAGS) # fix sqrt() bug
+		breaksw
+	case Linux-i686:
+	#	set CC = (/usr/local/bin/gcc -Wall)
+	#	if ($mode != mpi) set CFLAGS = ($CFLAGS -malign-double -mstack-align-double -mpentium)
+		breaksw
+	endsw
+	#
+	switch ($mode)
+	case mpi:
+		if ($OS != IRIX64) set CC = mpicc
+		breaksw
+	case pvm:
+		if ($?PVM_ARCH) then
+			set XLIB = /local/lib/pvm3/lib/$PVM_ARCH/libpvm3.a
+		else
+			set XLIB = libpvm3.a
+		endif
+		breaksw
+	endsw
+	#
+	alias make $MAKE
+	#
+	foreach dest ({$mdl/,}$mode/$OS)
+		mv -f $dest/Makefile{,.old} >& /dev/null
+		cat $dest/../$template |\
+			sed s/BUILD_OS/"$OS"/ |\
+			sed s@BUILD_MAKE@"$MAKE"@ |\
+			sed s/BUILD_EXE/"$EXE"/ |\
+			sed s@BUILD_CC@"$CC"@ |\
+			sed s/BUILD_CODEDEF/"$CODEDEF"/ |\
+			sed s@BUILD_CFLAGS@"$CFLAGS"@ |\
+			sed s@BUILD_LDFLAGS@"$LDFLAGS"@ |\
+			sed s/BUILD_OBJ/"$OBJ"/ |\
+			sed s@BUILD_XLIB@"$XLIB"@ >! $dest/Makefile
+		chmod a-w $dest/Makefile
+		diff $dest/Makefile{,.old} >& /dev/null
+		if ($status == 1) rm -f $dest/*.o >& /dev/null
+	end
+	#
+	pushd $mode/$OS >& /dev/null
+	if ($target == clean) then
+		make clean
+		@ rv = $status
+	else
+		make
+		@ rv = $status
+	endif
+	popd >& /dev/null
+	#
+	if ($rv) then
+		echo Error code $rv occured during make
+		continue
+	endif
+	if ($target == clean) continue
+	#
+	echo Done building $cwd/$mode/$OS/$EXE
+	#
+	if ($mode == pvm && $?PVM_ARCH) then
+		set pvm_dir = ~/pvm3/bin/$PVM_ARCH
+		if !(-e $pvm_dir) mkdir -p $pvm_dir
+		if ($status) then
+			echo Unable to access $pvm_dir
+			continue
+		endif
+		rm -f $pvm_dir/$EXE
+		ln -s $cwd/$mode/$OS/$EXE $pvm_dir
+	endif
+	#
+end
+#

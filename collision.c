@@ -424,8 +424,8 @@ pkdDoCollision(PKD pkd,double dTime,double dt,
 			utx = ux - unx;
 			utz = uz - unz;
 			if (c1.bTinyStep) {
-				dEpsN = 1.0;
-				dEpsT = 1.0;
+				dEpsN = CP->dCollapseEpsN;
+				dEpsT = CP->dCollapseEpsT;
 				}
 			else if (CP->iSlideOption == MaxTrv &&
 					 fabs(c1.v[0]*nx + c1.v[2]*nz) < CP->dSlideLimit) {
@@ -534,8 +534,8 @@ pkdDoCollision(PKD pkd,double dTime,double dt,
 		double dEpsN=1,dEpsT=1;
 		iOutcome = BOUNCE;
 		if (c1.bTinyStep || c2.bTinyStep) {
-			dEpsN = 1.0;
-			dEpsT = 1.0;
+			dEpsN = CP->dCollapseEpsN;
+			dEpsT = CP->dCollapseEpsT;
 			}
 		else if ((CP->iSlideOption == EscVel && v2 < CP->dSlideLimit2*ve2) ||
 				 (CP->iSlideOption == MaxTrv && v2 < CP->dSlideLimit2)) {
@@ -700,7 +700,7 @@ pkdResetColliders(PKD pkd,int iOrder1,int iOrder2)
 		}
 	}
 
-
+#ifdef OLD_KEPLER/*DEBUG broken code*/
 /*
  **	dInteract solves a thorny problem in our planetesimal code, namely
  ** when two elliptical orbits come close enough to be considered 
@@ -1047,5 +1047,6 @@ dInteract(double dTime,double dDelta,double dCentMass,
 	 */
 	return(0);
 	}
+#endif /* OLD_KEPLER */
 
 #endif /* COLLISIONS */

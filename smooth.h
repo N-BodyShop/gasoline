@@ -439,8 +439,8 @@ void smMarkSmooth(SMX,SMF *, int);
 void smReSmooth(SMX,SMF *);
 void smGrowList(SMX smx);
 
-#ifdef COLLISIONS
+#ifdef OLD_KEPLER
 void smQQSmooth(SMX smx, SMF *smf);
-#endif /* COLLISIONS */
+#endif
 
 #endif

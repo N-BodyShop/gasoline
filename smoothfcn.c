@@ -1136,39 +1136,41 @@ FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	 ** first, otherwise the one with the higher iOrder is rejected.
 	 ** Note that only planetesimal neighbours not already rejected
 	 ** are considered. This procedure uses a combiner cache so that
-	 ** the neighbours of "p" can be flagged with maxium efficiency.
+	 ** the neighbours of "p" can be flagged with maximum efficiency.
 	 */
 
 	PARTICLE *pn;
-	double a,r,rh,rn,rhn,sr;
+	double a=0,r,r2,v2,an,rh,rn,sr;
 	int i;
 
 	if (p->iColor != PLANETESIMAL || p->dtCol < 0) return;
 
 	r = 2*p->fSoft; /* radius = 2 * softening */
 
-	/*
-	 ** For Hill radius, need estimate of orbital distance. For now,
-	 ** assume central mass at origin and all orbits lie in xy-plane.
-	 */
-
-	if (p->fHill < DBL_MAX) {
-		a = sqrt(p->r[0]*p->r[0] + p->r[1]*p->r[1]);
-		rh = a*p->fHill;
+	if (smf->dCentMass > 0) {
+		r2 = p->r[0]*p->r[0] + p->r[1]*p->r[1] + p->r[2]*p->r[2];
+		v2 = p->v[0]*p->v[0] + p->v[1]*p->v[1] + p->v[2]*p->v[2];
+		assert(r2 > 0); /* particle must not be at origin */
+		a = 2/sqrt(r2) - v2/(smf->dCentMass + p->fMass);
+		assert(a != 0); /* can't handle parabolic orbits */
+		a = 1/a;
 		}
-	else
-	    a = rh = 0;
 
 	for (i=0;i<nSmooth;i++) {
 		pn = nnList[i].pPart;
 		if (pn->iOrder == p->iOrder || pn->iColor != PLANETESIMAL ||
 			pn->dtCol < 0) continue;
 		rn = 2*pn->fSoft;
-		if (a) {
-			assert(pn->fHill < DBL_MAX);
-			rhn = a*pn->fHill; /* approximation */
+		if (smf->dCentMass > 0) {
+			r2 = pn->r[0]*pn->r[0] + pn->r[1]*pn->r[1] + pn->r[2]*pn->r[2];
+			v2 = pn->v[0]*pn->v[0] + pn->v[1]*pn->v[1] + pn->v[2]*pn->v[2];
+			assert(r2 > 0);
+			an = 2/sqrt(r2) - v2/(smf->dCentMass + pn->fMass);
+			assert(an != 0);
+			an = 1/an;
+			rh = pow((p->fMass + pn->fMass)/(3*smf->dCentMass),1.0/3)*(a+an)/2;
 			if (rh > r) r = rh;
-			if (rhn > rn) rn = rhn;
+			if (rh > rn) rn = rh;
 			}
 		if (rn > r || (rn == r && pn->iOrder < p->iOrder)) continue;
 		sr = r + rn;
@@ -1181,7 +1183,7 @@ _CheckForCollapse(PARTICLE *p,double dt,double rdotv,double r2,SMF *smf)
 {
 	/*
 	 ** Sets bTinyStep flag of particle "p" to 1 if collision time "dt"
-	 ** represents a fractional motion of less than "smf->dCollapse" times
+	 ** represents a fractional motion of less than "smf->dCollapseLimit" X
 	 ** the current separation distance ("rdotv" is the dot product of the
 	 ** relative position and relative velocity; "r2" is the square of the
 	 ** distance). This routine should only be called by CheckForCollision().
@@ -1190,7 +1192,7 @@ _CheckForCollapse(PARTICLE *p,double dt,double rdotv,double r2,SMF *smf)
 	double dRatio;
 
 	dRatio = rdotv*(p->dtColPrev - dt)/r2;
-	if (dRatio < smf->dCollapse) {
+	if (dRatio < smf->dCollapseLimit) {
 		char ach[256];
 		(void) sprintf(ach,"WARNING [T=%e]: Tiny step %i & %i "
 					   "(dt=%.16e, dRatio=%.16e)\n",smf->dTime,
@@ -1303,7 +1305,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			assert(dt < p->dtCol); /* can't handle simultaneous collisions */
 			p->dtCol = dt;
 			p->iOrderCol = pn->iOrder;
-			if (smf->dCollapse)
+			if (smf->dCollapseLimit)
 				_CheckForCollapse(p,dt,rdotv,nnList[i].fDist2,smf);
 			}
 		}
@@ -1333,7 +1335,8 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				if (dt > smf->dStart && dt <= smf->dEnd && dt < p->dtCol) {
 					p->dtCol = dt;
 					p->iOrderCol = -w->nWalls - i*2 - 1; /* endpt 1 encoding */
-					if (smf->dCollapse)	_CheckForCollapse(p,dt,rdotv,r2,smf);
+					if (smf->dCollapseLimit)
+						_CheckForCollapse(p,dt,rdotv,r2,smf);
 					}
 				}
 			}
@@ -1351,7 +1354,8 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				if (dt > smf->dStart && dt <= smf->dEnd && dt < p->dtCol) {
 					p->dtCol = dt;
 					p->iOrderCol = -w->nWalls - i*2 - 2; /* endpt 2 encoding */
-					if (smf->dCollapse) _CheckForCollapse(p,dt,rdotv,r2,smf);
+					if (smf->dCollapseLimit)
+						_CheckForCollapse(p,dt,rdotv,r2,smf);
 					}
 				}
 			}
@@ -1363,33 +1367,33 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			if (w->wall[i].x1 < p->r[0] && p->v[0] < 0) {
 				d = p->r[0] - w->wall[i].x1 - R;
 				dt = -d/p->v[0];
-				if (smf->dCollapse) rdotv = d*p->v[0];
+				if (smf->dCollapseLimit) rdotv = d*p->v[0];
 				}
 			else if (w->wall[i].x1 > p->r[0] && p->v[0] > 0) {
 				d = w->wall[i].x1 - p->r[0] - R;
 				dt = d/p->v[0];
-				if (smf->dCollapse) rdotv = -d*p->v[0];
+				if (smf->dCollapseLimit) rdotv = -d*p->v[0];
 				}
 			else continue;
 			x0 = 0; /* to satisfy compiler */
 			z0 = p->r[2] + p->v[2]*dt;
-			if (smf->dCollapse) r2 = d*d;
+			if (smf->dCollapseLimit) r2 = d*d;
 			}
 		else if (lz == 0) { /* horizontal wall */
 			if (w->wall[i].z1 < p->r[2] && p->v[2] < 0) {
 				d = p->r[2] - w->wall[i].z1 - R;
 				dt = -d/p->v[2];
-				if (smf->dCollapse) rdotv = d*p->v[2];
+				if (smf->dCollapseLimit) rdotv = d*p->v[2];
 				}
 			else if (w->wall[i].z1 > p->r[2] && p->v[2] > 0) {
 				d = w->wall[i].z1 - p->r[2] - R;
 				dt = d/p->v[2];
-				if (smf->dCollapse) rdotv = -d*p->v[2];
+				if (smf->dCollapseLimit) rdotv = -d*p->v[2];
 				}
 			else continue;
 			x0 = p->r[0] + p->v[0]*dt;
 			z0 = 0;
-			if (smf->dCollapse) r2 = d*d;
+			if (smf->dCollapseLimit) r2 = d*d;
 			}
 		else { /* oblique wall */
 			m = lz/lx;
@@ -1415,7 +1419,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			l = R/sqrt(l2);
 			x0 += nx*l;
 			z0 += nz*l;
-			if (smf->dCollapse) {
+			if (smf->dCollapseLimit) {
 				rdotv = (dp - R)*rdotv*l/R; /* roundabout... */
 				r2 = (dp - R)*(dp - R);
 				}
@@ -1435,7 +1439,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			assert(dt < p->dtCol); /* no simultaneous collisions allowed */
 			p->dtCol = dt;
 			p->iOrderCol = -1 - i; /* wall index encoding */
-			if (smf->dCollapse) _CheckForCollapse(p,dt,rdotv,r2,smf);
+			if (smf->dCollapseLimit) _CheckForCollapse(p,dt,rdotv,r2,smf);
 			}
 		}
 	}

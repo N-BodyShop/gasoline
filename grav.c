@@ -15,7 +15,7 @@ void v_sqrt1(int,double *,double *);
 #endif
 
 int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
-{	
+{
 	PARTICLE *p;
 	KDN *pkdn;
 	ILP *ilp;
@@ -26,6 +26,7 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	double x,y,z,dx,dy,dz,d2,h,twoh,a,b,c,d;
 	double dir2,qirx,qiry,qirz,qir,tr,qir3;
 	double gam[6];
+	double idt2; /* reciprocal square of symmetric timestep */
 	int nFlop;
 	int nActive = 0;
 #ifdef COMPLETE_LOCAL
@@ -84,7 +85,9 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			SPLINE(d2,twoh,a,b);
 #else
 			SPLINEM(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b);
-#endif
+#endif			
+			idt2 = (p[i].fMass + ilp[j].m)*b;
+			if (idt2 > p[i].dtGrav) p[i].dtGrav = idt2;
 			a *= ilp[j].m;
 			b *= ilp[j].m;
 			fPot -= a;
@@ -131,6 +134,8 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			ax -= qir3*dx - c*qirx;
 			ay -= qir3*dy - c*qiry;
 			az -= qir3*dz - c*qirz;
+			idt2 = (p[i].fMass + ilcs[j].m)*b;
+			if (idt2 > p[i].dtGrav) p[i].dtGrav = idt2;
 			}
 		/*
 		 ** Try a cache check to improve responsiveness?
@@ -174,6 +179,8 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 #else
 			QEVAL(iOrder,ilcn[j],gam,dx,dy,dz,ax,ay,az,fPot);
 #endif
+			idt2 = (p[i].fMass + ilcn[j].m)*gam[1];
+			if (idt2 > p[i].dtGrav) p[i].dtGrav = idt2;
 			}
 		p[i].fPot = fPot;
 		p[i].a[0] += ax;
@@ -204,17 +211,20 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			d2 = dx*dx + dy*dy + dz*dz;
 			twoh = p[i].fSoft + p[j].fSoft;
 			SPLINE(d2,twoh,a,b);
+			idt2 = (p[i].fMass + p[j].fMass)*b;
 			if (TYPEQueryACTIVE(&(p[j]))) {
 				p[j].fPot -= a*p[i].fMass;
 				p[j].a[0] -= dx*b*p[i].fMass;
 				p[j].a[1] -= dy*b*p[i].fMass;
 				p[j].a[2] -= dz*b*p[i].fMass;
+				if (idt2 > p[j].dtGrav) p[j].dtGrav = idt2;
 				}
 			if (TYPEQueryACTIVE(&(p[i]))) {
 				p[i].fPot -= a*p[j].fMass;
 				p[i].a[0] += dx*b*p[j].fMass;
 				p[i].a[1] += dy*b*p[j].fMass;
 				p[i].a[2] += dz*b*p[j].fMass;
+				if (idt2 > p[i].dtGrav) p[i].dtGrav = idt2;
 				}
 			}
 		}

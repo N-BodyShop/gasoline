@@ -298,8 +298,6 @@ double csmComoveKickFac(CSM csm,double dTime,double dDelta)
 
 double csmComoveLookbackTime2Exp(CSM csm,double dComoveTime)
 {
-	double dHubble0 = csm->dHubble0;
-
 	if (!csm->bComove) return(1.0);
 	else {
 	    double dExpOld = 0.0;

@@ -26,7 +26,7 @@ typedef struct smfParameters {
 	double dCentMass;
 	double dStart; /* collision search time interval */
 	double dEnd;
-	double dCollapse; /* limit for inelastic collapse checks */
+	double dCollapseLimit; /* limit for inelastic collapse checks */
 #endif
 #ifdef SLIDING_PATCH
 	double dOrbFreq;
@@ -110,8 +110,10 @@ void initFindRejects(void *p);
 void combFindRejects(void *p1, void *p2);
 void FindRejects(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
 
+#ifdef OLD_KEPLER
 #define SMX_ENCOUNTER			8
 void CheckForEncounter(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
+#endif
 
 #define SMX_COLLISION			9
 void CheckForCollision(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);

@@ -97,10 +97,11 @@ enum pst_service {
       PST_SETRUNG,
       PST_ACTIVERUNG,
       PST_CURRRUNG,
+      PST_GRAVSTEP,
+      PST_ACCELSTEP,
       PST_DENSITYSTEP,
       PST_RUNGSTATS,
       PST_GETMAP,
-      PST_ACCELSTEP,
       PST_COOLVELOCITY,
       PST_RESETTOUCHRUNG,
       PST_ACTIVEEXACTTYPE,
@@ -133,8 +134,6 @@ enum pst_service {
       PST_NUMREJECTS,
       PST_READSS,
       PST_WRITESS,
-      PST_CALCHILL,
-      PST_HELIOSTEP,
 	  PST_KICKUNIFGRAV,
       PST_NEXTENCOUNTER,
       PST_MARKENCOUNTERS,
@@ -142,10 +141,12 @@ enum pst_service {
 	  PST_GETCOLLIDERINFO,
       PST_DOCOLLISION,
 	  PST_RESETCOLLIDERS,
+#ifdef OLD_KEPLER
       PST_QQCALCBOUND,
       PST_QQDOMAINDECOMP,
       PST_QQBUILDTREE,
       PST_QQSMOOTH,
+#endif
       PST_SPHSTEP,
       PST_SPHVISCOSITYLIMITER,
       PST_INITCOOLING,
@@ -567,6 +568,23 @@ struct outCurrRung {
     };
 void pstCurrRung(PST,void *,int,void *,int *);
 
+/* PST_GRAVSTEP */
+struct inGravStep {
+    double dEta;
+    };
+void pstGravStep(PST,void *,int,void *,int *);
+
+/* PST_ACCELSTEP */
+struct inAccelStep {
+    double dEta;
+    double dVelFac;
+    double dAccFac;
+    int    bDoGravity;
+    int    bEpsAcc;
+    int    bSqrtPhi;
+    };
+void pstAccelStep(PST,void *,int,void *,int *);
+
 /* PST_DENSITYSTEP */
 struct inDensityStep {
     double dEta;
@@ -588,17 +606,6 @@ struct inGetMap {
 	int nStart;
 	};
 void pstGetMap(PST,void *,int,void *,int *);
-
-/* PST_ACCELSTEP */
-struct inAccelStep {
-    double dEta;
-    double dVelFac;
-    double dAccFac;
-    int    bDoGravity;
-    int bEpsVel;
-    int bSqrtPhi;
-    };
-void pstAccelStep(PST,void *,int,void *,int *);
 
 /* PST_COOLVELOCITY */
 struct inCoolVelocity {
@@ -867,25 +874,11 @@ struct inWriteSS {
 	};
 void pstWriteSS(PST,void *,int,void *,int *);
 
-/* PST_CALCHILL */
-struct inCalcHill {
-	double dCentMass;
-	};
-void pstCalcHill(PST,void *,int,void *,int *);
-
-/* PST_HELIOSTEP */
-struct inHelioStep {
-	double dEta;
-	};
-void pstHillStep(PST,void *,int,void *,int *);
-
 /* #define PST_FINDENCOUNTER	67 */
 struct outFindEncounter {
 	double dNext;
 	};
 void pstFindEncounter(PST,void *,int,void *,int *);
-
-void pstHelioStep(PST,void *,int,void *,int *);
 
 /* PST_KICKUNIFGRAV */
 struct inKickUnifGrav {
@@ -947,6 +940,7 @@ struct inResetColliders {
 	};
 void pstResetColliders(PST,void *,int,void *,int *);
 
+#ifdef OLD_KEPLER
 /* PST_QQCALCBOUND */
 void pstQQCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
@@ -958,8 +952,9 @@ void pstQQBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
 /* PST_QQSMOOTH */
 void pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut);
-
 #endif
+
+#endif /* COLLISIONS */
 
 #ifdef SLIDING_PATCH
 

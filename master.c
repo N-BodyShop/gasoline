@@ -299,14 +299,17 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.duDotLimit = -0.2;
 	prmAddParam(msr->prm,"duDotLimit",2,&msr->param.duDotLimit,sizeof(double),"uDL",
 				"<uDotLimit:  Treat udot/u < duDotLimit specially> = -0.2 < 0");
-	msr->param.bEpsVel = 1;
-	prmAddParam(msr->prm,"bEpsVel",0,&msr->param.bEpsVel,sizeof(int),
-				"ev", "<Epsilon on V (or sqrt(Eps/a)) timestepping>");
-	msr->param.bSqrtPhi = 0;
-	prmAddParam(msr->prm,"bSqrtPhi",0,&msr->param.bSqrtPhi,sizeof(int),
+	msr->param.bGravStep = 0;
+	prmAddParam(msr->prm,"bGravStep",0,&msr->param.bGravStep,sizeof(int),
+				"gs","<Symmetric gravity timestepping (sqrt(r^3/(mi + mj)))>");
+	msr->param.bEpsAccStep = 1;
+	prmAddParam(msr->prm,"bEpsAccStep",0,&msr->param.bEpsAccStep,sizeof(int),
+				"ea", "<Sqrt(Epsilon on a) timestepping>");
+	msr->param.bSqrtPhiStep = 0;
+	prmAddParam(msr->prm,"bSqrtPhiStep",0,&msr->param.bSqrtPhiStep,sizeof(int),
 				"sphi", "<Sqrt(Phi) on a timestepping>");
-	msr->param.bISqrtRho = 0;
-	prmAddParam(msr->prm,"bISqrtRho",0,&msr->param.bISqrtRho,sizeof(int),
+	msr->param.bDensityStep = 0;
+	prmAddParam(msr->prm,"bDensityStep",0,&msr->param.bDensityStep,sizeof(int),
 				"isrho", "<Sqrt(1/Rho) timestepping>");
 	msr->param.bNonSymp = 1;
 	prmAddParam(msr->prm,"bNonSymp",0,&msr->param.bNonSymp,sizeof(int),
@@ -481,6 +484,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				sizeof(int),"wall",
 				"<Maximum Wallclock time (in minutes) to run> = 0 = infinite");
 #ifdef GASOLINE
+	msr->param.bSphStep = 1;
+	prmAddParam(msr->prm,"bSphStep",0,&msr->param.bSphStep,sizeof(int),
+				"ss","<SPH timestepping>");
 #ifdef SUPERNOVA
 	msr->param.bSN = 0;
 	prmAddParam(msr->prm,"bSN",0,&msr->param.bSN,sizeof(int),"SN",
@@ -600,9 +606,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"gy","<y component of uniform gravity field> = 0");
 	prmAddParam(msr->prm,"dzUnifGrav",2,&msr->param.dzUnifGrav,sizeof(double),
 				"gz","<z component of uniform gravity field> = 0");
-	msr->param.dCollapse = 1.0e-12;
-	prmAddParam(msr->prm,"dCollapse",2,&msr->param.dCollapse,
-				sizeof(double),"collapse","<Collapse limit> = 1e-15");
 	msr->param.CP.iOutcomes = BOUNCE;
 	prmAddParam(msr->prm,"iOutcomes",1,&msr->param.CP.iOutcomes,
 				sizeof(int),"outcomes","<Allowed collision outcomes> = 0");
@@ -627,6 +630,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.CP.dSlideEpsT = 1.0;
 	prmAddParam(msr->prm,"dSlideEpsT",2,&msr->param.CP.dSlideEpsT,
 				sizeof(double),"sepst","<epst if speed less than minimum> = 1");
+	msr->param.CP.dCollapseLimit = 0;
+	prmAddParam(msr->prm,"dCollapseLimit",2,&msr->param.CP.dCollapseLimit,
+				sizeof(double),"collapse","<Inelastic collapse parameter> = 0");
+	msr->param.CP.dCollapseEpsN = 1.0;
+	prmAddParam(msr->prm,"dCollapseEpsN",2,&msr->param.CP.dCollapseEpsN,
+				sizeof(double),"cepsn","<epsn for inelastic collapse> = 1");
+	msr->param.CP.dCollapseEpsT = 1.0;
+	prmAddParam(msr->prm,"dCollapseEpsT",2,&msr->param.CP.dCollapseEpsT,
+				sizeof(double),"cepst","<epst for inelastic collapse> = 1");
 	msr->param.CP.dCrushLimit = 0.0; /* i.e. no limit, set to DBL_MAX below */
 	prmAddParam(msr->prm,"dCrushLimit",2,&msr->param.CP.dCrushLimit,
 				sizeof(double),"crush","<Maximum impact speed squared> = 0");
@@ -789,6 +801,21 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	assert(msr->pdOutTime != NULL);
 	msr->nOuts = 0;
 
+	/*
+	 ** Check timestepping schemes.
+	 */
+
+	if (msr->param.bGravStep && !msr->param.bDoGravity) {
+		puts("ERROR: need gravity to use gravity stepping...");
+		_msrExit(msr,1);
+		}
+	if (msr->param.bEpsAccStep || msr->param.bSqrtPhiStep) {
+		msr->param.bAccelStep = 1;
+		}
+#ifdef GASOLINE
+	assert(msr->param.bSphStep);
+#endif
+
 #ifdef GASOLINE
 	if(msr->param.iGasModel != GASMODEL_COOLING &&
 	   msr->param.iGasModel != GASMODEL_COOLING_NONEQM) {
@@ -921,17 +948,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			if (msr->param.bVStart)
 				printf("Collision log: \"%s\"\n",msr->param.achCollLog);
 			}
-		if (msr->param.dCollapse < 0) {
-			puts("ERROR: collapse limit must be >= 0");
-			_msrExit(msr,1);
-			}
 		if (!(CP->iOutcomes & (MERGE | BOUNCE | FRAG))) {
 			puts("ERROR: must specify one of MERGE/BOUNCE/FRAG");
 			_msrExit(msr,1);
 			}
-		if (msr->param.dCollapse && (!CP->iOutcomes & BOUNCE)) {
+		if (!(CP->iOutcomes & BOUNCE) && CP->dCollapseLimit) {
 			puts("WARNING: collapse detection disabled (no bouncing)");
-			msr->param.dCollapse = 0;
+			CP->dCollapseLimit = 0;
 			}
 		if (CP->iOutcomes & BOUNCE) {
 			if (CP->iBounceOption < ConstEps ||
@@ -939,9 +962,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				puts("ERROR: invalid bounce option");
 				_msrExit(msr,1);
 				}
-			if (CP->dSlideLimit < 0 ||
+			if (CP->dSlideLimit < 0 || CP->dCollapseLimit < 0 ||
 				CP->dCrushLimit < 0) {
-				puts("ERROR: invalid slide or crush limit specified");
+				puts("ERROR: invalid slide, collapse, and/or crush limit");
 				_msrExit(msr,1);
 				}
 			if (CP->dCrushLimit == 0)
@@ -1068,9 +1091,6 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef SAND_PILE
 	fprintf(fp," SAND_PILE");
 #endif
-#ifdef HELIO_STEP
-	fprintf(fp," HELIO_STEP");
-#endif
 #ifdef _REENTRANT
 	fprintf(fp," _REENTRANT");
 #endif
@@ -1122,9 +1142,10 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dEta: %g",msr->param.dEta);
 	fprintf(fp," dEtaCourant: %g",msr->param.dEtaCourant);
 	fprintf(fp," iMaxRung: %d",msr->param.iMaxRung);
-	fprintf(fp,"\n# bEpsVel: %d",msr->param.bEpsVel);
-	fprintf(fp," bSqrtPhi: %d",msr->param.bSqrtPhi);
-	fprintf(fp," bISqrtRho: %d",msr->param.bISqrtRho);
+	fprintf(fp,"\n# bGravStep: %d",msr->param.bGravStep);
+	fprintf(fp," bEpsAccStep: %d",msr->param.bEpsAccStep);
+	fprintf(fp," bSqrtPhiStep: %d",msr->param.bSqrtPhiStep);
+	fprintf(fp," bDensityStep: %d",msr->param.bDensityStep);
 	fprintf(fp," bNonSymp: %d",msr->param.bNonSymp);
 	fprintf(fp,"\n# bDoGravity: %d",msr->param.bDoGravity);
 	fprintf(fp," bFandG: %d",msr->param.bFandG);
@@ -1133,8 +1154,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
 	fprintf(fp," bFastGas: %d",msr->param.bFastGas);
 	fprintf(fp," dFracFastGas: %g",msr->param.dFracFastGas);
-        fprintf(fp," bRungDD: %d",msr->param.bRungDD);
-        fprintf(fp," dRungDDWeight: %g ",msr->param.dRungDDWeight);
+	fprintf(fp," bRungDD: %d",msr->param.bRungDD);
+	fprintf(fp," dRungDDWeight: %g ",msr->param.dRungDDWeight);
 #ifdef GROWMASS
 	fprintf(fp,"\n# GROWMASS: nGrowMass: %d",msr->param.nGrowMass);
 	fprintf(fp," dGrowDeltaM: %g",msr->param.dGrowDeltaM);
@@ -1156,6 +1177,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# bViscosityLimiter: %d",msr->param.bViscosityLimiter);
 	fprintf(fp," bBulkViscosity: %d",msr->param.bBulkViscosity);
 	fprintf(fp," bGasDomainDecomp: %d",msr->param.bGasDomainDecomp);
+	fprintf(fp," bSphStep: %d",msr->param.bSphStep);
 #endif
 #ifdef COLLISIONS
 	fprintf(fp,"\n# Collisions:");
@@ -1167,7 +1189,6 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dzUnifGrav: %g",msr->param.dzUnifGrav);
 	fprintf(fp,"\n# bPatch: %d",msr->param.bPatch);
 	fprintf(fp," dOrbFreq: %g",msr->param.dOrbFreq);
-	fprintf(fp," dCollapse: %g",msr->param.dCollapse);
     fprintf(fp,"\n# iOutcomes: %d",msr->param.CP.iOutcomes);
 	fprintf(fp," iBounceOption: %d",msr->param.CP.iBounceOption);
     fprintf(fp," dEpsN: %g",msr->param.CP.dEpsN);
@@ -1176,6 +1197,9 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dSlideLimit: %g",msr->param.CP.dSlideLimit);
     fprintf(fp," dSlideEpsN: %g",msr->param.CP.dSlideEpsN);
     fprintf(fp," dSlideEpsT: %g",msr->param.CP.dSlideEpsT);
+    fprintf(fp,"\n# dCollapseLimit: %g",msr->param.CP.dCollapseLimit);
+    fprintf(fp," dCollapseEpsN: %g",msr->param.CP.dCollapseEpsN);
+    fprintf(fp," dCollapseEpsT: %g",msr->param.CP.dCollapseEpsT);
     fprintf(fp,"\n# dCrushLimit: %g",msr->param.CP.dCrushLimit);
     fprintf(fp," dCrushEpsN: %g",msr->param.CP.dCrushEpsN);
     fprintf(fp," dCrushEpsT: %g",msr->param.CP.dCrushEpsT);
@@ -2160,9 +2184,13 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.bCannonical = msr->param.bCannonical;
 	in.smf.bGrowSmoothList = 0;
 #endif
+#ifdef COLLISIONS
+	in.smf.dCentMass = msr->param.dCentMass; /* for Hill sphere checks */
+#endif
 #ifdef SLIDING_PATCH /* called by msrFindRejects() only */
 	in.smf.dOrbFreq = msr->param.dOrbFreq;
 	in.smf.dTime = dTime;
+	in.smf.dCentMass = 0; /* to disable Hill sphere checks */
 #endif
 	if (msr->param.bVStep) {
 		double sec,dsec;
@@ -2984,8 +3012,8 @@ double msrReadCheck(MSR msr,int *piStep)
 	    if (!prmSpecified(msr->prm,"dEtaCourant"))
 		FDL_read(fdl,"dEtaCourant",&msr->param.dEtaCourant);
 	    }
-	if (!prmSpecified(msr->prm,"bEpsVel"))
-		FDL_read(fdl,"bEpsVel",&msr->param.bEpsVel);
+	if (!prmSpecified(msr->prm,"bEpsAccStep"))
+		FDL_read(fdl,"bEpsAccStep",&msr->param.bEpsAccStep);
 	if (!prmSpecified(msr->prm,"bNonSymp"))
 		FDL_read(fdl,"bNonSymp",&msr->param.bNonSymp);
 	if (!prmSpecified(msr->prm,"iMaxRung"))
@@ -3268,7 +3296,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"dDelta",&msr->param.dDelta);
 	FDL_write(fdl,"dEta",&msr->param.dEta);
 	FDL_write(fdl,"dEtaCourant",&msr->param.dEtaCourant);
-	FDL_write(fdl,"bEpsVel",&msr->param.bEpsVel);
+	FDL_write(fdl,"bEpsAccStep",&msr->param.bEpsAccStep);
 	FDL_write(fdl,"bNonSymp",&msr->param.bNonSymp);
 	FDL_write(fdl,"iMaxRung",&msr->param.iMaxRung);
 	FDL_write(fdl,"dEwCut",&msr->param.dEwCut);
@@ -3713,39 +3741,48 @@ int msrCurrRung(MSR msr, int iRung)
     return out.iCurrent;
     }
 
-
-void msrDensityStep(MSR msr, double dTime)
+void
+msrGravStep(MSR msr)
 {
-    struct inDensityStep in;
-    double expand;
+    struct inGravStep in;
 
-    if (msr->param.bVDetails) printf("Calculating Rung Densities...\n");
-    msrSmooth(msr, dTime, SMX_DENSITY, 0);
     in.dEta = msrEta(msr);
-    expand = csmTime2Exp(msr->param.csm, dTime);
-    in.dRhoFac = 1.0/(expand*expand*expand);
-    pstDensityStep(msr->pst, &in, sizeof(in), NULL, NULL);
+    pstGravStep(msr->pst,&in,sizeof(in),NULL,NULL);
     }
 
-
-void msrAccelStep(MSR msr, double dTime)
+void
+msrAccelStep(MSR msr,double dTime)
 {
     struct inAccelStep in;
     double a;
 
     in.dEta = msrEta(msr);
     a = csmTime2Exp(msr->param.csm,dTime);
-    if(msr->param.bCannonical) {
-	in.dVelFac = 1.0/(a*a);
+    if (msr->param.bCannonical) {
+		in.dVelFac = 1.0/(a*a);
 	}
     else {
-	in.dVelFac = 1.0;
+		in.dVelFac = 1.0;
 	}
     in.dAccFac = 1.0/(a*a*a);
     in.bDoGravity = msrDoGravity(msr);
-    in.bEpsVel = msr->param.bEpsVel;
-    in.bSqrtPhi = msr->param.bSqrtPhi;
-    pstAccelStep(msr->pst, &in, sizeof(in), NULL, NULL);
+    in.bEpsAcc = msr->param.bEpsAccStep;
+    in.bSqrtPhi = msr->param.bSqrtPhiStep;
+    pstAccelStep(msr->pst,&in,sizeof(in),NULL,NULL);
+    }
+
+void
+msrDensityStep(MSR msr,double dTime)
+{
+    struct inDensityStep in;
+    double expand;
+
+    if (msr->param.bVDetails) printf("Calculating Rung Densities...\n");
+    msrSmooth(msr,dTime,SMX_DENSITY,0);
+    in.dEta = msrEta(msr);
+    expand = csmTime2Exp(msr->param.csm,dTime);
+    in.dRhoFac = 1.0/(expand*expand*expand);
+    pstDensityStep(msr->pst,&in,sizeof(in),NULL,NULL);
     }
 
 void
@@ -3754,7 +3791,7 @@ msrInitDt(MSR msr)
     struct inInitDt in;
     
     in.dDelta = msrDelta(msr);
-    pstInitDt(msr->pst, &in, sizeof(in), NULL, NULL);
+    pstInitDt(msr->pst,&in,sizeof(in),NULL,NULL);
     }
 
 void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
@@ -3786,24 +3823,26 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 			msrDrift(msr,dTime,0.5*dDelta);
 			dTime += 0.5*dDelta;
 			msrInitDt(msr);
-#ifdef COLLISIONS
-			assert(0); /* DKD multi-stepping unsupported for COLLISIONS */
-#endif
-			if(msr->param.bEpsVel || msr->param.bSqrtPhi) {
+			if (msr->param.bGravStep || msr->param.bAccelStep) {
 			    msrInitAccel(msr);
 			    msrDomainDecomp(msr);
-			    msrActiveRung(msr, iRung, 1);
+			    msrActiveRung(msr,iRung,1);
 			    msrBuildTree(msr,0,dMass,0);
 			    msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
-			    msrAccelStep(msr, dTime);
+				if (msr->param.bGravStep) {
+					msrGravStep(msr);
+					}
+				if (msr->param.bAccelStep) {
+					msrAccelStep(msr,dTime);
+					}
 			    }
-			if(msr->param.bISqrtRho) {
+			if (msr->param.bDensityStep) {
 			    msrDomainDecomp(msr);
-			    msrActiveRung(msr, iRung, 1);
+			    msrActiveRung(msr,iRung,1);
 			    msrBuildTree(msr,0,dMass,1);
-			    msrDensityStep(msr, dTime);
+			    msrDensityStep(msr,dTime);
 			    }
-			msrDtToRung(msr, iRung, dDelta, 0);
+			msrDtToRung(msr,iRung,dDelta,0);
 			msrDrift(msr,dTime,-0.5*dDelta);
 			dTime -= 0.5*dDelta;
 			}
@@ -3894,23 +3933,24 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 		if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
 			if (msr->param.bVDetails) printf("Adjust, iRung: %d\n", iRung);
 			msrActiveRung(msr,iRung,1);
- 			msrActiveType(msr,TYPE_ALL,TYPE_SMOOTHACTIVE|TYPE_TREEACTIVE );
+ 			msrActiveType(msr,TYPE_ALL,TYPE_SMOOTHACTIVE|TYPE_TREEACTIVE);
 			msrInitDt(msr);
-#ifdef HELIO_STEP
-			msrHelioStep(msr);
-#else
-			if(msr->param.bEpsVel || msr->param.bSqrtPhi) {
+			if (msr->param.bGravStep) {
+				msrGravStep(msr);
+				}
+			if (msr->param.bAccelStep) {
 			    msrAccelStep(msr,dTime);
-			    }
-			if(msr->param.bISqrtRho) {
+				}
+			if (msr->param.bDensityStep) {
 				msrDomainDecomp(msr);
 			    msrActiveRung(msr,iRung,1);
 			    msrBuildTree(msr,0,dMass,1);
 			    msrDensityStep(msr,dTime);
 			    }
-#endif
 #ifdef GASOLINE
-			msrSphStep(msr,dTime);
+			if (msr->param.bSphStep) {
+				msrSphStep(msr,dTime);
+				}
 #endif
 			msrDtToRung(msr,iRung,dDelta,1);
 			}
@@ -3973,6 +4013,10 @@ void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta,
 {
 	int iRung = 0;
 
+#ifdef COLLISIONS
+	assert(0); /* DKD multi-stepping unsupported for COLLISIONS */
+#endif
+
 	*pdMultiEff = 0.0;
 	if(msr->param.bNonSymp)
 		msrTopStepNS(msr,dStep,dTime,dDelta,iRung,1,pdMultiEff);
@@ -4009,22 +4053,24 @@ void msrTopStepKDK(MSR msr,
     if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
 		if (msr->param.bVDetails) printf("Adjust, iRung: %d\n",iRung);
 		msrActiveRung(msr, iRung, 1);
-		msrActiveType(msr, TYPE_ALL, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+		msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 		msrInitDt(msr);
-#ifdef HELIO_STEP
-		msrHelioStep(msr);
-#else
-		if(msr->param.bEpsVel || msr->param.bSqrtPhi)
-		    msrAccelStep(msr, dTime);
-		if(msr->param.bISqrtRho) {
+		if (msr->param.bGravStep) {
+			msrGravStep(msr);
+			}
+		if (msr->param.bAccelStep) {
+		    msrAccelStep(msr,dTime);
+			}
+		if (msr->param.bDensityStep) {
 			msrDomainDecomp(msr);
 		    msrActiveRung(msr,iRung,1);
 		    msrBuildTree(msr,0,dMass,1);
 		    msrDensityStep(msr,dTime);
 		    }
-#endif
 #ifdef GASOLINE
-		msrSphStep(msr,dTime);
+		if (msr->param.bSphStep) {
+			msrSphStep(msr,dTime);
+			}
 #endif
 		msrDtToRung(msr,iRung,dDelta,1);
 		if (iRung == 0) msrRungStats(msr);
@@ -4164,8 +4210,7 @@ void msrTopStepKDK(MSR msr,
 #endif
 				msrBallMax(msr,iKickRung,1);
 				}
-
-                        if (msr->param.bSN) msrAddSupernova(msr, dTime);
+			if (msr->param.bSN) msrAddSupernova(msr, dTime);
 			}
 #endif /* GASOLINE */
 
@@ -4178,7 +4223,7 @@ void msrTopStepKDK(MSR msr,
 			msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
 			}
-    		}
+		}
     if (msr->param.bVDetails) printf("Kick, iRung: %d\n",iRung);
     msrActiveRung(msr,iRung,0);
 #ifdef GASOLINE
@@ -4270,16 +4315,22 @@ void msrInitTimeSteps(MSR msr,double dTime,double dDelta)
 
 	msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 	msrInitDt(msr);
-	if(msr->param.bEpsVel || msr->param.bSqrtPhi)
-		msrAccelStep(msr, dTime);
-	if(msr->param.bISqrtRho) {
+	if (msr->param.bGravStep) {
+		msrGravStep(msr);
+		}
+	if (msr->param.bAccelStep) {
+		msrAccelStep(msr,dTime);
+		}
+	if (msr->param.bDensityStep) {
 		msrDomainDecomp(msr);
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 		msrBuildTree(msr,0,dMass,1);
 		msrDensityStep(msr,dTime);
 		}
 #ifdef GASOLINE
-	msrSphStep(msr,dTime);
+	if (msr->param.bSphStep) {
+		msrSphStep(msr,dTime);
+		}
 #endif
 	msrDtToRung(msr,0,dDelta,1);
 	msrRungStats(msr);
@@ -4598,9 +4649,9 @@ msrFindRejects(MSR msr)
 	 ** Checks initial conditions for particles with overlapping physical
 	 ** or Hill spheres. The latter case only makes sense for particles
 	 ** orbiting a massive central body, like the Sun, and is controlled by
-	 ** the value of msr->dCentMass (cf. pkdCalcHill()). Rejects are written
-	 ** to REJECTS_FILE (cf. ssdefs.h). This procedure is intended to be
-	 ** called iteratively from an external initial-conditions program.
+	 ** the value of msr->dCentMass. Rejects are written to REJECTS_FILE
+	 ** (cf. ssdefs.h). This procedure is intended to be called iteratively
+	 ** from an external initial-conditions program.
 	 */
 
 	int nRej = 0;
@@ -4780,28 +4831,6 @@ msrWriteSS(MSR msr,char *pszFileName,double dTime)
 		}
 
 	if (msr->param.bVDetails) puts("Output file successfully written.");
-	}
-
-void
-msrCalcHill(MSR msr)
-{
-	static int bFirstCall = TRUE;
-
-	struct inCalcHill in;
-
-	if (!bFirstCall && !msr->param.dCentMass) return; /*DEBUG hacky*/
-	in.dCentMass = msr->param.dCentMass;
-	pstCalcHill(msr->pst,&in,sizeof(in),NULL,NULL);
-	bFirstCall = TRUE;
-	}
-
-void
-msrHelioStep(MSR msr)
-{
-	struct inHelioStep in;
-
-	in.dEta = msr->param.dEta;
-	pstHelioStep(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
 void
@@ -5022,7 +5051,7 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 		printf("Start collision search (dTime=%e,dDelta=%e)...\n",
 			   dTime,dDelta);
 	sec = msrTime();
-	msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+	msrActiveType(msr,TYPE_ALL,TYPE_ALLACTIVE);
 	smooth.nSmooth = msr->param.nSmooth;
 	smooth.bPeriodic = msr->param.bPeriodic;
 	smooth.bSymmetric = 0;
@@ -5030,7 +5059,7 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 	smooth.smf.dTime = dTime;
 	smooth.smf.dStart = 0;
 	smooth.smf.dEnd = dDelta;
-	smooth.smf.dCollapse = msr->param.dCollapse;
+	smooth.smf.dCollapseLimit = msr->param.CP.dCollapseLimit;
 	inDo.bPeriodic = smooth.bPeriodic;
 	inDo.dTime = smooth.smf.dTime;
 #ifdef SLIDING_PATCH
@@ -5096,12 +5125,12 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 				}
 			else {
 #endif
-			inGet.iOrder = next.iOrder2;
-			pstGetColliderInfo(msr->pst,&inGet,sizeof(inGet),&outGet,NULL);
-			assert(outGet.Collider.id.iOrder == inGet.iOrder);
-			inDo.Collider2 = outGet.Collider;
+				inGet.iOrder = next.iOrder2;
+				pstGetColliderInfo(msr->pst,&inGet,sizeof(inGet),&outGet,NULL);
+				assert(outGet.Collider.id.iOrder == inGet.iOrder);
+				inDo.Collider2 = outGet.Collider;
 #ifdef SAND_PILE
-			}
+				}
 #endif
 			inDo.CP = msr->param.CP;
 			pstDoCollision(msr->pst,&inDo,sizeof(inDo),&outDo,NULL);
@@ -5193,7 +5222,6 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 			} /* if collision */
 		} while (COLLISION(next.dt) && smooth.smf.dStart < smooth.smf.dEnd);
 	msrAddDelParticles(msr); /* clean up any deletions */
-	msrCalcHill(msr); /* recalculate reduced Hill spheres *//*DEBUG inefficient!*/
 	if (msr->param.bVStep) {
 		double dsec = msrTime() - sec;
 		printf("%i collision%s: %i miss%s, %i merger%s, %i bounce%s, %i frag%s\n",
@@ -5203,6 +5231,7 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 		}
 	}
 
+#ifdef OLD_KEPLER
 void
 msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 {
@@ -5247,6 +5276,7 @@ msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 	free(pkdn);
 	msrMassCheck(msr,dMass,"After pstDistribCells in msrBuildQQ");
 	}
+#endif
 
 #endif /* COLLISIONS */
 

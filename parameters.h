@@ -23,9 +23,11 @@ struct parameters {
 	int bStandard;
 	int bKDK;
 	int bBinary;
-	int bEpsVel;
-	int bSqrtPhi;
-	int bISqrtRho;
+	int bGravStep;
+	int bEpsAccStep;
+	int bSqrtPhiStep;
+	int bAccelStep; /* true if bEpsAccStep or bSqrtPhiStep */
+	int bDensityStep;
 	int bNonSymp;
 	int bDoDensity;
 	int bDohOutput;
@@ -84,8 +86,8 @@ struct parameters {
 	double dGrowStartT;
 	double dGrowEndT;
 	double dFracNoDomainDecomp;
-        int    bRungDD;
-        double dRungDDWeight;
+	int    bRungDD;
+	double dRungDDWeight;
 	/*
 	 ** Additional parameters for GASOLINE.
 	 */
@@ -106,21 +108,22 @@ struct parameters {
 	double dComovingGmPerCcUnit;
 	double dErgPerGmUnit;
 	double dSecUnit;
-        double dMassFracHelium;
-        double dCoolingTmin;
-        double dCoolingTmax;
-        int    nCoolingTable;
-        int    bViscosityLimiter;
-        int    bBulkViscosity;
-        int    bGasDomainDecomp;
-        int    bFastGas;
+	double dMassFracHelium;
+	double dCoolingTmin;
+	double dCoolingTmax;
+	int    nCoolingTable;
+	int    bViscosityLimiter;
+	int    bBulkViscosity;
+	int    bGasDomainDecomp;
+	int    bFastGas;
 	double dFracFastGas;
-        int    bDoGas;
-        int    bUV;
-        int    bSN;
-        double dSNRhoCut;
-        double dSNMetalCut;
-        double dSNHeatFraction;
+	int    bDoGas;
+	int    bUV;
+	int    bSN;
+	double dSNRhoCut;
+	double dSNMetalCut;
+	double dSNHeatFraction;
+	int    bSphStep;
 #ifdef GLASS
 	/*
 	 ** Additional parameters for GLASS.
@@ -147,7 +150,6 @@ struct parameters {
 	double dxUnifGrav;
 	double dyUnifGrav;
 	double dzUnifGrav;
-	double dCollapse;
 	COLLISION_PARAMS CP;
 #endif /* COLLISIONS */
 	};

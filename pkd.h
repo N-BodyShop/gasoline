@@ -39,6 +39,7 @@ typedef struct particle {
 	FLOAT fBall2;
 	FLOAT fDensity;
 	FLOAT dt;			/* a time step suggestion */
+	FLOAT dtGrav;		/* suggested 1/dt^2 from gravity */
 #ifdef SUPERCOOL
 	FLOAT vMean[3];
 #endif
@@ -68,7 +69,6 @@ typedef struct particle {
 	FLOAT fTimeForm;
 #endif
 #ifdef COLLISIONS
-	FLOAT fHill;		/* radius of reduced Hill sphere, times HILL_SCALE */
 	FLOAT w[3];			/* spin vector */
 	int iColor;			/* handy color tag */
 	int iDriftType;		/* either NORMAL or KEPLER */
@@ -114,7 +114,8 @@ typedef struct particle {
 #define TYPE_SUPERCOOL         (1<<11)
 
 /* Combination Masks */
-#define TYPE_ALL               (TYPE_GAS|TYPE_DARK|TYPE_STAR)
+#define TYPE_ALLACTIVE			(TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
+#define TYPE_ALL				(TYPE_GAS|TYPE_DARK|TYPE_STAR)
 
 /* Type Macros */
 int TYPEQueryACTIVE      ( PARTICLE *a );
@@ -428,9 +429,10 @@ void pkdSetRung(PKD pkd, int iRung);
 void pkdBallMax(PKD pkd, int iRung, int bGreater, double ddHonHLimit);
 int pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
-void pkdDensityStep(PKD pkd, double dEta, double dRhoFac);
+void pkdGravStep(PKD pkd, double dEta);
 void pkdAccelStep(PKD pkd, double dEta, double dVelFac, double
-				  dAccFac, int bDoGravity, int bEpsVel, int bSqrtPhi);
+				  dAccFac, int bDoGravity, int bEpsAcc, int bSqrtPhi);
+void pkdDensityStep(PKD pkd, double dEta, double dRhoFac);
 int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll);
 void pkdInitDt(PKD pkd, double dDelta);
 int pkdRungParticles(PKD,int);
@@ -513,15 +515,15 @@ void pkdRandomVelocities(PKD pkd, double dMaxVL, double dMaxVR);
 int pkdNumRejects(PKD pkd);
 void pkdReadSS(PKD pkd, char *pszFileName, int nStart, int nLocal);
 void pkdWriteSS(PKD pkd, char *pszFileName, int nStart);
-void pkdCalcHill(PKD pkd, double dCentMass);
-void pkdHelioStep(PKD pkd, double dEta);
 void pkdKickUnifGrav(PKD pkd, double dvx, double dvy, double dvz);
 void pkdNextEncounter(PKD pkd, double *dt);
 void pkdMarkEncounters(PKD pkd, double dt);
+#ifdef OLD_KEPLER/*DEBUG*/
 int pkdLowerQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);
 int pkdUpperQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);
 void pkdQQCalcBound(PKD pkd, BND *pbnd, BND *pbndActive);
 void pkdQQBuild(PKD pkd, int nBucket, int bActiveOnly, KDN *pRoot);
+#endif
 #endif /* COLLISIONS */
 
 #ifdef SLIDING_PATCH
