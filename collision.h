@@ -36,6 +36,8 @@ typedef struct {
 	double radius;		/* radius of cylinder */
 	double omega;		/*rotation rate of cylinder */
 	double dEpsN,dEpsT;
+	double hotParam;        /*if nonzero, defines a permanent velocity of the wall
+				  that sets a minimum energy for colliding particles */
 	int type;			/*type = 0 for flat wall, = 1 for cylinder */
 	} WALL;
 #else

@@ -387,12 +387,13 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 			*piOutcome = MERGE;
 			}
 		else { /* bounce */
-			double m1,r1,i1,ndotr=0,rprime[3],rlength=0;
-			double n[3],s1[3],s2[3],u[3],udotn=0,un[3],ut[3],w[3];
+			double m1,r1,i1,vWall,ndotr=0,rprime[3],rlength=0;
+			double n[3],s1[3],s2[3],v2[3],u[3],udotn=0,un[3],ut[3],w[3];
 			double dEpsN,dEpsT;
 			m1 = c1.fMass;
 			r1 = c1.fRadius;
 			i1 = 0.4*m1*r1*r1;
+			vWall = (mywall.hotParam)*CP->dSlideLimit*(1. - mywall.dEpsN)/(1. + mywall.dEpsN);
 
 			for (i=0;i<3;i++) {
 				ndotr += mywall.n[i] * c1.r[i];
@@ -412,6 +413,7 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 				s2[2] = mywall.n[0]*n[1]-mywall.n[1]*n[0];
 				for (i=0;i<3;i++) {
 					s2[i] *= mywall.radius*mywall.omega;
+					v2[i] = -vWall*n[i];
 					}
 				}
 			else {				/* infinite flat wall */
@@ -424,6 +426,7 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 				s2[2] = mywall.n[0]*rprime[1]-mywall.n[1]*rprime[0];
 				for (i=0;i<3;i++) {
 					s2[i] *= mywall.omega;
+					v2[i] = -vWall*n[i];
 					}
 				}
 
@@ -431,7 +434,7 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 			s1[1] = r1 * (c1.w[2]*n[0] - c1.w[0]*n[2]);
 			s1[2] = r1 * (c1.w[0]*n[1] - c1.w[1]*n[0]);
 			for (i=0;i<3;i++) {
-				u[i] = -c1.v[i] + s2[i] - s1[i];
+				u[i] = v2[i] - c1.v[i] + s2[i] - s1[i];
 				udotn += u[i] * n[i];
 				}
 			assert(udotn < 0);

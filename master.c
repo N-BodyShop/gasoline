@@ -138,12 +138,28 @@ _msrGetWallData(MSR msr,char achFilename[])
 		}
 	for (i=0;i<w->nWalls;i++) {
 #ifdef TUMBLER
-		if (fscanf(fp,"%lf%lf%lf%lf%lf%lf%lf%lf%i",
+		if (fscanf(fp,"%lf%lf%lf%lf%lf%lf%lf%lf%lf%i",
 			&w->wall[i].n[0],&w->wall[i].n[1],&w->wall[i].n[2],
 			&w->wall[i].ndotp,&w->wall[i].radius,&w->wall[i].omega,
-			&w->wall[i].dEpsN,&w->wall[i].dEpsT,&w->wall[i].type) != 9) {
+			&w->wall[i].dEpsN,&w->wall[i].dEpsT,
+			&w->wall[i].hotParam,&w->wall[i].type) != 10) {
 			(void) fprintf(stderr,"Invalid/missing data in \"%s\" (wall %i)\n",
 						   achFilename,i);
+			goto abort;
+			}
+		if (w->wall[i].radius < 0) {
+			(void) fprintf(stderr,"Invalid radius (%g) in \"%s\", wall %i\n",
+						   w->wall[i].radius,achFilename,i);
+			goto abort;
+			}
+		if (w->wall[i].hotParam < 0) {
+			(void) fprintf(stderr,"Invalid hotParam (%g) in \"%s\", wall %i\n",
+						   w->wall[i].hotParam,achFilename,i);
+			goto abort;
+			}
+		if (w->wall[i].type < 0 || w->wall[i].type > 1) {
+			(void) fprintf(stderr,"Invalid wall type (%i) in \"%s\", wall %i\n",
+						   w->wall[i].type,achFilename,i);
 			goto abort;
 			}
 #else
@@ -1301,8 +1317,8 @@ void msrLogParams(MSR msr,FILE *fp)
 			i,w->wall[i].n[0],w->wall[i].n[1],w->wall[i].n[2]);
 		fprintf(fp," ndotp: %g radius: %g omega:%g",
 			w->wall[i].ndotp,w->wall[i].radius,w->wall[i].omega);
-		fprintf(fp," dEpsN: %g dEpsT: %g type: %i",
-			w->wall[i].dEpsN,w->wall[i].dEpsT,w->wall[i].type);
+		fprintf(fp," dEpsN: %g dEpsT: %g hotParam: %g type: %i",
+			w->wall[i].dEpsN,w->wall[i].dEpsT,w->wall[i].hotParam,w->wall[i].type);
 #else
 		fprintf(fp,"\n# Wall %i: x1: %g z1: %g x2: %g z2: %g",
 				i,w->wall[i].x1,w->wall[i].z1,w->wall[i].x2,w->wall[i].z2);
