@@ -653,8 +653,10 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind)
 	mdlGetReply(pst->mdl,pst->idUpper,&nActive,NULL);
 
 	/* Debug */
+	/*
 	sprintf(ach,"id: %d _pstRootSplit\n", pst->mdl->idSelf );
 	mdlDiag(pst->mdl,ach);
+	*/
 
 	if(!bDoRootFind) {
 	    d = dBnd = pst->iSplitDim;
@@ -1982,6 +1984,7 @@ void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		LCL *plcl = pst->plcl;
 		SMX smx;
 
+		(&in->smf)->pkd = pst->plcl->pkd;
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
 					 in->bSymmetric,in->iSmoothType,1);
 		smSmooth(smx,&in->smf);
@@ -2005,6 +2008,7 @@ void pstMarkSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		LCL *plcl = pst->plcl;
 		SMX smx;
 
+		(&in->smf)->pkd = pst->plcl->pkd;
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
 					 in->bSymmetric,in->iSmoothType,0);
 		smMarkSmooth(smx,&in->smf,in->iMarkType);
@@ -2028,6 +2032,7 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		LCL *plcl = pst->plcl;
 		SMX smx;
 
+		(&in->smf)->pkd = pst->plcl->pkd;
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
 					 in->bSymmetric,in->iSmoothType,0);
 		smReSmooth(smx,&in->smf);
@@ -2151,7 +2156,6 @@ void pstDrift(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	LCL *plcl = pst->plcl;
 	struct inDrift *in = vin;
 
-	mdlDiag(pst->mdl,"into pstDrift\n");
 	assert(nIn == sizeof(struct inDrift));
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_DRIFT,in,nIn);
@@ -2163,7 +2167,6 @@ void pstDrift(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 				 in->fCentMass);
 		}
 	if (pnOut) *pnOut = 0;
-	mdlDiag(pst->mdl,"out of pstDrift\n");
 	}
 
 
@@ -2203,7 +2206,6 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct outKick *out = vout;
 	struct outKick outUp;
 
-	mdlDiag(pst->mdl,"into pstkick\n");
 	assert(nIn == sizeof(struct inKick));
 
 	if (pst->nLeaves > 1) {
@@ -2225,7 +2227,6 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->nSum = 1;
 		}
 	if (pnOut) *pnOut = sizeof(struct outKick);
-	mdlDiag(pst->mdl,"out of pstkick\n");
 	}
 
 
@@ -3150,7 +3151,6 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct outKick *out = vout;
 	struct outKick outUp;
 
-	mdlDiag(pst->mdl,"into pstkickvpred\n");
 	assert(nIn == sizeof(struct inKickVpred));
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_KICKVPRED,in,nIn);
@@ -3166,7 +3166,6 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->nSum = 1;
 		}
 	if (pnOut) *pnOut = sizeof(struct outKick);
-	mdlDiag(pst->mdl,"out of pstkickvpred\n");
 	}
 
 void pstKickRhopred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
@@ -3254,11 +3253,11 @@ void pstInitCooling(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
+		(plcl->pkd->cl).mdl = plcl->pkd->mdl;
 	        clInitConstants(&(plcl->pkd->cl), in->dGmPerCcUnit, in->dComovingGmPerCcUnit,
 			      in->dErgPerGmUnit, in->dSecUnit, in->dMassFracHelium);
 	        clInitRatesTable(&(plcl->pkd->cl),in->Tmin,in->Tmax,in->nTable);
 	        clRatesRedshift(&(plcl->pkd->cl),in->z);
-	  
 		}
 	if (pnOut) *pnOut = 0;
 	}

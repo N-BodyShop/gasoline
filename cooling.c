@@ -2,7 +2,13 @@
 #include <stdio.h>
 #include <math.h>
 #include <assert.h>
+
+/*
 #include "cooling.h"
+*/
+
+/* debug */
+#include "pkd.h"
 
 #ifdef GASOLINE
 
@@ -827,7 +833,14 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
   int iter;
   double d,e,min1,min2;
   double p,q,r,s,tol1,xm;
-  
+
+  /* debug */
+  /*
+  PARTICLE *part = cl->p;
+
+  char ach[256];
+  */
+
   if (dt <= 0) return;
 
   /* 
@@ -843,10 +856,12 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
 
   dE  = dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &YY, rho, PdV, dt );
   if (dE < -0.2*Ein) dE = -0.2*Ein;
-
   /*
-    printf("T: %e E %e dE: %e dt %e   %e %e %e\n",Tin,Ein,dE,dt,
+  if (part->iOrder==880556) {
+     sprintf(ach,"%d: T: %e E %e dE: %e dt %e   %e %e %e\n",part->iOrder,Tin,Ein,dE,dt,
 	 -clCoolTotal( cl, &YY, &Ratein, rho ),clHeatTotal( cl, &YY ),PdV);
+     mdlDiag(cl->mdl, ach);
+  }
   */
   a.Y = Yin;
   a.E = Ein;
@@ -873,10 +888,13 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
       if ( b.F * a.F < 0 ) break;
       /* Stick to the minimum Temperature */
       /*
-      printf("Floored it after %i brackets %g %g %g %g\n   (%g %g %g %g %g)\n",i,a.T,a.F,b.T,b.F,b.E,Ein,
+      if (part->iOrder==880556) {
+	sprintf(ach,"Floored it after %i brackets %g %g %g %g\n   (%g %g %g %g %g)\n",i,a.T,a.F,b.T,b.F,b.E,Ein,
 	     dt*clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt ),
 	     dt*( clEdot( cl, &Yin, &Ratein, rho, &Yin, &b.Y, dt ) + PdV),
 	     dt*( clEdot( cl, &b.Y, &Rate, rho, &Yin, &b.Y, dt ) + PdV) );
+	mdlDiag(cl->mdl, ach);
+      }
       */
       *Y = b.Y;
       *E = b.E;
@@ -886,6 +904,15 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
     clAbunds( cl, &b.Y, &Rate, rho );
 
     b.F = b.E - Ein - dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt );
+    /*
+    if (part->iOrder==880556) {
+      sprintf(ach,"%d B %d T: %e E %e dE: %e dt %g Edot %g %e %e PdV %e F %g\n",part->iOrder,i,b.T,b.E,dE,dt,
+	      clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt ),
+	      -clCoolTotal( cl, &b.Y, &Rate, rho ),clHeatTotal( cl, &b.Y ),PdV,b.F);
+      mdlDiag(cl->mdl, ach);
+    }
+    */
+
     if ( b.F * a.F < 0 ) break;
     if (i<5 && Ein+2*dE > 0) dE *= 2;
     else {
@@ -936,7 +963,12 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
     }
   }
 #endif
-
+  /*
+  if (i>MAXBRACKET) {
+    sprintf(ach,"COOL: %d %d MaxBracket Y %g %g %g E %g PdV %g rho %g dt %g\n", part->iOrder,part->iRung,Y->HI,Y->HeI,Y->HeII, *E, PdV, rho, dt);
+    mdlDiag(cl->mdl, ach);
+  }  
+  */
   assert(i<=MAXBRACKET);
   /*
     printf("Bracket Iterations %i\n",i);

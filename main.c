@@ -65,7 +65,7 @@ int main(int argc,char **argv)
 #endif /* TINY_PTHREAD_STACK */
 #ifndef CCC
 	/* no stdout buffering */
-	setbuf(stdout,(char *) NULL); 
+	/*	setbuf(stdout,(char *) NULL); */
 #endif
 
 	lStart=time(0);

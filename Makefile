@@ -22,8 +22,9 @@ CODEDEF = -DGASOLINE -DCCC
 #
 NULL_MDL		= ../mdl/null
 #ev6 flags:
-#NULL_CFLAGS		= -O3 -g3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
-NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
+#NULL_CFLAGS		= -g -I$(NULL_MDL) $(CODEDEF)
+NULL_CFLAGS		= -O3 -g3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
+#NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
 
 #NULL_CFLAGS		= -O2 -g -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -O2 -I$(NULL_MDL) $(CODEDEF)

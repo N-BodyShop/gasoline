@@ -1,4 +1,6 @@
 /* Global consts */
+#include "mdl.h"
+
 #define CL_B_gm         (6.022e23*(938.7830/931.494))
 #define CL_k_Boltzmann  1.38066e-16
 #define CL_eV_erg       1.60219e-12
@@ -105,6 +107,10 @@ typedef struct {
    double     Y_H;
    double     Y_He;
    double     Y_eMAX;
+
+   MDL        mdl; /* For diag/debug outputs */
+   void       *p; /* particle pointer for debug */
+   
 } CL;
 
 typedef struct {

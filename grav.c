@@ -37,6 +37,9 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	double dir;
 #endif
 
+	char ach[256];
+
+
 	/*
 	 ** Now process the two interaction lists for each active particle.
 	 */
@@ -209,6 +212,10 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 				p[j].a[0] -= dx*b*p[i].fMass;
 				p[j].a[1] -= dy*b*p[i].fMass;
 				p[j].a[2] -= dz*b*p[i].fMass;
+                if (fabs(p[j].a[0])+fabs(p[j].a[1])+fabs(p[j].a[2]) > 1e50) {
+			        sprintf(ach,"%d - %d GRAV ACC: %g %g %g dx %g %g %g a %g %g %g\n",p[i].iOrder,p[j].iOrder,dx*b*p[i].fMass,dy*b*p[i].fMass,dz*b*p[i].fMass,dx,dy,dz,p[j].a[0],p[j].a[1],p[j].a[2]);
+                                mdlDiag(pkd->mdl, ach);
+		}
 				}
 			if (TYPEQueryACTIVE(&(p[i]))) {
 				p[i].fPot -= a*p[j].fMass;

@@ -2396,6 +2396,9 @@ void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 	PARTICLE *p;
 	int i,j,n;
 
+	char ach[256];
+
+
 	mdlDiag(pkd->mdl, "Into pkddrift\n");
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
@@ -2407,9 +2410,6 @@ void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 #endif /* !COLLISIONS */
 			fg(pkd->mdl,fCentMass + p[i].fMass,p[i].r,p[i].v,dDelta);
 		else {
-		  /*
-		        printf("%d: %i %g %g %g %g %g %g %g\n",p[i].iOrder,p[i].iActive,p[i].uDot,p[i].PdV,p[i].fDensity,p[i].fBall2,p[i].v[0],p[i].v[1],p[i].v[2]);
-		  */
 			for (j=0;j<3;++j) {
 				p[i].r[j] += dDelta*p[i].v[j];
 				if (bPeriodic) {
@@ -2417,10 +2417,15 @@ void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 						p[i].r[j] -= pkd->fPeriod[j];
 					if (p[i].r[j] < fCenter[j]-0.5*pkd->fPeriod[j])
 						p[i].r[j] += pkd->fPeriod[j];
-					/*					if (p[i].r[j] <
+					/*
+					if (p[i].r[j] <
 					       fCenter[j]-0.5*pkd->fPeriod[j] || p[i].r[j] >=
-					       fCenter[j]+0.5*pkd->fPeriod[j])
-					       printf("%d: %i %g %g %g %g %g %g %g %g %g\n",p[i].iOrder,p[i].iActive,dDelta,p[i].u,p[i].uDot,p[i].PdV,p[i].fDensity,p[i].fBall2,p[i].v[0],p[i].v[1],p[i].v[2]);*/
+					    fCenter[j]+0.5*pkd->fPeriod[j]) {
+					       sprintf(ach,"%d: %i %g u %g uDot %g PdV %g %g %g v %g %g %g a %g %g %g\n",p[i].iOrder,p[i].iActive,dDelta,p[i].u,p[i].uDot,p[i].PdV,p[i].fDensity,p[i].fBall2,p[i].v[0],p[i].v[1],p[i].v[2],p[i].a[0],p[i].a[1],p[i].a[2]);
+					       mdlDiag(pkd->mdl,ach);
+					       }
+					*/
+
 					assert(p[i].r[j] >=
 					       fCenter[j]-0.5*pkd->fPeriod[j]);
 					assert(p[i].r[j] <
@@ -2444,10 +2449,9 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdate
 
         char ach[256];
 
-	/*
-        mdlDiag(pkd->mdl, "Into Update uDot\n");
+	mdlDiag(pkd->mdl, "Into Update uDot\n");
 	sprintf(ach,"duDelta: %g\n",duDelta);
-        mdlDiag(pkd->mdl, ach);*/
+        mdlDiag(pkd->mdl, ach);
 
 	pkdClearTimer(pkd,1);
 	pkdStartTimer(pkd,1);
@@ -2472,20 +2476,39 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdate
 	for (i=0;i<n;++i,++p) {
                  if(TYPEFilter(p, TYPE_GAS|TYPE_ACTIVE, TYPE_GAS|TYPE_ACTIVE)) {
 	                  if (bCool) {
-			    /*
-			    	sprintf(ach,"%d: Den %g  u %g  PdV %g  Y %g %g %g\n",p->iOrder,p->fDensity,p->u,p->PdV,p->Y_HI,p->Y_HeI,p->Y_HeII);
-				mdlDiag(pkd->mdl, ach);*/
+			            /*
+				      if (p->iOrder==880556) {
+				        sprintf(ach,"UDOT IN %d: Den %g  u %g  PdV %g  Y %g %g %g\n",p->iOrder,p->fDensity,p->u,p->PdV,p->Y_HI,p->Y_HeI,p->Y_HeII);
+					mdlDiag(pkd->mdl, ach);
+					}
+				    */
+				    /*
+				    	sprintf(ach,"I%d\n",p->iOrder);
+					mdlDiag(pkd->mdl, ach);
+				    */
+
+
 			            pkdPARTICLE2PERBARYON(&Y, p, cl->Y_H, cl->Y_He);
 				    E = p->u * cl->dErgPerGmUnit;
-				    /*        mdlDiag(pkd->mdl, "Into Integrate\n");*/
+				    cl->p = p;
 				    clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
 						      p->fDensity*cl->dComovingGmPerCcUnit, dt);
-				    /*        mdlDiag(pkd->mdl, "Done Integrate\n");*/
 				    p->uDot = (E * cl->diErgPerGmUnit - p->u)/duDelta;
+
+				    /*
+				        mdlDiag(pkd->mdl, "I-\n");
+				    */
+				    /*
+			            if (p->iOrder==880556) {
+				      sprintf(ach,"UDOTOUT %d: Den %g  u %g -> %g  PdV %g  Y %g %g %g -> %g %g %g udot %g dt %g\n",p->iOrder,p->fDensity,p->u,E * cl->diErgPerGmUnit,p->PdV,p->Y_HI,p->Y_HeI,p->Y_HeII,Y.HI,Y.HeI,Y.HeII,p->uDot,duDelta);
+				      mdlDiag(pkd->mdl, ach);
+				      }
+				    */
 				    /*
 				    if (abs(p->uDot*duDelta)/p->u > 0.25) 
 				      printf("UDOT-ERR %d: Den %g  u %g -> %g  PdV %g  Y %g %g %g -> %g %g %g udot %g dt %g\n",p->iOrder,p->fDensity,p->u,E * cl->diErgPerGmUnit,p->PdV,p->Y_HI,p->Y_HeI,p->Y_HeII,Y.HI,Y.HeI,Y.HeII,p->uDot,duDelta);
 				    */
+
 				    if (bUpdateY) pkdPERBARYON2PARTICLE(&Y, p);
 		                    }
 			  else { 
@@ -2496,7 +2519,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdate
 			  
 #endif
 	pkdStopTimer(pkd,1);
-	/*	        mdlDiag(pkd->mdl, "Done Update uDot\n");*/
+	mdlDiag(pkd->mdl, "Done Update uDot\n");
 	}
 
 
@@ -2507,6 +2530,8 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	PARTICLE *p;
 	int i,j,n;
 
+	char ach[256];
+
 	mdlDiag(pkd->mdl, "Into pkdkick\n");
 	pkdClearTimer(pkd,1);
 	pkdStartTimer(pkd,1);
@@ -2516,12 +2541,24 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	for (i=0;i<n;++i,++p) {
 
 	       if(TYPEQueryACTIVE(p)) {
+		 /*
+		       if (fabs(p->a[0])+fabs(p->a[1])+fabs(p->a[2]) > 1e50) {
+			        sprintf(ach,"%d KICK: %d %d u %g uDot %g PdV %g %g %g v %g %g %g a %g %g %g\n",p->iOrder,p->iActive,p->iRung,p->u,p->uDot,p->PdV,p->fDensity,p->fBall2,p->v[0],p->v[1],p->v[2],p->a[0],p->a[1],p->a[2]);
+                                mdlDiag(pkd->mdl, ach);
+		                }
+		 */
 #ifdef GASOLINE
                        if(pkdIsGas(pkd, p)) {
 				for (j=0;j<3;++j) {
 					p->vPred[j] = p->v[j]*dvPredFacOne + 
 						p->a[j]*dvPredFacTwo;
 					}
+				/*
+				if (p->iOrder==880556) {
+				  sprintf(ach,"KICK %d: u %g uPred %g UDot %g dt %g %g Udot*dt %g %g u %g uPred %g\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta,duPredDelta,p->uDot*duDelta,p->uDot*duPredDelta,p->u + p->uDot*duDelta,p->u + p->uDot*duPredDelta);
+				  mdlDiag(pkd->mdl, ach);
+				}
+				*/
 				p->uPred = p->u + p->uDot*duPredDelta;
 				p->u = p->u + p->uDot*duDelta;
 				}
@@ -3040,8 +3077,16 @@ pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac, int bDoGravit
     double acc;
     int j;
     double dT;
+
+    char ach[256];
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
+      /*
+                if (fabs(pkd->pStore[i].a[0])+fabs(pkd->pStore[i].a[1])+fabs(pkd->pStore[i].a[2]) > 1e50) {
+			        sprintf(ach,"%d ACC-STEP: %d %d u %g uDot %g PdV %g %g %g v %g %g %g a %g %g %g\n",pkd->pStore[i].iOrder,pkd->pStore[i].iActive,pkd->pStore[i].iRung,pkd->pStore[i].u,pkd->pStore[i].uDot,pkd->pStore[i].PdV,pkd->pStore[i].fDensity,pkd->pStore[i].fBall2,pkd->pStore[i].v[0],pkd->pStore[i].v[1],pkd->pStore[i].v[2],pkd->pStore[i].a[0],pkd->pStore[i].a[1],pkd->pStore[i].a[2]);
+                                mdlDiag(pkd->mdl, ach);
+		                }
+      */
 		if(TYPEQueryACTIVE(&(pkd->pStore[i]))) {
 			vel = 0;
 			acc = 0;
@@ -3644,6 +3689,8 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int 
 	PARTICLE *p;
 	int i,j,n;
 
+	char ach[256];
+
 	mdlDiag(pkd->mdl, "Into Vpred\n");
 
 	pkdClearTimer(pkd,1);
@@ -3657,7 +3704,15 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int 
 			for (j=0;j<3;++j) {
 				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;
 				}
+			/*
+				if (p->iOrder==880556) {
+				  sprintf(ach,"KICK-VPRED %d: u %g uPred %g UDot %g dt %g Udot*dt %g u %g uPred %g\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta,p->uDot*duDelta,p->u,p->uPred + p->uDot*duDelta);
+				  mdlDiag(pkd->mdl, ach);
+				}
+			*/
+
 			p->uPred = p->uPred + p->uDot*duDelta;
+			assert(p->uPred > 0);
 		        }
 #endif
 	        }
@@ -3793,6 +3848,10 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot)
     PARTICLE *p;    
     double dT,dTu;
 
+    char ach[256];
+    int j;
+    double acc;
+
     for(i = 0; i < pkdLocal(pkd); ++i) {
         p = &pkd->pStore[i];
         if(pkdIsGas(pkd, p) && TYPEQueryACTIVE(p)) {
@@ -3804,11 +3863,12 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot)
 	       else
                         dT = dEtaCourant*dCosmoFac*( sqrt(0.25*p->fBall2)/(1.6*p->c) );
 
-	       if (dEtauDot > 0.0 && p->PdV != 0.0) {
+	       if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */
 		 dTu = dEtauDot*p->u/fabs(p->PdV);
 		 if (dTu < dT) 
 		        dT = dTu;
 	       }
+
 #ifdef DEBUG	      
 	       if ((p->iOrder % 300) == 0 || dT<1e-6) 
 		        printf("dt_C %i: %i %i %i %f %f %f %f %f %f   dT_c %g\n",
@@ -3819,6 +3879,24 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot)
 	       if(dT < p->dt)
 			p->dt = dT;
 	       }
+#if (0)
+	       if (p->dt<1e-7) {
+			acc = 0;
+			for(j = 0; j < 3; j++) acc += p->a[j]*p->a[j];
+		        sprintf(ach,"%i %i dt %g dt_C %g %g dt_A %g %g dt_U %g h %g dens %g c %g\n",
+			       p->iOrder,p->iActive,p->dt,dEtaCourant*dCosmoFac*( sqrt(0.25*p->fBall2)/(1.6*p->c) ),
+			       dEtaCourant*dCosmoFac*( sqrt(0.25*p->fBall2)/(p->c + 0.6*(p->c + 2*p->mumax)) ),
+			       0.3*sqrt(sqrt(0.25*p->fBall2)/acc), 0.3*sqrt(p->fSoft/acc),dEtauDot*p->u/(p->PdV),
+			       sqrt(0.25*p->fBall2),p->fDensity,p->c);
+			mdlDiag(pkd->mdl, ach);
+		        printf("DTSET %i %i dt %g dt_C %g %g dt_A %g %g dt_U %g h %g dens %g c %g\n",
+			       p->iOrder,p->iActive,p->dt,dEtaCourant*dCosmoFac*( sqrt(0.25*p->fBall2)/(1.6*p->c) ),
+			       dEtaCourant*dCosmoFac*( sqrt(0.25*p->fBall2)/(p->c + 0.6*(p->c + 2*p->mumax)) ),
+			       0.3*sqrt(sqrt(0.25*p->fBall2)/acc), 0.3*sqrt(p->fSoft/acc),dEtauDot*p->u/(p->PdV),
+			       sqrt(0.25*p->fBall2),p->fDensity,p->c);
+
+	                }
+#endif
 	}
     }
 

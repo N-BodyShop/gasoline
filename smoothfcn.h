@@ -20,8 +20,8 @@ typedef struct smfParameters {
 	double dCentMass;
 	double dStart;	/* collision search time interval */
 	double dEnd;
-	PKD pkd;		/* pointer to processor's PKD structure */
 #endif /* COLLISIONS */
+	PKD pkd;		/* pointer to processor's PKD structure */
 	} SMF;
 
 

@@ -2160,7 +2160,6 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	struct inKickRhopred inRhop;
 #endif
 
-	printf("into mstDrift\n");
 #ifdef COLLISIONS
 	msrDoCollisions(msr,dTime,dDelta);
 #endif /* COLLISIONS */
@@ -2177,7 +2176,6 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bFandG = msr->param.bFandG; /* for NOW! */
 	in.fCentMass = msr->param.dCentMass;
-	printf("About to call pstDrift\n");
 	pstDrift(msr->pst,&in,sizeof(in),NULL,NULL);
 	/*
 	 ** Once we move the particles the tree should no longer be considered 
@@ -3231,6 +3229,7 @@ void msrSwitchTheta(MSR msr,double dTime)
 	}
 
 
+#define SUPPRESSMASSCHECKREPORT      
 double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 {
 	struct outMassCheck out;
@@ -3238,7 +3237,9 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 #ifdef GROWMASS
 	out.dMass = 0.0;
 #else
+#ifndef SUPPRESSMASSCHECKREPORT      
 	if (msr->param.bVDetails) puts("doing mass check...");
+#endif
 	pstMassCheck(msr->pst,NULL,0,&out,NULL);
 	if (dMass < 0.0) return(out.dMass);
 	else if (fabs(dMass - out.dMass) > 1e-12*dMass) {
@@ -3797,22 +3798,25 @@ void msrTopStepKDK(MSR msr,
 					  piSec);
 		dStep += 1.0/(2 << iRung);
 		dTime += 0.5*dDelta;
+		msrActiveRung(msr, iRung, 0);
                 msrUpdateuDot(msr, dTime, 0.5*dDelta, 0); /* Need forward uDot for Upreds */
 		msrTopStepKDK(msr, dStep, dTime, 0.5*dDelta, iRung+1,
 					  iKickRung, 1, pdActiveSum, pdWMax, pdIMax, pdEMax,
 					  piSec);
 		}
     else {
-		msrActiveRung(msr, iRung, 0);
-                msrUpdateuDot(msr, dTime, 0.5*dDelta, 0); /* Need forward uDot for uPred */
-
-		msrActiveMaskRung(msr, TYPE_ACTIVE, iKickRung, 1);
 		/* This Drifts everybody */
 		if (msr->param.bVDetails) printf("Drift, iRung: %d\n", iRung);
-		msrDrift(msr,dTime,dDelta);
+		msrDrift(msr,dTime,0.5*dDelta);
 		/* JW: Changed this to be consistent (was dTime += 0.5*dDelta) */
-		dTime += dDelta;
-		dStep += 1.0/(1 << iRung);
+		dTime += 0.5*dDelta;
+		dStep += 1.0/(2 << iRung);
+		msrActiveRung(msr, iRung, 0);
+                msrUpdateuDot(msr, dTime, 0.5*dDelta, 0); /* Need forward uDot for uPred */
+		msrDrift(msr,dTime,0.5*dDelta);
+		dTime += 0.5*dDelta;
+		dStep += 1.0/(2 << iRung);
+
                 msrDomainDecomp(msr);
 		msrActiveMaskRung(msr, TYPE_ACTIVE, iKickRung, 1);
 		msrInitAccel(msr);
