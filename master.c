@@ -805,7 +805,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		_msrExit(msr,1);
 		}
 
+#if defined(GASOLINE) || defined(COLLISIONS)
 	assert(msr->param.bKDK); /*DEBUG DKD broken at the moment...*/
+#endif
 
 	if (nDigits < 1 || nDigits > 9) {
 		(void) fprintf(stderr,"Unreasonable number of filename digits.\n");
