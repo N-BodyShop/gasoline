@@ -124,6 +124,8 @@ void pstAddServices(PST pst,MDL mdl)
 #ifdef GASOLINE
 	mdlAddService(mdl,PST_ACTIVECOOL,pst,pstActiveCool,0,0);
 	mdlAddService(mdl,PST_CALCETHDOT,pst,pstCalcEthdot,0,0);
+	mdlAddService(mdl,PST_KICKVPRED,pst,pstKickVpred, 
+		      sizeof(struct inKickVpred),0);
 #endif
 	}
 
@@ -1661,7 +1663,8 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdKick(plcl->pkd,in->dvFacOne,in->dvFacTwo);
+		pkdKick(plcl->pkd,in->dvFacOne,in->dvFacTwo,
+			in->dvPredFacOne, in->dvPredFacTwo);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2240,6 +2243,45 @@ void pstCalcEthdot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
+void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inKickVpred *in = vin;
+
+	assert(nIn == sizeof(struct inKickVpred));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_KICKVPRED,in,nIn);
+		pstKickVpred(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void
+pstSphCurrRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inSphCurrRung *in = vin;
+	struct outSphCurrRung *out = vout;
+	int iCurrent;
+	
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_SPHCURRRUNG,vin,nIn);
+		pstSphCurrRung(pst->pstLower,vin,nIn,vout,pnOut);
+		iCurrent = out->iCurrent;
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		if(iCurrent)
+		    out->iCurrent = iCurrent;
+		}
+	else {
+		out->iCurrent = pkdSphCurrRung(plcl->pkd, in->iRung);
+		}
+	if (pnOut) *pnOut = sizeof(*out);
+	}
 #endif
 
 

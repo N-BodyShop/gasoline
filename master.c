@@ -1569,6 +1569,10 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 {
 	struct inDrift in;
 	int j;
+#ifdef GASOLINE
+	double H,a;
+	struct inKickVpred invpr;
+#endif
 
 	if (msr->param.bCannonical) {
 		in.dDelta = msrComoveDriftFac(msr,dTime,dDelta);
@@ -1586,6 +1590,26 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	 ** valid.
 	 */
 	msr->iTreeType = MSR_TREE_NONE;
+	
+#ifdef GASOLINE
+	if (msr->param.bCannonical) {
+		invpr.dvFacOne = 1.0; /* no hubble drag, man! */
+		invpr.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+		}
+	else {
+		/*
+		 ** Careful! For non-cannonical we want H and a at the 
+		 ** HALF-STEP! This is a bit messy but has to be special
+		 ** cased in some way.
+		 */
+		dTime += dDelta/2.0;
+		a = msrTime2Exp(msr,dTime);
+		H = msrTime2Hub(msr,dTime);
+		invpr.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
+		invpr.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
+		}
+	pstKickVpred(msr->pst,&in,sizeof(in),NULL,NULL);
+#endif
 	}
 
 
@@ -1664,6 +1688,118 @@ void msrKick(MSR msr,double dTime,double dDelta)
 	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
+/*
+ * For gasoline, updates predicted velocities to middle of timestep.
+ */
+void msrKickDKD(MSR msr,double dTime,double dDelta)
+{
+	double H,a;
+	struct inKick in;
+	
+	if (msr->param.bCannonical) {
+		in.dvFacOne = 1.0; /* no hubble drag, man! */
+		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+#ifdef GASOLINE
+		in.dvPredFacOne = 1.0;
+		in.dvPredFacTwo = msrComoveKickFac(msr,dTime,0.5*dDelta);
+#endif
+		}
+	else {
+		/*
+		 ** Careful! For non-cannonical we want H and a at the 
+		 ** HALF-STEP! This is a bit messy but has to be special
+		 ** cased in some way.
+		 */
+		dTime += dDelta/2.0;
+		a = msrTime2Exp(msr,dTime);
+		H = msrTime2Hub(msr,dTime);
+		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
+		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
+#ifdef GASOLINE
+		dTime -= dDelta/4.0;
+		a = msrTime2Exp(msr,dTime);
+		H = msrTime2Hub(msr,dTime);
+		in.dvPredFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
+		in.dvPredFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
+#endif
+		}
+	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
+	}
+
+/*
+ * For gasoline, updates predicted velocities to beginning of timestep.
+ */
+void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
+{
+	double H,a;
+	struct inKick in;
+	
+	if (msr->param.bCannonical) {
+		in.dvFacOne = 1.0; /* no hubble drag, man! */
+		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+#ifdef GASOLINE
+		in.dvPredFacOne = 1.0;
+		in.dvPredFacTwo = 0.0;
+#endif
+		}
+	else {
+		/*
+		 ** Careful! For non-cannonical we want H and a at the 
+		 ** HALF-STEP! This is a bit messy but has to be special
+		 ** cased in some way.
+		 */
+		dTime += dDelta/2.0;
+		a = msrTime2Exp(msr,dTime);
+		H = msrTime2Hub(msr,dTime);
+		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
+		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
+#ifdef GASOLINE
+		in.dvPredFacOne = 1.0;
+		in.dvPredFacTwo = 0.0;
+#endif
+		}
+	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
+	}
+
+/*
+ * For gasoline, updates predicted velocities to end of timestep.
+ */
+void msrKickKDKClose(MSR msr,double dTime,double dDelta)
+{
+	double H,a;
+	struct inKick in;
+	
+	if (msr->param.bCannonical) {
+		in.dvFacOne = 1.0; /* no hubble drag, man! */
+		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+#ifdef GASOLINE
+		in.dvPredFacOne = 1.0;
+		in.dvPredFacTwo = in.dvFacTwo;
+#endif
+		}
+	else {
+		/*
+		 ** Careful! For non-cannonical we want H and a at the 
+		 ** HALF-STEP! This is a bit messy but has to be special
+		 ** cased in some way.
+		 */
+		dTime += dDelta/2.0;
+		a = msrTime2Exp(msr,dTime);
+		H = msrTime2Hub(msr,dTime);
+		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
+		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
+#ifdef GASOLINE
+		in.dvPredFacOne = in.dvFacOne;
+		in.dvPredFacTwo = in.dvFacTwo;
+#endif
+		}
+	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
+	}
+
+void
+msrInitAccel(MSR msr)
+{
+    }
 
 void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
 {
@@ -2375,17 +2511,26 @@ void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta,
 		 */
 		msrTopStepDen(msr, dStep, dTime, 0.5*dDelta,iRung+1,pdActiveSum);
 		dStep += 1.0/(2 << iRung);
+		msrActiveRung(msr, iRung, 0);
+		msrInitAccel(msr);
+#ifdef GASOLINE
+		if(msrSphCurrRung(msr, iRung)) {
+			if (msr->param.bVerbose) {
+			    printf("SPH, iRung: %d\n", iRung);
+			    }
+			msrStepSph(msr, dTime, dDelta);
+			}
+#endif
 		if(msrCurrRung(msr, iRung)) {
 			if (msr->param.bVerbose) {
 			    printf("Kick, iRung: %d\n", iRung);
 			    }
-			msrActiveRung(msr, iRung, 0);
 			msrBuildTree(msr,0,dMass,0);
 			msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
-			msrKick(msr, dTime, dDelta);
-			msrRungStats(msr);
 			}
+		msrKickDKD(msr, dTime, dDelta);
+		msrRungStats(msr);
 		msrTopStepDen(msr,dStep,dTime+0.5*dDelta,0.5*dDelta,iRung+1,
 					  pdActiveSum);
 		}
@@ -2438,16 +2583,25 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 		 */
 		msrTopStepNS(msr, dStep, dTime, 0.5*dDelta,iRung+1, 0, pdActiveSum);
 		dStep += 1.0/(2 << iRung);
+		msrActiveRung(msr, iRung, 0);
+		msrInitAccel(msr);
+#ifdef GASOLINE
+		if(msrSphCurrRung(msr, iRung)) {
+			if (msr->param.bVerbose) {
+			    printf("SPH, iRung: %d\n", iRung);
+			    }
+			msrStepSph(msr, dTime, dDelta);
+			}
+#endif
 		if(msrCurrRung(msr, iRung)) {
 			if (msr->param.bVerbose) {
 				printf("Kick, iRung: %d\n", iRung);
 				}
-			msrActiveRung(msr, iRung, 0);
 			msrBuildTree(msr,0,dMass,0);
 			msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
-			msrKick(msr, dTime, dDelta);
 			}
+		msrKickDKD(msr, dTime, dDelta);
 		msrTopStepNS(msr, dStep, dTime+0.5*dDelta,
 					 0.5*dDelta,iRung+1, 1, pdActiveSum);
 		}
@@ -2482,16 +2636,25 @@ void msrTopStepVel(MSR msr, double dStep, double dTime, double dDelta, int
 		 */
 		msrTopStepVel(msr, dStep, dTime, 0.5*dDelta,iRung+1, 0, pdActiveSum);
 		dStep += 1.0/(2 << iRung);
+		msrActiveRung(msr, iRung, 0);
+		msrInitAccel(msr);
+#ifdef GASOLINE
+		if(msrSphCurrRung(msr, iRung)) {
+			if (msr->param.bVerbose) {
+			    printf("SPH, iRung: %d\n", iRung);
+			    }
+			msrStepSph(msr, dTime, dDelta);
+			}
+#endif
 		if(msrCurrRung(msr, iRung)) {
 			if (msr->param.bVerbose) {
 				printf("Kick, iRung: %d\n", iRung);
 				}
-			msrActiveRung(msr, iRung, 0);
 			msrBuildTree(msr,0,dMass,0);
 			msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
-			msrKick(msr, dTime, dDelta);
 			}
+		msrKickDKD(msr, dTime, dDelta);
 		msrTopStepVel(msr, dStep, dTime+0.5*dDelta, 0.5*dDelta,
 					  iRung+1, 1, pdActiveSum);
 		}
@@ -2551,7 +2714,7 @@ void msrTopStepKDK(MSR msr,
 	printf("Kick, iRung: %d\n", iRung);
 	}
     msrActiveRung(msr, iRung, 0);
-    msrKick(msr,dTime,0.5*dDelta);
+    msrKickKDKOpen(msr,dTime,0.5*dDelta);
     if (msrCurrMaxRung(msr) > iRung) {
 	/*
 	** Recurse.
@@ -2572,10 +2735,19 @@ void msrTopStepKDK(MSR msr,
 	msrDrift(msr,dTime,dDelta);
 	dTime += 0.5*dDelta;
 	dStep += 1.0/(1 << iRung);
+	msrActiveRung(msr, iKickRung, 1);
+	msrInitAccel(msr);
+#ifdef GASOLINE
+	if(msrSphCurrRung(msr, iRung)) {
+	    if (msr->param.bVerbose) {
+		printf("SPH, iRung: %d to %d\n", iRung, iKickRung);
+		}
+	    msrStepSph(msr, dTime, dDelta);
+	    }
+#endif
 	if (msr->param.bVerbose) {
 	    printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
 	    }
-	msrActiveRung(msr, iKickRung, 1);
 	msrBuildTree(msr,0,dMass,0);
 	msrGravity(msr,dStep,piSec,pdWMax,pdIMax,pdEMax,&nActive);
 	*pdActiveSum += (double)nActive/msr->N;
@@ -2584,7 +2756,7 @@ void msrTopStepKDK(MSR msr,
 	printf("Kick, iRung: %d\n", iRung);
 	}
     msrActiveRung(msr, iRung, 0);
-    msrKick(msr, dTime, 0.5*dDelta);
+    msrKickKDKClose(msr, dTime, 0.5*dDelta);
 }
 
 int msrDoDensity(MSR msr)
@@ -2608,5 +2780,19 @@ void msrInitSph(MSR msr,double dTime)
 	msrReSmooth(msr,dTime,SMX_ETHDOTBV,1);
 #endif
 	}
+
+void msrStepSph(MSR msr,double dTime, double dDelta)
+{
+    }
+
+int msrSphCurrRung(MSR msr, int iRung)
+{
+    struct inSphCurrRung in;
+    struct outSphCurrRung out;
+
+    in.iRung = iRung;
+    pstSphCurrRung(msr->pst, &in, sizeof(in), &out, NULL);
+    return out.iCurrent;
+    }
 
 #endif

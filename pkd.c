@@ -723,7 +723,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 	struct dark_particle dp;
 	struct gas_particle gp;
 	struct star_particle sp;
-	long lStart;
 	int nout;
 
 	/*
@@ -1786,7 +1785,8 @@ void pkdDrift(PKD pkd,double dDelta,float fCenter[3],int bPeriodic)
 	}
 
 
-void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo)
+void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo, double dvPredFacOne,
+	     double dvPredFacTwo)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -1795,11 +1795,19 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo)
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
 	    if(p[i].iActive) {
-			for (j=0;j<3;++j) {
-				p[i].v[j] = p[i].v[j]*dvFacOne + p[i].a[j]*dvFacTwo;
-				}
+#ifdef GASOLINE
+	        if(pkdIsGas(pkd, &p[i])) {
+		    for (j=0;j<3;++j) {
+			p[i].vPred[j] = p[i].v[j]*dvPredFacOne + p[i].a[j]*dvPredFacTwo;
+			}
+		    }
+	      
+#endif
+		for (j=0;j<3;++j) {
+			p[i].v[j] = p[i].v[j]*dvFacOne + p[i].a[j]*dvFacTwo;
 			}
 		}
+	    }
 	}
 
 
@@ -2249,6 +2257,38 @@ void pkdCalcEthdot(PKD pkd)
 			p->du = p->A*sqrt(p->u) + p->B;
 			}
 		}
+    }
+
+void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo)
+{
+	PARTICLE *p;
+	int i,j,n;
+
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i) {
+	    if(pkdIsGas(pkd, &p[i])) {
+		for (j=0;j<3;++j) {
+		    p[i].vPred[j] = p[i].vPred[j]*dvFacOne + p[i].a[j]*dvFacTwo;
+		    }
+		}
+	    }
+	}
+
+int
+pkdSphCurrRung(PKD pkd, int iRung)
+{
+    int i;
+    int iCurrent;
+    
+    iCurrent = 0;
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+	if(pkdIsGas(pkd, &pkd->pStore[i]) && pkd->pStore[i].iRung == iRung) {
+	    iCurrent = 1;
+	    break;
+	    }
+	}
+    return iCurrent;
     }
 
 #endif

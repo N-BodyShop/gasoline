@@ -285,7 +285,7 @@ void pkdGravAll(PKD,int,int,int,int,double,double,int *,
 				double *,double *,CASTAT *,double *); 
 void pkdCalcE(PKD,double *,double *);
 void pkdDrift(PKD,double,float *,int);
-void pkdKick(PKD pkd,double,double);
+void pkdKick(PKD pkd,double,double, double, double);
 void pkdReadCheck(PKD,char *,int,int,int,int);
 void pkdWriteCheck(PKD,char *,int,int);
 void pkdDistribCells(PKD,int,KDN *);
@@ -311,6 +311,8 @@ int pkdIsDark(PKD,PARTICLE *);
 int pkdIsStar(PKD,PARTICLE *);
 void pkdActiveGas(PKD);
 void pkdCalcEthdot(PKD);
+void pkdKickVpred(PKD pdk, double dvFacOne, double dvFacTwo);
+int pkdSphCurrRung(PKD pkd, int iRung);
 
 #endif
 

@@ -45,7 +45,7 @@ typedef struct pstContext {
 	} * PST;
 
 
-#define PST_SERVICES		50
+#define PST_SERVICES		51
 #define PST_FILENAME_SIZE	512
 
 void pstAddServices(PST,MDL);
@@ -258,6 +258,8 @@ void pstDrift(PST,void *,int,void *,int *);
 struct inKick {
 	double dvFacOne;
 	double dvFacTwo;
+	double dvPredFacOne;
+	double dvPredFacTwo;
 	};
 void pstKick(PST,void *,int,void *,int *);
 
@@ -438,6 +440,22 @@ void pstActiveGas(PST,void *,int,void *,int *);
 
 #define PST_CALCETHDOT			50
 void pstCalcEthdot(PST,void *,int,void *,int *);
+
+#define PST_KICKVPRED			51
+struct inKickVpred {
+	double dvFacOne;
+	double dvFacTwo;
+	};
+void pstKickVpred(PST,void *,int,void *,int *);
+
+#define PST_SPHCURRRUNG		52
+struct inSphCurrRung {
+    int iRung;
+    };
+struct outSphCurrRung {
+    int iCurrent;
+    };
+void pstSphCurrRung(PST,void *,int,void *,int *);
 
 #endif
 

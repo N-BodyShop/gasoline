@@ -136,6 +136,8 @@ void msrInitStep(MSR msr);
 #ifdef GASOLINE
 
 void msrInitSph(MSR,double);
+void msrStepSph(MSR msr,double dTime, double dDelta);
+int msrSphCurrRung(MSR msr, int iRung);
 
 #endif
 
