@@ -414,6 +414,7 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 
 #define NUM_SAFETY	2
 #define EPS_BOUND	0.01
+#define MASS_EPS	1e-11
 
 void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 {
@@ -776,9 +777,11 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			    ++ittr;
 			    }
 		    }
+	    /*
 	    printf("Fit stats: Active: %d %d Inactive: %d %d Sum: %d %d\n",
 		   nLow, nHigh, outWtLow.nLow + outWtHigh.nLow, outWtLow.nHigh +
 		   outWtHigh.nHigh, nLowTot, nHighTot);
+	     */
 	    /*
 	     ** Make sure everything is OK.
 	     */
@@ -795,7 +798,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	    mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVEORDER,NULL,0);
 	    pstActiveOrder(pst->pstLower,NULL,0,NULL,NULL);
 	    mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+	    /*
 	    printf("Fit stats: Sum: %d %d\n", nLow, nHigh);
+	     */
 	    /*
 	     ** Make sure everything is OK.
 	     */
@@ -867,7 +872,11 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 #endif
 	
 	pstMassCheck(pst,NULL,0,&outMass,NULL);
+#if 0
 	if (dMass != outMass.dMass) {
+#else
+	if (fabs(dMass - outMass.dMass) > MASS_EPS*dMass) {
+#endif
 		printf("ERROR id:%d lvl:%d:in _pstRootSplit after ColRejects\n",
 			   pst->idSelf,pst->iLvl);
 		}
@@ -886,7 +895,11 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		assert(nOut/sizeof(OREJ) == pst->nUpper);
 
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
+#if 0
 		if (dMass != outMass.dMass) {
+#else
+		if (fabs(dMass - outMass.dMass) > MASS_EPS*dMass) {
+#endif
 			printf("ERROR id:%d lvl:%d iter:%d in _pstRootSplit after Swap\n",
 				   pst->idSelf,pst->iLvl,ittr);
 			}
@@ -936,7 +949,11 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		dMass = outMass.dMass;
 		_pstRootSplit(pst,d,dMass);
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
+#if 0
 		if (dMass != outMass.dMass) {
+#else
+		if (fabs(dMass - outMass.dMass) > MASS_EPS*dMass) {
+#endif
 			printf("ERROR id:%d lvl:%d:_pstRootSplit mass not cons.\n",
 				   pst->idSelf,pst->iLvl);
 			}
