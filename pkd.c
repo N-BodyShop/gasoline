@@ -1413,13 +1413,15 @@ void pkdColorCell(PKD pkd,int iCell,float fColor)
 
 void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 				double fEwCut,double fEwhCut,int *nActive,
-				double *pdPartSum,double *pdCellSum,CASTAT *pcs)
+				double *pdPartSum,double *pdCellSum,CASTAT *pcs,
+				double *pdFlop)
 {
 	KDN *c = pkd->kdNodes;
 	int iCell,n;
 	float fWeight;
 	int i;
 
+	*pdFlop = 0.0;
 	pkdClearTimer(pkd,1);
 	pkdClearTimer(pkd,2);
 	pkdClearTimer(pkd,3);
@@ -1449,14 +1451,14 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			 ** Calculate gravity on this bucket.
 			 */
 			pkdStartTimer(pkd,1);
-			pkdBucketWalk(pkd,iCell,nReps,iOrder);
+			pkdBucketWalk(pkd,iCell,nReps,iOrder);		/* ignored in Flop count! */
 			pkdStopTimer(pkd,1);
 			*nActive += n;
 			*pdPartSum += n*pkd->nPart + 
 				n*(2*(c[iCell].pUpper-c[iCell].pLower) - n + 1)/2;
 			*pdCellSum += n*(pkd->nCellSoft + pkd->nCellNewt);
 			pkdStartTimer(pkd,2);
-			pkdBucketInteract(pkd,iCell,iOrder);
+			*pdFlop += pkdBucketInteract(pkd,iCell,iOrder);
 			pkdStopTimer(pkd,2);
 			fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 
 				1.0*(pkd->nPart + (n-1)/2.0);
@@ -1490,7 +1492,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	 */
 	if (bPeriodic) {
 	    pkdStartTimer(pkd,3);
-	    pkdEwaldInit(pkd,fEwhCut,iEwOrder);
+	    pkdEwaldInit(pkd,fEwhCut,iEwOrder);		/* ignored in Flop count! */
 	    iCell = pkd->iRoot;
 	    while (iCell != -1) {
 		    if (c[iCell].iLower != -1) {
@@ -1501,7 +1503,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			 ** Calculate Ewald on this bucket.
 			 ** Note, it will only affect the active particles.
 			 */
-			pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
+			*pdFlop += pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
 		    iCell = c[iCell].iUpper;
 		    }
 	    pkdStopTimer(pkd,3);

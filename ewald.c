@@ -8,20 +8,28 @@
 #include "qeval.h"
 
 
-void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
+int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 {
 	KDN *pkdn;
 	PARTICLE *p;
 	struct ilCellNewt mom;
-	int i,j,n,ix,iy,iz,nEwReps,bInHolex,bInHolexy,bInHole;
+	int i,j,n,ix,iy,iz,nEwReps,bInHole,bInHolex,bInHolexy;
 	double L,alpha,alpha2,alphan,k1,ka;
 	double fEwCut2;
 	double fPot,ax,ay,az;
-	double dx,dy,dz,dxo,dyo,dzo,r2,r,dir,dir2,a;
+	double dx,dy,dz,dxo,dyo,dzo,rx2,rxy2,r2,r,dir,dir2,a;
 	double gam[6];
 	double hdotx,s,c;
+	int nFlop;
+	int nActive = 0;
+	int nLoop = 0;
+#ifdef REDUCED_EWALD
+	int nMultiFlop[5] = QEVAL_FLOP;
+#else
+	int nMultiFlop[5] = MEVAL_FLOP;
+#endif
 	
-	if(!iOrder) return;
+	if (!iOrder) return;
 	mom = pkd->ilcnRoot;
 	pkdn = &pkd->kdNodes[iBucket];
 	n = pkdn->pUpper - pkdn->pLower + 1;
@@ -46,15 +54,28 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 		for (ix=-nEwReps;ix<=nEwReps;++ix) {
 			bInHolex = (ix >= -nReps && ix <= nReps);
 			dxo = dx + ix*L;
+			rx2 = dxo*dxo;
+			if (rx2 > fEwCut2 && !bInHolex) continue;
 			for(iy=-nEwReps;iy<=nEwReps;++iy) {
 				bInHolexy = (bInHolex && iy >= -nReps && iy <= nReps);
 				dyo = dy + iy*L;
+				rxy2 = rx2 + dyo*dyo;
+				if (rxy2 > fEwCut2 && !bInHolexy) continue;
 				for(iz=-nEwReps;iz<=nEwReps;++iz) {
 					bInHole = (bInHolexy && iz >= -nReps && iz <= nReps);
+					/*
+					 ** Scoring for Ewald inner stuff = (+,*)
+					 **		Visible ops 		= (8,28)
+					 **		sqrt, 1/sqrt est. 	= (6,11)
+					 **		exp est.			= (6,11)  same as sqrt.
+					 **		erf/erfc est.		= (12,22) twice a sqrt.	
+					 **		Subtotal			= (32,72) = 104
+					 **		Total				= 104 + nMultiFlop[iOrder]
+					 */
 					dzo = dz + iz*L;
-					r2 = dxo*dxo + dyo*dyo + dzo*dzo;
-					if (r2 == 0.0) continue;
+					r2 = rxy2 + dzo*dzo;
 					if (r2 > fEwCut2 && !bInHole) continue;
+					if (r2 == 0.0) continue;
 					r = sqrt(r2);
 					dir = 1/r;
 					dir2 = dir*dir;
@@ -77,9 +98,17 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 #else
 					MEVAL(iOrder,mom,gam,dxo,dyo,dzo,ax,ay,az,fPot);
 #endif
+					++nLoop;
 					}
 				}
 			}
+		/*
+		 ** Scoring for the h-loop (+,*)
+		 ** 	Without trig = (10,14)
+		 **	    Trig est.	 = 2*(6,11)  same as 1/sqrt scoring.
+		 **		Total        = (22,36)
+		 **					 = 58
+		 */
 		for (i=0;i<pkd->nEwhLoop;++i) {
 			hdotx = pkd->ewt[i].hx*dx + pkd->ewt[i].hy*dy + pkd->ewt[i].hz*dz;
 			c = cos(hdotx);
@@ -93,7 +122,11 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 		p[j].a[0] += ax;
 		p[j].a[1] += ay;
 		p[j].a[2] += az;
+		++nActive;
 	    }
+	nFlop = nLoop*(104 + nMultiFlop[iOrder]) + 
+		nActive*pkd->nEwhLoop*58;
+	return(nFlop);
 	}
 
 

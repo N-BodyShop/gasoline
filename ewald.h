@@ -4,6 +4,6 @@
 #include "pkd.h"
 
 void pkdEwaldInit(PKD,double,int);
-void pkdBucketEwald(PKD,int,int,double,int);
+int pkdBucketEwald(PKD,int,int,double,int);
 
 #endif

@@ -11,7 +11,11 @@
  **   ax,ay,az: (double) acceleration (accumulated to)
  **   fPot:             (double) potential (accumulated to)
  ** Scoring: (+,*)
- **		Hexa=(34,123) Octu=(22,57) Quad=(13,21) Mono=(5,5) Total=(74,206) = 280 Flops/Hexa-Qeval
+ **		Hexa=(34,123) Octu=(22,57) Quad=(13,18) Mono=(5,5) Total=(74,203) = 277 Flops/Hexa-Qeval
+ ** Case 4: (74,203)	total = 277
+ ** Case 3:	(40,80)		total = 120
+ ** Case 2: (18,23)		total = 41
+ ** Case 1: (5,5)		total = 10
  */
 #define QEVAL(iOrder,mom,gam,dx,dy,dz,ax,ay,az,fPot)\
 {\
@@ -57,4 +61,7 @@ ay -= dy*Qta;\
 az -= dz*Qta;\
 }\
 }
+
+#define QEVAL_FLOP	{10,10,41,120,277}
+
 #endif

@@ -7,14 +7,13 @@
 #include "meval.h"
 #include "qeval.h"
 
-#define NATIVE_SQRT (defined(_MIPS_ISA) && (_MIPS_ISA == _MIPS_ISA_MIPS4) \
-		     || defined(__alpha__) || defined(__i486__)) 
+#define NATIVE_SQRT   1
 
 #if !(NATIVE_SQRT)
 void v_sqrt1(int,double *,double *);
 #endif
 
-void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
+int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 {	
 	PARTICLE *p;
 	KDN *pkdn;
@@ -29,6 +28,13 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 #if !(NATIVE_SQRT)
 	double *sqrttmp,*d2a;
 #endif
+	int nFlop;
+	int nActive = 0;
+#ifdef COMPLETE_LOCAL
+	int nMultiFlop[5] = MEVAL_FLOP;
+#else
+	int nMultiFlop[5] = QEVAL_FLOP;
+#endif
 
 	/*
 	 ** Now process the two interaction lists for each active particle.
@@ -41,6 +47,7 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	ilcn = pkd->ilcn;
 	for (i=0;i<n;++i) {
 		if (!p[i].iActive) continue;
+		++nActive;
 		ax = 0.0;
 		ay = 0.0;
 		az = 0.0;
@@ -132,8 +139,9 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 		 ** Scoring for CellNewt (+,*)
 		 ** 	Without sqrt = (5,13)
 		 **     1/sqrt est.  = (6,11)
-		 **     Qeval        = (74,206)
-		 **     Total        = (85,230) = 315 Flops/Newt-Interact
+		 **     Subtotal	 = (11,24)  = 35
+		 **     Qeval        (Hex)		= 277 (see qeval.h)
+		 **     Total        = (85,227) = 312 Flops/Newt-Interact
 		 */
 #if !(NATIVE_SQRT)
 		for (j=0;j<pkd->nCellNewt;++j) {
@@ -210,6 +218,12 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 				}
 			}
 		}
+	/*
+	 ** Compute the nFlop estimate.
+	 */
+	nFlop = nActive*((pkd->nPart + n)*38 + pkd->nCellSoft*82 +
+					 pkd->nCellNewt*(35 + nMultiFlop[iOrder]));
+	return(nFlop);
 	}
 
 

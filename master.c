@@ -1389,6 +1389,7 @@ void msrGravity(MSR msr,double dStep,
 	int iDum;
 	int sec,dsec;
 	double dPartAvg,dCellAvg;
+	double dMFlops;
 	double dWAvg,dWMax,dWMin;
 	double dIAvg,dIMax,dIMin;
 	double dEAvg,dEMax,dEMin;
@@ -1397,16 +1398,18 @@ void msrGravity(MSR msr,double dStep,
 	assert(msr->iTreeType == MSR_TREE_SPATIAL || 
 		   msr->iTreeType == MSR_TREE_DENSITY);
 	printf("Calculating Gravity, Step:%.1f\n",dStep);
-	sec = time(0);
     in.nReps = msr->param.nReplicas;
     in.bPeriodic = msr->param.bPeriodic;
 	in.iOrder = msr->param.iOrder;
 	in.iEwOrder = msr->param.iEwOrder;
     in.dEwCut = msr->param.dEwCut;
     in.dEwhCut = msr->param.dEwhCut;
+	sec = time(0);
 	pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
 	dsec = time(0) - sec;
-	printf("Gravity Calculated, Wallclock:%d secs\n",dsec);
+	dMFlops = out.dFlop/dsec*1e-6;
+	printf("Gravity Calculated, Wallclock:%d secs, MFlops:%.1f, Flop:%.3g\n",
+		   dsec,dMFlops,out.dFlop);
 	*piSec = dsec;
 	dPartAvg = out.dPartSum/out.nActive;
 	dCellAvg = out.dCellSum/out.nActive;

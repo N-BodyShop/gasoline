@@ -267,7 +267,7 @@ double pkdCalcOpen(KDN *,int,double,int);
 void pkdBuildLocal(PKD,int,int,double,int,int,KDN *);
 void pkdBuildBinary(PKD,int,int,double,int,int,KDN *);
 void pkdGravAll(PKD,int,int,int,int,double,double,int *,
-				double *,double *,CASTAT *); 
+				double *,double *,CASTAT *,double *); 
 void pkdCalcE(PKD,double *,double *);
 void pkdDrift(PKD,double,float *,int);
 void pkdKick(PKD pkd,double,double);

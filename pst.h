@@ -204,6 +204,7 @@ struct outGravity {
 	int nActive;
 	double dPartSum;
 	double dCellSum;
+	double dFlop;
 	/*	
 	 ** Collected CPU time stats.
 	 */

@@ -10,6 +10,12 @@
  **   dx,dy,dz: (double) displacements FROM the expansion center of mass.
  **   ax,ay,az: (double) acceleration (accumulated to)
  **   fPot:             (double) potential (accumulated to)
+ **
+ ** Quick scoring guide: (+,*)
+ ** Case 4:	(102,241) 	total = 343
+ ** Case 3:	(57,94)  	total = 151
+ ** Case 2:	(22,26)		total = 48
+ ** Case 1:	(5,5)		total = 10
  */
 #define MEVAL(iOrder,mom,gam,dx,dy,dz,ax,ay,az,fPot)\
 {\
@@ -46,7 +52,7 @@ Qmir = (1.0/3.0)*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
 Qx = 0.5*(mom.xxx + mom.xyy + mom.xzz);\
 Qy = 0.5*(mom.xxy + mom.yyy + mom.yzz);\
 Qz = 0.5*(mom.xxz + mom.yyz + mom.zzz);\
-Qtr = Qx*dx + Qy*dy +Qz*dz;\
+Qtr = Qx*dx + Qy*dy + Qz*dz;\
 fPot -= gam[3]*Qmir - gam[2]*Qtr;\
 Qta += gam[4]*Qmir - gam[3]*Qtr;\
 ax += gam[3]*Qmirx - gam[2]*Qx;\
@@ -72,6 +78,9 @@ ay -= dy*Qta;\
 az -= dz*Qta;\
 }\
 }
+
+#define MEVAL_FLOP	{10,10,48,151,343}
+
 #endif
 
 
