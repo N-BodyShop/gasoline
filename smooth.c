@@ -574,7 +574,7 @@ void smSmooth(SMX smx,SMF *smf)
 	/*
 	 ** Check if we are finished!
 	 */
-	if (pNext == pkd->nActive) goto DoneSmooth;
+	if (pNext == nTree) goto DoneSmooth;
 	if (pkd->pStore[pNext].fBall2 >= 0.0) {
 		++pNext;
 		goto StartParticle;
@@ -825,6 +825,7 @@ void smReSmooth(SMX smx,SMF *smf)
 	int pi,pj,nCnt,cp,id,i;
 	float x,y,z,lx,ly,lz,sx,sy,sz,dx,dy,dz,fDist2,fBall2;
 	int iDum;
+	int nTree;
 	
 	if (smx->bPeriodic) {
 	    lx = pkd->fPeriod[0];
@@ -836,7 +837,8 @@ void smReSmooth(SMX smx,SMF *smf)
 	    ly = FLT_MAX;
 	    lz = FLT_MAX;
 	    }
-	for (pi=0;pi<pkdActive(pkd);++pi) {
+	nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
+	for (pi=0;pi<nTree;++pi) {
 		if (p[pi].iActive == 0) continue;
 		/*
 		 ** Do a Ball Gather at the radius of the most distant particle
