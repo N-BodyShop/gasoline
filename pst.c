@@ -621,7 +621,10 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind)
 #ifdef PARANOID_CHECK
 	int i,iLowSum,iHighSum;
 #endif
-	int pFlag, nTotalActive;
+	int pFlag,		/* 0 => we are splitting all particles
+				 at once.  1 => we first split active,
+				 and then inactive. */
+	    nTotalActive;
 	int dBnd;
 
 	/*
@@ -645,7 +648,13 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind)
 	mdlDiag(pst->mdl,ach);
 
 	if(!bDoRootFind) {
-	    d = pst->iSplitDim;
+	    d = dBnd = pst->iSplitDim;
+#ifdef COLLISIONS
+	    if(d > 2)
+		dBnd -= 3;
+#else /* COLLISIONS */
+	    assert(d < 3);
+#endif /* !COLLISIONS */
 	    fm = pst->fSplit;
 	    pFlag = 0;
 	    nLow = 0;
@@ -685,6 +694,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind)
 	else pFlag = 1;
 	/*
 	 ** Now start the ROOT finder based on balancing active weight ALONE!
+	 ** (unless pFlag == 0)
 	 */
 	ittr = 0;
 	while (fl < fmm && fmm < fu && ittr < MAX_ITTR) {
@@ -821,7 +831,8 @@ DoneRootFind:
 	     ** Now we see if the TOTAL number of particles in the lower and upper
 	     ** subsets exceeds the local pStores. If so then we need to find a new
 	     ** boundary to distribute the INACTIVE particles so that everything 
-	     ** fits.
+	     ** fits.  However, if we did not do a rootfind, we need
+	     ** to split ALL particles.
 	     */
 	    inWt.iSplitDim = d;
 	    inWt.fSplit = fm;
@@ -862,7 +873,7 @@ DoneRootFind:
 			    inWt.fSplit = fm;
 			    inWt.ittr = ittr;
 			    inWt.iSplitSide = 1;
-			    inWt.pFlag = -1;
+			    inWt.pFlag = (!bDoRootFind ? 0 : -1);
 			    mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 			    inWt.iSplitSide = 0;
 			    pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
@@ -906,7 +917,7 @@ DoneRootFind:
 			    inWt.fSplit = fm;
 			    inWt.ittr = ittr;
 			    inWt.iSplitSide = 1;
-			    inWt.pFlag = -1;
+			    inWt.pFlag = (!bDoRootFind ? 0 : -1);
 			    mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 			    inWt.iSplitSide = 0;
 			    pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
@@ -956,7 +967,7 @@ DoneRootFind:
 			    inWt.fSplit = fm;
 			    inWt.ittr = ittr;
 			    inWt.iSplitSide = 1;
-			    inWt.pFlag = -1;
+			    inWt.pFlag = (!bDoRootFind ? 0 : -1);
 			    mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 			    inWt.iSplitSide = 0;
 			    pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
@@ -995,7 +1006,7 @@ DoneRootFind:
 			    inWt.fSplit = fm;
 			    inWt.ittr = ittr;
 			    inWt.iSplitSide = 1;
-			    inWt.pFlag = -1;
+			    inWt.pFlag = (!bDoRootFind ? 0 : -1);
 			    mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 			    inWt.iSplitSide = 0;
 			    pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
@@ -1054,6 +1065,9 @@ DoneRootFind:
 	    }
     
 	pst->fSplitInactive = fm;
+	if(!bDoRootFind)
+	    pst->fSplit = fm;
+	
 	/*
 	 ** First Collect rejects.
 	 **
@@ -1291,6 +1305,7 @@ void pstGasWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 /*
  ** Make sure that the local particles are split into active and inactive
  ** when passing pFlag != 0.
+ ** pFlag == 0 => weight all particles.
  ** pFlag > 0 => weight active particles.
  ** pFlag < 0 => weight inactive particles.
  */
