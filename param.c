@@ -154,17 +154,17 @@ int prmParseParam(PRM prm,char *pszFile)
 		switch (pn->iType) {
 		case 0:
 			assert(pn->iSize == sizeof(int));
-			ret = sscanf(p,"%d",pn->pValue);
+			ret = sscanf(p,"%d",(int *)pn->pValue);
 			if (ret != 1) goto syntax_error;
 			break;
 		case 1:
 			assert(pn->iSize == sizeof(int));
-			ret = sscanf(p,"%d",pn->pValue);
+			ret = sscanf(p,"%d",(int *)pn->pValue);
 			if (ret != 1) goto syntax_error;
 			break;
 		case 2:
 			assert(pn->iSize == sizeof(double));
-			ret = sscanf(p,"%lf",pn->pValue);
+			ret = sscanf(p,"%lf",(double *)pn->pValue);
 			if (ret != 1) goto syntax_error;
 			break;
  		case 3:
@@ -173,7 +173,7 @@ int prmParseParam(PRM prm,char *pszFile)
 			 ** This is a CONSERVATIVE test.
 			 */
 			assert(pn->iSize > strlen(p));
-			ret = sscanf(p,"%[^\n#]",pn->pValue);
+			ret = sscanf(p,"%[^\n#]",(char *)pn->pValue);
 			if (ret != 1) goto syntax_error;
 			/*
 			 ** Strip trailing whitespace. OKAY!
@@ -292,7 +292,7 @@ int prmArgProc(PRM prm,int argc,char **argv)
 				prmArgUsage(prm);
 				return(0);
 				}
-			ret = sscanf(argv[i],"%d",pn->pValue);
+			ret = sscanf(argv[i],"%d",(int *) pn->pValue);
 			if (ret != 1) {
 				printf("Expected integer after command line ");
 			    printf("argument:%s\n",argv[i-1]);
@@ -311,7 +311,7 @@ int prmArgProc(PRM prm,int argc,char **argv)
 				prmArgUsage(prm);
 				return(0);
 				}
-			ret = sscanf(argv[i],"%lf",pn->pValue);
+			ret = sscanf(argv[i],"%lf",(double *)pn->pValue);
 			if (ret != 1) {
 				printf("Expected double after command line ");
 			    printf("argument:%s\n",argv[i-1]);
