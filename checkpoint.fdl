@@ -9,6 +9,15 @@ FDL checkpoint_2 (
 		ELEMENT number_of_particles (
 			TYPE int
 			)
+		ELEMENT number_of_gas_particles (
+			TYPE int
+			)
+		ELEMENT number_of_dark_particles (
+			TYPE int
+			)
+		ELEMENT number_of_star_particles (
+			TYPE int
+			)
 		ELEMENT current_timestep (
 			TYPE int
 			)

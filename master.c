@@ -1439,6 +1439,7 @@ void msrGravity(MSR msr,double dStep,
  	if(dsec > 0.0) {
  	    dMFlops = out.dFlop/dsec*1e-6;
 	    printf("Gravity Calculated, Wallclock:%d secs, MFlops:%.1f, Flop:%.3g\n",
+			   dsec,dMFlops,out.dFlop);
  	    }
  	else {
  	    printf("Gravity Calculated, Wallclock:%d secs, MFlops:unknown, Flop:%.3g\n",
@@ -1697,8 +1698,8 @@ double msrReadCheck(MSR msr,int *piStep)
 	 ** particles to support GASOLINE.
 	 */
 	if (iVersion > 2) {
-		FDL_read(fdl,"number_of_dark_particles",&msr->nDark);
 		FDL_read(fdl,"number_of_gas_particles",&msr->nGas);
+		FDL_read(fdl,"number_of_dark_particles",&msr->nDark);
 		FDL_read(fdl,"number_of_star_particles",&msr->nStar);
 		assert(msr->N == msr->nDark+msr->nGas+msr->nStar);
 		}
@@ -1916,8 +1917,8 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	 ** Checkpoint header.
 	 */
 	FDL_write(fdl,"number_of_particles",&msr->N);
-	FDL_write(fdl,"number_of_dark_particles",&msr->nDark);
 	FDL_write(fdl,"number_of_gas_particles",&msr->nGas);
+	FDL_write(fdl,"number_of_dark_particles",&msr->nDark);
 	FDL_write(fdl,"number_of_star_particles",&msr->nStar);
 	FDL_write(fdl,"current_timestep",&iStep);
 	FDL_write(fdl,"current_time",&dTime);
