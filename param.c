@@ -39,7 +39,7 @@ void prmFinish(PRM prm)
 
 
 void prmAddParam(PRM prm,char *pszName,int iType,void *pValue,
-				 char *pszArg,char *pszArgUsage)
+				 int iSize,char *pszArg,char *pszArgUsage)
 {
 	PRM_NODE *pn,*pnTail;
 
@@ -49,6 +49,7 @@ void prmAddParam(PRM prm,char *pszName,int iType,void *pValue,
 	assert(pn->pszName != NULL);
 	strcpy(pn->pszName,pszName);
 	pn->iType = iType;
+	pn->iSize = iSize;
 	pn->bArg = 0;
 	pn->bFile = 0;
 	pn->pValue = pValue;
@@ -152,20 +153,36 @@ int prmParseParam(PRM prm,char *pszFile)
 			}
 		switch (pn->iType) {
 		case 0:
+			assert(pn->iSize == sizeof(int));
 			ret = sscanf(p,"%d",pn->pValue);
 			if (ret != 1) goto syntax_error;
 			break;
 		case 1:
+			assert(pn->iSize == sizeof(int));
 			ret = sscanf(p,"%d",pn->pValue);
 			if (ret != 1) goto syntax_error;
 			break;
 		case 2:
+			assert(pn->iSize == sizeof(double));
 			ret = sscanf(p,"%lf",pn->pValue);
 			if (ret != 1) goto syntax_error;
 			break;
-		case 3:
-			ret = sscanf(p,"%[^\n#]",(char *)pn->pValue);
+ 		case 3:
+			/*
+			 ** Make sure there is enough space to handle the string.
+			 ** This is a CONSERVATIVE test.
+			 */
+			assert(pn->iSize > strlen(p));
+			ret = sscanf(p,"%[^\n#]",pn->pValue);
 			if (ret != 1) goto syntax_error;
+			/*
+			 ** Strip trailing whitespace. OKAY!
+			 */
+			p = pn->pValue;
+			q = &p[strlen(p)];
+			while (--q >= p) if (!isspace(*q)) break;
+			++q;
+			*q = 0;
 			break;
 		default:
 			goto cmd_error;
@@ -313,6 +330,7 @@ int prmArgProc(PRM prm,int argc,char **argv)
 				prmArgUsage(prm);
 				return(0);
 				}
+			assert(pn->iSize > strlen(argv[i]));
 			strcpy((char *)pn->pValue,argv[i]);
 			break;
 		default:

@@ -10,7 +10,8 @@ XDIR	=	$(BDIR)/$(PVM_ARCH)
 
 PVM_MDL		=	../mdl/pvm
 PVM_CFLAGS	=	-mips4 -O3 -I$(PVMDIR)/include -I$(PVM_MDL)
-PVM_LIBMDL	=	v_sqrt1.o $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) /local/lib/libmalloc.a -lm
+#PVM_CFLAGS	=	-O2 -I$(PVMDIR)/include -I$(PVM_MDL)
+PVM_LIBMDL	=	v_sqrt1.o $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
 
 #
 #       KSR1 defines
@@ -45,7 +46,7 @@ T3D_LIBMDL = -O3 -L $(V_SQRT) -L $(V_SQRT1) hyperlib.o $(T3D_MDL)/mdl.o \
 T3D_LD_FLAGS = 
 
 OBJS	= 	main.o master.o param.o outtype.o pkd.o pst.o grav.o \
-		ewald.o walk.o eccanom.o hypanom.o
+		ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o
 EXTRA_OBJ = 	erf.o v_sqrt1.o v_sqrt1.ksr.o hyperlib.o
 
 default:	
@@ -79,3 +80,8 @@ t3d:
 
 pkdgrav: $(OBJS) $(EXTRA_OBJ)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -o pkdgrav $(OBJS) $(LIBMDL)
+
+
+
+
+

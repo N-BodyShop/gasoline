@@ -21,7 +21,7 @@ XDIR	=	$(BDIR)/$(PVM_ARCH)
 
 MDL		=	$(SDIR)/../mdl/pvm
 CFLAGS	=	-O3 -mips4 -I$(PVMDIR)/include -I$(MDL)
-LIBS	=	$(MDL)/$(PVM_ARCH)/mdl-lru.o $(PVMLIB) $(ARCHLIB) -lm
+LIBS	=	$(MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
 
 default:	mdl pkdgrav
 
@@ -36,9 +36,10 @@ mdl:
 	cd $(MDL); aimk
 
 pkdgrav: main.o master.o param.o outtype.o pkd.o pst.o grav.o \
-	ewald.o walk.o v_sqrt1.o eccanom.o hypanom.o
+	ewald.o walk.o v_sqrt1.o eccanom.o hypanom.o fdl.o htable.o
 	$(CC) $(CFLAGS) -o pkdgrav main.o master.o param.o outtype.o pkd.o \
-	 pst.o grav.o ewald.o walk.o v_sqrt1.o eccanom.o hypanom.o $(LIBS)
+	 pst.o grav.o ewald.o walk.o v_sqrt1.o eccanom.o hypanom.o fdl.o \
+	htable.o $(LIBS)
 	mv -f pkdgrav $(XDIR)
 
 main.o: $(SDIR)/main.c
@@ -76,6 +77,12 @@ eccanom.o: $(SDIR)/eccanom.c
 
 hypanom.o: $(SDIR)/hypanom.c
 	$(CC) $(CFLAGS) -c $(SDIR)/hypanom.c
+
+fdl.o: $(SDIR)/fdl.c
+	$(CC) $(CFLAGS) -c $(SDIR)/fdl.c
+
+htable.o: $(SDIR)/htable.c
+	$(CC) $(CFLAGS) -c $(SDIR)/htable.c
 
 
 

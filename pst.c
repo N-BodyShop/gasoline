@@ -74,7 +74,7 @@ void pstAddServices(PST pst,MDL mdl)
 	 ** Calculate the number of levels in the top tree and use it to 
 	 ** define the size of the messages.
 	 */
-	nCell = 1<<(1+(int)ceil(log(nThreads)/log(2.0)));
+	nCell = 1<<(1+(int)ceil(log((double)nThreads)/log(2.0)));
 	mdlAddService(mdl,PST_COLCELLS,pst,pstColCells,
 				  sizeof(struct inColCells),nCell*sizeof(KDN));
 	mdlAddService(mdl,PST_DISTRIBCELLS,pst,pstDistribCells,
@@ -214,7 +214,7 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		nStore = nTotal + (int)ceil(nTotal*in->fExtraStore);
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
 					  in->fPeriod);
-		pkdReadTipsy(plcl->pkd,achInFile,pst->nStart,nTotal);
+		pkdReadTipsy(plcl->pkd,achInFile,pst->nStart,nTotal,in->dvFac);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -885,7 +885,7 @@ void pstWriteTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 		strcat(achOutFile,in->achOutFile);
 		pkdWriteTipsy(plcl->pkd,achOutFile,pst->nStart,pst->nEnd,
-					  in->bStandard);
+					  in->bStandard,in->dvFac);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -1160,12 +1160,8 @@ void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		nStore = nTotal + (int)ceil(nTotal*in->fExtraStore);
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
 					  in->fPeriod);
-		if (in->bNewCheck) {
-			pkdReadCheckNew(plcl->pkd,achInFile,pst->nStart,nTotal);
-			}	
-		else {
-			pkdReadCheckOld(plcl->pkd,achInFile,pst->nStart,nTotal);
-			}
+		pkdReadCheck(plcl->pkd,achInFile,in->iVersion,in->iOffset,
+					 pst->nStart,nTotal);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -1228,7 +1224,7 @@ void pstWriteCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			strcat(achOutFile,"/");
 			}
 		strcat(achOutFile,in->achOutFile);
-		pkdWriteCheckNew(plcl->pkd,achOutFile,in->nStart);
+		pkdWriteCheck(plcl->pkd,achOutFile,in->iOffset,in->nStart);
 		}
 	if (pnOut) *pnOut = 0;
 	}

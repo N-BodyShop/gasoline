@@ -47,6 +47,14 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 		y = p[i].r[1];
 		z = p[i].r[2];
 		h = p[i].fSoft;
+		/*
+		 ** Scoring for Part (+,*)
+		 ** 	Without sqrt = (10,8)
+		 **     1/sqrt est.  = (6,11)
+		 **     SPLINEM      = (0,3)  for soft = (8,30)
+		 **     Total        = (16,22)           (24,49)
+		 **     			 = 38	  for soft = 73
+		 */
 #if !(NATIVE_SQRT)
 		for (j=0;j<pkd->nPart;++j) {
 			dx = x - ilp[j].x;
@@ -76,6 +84,14 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			ay -= dy*b;
 			az -= dz*b;
 			}
+		/*
+		 ** Scoring for CellSoft (+,*)
+		 ** 	Without sqrt = (27,29)
+		 **     1/sqrt est.  = (6,11)
+		 **     SPLINEQ      = (0,9)  for soft = (13,62)
+		 **     Total        = (33,49)           (46,102)
+		 **     			 = 82	  for soft = 148
+		 */
 #if !(NATIVE_SQRT)
 		for (j=0;j<pkd->nCellSoft;++j) {
 			dx = x - ilcs[j].x;
@@ -110,6 +126,13 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			ay -= qir3*dy - c*qiry;
 			az -= qir3*dz - c*qirz;
 			}
+		/*
+		 ** Scoring for CellNewt (+,*)
+		 ** 	Without sqrt = (5,13)
+		 **     1/sqrt est.  = (6,11)
+		 **     Qeval        = (74,206)
+		 **     Total        = (85,230) = 315 Flops/Newt-Interact
+		 */
 #if !(NATIVE_SQRT)
 		for (j=0;j<pkd->nCellNewt;++j) {
 			dx = x - ilcn[j].x;
@@ -154,6 +177,13 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 		}
 	/*
 	 ** Do the inter-bucket interactions.
+	 ** Scoring (+,*):
+	 ** 	without sqrt = (14,17)
+	 **     sqrt est.    = (6,11)
+	 **     SPLINE       = (0,3)  for soft = (8,30)
+	 **     Total        = (20,31)           (28,58)
+	 **                  = 51     for soft = 86
+	 ** Multiplied by (n*(n-1)/2)!
 	 */
 	for (i=0;i<n-1;++i) {
 		for (j=i+1;j<n;++j) {

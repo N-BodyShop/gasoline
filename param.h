@@ -7,6 +7,7 @@ typedef struct prmNode {
 	int iType;
 	int bArg;
 	int bFile;
+	int iSize;
 	void *pValue;
 	char *pszArg;
 	char *pszArgUsage;
@@ -22,7 +23,7 @@ typedef struct prmContext {
 
 void prmInitialize(PRM *,void (*)(void),void (*)(void));
 void prmFinish(PRM);
-void prmAddParam(PRM,char *,int,void *,char *,char *);
+void prmAddParam(PRM,char *,int,void *,int,char *,char *);
 void prmArgUsage(PRM prm);
 int prmParseParam(PRM,char *);
 int prmArgProc(PRM,int,char **);

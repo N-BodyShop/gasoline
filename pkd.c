@@ -18,7 +18,6 @@
 #include "opentype.h"
 #include "mdl.h"
 #include "tipsydefs.h"
-#include "checkdefs.h"
 
 
 double pkdGetTimer(PKD pkd,int iTimer)
@@ -127,7 +126,7 @@ void pkdFinish(PKD pkd)
 	}
 
 
-void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal)
+void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,double dvFac)
 {
 	FILE *fp;
 	int i,j;
@@ -149,7 +148,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal)
 		fread(&dp,sizeof(struct dark_particle),1,fp);
 		for (j=0;j<3;++j) {
 			pkd->pStore[i].r[j] = dp.pos[j];
-			pkd->pStore[i].v[j] = dp.vel[j];
+			pkd->pStore[i].v[j] = dvFac*dp.vel[j];
 			}
 		pkd->pStore[i].fMass = dp.mass;
 		pkd->pStore[i].fSoft = dp.eps;
@@ -438,7 +437,7 @@ void pkdLocalOrder(PKD pkd,int nStart)
 
 
 void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
-				   int bStandard)
+				   int bStandard,double dvFac)
 {
 	FILE *fp;
 	int i,j;
@@ -463,6 +462,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 	assert(fp != NULL);
 	if (bStandard) {
 #ifndef CRAY_T3D
+		float vTemp;
 		XDR xdrs;
 		/*
 		 ** Seek according to true XDR size structures!
@@ -483,7 +483,8 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 				xdr_float(&xdrs,&pkd->pStore[i].r[j]);
 				}
 			for (j=0;j<3;++j) {
-				xdr_float(&xdrs,&pkd->pStore[i].v[j]);
+				vTemp = dvFac*pkd->pStore[i].v[j];			
+				xdr_float(&xdrs,&vTemp);
 				}
 			xdr_float(&xdrs,&pkd->pStore[i].fSoft);
 			xdr_float(&xdrs,&pkd->pStore[i].fPot);
@@ -500,7 +501,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 		for (i=0;i<pkd->nLocal;++i) {
 			for (j=0;j<3;++j) {
 				dp.pos[j] = pkd->pStore[i].r[j];
-				dp.vel[j] = pkd->pStore[i].v[j];
+				dp.vel[j] = dvFac*pkd->pStore[i].v[j];
 				}
 			dp.mass = pkd->pStore[i].fMass;
 			dp.eps = pkd->pStore[i].fSoft;
@@ -1160,7 +1161,8 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo)
 	}
 
 
-void pkdReadCheckNew(PKD pkd,char *pszFileName,int nStart,int nLocal)
+void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
+				  int nStart,int nLocal)
 {
 	FILE *fp;
 	CHKPART cp;
@@ -1173,8 +1175,8 @@ void pkdReadCheckNew(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	 */
 	fp = fopen(pszFileName,"r");
 	assert(fp != NULL);
-	lStart = sizeof(struct msrCheckPointHeader)+nStart*sizeof(CHKPART);
-	fseek(fp,lStart,0);
+	lStart = iOffset+nStart*sizeof(CHKPART);
+	fseek(fp,lStart,SEEK_SET);
 	/*
 	 ** Read Stuff!
 	 */
@@ -1193,7 +1195,7 @@ void pkdReadCheckNew(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	}
 
 
-void pkdWriteCheckNew(PKD pkd,char *pszFileName,int nStart)
+void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 {
 	FILE *fp;
 	CHKPART cp;
@@ -1205,7 +1207,7 @@ void pkdWriteCheckNew(PKD pkd,char *pszFileName,int nStart)
 	 */
 	fp = fopen(pszFileName,"r+");
 	assert(fp != NULL);
-	lStart = sizeof(struct msrCheckPointHeader)+nStart*sizeof(CHKPART);
+	lStart = iOffset+nStart*sizeof(CHKPART);
 	fseek(fp,lStart,0);
 	/* 
 	 ** Write Stuff!
@@ -1222,39 +1224,6 @@ void pkdWriteCheckNew(PKD pkd,char *pszFileName,int nStart)
 		fwrite(&cp,sizeof(CHKPART),1,fp);
 		}
 	fclose(fp);
-	}
-
-
-void pkdReadCheckOld(PKD pkd,char *pszFileName,int nStart,int nLocal)
-{
-	FILE *fp;
-	OCHKPART cp;
-	long lStart;
-	int i,j;
-
-	pkd->nLocal = nLocal;
-	/*
-	 ** Seek past the header and up to nStart.
-	 */
-	fp = fopen(pszFileName,"r");
-	assert(fp != NULL);
-	lStart = sizeof(struct msrCheckPointHeader)+nStart*sizeof(OCHKPART);
-	fseek(fp,lStart,0);
-	/*
-	 ** Read Stuff!
-	 */
-	for (i=0;i<nLocal;++i) {
-		fread(&cp,sizeof(OCHKPART),1,fp);
-		pkd->pStore[i].iOrder = cp.iOrder;
-		pkd->pStore[i].fMass = cp.fMass;
-		pkd->pStore[i].fSoft = cp.fSoft;
-		for (j=0;j<3;++j) {
-			pkd->pStore[i].r[j] = cp.r[j];
-			pkd->pStore[i].v[j] = cp.v[j];
-			}
-		pkd->pStore[i].fWeight = 1.0;	/* set the initial weight to 1.0 */
-		}
-	fclose(fp);	
 	}
 
 

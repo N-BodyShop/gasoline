@@ -10,6 +10,8 @@
  **   dx,dy,dz: (double) displacements FROM the expansion center of mass.
  **   ax,ay,az: (double) acceleration (accumulated to)
  **   fPot:             (double) potential (accumulated to)
+ ** Scoring: (+,*)
+ **		Hexa=(34,123) Octu=(22,57) Quad=(13,21) Mono=(5,5) Total=(74,206) = 280 Flops/Hexa-Qeval
  */
 #define QEVAL(iOrder,mom,gam,dx,dy,dz,ax,ay,az,fPot)\
 {\

@@ -9,8 +9,6 @@
 #define MSR_INIT_ECOSMO		1
 #define MSR_STEP_ECOSMO		0
 
-#define MAX_REDSHIFTS	1000
-
 typedef struct msrContext {
 	PRM prm;
 	PST pst;
@@ -22,30 +20,26 @@ typedef struct msrContext {
 	 */
 	struct parameters param;	   
 	/*
-	 ** Parameters not in checkpoint file!
-	 */
-	int bStandard;
-	double dRedTo;
-	/*
 	 ** Other stuff...
 	 */
 	int nThreads;
 	int N;
+	int bOpenSpec;	/* was an opening parameter specified (used by +restart) */
 	int iOpenType;
 	double dCrit;
 	/*
 	 ** Comoving coordinate variables.
 	 */
-	double dRedshift;
-	double dHubble;
-	double dCosmoFac;
 	double dEcosmo;
-	double dHubbleOld,dUOld,dTimeOld;
+	double dUOld;
+	double dTimeOld;
 	/*
 	 ** Redshift output points.
 	 */
-	int nRed;
-	double dRedOut[MAX_REDSHIFTS];
+	int nMaxOuts;
+	int nOuts;
+	double *pdOutTime;
+	int iOut;
 	} * MSR;
 
 
@@ -53,6 +47,11 @@ typedef struct msrContext {
 void msrInitialize(MSR *,MDL,int,char **,char *);
 void msrLogParams(MSR msr, FILE *fp);
 void msrFinish(MSR);
+double msrTime2Exp(MSR,double);
+double msrExp2Time(MSR,double);
+double msrTime2Hub(MSR,double);
+double msrComoveDriftFac(MSR,double,double);
+double msrComoveKickFac(MSR,double,double);
 double msrReadTipsy(MSR);
 void msrWriteTipsy(MSR,char *,double);
 void msrSetSoft(MSR msr,double);
@@ -62,30 +61,32 @@ void msrReorder(MSR);
 void msrOutArray(MSR,char *,int);
 void msrOutVector(MSR,char *,int);
 void msrDensity(MSR);
-void msrGravity(MSR,int *,double *,double *,double *);
+void msrGravity(MSR,double,int *,double *,double *,double *);
 void msrCalcE(MSR,int,double,double *,double *,double *);
-void msrDrift(MSR,double);
-void msrKick(MSR,double);
+void msrDrift(MSR,double,double);
+void msrKick(MSR,double,double);
 double msrReadCheck(MSR,int *);
 void msrWriteCheck(MSR,double,int);
-void msrStepCosmo(MSR,double);
-double msrRedOut(MSR,int);
-void msrReadRed(MSR);
+int msrOutTime(MSR,double);
+void msrReadOuts(MSR,double);
 /*
  ** Interface functions.
  */
 int msrSteps(MSR);
 char *msrOutName(MSR);
 double msrDelta(MSR);
-double msrRedshift(MSR);
 int msrLogInterval(MSR);
 int msrCheckInterval(MSR);
 int msrOutInterval(MSR);
 int msrRestart(MSR);
 int msrComove(MSR);
+int msrKDK(MSR);
 double msrSoft(MSR);
 
 #endif
+
+
+
 
 
 

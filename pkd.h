@@ -37,6 +37,9 @@ typedef struct particle {
 #endif
 	} PARTICLE;
 
+
+#define CHECKPOINT_VERSION		1
+
 typedef struct chkParticle {
 	int iOrder;
 	float fMass;
@@ -44,21 +47,6 @@ typedef struct chkParticle {
 	float r[3];
 	float v[3];
 	} CHKPART;
-
-
-typedef struct ochkParticle {
-	int iOrder;
-	float fWeight;
-	float fMass;
-	float fSoft;
-	float r[3];
-	float v[3];
-	float a[3];
-	float fPot;
-	float fBall2;
-	float fDensity;
-	float fColor;
-	} OCHKPART;
 
 
 typedef struct bndBound {
@@ -240,7 +228,7 @@ void pkdStartTimer(PKD,int);
 void pkdStopTimer(PKD,int);
 void pkdInitialize(PKD *,MDL,int,int,int,float *);
 void pkdFinish(PKD);
-void pkdReadTipsy(PKD,char *,int,int);
+void pkdReadTipsy(PKD,char *,int,int,double);
 void pkdSetSoft(PKD pkd,double dSoft);
 void pkdCalcBound(PKD,BND *);
 int pkdWeight(PKD,int,float,int,int,int,int *,int *,float *,float *);
@@ -257,7 +245,7 @@ int pkdNodes(PKD);
 void pkdDomainColor(PKD);
 int pkdColOrdRejects(PKD,int,int);
 void pkdLocalOrder(PKD,int);
-void pkdWriteTipsy(PKD,char *,int,int,int);
+void pkdWriteTipsy(PKD,char *,int,int,int,double);
 void pkdCombine(KDN *,KDN *,KDN *);
 void pkdCalcCell(PKD,KDN *,float *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);
@@ -267,9 +255,8 @@ void pkdGravAll(PKD,int,int,int,int,double,double,
 void pkdCalcE(PKD,double *,double *);
 void pkdDrift(PKD,double,float *,int);
 void pkdKick(PKD pkd,double,double);
-void pkdReadCheckOld(PKD,char *,int,int);
-void pkdReadCheckNew(PKD,char *,int,int);
-void pkdWriteCheckNew(PKD,char *,int);
+void pkdReadCheck(PKD,char *,int,int,int,int);
+void pkdWriteCheck(PKD,char *,int,int);
 void pkdDistribCells(PKD,int,KDN *);
 void pkdCalcRoot(PKD,struct ilCellNewt *);
 void pkdDistribRoot(PKD,struct ilCellNewt *);

@@ -17,7 +17,7 @@
 #include "master.h"
 #include "tipsydefs.h"
 #include "opentype.h"
-#include "checkdefs.h"
+#include "fdl.h"
 
 
 void _msrLeader(void)
@@ -40,6 +40,15 @@ void _msrTrailer(void)
 	}
 
 
+void _msrExit(MSR msr)
+{
+	MDL mdl=msr->mdl;
+	msrFinish(msr);
+	mdlFinish(mdl);
+	exit(1);
+	}
+
+
 void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 {
 	MSR msr;
@@ -58,118 +67,119 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	 */
 	prmInitialize(&msr->prm,_msrLeader,_msrTrailer);
 	msr->param.nThreads = 1;
-	prmAddParam(msr->prm,"nThreads",1,&msr->param.nThreads,"sz",
+	prmAddParam(msr->prm,"nThreads",1,&msr->param.nThreads,sizeof(int),"sz",
 				"<nThreads>");
 	msr->param.bDiag = 0;
-	prmAddParam(msr->prm,"bDiag",0,&msr->param.bDiag,"d",
+	prmAddParam(msr->prm,"bDiag",0,&msr->param.bDiag,sizeof(int),"d",
 				"enable/disable per thread diagnostic output");
 	msr->param.bVerbose = 0;
-	prmAddParam(msr->prm,"bVerbose",0,&msr->param.bVerbose,"v",
+	prmAddParam(msr->prm,"bVerbose",0,&msr->param.bVerbose,sizeof(int),"v",
 				"enable/disable verbose output");
 	msr->param.bPeriodic = 0;
-	prmAddParam(msr->prm,"bPeriodic",0,&msr->param.bPeriodic,"p",
+	prmAddParam(msr->prm,"bPeriodic",0,&msr->param.bPeriodic,sizeof(int),"p",
 				"periodic/non-periodic = -p");
 	msr->param.bRestart = 0;
-	prmAddParam(msr->prm,"bRestart",0,&msr->param.bRestart,"restart",
+	prmAddParam(msr->prm,"bRestart",0,&msr->param.bRestart,sizeof(int),"restart",
 				"restart from checkpoint");
 	msr->param.bParaRead = 1;
-	prmAddParam(msr->prm,"bParaRead",0,&msr->param.bParaRead,"par",
+	prmAddParam(msr->prm,"bParaRead",0,&msr->param.bParaRead,sizeof(int),"par",
 				"enable/disable parallel reading of files = +par");
 	msr->param.bParaWrite = 1;
-	prmAddParam(msr->prm,"bParaWrite",0,&msr->param.bParaWrite,"paw",
+	prmAddParam(msr->prm,"bParaWrite",0,&msr->param.bParaWrite,sizeof(int),"paw",
 				"enable/disable parallel writing of files = +paw");
+	msr->param.bCannonical = 1;
+	prmAddParam(msr->prm,"bCannonical",0,&msr->param.bCannonical,sizeof(int),"can",
+				"enable/disable use of cannonical momentum = +can");
+	msr->param.bKDK = 1;
+	prmAddParam(msr->prm,"bKDK",0,&msr->param.bKDK,sizeof(int),"kdk",
+				"enable/disable use of kick-drift-kick integration = +kdk");
 	msr->param.nBucket = 8;
-	prmAddParam(msr->prm,"nBucket",1,&msr->param.nBucket,"b",
+	prmAddParam(msr->prm,"nBucket",1,&msr->param.nBucket,sizeof(int),"b",
 				"<max number of particles in a bucket> = 8");
 	msr->param.nSteps = 0;
-	prmAddParam(msr->prm,"nSteps",1,&msr->param.nSteps,"n",
+	prmAddParam(msr->prm,"nSteps",1,&msr->param.nSteps,sizeof(int),"n",
 				"<number of timesteps> = 0");
-	msr->param.iOutInterval = 20;
-	prmAddParam(msr->prm,"iOutInterval",1,&msr->param.iOutInterval,
-				"oi","<number of timesteps between snapshots> = 20");
+	msr->param.iOutInterval = 0;
+	prmAddParam(msr->prm,"iOutInterval",1,&msr->param.iOutInterval,sizeof(int),
+				"oi","<number of timesteps between snapshots> = 0");
 	msr->param.iLogInterval = 10;
-	prmAddParam(msr->prm,"iLogInterval",1,&msr->param.iLogInterval,
+	prmAddParam(msr->prm,"iLogInterval",1,&msr->param.iLogInterval,sizeof(int),
 				"ol","<number of timesteps between logfile outputs> = 10");
 	msr->param.iCheckInterval = 10;
-	prmAddParam(msr->prm,"iCheckInterval",1,&msr->param.iCheckInterval,
+	prmAddParam(msr->prm,"iCheckInterval",1,&msr->param.iCheckInterval,sizeof(int),
 				"oc","<number of timesteps between checkpoints> = 10");
 	msr->param.iOrder = 4;
-	prmAddParam(msr->prm,"iOrder",1,&msr->param.iOrder,"or",
+	prmAddParam(msr->prm,"iOrder",1,&msr->param.iOrder,sizeof(int),"or",
 				"<multipole expansion order: 1, 2, 3 or 4> = 4");
 	msr->param.iEwOrder = 4;
-	prmAddParam(msr->prm,"iEwOrder",1,&msr->param.iEwOrder,"ewo",
+	prmAddParam(msr->prm,"iEwOrder",1,&msr->param.iEwOrder,sizeof(int),"ewo",
 				"<Ewald multipole expansion order: 1, 2, 3 or 4> = 4");
 	msr->param.nReplicas = 0;
-	prmAddParam(msr->prm,"nReplicas",1,&msr->param.nReplicas,"nrep",
+	prmAddParam(msr->prm,"nReplicas",1,&msr->param.nReplicas,sizeof(int),"nrep",
 				"<nReplicas> = 0 for -p, or 1 for +p");
 	msr->param.dSoft = 0.0;
-	prmAddParam(msr->prm,"dSoft",2,&msr->param.dSoft,"e",
+	prmAddParam(msr->prm,"dSoft",2,&msr->param.dSoft,sizeof(double),"e",
 				"<gravitational softening length> = 0.0");
 	msr->param.dDelta = 0.0;
-	prmAddParam(msr->prm,"dDelta",2,&msr->param.dDelta,"dt",
+	prmAddParam(msr->prm,"dDelta",2,&msr->param.dDelta,sizeof(double),"dt",
 				"<time step>");
 	msr->param.dEwCut = 2.6;
-	prmAddParam(msr->prm,"dEwCut",2,&msr->param.dEwCut,"ew",
+	prmAddParam(msr->prm,"dEwCut",2,&msr->param.dEwCut,sizeof(double),"ew",
 				"<dEwCut> = 2.6");
 	msr->param.dEwhCut = 2.8;
-	prmAddParam(msr->prm,"dEwhCut",2,&msr->param.dEwhCut,"ewh",
+	prmAddParam(msr->prm,"dEwhCut",2,&msr->param.dEwhCut,sizeof(double),"ewh",
 				"<dEwhCut> = 2.8");
 	msr->param.dTheta = 0.8;
-	prmAddParam(msr->prm,"dTheta",2,&msr->param.dTheta,"theta",
+	prmAddParam(msr->prm,"dTheta",2,&msr->param.dTheta,sizeof(double),"theta",
 				"<Barnes opening criterion> = 0.8");
 	msr->param.dAbsPartial = 0.0;
-	prmAddParam(msr->prm,"dAbsPartial",2,&msr->param.dAbsPartial,"ap",
+	prmAddParam(msr->prm,"dAbsPartial",2,&msr->param.dAbsPartial,sizeof(double),"ap",
 				"<absolute partial error opening criterion>");
 	msr->param.dRelPartial = 0.0;
-	prmAddParam(msr->prm,"dRelPartial",2,&msr->param.dRelPartial,"rp",
+	prmAddParam(msr->prm,"dRelPartial",2,&msr->param.dRelPartial,sizeof(double),"rp",
 				"<relative partial error opening criterion>");
 	msr->param.dAbsTotal = 0.0;
-	prmAddParam(msr->prm,"dAbsTotal",2,&msr->param.dAbsTotal,"at",
+	prmAddParam(msr->prm,"dAbsTotal",2,&msr->param.dAbsTotal,sizeof(double),"at",
 				"<absolute total error opening criterion>");
 	msr->param.dRelTotal = 0.0;
-	prmAddParam(msr->prm,"dRelTotal",2,&msr->param.dRelTotal,"rt",
+	prmAddParam(msr->prm,"dRelTotal",2,&msr->param.dRelTotal,sizeof(double),"rt",
 				"<relative total error opening criterion>");
 	msr->param.dPeriod = 1.0;
-	prmAddParam(msr->prm,"dPeriod",2,&msr->param.dPeriod,"L",
+	prmAddParam(msr->prm,"dPeriod",2,&msr->param.dPeriod,sizeof(double),"L",
 				"<periodic box length> = 1.0");
 	msr->param.achInFile[0] = 0;
-	prmAddParam(msr->prm,"achInFile",3,msr->param.achInFile,"I",
+	prmAddParam(msr->prm,"achInFile",3,msr->param.achInFile,256,"I",
 				"<input file name> (file in TIPSY binary format)");
 	strcpy(msr->param.achOutName,pszDefaultName); 
-	prmAddParam(msr->prm,"achOutName",3,&msr->param.achOutName,"o",
+	prmAddParam(msr->prm,"achOutName",3,&msr->param.achOutName,256,"o",
 				"<output name for snapshots and logfile> = \"pkdgrav\"");
 	msr->param.bComove = 0;
-	prmAddParam(msr->prm,"bComove",0,&msr->param.bComove,"cm",
+	prmAddParam(msr->prm,"bComove",0,&msr->param.bComove,sizeof(int),"cm",
 				"enable/disable comoving coordinates = -cm");
 	msr->param.dHubble0 = 0.0;
-	prmAddParam(msr->prm,"dHubble0",2,&msr->param.dHubble0,"Hub",
+	prmAddParam(msr->prm,"dHubble0",2,&msr->param.dHubble0,sizeof(double),"Hub",
 				"<dHubble0> = 0.0");
 	msr->param.dOmega0 = 1.0;
-	prmAddParam(msr->prm,"dOmega0",2,&msr->param.dOmega0,"Om",
+	prmAddParam(msr->prm,"dOmega0",2,&msr->param.dOmega0,sizeof(double),"Om",
 				"<dOmega0> = 1.0");
 	strcpy(msr->param.achDataSubPath,".");
-	prmAddParam(msr->prm,"achDataSubPath",3,&msr->param.achDataSubPath,
+	prmAddParam(msr->prm,"achDataSubPath",3,&msr->param.achDataSubPath,256,
 				NULL,NULL);
-	msr->param.dExtraStore = 1.0;
-	prmAddParam(msr->prm,"dExtraStore",2,&msr->param.dExtraStore,NULL,NULL);
+	msr->param.dExtraStore = 0.10;
+	prmAddParam(msr->prm,"dExtraStore",2,&msr->param.dExtraStore,
+				sizeof(double),NULL,NULL);
 	msr->param.nSmooth = 64;
-	prmAddParam(msr->prm,"nSmooth",1,&msr->param.nSmooth,"s",
+	prmAddParam(msr->prm,"nSmooth",1,&msr->param.nSmooth,sizeof(int),"s",
 				"<number of particles to smooth over> = 64");
 	msr->param.bGatherScatter = 1;
-	prmAddParam(msr->prm,"bGatherScatter",0,&msr->param.bGatherScatter,"gs",
+	prmAddParam(msr->prm,"bGatherScatter",0,&msr->param.bGatherScatter,
+				sizeof(int),"gs",
 				"gather-scatter/gather-only smoothing kernel = +gs");
-	/*
-	 ** Added bStandard as a new parameter, but can't add it to 
-	 ** msr->params because this would change the checkpoint 
-	 ** format. Need to generalize the checkpoint format to handle
-	 ** these types of changes!
-	 ** Now also dRedTo...
-	 */
-	msr->bStandard = 0;
-	prmAddParam(msr->prm,"bStandard",0,&msr->bStandard,"std",
-				"output in standard TIPSY binary format");
-	msr->dRedTo = 0.0;	
-	prmAddParam(msr->prm,"dRedTo",2,&msr->dRedTo,"zto",
+	msr->param.bStandard = 0;
+	prmAddParam(msr->prm,"bStandard",0,&msr->param.bStandard,sizeof(int),"std",
+				"output in standard TIPSY binary format = -std");
+	msr->param.dRedTo = 0.0;	
+	prmAddParam(msr->prm,"dRedTo",2,&msr->param.dRedTo,sizeof(double),"zto",
 				"specifies final redshift for the simulation");
 	/*
 	 ** Set the box center to (0,0,0) for now!
@@ -184,18 +194,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	 */
 	ret = prmArgProc(msr->prm,argc,argv);
 	if (!ret) {
-		msrFinish(msr);
-		mdlFinish(mdl);
-		exit(1);
+		_msrExit(msr);
 		}
 	if (msr->param.bPeriodic && !prmSpecified(msr->prm,"nReplicas")) {
 		msr->param.nReplicas = 1;
 		}
 	if (!msr->param.achInFile[0] && !msr->param.bRestart) {
 		printf("pkdgrav ERROR: no input file specified\n");
-		msrFinish(msr);
-		mdlFinish(mdl);
-		exit(1);
+		_msrExit(msr);
 		}
 	/*
 	 ** Should we have restarted, maybe?
@@ -206,7 +212,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	/*
 	 ** Determine opening type.
 	 */
-	msr->iOpenType = OPEN_JOSH;
+	msr->iOpenType = 0;
+	msr->bOpenSpec = 1;
 	if (prmFileSpecified(msr->prm,"dAbsPartial")) msr->iOpenType = OPEN_ABSPAR;
 	if (prmFileSpecified(msr->prm,"dRelPartial")) msr->iOpenType = OPEN_RELPAR;
 	if (prmFileSpecified(msr->prm,"dAbsTotal")) msr->iOpenType = OPEN_ABSTOT;
@@ -216,6 +223,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	if (prmArgSpecified(msr->prm,"dRelPartial")) msr->iOpenType = OPEN_RELPAR;
 	if (prmArgSpecified(msr->prm,"dAbsTotal")) msr->iOpenType = OPEN_ABSTOT;
 	if (prmArgSpecified(msr->prm,"dRelTotal")) msr->iOpenType = OPEN_RELTOT;
+	if (!msr->iOpenType) {
+		msr->iOpenType = OPEN_JOSH;
+		msr->bOpenSpec = 0;
+		}
 	switch (msr->iOpenType) {
 	case OPEN_JOSH:
 		msr->dCrit = msr->param.dTheta;
@@ -238,11 +249,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	/*
 	 ** Initialize comove variables.
 	 */
-	msr->dRedshift = 0.0;
-	msr->dCosmoFac = 1.0;
-	msr->dHubble = 0.0;
-	msr->nRed = 0;
-	if (msrComove(msr)) msrReadRed(msr);
+	msr->nMaxOuts = 100;
+	msr->pdOutTime = malloc(msr->nMaxOuts*sizeof(double));
+	assert(msr->pdOutTime != NULL);
+	msr->nOuts = 0;
         
 	pstInitialize(&msr->pst,msr->mdl,&msr->lcl);
 
@@ -266,67 +276,88 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 
 void msrLogParams(MSR msr,FILE *fp)
 {
+	double z;
 	int i;
-  
-	fprintf(fp,"# nThreads: %d",msr->param.nThreads);
+  	
+	fprintf(fp,"# N: %d",msr->N);
+	fprintf(fp," nThreads: %d",msr->param.nThreads);
 	fprintf(fp," bDiag: %d",msr->param.bDiag);
 	fprintf(fp," bVerbose: %d",msr->param.bVerbose);
-	fprintf(fp," bPeriodic: %d",msr->param.bPeriodic);
+	fprintf(fp,"\n# bPeriodic: %d",msr->param.bPeriodic);
+	fprintf(fp," bGatherScatter: %d",msr->param.bGatherScatter);
 	fprintf(fp," bRestart: %d",msr->param.bRestart);
+	fprintf(fp," bComove: %d",msr->param.bComove);
+	fprintf(fp,"\n# bParaRead: %d",msr->param.bParaRead);
+	fprintf(fp," bParaWrite: %d",msr->param.bParaWrite);
+	fprintf(fp," bCannonical: %d",msr->param.bCannonical);
+	fprintf(fp," bStandard: %d",msr->param.bStandard);
+	fprintf(fp,"\n# bKDK: %d",msr->param.bKDK);
 	fprintf(fp," nBucket: %d",msr->param.nBucket);
-	fprintf(fp,"\n# nSteps: %d",msr->param.nSteps);
 	fprintf(fp," iOutInterval: %d",msr->param.iOutInterval);
 	fprintf(fp," iLogInterval: %d",msr->param.iLogInterval);
-	fprintf(fp," iCheckInterval: %d",msr->param.iCheckInterval);
+	fprintf(fp,"\n# iCheckInterval: %d",msr->param.iCheckInterval);
 	fprintf(fp," iOrder: %d",msr->param.iOrder);
-	fprintf(fp,"\n# nReplicas: %d",msr->param.nReplicas);
-	if (prmArgSpecified(msr->prm,"dSoft"))
+	fprintf(fp," iEwOrder: %d",msr->param.iEwOrder);
+	fprintf(fp," nReplicas: %d",msr->param.nReplicas);
+	fprintf(fp,"\n# nSteps: %d",msr->param.nSteps);
+	fprintf(fp," nSmooth: %d",msr->param.nSmooth);
+	fprintf(fp," dExtraStore: %f",msr->param.dExtraStore);
+	if (prmSpecified(msr->prm,"dSoft"))
 		fprintf(fp," dSoft: %g",msr->param.dSoft);
 	else
 		fprintf(fp," dSoft: input");
-	fprintf(fp," dDelta: %g",msr->param.dDelta);
+	fprintf(fp,"\n# dDelta: %g",msr->param.dDelta);
 	fprintf(fp," dEwCut: %f",msr->param.dEwCut);
 	fprintf(fp," dEwhCut: %f",msr->param.dEwhCut);
-	fprintf(fp,"\n#");
 	switch (msr->iOpenType) {
 	case OPEN_JOSH:
-		fprintf(fp," iOpenType: JOSH");
+		fprintf(fp,"\n# iOpenType: JOSH");
 		break;
 	case OPEN_ABSPAR:
-		fprintf(fp," iOpenType: ABSPAR");
+		fprintf(fp,"\n# iOpenType: ABSPAR");
 		break;
 	case OPEN_RELPAR:
-		fprintf(fp," iOpenType: RELPAR");
+		fprintf(fp,"\n# iOpenType: RELPAR");
 		break;
 	case OPEN_ABSTOT:
-		fprintf(fp," iOpenType: ABSTOT");
+		fprintf(fp,"\n# iOpenType: ABSTOT");
 		break;
 	case OPEN_RELTOT:
-		fprintf(fp," iOpenType: RELTOT");
+		fprintf(fp,"\n# iOpenType: RELTOT");
 		break;
 	default:
-		fprintf(fp," iOpenType: NONE?");
+		fprintf(fp,"\n# iOpenType: NONE?");
 		}
 	fprintf(fp," dTheta: %f",msr->param.dTheta);
-	fprintf(fp," dAbsPartial: %g",msr->param.dAbsPartial);
+	fprintf(fp,"\n# dAbsPartial: %g",msr->param.dAbsPartial);
 	fprintf(fp," dRealPartial: %g",msr->param.dRelPartial);
 	fprintf(fp," dAbsTotal: %g",msr->param.dAbsTotal);
 	fprintf(fp," dRelTotal: %g",msr->param.dRelTotal);
 	fprintf(fp,"\n# dPeriod: %g",msr->param.dPeriod);
-	fprintf(fp," achInFile: %s",msr->param.achInFile);
-	fprintf(fp," achOutName: %s",msr->param.achOutName); 
-	fprintf(fp," bComove: %d",msr->param.bComove);
 	fprintf(fp," dHubble0: %g",msr->param.dHubble0);
 	fprintf(fp," dOmega0: %g",msr->param.dOmega0);
+	fprintf(fp,"\n# achInFile: %s",msr->param.achInFile);
+	fprintf(fp,"\n# achOutName: %s",msr->param.achOutName); 
 	fprintf(fp,"\n# achDataSubPath: %s",msr->param.achDataSubPath);
-	fprintf(fp," dExtraStore: %f",msr->param.dExtraStore);
-	fprintf(fp," nSmooth: %d",msr->param.nSmooth);
-	fprintf(fp," bGatherScatter: %d\n",msr->param.bGatherScatter);
-	fprintf(fp,"# RedOut:");
-	for (i=0;i<msr->nRed;i++)
-		fprintf(fp," %f",msrRedOut(msr, i));
-	fprintf(fp,"\n");
-	fflush(fp);
+	if (msr->param.bComove) {
+		fprintf(fp,"\n# RedOut:");
+		for (i=0;i<msr->nOuts;i++) {
+			if (i%5 == 0) fprintf(fp,"\n#   ");
+			z = 1.0/msrTime2Exp(msr,msr->pdOutTime[i])-1.0;
+			fprintf(fp," %f",z);
+			}
+		fprintf(fp,"\n");
+		fflush(fp);
+		}
+	else {
+		fprintf(fp,"# TimeOut:");
+		for (i=0;i<msr->nOuts;i++) {
+			if (i%5 == 0) fprintf(fp,"\n#   ");
+			fprintf(fp," %f",msr->pdOutTime[i]);
+			}
+		fprintf(fp,"\n");
+		fflush(fp);
+		}
 	}
 
 
@@ -459,6 +490,133 @@ double msrExp2Time(MSR msr,double dExp)
 	}
 
 
+double msrTime2Hub(MSR msr,double dTime)
+{
+	double a = msrTime2Exp(msr,dTime);
+	double z;
+
+	assert(a > 0.0);
+	z = 1.0/a-1.0;
+	return(msr->param.dHubble0*(1.0+z)*sqrt(1.0+msr->param.dOmega0*z));
+	}
+
+
+/*
+ ** This function integrates the time dependence of the "drift"-Hamiltonian.
+ */
+double msrComoveDriftFac(MSR msr,double dTime,double dDelta)
+{
+	double dOmega0 = msr->param.dOmega0;
+	double dHubble0 = msr->param.dHubble0;
+	double a0,A,B,a1,a2,eta1,eta2;
+
+	if (!msr->param.bComove) return(dDelta);
+	else {
+		a1 = msrTime2Exp(msr,dTime);
+		a2 = msrTime2Exp(msr,dTime+dDelta);
+		if (dOmega0 == 1.0) {
+			return((2.0/dHubble0)*(1.0/sqrt(a1) - 1.0/sqrt(a2)));
+			}
+		else if (dOmega0 > 1.0) {
+			assert(dHubble0 >= 0.0);
+			if (dHubble0 == 0.0) {
+				A = 1.0;
+				B = 1.0/sqrt(dOmega0);
+				}
+			else {
+				a0 = 1.0/dHubble0/sqrt(dOmega0-1.0);
+				A = 0.5*dOmega0/(dOmega0-1.0);
+				B = A*a0;
+				}
+			eta1 = acos(1.0-a1/A);
+			eta2 = acos(1.0-a2/A);
+			return(B/A/A*(1.0/tan(0.5*eta1) - 1.0/tan(0.5*eta2)));
+			}
+		else if (dOmega0 > 0.0) {
+			assert(dHubble0 > 0.0);
+			a0 = 1.0/dHubble0/sqrt(1.0-dOmega0);
+			A = 0.5*dOmega0/(1.0-dOmega0);
+			B = A*a0;
+			eta1 = acosh(a1/A+1.0);
+			eta2 = acosh(a2/A+1.0);
+			return(B/A/A*(1.0/tanh(0.5*eta1) - 1.0/tanh(0.5*eta2)));
+			}
+		else if (dOmega0 == 0.0) {
+			/*
+			 ** YOU figure this one out!
+			 */
+			assert(0);
+			return(0.0);
+			}
+		else {
+			/*
+			 ** Bad value?
+			 */
+			assert(0);
+			return(0.0);
+			}
+		}
+	}
+
+
+/*
+ ** This function integrates the time dependence of the "kick"-Hamiltonian.
+ */
+double msrComoveKickFac(MSR msr,double dTime,double dDelta)
+{
+	double dOmega0 = msr->param.dOmega0;
+	double dHubble0 = msr->param.dHubble0;
+	double a0,A,B,a1,a2,eta1,eta2;
+
+	if (!msr->param.bComove) return(dDelta);
+	else {
+		a1 = msrTime2Exp(msr,dTime);
+		a2 = msrTime2Exp(msr,dTime+dDelta);
+		if (dOmega0 == 1.0) {
+			return((2.0/dHubble0)*(sqrt(a2) - sqrt(a1)));
+			}
+		else if (dOmega0 > 1.0) {
+			assert(dHubble0 >= 0.0);
+			if (dHubble0 == 0.0) {
+				A = 1.0;
+				B = 1.0/sqrt(dOmega0);
+				}
+			else {
+				a0 = 1.0/dHubble0/sqrt(dOmega0-1.0);
+				A = 0.5*dOmega0/(dOmega0-1.0);
+				B = A*a0;
+				}
+			eta1 = acos(1.0-a1/A);
+			eta2 = acos(1.0-a2/A);
+			return(B/A*(eta2 - eta1));
+			}
+		else if (dOmega0 > 0.0) {
+			assert(dHubble0 > 0.0);
+			a0 = 1.0/dHubble0/sqrt(1.0-dOmega0);
+			A = 0.5*dOmega0/(1.0-dOmega0);
+			B = A*a0;
+			eta1 = acosh(a1/A+1.0);
+			eta2 = acosh(a2/A+1.0);
+			return(B/A*(eta2 - eta1));
+			}
+		else if (dOmega0 == 0.0) {
+			/*
+			 ** YOU figure this one out!
+			 */
+			assert(0);
+			return(0.0);
+			}
+		else {
+			/*
+			 ** Bad value?
+			 */
+			assert(0);
+			return(0.0);
+			}
+		}
+	}
+
+
 double msrReadTipsy(MSR msr)
 {
 	FILE *fp;
@@ -467,7 +625,7 @@ double msrReadTipsy(MSR msr)
 	char achInFile[PST_FILENAME_SIZE];
 	int j;
 	LCL *plcl = msr->pst->plcl;
-	double dTime,aTo,tTo;
+	double dTime,aTo,tTo,z;
 	
 	if (msr->param.achInFile[0]) {
 		/*
@@ -491,16 +649,12 @@ double msrReadTipsy(MSR msr)
 		fp = fopen(achInFile,"r");
 		if (!fp) {
 			printf("Could not open InFile:%s\n",achInFile);
-			msrFinish(msr);
-			mdlFinish(msr->mdl);
-			exit(1);
+			_msrExit(msr);
 			}
 		}
 	else {
 		printf("No input file specified\n");
-		msrFinish(msr);
-		mdlFinish(msr->mdl);
-		exit(1);
+		_msrExit(msr);
 		}
 	/*
 	 ** Assume tipsy format for now, and dark matter only.
@@ -512,68 +666,58 @@ double msrReadTipsy(MSR msr)
 	if (msr->param.bComove) {
 		if(msr->param.dHubble0 == 0.0) {
 			printf("No hubble constant specified\n");
-			msrFinish(msr);
-			mdlFinish(msr->mdl);
-			exit(1);
+			_msrExit(msr);
 			}
 		dTime = msrExp2Time(msr,h.time);
-		msr->dRedshift = 1.0/h.time - 1.0;
+		z = 1.0/h.time - 1.0;
 		printf("Input file, Time:%g Redshift:%g Expansion factor:%g\n",
-			   dTime,msr->dRedshift,h.time);
+			   dTime,z,h.time);
 		if (prmSpecified(msr->prm,"dRedTo")) {
 			if (!prmArgSpecified(msr->prm,"nSteps") &&
 				prmArgSpecified(msr->prm,"dDelta")) {
-				aTo = 1.0/(msr->dRedTo + 1.0);
+				aTo = 1.0/(msr->param.dRedTo + 1.0);
 				tTo = msrExp2Time(msr,aTo);
 				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
 					   tTo,1.0/aTo-1.0,aTo);
 				if (tTo < dTime) {
 					printf("Badly specified final redshift, check -zto parameter.\n");
-					msrFinish(msr);
-					mdlFinish(msr->mdl);
-					exit(1);
+					_msrExit(msr);
 					}
 				msr->param.nSteps = (int)ceil((tTo-dTime)/msr->param.dDelta);
 				}
 			else if (!prmArgSpecified(msr->prm,"dDelta") &&
 					 prmArgSpecified(msr->prm,"nSteps")) {
-				aTo = 1.0/(msr->dRedTo + 1.0);
+				aTo = 1.0/(msr->param.dRedTo + 1.0);
 				tTo = msrExp2Time(msr,aTo);
 				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
 					   tTo,1.0/aTo-1.0,aTo);
 				if (tTo < dTime) {
 					printf("Badly specified final redshift, check -zto parameter.\n");	
-					msrFinish(msr);
-					mdlFinish(msr->mdl);
-					exit(1);
+					_msrExit(msr);
 					}
 				msr->param.dDelta = (tTo-dTime)/msr->param.nSteps;
 				}
 			else if (!prmSpecified(msr->prm,"nSteps") &&
 				prmFileSpecified(msr->prm,"dDelta")) {
-				aTo = 1.0/(msr->dRedTo + 1.0);
+				aTo = 1.0/(msr->param.dRedTo + 1.0);
 				tTo = msrExp2Time(msr,aTo);
 				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
 					   tTo,1.0/aTo-1.0,aTo);
 				if (tTo < dTime) {
 					printf("Badly specified final redshift, check -zto parameter.\n");
-					msrFinish(msr);
-					mdlFinish(msr->mdl);
-					exit(1);
+					_msrExit(msr);
 					}
 				msr->param.nSteps = (int)ceil((tTo-dTime)/msr->param.dDelta);
 				}
 			else if (!prmSpecified(msr->prm,"dDelta") &&
 					 prmFileSpecified(msr->prm,"nSteps")) {
-				aTo = 1.0/(msr->dRedTo + 1.0);
+				aTo = 1.0/(msr->param.dRedTo + 1.0);
 				tTo = msrExp2Time(msr,aTo);
 				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
 					   tTo,1.0/aTo-1.0,aTo);
 				if (tTo < dTime) {
 					printf("Badly specified final redshift, check -zto parameter.\n");	
-					msrFinish(msr);
-					mdlFinish(msr->mdl);
-					exit(1);
+					_msrExit(msr);
 					}
 				msr->param.dDelta = (tTo-dTime)/msr->param.nSteps;
 				}
@@ -585,14 +729,20 @@ double msrReadTipsy(MSR msr)
 				   tTo,1.0/aTo-1.0,aTo);
 			}
 		printf("Reading file...\nN:%d\n",msr->N);
+		if (msr->param.bCannonical) {
+			in.dvFac = h.time*h.time;
+			}
+		else {
+			in.dvFac = 1.0;
+			}
 		}
 	else {
 		dTime = h.time;
-		msr->dRedshift = 0.0;
 		printf("Input file, Time:%g\n",dTime);
 		tTo = dTime + msr->param.nSteps*msr->param.dDelta;
 		printf("Simulation to Time:%g\n",tTo);
 		printf("Reading file...\nN:%d Time:%g\n",msr->N,dTime);
+		in.dvFac = 1.0;
 		}
 	in.nStart = 0;
 	in.nEnd = msr->N - 1;
@@ -613,6 +763,16 @@ double msrReadTipsy(MSR msr)
 	in.bParaRead = msr->param.bParaRead;
 	pstReadTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	if (msr->param.bVerbose) puts("Input file has been successfully read.");
+	/*
+	 ** Now read in the output points, passing the initial time.
+	 */
+	msrReadOuts(msr,dTime);
+	/*
+	 ** Set up the output counter.
+	 */
+	for (msr->iOut=0;msr->iOut<msr->nOuts;++msr->iOut) {
+		if (dTime < msr->pdOutTime[msr->iOut]) break;
+		}
 	return(dTime);
 	}
 
@@ -663,11 +823,9 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	fp = fopen(achOutFile,"w");
 	if (!fp) {
 		printf("Could not open OutFile:%s\n",achOutFile);
-		msrFinish(msr);
-		mdlFinish(msr->mdl);
-		exit(1);
+		_msrExit(msr);
 		}
-	in.bStandard = msr->bStandard;
+	in.bStandard = msr->param.bStandard;
 	/*
 	 ** Assume tipsy format for now, and dark matter only.
 	 */
@@ -675,10 +833,19 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	h.ndark = msr->N;
 	h.nsph = 0;
 	h.nstar = 0;
-	if (msr->param.bComove)
-	  h.time = msrTime2Exp(msr,dTime);
-	else
-	  h.time = dTime;
+	if (msr->param.bComove) {
+		h.time = msrTime2Exp(msr,dTime);
+		if (msr->param.bCannonical) {
+			in.dvFac = 1.0/(h.time*h.time);
+			}
+		else {
+			in.dvFac = 1.0;
+			}
+		}
+	else {
+		h.time = dTime;
+		in.dvFac = 1.0;
+		}
 	h.ndim = 3;
 	if (msr->param.bVerbose) {
 		if (msr->param.bComove) {
@@ -750,7 +917,7 @@ void msrBuildTree(MSR msr)
 	if (msr->param.bVerbose) {
 		printf("Tree built, Wallclock: %d secs\n\n",dsec);
 		}
-	nCell = 1<<(1+(int)ceil(log(msr->nThreads)/log(2.0)));
+	nCell = 1<<(1+(int)ceil(log((double)msr->nThreads)/log(2.0)));
 	pkdn = malloc(nCell*sizeof(KDN));
 	assert(pkdn != NULL);
 	inc.iCell = ROOT;
@@ -838,16 +1005,12 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 		fp = fopen(achOutFile,"w");
 		if (!fp) {
 			printf("Could not open Array Output File:%s\n",achOutFile);
-			msrFinish(msr);
-			mdlFinish(msr->mdl);
-			exit(1);
+			_msrExit(msr);
 			}
 		}
 	else {
 		printf("No Array Output File specified\n");
-		msrFinish(msr);
-		mdlFinish(msr->mdl);
-		exit(1);
+		_msrExit(msr);
 		}
 	/*
 	 ** Write the Header information and close the file again.
@@ -888,16 +1051,12 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 		fp = fopen(achOutFile,"w");
 		if (!fp) {
 			printf("Could not open Vector Output File:%s\n",achOutFile);
-			msrFinish(msr);
-			mdlFinish(msr->mdl);
-			exit(1);
+			_msrExit(msr);
 			}
 		}
 	else {
 		printf("No Vector Output File specified\n");
-		msrFinish(msr);
-		mdlFinish(msr->mdl);
-		exit(1);
+		_msrExit(msr);
 		}
 	/*
 	 ** Write the Header information and close the file again.
@@ -929,7 +1088,7 @@ void msrDensity(MSR msr)
 	}
 
 
-void msrGravity(MSR msr,int *piSec,double *pdWMax,double *pdIMax,
+void msrGravity(MSR msr,double dStep,int *piSec,double *pdWMax,double *pdIMax,
 				double *pdEMax)
 {
 	struct inGravity in;
@@ -942,7 +1101,7 @@ void msrGravity(MSR msr,int *piSec,double *pdWMax,double *pdIMax,
 	double dEAvg,dEMax,dEMin;
 	double iP;
 
-	if (msr->param.bVerbose) printf("Calculating Gravity...\n");
+	printf("Calculating Gravity, Step:%.1f\n",dStep);
 	sec = time(0);
     in.nReps = msr->param.nReplicas;
     in.bPeriodic = msr->param.bPeriodic;
@@ -987,21 +1146,10 @@ void msrGravity(MSR msr,int *piSec,double *pdWMax,double *pdIMax,
 	}
 
 
-void msrStepCosmo(MSR msr,double dTime)
-{
-	double a;
-	
-	a = msrTime2Exp(msr,dTime);
-	msr->dRedshift = 1.0/a - 1.0;
-	msr->dHubble = msr->param.dHubble0*(1.0+msr->dRedshift)*
-		sqrt(1.0+msr->param.dOmega0*msr->dRedshift);
-	if (msr->param.bComove) msr->dCosmoFac = a;	
-	}
-
-
 void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U)
 {
 	struct outCalcE out;
+	double a;
 
 	pstCalcE(msr->pst,NULL,0,&out,NULL);
 	*T = out.T;
@@ -1009,28 +1157,34 @@ void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U)
 	/*
 	 ** Do the comoving coordinates stuff.
 	 */
-	*U *= msr->dCosmoFac;
-	*T *= pow(msr->dCosmoFac,4.0);
+	a = msrTime2Exp(msr,dTime);
+	*U *= a;
+	if (!msr->param.bCannonical) *T *= pow(a,4.0);
 	if (msr->param.bComove && !bFirst) {
 		msr->dEcosmo += 0.5*(dTime - msr->dTimeOld)*
-			(msr->dHubbleOld*msr->dUOld + msr->dHubble*(*U));
+			(msrTime2Hub(msr,dTime)*(*U) + 
+			 msrTime2Hub(msr,msr->dTimeOld)*msr->dUOld);
 		}
 	else {
 		msr->dEcosmo = 0.0;
 		}
 	msr->dTimeOld = dTime;
 	msr->dUOld = *U;
-	msr->dHubbleOld = msr->dHubble;
 	*E = (*T) + (*U) - msr->dEcosmo;
 	}
 
 
-void msrDrift(MSR msr,double dDelta)
+void msrDrift(MSR msr,double dTime,double dDelta)
 {
 	struct inDrift in;
 	int j;
 
-	in.dDelta = dDelta;
+	if (msr->param.bCannonical) {
+		in.dDelta = msrComoveDriftFac(msr,dTime,dDelta);
+		}
+	else {
+		in.dDelta = dDelta;
+		}
 	for (j=0;j<3;++j) {
 		in.fCenter[j] = msr->fCenter[j];
 		}
@@ -1039,26 +1193,41 @@ void msrDrift(MSR msr,double dDelta)
 	}
 
 
-void msrKick(MSR msr,double dDelta)
+void msrKick(MSR msr,double dTime,double dDelta)
 {
+	double H,a;
 	struct inKick in;
 	
-	in.dvFacOne = (1.0 - msr->dHubble*dDelta)/(1.0 + msr->dHubble*dDelta);
-	in.dvFacTwo = dDelta/pow(msr->dCosmoFac,3.0)/(1.0 + msr->dHubble*dDelta);
+	if (msr->param.bCannonical) {
+		in.dvFacOne = 1.0; /* no hubble drag, man! */
+		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+		}
+	else {
+		/*
+		 ** Careful! For non-cannonical we want H and a at the 
+		 ** HALF-STEP! This is a bit messy but has to be special
+		 ** cased in some way.
+		 */
+		dTime += dDelta/2.0;
+		a = msrTime2Exp(msr,dTime);
+		H = msrTime2Hub(msr,dTime);
+		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
+		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
+		}
 	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
 
 double msrReadCheck(MSR msr,int *piStep)
 {
-	FILE *fp;
-	struct msrCheckPointHeader h;
 	struct inReadCheck in;
 	char achInFile[PST_FILENAME_SIZE];
-	int i,j,bNewCheck;
+	int i,j;
 	LCL *plcl = msr->pst->plcl;
 	double dTime;
-	
+	int iVersion,iNotCorrupt;
+	FDL_CTX *fdl;
+
 	/*
 	 ** Add Data Subpath for local and non-local names.
 	 */
@@ -1071,61 +1240,80 @@ double msrReadCheck(MSR msr,int *piStep)
 	if (plcl->pszDataPath) {
 		sprintf(achInFile,"%s/%s",plcl->pszDataPath,in.achInFile);
 		}
-	fp = fopen(achInFile,"r");
-	if (!fp) {
-		printf("Could not open checkpoint file:%s\n",achInFile);
-		/*
-		 ** Try opening a .ochk
-		 ** Add Data Subpath for local and non-local names.
-		 */
-		sprintf(achInFile,"%s/%s.ochk",msr->param.achDataSubPath,
-				msr->param.achOutName);
-		strcpy(in.achInFile,achInFile);
-		/*
-		 ** Add local Data Path.
-		 */
-		if (plcl->pszDataPath) {
-			sprintf(achInFile,"%s/%s",plcl->pszDataPath,in.achInFile);
-			}
-		fp = fopen(achInFile,"r");
-		if (!fp) {
-			printf("Could not open checkpoint file:%s\n",achInFile);
-			msrFinish(msr);
-			mdlFinish(msr->mdl);
-			exit(1);
-			}
-		bNewCheck = 0;
+	fdl = FDL_open(achInFile);
+	FDL_read(fdl,"version",&iVersion);
+	if (msr->param.bVerbose) 
+		printf("Reading Version-%d Checkpoint file.\n",iVersion);
+	FDL_read(fdl,"not_corrupt_flag",&iNotCorrupt);
+	if (iNotCorrupt != 1) {
+	printf("Sorry the checkpoint file is corrupted.\n");
+		_msrExit(msr);
 		}
-	else {
-		bNewCheck = 1;
+	FDL_read(fdl,"number_of_particles",&msr->N);
+	FDL_read(fdl,"current_timestep",piStep);
+	FDL_read(fdl,"current_time",&dTime);
+	FDL_read(fdl,"current_ecosmo",&msr->dEcosmo);
+	FDL_read(fdl,"old_time",&msr->dTimeOld);
+	FDL_read(fdl,"old_potentiale",&msr->dUOld);
+	if (!msr->bOpenSpec) {
+		FDL_read(fdl,"opening_type",&msr->iOpenType);
+		FDL_read(fdl,"opening_criterion",&msr->dCrit);
 		}
-	fread(&h,sizeof(struct msrCheckPointHeader),1,fp);
-	fclose(fp);
-	dTime = h.dTime;
-	*piStep = h.iStep;
-	msr->N = h.N;
-	msr->param = h.param;
-	msr->iOpenType = h.iOpenType;
-	msr->dCrit = h.dCrit;
-	msr->dRedshift = h.dRedshift;
-	msr->dHubble = h.dHubble;
-	msr->dCosmoFac = h.dCosmoFac;
-	msr->dEcosmo = h.dEcosmo;
-	msr->dHubbleOld = h.dHubbleOld;
-	msr->dUOld = h.dUOld;
-	msr->dTimeOld = h.dTimeOld;
-	msr->nRed = h.nRed;
-	for (i=0;i<msr->nRed;++i) {
-		msr->dRedOut[i] = h.dRedOut[i];
+	FDL_read(fdl,"number_of_outs",&msr->nOuts);
+	if (msr->nOuts > msr->nMaxOuts) {
+		msr->nMaxOuts = msr->nOuts;
+		msr->pdOutTime = realloc(msr->pdOutTime,msr->nMaxOuts*sizeof(double));
+		assert(msr->pdOutTime != NULL);
 		}
+	for (i=0;i<msr->nOuts;++i) {
+		FDL_index(fdl,"out_time_index",i);
+		FDL_read(fdl,"out_time",&msr->pdOutTime[i]);
+		}
+	/*
+	 ** Read the old parameters.
+	 */
+	FDL_read(fdl,"bPeriodic",&msr->param.bPeriodic);
+	FDL_read(fdl,"bComove",&msr->param.bComove);
+	if (!prmSpecified(msr->prm,"bParaRead"))
+		FDL_read(fdl,"bParaRead",&msr->param.bParaRead);
+	if (!prmSpecified(msr->prm,"bParaWrite"))
+		FDL_read(fdl,"bParaWrite",&msr->param.bParaWrite);
+	/*
+	 ** Checkpoints can NOT be switched to a different coordinate system!
+	 */
+	FDL_read(fdl,"bCannonical",&msr->param.bCannonical);
+	if (!prmSpecified(msr->prm,"bStandard"))
+		FDL_read(fdl,"bStandard",&msr->param.bStandard);
+	FDL_read(fdl,"bKDK",&msr->param.bKDK);
+	if (!prmSpecified(msr->prm,"nBucket"))
+		FDL_read(fdl,"nBucket",&msr->param.nBucket);
+	if (!prmSpecified(msr->prm,"iOutInterval"))
+		FDL_read(fdl,"iOutInterval",&msr->param.iOutInterval);
+	if (!prmSpecified(msr->prm,"iLogInterval"))
+		FDL_read(fdl,"iLogInterval",&msr->param.iLogInterval);
+	if (!prmSpecified(msr->prm,"iCheckInterval"))
+		FDL_read(fdl,"iCheckInterval",&msr->param.iCheckInterval);
+	if (!prmSpecified(msr->prm,"iOrder"))
+		FDL_read(fdl,"iExpOrder",&msr->param.iOrder);
+	if (!prmSpecified(msr->prm,"iEwOrder"))
+		FDL_read(fdl,"iEwOrder",&msr->param.iEwOrder);
+	if (!prmSpecified(msr->prm,"nReplicas"))
+		FDL_read(fdl,"nReplicas",&msr->param.nReplicas);
+	if (!prmSpecified(msr->prm,"nSteps"))
+		FDL_read(fdl,"nSteps",&msr->param.nSteps);
+	if (!prmSpecified(msr->prm,"dExtraStore"))
+		FDL_read(fdl,"dExtraStore",&msr->param.dExtraStore);
+	if (!prmSpecified(msr->prm,"dDelta"))
+		FDL_read(fdl,"dDelta",&msr->param.dDelta);
+	if (!prmSpecified(msr->prm,"dEwCut"))
+		FDL_read(fdl,"dEwCut",&msr->param.dEwCut);
+	if (!prmSpecified(msr->prm,"dEwhCut"))
+		FDL_read(fdl,"dEwhCut",&msr->param.dEwhCut);
+	FDL_read(fdl,"dPeriod",&msr->param.dPeriod);
+	FDL_read(fdl,"dHubble0",&msr->param.dHubble0);
+	FDL_read(fdl,"dOmega0",&msr->param.dOmega0);
 	if (msr->param.bVerbose) {
-		if (msr->param.bComove) {
-			printf("Reading checkpoint file...\nN:%d Time:%g Redshift:%g\n",
-				   msr->N,dTime,msr->dRedshift);
-			}
-		else {
-			printf("Reading checkpoint file...\nN:%d Time:%g\n",msr->N,dTime);
-			}
+		printf("Reading checkpoint file...\nN:%d Time:%g\n",msr->N,dTime);
 		}
 	in.nStart = 0;
 	in.nEnd = msr->N - 1;
@@ -1143,26 +1331,32 @@ double msrReadCheck(MSR msr,int *piStep)
 	for (j=0;j<3;++j) {
 		in.fPeriod[j] = msr->param.dPeriod;
 		}
-	in.bNewCheck = bNewCheck;
+	in.iVersion = iVersion;
+	in.iOffset = FDL_offset(fdl,"particle_array");
+	FDL_finish(fdl);
 	in.bParaRead = msr->param.bParaRead;
 	pstReadCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	if (msr->param.bVerbose) puts("Checkpoint file has been successfully read.");
+	/*
+	 ** Set up the output counter.
+	 */
+	for (msr->iOut=0;msr->iOut<msr->nOuts;++msr->iOut) {
+		if (dTime < msr->pdOutTime[msr->iOut]) break;
+		}
 	return(dTime);
 	}
 
 
 void msrWriteCheck(MSR msr,double dTime,int iStep)
 {
-	FILE *fp;
-	struct msrCheckPointHeader h;
 	struct inWriteCheck in;
 	struct outSetTotal oute;
 	char achOutFile[PST_FILENAME_SIZE];
-	char achOutTmp[PST_FILENAME_SIZE];
-	char achOutBak[PST_FILENAME_SIZE];
-	char ach[4*PST_FILENAME_SIZE];
 	int iDum,i;
 	LCL *plcl = msr->pst->plcl;
+	FDL_CTX *fdl;
+	char *pszFdl;
+	int iVersion,iNotCorrupt;
 	
 	/*
 	 ** Add Data Subpath for local and non-local names.
@@ -1181,84 +1375,106 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 		strcat(achOutFile,"/");
 		}
 	strcat(achOutFile,in.achOutFile);
-	sprintf(achOutTmp,"%s%s",achOutFile,".tmp");
-	sprintf(achOutBak,"%s%s",achOutFile,".bak");
-#ifdef SAFE_CHECK
-	strcat(in.achOutFile,".tmp");	
-	fp = fopen(achOutTmp,"w");
-#else
-	fp = fopen(achOutFile,"w");
-#endif
-	if (!fp) {
-		printf("Could not open OutFile:%s\n",achOutTmp);
-		msrFinish(msr);
-		mdlFinish(msr->mdl);
-		exit(1);
-		}
-	h.dTime = dTime;
-	h.iStep = iStep;
-	h.N = msr->N;
-	h.param = msr->param;
-	h.iOpenType = msr->iOpenType;
-	h.dCrit = msr->dCrit;
-	h.dRedshift = msr->dRedshift;
-	h.dHubble = msr->dHubble;
-	h.dCosmoFac = msr->dCosmoFac;
-	h.dEcosmo = msr->dEcosmo;
-	h.dHubbleOld = msr->dHubbleOld;
-	h.dUOld = msr->dUOld;
-	h.dTimeOld = msr->dTimeOld;
-	h.nRed = msr->nRed;
-	for (i=0;i<msr->nRed;++i) {
-		h.dRedOut[i] = msr->dRedOut[i];
-		}
-	if (msr->param.bVerbose) {
-		if (msr->param.bComove) {
-			printf("Writing checkpoint file...\nTime:%g Redshift:%g\n",
-				   dTime,(1.0/dTime - 1.0));
-			}
-		else {
-			printf("Writing checkpoint file...\nTime:%g\n",dTime);
-			}
-		}
-	fwrite(&h,sizeof(struct msrCheckPointHeader),1,fp);
-	fclose(fp);
+	pszFdl = getenv("PKDGRAV_CHECKPOINT_FDL");
+	assert(pszFdl != NULL);
+	fdl = FDL_create(achOutFile,pszFdl);
+	iVersion = CHECKPOINT_VERSION;
+	FDL_write(fdl,"version",&iVersion);
+	iNotCorrupt = 0;
+	FDL_write(fdl,"not_corrupt_flag",&iNotCorrupt);
 	/*
-	 ** Do a parallel write to the output file.
+	 ** Checkpoint header.
+	 */
+	FDL_write(fdl,"number_of_particles",&msr->N);
+	FDL_write(fdl,"current_timestep",&iStep);
+	FDL_write(fdl,"current_time",&dTime);
+	FDL_write(fdl,"current_ecosmo",&msr->dEcosmo);
+	FDL_write(fdl,"old_time",&msr->dTimeOld);
+	FDL_write(fdl,"old_potentiale",&msr->dUOld);
+	FDL_write(fdl,"opening_type",&msr->iOpenType);
+	FDL_write(fdl,"opening_criterion",&msr->dCrit);
+	FDL_write(fdl,"number_of_outs",&msr->nOuts);
+	for (i=0;i<msr->nOuts;++i) {
+		FDL_index(fdl,"out_time_index",i);
+		FDL_write(fdl,"out_time",&msr->pdOutTime[i]);
+		}
+	/*
+	 ** Write the old parameters.
+	 */
+	FDL_write(fdl,"bPeriodic",&msr->param.bPeriodic);
+	FDL_write(fdl,"bComove",&msr->param.bComove);
+	FDL_write(fdl,"bParaRead",&msr->param.bParaRead);
+	FDL_write(fdl,"bParaWrite",&msr->param.bParaWrite);
+	FDL_write(fdl,"bCannonical",&msr->param.bCannonical);
+	FDL_write(fdl,"bStandard",&msr->param.bStandard);
+	FDL_write(fdl,"bKDK",&msr->param.bKDK);
+	FDL_write(fdl,"nBucket",&msr->param.nBucket);
+	FDL_write(fdl,"iOutInterval",&msr->param.iOutInterval);
+	FDL_write(fdl,"iLogInterval",&msr->param.iLogInterval);
+	FDL_write(fdl,"iCheckInterval",&msr->param.iCheckInterval);
+	FDL_write(fdl,"iExpOrder",&msr->param.iOrder);
+	FDL_write(fdl,"iEwOrder",&msr->param.iEwOrder);
+	FDL_write(fdl,"nReplicas",&msr->param.nReplicas);
+	FDL_write(fdl,"nSteps",&msr->param.nSteps);
+	FDL_write(fdl,"dExtraStore",&msr->param.dExtraStore);
+	FDL_write(fdl,"dDelta",&msr->param.dDelta);
+	FDL_write(fdl,"dEwCut",&msr->param.dEwCut);
+	FDL_write(fdl,"dEwhCut",&msr->param.dEwhCut);
+	FDL_write(fdl,"dPeriod",&msr->param.dPeriod);
+	FDL_write(fdl,"dHubble0",&msr->param.dHubble0);
+	FDL_write(fdl,"dOmega0",&msr->param.dOmega0);
+	if (msr->param.bVerbose) {
+		printf("Writing checkpoint file...\nTime:%g\n",dTime);
+		}
+	/*
+	 ** Do a parallel or serial write to the output file.
 	 */
 	pstSetTotal(msr->pst,NULL,0,&oute,&iDum);
+	in.iOffset = FDL_offset(fdl,"particle_array");
 	in.nStart = 0;
 	in.bParaWrite = msr->param.bParaWrite;
 	pstWriteCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	if (msr->param.bVerbose) {
 		puts("Checkpoint file has been successfully written.");
 		}
-	sprintf(ach,"mv -f %s %s; mv %s %s",achOutFile,achOutBak,achOutTmp,
-			achOutFile);
-#ifdef SAFE_CHECK
-	system(ach);
-#endif
+	iNotCorrupt = 1;
+	FDL_write(fdl,"not_corrupt_flag",&iNotCorrupt);
+	FDL_finish(fdl);
 	}
 
 
-double msrRedOut(MSR msr,int iRed)
+int msrOutTime(MSR msr,double dTime)
+{	
+	if (msr->iOut < msr->nOuts) {
+		if (dTime >= msr->pdOutTime[msr->iOut]) {
+			++msr->iOut;
+			return(1);
+			}
+		else return(0);
+		}
+	else return(0);
+	}
+
+
+int cmpTime(void *v1,void *v2) 
 {
-	if (iRed < msr->nRed) {
-		return(msr->dRedOut[iRed]);
-		}
-	else {
-		return(-1.0);
-		}
+	double *d1 = v1;
+	double *d2 = v2;
+
+	if (*d1 < *d2) return(-1);
+	else if (*d1 == *d2) return(0);
+	else return(1);
 	}
 
-
-void msrReadRed(MSR msr)
+void msrReadOuts(MSR msr,double dTime)
 {
 	char achFile[PST_FILENAME_SIZE];
 	char ach[PST_FILENAME_SIZE];
 	LCL *plcl = &msr->lcl;
 	FILE *fp;
-	int iRed,ret;
+	int i,ret;
+	double z,a,n;
+	char achIn[80];
 	
 	/*
 	 ** Add Data Subpath for local and non-local names.
@@ -1276,24 +1492,54 @@ void msrReadRed(MSR msr)
 		}
 	fp = fopen(achFile,"r");
 	if (!fp) {
-		printf("Could not open redshift input file:%s\n",achFile);
-		msrFinish(msr);
-		mdlFinish(msr->mdl);
-		exit(1);
+		printf("WARNING: Could not open redshift input file:%s\n",achFile);
+		msr->nOuts = 0;
+		return;
 		}
-	iRed = 0;
+	i = 0;
 	while (1) {
-		ret = fscanf(fp,"%lf",&msr->dRedOut[iRed]);
-		if (ret != 1) break;
-		++iRed;
-		if(iRed > MAX_REDSHIFTS){
-		    printf("Too many output redshifts, recompile with greater MAX_REDSHIFTS\n");
-		    msrFinish(msr);
-		    mdlFinish(msr->mdl);
-		    exit(1);
+		if (!fgets(achIn,80,fp)) goto NoMoreOuts;
+		switch (achIn[0]) {
+		case 'z':
+			ret = sscanf(&achIn[1],"%lf",&z);
+			if (ret != 1) goto NoMoreOuts;
+			a = 1.0/(z+1.0);
+			msr->pdOutTime[i] = msrExp2Time(msr,a);
+			break;
+		case 'a':
+			ret = sscanf(&achIn[1],"%lf",&a);
+			if (ret != 1) goto NoMoreOuts;
+			msr->pdOutTime[i] = msrExp2Time(msr,a);
+			break;
+		case 't':
+			ret = sscanf(&achIn[1],"%lf",&msr->pdOutTime[i]);
+			if (ret != 1) goto NoMoreOuts;
+			break;
+		case 'n':
+			ret = sscanf(&achIn[1],"%lf",&n);
+			if (ret != 1) goto NoMoreOuts;
+			msr->pdOutTime[i] = dTime + (n-0.5)*msrDelta(msr);
+			break;
+		default:
+			ret = sscanf(achIn,"%lf",&z);
+			if (ret != 1) goto NoMoreOuts;
+			a = 1.0/(z+1.0);
+			msr->pdOutTime[i] = msrExp2Time(msr,a);
+			}
+		++i;
+		if(i > msr->nMaxOuts) {
+			msr->nMaxOuts *= 2;
+			msr->pdOutTime = realloc(msr->pdOutTime,
+									 msr->nMaxOuts*sizeof(double));
+			assert(msr->pdOutTime != NULL);
 		    }
 		}
-	msr->nRed = iRed;
+ NoMoreOuts:
+	msr->nOuts = i;
+	/*
+	 ** Now sort the array of output times into ascending order.
+	 */
+	qsort(msr->pdOutTime,msr->nOuts,sizeof(double),cmpTime);
 	fclose(fp);
 	}
 
@@ -1313,12 +1559,6 @@ char *msrOutName(MSR msr)
 double msrDelta(MSR msr)
 {
 	return(msr->param.dDelta);
-	}
-
-
-double msrRedshift(MSR msr)
-{
-	return(msr->dRedshift);
 	}
 
 
@@ -1349,6 +1589,12 @@ int msrRestart(MSR msr)
 int msrComove(MSR msr)
 {
 	return(msr->param.bComove);
+	}
+
+
+int msrKDK(MSR msr)
+{
+	return(msr->param.bCannonical && msr->param.bKDK);
 	}
 
 

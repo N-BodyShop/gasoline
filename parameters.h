@@ -12,6 +12,9 @@ struct parameters {
 	int bComove;
 	int bParaRead;
 	int bParaWrite;
+	int bCannonical;
+	int bStandard;
+	int bKDK;
 	int nBucket;
 	int iOutInterval;
 	int iLogInterval;
@@ -34,6 +37,7 @@ struct parameters {
 	double dPeriod;
 	double dHubble0;
 	double dOmega0;
+	double dRedTo;
 	char achInFile[256];
 	char achOutName[256];
 	char achDataSubPath[256];
