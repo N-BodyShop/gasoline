@@ -5,7 +5,7 @@
 #include <time.h>
 #include <assert.h>
 #include "mdl.h"
-#include "pst.h"
+/*#include "pst.h"*/
 #include "master.h"
 #include "outtype.h"
 #include "smoothfcn.h"

@@ -1469,6 +1469,7 @@ void msrSetSoft(MSR msr,double dSoft)
 void msrDomainDecomp(MSR msr)
 {
 	struct inDomainDecomp in;
+	struct inClearTimer inCT;
     
         /* Sanity check on Gas particles being present */
         if (msr->nGas==0 && (msr->param.bDoGas==1 || msr->param.bGasDomainDecomp)) {
@@ -1482,6 +1483,19 @@ void msrDomainDecomp(MSR msr)
 		     msr->param.bDoGas=0;
 		     }
 	        }
+
+	inCT.iTimer=4;
+	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
+	inCT.iTimer=5;
+	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
+	inCT.iTimer=6;
+	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
+	inCT.iTimer=7;
+	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
+	inCT.iTimer=8;
+	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
+	inCT.iTimer=9;
+	pstClearTimer(msr->pst,&inCT, sizeof(inCT),NULL,NULL);
 
 	in.bDoRootFind = 1;
 	

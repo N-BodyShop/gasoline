@@ -2,6 +2,7 @@
 #define PKD_HINCLUDED
 
 #include <sys/resource.h>
+#include <sys/timeb.h>
 #include "mdl.h"
 #include "floattype.h"
 #include "cooling.h"
@@ -294,6 +295,11 @@ typedef struct pkdContext {
 	struct timer {
 		double sec;
 		double stamp;
+ 	        double system_sec;
+ 	        double system_stamp;
+ 	        double wallclock_sec;
+ 	        double wallclock_stamp;
+	        int iActive;
 		} ti[MAX_TIMERS];
         /* 
 	 ** Cooling 
@@ -384,6 +390,8 @@ enum GasModel { GASMODEL_ADIABATIC,
 
 
 double pkdGetTimer(PKD,int);
+double pkdGetSystemTimer(PKD,int);
+double pkdGetWallClockTimer(PKD,int);
 void pkdClearTimer(PKD,int);
 void pkdStartTimer(PKD,int);
 void pkdStopTimer(PKD,int);

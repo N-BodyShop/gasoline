@@ -297,6 +297,9 @@ void pstAddServices(PST pst,MDL mdl)
 				  (void (*)(void *,void *,int,void *,int *)) pstQQSmooth,
 				  sizeof(struct inSmooth),0);
 #endif /* COLLISIONS */
+	mdlAddService(mdl,PST_CLEARTIMER,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstClearTimer,
+				  sizeof(struct inClearTimer),0);
 	}
 
 void pstInitialize(PST *ppst,MDL mdl,LCL *plcl)
@@ -620,6 +623,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind)
 #endif
 	int pFlag, nTotalActive;
 	int dBnd;
+
 	/*
 	 ** First find out how much free storage there is available for particles
 	 ** on the lower and upper subset of processors.
@@ -1157,8 +1161,12 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct outMassCheck outMass;
 	double dMass;
 	struct inDomainDecomp *in = vin;
+	
+        char ach[256]; /* debug */
 
+	pkdStartTimer(pst->plcl->pkd,6);
 	assert(nIn == sizeof(struct inDomainDecomp));
+
 	if (pst->nLeaves > 1) {
 		/*
 		 ** First calculate the Bounds for the set.
@@ -1184,7 +1192,7 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			    }
 		    	}
 
-		pst->iSplitDim = d;
+		/* pst->iSplitDim = d; */
 		
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
 		dMass = outMass.dMass;
@@ -1209,7 +1217,18 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (pst->nUpper > 1) 
 			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
+
 	if (pnOut) *pnOut = 0;
+
+	pkdStopTimer(pst->plcl->pkd,6);
+	sprintf(ach,"id: %d DD: %g %g %g  Weight: %g %g %g  SwapRej: %g %g %g  ColRej: %g %g %g  AO: %g %g %g  FS: %g %g %g\n",pst->mdl->idSelf,
+		pkdGetTimer(pst->plcl->pkd,6),pkdGetSystemTimer(pst->plcl->pkd,6),pkdGetWallClockTimer(pst->plcl->pkd,6),
+		pkdGetTimer(pst->plcl->pkd,7),pkdGetSystemTimer(pst->plcl->pkd,7),pkdGetWallClockTimer(pst->plcl->pkd,7),
+		pkdGetTimer(pst->plcl->pkd,8),pkdGetSystemTimer(pst->plcl->pkd,8),pkdGetWallClockTimer(pst->plcl->pkd,8), 
+		pkdGetTimer(pst->plcl->pkd,9),pkdGetSystemTimer(pst->plcl->pkd,9),pkdGetWallClockTimer(pst->plcl->pkd,9),
+		pkdGetTimer(pst->plcl->pkd,4),pkdGetSystemTimer(pst->plcl->pkd,4),pkdGetWallClockTimer(pst->plcl->pkd,4), 
+		pkdGetTimer(pst->plcl->pkd,5),pkdGetSystemTimer(pst->plcl->pkd,5),pkdGetWallClockTimer(pst->plcl->pkd,5) );
+	mdlDiag(pst->mdl,ach);
 	}
 
 
@@ -1285,6 +1304,7 @@ void pstWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	int iSplitSide;
 
 	assert(nIn == sizeof(struct inWeight));
+	pkdStartTimer(plcl->pkd,7);
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,in,nIn);
 		pstWeight(pst->pstLower,in,nIn,out,NULL);
@@ -1356,6 +1376,7 @@ void pstWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		    }
 		}
 	if (pnOut) *pnOut = sizeof(struct outWeight); 
+	pkdStopTimer(plcl->pkd,7);
 	}
 
 
@@ -1415,6 +1436,7 @@ void pstFreeStore(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	int nLowerStore,nUpperStore;
 
 	assert(nIn == 0);
+	pkdStartTimer(plcl->pkd,4);
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_FREESTORE,NULL,0);
 		pstFreeStore(pst->pstLower,NULL,0,out,NULL);
@@ -1427,6 +1449,8 @@ void pstFreeStore(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->nFreeStore = pkdFreeStore(plcl->pkd);
 		}
 	if (pnOut) *pnOut = sizeof(struct outFreeStore);
+
+        pkdStopTimer(plcl->pkd,4);
 	}
 
 
@@ -1438,6 +1462,7 @@ void pstColRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	int nLower,nUpper,iUpper;
 	
 	assert(nIn == sizeof(struct inColRejects));
+	pkdStartTimer(plcl->pkd,9);
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_COLREJECTS,in,nIn);
 		pstColRejects(pst->pstLower,in,nIn,&pOutRej[0],&nLower);
@@ -1446,15 +1471,17 @@ void pstColRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (pnOut) *pnOut = nLower + nUpper;
 		}
 	else {
-	    pOutRej->nRejects = pkdColRejects(plcl->pkd,in->iSplitDim,
-										  in->fSplit,in->fSplitInactive,
-										  in->iSplitSide);
+	        pOutRej->nRejects = pkdColRejects(plcl->pkd,in->iSplitDim,
+						  in->fSplit,in->fSplitInactive,
+						  in->iSplitSide);
 		pOutRej->nSpace = pkdSwapSpace(plcl->pkd);
 		pOutRej->id = pst->idSelf;
 		pOutRej->nLocal = pkdLocal(plcl->pkd);
 
 		if (pnOut) *pnOut = sizeof(OREJ);
 		}
+
+	pkdStopTimer(plcl->pkd,9);
 	}
 
 
@@ -1489,7 +1516,8 @@ void pstSwapRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	int *pidSwap = vin;
 	OREJ *pOutRej = vout;
 	int nLower,nUpper,iUpper,idSwap;
-
+	
+	pkdStartTimer(plcl->pkd,8);
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_SWAPREJECTS,vin,nIn);
 		pstSwapRejects(pst->pstLower,vin,nIn,&pOutRej[0],&nLower);
@@ -1504,6 +1532,8 @@ void pstSwapRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pOutRej->id = pst->idSelf;
 		if (pnOut) *pnOut = sizeof(OREJ);
 		}
+
+	pkdStopTimer(plcl->pkd,8);
 	}
 
 /*
@@ -1706,6 +1736,7 @@ void pstActiveOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
         int *pnActive = vout;
 
 	assert(nIn == 0);
+	pkdStartTimer(pst->plcl->pkd,5);
 	if (pst->nLeaves > 1) {
                 int nActiveLeaf;
 		mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVEORDER,NULL,0);
@@ -1717,6 +1748,8 @@ void pstActiveOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		*pnActive = pkdActiveOrder(plcl->pkd);
 		}
 	if (pnOut) *pnOut = sizeof(int);
+
+	pkdStopTimer(pst->plcl->pkd,5);
 	}
 
 
@@ -3616,3 +3649,30 @@ pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 #endif /* COLLISIONS */
+
+void 
+pstClearTimer(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inClearTimer *in = vin;
+
+	assert(nIn == sizeof(struct inClearTimer));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_CLEARTIMER,in,nIn);
+		pstClearTimer(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdClearTimer(pst->plcl->pkd,in->iTimer);
+		}
+	if (pnOut) *pnOut = 0;
+        }
+
+
+
+
+
+
+
+
+
+

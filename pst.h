@@ -144,7 +144,8 @@ enum pst_service {
       PST_SPHVISCOSITYLIMITER,
       PST_INITCOOLING,
       PST_INITUV,
-      PST_GROWMASS	
+      PST_GROWMASS,
+      PST_CLEARTIMER
       };
 
 void pstAddServices(PST,MDL);
@@ -868,3 +869,10 @@ struct inGrowMass
 void pstGrowMass(PST,void *,int,void *,int *);
 
 #endif
+
+struct inClearTimer 
+{
+    int iTimer;
+    };
+
+void pstClearTimer(PST,void *,int,void *,int *);

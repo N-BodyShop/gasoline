@@ -27,6 +27,16 @@ double pkdGetTimer(PKD pkd,int iTimer)
 	return(pkd->ti[iTimer].sec);
 	}
 
+double pkdGetSystemTimer(PKD pkd,int iTimer)
+{
+	return(pkd->ti[iTimer].system_sec);
+	}
+
+double pkdGetWallClockTimer(PKD pkd,int iTimer)
+{
+	return(pkd->ti[iTimer].wallclock_sec);
+	}
+
 
 void pkdClearTimer(PKD pkd,int iTimer)
 {
@@ -34,10 +44,16 @@ void pkdClearTimer(PKD pkd,int iTimer)
 
 	if (iTimer >= 0) {
 		pkd->ti[iTimer].sec = 0.0;
+		pkd->ti[iTimer].system_sec = 0.0;
+		pkd->ti[iTimer].wallclock_sec = 0.0;
+		pkd->ti[iTimer].iActive = 0;
 		}
 	else {
 		for (i=0;i<MAX_TIMERS;++i) {
 			pkd->ti[i].sec = 0.0;
+			pkd->ti[i].system_sec = 0.0;
+			pkd->ti[i].wallclock_sec = 0.0;
+			pkd->ti[i].iActive = 0;
 			}
 		}
 	}
@@ -45,16 +61,63 @@ void pkdClearTimer(PKD pkd,int iTimer)
 
 void pkdStartTimer(PKD pkd,int iTimer)
 {
-	pkd->ti[iTimer].stamp = mdlCpuTimer(pkd->mdl);
+        struct timezone tz;
+	struct timeval tv;
+	tz.tz_minuteswest = 0;
+	tz.tz_dsttime = 0;
+
+	pkd->ti[iTimer].iActive++;
+
+	if (pkd->ti[iTimer].iActive == 1) {
+	  pkd->ti[iTimer].stamp = mdlCpuTimer(pkd->mdl);
+	  gettimeofday(&tv,&tz);
+	  pkd->ti[iTimer].wallclock_stamp = tv.tv_sec + 1e-6*(double) tv.tv_usec;
+#ifndef _CRAYMPP
+	  {
+	    struct rusage ru;
+	    
+	    getrusage(0,&ru);
+	    pkd->ti[iTimer].system_stamp = (double)ru.ru_stime.tv_sec + 1e-6*(double)ru.ru_stime.tv_usec;
+	  }
+#endif
+	  }
 	}
 
 
 void pkdStopTimer(PKD pkd,int iTimer)
 {
 	double sec;
-	sec = mdlCpuTimer(pkd->mdl) - pkd->ti[iTimer].stamp;
+	struct timeval tv;
+        struct timezone tz;
+
+	sec = -pkd->ti[iTimer].stamp;
+        pkd->ti[iTimer].stamp = mdlCpuTimer(pkd->mdl);
+	sec += pkd->ti[iTimer].stamp;
 	if (sec < 0.0) sec = 0.0;
 	pkd->ti[iTimer].sec += sec;
+
+	sec = -pkd->ti[iTimer].wallclock_stamp;
+	tz.tz_minuteswest = 0;
+	tz.tz_dsttime = 0;
+        gettimeofday( &tv, &tz );
+	pkd->ti[iTimer].wallclock_stamp = tv.tv_sec + 1e-6*(double)tv.tv_usec;
+	sec += pkd->ti[iTimer].wallclock_stamp;
+	if (sec < 0.0) sec = 0.0;
+        pkd->ti[iTimer].wallclock_sec += sec;
+
+#ifndef _CRAYMPP
+	{
+	struct rusage ru;
+
+	sec = -pkd->ti[iTimer].system_stamp;
+	getrusage(0,&ru);
+	pkd->ti[iTimer].system_stamp = ((double)ru.ru_stime.tv_sec + 1e-6*(double)ru.ru_stime.tv_usec);
+	sec += pkd->ti[iTimer].system_stamp;
+	if (sec < 0.0) sec = 0.0;
+        pkd->ti[iTimer].system_sec += sec;
+	}
+#endif
+	pkd->ti[iTimer].iActive--;
 	}
 
 
