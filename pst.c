@@ -1405,9 +1405,10 @@ void pstDomainOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 ** Now go on to Domain Order of next levels.
 		 */
 		if (pst->nUpper > 1) 
-			mdlReqService(pst->mdl,pst->idUpper,PST_DOMAINORDER,NULL,0);
+			mdlReqService(pst->mdl,pst->idUpper,
+				      PST_DOMAINORDER, in, nIn);
 		if (pst->nLower > 1) 
-			pstDomainOrder(pst->pstLower,NULL,0,NULL,NULL);
+			pstDomainOrder(pst->pstLower,in,nIn,NULL,NULL);
 		if (pst->nUpper > 1) 
 			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
