@@ -1938,35 +1938,44 @@ void initDistDeletedGas(void *p1)
 		((PARTICLE *)p1)->v[1] = 0;
 		((PARTICLE *)p1)->v[2] = 0;
 		((PARTICLE *)p1)->u = 0;
+		((PARTICLE *)p1)->uDot = 0.0;
 		((PARTICLE *)p1)->fMetals = 0;
 		}
     }
 
-void combDistDeletedGas(void *p1,void *p2)
+void combDistDeletedGas(void *vp1,void *vp2)
 {
     /*
      * Distribute u, v, and fMetals for particles returning from cache
      * so that everything is conserved nicely.  
      */
-	if(!TYPETest(((PARTICLE *) p1), TYPE_DELETED)) {
-		FLOAT delta_m = ((PARTICLE *)p2)->fMass;
+	PARTICLE *p1 = vp1;
+	PARTICLE *p2 = vp2;
+
+	if(!TYPETest((p1), TYPE_DELETED)) {
+		FLOAT delta_m = p2->fMass;
 		FLOAT m_new,f1,f2;
+		FLOAT fTCool; /* time to cool to zero */
 		
-		m_new = ((PARTICLE *) p1)->fMass + delta_m;
+		m_new = p1->fMass + delta_m;
 		if (m_new > 0) {
-			f1 = ((PARTICLE *) p1)->fMass /m_new;
+			f1 = p1->fMass /m_new;
 			f2 = delta_m  /m_new;
+			if(p1->uDot < 0.0)
+				fTCool = p1->uPred/p1->uDot; 
 			
-			((PARTICLE *) p1)->fMass = m_new;
-			((PARTICLE *) p1)->u = f1*((PARTICLE *) p1)->u+f2*((PARTICLE *) p2)->u;
-			((PARTICLE *) p1)->uPred = f1*((PARTICLE *) p1)->uPred+f2*((PARTICLE *) p2)->uPred;
+			p1->fMass = m_new;
+			p1->u = f1*p1->u + f2*p2->u;
+			p1->uPred = f1*p1->uPred + f2*p2->uPred;
 #ifdef COOLDEBUG
-			assert(((PARTICLE *) p1)->u >= 0);
+			assert(p1->u >= 0);
 #endif
-			((PARTICLE *) p1)->v[0] = f1*((PARTICLE *) p1)->v[0]+f2*((PARTICLE *) p2)->v[0];            
-			((PARTICLE *) p1)->v[1] = f1*((PARTICLE *) p1)->v[1]+f2*((PARTICLE *) p2)->v[1];            
-			((PARTICLE *) p1)->v[2] = f1*((PARTICLE *) p1)->v[2]+f2*((PARTICLE *) p2)->v[2];            
-			((PARTICLE *) p1)->fMetals = f1*((PARTICLE *) p1)->fMetals + f2*((PARTICLE *) p2)->fMetals;
+			p1->v[0] = f1*p1->v[0] + f2*p2->v[0];            
+			p1->v[1] = f1*p1->v[1] + f2*p2->v[1];            
+			p1->v[2] = f1*p1->v[2] + f2*p2->v[2];            
+			p1->fMetals = f1*p1->fMetals + f2*p2->fMetals;
+			if(p1->uDot < 0.0)
+				p1->uDot = p1->uPred/fTCool;
 			}
 		}
     }
@@ -1974,6 +1983,7 @@ void combDistDeletedGas(void *p1,void *p2)
 void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {	PARTICLE *q;
 	FLOAT fNorm,ih2,r2,rs,rstot,delta_m,m_new,f1,f2;
+	FLOAT fTCool; /* time to cool to zero */
 	int i;
 
 	assert(TYPETest(p, TYPE_GAS));
@@ -2016,6 +2026,8 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		f1 = q->fMass /m_new;
 		f2 = delta_m  /m_new;
 		q->fMass = m_new;
+		if(q->uDot < 0.0)
+			fTCool = q->uPred/q->uDot; 
 		
                 /* Only distribute the properties
                  * to the other particles on the "home" machine.
@@ -2031,6 +2043,8 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q->v[1] = f1*q->v[1]+f2*p->v[1];            
 		q->v[2] = f1*q->v[2]+f2*p->v[2];            
 		q->fMetals = f1*q->fMetals + f2*p->fMetals;
+		if(q->uDot < 0.0) /* make sure we don't shorten cooling time */
+			q->uDot = q->uPred/fTCool;
         }
 }
 
