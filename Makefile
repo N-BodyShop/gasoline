@@ -30,6 +30,10 @@ CC = cc
 #CC = gcc -Wall
 #CC = pgcc 
 #CC = gcc
+#CC = cc
+#EXE = pkdgrav
+EXE = gasoline
+
 CC_DEF = 
 
 #CC = ccc
@@ -48,7 +52,6 @@ CODE_DEF = -DGASOLINE -DSTARFORM -DCHANGESOFT
 #CODE_DEF = -DGASOLINE -DLARGEFBALL
 #CODE_DEF = -DGASOLINE -DSIMPLESF
 CODE_DEF = -DGASOLINE
-
 EXE = gasoline
 
 #CODE_DEF = 
@@ -109,7 +112,7 @@ LAM_MDL_CFLAGS  = -fast -I$(LAM_MDL) $(BASE_DEF)
 ##
 #       Quadrics MPI defines
 #
-QMPI_MDL                        = ../mdl/mpi
+QMPI_MDL                        = ../mdl/qmpi
 QMPI_CFLAGS             = -O5 -arch ev6 -fast -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX -DCCC
 #QMPI_CFLAGS            = -g -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX -DCCC
 QMPI_LD_FLAGS           =  $(BASE_LD_FLAGS)
