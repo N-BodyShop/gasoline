@@ -493,7 +493,6 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			if (D >= 1) {
 				dt = rdotv*(D - 1)/v2;
 				if (dt < pkd->dImpactTime) {/* take most negative */
-					int k;
 					if (sqrt(nnList[i].fDist2)/sr - 1 > 0.01)
 						(void) fprintf(stderr,"***LARGE OVERLAP (%f%%)***\n",
 									   100*(sqrt(nnList[i].fDist2)/sr - 1));

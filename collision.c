@@ -607,7 +607,7 @@ dInteract(double dTime,double dDelta,double dCentMass,
 	if (A < 0) {
 		double phi = phi0;
 		phi0 = phi1;
-		phi1 = phi0;
+		phi1 = phi;
 		}
 	phi0 -= ej;
 	phi1 += ej;
