@@ -54,6 +54,11 @@ typedef struct particle {
 	float fMetals;
 	float fTimeForm;
 #endif
+#ifdef PLANETS
+	float dt;			/* time-step */
+	float dCollTime;	/* time to next collision */
+	int	iCollider;		/* iOrder of collider */
+#endif /* PLANETS */
 	} PARTICLE;
 
 

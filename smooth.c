@@ -74,6 +74,24 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 		smx->fcnPost = NULL;
 		break;
 #endif
+#ifdef PLANETS
+	case SMX_TIMESTEP:
+		assert(bSymmetric == 0);
+		smx->fcnSmooth = SetTimeStep;
+		initParticle = NULL;
+		init = NULL;
+		comb = NULL;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_COLLISION:
+		assert(bSymmetric == 0);
+		smx->fcnSmooth = CheckForCollision;
+		initParticle = NULL;
+		init = NULL;
+		comb = NULL;
+		smx->fcnPost = NULL;
+		break;
+#endif /* PLANETS */
 	default:
 		assert(0);
 		}

@@ -11,6 +11,10 @@ typedef struct smfParameters {
 	double gamma;
 	double algam;
 	int bGeometric;
+#ifdef PLANETS
+	double dStart; /* collision search time interval */
+	double dEnd;
+#endif /* PLANETS */
 	} SMF;
 
 
@@ -61,6 +65,16 @@ void combAccsph(void *,void *);
 void AccsphBVSym(PARTICLE *,int,NN *,SMF *);
 
 #endif
+
+#ifdef PLANETS
+
+#define SMX_TIMESTEP	7
+void SetTimeStep(PARTICLE *,int,NN *,SMF *);
+
+#define SMX_COLLISION	8
+void CheckForCollision(PARTICLE *,int,NN *,SMF *);
+
+#endif /* PLANETS */
 
 #endif
 

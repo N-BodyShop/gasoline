@@ -18,6 +18,13 @@
 
 #endif
 
+#ifdef PLANETS
+
+#define OUT_DT_ARRAY		10
+#define OUT_CT_ARRAY		11
+
+#endif /* PLANETS */
+
 #define OUT_POS_VECTOR		1
 #define OUT_VEL_VECTOR		2
 #define OUT_ACCEL_VECTOR	3

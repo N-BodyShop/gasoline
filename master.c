@@ -1469,6 +1469,10 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.gamma = msr->param.dConstGamma;
 	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
 	in.smf.bGeometric = msr->param.bGeometric;
+#ifdef PLANETS /*DEBUG*/
+	in.smf.dStart = 0;
+	in.smf.dEnd = msr->param.dDelta;
+#endif /* PLANETS */
 	if (msr->param.bVerbose) printf("Smoothing...\n");
 	sec = time(0);
 	pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);

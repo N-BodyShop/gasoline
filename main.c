@@ -37,6 +37,10 @@ int main(int argc,char **argv)
 	int nActive;
 	double dMultiEff;
 
+#ifdef PLANETS
+	setbuf(stdout, (char *) NULL); /* disable stdout buffering */
+#endif /* PLANETS */
+
 	mdlInitialize(&mdl,argv,main_ch);
 	for(argc = 0; argv[argc]; argc++); /* some MDLs can trash argv */
 	msrInitialize(&msr,mdl,argc,argv);
@@ -131,6 +135,26 @@ int main(int argc,char **argv)
 
 		for (iStep=1;iStep<=msrSteps(msr);++iStep) {
 			if (msrKDK(msr)) {
+#ifdef PLANETS
+				/***DEBUG: diagnostic test***/
+				msrActiveRung(msr,0,1);
+				msrBuildTree(msr,0,dMass,1);
+				msrMassCheck(msr,dMass,"After msrBuildTree in Planets Test");
+				(void) puts("before SetTimeStep()");
+				msrSmooth(msr,dTime,SMX_TIMESTEP,0);
+				(void) puts("after SetTimeStep()");
+				msrMassCheck(msr,dMass,"After msrSmooth in Planets Test");
+				(void) puts("before CheckForCollision()");
+				msrSmooth(msr,dTime,SMX_COLLISION,0);
+				(void) puts("after CheckForCollision()");
+				msrMassCheck(msr,dMass,"After msrSmooth in Planets Test");
+				msrReorder(msr);
+				(void) sprintf(achFile,"%s.pl1",msrOutName(msr));
+				msrOutArray(msr,achFile,OUT_DT_ARRAY);
+				(void) sprintf(achFile,"%s.pl2",msrOutName(msr));
+				msrOutArray(msr,achFile,OUT_CT_ARRAY);
+				exit(0);
+#endif /* PLANETS */
 				dMultiEff = 0.0;
 				msrTopStepKDK(msr, iStep-1, dTime,
 					      msrDelta(msr), 0, 0, 1,
@@ -290,4 +314,3 @@ int main(int argc,char **argv)
 	mdlFinish(mdl);
 	return 0;
 	}
-

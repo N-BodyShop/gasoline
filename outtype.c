@@ -27,6 +27,12 @@ float ArrType(PARTICLE *p,int iType)
 	case OUT_HSMDIVV_ARRAY:
 		return(p->fHsmDivv);
 #endif
+#ifdef PLANETS
+	case OUT_DT_ARRAY:
+		return(p->dt);
+	case OUT_CT_ARRAY:
+		return(p->dCollTime);
+#endif /* PLANETS */
 	default:
 		return(0.0);
 		}
