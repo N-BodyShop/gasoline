@@ -1386,8 +1386,6 @@ int NumBinaryNodes(PKD pkd,int nBucket,int pLower,int pUpper)
 			}
 		for (i=pLower+1;i<=pUpper;++i) {
 			for (j=0;j<3;++j) {
-			        assert(pkd->pStore[i].r[j] >= -0.5);
-			        assert(pkd->pStore[i].r[j] <= 0.5);
 				if (pkd->pStore[i].r[j] < bnd.fMin[j]) 
 					bnd.fMin[j] = pkd->pStore[i].r[j];
 				else if (pkd->pStore[i].r[j] > bnd.fMax[j])
@@ -1696,9 +1694,6 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		mdlFinishCache(pkd->mdl,CID_CELL);
 		mdlFree(pkd->mdl,pkd->kdNodes);
 		}
-
-	assert(n > 0);		/* XXX should be fixed */
-	
 	if(n == 0) {
 	    pkd->kdNodes = NULL;
 	    return;
@@ -1812,8 +1807,8 @@ void pkdColorCell(PKD pkd,int iCell,FLOAT fColor)
 void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 				double fEwCut,double fEwhCut,int bDoSun,
 				double *aSun,int *nActive,
-				double *pdPartSum,double *pdCellSum,CASTAT *pcs,
-				double *pdFlop)
+				double *pdPartSum,double *pdCellSum,double *pdSoftSum,
+				CASTAT *pcs,double *pdFlop)
 {
 	KDN *c = pkd->kdNodes;
 	int iCell,n;
@@ -1845,6 +1840,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	*nActive = 0;
 	*pdPartSum = 0.0;
 	*pdCellSum = 0.0;
+	*pdSoftSum = 0.0;
 	iCell = pkd->iRoot;
 	while (iCell != -1) {
 		if (c[iCell].iLower != -1) {
@@ -1883,7 +1879,8 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			*nActive += n;
 			*pdPartSum += n*pkd->nPart + 
 				n*(2*(c[iCell].pUpper-c[iCell].pLower) - n + 1)/2;
-			*pdCellSum += n*(pkd->nCellSoft + pkd->nCellNewt);
+			*pdCellSum += n*pkd->nCellNewt;
+			*pdSoftSum += n*pkd->nCellSoft;
 			pkdStartTimer(pkd,2);
 			dFlopI = pkdBucketInteract(pkd,iCell,iOrder);
 			*pdFlop += dFlopI;
@@ -2307,25 +2304,25 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #endif
 	    if(p[i].iActive) {
 #ifdef GASOLINE
-	                if(pkdIsGas(pkd, &p[i])) {
+			if(pkdIsGas(pkd, &p[i])) {
 				for (j=0;j<3;++j) {
 					p[i].vPred[j] = p[i].v[j]*dvPredFacOne + 
 						p[i].a[j]*dvPredFacTwo;
 					}
 				if (p[i].PdV*duPredFac/p[i].u < -0.2) {
-				  p[i].uPred = p[i].u*exp(p[i].PdV*duPredFac/p[i].u);
-				}
+					p[i].uPred = p[i].u*exp(p[i].PdV*duPredFac/p[i].u);
+					}
 				else {
-				  p[i].uPred = p[i].u + p[i].PdV*duPredFac;
-				}
+					p[i].uPred = p[i].u + p[i].PdV*duPredFac;
+					}
 				if (p[i].PdV*duFac/p[i].u < -0.2) {
-				  p[i].u = p[i].u*exp(p[i].PdV*duFac/p[i].u);
-				}
+					p[i].u = p[i].u*exp(p[i].PdV*duFac/p[i].u);
+					}
 				else {
-				  p[i].u = p[i].u + p[i].PdV*duFac;
+					p[i].u = p[i].u + p[i].PdV*duFac;
+					}
 				}
-				}
-	      
+			
 #endif
 			for (j=0;j<3;++j) {
 				p[i].v[j] = p[i].v[j]*dvFacOne + p[i].a[j]*dvFacTwo;
@@ -2369,10 +2366,6 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 			pkd->pStore[i].r[j] = cp.r[j];
 			pkd->pStore[i].v[j] = cp.v[j];
 			}
-#ifdef GASOLINE
-		pkd->pStore[i].u = cp.u;
-		pkd->pStore[i].uPred = cp.u;
-#endif
 #ifdef COLLISIONS
 		for (j=0;j<3;++j)
 			pkd->pStore[i].w[j] = cp.w[j];
@@ -2414,9 +2407,6 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 			cp.r[j] = pkd->pStore[i].r[j];
 			cp.v[j] = pkd->pStore[i].v[j];
 			}
-#ifdef GASOLINE
-		cp.u = pkd->pStore[i].u;
-#endif
 #ifdef COLLISIONS
 		for (j=0;j<3;++j)
 			cp.w[j] = pkd->pStore[i].w[j];
@@ -3055,17 +3045,11 @@ void pkdAdiabaticGasPressure(PKD pkd, GASPARAMETERS *in)
     PARTICLE *p;
     float PoverRho;
     int i;
-    int bBad = 0;
 
     for(i=0;i<pkdLocal(pkd);++i) {
                 p = &pkd->pStore[i];
                 if (p->iTreeActive) {
-			if (p->uPred < 0.0) {
-			  printf("%d\n",p->iOrder);
-			  bBad = 1;
-			}			  
 		        PoverRho = in->gammam1*p->uPred;
-			assert(p->fDensity > 0.0);
 			p->PoverRho2 = PoverRho/p->fDensity;
    			p->c = sqrt(in->gamma*PoverRho);
 		        }
@@ -3078,7 +3062,6 @@ void pkdAdiabaticGasPressure(PKD pkd, GASPARAMETERS *in)
 		        } 
 #endif            
                 }
-    if (bBad) exit(1);
     }
 
 #ifdef GLASS
@@ -3151,25 +3134,26 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duFac)
 	for (i=0;i<n;++i) {
 #ifdef DEBUG
 		if (pkdIsGas(pkd,(p+i)) && ((p+i)->iOrder % 3000)==0) {
-		        printf("Particle %i: %i %i %f %f %f %f   %f %f %f %f\n",
+			printf("Particle %i: %i %i %f %f %f %f   %f %f %f %f\n",
 			       (p+i)->iOrder,(p+i)->iActive,(p+i)->iTreeActive,
 			       sqrt(0.25*(p+i)->fBall2),(p+i)->fDensity,(p+i)->u,(p+i)->uPred,
 			       (p+i)->a[0],(p+i)->a[1],(p+i)->a[2],(p+i)->PdV);
-		        }
+			}
 #endif
- 	        if(pkdIsGas(pkd, &p[i])) {
+		if(pkdIsGas(pkd, &p[i])) {
 			for (j=0;j<3;++j) {
 				p[i].vPred[j] = p[i].vPred[j]*dvFacOne + p[i].a[j]*dvFacTwo;
 				}
 			if (p[i].PdV*duFac/p[i].u < -0.2) {
-			  p[i].uPred = p[i].u*exp(p[i].PdV*duFac/p[i].u);
-			}
+				p[i].uPred = p[i].u*exp(p[i].PdV*duFac/p[i].u);
+				}
 			else {
-			  p[i].uPred = p[i].uPred + p[i].PdV*duFac;
+				p[i].uPred = p[i].uPred + p[i].PdV*duFac;
+				}
 			}
-			}
-	        }
+		}
 	}
+
 
 void pkdKickVpredRung(PKD pkd, double dvFacOne, double dvFacTwo, double duFac)
 {
@@ -3184,26 +3168,26 @@ void pkdKickVpredRung(PKD pkd, double dvFacOne, double dvFacTwo, double duFac)
 	for (i=0;i<n;++i) {
 	    if(p[i].iActive) {
 #ifdef DEBUG
-		if (pkdIsGas(pkd,(p+i)) && ((p+i)->iOrder % 3000)==0) {
+			if (pkdIsGas(pkd,(p+i)) && ((p+i)->iOrder % 3000)==0) {
 		        printf("Particle %i: %i %i %f %f %f %f   %f %f %f %f\n",
-			       (p+i)->iOrder,(p+i)->iActive,(p+i)->iTreeActive,
-			       sqrt(0.25*(p+i)->fBall2),(p+i)->fDensity,(p+i)->u,(p+i)->uPred,
-			       (p+i)->a[0],(p+i)->a[1],(p+i)->a[2],(p+i)->PdV);
+					   (p+i)->iOrder,(p+i)->iActive,(p+i)->iTreeActive,
+					   sqrt(0.25*(p+i)->fBall2),(p+i)->fDensity,(p+i)->u,(p+i)->uPred,
+					   (p+i)->a[0],(p+i)->a[1],(p+i)->a[2],(p+i)->PdV);
 		        }
 #endif
  	        if(pkdIsGas(pkd, &p[i])) {
-			for (j=0;j<3;++j) {
-				p[i].vPred[j] = p[i].vPred[j]*dvFacOne + p[i].a[j]*dvFacTwo;
+				for (j=0;j<3;++j) {
+					p[i].vPred[j] = p[i].vPred[j]*dvFacOne + p[i].a[j]*dvFacTwo;
+					}
+				if (p[i].PdV*duFac/p[i].u < -0.2) {
+					p[i].uPred = p[i].u*exp(p[i].PdV*duFac/p[i].u);
+					}
+				else {
+					p[i].uPred = p[i].uPred + p[i].PdV*duFac;
+					}
 				}
-			if (p[i].PdV*duFac/p[i].u < -0.2) {
-			  p[i].uPred = p[i].u*exp(p[i].PdV*duFac/p[i].u);
 			}
-			else {
-			  p[i].uPred = p[i].uPred + p[i].PdV*duFac;
-			}
-			}
-	            }
-	        }
+		}
 	}
 
 int pkdSphCurrRung(PKD pkd, int iRung)
