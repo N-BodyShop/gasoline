@@ -305,8 +305,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	for (i=0;i<msr->nRed;i++)
 		fprintf(fp," %f",msrRedOut(msr, i));
 	fprintf(fp,"\n");
+	fflush(fp);
 	}
-
 
 void msrFinish(MSR msr)
 {
