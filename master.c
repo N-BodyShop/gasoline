@@ -668,7 +668,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.stfm->dOverDenMin = 2.0;
 	prmAddParam(msr->prm,"dOverDenMin", 2, &msr->param.stfm->dOverDenMin,
 		    sizeof(double), "stODmin",
-		    "<Minimum overdensity for forming stars> = 0");
+		    "<Minimum overdensity for forming stars> = 2");
 	msr->param.stfm->dStarEff = .3333;
 	prmAddParam(msr->prm,"dStarEff", 2, &msr->param.stfm->dStarEff,
 		    sizeof(double), "stEff",
@@ -4575,7 +4575,7 @@ void msrTopStepKDK(MSR msr,
 #else
 		msrDrift(msr,dTime,dDelta);
 		dTime += dDelta;
-		dStep += 1;
+		dStep += 1.0/(1 << iRung);
 #endif
 
 		msrActiveMaskRung(msr,TYPE_ACTIVE,iKickRung,1);
