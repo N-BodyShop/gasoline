@@ -250,7 +250,7 @@ int main(int argc,char **argv)
 						msrMassCheck(msr,dMass,"After msrGravity in DKD-log");
 						msrCalcE(msr,MSR_STEP_ECOSMO,dTime,&E,&T,&U);
 						msrMassCheck(msr,dMass,"After msrCalcE in DKD-log");
-						if (msrLogInterval(msr) && msrLogInterval(msr)%iStep == 0) {
+						if (msrLogInterval(msr) && iStep%msrLogInterval(msr) == 0) {
 							(void) fprintf(fpLog,"%e %e %e %e %e %li %e %e %e %e\n",dTime,
 										   1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,
 										   time(0)-lSec,dWMax,dIMax,dEMax,dMultiEff);
