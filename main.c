@@ -90,8 +90,10 @@ int main(int argc,char **argv)
 		if (msr->param.iGasModel == GASMODEL_COOLING
 		    || msr->param.iGasModel == GASMODEL_COOLING_NONEQM) 
 		    msrInitCooling(msr);
+#ifdef STARFORM
 		if(msr->param.bStarForm) /* dDelta is now determined */
 		    msr->param.stfm->dDeltaT = msr->param.dDelta;
+#endif
 #endif
 		msrInitStep(msr);
 		dMass = msrMassCheck(msr,-1.0,"Initial");
@@ -170,8 +172,10 @@ int main(int argc,char **argv)
 	if (msr->param.iGasModel == GASMODEL_COOLING ||
 	    msr->param.iGasModel == GASMODEL_COOLING_NONEQM)
 	        msrInitCooling(msr);
+#ifdef STARFORM
 	if(msr->param.bStarForm) /* dDelta is now determined */
 	    msr->param.stfm->dDeltaT = msr->param.dDelta;
+#endif
 #endif
 	msrInitStep(msr);
 #ifdef GLASS
