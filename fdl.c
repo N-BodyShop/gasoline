@@ -131,8 +131,7 @@ FDL_CTX *FDL_initialize(FILE *fp,FILE *fdlp,int bCopyFdl)
     FDL_CTX *CTX;
     
     CTX = (FDL_CTX *)malloc(sizeof(FDL_CTX));
-    if (!CTX)
-        FDL_error(CTX,FDL_MSG_MEMCTX,__FILE__,__LINE__);
+    assert(CTX != NULL);
     /*
      ** Set up the FDL command strings.
      */
