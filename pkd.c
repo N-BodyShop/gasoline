@@ -4959,10 +4959,10 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 		p->iOrder = nStart + i;
 		if (!pkdIsDark(pkd,p)) /* determined by p->iOrder */
 			mdlassert(pkd->mdl,0); /* only dark particles allowed in ss file */
-		p->iOrgIdx = data.org_idx;
-		assert(p->iOrgIdx > -1); /* only new format supported */
 		if (ssioData(&ssio,&data))
 			mdlassert(pkd->mdl,0); /* error during read in ss file */
+		p->iOrgIdx = data.org_idx;
+		assert(p->iOrgIdx > -1); /* only new format supported */
 		p->fMass = data.mass;
 		p->fSoft = 0.5*data.radius;
 #ifdef CHANGESOFT 
