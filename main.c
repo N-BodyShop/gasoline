@@ -173,13 +173,6 @@ int main(int argc,char **argv)
 	    mdlFinish(mdl);
 	    return 1;
 	    }
-#ifdef COLLISIONS
-	if (msr->param.iCollLogOption != COLL_LOG_NONE) { /* erase any old log */
-		FILE *fp = fopen(msr->param.achCollLog,"w");
-		assert(fp);
-		fclose(fp);
-		}
-#endif
 	/*
 	 ** Read in the binary file, this may set the number of timesteps or
 	 ** the size of the timestep when the zto parameter is used.
@@ -192,6 +185,19 @@ int main(int argc,char **argv)
 		msr->param.nSmooth = msr->N;
 		if (msr->param.bVWarnings)
 			printf("WARNING: nSmooth reduced to %i\n",msr->N);
+		}
+	if (msr->param.iCollLogOption != COLL_LOG_NONE) {
+		FILE *fp;
+		if (msr->param.iStartStep > 0) { /* append if non-zero start step */
+			fp = fopen(msr->param.achCollLog,"a");
+			assert(fp);
+			fprintf(fp,"START:T=%e\n",dTime);
+			}
+		else { /* otherwise erase any old log */
+			fp = fopen(msr->param.achCollLog,"w");
+			assert(fp);
+			}
+		fclose(fp);
 		}
 #endif
 #ifdef GASOLINE
