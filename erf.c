@@ -4,6 +4,10 @@
  * specifies the terms and conditions for redistribution.
  */
 
+#ifdef __crayx1
+#pragma _CRI inline (erf,erfc,erfc_inner)
+#endif
+
 #if 0
 #ifndef lint
 static char sccsid[] = "@(#)erf.c	5.2 (Berkeley) 4/29/88";
@@ -104,13 +108,33 @@ erf(double arg)
 }
 
 double
+erfc_inner(double arg)
+{
+	double n, d;
+	int i;
+
+/*
+	if(arg < 0.5)
+		return(1. - erf(arg));
+*/
+	if(arg >= 10.)
+		return(0.);
+
+	for(n=0,d=0,i=N-1; i>=0; i--){
+		n = n*arg + p2[i];
+		d = d*arg + q2[i];
+	}
+	return(exp(-arg*arg)*n/d);
+}
+
+double
 erfc(double arg)
 {
 	double n, d;
 	int i;
 
 	if(arg < 0.)
-		return(2. - erfc(-arg));
+		return(2. - erfc_inner(-arg));
 /*
 	if(arg < 0.5)
 		return(1. - erf(arg));

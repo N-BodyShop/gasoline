@@ -7,6 +7,9 @@
 #include "meval.h"
 #include "qeval.h"
 
+#ifdef __crayx1
+#include "erf.c"
+#endif
 
 int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 {
@@ -29,6 +32,13 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 	int nMultiFlop[5] = MEVAL_FLOP;
 #endif
 	
+#ifdef __crayx1
+	/* Optimization for vector processors */
+	int tmp_n;
+	int ixStride, iyStride;
+#endif
+
+
 	if (!iOrder) return 0;
 	mom = pkd->ilcnRoot;
 	pkdn = &pkd->kdNodes[iBucket];
@@ -51,6 +61,8 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 		dx = p[j].r[0] - mom.x;
 		dy = p[j].r[1] - mom.y;
 		dz = p[j].r[2] - mom.z;
+
+#ifndef __crayx1
 		for (ix=-nEwReps;ix<=nEwReps;++ix) {
 			bInHolex = (ix >= -nReps && ix <= nReps);
 			dxo = dx + ix*L;
@@ -58,6 +70,21 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 				bInHolexy = (bInHolex && iy >= -nReps && iy <= nReps);
 				dyo = dy + iy*L;
 				for(iz=-nEwReps;iz<=nEwReps;++iz) {
+#else
+		/* Optimized for vector machines */
+
+		ixStride = (2*nEwReps + 1)*(2*nEwReps + 1);
+		iyStride = 2*nEwReps + 1;
+		for(tmp_n = 0; tmp_n < ixStride*iyStride; tmp_n++) {
+			ix = tmp_n/ixStride - nEwReps;
+			iy = (tmp_n%ixStride)/iyStride - nEwReps;
+			iz = tmp_n%iyStride - nEwReps;
+			bInHolex = (ix >= -nReps && ix <= nReps);
+			dxo = dx + ix*L;
+				bInHolexy = (bInHolex && iy >= -nReps && iy <= nReps);
+				dyo = dy + iy*L;
+
+#endif
 					bInHole = (bInHolexy && iz >= -nReps && iz <= nReps);
 					/*
 					 ** Scoring for Ewald inner stuff = (+,*)
@@ -116,8 +143,11 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 					MEVAL(iOrder,mom,gam,dxo,dyo,dzo,ax,ay,az,fPot);
 #endif
 					++nLoop;
+
+#ifndef __crayx1
 					}
 				}
+#endif
 			}
 		/*
 		 ** Try a cache check to improve responsiveness.
