@@ -474,7 +474,7 @@ void pkdGravAll(PKD,int,int,int,int,int,double,double,int,double *,int *,
 void pkdCalcEandL(PKD,double *,double *,double *,double []);
 void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,FLOAT);
-void pkdUpdateUdot(PKD pkd,double,double,int,int);
+void pkdUpdateUdot(PKD pkd,double,double,double,int,int);
 void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double);
 void pkdReadCheck(PKD,char *,int,int,int,int);
 void pkdWriteCheck(PKD,char *,int,int);
@@ -541,11 +541,11 @@ struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCu
 void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, double dTMax,
 		     double duTFac,int iGasModel, double dPdVMetal, double dPdVNonMetal );
 #endif
-void pkdUpdateuDot(PKD,double,double,int,int);
+void pkdUpdateuDot(PKD,double,double,double,int,int);
 void pkdUpdateShockTracker(PKD,double, double, double);
 void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma);
 void pkdLowerSoundSpeed(PKD, double);
-void pkdInitEnergy(PKD pkd, double dTuFac, double z);
+void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime );
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);
 int pkdSphCurrRung(PKD pkd, int iRung, int bGreater);
 void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int bViscosityLimitdt);

@@ -36,7 +36,7 @@ typedef struct {
 } PERBARYON;
 
 typedef struct { 
-  double   z;
+  double   zTime;
 
   double   Rate_Phot_HI;
   double   Rate_Phot_HeI;
@@ -88,6 +88,7 @@ typedef struct {
 
 typedef struct CoolingContextStruct { 
    double     z; /* Redshift */
+   double     dTime;
  /* Rates independent of Temperature */ 
    RATES_NO_T  R;
  /* Table for Temperature dependent rates */ 
@@ -101,6 +102,8 @@ typedef struct CoolingContextStruct {
 
    int        nUV;
    UVSPECTRUM *UV;
+   int        bUVTableUsesTime;
+   int        bUVTableLinear;
 
    double     dGmPerCcUnit;
    double     dComovingGmPerCcUnit;
@@ -166,11 +169,12 @@ CL *clInit( );
 void clFinalize( CL *cl );
 
 void clInitConstants( CL *cl, double dGMPerCcunit, double dComovingGmPerCcUnit,
-		     double dErgPerGmUnit, double dSecUnit, double dMassFracHelium);
+					 double dErgPerGmUnit, double dSecUnit, double dMassFracHelium, 
+					 int bUVTableUsesTime);
 void clInitUV( CL *cl, UVSPECTRUM *UV, int nUV);
 void clInitRatesTable( CL *cl, double TMin, double TMax, int nTable );
 void clRatesTableError( CL *cl );
-void clRatesRedshift( CL *cl, double z );
+void clRatesRedshift( CL *cl, double z, double dTime );
 double clHeatTotal ( CL *cl, PERBARYON *Y );
 void clRates ( CL *cl, RATE *Rate, double T );
 double clCoolTotal ( CL *cl, PERBARYON *Y, RATE *Rate, double rho );

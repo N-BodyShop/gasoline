@@ -5,6 +5,7 @@
 #include "mdl.h"
 #include "smoothfcn.h"
 #include "floattype.h"
+#include "dumpframe.h"
 
 #ifdef COLLISIONS
 #include "collision.h"
@@ -171,7 +172,8 @@ enum pst_service {
       PST_CLEARTIMER,
       PST_BALLMAX,
       PST_FORMSTARS,
-      PST_FEEDBACK
+      PST_FEEDBACK,
+      PST_DUMPFRAME
       };
 
 void pstAddServices(PST,MDL);
@@ -478,6 +480,7 @@ void pstDrift(PST,void *,int,void *,int *);
 /* PST_UPDATEUDOT */
 struct inUpdateuDot {
 	double duDelta;
+	double dTime;	
 	double z;
 	int iGasModel;
 	int bUpdateY;
@@ -891,6 +894,7 @@ void pstLowerSoundSpeed(PST, void *,int,void *,int *);
 struct inInitEnergy {
 	double dTuFac;
 	double z;
+	double dTime;
 };
 
 void pstInitEnergy(PST, void *,int,void *,int *);
@@ -1095,6 +1099,8 @@ struct inInitCooling {
     double Tmax;
     int    nTable;
     double z;
+	double dTime;
+	int bUVTableUsesTime;
     };
 
 void pstInitCooling(PST,void *,int,void *,int *);
@@ -1134,6 +1140,9 @@ void pstFeedback(PST,void *,int,void *,int *);
 
 #endif
 #endif
+
+/* Return is pixmap */
+void pstDumpFrame(PST,void *,int,void *,int *);
 
 /* PST_GROWMASS */
 struct inGrowMass 

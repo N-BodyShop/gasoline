@@ -203,6 +203,11 @@ int main(int argc,char **argv)
 #ifdef COLLISIONS
 	if (msr->param.bFindRejects) msrFindRejects(msr);
 #endif
+	/* 
+	 ** Dump Frame Initialization
+	 */
+	msrDumpFrameInit( msr, dTime );
+
 	/*
 	 ** If the simulation is periodic make sure to wrap all particles into
 	 ** the "unit" cell. Doing a drift of 0.0 will always take care of this.
@@ -261,7 +266,6 @@ int main(int argc,char **argv)
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
 #endif
-
 		for (iStep=msr->param.iStartStep+1;iStep<=msrSteps(msr);++iStep) {
 			if (msrComove(msr)) {
 				msrSwitchTheta(msr,dTime);
@@ -699,6 +703,7 @@ int main(int argc,char **argv)
 			}
 		}
 	
+	dfFinalize( msr->df );
 	msrFinish(msr);
 	mdlFinish(mdl);
 	return 0;

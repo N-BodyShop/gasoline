@@ -309,6 +309,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 
 	msr = (MSR)malloc(sizeof(struct msrContext));
 	assert(msr != NULL);
+
+	msr->bDumpFrame = 0;
+	msr->df = (struct DumpFrameContext *) malloc(sizeof(struct DumpFrameContext));
+	assert( msr->df != NULL );
+
 	msr->mdl = mdl;
 	msr->pst = NULL;
 	msr->lcl.pkd = NULL;
@@ -400,6 +405,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.iOutInterval = 0;
 	prmAddParam(msr->prm,"iOutInterval",1,&msr->param.iOutInterval,sizeof(int),
 				"oi","<number of timesteps between snapshots> = 0");
+	msr->param.dDumpFrameInterval = 0;
+	prmAddParam(msr->prm,"dDumpFrameInterval",2,&msr->param.dDumpFrameInterval,sizeof(double),
+				"dfi","<number of timesteps between dumped frames> = 0");
 	msr->param.iLogInterval = 10;
 	prmAddParam(msr->prm,"iLogInterval",1,&msr->param.iLogInterval,sizeof(int),
 				"ol","<number of timesteps between logfile outputs> = 10");
@@ -730,6 +738,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bUV = 1;
 	prmAddParam(msr->prm,"bUV",0,&msr->param.bUV,sizeof(int),"UV",
 				"read in an Ultra Violet file = +UV");
+	msr->param.bUVTableUsesTime = 0;
+	prmAddParam(msr->prm,"bUVTableUsesTime",0,&msr->param.bUVTableUsesTime,sizeof(int),"UVTableUsesTime",
+				"Ultra Violet Table uses time = +UVTableUsesTime");
 	msr->param.dShockTrackerA = 0.16; 
 	prmAddParam(msr->prm,"dShockTrackerA",2,&msr->param.dShockTrackerA,
 				sizeof(double),"STA",
@@ -1162,9 +1173,20 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	if (msr->param.bGasCoolingNonEqm) msrSetGasModel( GASMODEL_COOLING_NONEQM );
 
 	if (msr->param.iGasModel == GASMODEL_UNSET) {
-	  msr->param.iGasModel = GASMODEL_ADIABATIC;
-	  fprintf( stderr, "Defaulting to Adiabatic Gas Model."); 
-	}
+		msr->param.iGasModel = GASMODEL_ADIABATIC;
+		fprintf( stderr, "Defaulting to Adiabatic Gas Model."); 
+		}	
+
+	switch(msr->param.iGasModel) {
+	case GASMODEL_ADIABATIC:
+		msr->param.bGasAdiabatic = 1;	
+	case GASMODEL_ISOTHERMAL:
+		msr->param.bGasIsothermal = 1;
+	case GASMODEL_COOLING:
+		msr->param.bGasCooling = 1;
+	case GASMODEL_COOLING_NONEQM:
+		msr->param.bGasCoolingNonEqm = 1;
+		}
 
 	if(msr->param.iGasModel != GASMODEL_COOLING &&
 	   msr->param.iGasModel != GASMODEL_COOLING_NONEQM) {
@@ -1578,6 +1600,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# bKDK: %d",msr->param.bKDK);
 	fprintf(fp," nBucket: %d",msr->param.nBucket);
 	fprintf(fp," iOutInterval: %d",msr->param.iOutInterval);
+	fprintf(fp," dDumpFrameInterval: %g",msr->param.dDumpFrameInterval);
 	fprintf(fp," iLogInterval: %d",msr->param.iLogInterval);
 	fprintf(fp,"\n# iCheckInterval: %d",msr->param.iCheckInterval);
 	fprintf(fp," iOrder: %d",msr->param.iOrder);
@@ -1649,6 +1672,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bGasIsothermal: %d",msr->param.bGasIsothermal);	
 	fprintf(fp," bGasCooling: %d",msr->param.bGasCooling);	
 	fprintf(fp," bGasCoolingNonEqm: %d",msr->param.bGasCoolingNonEqm);	
+    fprintf(fp," bUV: %d",msr->param.bUV);
+    fprintf(fp," bUVTableUsesTime: %d",msr->param.bUVTableUsesTime);
 	fprintf(fp," dConstAlpha: %g",msr->param.dConstAlpha);
 	fprintf(fp," dConstBeta: %g",msr->param.dConstBeta);
 	fprintf(fp,"\n# dConstGamma: %g",msr->param.dConstGamma);
@@ -4300,6 +4325,14 @@ int msrCurrMaxRung(MSR msr)
     }
 
 
+int msrCurrMaxRungInclDF(MSR msr)
+{
+	int iRung = msr->iCurrMaxRung;
+	if (msr->bDumpFrame && iRung < msr->df->iMaxRung) iRung = msr->df->iMaxRung;
+    return iRung;
+    }
+
+
 double msrEta(MSR msr)
 {
     return msr->param.dEta;
@@ -4833,7 +4866,7 @@ void msrTopStepKDK(MSR msr,
     msrUpdateuDot(msr,dTime,0.5*dDelta,1);
 #endif
     msrKickKDKOpen(msr,dTime,0.5*dDelta);
-    if (msrCurrMaxRung(msr) > iRung) {
+    if (msrCurrMaxRungInclDF(msr) > iRung) {
 		/*
 		 ** Recurse.
 		 */
@@ -4865,115 +4898,124 @@ void msrTopStepKDK(MSR msr,
 		dTime += dDelta;
 		dStep += 1.0/(1 << iRung);
 #endif
+		/* 
+		 ** Dump Frame
+		 */
+		if (msr->param.dDumpFrameInterval > 0 && dTime >= msr->df->dTime)  
+			msrDumpFrame( msr, dTime );
 
+		/* 
+		 ** Calculate Forces (if required)
+		 */
 		msrActiveMaskRung(msr,TYPE_ACTIVE,iKickRung,1);
-		msrDomainDecomp(msr,iKickRung,1);
-		msrInitAccel(msr);
+		if (msr->nActive) {
+			msrDomainDecomp(msr,iKickRung,1);
+			msrInitAccel(msr);
 
-		if (msr->param.bVStep) printf("Forces, Step:%f\n",dStep);
-		if(msrDoGravity(msr)) {
-		  if (msr->param.bDoSelfGravity) {
-			msrActiveRung(msr,iKickRung,1);
-			msrUpdateSoft(msr,dTime);
-			msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
-			if (msr->param.bVDetails)
-				printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
-			msrBuildTree(msr,0,dMass,0);
-		        }
-		  msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nActive);
-		  *pdActiveSum += (double)nActive/msr->N;
-		  }
-
-#ifdef GASOLINE
-		if (msr->param.bVDetails)
-			printf("SPH, iRung: %d to %d\n",iRung,iKickRung);
-		msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
-		msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-		printf("nActive %d nTreeActive %d nSmoothActive %d\n",msr->nActive,
-			   msr->nTreeActive,msr->nSmoothActive);
-		if(msrDoGas(msr) && msrSphCurrRung(msr,iKickRung,1)) {
-			msrBuildTree(msr,1,-1.0,1);
-			msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
-			if (msr->param.bFastGas && msr->nActive < msr->nGas*msr->param.dFracFastGas) {
-			        msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE|TYPE_Scatter|TYPE_DensZeroed );
-				msrActiveType(msr,TYPE_ACTIVE,TYPE_SMOOTHACTIVE|TYPE_DensACTIVE );
-				if (msr->param.bVDetails)
-				  printf("Dens Active Particles: %d\n",msr->nSmoothActive );
-				/* Density for Actives and mark Gather neighbours */
-				msrSmooth(msr,dTime,SMX_MARKDENSITY,1); 
-				/* mark Scatter Neighbours */
-				msrMarkSmooth(msr,dTime,1,TYPE_Scatter); 
-				/* They need density too... */
-				msrActiveType(msr,TYPE_ACTIVE|TYPE_NbrOfACTIVE|TYPE_Scatter, TYPE_DensACTIVE );
-				/* ...but don't redo Actives in smooth*/
-				msrActiveExactType(msr,TYPE_DensACTIVE|TYPE_ACTIVE, 
-						   TYPE_DensACTIVE,TYPE_SMOOTHACTIVE);
-				/* Density for Neighbours and mark scatter neighbours of actives */
-				msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1);
-				/* mark Scatter Neighbours of Neighbours */
-				msrMarkSmooth(msr,dTime,1,TYPE_Scatter);
-				/* Scatter Density contribution from those particles... */
-				msrActiveExactType(msr,TYPE_Scatter|TYPE_DensACTIVE, 
-						   TYPE_Scatter,TYPE_SMOOTHACTIVE);
-				msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1); 
-				
-				/* We want direct neighbours of Actives only */
-				msrActiveType(msr,TYPE_NbrOfACTIVE,TYPE_SMOOTHACTIVE);
-				if (msr->param.bVDetails)
-				  printf("Density Zeroed: %d ",
-					 msrCountType(msr,TYPE_DensZeroed,TYPE_DensZeroed));
-				if (msr->param.bVDetails)
-				  printf("Neighbours: %d ",
-					 msrCountType(msr,TYPE_ACTIVE|TYPE_NbrOfACTIVE,TYPE_NbrOfACTIVE));
-			        }
-			else {
-				msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE );
-				msrActiveType(msr,TYPE_ACTIVE,TYPE_SMOOTHACTIVE|TYPE_DensACTIVE );
-				if (msr->param.bVDetails)
-				  printf("Dens Active Particles: %d\n",msr->nSmoothActive );
-				msrActiveType(msr,TYPE_GAS,TYPE_SMOOTHACTIVE );
-
-				msrSmooth(msr,dTime,SMX_MARKDENSITY,1);
-
-				if (msr->param.bVDetails)
-				  printf("Neighbours: %d ",
-					 msrCountType(msr,TYPE_NbrOfACTIVE,TYPE_NbrOfACTIVE ) );
-				msrActiveType(msr,TYPE_NbrOfACTIVE,TYPE_SMOOTHACTIVE);
-			        }
-
-			if (msr->param.bVDetails)
-			  printf("Smooth Active Particles: %d\n",msr->nSmoothActive);
-
-			if (msr->param.bViscosityLimiter
-			    || msr->param.bBulkViscosity
-			    || msr->param.bShockTracker
-			    || msr->param.bStarForm) {
-			  msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-			}
-			msrSphViscosityLimiter(msr, dTime);
-
-			msrGetGasPressure(msr);
+			if (msr->param.bVStep) printf("Forces, Step:%f\n",dStep);
+			if(msrDoGravity(msr)) {
+				if (msr->param.bDoSelfGravity) {
+					msrActiveRung(msr,iKickRung,1);
+					msrUpdateSoft(msr,dTime);
+					msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
+					if (msr->param.bVDetails)
+						printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
+					msrBuildTree(msr,0,dMass,0);
+					}
+				msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nActive);
+				*pdActiveSum += (double)nActive/msr->N;
+				}
 			
-			if (msr->param.bShockTracker) { 
+#ifdef GASOLINE
+			if (msr->param.bVDetails)
+				printf("SPH, iRung: %d to %d\n",iRung,iKickRung);
+			msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
+			msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+			printf("nActive %d nTreeActive %d nSmoothActive %d\n",msr->nActive,
+				   msr->nTreeActive,msr->nSmoothActive);
+			if(msrDoGas(msr) && msrSphCurrRung(msr,iKickRung,1)) {
+				msrBuildTree(msr,1,-1.0,1);
+				msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
+				if (msr->param.bFastGas && msr->nActive < msr->nGas*msr->param.dFracFastGas) {
+			        msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE|TYPE_Scatter|TYPE_DensZeroed );
+					msrActiveType(msr,TYPE_ACTIVE,TYPE_SMOOTHACTIVE|TYPE_DensACTIVE );
+					if (msr->param.bVDetails)
+						printf("Dens Active Particles: %d\n",msr->nSmoothActive );
+					/* Density for Actives and mark Gather neighbours */
+					msrSmooth(msr,dTime,SMX_MARKDENSITY,1); 
+					/* mark Scatter Neighbours */
+					msrMarkSmooth(msr,dTime,1,TYPE_Scatter); 
+					/* They need density too... */
+					msrActiveType(msr,TYPE_ACTIVE|TYPE_NbrOfACTIVE|TYPE_Scatter, TYPE_DensACTIVE );
+					/* ...but don't redo Actives in smooth*/
+					msrActiveExactType(msr,TYPE_DensACTIVE|TYPE_ACTIVE, 
+									   TYPE_DensACTIVE,TYPE_SMOOTHACTIVE);
+					/* Density for Neighbours and mark scatter neighbours of actives */
+					msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1);
+					/* mark Scatter Neighbours of Neighbours */
+					msrMarkSmooth(msr,dTime,1,TYPE_Scatter);
+					/* Scatter Density contribution from those particles... */
+					msrActiveExactType(msr,TYPE_Scatter|TYPE_DensACTIVE, 
+									   TYPE_Scatter,TYPE_SMOOTHACTIVE);
+					msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1); 
+					
+					/* We want direct neighbours of Actives only */
+					msrActiveType(msr,TYPE_NbrOfACTIVE,TYPE_SMOOTHACTIVE);
+					if (msr->param.bVDetails)
+						printf("Density Zeroed: %d ",
+							   msrCountType(msr,TYPE_DensZeroed,TYPE_DensZeroed));
+					if (msr->param.bVDetails)
+						printf("Neighbours: %d ",
+							   msrCountType(msr,TYPE_ACTIVE|TYPE_NbrOfACTIVE,TYPE_NbrOfACTIVE));
+			        }
+				else {
+					msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE );
+					msrActiveType(msr,TYPE_ACTIVE,TYPE_SMOOTHACTIVE|TYPE_DensACTIVE );
+					if (msr->param.bVDetails)
+						printf("Dens Active Particles: %d\n",msr->nSmoothActive );
+					msrActiveType(msr,TYPE_GAS,TYPE_SMOOTHACTIVE );
+					
+					msrSmooth(msr,dTime,SMX_MARKDENSITY,1);
+					
+					if (msr->param.bVDetails)
+						printf("Neighbours: %d ",
+							   msrCountType(msr,TYPE_NbrOfACTIVE,TYPE_NbrOfACTIVE ) );
+					msrActiveType(msr,TYPE_NbrOfACTIVE,TYPE_SMOOTHACTIVE);
+			        }
+
+				if (msr->param.bVDetails)
+					printf("Smooth Active Particles: %d\n",msr->nSmoothActive);
+
+				if (msr->param.bViscosityLimiter
+					|| msr->param.bBulkViscosity
+					|| msr->param.bShockTracker
+					|| msr->param.bStarForm) {
+					msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+					}
+				msrSphViscosityLimiter(msr, dTime);
+				
+				msrGetGasPressure(msr);
+				
+				if (msr->param.bShockTracker) { 
 			        msrReSmooth(msr,dTime,SMX_SPHPRESSURE,1);
-				msrUpdateShockTracker(msr, dDelta);
+					msrUpdateShockTracker(msr, dDelta);
 			        if (msr->param.bBulkViscosity) 
-				         msrReSmooth(msr,dTime,SMX_HKVISCOSITY,1);
-				else
-				         msrReSmooth(msr,dTime,SMX_SPHVISCOSITY,1);
+						msrReSmooth(msr,dTime,SMX_HKVISCOSITY,1);
+					else
+						msrReSmooth(msr,dTime,SMX_SPHVISCOSITY,1);
 			        }
-			else {
+				else {
 			        if (msr->param.bBulkViscosity) 
-				         msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);     
-				else
-				         msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1); 
+						msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);     
+					else
+						msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1); 
 			        }
 
-			msrBallMax(msr,iKickRung,1);
-			if (msr->param.bSN) msrAddSupernova(msr, dTime);
-
-			}
+				msrBallMax(msr,iKickRung,1);
+				if (msr->param.bSN) msrAddSupernova(msr, dTime);
+				}
 #endif /* GASOLINE */
+			}
 
 		}
     if (msr->param.bVDetails) printf("Kick, iRung: %d\n",iRung);
@@ -4982,6 +5024,7 @@ void msrTopStepKDK(MSR msr,
     msrUpdateuDot(msr,dTime,0.5*dDelta,1);
 #endif
     msrKickKDKClose(msr,dTime,0.5*dDelta);
+
 	}
 
 int
@@ -5148,6 +5191,7 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateY)
 	dTime += dDelta/2.0;
 	a = csmTime2Exp(msr->param.csm,dTime);
 	in.z = 1/a - 1;
+	in.dTime = dTime;
 	in.iGasModel = msr->param.iGasModel;
 	in.bUpdateY = bUpdateY;
 
@@ -5195,6 +5239,7 @@ void msrInitSph(MSR msr,double dTime)
 			msr->param.dMeanMolWeight;
 		a = csmTime2Exp(msr->param.csm,dTime);
 		in.z = 1/a - 1;
+		in.dTime = dTime;
 		pstInitEnergy(msr->pst, &in, sizeof(in), NULL, NULL);
 		break;
 		}
@@ -5411,6 +5456,8 @@ void msrInitCooling(MSR msr)
 	in.Tmax = msr->param.dCoolingTmax;
 	in.nTable = msr->param.nCoolingTable;
 	in.z = 60.0; /*dummy value*/
+	in.dTime = 0; /* dummy value */
+	in.bUVTableUsesTime = msr->param.bUVTableUsesTime;
 
 	pstInitCooling(msr->pst,&in,sizeof(struct inInitCooling),NULL,NULL);
 
@@ -5428,6 +5475,50 @@ void msrInitCooling(MSR msr)
 	}
 
 #endif /* GASOLINE */
+
+void msrDumpFrameInit(MSR msr, double dTime) {
+	LCL *plcl = &msr->lcl;
+	char achFile[160];
+	
+	if (msr->param.dDumpFrameInterval > 0) {
+		msr->bDumpFrame = 1;
+		/*
+		 ** Add Data Subpath for local and non-local names.
+		 */
+		achFile[0] = 0;
+		sprintf(achFile,"%s/%s.director",msr->param.achDataSubPath,
+				msr->param.achOutName);
+		
+		dfInitialize( &msr->df, dTime, msr->param.dDumpFrameInterval, msr->param.dDelta, msr->param.iMaxRung, 
+					 achFile );
+
+		msrDumpFrame( msr, dTime );
+		}
+	}
+
+void msrDumpFrame(MSR msr, double dTime)
+{
+	struct inDumpFrame in;
+	void *Image; 
+	int nImage;
+	double sec,dsec1,dsec2;
+
+	sec = msrTime();
+	dfSetupFrame( msr->df, dTime, &in );
+
+	Image = dfAllocateImage( in.nxPix, in.nyPix );
+
+	pstDumpFrame(msr->pst, &in, sizeof(struct inDumpFrame), Image, &nImage );
+	dsec1 = msrTime() - sec;
+
+	dfFinishFrame( msr->df, dTime, &in, Image );
+	dsec2 = msrTime() - sec;
+
+	printf("DF Dumped Image %i at %g (Wallclock: Render %f tot %f secs).\n",
+		   msr->df->nFrame-1,dTime,dsec1,dsec2);
+
+	dfFreeImage( Image );
+	}
 
 void msrFormStars(MSR msr, double dTime)
 {

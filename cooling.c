@@ -79,7 +79,7 @@ void clFinalize(CL *cl )
 }
 
 void clInitConstants( CL *cl, double dGmPerCcUnit, double dComovingGmPerCcUnit, 
-		double dErgPerGmUnit, double dSecUnit, double dMassFracHelium)
+		double dErgPerGmUnit, double dSecUnit, double dMassFracHelium, int bUVTableUsesTime)
 {
   assert(cl!=NULL);
   cl->dGmPerCcUnit = dGmPerCcUnit;
@@ -93,6 +93,8 @@ void clInitConstants( CL *cl, double dGmPerCcUnit, double dComovingGmPerCcUnit,
   cl->Y_He = dMassFracHelium/4;
   cl->Y_eMAX = cl->Y_H + cl->Y_He*2;
 
+  cl->bUVTableUsesTime = bUVTableUsesTime;
+  cl->bUVTableLinear = bUVTableUsesTime; /* Linear if using time */
 #ifdef NEWINTEG
   /* Derivs Data Struct */
   {
@@ -224,59 +226,88 @@ void clRatesTableError( CL *cl ) {
 #define CL_Tcmb0  2.735
 #define CL_Ccomp  (CL_Ccomp0*CL_Tcmb0)
 
-void clRatesRedshift( CL *cl, double z ) {
+void clRatesRedshift( CL *cl, double zIn, double dTimeIn ) {
   int i;
   double xx;
+  double zTime;
   UVSPECTRUM *UV,*UV0;
 
-  cl->z = z;
-  cl->dComovingGmPerCcUnit = cl->dGmPerCcUnit*pow(1.+z,3.);
+  cl->z = zIn;
+  cl->dTime = dTimeIn;
+  cl->dComovingGmPerCcUnit = cl->dGmPerCcUnit*pow(1.+zIn,3.);
      
-  cl->R.Cool_Comp = pow((1+z)*CL_Ccomp,4.0)*CL_B_gm;
+  cl->R.Cool_Comp = pow((1+zIn)*CL_Ccomp,4.0)*CL_B_gm;
 
-  /* Photo-Ionization rates 
-  ** Table in order of high to low redshift 
-   */
+  /* Photo-Ionization rates */
 
   UV = cl->UV;
-  for ( i=0; i < cl->nUV && z <= UV->z ; i++,UV++ );
+
+  if (cl->bUVTableUsesTime) {
+  /*
+  ** Table in order of increasing time
+  */
+      zTime = dTimeIn;
+	  for ( i=0; i < cl->nUV && zTime >= UV->zTime ; i++,UV++ );
+	  }
+  else {
+  /*
+  ** Table in order of high to low redshift 
+  */
+	  zTime = zIn;
+	  for ( i=0; i < cl->nUV && zTime <= UV->zTime ; i++,UV++ );
+	  }
 
   if (i == 0) {
-       cl->R.Rate_Phot_HI = CL_RT_MIN;
-       cl->R.Rate_Phot_HeI = CL_RT_MIN;
-       cl->R.Rate_Phot_HeII = CL_RT_MIN;
-
-       cl->R.Heat_Phot_HI = 0.0;
-       cl->R.Heat_Phot_HeI = 0.0;
-       cl->R.Heat_Phot_HeII = 0.0;
-       return;
-  }
-
+	  cl->R.Rate_Phot_HI = CL_RT_MIN;
+	  cl->R.Rate_Phot_HeI = CL_RT_MIN;
+	  cl->R.Rate_Phot_HeII = CL_RT_MIN;
+	  
+	  cl->R.Heat_Phot_HI = 0.0;
+	  cl->R.Heat_Phot_HeI = 0.0;
+	  cl->R.Heat_Phot_HeII = 0.0;
+	  return;
+	  }
+  
   UV0=UV-1;
   if (i == cl->nUV ) {
-       cl->R.Rate_Phot_HI = UV0->Rate_Phot_HI;
-       cl->R.Rate_Phot_HeI = UV0->Rate_Phot_HeI;
-       cl->R.Rate_Phot_HeII = UV0->Rate_Phot_HeII;
-
-       cl->R.Heat_Phot_HI = UV0->Heat_Phot_HI*CL_B_gm;
-       cl->R.Heat_Phot_HeI = UV0->Heat_Phot_HeI*CL_B_gm;
-       cl->R.Heat_Phot_HeII = UV0->Heat_Phot_HeII*CL_B_gm;
-  }
+	  cl->R.Rate_Phot_HI = UV0->Rate_Phot_HI;
+	  cl->R.Rate_Phot_HeI = UV0->Rate_Phot_HeI;
+	  cl->R.Rate_Phot_HeII = UV0->Rate_Phot_HeII;
+	  
+	  cl->R.Heat_Phot_HI = UV0->Heat_Phot_HI*CL_B_gm;
+	  cl->R.Heat_Phot_HeI = UV0->Heat_Phot_HeI*CL_B_gm;
+	  cl->R.Heat_Phot_HeII = UV0->Heat_Phot_HeII*CL_B_gm;
+	  }
   else {
-       xx = log((1+z)/(1+UV0->z))/log((1+UV->z)/(1+UV0->z));
-       cl->R.Rate_Phot_HI = pow(UV0->Rate_Phot_HI,1-xx)*pow(UV->Rate_Phot_HI,xx);
-       cl->R.Rate_Phot_HeI = pow(UV0->Rate_Phot_HeI,1-xx)*pow(UV->Rate_Phot_HeI,xx);
-       cl->R.Rate_Phot_HeII = pow(UV0->Rate_Phot_HeII,1-xx)*pow(UV->Rate_Phot_HeII,xx);
-
-       cl->R.Heat_Phot_HI = pow(UV0->Heat_Phot_HI,1-xx)*pow(UV->Heat_Phot_HI,xx)*CL_B_gm;
-       cl->R.Heat_Phot_HeI = pow(UV0->Heat_Phot_HeI,1-xx)*pow(UV->Heat_Phot_HeI,xx)*CL_B_gm;
-       cl->R.Heat_Phot_HeII = pow(UV0->Heat_Phot_HeII,1-xx)*pow(UV->Heat_Phot_HeII,xx)*CL_B_gm;
-  }
+	  if (cl->bUVTableLinear) { /* use Linear interpolation */	
+		  xx = (zTime - UV0->zTime)/(UV->zTime - UV0->zTime);
+		  cl->R.Rate_Phot_HI = UV0->Rate_Phot_HI*(1-xx)+UV->Rate_Phot_HI*xx;
+		  cl->R.Rate_Phot_HeI = UV0->Rate_Phot_HeI*(1-xx)+UV->Rate_Phot_HeI*xx;
+		  cl->R.Rate_Phot_HeII = UV0->Rate_Phot_HeII*(1-xx)+UV->Rate_Phot_HeII*xx;
+		  
+		  cl->R.Heat_Phot_HI = (UV0->Heat_Phot_HI*(1-xx)+UV->Heat_Phot_HI*xx)*CL_B_gm;
+		  cl->R.Heat_Phot_HeI = (UV0->Heat_Phot_HeI*(1-xx)+UV->Heat_Phot_HeI*xx)*CL_B_gm;
+		  cl->R.Heat_Phot_HeII = (UV0->Heat_Phot_HeII*(1-xx)+UV->Heat_Phot_HeII*xx)*CL_B_gm;
+		  }
+	  else { /* use Log interpolation with 1+zTime */
+		  xx = log((1+zTime)/(1+UV0->zTime))/log((1+UV->zTime)/(1+UV0->zTime));
+		  cl->R.Rate_Phot_HI = pow(UV0->Rate_Phot_HI,1-xx)*pow(UV->Rate_Phot_HI,xx);
+		  cl->R.Rate_Phot_HeI = pow(UV0->Rate_Phot_HeI,1-xx)*pow(UV->Rate_Phot_HeI,xx);
+		  cl->R.Rate_Phot_HeII = pow(UV0->Rate_Phot_HeII,1-xx)*pow(UV->Rate_Phot_HeII,xx);
+		  
+		  cl->R.Heat_Phot_HI = pow(UV0->Heat_Phot_HI,1-xx)*pow(UV->Heat_Phot_HI,xx)*CL_B_gm;
+		  cl->R.Heat_Phot_HeI = pow(UV0->Heat_Phot_HeI,1-xx)*pow(UV->Heat_Phot_HeI,xx)*CL_B_gm;
+		  cl->R.Heat_Phot_HeII = pow(UV0->Heat_Phot_HeII,1-xx)*pow(UV->Heat_Phot_HeII,xx)*CL_B_gm;
+		  }
+	  }
   if (cl->R.Rate_Phot_HI < CL_RT_MIN) cl->R.Rate_Phot_HI = CL_RT_MIN;
   if (cl->R.Rate_Phot_HeI < CL_RT_MIN) cl->R.Rate_Phot_HeI = CL_RT_MIN;
   if (cl->R.Rate_Phot_HeII < CL_RT_MIN) cl->R.Rate_Phot_HeII = CL_RT_MIN;
+
+  printf("Cooling Rates for t(%1i)=%g, Z=%g: %g %g %g %g %g %g\n",cl->bUVTableUsesTime,dTimeIn,zIn,cl->R.Rate_Phot_HI,cl->R.Rate_Phot_HeI,cl->R.Rate_Phot_HeII,cl->R.Heat_Phot_HI,cl->R.Heat_Phot_HeI,cl->R.Heat_Phot_HeII);
+
   return;
-}
+  }
 
 void clRates ( CL *cl, RATE *Rate, double T ) {
   double Tln;

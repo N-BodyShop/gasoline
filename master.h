@@ -70,6 +70,11 @@ typedef struct msrContext {
 	 */
 	int *pMap;
 	/*
+	 ** Tracking for frame dumping function
+	 */
+	int bDumpFrame;
+	struct DumpFrameContext *df;
+	/*
 	 ** An integer marking the type of tree currently in use.
 	 ** MSR_TREE_NONE: undefined tree type
 	 ** MSR_TREE_SPATIAL: spatial binary tree
@@ -141,6 +146,8 @@ void msrTopStepKDK(MSR msr,
 				   double *pdEMax,
 				   int *piSec);
 void msrRungStats(MSR);
+int msrCurrMaxRung(MSR);
+int msrCurrMaxRungInclDF(MSR);
 
 void msrBallMax(MSR msr, int iRung, int bGreater);
 /*------------------*/
@@ -229,6 +236,8 @@ void msrSphStep(MSR msr, double dTime);
 void msrSphViscosityLimiter(MSR msr, double dTime);
 void msrInitCooling(MSR msr);
 #endif
+void msrDumpFrameInit(MSR msr, double dTime);
+void msrDumpFrame(MSR msr, double);
 #ifdef GLASS
 void msrInitGlass(MSR);
 #endif

@@ -152,6 +152,7 @@ struct parameters {
 	int    bDoGas;
 	int    bSphStep;
 	int    bUV;
+	int    bUVTableUsesTime;
 	int    bSN;
 	double dSNRhoCut;
  	double dSNTMin;
@@ -160,6 +161,7 @@ struct parameters {
 	double dSNHeatFraction;
 	int    bStarForm;
 	int    bFeedBack;
+	double dDumpFrameInterval;
 #ifdef STARFORM
 	STFM   stfm;
 	FB     fb;

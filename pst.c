@@ -367,6 +367,10 @@ pstAddServices(PST pst,MDL mdl)
 				  (void (*)(void *,void *,int,void *,int *)) pstKickVpred, 
 				  sizeof(struct inKickVpred),sizeof(struct outKick));
 #endif
+	mdlAddService(mdl,PST_DUMPFRAME,pst,
+		      (void (*)(void *,void *,int,void *,int *))
+		      pstDumpFrame, sizeof(struct inDumpFrame),
+		      DF_NBYTEDUMPFRAME );
 	}
 
 void pstInitialize(PST *ppst,MDL mdl,LCL *plcl)
@@ -3893,7 +3897,7 @@ void pstUpdateuDot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (outUp.MaxTime > out->MaxTime) out->MaxTime = outUp.MaxTime;
 		}
 	else {
-		pkdUpdateuDot(plcl->pkd,in->duDelta,in->z,in->iGasModel,in->bUpdateY);
+		pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->iGasModel,in->bUpdateY);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -3979,7 +3983,7 @@ void pstInitEnergy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdInitEnergy(plcl->pkd,in->dTuFac,in->z);
+		pkdInitEnergy(plcl->pkd,in->dTuFac,in->z,in->dTime);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -4075,9 +4079,9 @@ void pstInitCooling(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		(plcl->pkd->cl)->mdl = plcl->pkd->mdl;
 #endif
 		clInitConstants((plcl->pkd->cl),in->dGmPerCcUnit,in->dComovingGmPerCcUnit,
-						in->dErgPerGmUnit,in->dSecUnit,in->dMassFracHelium);
+						in->dErgPerGmUnit,in->dSecUnit,in->dMassFracHelium,in->bUVTableUsesTime);
 		clInitRatesTable((plcl->pkd->cl),in->Tmin,in->Tmax,in->nTable);
-		clRatesRedshift((plcl->pkd->cl),in->z);
+		clRatesRedshift((plcl->pkd->cl),in->z,in->dTime);
 		}
 #endif
 	if (pnOut) *pnOut = 0;
@@ -4778,4 +4782,32 @@ pstFeedback(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 #endif
+
+void
+pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inDumpFrame *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inDumpFrame));
+	mdlassert(pst->mdl,pnOut != NULL );
+	if (pst->nLeaves > 1) {
+		void * Image2;
+		int nImage2;
+		
+		Image2 = malloc( DF_NBYTEDUMPFRAME );
+		mdlassert(pst->mdl, Image2 != NULL );
+
+		in->bNonLocal = 1;
+	    mdlReqService(pst->mdl,pst->idUpper,PST_DUMPFRAME,in,nIn);
+		in->bNonLocal = 0;
+        pstDumpFrame(pst->pstLower,in,nIn, vout, pnOut);
+	    mdlGetReply(pst->mdl,pst->idUpper, Image2, &nImage2);
+		dfMergeImage( in, vout, pnOut, Image2, &nImage2 );
+
+		free( Image2 );
+		}
+	else {
+		dfRenderImage(pst->plcl->pkd, in, vout, pnOut );
+		}
+	}
 

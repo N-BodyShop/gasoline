@@ -4236,7 +4236,7 @@ void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, doubl
 
 #endif
 
-void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdateY )
+void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasModel, int bUpdateY )
 {
 	PARTICLE *p;
 	int i,n;
@@ -4254,7 +4254,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdate
 	case GASMODEL_COOLING_NONEQM:
 		bCool = 1;
 		cl = pkd->cl;
-		clRatesRedshift( cl, z );
+		clRatesRedshift( cl, z, dTime );
 		dt = duDelta * cl->dSecUnit;
 		break;
 		}
@@ -4405,7 +4405,7 @@ void pkdLowerSoundSpeed(PKD pkd, double dhMinOverSoft)
 		}
     }
 
-void pkdInitEnergy(PKD pkd, double dTuFac, double z)
+void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime )
 {
     PARTICLE *p;
     int i;
@@ -4416,7 +4416,7 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z)
 
 #ifndef NOCOOLING
     cl = pkd->cl;
-    clRatesRedshift( cl, z );
+    clRatesRedshift( cl, z, dTime );
 #endif
 
     p = pkd->pStore;
