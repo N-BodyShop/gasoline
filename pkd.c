@@ -1039,7 +1039,8 @@ void pkdBucketWeight(PKD pkd,int iBucket,float fWeight)
 	}
 
 void pkdGravAll(PKD pkd,int nReps,int bPeriodic,float fEwCut,float fEwhCut,
-				double *pdPartSum,double *pdCellSum)
+				double *pdPartSum,double *pdCellSum,CASTAT *pcsPart,
+				CASTAT *pcsCell)
 {
 	KDN *c;
 	int iCell,n;
@@ -1084,12 +1085,17 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,float fEwCut,float fEwhCut,
 				pkdStopTimer(pkd,3);
 				}
 			fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 
-			    1.0*(pkd->nPart +(n-1)/2.0);
+			    1.0*(pkd->nPart + (n-1)/2.0);
 			pkdBucketWeight(pkd,iCell,fWeight);
 			SETNEXT(iCell);
 			if (iCell == ROOT) break;
 			}
 		}
+	/*
+	 ** Get caching statistics.
+	 */
+	mdlCacheStat(pkd->mdl,CID_CELL,pcsCell);
+	mdlCacheStat(pkd->mdl,CID_PARTICLE,pcsPart);
 	/*
 	 ** Stop caching spaces.
 	 */

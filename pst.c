@@ -926,6 +926,7 @@ void pstDensity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
+	CASTAT csPart,csCell;
 	struct inGravity *in = vin;
 	struct outGravity *out = vout;
 	struct outGravity outUp;
@@ -946,10 +947,21 @@ void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (outUp.dWMin < out->dWMin) out->dWMin = outUp.dWMin;
 		if (outUp.dIMin < out->dIMin) out->dIMin = outUp.dIMin;
 		if (outUp.dEMin < out->dEMin) out->dEMin = outUp.dEMin;
+		/*
+		 ** Cache statistics sums.
+		 */
+		out->dpASum += outUp.dpASum;
+		out->dpMSum += outUp.dpMSum;
+		out->dpCSum += outUp.dpCSum;
+		out->dpTSum += outUp.dpTSum;
+		out->dcASum += outUp.dcASum;
+		out->dcMSum += outUp.dcMSum;
+		out->dcCSum += outUp.dcCSum;
+		out->dcTSum += outUp.dcTSum;
 		}
 	else {
 		pkdGravAll(plcl->pkd,in->nReps,in->bPeriodic,in->dEwCut,in->dEwhCut,
-				   &out->dPartSum,&out->dCellSum);
+				   &out->dPartSum,&out->dCellSum,&csPart,&csCell);
 		out->dWSum = pkdGetTimer(plcl->pkd,1);
 		out->dISum = pkdGetTimer(plcl->pkd,2);
 		out->dESum = pkdGetTimer(plcl->pkd,3);
@@ -959,6 +971,17 @@ void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->dWMin = out->dWSum;
 		out->dIMin = out->dISum;
 		out->dEMin = out->dESum;
+		/*
+		 ** Cache statistics
+		 */
+		out->dpASum = csPart.dAccess;
+		out->dpMSum = csPart.dMissRatio;
+		out->dpCSum = csPart.dCollRatio;
+		out->dpTSum = csPart.dMinRatio;
+		out->dcASum = csCell.dAccess;
+		out->dcMSum = csCell.dMissRatio;
+		out->dcCSum = csCell.dCollRatio;
+		out->dcTSum = csCell.dMinRatio;
 		}
 	if (pnOut) *pnOut = sizeof(struct outGravity);
 	}

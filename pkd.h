@@ -91,10 +91,13 @@ typedef struct ilCellSoft {
 	float xx,yy,zz,xy,xz,yz;
 	} ILCS;
 
+/*
+ ** Reduced Quadrupole moment tensor, Q_ij = 3.0*M_ij - delta_ij*tr(M_ij).
+ */
 typedef struct ilCellNewt {
 	float m;
 	float x,y,z;
-	float xx,yy,zz,xy,xz,yz;
+	float xx,yy,xy,xz,yz;
 	} ILCN;
 
 typedef struct ewaldTable {
@@ -224,7 +227,7 @@ void pkdLocalOrder(PKD,int);
 void pkdWriteTipsy(PKD,char *,int,int,int);
 void pkdBuildLocal(PKD,int,int,double,KDN *);
 void pkdBuildTop(PKD,int,double,KDN *,int,int *);
-void pkdGravAll(PKD,int,int,float,float,double *,double *); 
+void pkdGravAll(PKD,int,int,float,float,double *,double *,CASTAT *,CASTAT *); 
 void pkdCalcE(PKD,double *,double *);
 void pkdDrift(PKD,double,float *);
 void pkdKick(PKD pkd,double,double);

@@ -12,7 +12,7 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3])
 	PARTICLE *p;
 	KDN *pkdn,*pbuc;
 	int iCell,nPart,nCellSoft,nCellNewt,n,pj,bIntersect;
-	float x,y,z,twoh2;
+	float x,y,z,twoh2,tr;
 
 	nPart = pkd->nPart;
 	nCellSoft = pkd->nCellSoft;
@@ -94,12 +94,12 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3])
 				pkd->ilcn[nCellNewt].x = x;
 				pkd->ilcn[nCellNewt].y = y;
 				pkd->ilcn[nCellNewt].z = z;
-				pkd->ilcn[nCellNewt].xx = pkdn->fQxx;
-				pkd->ilcn[nCellNewt].yy = pkdn->fQyy;
-				pkd->ilcn[nCellNewt].zz = pkdn->fQzz;
-				pkd->ilcn[nCellNewt].xy = pkdn->fQxy;
-				pkd->ilcn[nCellNewt].xz = pkdn->fQxz;
-				pkd->ilcn[nCellNewt].yz = pkdn->fQyz;
+				tr = pkdn->fQxx + pkdn->fQyy + pkdn->fQzz;
+				pkd->ilcn[nCellNewt].xx = 3.0*pkdn->fQxx - tr;
+				pkd->ilcn[nCellNewt].yy = 3.0*pkdn->fQyy - tr;
+				pkd->ilcn[nCellNewt].xy = 3.0*pkdn->fQxy;
+				pkd->ilcn[nCellNewt].xz = 3.0*pkdn->fQxz;
+				pkd->ilcn[nCellNewt].yz = 3.0*pkdn->fQyz;
 				++nCellNewt;
 				}
 			SETNEXT(iCell);
@@ -117,7 +117,7 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3])
 	PARTICLE *p;
 	KDN *pkdn,*pbuc;
 	int iCell,nPart,nCellSoft,nCellNewt,n,j,bIntersect;
-	float x,y,z,twoh2;
+	float x,y,z,twoh2,tr;
 
 	assert(id != pkd->idSelf);
 	nPart = pkd->nPart;
@@ -201,12 +201,12 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3])
 				pkd->ilcn[nCellNewt].x = x;
 				pkd->ilcn[nCellNewt].y = y;
 				pkd->ilcn[nCellNewt].z = z;
-				pkd->ilcn[nCellNewt].xx = pkdn->fQxx;
-				pkd->ilcn[nCellNewt].yy = pkdn->fQyy;
-				pkd->ilcn[nCellNewt].zz = pkdn->fQzz;
-				pkd->ilcn[nCellNewt].xy = pkdn->fQxy;
-				pkd->ilcn[nCellNewt].xz = pkdn->fQxz;
-				pkd->ilcn[nCellNewt].yz = pkdn->fQyz;
+				tr = pkdn->fQxx + pkdn->fQyy + pkdn->fQzz;
+				pkd->ilcn[nCellNewt].xx = 3.0*pkdn->fQxx - tr;
+				pkd->ilcn[nCellNewt].yy = 3.0*pkdn->fQyy - tr;
+				pkd->ilcn[nCellNewt].xy = 3.0*pkdn->fQxy;
+				pkd->ilcn[nCellNewt].xz = 3.0*pkdn->fQxz;
+				pkd->ilcn[nCellNewt].yz = 3.0*pkdn->fQyz;
 				++nCellNewt;
 				}
 			mdlRelease(pkd->mdl,CID_CELL,pkdn);
@@ -224,7 +224,7 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps)
 {
 	KDN *pbuc,*pkdn;
 	int iCell,id,ix,iy,iz,bRep,bIntersect,pj;
-	float x,y,z,rOffset[3],fSoftMax,twoh2;
+	float x,y,z,rOffset[3],fSoftMax,twoh2,tr;
 	
 	pbuc = &pkd->kdNodes[iBucket];
 	/*
@@ -245,7 +245,7 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps)
 			rOffset[1] = iy*pkd->fPeriod[1];
 			for (iz=-nReps;iz<=nReps;++iz) {
 				rOffset[2] = iz*pkd->fPeriod[2];
-				bRep = ix && iy && iz;
+				bRep = (ix==0) && (iy==0) && (iz==0);
 				/*
 				 ** Walk the top tree first, finding local trees to
 				 ** continue walking.
@@ -324,12 +324,14 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps)
 								pkd->ilcn[pkd->nCellNewt].x = x;
 								pkd->ilcn[pkd->nCellNewt].y = y;
 								pkd->ilcn[pkd->nCellNewt].z = z;
-								pkd->ilcn[pkd->nCellNewt].xx = pkdn->fQxx;
-								pkd->ilcn[pkd->nCellNewt].yy = pkdn->fQyy;
-								pkd->ilcn[pkd->nCellNewt].zz = pkdn->fQzz;
-								pkd->ilcn[pkd->nCellNewt].xy = pkdn->fQxy;
-								pkd->ilcn[pkd->nCellNewt].xz = pkdn->fQxz;
-								pkd->ilcn[pkd->nCellNewt].yz = pkdn->fQyz;
+								tr = pkdn->fQxx + pkdn->fQyy + pkdn->fQzz;
+								pkd->ilcn[pkd->nCellNewt].xx = 
+									3.0*pkdn->fQxx - tr;
+								pkd->ilcn[pkd->nCellNewt].yy = 
+									3.0*pkdn->fQyy - tr;
+								pkd->ilcn[pkd->nCellNewt].xy = 3.0*pkdn->fQxy;
+								pkd->ilcn[pkd->nCellNewt].xz = 3.0*pkdn->fQxz;
+								pkd->ilcn[pkd->nCellNewt].yz = 3.0*pkdn->fQyz;
 								++pkd->nCellNewt;
 								}
 							SETNEXT(iCell);

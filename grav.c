@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include "mdl.h"
 #include "pkd.h"
 #include "grav.h"
 
@@ -74,21 +75,23 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 				dx = x - ilcn[j].x;
 				dy = y - ilcn[j].y;
 				dz = z - ilcn[j].z;
-				d2 = dx*dx + dy*dy + dz*dz;
-				a = 1.0/sqrt(d2);
-				b = a*a*a;
-				c = 3.0*b*a*a;
-				d = 5.0*c*a*a;
-				qirx = ilcn[j].xx*dx + ilcn[j].xy*dy + ilcn[j].xz*dz;
-				qiry = ilcn[j].xy*dx + ilcn[j].yy*dy + ilcn[j].yz*dz;
-				qirz = ilcn[j].xz*dx + ilcn[j].yz*dy + ilcn[j].zz*dz;
+				b = 1.0/(dx*dx + dy*dy + dz*dz);
+				a = sqrt(b);
+				c = b*b*a;
+				a *= ilcn[j].m;
+				/*
+				 ** Can use reduced quadrupole moment tensor here!
+				 */
+				qirx = c*(ilcn[j].xx*dx + ilcn[j].xy*dy + ilcn[j].xz*dz);
+				qiry = c*(ilcn[j].xy*dx + ilcn[j].yy*dy + ilcn[j].yz*dz);
+				qirz = c*(ilcn[j].xz*dx + ilcn[j].yz*dy - 
+						  (ilcn[j].xx + ilcn[j].yy)*dz);
 				qir = 0.5*(qirx*dx + qiry*dy + qirz*dz);
-				tr = 0.5*(ilcn[j].xx + ilcn[j].yy + ilcn[j].zz);
-				qir3 = b*ilcn[j].m + d*qir - c*tr;
-				fPot -= a*ilcn[j].m + c*qir - b*tr;
-				ax -= qir3*dx - c*qirx;
-				ay -= qir3*dy - c*qiry;
-				az -= qir3*dz - c*qirz;
+				qir3 = b*(a + 5.0*qir);
+				fPot -= a + qir;
+				ax -= qir3*dx - qirx;
+				ay -= qir3*dy - qiry;
+				az -= qir3*dz - qirz;		/* 27*,23+ */
 				}
 			}
 		else {
@@ -124,6 +127,10 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 		p[i].a[0] = ax;
 		p[i].a[1] = ay;
 		p[i].a[2] = az;
+		/*
+		 ** Try a cache check to improve responsiveness.
+		 */
+		mdlCacheCheck(pkd->mdl);
 		}
 	/*
 	 ** Do the inter-bucket interactions.

@@ -196,6 +196,17 @@ struct outGravity {
 	double dESum;
 	double dEMax;
 	double dEMin;
+	/*
+	 ** Cache Statistics.
+	 */
+	double dpASum;
+	double dpMSum;
+	double dpCSum;
+	double dpTSum;
+	double dcASum;
+	double dcMSum;
+	double dcCSum;
+	double dcTSum;
 	};
 void pstGravity(PST,void *,int,void *,int *);
 

@@ -731,6 +731,7 @@ void msrGravity(MSR msr,int *piSec,double *pdWMax,double *pdIMax,
 	double dWAvg,dWMax,dWMin;
 	double dIAvg,dIMax,dIMin;
 	double dEAvg,dEMax,dEMin;
+	double iP;
 
 	if (msr->param.bVerbose) printf("Calculating Gravity...\n");
 	sec = time(0);
@@ -744,9 +745,10 @@ void msrGravity(MSR msr,int *piSec,double *pdWMax,double *pdIMax,
 	*piSec = dsec;
 	dPartAvg = out.dPartSum/msr->N;
 	dCellAvg = out.dCellSum/msr->N;
-	dWAvg = out.dWSum/msr->nThreads;
-	dIAvg = out.dISum/msr->nThreads;
-	dEAvg = out.dESum/msr->nThreads;
+	iP = 1.0/msr->nThreads;
+	dWAvg = out.dWSum*iP;
+	dIAvg = out.dISum*iP;
+	dEAvg = out.dESum*iP;
 	dWMax = out.dWMax;
 	*pdWMax = dWMax;
 	dIMax = out.dIMax;
@@ -760,6 +762,16 @@ void msrGravity(MSR msr,int *piSec,double *pdWMax,double *pdIMax,
 	printf("Walk CPU     Avg:%10f Max:%10f Min:%10f\n",dWAvg,dWMax,dWMin);
 	printf("Interact CPU Avg:%10f Max:%10f Min:%10f\n",dIAvg,dIMax,dIMin);
 	printf("Ewald CPU    Avg:%10f Max:%10f Min:%10f\n",dEAvg,dEMax,dEMin);	
+	printf("Particle Cache Statistics (average per processor):\n");
+	printf("    Accesses:    %10g\n",out.dpASum*iP);
+	printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
+	printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
+	printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
+	printf("Cell Cache Statistics (average per processor):\n");
+	printf("    Accesses:    %10g\n",out.dcASum*iP);
+	printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
+	printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
+	printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
 	printf("\n");
 	}
 
