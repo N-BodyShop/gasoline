@@ -77,6 +77,9 @@ void msrReadOuts(MSR,double);
 double msrMassCheck(MSR,double,char *);
 void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung);
 void msrRungStats(MSR);
+void msrActiveRung(MSR msr, int iRung, int bGreater);
+void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime,
+		     int bAll);
 /*
  ** Interface functions.
  */

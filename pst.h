@@ -383,6 +383,9 @@ struct inVelocityRung {
     int iRung;
     double dDelta;
     double dEta;
+    int iMaxRung;
+    double dVelFac;
+    double dAccFac;
     int bAll;
     };
 struct outVelocityRung {

@@ -39,7 +39,7 @@ typedef struct particle {
 	} PARTICLE;
 
 
-#define CHECKPOINT_VERSION		1
+#define CHECKPOINT_VERSION		2
 
 typedef struct chkParticle {
 	int iOrder;
@@ -273,10 +273,13 @@ void pkdCalcRoot(PKD,struct ilCellNewt *);
 void pkdDistribRoot(PKD,struct ilCellNewt *);
 void pkdSwapAll(PKD pkd, int idSwap);
 double pkdMassCheck(PKD pkd);
+void pkdSetRung(PKD pkd, int iRung);
 void pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
 int pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta,
 				   double dRhoFac, int bAll);
+int pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta,
+		    int iMaxRung, double dVelFac, double dAccFac, int bAll);
 int pkdRungParticles(PKD,int);
 
 #endif

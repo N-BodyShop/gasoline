@@ -1,4 +1,4 @@
-FDL checkpoint_1 (
+FDL checkpoint_2 (
 	ELEMENT version (
 		TYPE int
 		)
@@ -94,6 +94,18 @@ FDL checkpoint_1 (
 				)
 			ELEMENT dDelta (
 				TYPE double
+				)
+			ELEMENT dEta (
+				TYPE double
+				)
+			ELEMENT bEpsVel (
+				TYPE int
+				)
+			ELEMENT bNonSymp (
+				TYPE int
+				)
+			ELEMENT iMaxRung (
+				TYPE int
 				)
 			ELEMENT dEwCut (
 				TYPE double

@@ -1615,7 +1615,11 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 			pkd->pStore[i].r[j] = cp.r[j];
 			pkd->pStore[i].v[j] = cp.v[j];
 			}
+		pkd->pStore[i].iActive = 1;
+		pkd->pStore[i].iRung = 0;
 		pkd->pStore[i].fWeight = 1.0;	/* set the initial weight to 1.0 */
+		pkd->pStore[i].fDensity = 0.0;
+		pkd->pStore[i].fBall2 = 0.0;
 		}
 	fclose(fp);	
 	}
@@ -1884,34 +1888,43 @@ pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta,
     }
 
 int
-pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta,
-		int bAll)
+pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta, int iMaxRung,
+		double dVelFac, double dAccFac, int bAll)
 {
     int i;
-    int iMaxRung;
+    int iMaxRungOut;
     int iTempRung;
     int iSteps;
+    int iStepsv;
+    int iStepsa;
     double vel;
+    double acc;
     int j;
     
-    iMaxRung = 0;
+    iMaxRungOut = 0;
     for(i = 0; i < pkdLocal(pkd); ++i) {
 	if(pkd->pStore[i].iRung >= iRung) {
 	    assert(pkd->pStore[i].iActive == 1);
 	    vel = 0;
-	    for(j = 0; j < 3; j++)
-		vel += pkd->pStore[i].v[j];
-	    vel = sqrt(vel);
+            acc = 0;
+	    for(j = 0; j < 3; j++) {
+		vel += pkd->pStore[i].v[j]*pkd->pStore[i].v[j];
+                acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
+		}
+	    vel = sqrt(vel)*dVelFac;
+	    acc = sqrt(acc)*dAccFac;
 	    if(bAll) {          /* Assign all rungs at iRung and above */
-		iSteps =
-		    dDelta*vel/dEta*pkd->pStore[i].fSoft;
+		iStepsv = dDelta*vel/(dEta*pkd->pStore[i].fSoft);
+		iStepsa = dDelta*sqrt(acc/pkd->pStore[i].fSoft)/dEta;
+		iSteps = iStepsv > iStepsa ? iStepsv : iStepsa;
 		iTempRung = iRung;
 		while(iSteps) {
 		    ++iTempRung;
 		    iSteps >>= 1;
 		    }
-		pkd->pStore[i].iRung = iTempRung; /* XXX need MaxRung */
-                                                /* limit */
+		if(iTempRung >= iMaxRung)
+		    iTempRung = iMaxRung-1;
+		pkd->pStore[i].iRung = iTempRung;
 		}
 	    else {
 		if(dDelta*vel < dEta*pkd->pStore[i].fSoft) {
@@ -1922,10 +1935,10 @@ pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta,
 		    }
                 }
 	    }
-	if(pkd->pStore[i].iRung > iMaxRung)
-	    iMaxRung = pkd->pStore[i].iRung;
+	if(pkd->pStore[i].iRung > iMaxRungOut)
+	    iMaxRungOut = pkd->pStore[i].iRung;
 	}
-    return iMaxRung;
+    return iMaxRungOut;
     }
 
 int pkdRungParticles(PKD pkd,int iRung)

@@ -1949,7 +1949,8 @@ pstVelocityRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
       else {
               out->iMaxRung = pkdVelocityRung(plcl->pkd, in->iRung,
                                              in->dDelta, in->dEta,
-                                             in->bAll);
+                                             in->iMaxRung, in->dVelFac,
+					      in->dAccFac, in->bAll);
               }
       if (pnOut) *pnOut = sizeof(*out);
       }

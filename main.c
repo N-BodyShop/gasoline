@@ -89,9 +89,10 @@ void main(int argc,char **argv)
 	msrBuildTree(msr,0,dMass);
 	msrMassCheck(msr,dMass,"After msrBuildTree");
 	msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax);
-	msrDensity(msr);
+	msrActiveRung(msr, 0, 1);
+	msrVelocityRung(msr, 0, msrDelta(msr), dTime, 1);
 	msrReorder(msr);
-	msrOutArray(msr,"density1.out",OUT_DENSITY_ARRAY);
+	msrOutArray(msr,"rung.out",OUT_RUNG_ARRAY);
 	msrMassCheck(msr,dMass,"After msrGravity");
 	msrCalcE(msr,MSR_INIT_ECOSMO,dTime,&E,&T,&U);
 	msrMassCheck(msr,dMass,"After msrCalcE");
@@ -125,7 +126,8 @@ void main(int argc,char **argv)
 				fflush(fpLog);			
 				}
 			else {
-				msrTopStep(msr,iStep-0.5,dTime,msrDelta(msr),0);
+				msrTopStep(msr,iStep-1,dTime,msrDelta(msr),0);
+				msrRungStats(msr);
 				dTime += msrDelta(msr);
 				if (iStep%msrLogInterval(msr) == 0) {
 					/*
