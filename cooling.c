@@ -201,7 +201,7 @@ void clRates ( CL *cl, RATE *Rate, double T ) {
   RATES_T *RT0,*RT1;
   int iTln;
 
-  if (T > cl->TMax) T=cl->TMax;   
+  if (T >= cl->TMax) T=cl->TMax*(1.0 - EPS);   
   if (T < cl->TMin) T=cl->TMin;
   Tln = log(T);
 
