@@ -52,18 +52,27 @@ SGI_LIBMDL		= $(SGI_MDL)/mdl.o -lmpi -lm
 SGI_MDL_CFLAGS	= -g2 -O2 -mips4 -64 -r10000
 
 #
+#       LINUX AMPI (Charm MPI) defines
+#
+CHARM=../charm/net-linux/bin/charmc
+CHARMLINK=
+AMPI_MDL			= ../mdl/ampi
+AMPI_CFLAGS		= -O3 -malign-double -mpentiumpro -I$(AMPI_MDL) $(CODEDEF) 
+AMPI_LD_FLAGS		=  
+AMPI_XOBJ                = erf.o v_sqrt1.o
+AMPI_LIBMDL              = $(AMPI_MDL)/mdl.o -language ampi $(CHARMLINK) -lm
+
+#
 #       LINUX LAM MPI defines
 #
-LAM_DIR			= ../lam/lam-6.3.2
-#LAM_DIR			= /net/lam-gcc
 LAM_MDL			= ../mdl/mpi
-#LAM_CFLAGS		= -O3 -malign-double -mstack-align-double -mpentiumpro -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX -I$(LAM_DIR)/include
-LAM_CFLAGS		= -fast -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX -I$(LAM_DIR)/include
+#LAM_CFLAGS		= -O3 -malign-double -mstack-align-double -mpentiumpro -I$(LAM_MDL) $(CODEDEF)
+LAM_CFLAGS		= -fast -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX
 LAM_LD_FLAGS		=  
 LAM_XOBJ                = erf.o v_sqrt1.o
-LAM_LIBMDL              = -L$(LAM_DIR)/lib $(LAM_MDL)/mdl.o -lmpi -ltstdio -lt -largs -ltrillium -ltstdio -lmpi++ -lm -I$(LAM_DIR)/include
-#LAM_MDL_CFLAGS = -O3 -malign-double -mstack-align-double -mpentiumpro -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX  -I$(LAM_DIR)/include 
-LAM_MDL_CFLAGS  = -fast -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX  -I$(LAM_DIR)/include 
+LAM_LIBMDL              = $(LAM_MDL)/mdl.o -lm
+#LAM_MDL_CFLAGS = -O3 -malign-double -mstack-align-double -mpentiumpro -I$(LAM_MDL) $(CODEDEF)
+LAM_MDL_CFLAGS  = -fast -I$(LAM_MDL) $(CODEDEF)
 
 #
 #       SP1/2 defines
@@ -213,9 +222,14 @@ pthread_sgi:
 	make $(EXE) "CFLAGS=$(PTHREAD_SGI_CFLAGS)" "LD_FLAGS=$(PTHREAD_SGI_LD_FLAGS)"\
 		"MDL=$(PTHREAD_SGI_MDL)" "XOBJ=$(PTHREAD_SGI_XOBJ)" "LIBMDL=$(PTHREAD_SGI_LIBMDL)"
 
+ampi:
+	cd $(AMPI_MDL); make CC=$(CHARM) "CFLAGS=$(AMPI_MDL_CFLAGS)"
+	make $(EXE) CC=$(CHARM) "CFLAGS=$(AMPI_CFLAGS)" "LD_FLAGS=$(AMPI_LD_FLAGS)"\
+		"MDL=$(AMPI_MDL)" "XOBJ=$(AMPI_XOBJ)" "LIBMDL=$(AMPI_LIBMDL)"
+
 lam_mpi:
-	cd $(LAM_MDL); make CC=pgcc "CC_FLAGS=$(LAM_MDL_CFLAGS)"
-	make $(EXE) CC=pgcc "CFLAGS=$(LAM_CFLAGS)" "LD_FLAGS=$(LAM_LD_FLAGS)"\
+	cd $(LAM_MDL); make CC=mpicc "CC_FLAGS=$(LAM_MDL_CFLAGS)"
+	make $(EXE) CC=mpicc "CFLAGS=$(LAM_CFLAGS)" "LD_FLAGS=$(LAM_LD_FLAGS)"\
 		"MDL=$(LAM_MDL)" "XOBJ=$(LAM_XOBJ)" "LIBMDL=$(LAM_LIBMDL)"
 
 
