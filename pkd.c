@@ -2536,6 +2536,7 @@ void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass)
 			t = 0;
 			for (j=0;j<3;++j) t += p[i].r[j]*p[i].r[j];
 			t = (t == 0 ? 0 : 1/sqrt(t)); /* gravity at origin = zero */
+			p[i].fPot -= dSunMass*t;
 			t = t*t*t;
 			idt2 = (p[i].fMass + dSunMass)*t;
 			if (idt2 > p[i].dtGrav) p[i].dtGrav = idt2;
@@ -2653,6 +2654,8 @@ void pkdMiyamotoDisk(PKD pkd)
 void
 pkdRotFrame(PKD pkd,double dOmega,double dOmegaDot)
 {
+	/* WARNING: p[i].fPot not updated */
+
 #ifdef SPINUP
 	PARTICLE *p = pkd->pStore;
 	int i;
@@ -3325,7 +3328,7 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 				}
 			if (bSqrtPhi) {
 				double dtemp =
-					dEta*3.5*sqrt(dAccFac*fabs(pkd->pStore[i].fPot))/acc;
+					dEta*sqrt(dAccFac*fabs(pkd->pStore[i].fPot))/acc; /*DEBUG bizarre factor of 3.5 removed!*/
 				if (dtemp < dT)
 					dT = dtemp;
 				}

@@ -171,6 +171,9 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_GETMAP,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGetMap,
 				  sizeof(struct inGetMap),nThreads*sizeof(int));
+	mdlAddService(mdl,PST_GRAVSTEP,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstGravStep,
+				  sizeof(struct inGravStep), 0);
 	mdlAddService(mdl,PST_ACCELSTEP,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstAccelStep,
 				  sizeof(struct inAccelStep), 0);

@@ -747,6 +747,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		_msrExit(msr,1);
 		}
 
+	if (msr->param.dTheta <= 0) {
+		if (msr->param.dTheta == 0 && msr->param.bVWarnings)
+			fprintf(stderr,"WARNING: Zero opening angle may cause numerical problems\n");
+		else if (msr->param.dTheta < 0) {
+			fprintf(stderr,"ERROR: Opening angle must be non-negative\n");
+			_msrExit(msr,1);
+			}
+		}
+
 	msr->nThreads = mdlThreads(mdl);
 
 	/*
@@ -1000,18 +1009,17 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		_msrExit(msr,1);
 		}
 #endif
+	if (msr->param.bDoCollLog) {
+		strcpy(msr->param.achCollLog,COLLISION_LOG);
+		if (msr->param.bVStart)
+			printf("Collision log: \"%s\"\n",msr->param.achCollLog);
+		}
 #ifdef SAND_PILE
 	if (msr->param.nSmooth >= 1) {
 #else
 	if (msr->param.nSmooth >= 2) {
 #endif
 		COLLISION_PARAMS *CP = &msr->param.CP;
-
-		if (msr->param.bDoCollLog) {
-			strcpy(msr->param.achCollLog,COLLISION_LOG);
-			if (msr->param.bVStart)
-				printf("Collision log: \"%s\"\n",msr->param.achCollLog);
-			}
 		if (!(CP->iOutcomes & (MERGE | BOUNCE | FRAG))) {
 			puts("ERROR: must specify one of MERGE/BOUNCE/FRAG");
 			_msrExit(msr,1);
@@ -2446,6 +2454,13 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	sec = msrTime();
 	pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
 	dsec = msrTime() - sec;
+	/* enforced initialization */
+#ifdef ROT_FRAME
+	inExt.bRotFrame = 0;
+#endif
+#ifdef SLIDING_PATCH
+	inExt.bPatch = 0;
+#endif
 	/*
 	 ** Calculate any external potential stuff.
 	 ** This may contain a huge list of flags in the future, so we may want to 
