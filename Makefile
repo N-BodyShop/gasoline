@@ -123,7 +123,7 @@ KSR_LIBMDL		= $(KSR_MDL)/mdl.o -lm -lrpc
 
 OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
-	  smoothfcn.o collision.o qqsmooth.o
+	  smoothfcn.o collision.o qqsmooth.o cosmo.o romberg.o
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 

@@ -189,7 +189,8 @@ int main(int argc,char **argv)
 			dMultiEff = 1.0;
 			if (msrLogInterval(msr)) {
 				(void) fprintf(fpLog,"%e %e %e %e %e %e %i %e %e %e %e\n",dTime,
-						1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,Eth,iSec,dWMax,dIMax,
+					       1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
+					       E,T,U,Eth,iSec,dWMax,dIMax,
 						dEMax,dMultiEff);
 				}
 			}
@@ -227,7 +228,7 @@ int main(int argc,char **argv)
 				lSec = time(0) - lSec;
 				if (msrLogInterval(msr) && iStep%msrLogInterval(msr) == 0) {
 					(void) fprintf(fpLog,"%e %e %e %e %e %e %li %e %e %e %e\n",
-								   dTime,1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,
+						       dTime,1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,E,T,U,
 								   Eth,lSec,dWMax,dIMax,dEMax,dMultiEff);
 					}
 				}
@@ -257,7 +258,7 @@ int main(int argc,char **argv)
                                         msrCalcE(msr,MSR_STEP_ECOSMO,dTime,&E,&T,&U,&Eth);
 					msrMassCheck(msr,dMass,"After msrCalcE in DKD-log");
 					(void) fprintf(fpLog,"%e %e %e %e %e %e %li %e %e %e %e\n",dTime,
-							   1.0/msrTime2Exp(msr,dTime)-1.0,E,T,U,Eth,
+						       1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,E,T,U,Eth,
 							   time(0)-lSec,dWMax,dIMax,dEMax,dMultiEff);
 					}
 				lSec = time(0) - lSec;

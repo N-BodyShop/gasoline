@@ -1,6 +1,8 @@
 #ifndef PARAMETERS_HINCLUDED
 #define PARAMETERS_HINCLUDED
 
+#include "cosmo.h"
+
 struct parameters {
 	/*
 	 ** Parameters for PKDGRAV.
@@ -15,7 +17,6 @@ struct parameters {
 	int bVDetails;
 	int bPeriodic;
 	int bRestart;
-	int bComove;
 	int bParaRead;
 	int bParaWrite;
 	int bCannonical;
@@ -65,8 +66,7 @@ struct parameters {
 	double dxPeriod;
 	double dyPeriod;
 	double dzPeriod;
-	double dHubble0;
-	double dOmega0;
+	CSM csm;
 	double dRedTo;
 	double dCentMass;
 	char achInFile[256];

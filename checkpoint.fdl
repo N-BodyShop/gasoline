@@ -131,6 +131,9 @@ FDL checkpoint_5 (
 			ELEMENT dEta (
 				TYPE double
 				)
+			ELEMENT dEtaCourant (
+				TYPE double
+				)
 			ELEMENT bEpsVel (
 				TYPE int
 				)
@@ -162,6 +165,12 @@ FDL checkpoint_5 (
 				TYPE double
 				)
 			ELEMENT dOmega0 (
+				TYPE double
+				)
+			ELEMENT dLambda (
+				TYPE double
+				)
+			ELEMENT dOmegaRad (
 				TYPE double
 				)
 			ELEMENT dTheta (

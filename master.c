@@ -96,6 +96,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->pst = NULL;
 	msr->lcl.pkd = NULL;
 	*pmsr = msr;
+	csmInitialize(&msr->param.csm);
 	/*
 	 ** Now setup for the input parameters.
 	 */
@@ -249,15 +250,21 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"achOutName",3,&msr->param.achOutName,256,"o",
 				"<output name for snapshots and logfile> = \"pkdgrav\"");
 #endif
-	msr->param.bComove = 0;
-	prmAddParam(msr->prm,"bComove",0,&msr->param.bComove,sizeof(int),"cm",
-				"enable/disable comoving coordinates = -cm");
-	msr->param.dHubble0 = 0.0;
-	prmAddParam(msr->prm,"dHubble0",2,&msr->param.dHubble0,sizeof(double),"Hub",
-				"<dHubble0> = 0.0");
-	msr->param.dOmega0 = 1.0;
-	prmAddParam(msr->prm,"dOmega0",2,&msr->param.dOmega0,sizeof(double),"Om",
-				"<dOmega0> = 1.0");
+	msr->param.csm->bComove = 0;
+	prmAddParam(msr->prm,"bComove",0,&msr->param.csm->bComove,sizeof(int),
+		    "cm", "enable/disable comoving coordinates = -cm");
+	msr->param.csm->dHubble0 = 0.0;
+	prmAddParam(msr->prm,"dHubble0",2,&msr->param.csm->dHubble0, 
+		    sizeof(double),"Hub", "<dHubble0> = 0.0");
+	msr->param.csm->dOmega0 = 1.0;
+	prmAddParam(msr->prm,"dOmega0",2,&msr->param.csm->dOmega0,
+		    sizeof(double),"Om", "<dOmega0> = 1.0");
+	msr->param.csm->dLambda = 0.0;
+	prmAddParam(msr->prm,"dLambda",2,&msr->param.csm->dLambda,
+		    sizeof(double),"Lambda", "<dLambda> = 0.0");
+	msr->param.csm->dOmegaRad = 0.0;
+	prmAddParam(msr->prm,"dOmegaRad",2,&msr->param.csm->dOmegaRad,
+		    sizeof(double),"Omrad", "<dOmegaRad> = 0.0");
 	strcpy(msr->param.achDataSubPath,".");
 	prmAddParam(msr->prm,"achDataSubPath",3,&msr->param.achDataSubPath,256,
 				NULL,NULL);
@@ -472,7 +479,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	/*
 	 ** Always set bCannonical = 1 if bComove == 0
 	 */
-	if (!msr->param.bComove) {
+	if (!msr->param.csm->bComove) {
 	        if (!msr->param.bCannonical)
 		        printf("WARNING: bCannonical reset to 1 for non-comoving (bComove == 0)\n");
 	        msr->param.bCannonical = 1;
@@ -738,7 +745,7 @@ void msrLogParams(MSR msr,FILE *fp)
 			msr->param.bVDetails);
 	fprintf(fp,"\n# bPeriodic: %d",msr->param.bPeriodic);
 	fprintf(fp," bRestart: %d",msr->param.bRestart);
-	fprintf(fp," bComove: %d",msr->param.bComove);
+	fprintf(fp," bComove: %d",msr->param.csm->bComove);
 	fprintf(fp,"\n# bParaRead: %d",msr->param.bParaRead);
 	fprintf(fp," bParaWrite: %d",msr->param.bParaWrite);
 	fprintf(fp," bCannonical: %d",msr->param.bCannonical);
@@ -826,17 +833,20 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dAbsTotal: %g",msr->param.dAbsTotal);
 	fprintf(fp," dRelTotal: %g",msr->param.dRelTotal);
 	fprintf(fp,"\n# dPeriod: %g",msr->param.dPeriod);
-	fprintf(fp," dHubble0: %g",msr->param.dHubble0);
-	fprintf(fp," dOmega0: %g",msr->param.dOmega0);
+	fprintf(fp," dHubble0: %g",msr->param.csm->dHubble0);
+	fprintf(fp," dOmega0: %g",msr->param.csm->dOmega0);
+	fprintf(fp," dLambda: %g",msr->param.csm->dLambda);
+	fprintf(fp," dOmegaRad: %g",msr->param.csm->dOmegaRad);
 	fprintf(fp,"\n# achInFile: %s",msr->param.achInFile);
 	fprintf(fp,"\n# achOutName: %s",msr->param.achOutName); 
 	fprintf(fp,"\n# achDataSubPath: %s",msr->param.achDataSubPath);
-	if (msr->param.bComove) {
+	if (msr->param.csm->bComove) {
 		fprintf(fp,"\n# RedOut:");
 		if (msr->nOuts == 0) fprintf(fp," none");
 		for (i=0;i<msr->nOuts;i++) {
 			if (i%5 == 0) fprintf(fp,"\n#   ");
-			z = 1.0/msrTime2Exp(msr,msr->pdOutTime[i])-1.0;
+			z = 1.0/csmTime2Exp(msr->param.csm, msr->pdOutTime[i])
+			    - 1.0;
 			fprintf(fp," %f",z);
 			}
 		fprintf(fp,"\n");
@@ -929,244 +939,6 @@ void msrFinish(MSR msr)
 	prmFinish(msr->prm);
 	free(msr->pMap);
 	free(msr);
-	}
-
-
-/*
- ** Link with code from file eccanom.c and hypanom.c.
- */
-double dEccAnom(double,double);
-double dHypAnom(double,double);
-
-double msrTime2Exp(MSR msr,double dTime)
-{
-	double dOmega0 = msr->param.dOmega0;
-	double dHubble0 = msr->param.dHubble0;
-	double a0,A,B,eta;
-
-	if (!msr->param.bComove) return(1.0);
-	if (dOmega0 == 1.0) {
-		assert(dHubble0 > 0.0);
-		if (dTime == 0.0) return(0.0);
-		return(pow(3.0*dHubble0*dTime/2.0,2.0/3.0));
-		}
-	else if (dOmega0 > 1.0) {
-		assert(dHubble0 >= 0.0);
-		if (dHubble0 == 0.0) {
-			B = 1.0/sqrt(dOmega0);
-			eta = dEccAnom(dTime/B,1.0);
-			return(1.0-cos(eta));
-			}
-		if (dTime == 0.0) return(0.0);
-		a0 = 1.0/dHubble0/sqrt(dOmega0-1.0);
-		A = 0.5*dOmega0/(dOmega0-1.0);
-		B = A*a0;
-		eta = dEccAnom(dTime/B,1.0);
-		return(A*(1.0-cos(eta)));
-		}
-	else if (dOmega0 > 0.0) {
-		assert(dHubble0 > 0.0);
-		if (dTime == 0.0) return(0.0);
-		a0 = 1.0/dHubble0/sqrt(1.0-dOmega0);
-		A = 0.5*dOmega0/(1.0-dOmega0);
-		B = A*a0;
-		eta = dHypAnom(dTime/B,1.0);
-		return(A*(cosh(eta)-1.0));
-		}
-	else if (dOmega0 == 0.0) {
-		assert(dHubble0 > 0.0);
-		if (dTime == 0.0) return(0.0);
-		return(dTime*dHubble0);
-		}
-	else {
-		/*
-		 ** Bad value.
-		 */
-		assert(0);
-		return(0.0);
-		}
-	}
-
-
-double msrExp2Time(MSR msr,double dExp)
-{
-	double dOmega0 = msr->param.dOmega0;
-	double dHubble0 = msr->param.dHubble0;
-	double a0,A,B,eta;
-
-	if (!msr->param.bComove) {
-		/*
-		 ** Invalid call!
-		 */
-		assert(0);
-		}
-	if (dOmega0 == 1.0) {
-		assert(dHubble0 > 0.0);
-		if (dExp == 0.0) return(0.0);
-		return(2.0/(3.0*dHubble0)*pow(dExp,1.5));
-		}
-	else if (dOmega0 > 1.0) {
-		assert(dHubble0 >= 0.0);
-		if (dHubble0 == 0.0) {
-			B = 1.0/sqrt(dOmega0);
-			eta = acos(1.0-dExp); 
-			return(B*(eta-sin(eta)));
-			}
-		if (dExp == 0.0) return(0.0);
-		a0 = 1.0/dHubble0/sqrt(dOmega0-1.0);
-		A = 0.5*dOmega0/(dOmega0-1.0);
-		B = A*a0;
-		eta = acos(1.0-dExp/A);
-		return(B*(eta-sin(eta)));
-		}
-	else if (dOmega0 > 0.0) {
-		assert(dHubble0 > 0.0);
-		if (dExp == 0.0) return(0.0);
-		a0 = 1.0/dHubble0/sqrt(1.0-dOmega0);
-		A = 0.5*dOmega0/(1.0-dOmega0);
-		B = A*a0;
-		eta = acosh(dExp/A+1.0);
-		return(B*(sinh(eta)-eta));
-		}
-	else if (dOmega0 == 0.0) {
-		assert(dHubble0 > 0.0);
-		if (dExp == 0.0) return(0.0);
-		return(dExp/dHubble0);
-		}
-	else {
-		/*
-		 ** Bad value.
-		 */
-		assert(0);
-		return(0.0);
-		}	
-	}
-
-
-double msrTime2Hub(MSR msr,double dTime)
-{
-	double a = msrTime2Exp(msr,dTime);
-	double z;
-
-	assert(a > 0.0);
-	z = 1.0/a-1.0;
-	return(msr->param.dHubble0*(1.0+z)*sqrt(1.0+msr->param.dOmega0*z));
-	}
-
-
-/*
- ** This function integrates the time dependence of the "drift"-Hamiltonian.
- */
-double msrComoveDriftFac(MSR msr,double dTime,double dDelta)
-{
-	double dOmega0 = msr->param.dOmega0;
-	double dHubble0 = msr->param.dHubble0;
-	double a0,A,B,a1,a2,eta1,eta2;
-
-	if (!msr->param.bComove) return(dDelta);
-	else {
-		a1 = msrTime2Exp(msr,dTime);
-		a2 = msrTime2Exp(msr,dTime+dDelta);
-		if (dOmega0 == 1.0) {
-			return((2.0/dHubble0)*(1.0/sqrt(a1) - 1.0/sqrt(a2)));
-			}
-		else if (dOmega0 > 1.0) {
-			assert(dHubble0 >= 0.0);
-			if (dHubble0 == 0.0) {
-				A = 1.0;
-				B = 1.0/sqrt(dOmega0);
-				}
-			else {
-				a0 = 1.0/dHubble0/sqrt(dOmega0-1.0);
-				A = 0.5*dOmega0/(dOmega0-1.0);
-				B = A*a0;
-				}
-			eta1 = acos(1.0-a1/A);
-			eta2 = acos(1.0-a2/A);
-			return(B/A/A*(1.0/tan(0.5*eta1) - 1.0/tan(0.5*eta2)));
-			}
-		else if (dOmega0 > 0.0) {
-			assert(dHubble0 > 0.0);
-			a0 = 1.0/dHubble0/sqrt(1.0-dOmega0);
-			A = 0.5*dOmega0/(1.0-dOmega0);
-			B = A*a0;
-			eta1 = acosh(a1/A+1.0);
-			eta2 = acosh(a2/A+1.0);
-			return(B/A/A*(1.0/tanh(0.5*eta1) - 1.0/tanh(0.5*eta2)));
-			}
-		else if (dOmega0 == 0.0) {
-			/*
-			 ** YOU figure this one out!
-			 */
-			assert(0);
-			return(0.0);
-			}
-		else {
-			/*
-			 ** Bad value?
-			 */
-			assert(0);
-			return(0.0);
-			}
-		}
-	}
-
-
-/*
- ** This function integrates the time dependence of the "kick"-Hamiltonian.
- */
-double msrComoveKickFac(MSR msr,double dTime,double dDelta)
-{
-	double dOmega0 = msr->param.dOmega0;
-	double dHubble0 = msr->param.dHubble0;
-	double a0,A,B,a1,a2,eta1,eta2;
-
-	if (!msr->param.bComove) return(dDelta);
-	else {
-		a1 = msrTime2Exp(msr,dTime);
-		a2 = msrTime2Exp(msr,dTime+dDelta);
-		if (dOmega0 == 1.0) {
-			return((2.0/dHubble0)*(sqrt(a2) - sqrt(a1)));
-			}
-		else if (dOmega0 > 1.0) {
-			assert(dHubble0 >= 0.0);
-			if (dHubble0 == 0.0) {
-				A = 1.0;
-				B = 1.0/sqrt(dOmega0);
-				}
-			else {
-				a0 = 1.0/dHubble0/sqrt(dOmega0-1.0);
-				A = 0.5*dOmega0/(dOmega0-1.0);
-				B = A*a0;
-				}
-			eta1 = acos(1.0-a1/A);
-			eta2 = acos(1.0-a2/A);
-			return(B/A*(eta2 - eta1));
-			}
-		else if (dOmega0 > 0.0) {
-			assert(dHubble0 > 0.0);
-			a0 = 1.0/dHubble0/sqrt(1.0-dOmega0);
-			A = 0.5*dOmega0/(1.0-dOmega0);
-			B = A*a0;
-			eta1 = acosh(a1/A+1.0);
-			eta2 = acosh(a2/A+1.0);
-			return(B/A*(eta2 - eta1));
-			}
-		else if (dOmega0 == 0.0) {
-			/*
-			 ** YOU figure this one out!
-			 */
-			assert(0);
-			return(0.0);
-			}
-		else {
-			/*
-			 ** Bad value?
-			 */
-			assert(0);
-			return(0.0);
-			}
-		}
 	}
 
 void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
@@ -1300,12 +1072,12 @@ double msrReadTipsy(MSR msr)
 	assert(msr->nGas == 0);
 	assert(msr->nStar == 0);
 #endif
-	if (msr->param.bComove) {
-		if(msr->param.dHubble0 == 0.0) {
+	if (msr->param.csm->bComove) {
+		if(msr->param.csm->dHubble0 == 0.0) {
 			printf("No hubble constant specified\n");
 			_msrExit(msr);
 			}
-		dTime = msrExp2Time(msr,h.time);
+		dTime = csmExp2Time(msr->param.csm,h.time);
 		z = 1.0/h.time - 1.0;
 		if (msr->param.bVStart)
 			printf("Input file, Time:%g Redshift:%g Expansion factor:%g\n",
@@ -1314,7 +1086,7 @@ double msrReadTipsy(MSR msr)
 			if (!prmArgSpecified(msr->prm,"nSteps") &&
 				prmArgSpecified(msr->prm,"dDelta")) {
 				aTo = 1.0/(msr->param.dRedTo + 1.0);
-				tTo = msrExp2Time(msr,aTo);
+				tTo = csmExp2Time(msr->param.csm,aTo);
 				if (msr->param.bVStart)
 					printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
 						   tTo,1.0/aTo-1.0,aTo);
@@ -1327,7 +1099,7 @@ double msrReadTipsy(MSR msr)
 			else if (!prmArgSpecified(msr->prm,"dDelta") &&
 					 prmArgSpecified(msr->prm,"nSteps")) {
 				aTo = 1.0/(msr->param.dRedTo + 1.0);
-				tTo = msrExp2Time(msr,aTo);
+				tTo = csmExp2Time(msr->param.csm,aTo);
 				if (msr->param.bVStart)
 					printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
 						   tTo,1.0/aTo-1.0,aTo);
@@ -1343,7 +1115,7 @@ double msrReadTipsy(MSR msr)
 			else if (!prmSpecified(msr->prm,"nSteps") &&
 					 prmFileSpecified(msr->prm,"dDelta")) {
 				aTo = 1.0/(msr->param.dRedTo + 1.0);
-				tTo = msrExp2Time(msr,aTo);
+				tTo = csmExp2Time(msr->param.csm,aTo);
 				if (msr->param.bVStart)
 					printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
 						   tTo,1.0/aTo-1.0,aTo);
@@ -1356,7 +1128,7 @@ double msrReadTipsy(MSR msr)
 			else if (!prmSpecified(msr->prm,"dDelta") &&
 					 prmFileSpecified(msr->prm,"nSteps")) {
 				aTo = 1.0/(msr->param.dRedTo + 1.0);
-				tTo = msrExp2Time(msr,aTo);
+				tTo = csmExp2Time(msr->param.csm,aTo);
 				if (msr->param.bVStart)
 					printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
 						   tTo,1.0/aTo-1.0,aTo);
@@ -1372,7 +1144,7 @@ double msrReadTipsy(MSR msr)
 			}
 		else {
 			tTo = dTime + msr->param.nSteps*msr->param.dDelta;
-			aTo = msrTime2Exp(msr,tTo);
+			aTo = csmTime2Exp(msr->param.csm,tTo);
 			if (msr->param.bVStart)
 				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
 					   tTo,1.0/aTo-1.0,aTo);
@@ -1555,8 +1327,8 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	h.ndark = msr->nDark;
 	h.nsph = msr->nGas;
 	h.nstar = msr->nStar;
-	if (msr->param.bComove) {
-		h.time = msrTime2Exp(msr,dTime);
+	if (msr->param.csm->bComove) {
+		h.time = csmTime2Exp(msr->param.csm,dTime);
 		if (msr->param.bCannonical) {
 			in.dvFac = 1.0/(h.time*h.time);
 			}
@@ -1570,7 +1342,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		}
 	h.ndim = 3;
 	if (msr->param.bVDetails) {
-		if (msr->param.bComove) {
+		if (msr->param.csm->bComove) {
 			printf("Writing file...\nTime:%g Redshift:%g\n",
 				   dTime,(1.0/h.time - 1.0));
 			}
@@ -1938,9 +1710,9 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
-	if (msr->param.bComove) {
-  	        in.smf.H = msrTime2Hub(msr,dTime);
-	        in.smf.a = msrTime2Exp(msr,dTime);
+	if (msr->param.csm->bComove) {
+  	        in.smf.H = csmTime2Hub(msr->param.csm,dTime);
+	        in.smf.a = csmTime2Exp(msr->param.csm,dTime);
 	        }
         else {
   	        in.smf.H = 0.0;
@@ -1980,9 +1752,9 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
-	if (msr->param.bComove) {
-  	        in.smf.H = msrTime2Hub(msr,dTime);
-	        in.smf.a = msrTime2Exp(msr,dTime);
+	if (msr->param.csm->bComove) {
+  	        in.smf.H = csmTime2Hub(msr->param.csm,dTime);
+	        in.smf.a = csmTime2Exp(msr->param.csm,dTime);
 	        }
         else {
   	        in.smf.H = 0.0;
@@ -2139,15 +1911,15 @@ void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U,doub
 	/*
 	 ** Do the comoving coordinates stuff.
 	 */
-	a = msrTime2Exp(msr,dTime);
+	a = csmTime2Exp(msr->param.csm,dTime);
 	if (!msr->param.bCannonical) *T *= pow(a,4.0);
 	/*
 	 * Estimate integral (\dot a*U*dt) over the interval.
 	 * Note that this is equal to intregral (W*da) and the latter
 	 * is more accurate when a is changing rapidly.
 	 */
-	if (msr->param.bComove && !bFirst) {
-		msr->dEcosmo += 0.5*(a - msrTime2Exp(msr,msr->dTimeOld))
+	if (msr->param.csm->bComove && !bFirst) {
+		msr->dEcosmo += 0.5*(a - csmTime2Exp(msr->param.csm, msr->dTimeOld))
 			*((*U) + msr->dUOld);
 		}
 	else {
@@ -2174,7 +1946,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 #endif /* COLLISIONS */
 
 	if (msr->param.bCannonical) {
-		in.dDelta = msrComoveDriftFac(msr,dTime,dDelta);
+		in.dDelta = csmComoveDriftFac(msr->param.csm,dTime,dDelta);
 		}
 	else {
 		in.dDelta = dDelta;
@@ -2199,7 +1971,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 #else
 		invpr.dvFacOne = 1.0;	/* no hubble drag, man! */
 #endif
-		invpr.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+		invpr.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
 #ifdef GASOLINE
 		invpr.duFac    = dDelta;
 #endif
@@ -2211,8 +1983,8 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		 ** cased in some way.
 		 */
 		dTime += dDelta/2.0;
-		a = msrTime2Exp(msr,dTime);
-		H = msrTime2Hub(msr,dTime);
+		a = csmTime2Exp(msr->param.csm,dTime);
+		H = csmTime2Hub(msr->param.csm,dTime);
 		invpr.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		invpr.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
 #ifdef GASOLINE
@@ -2237,7 +2009,7 @@ void msrDriftRung(MSR msr,double dTime,double dDelta)
 #endif /* COLLISIONS */
 
 	if (msr->param.bCannonical) {
-		in.dDelta = msrComoveDriftFac(msr,dTime,dDelta);
+		in.dDelta = csmComoveDriftFac(msr->param.csm,dTime,dDelta);
 		}
 	else {
 		in.dDelta = dDelta;
@@ -2262,7 +2034,7 @@ void msrDriftRung(MSR msr,double dTime,double dDelta)
 #else
 		invpr.dvFacOne = 1.0;	/* no hubble drag, man! */
 #endif
-		invpr.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+		invpr.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
 #ifdef GASOLINE
 		invpr.duFac    = dDelta;
 #endif
@@ -2274,8 +2046,8 @@ void msrDriftRung(MSR msr,double dTime,double dDelta)
 		 ** cased in some way.
 		 */
 		dTime += dDelta/2.0;
-		a = msrTime2Exp(msr,dTime);
-		H = msrTime2Hub(msr,dTime);
+		a = csmTime2Exp(msr->param.csm,dTime);
+		H = csmTime2Hub(msr->param.csm,dTime);
 		invpr.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		invpr.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
 #ifdef GASOLINE
@@ -2358,7 +2130,7 @@ void msrKick(MSR msr,double dTime,double dDelta)
 #else
 		in.dvFacOne = 1.0;		/* no hubble drag, man! */
 #endif
-		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+		in.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
 #ifdef GASOLINE
 		in.duFac    = dDelta;
 #endif
@@ -2370,8 +2142,8 @@ void msrKick(MSR msr,double dTime,double dDelta)
 		 ** cased in some way.
 		 */
 		dTime += dDelta/2.0;
-		a = msrTime2Exp(msr,dTime);
-		H = msrTime2Hub(msr,dTime);
+		a = csmTime2Exp(msr->param.csm,dTime);
+		H = csmTime2Hub(msr->param.csm,dTime);
 		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
 #ifdef GASOLINE
@@ -2395,14 +2167,15 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 #else
 		in.dvFacOne = 1.0;		/* no hubble drag, man! */
 #endif
-		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+		in.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
 #ifdef GASOLINE
 #ifdef GLASS	  
 	        in.dvPredFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
 #else
 		in.dvPredFacOne = 1.0;
 #endif
-		in.dvPredFacTwo = msrComoveKickFac(msr,dTime,0.5*dDelta);
+		in.dvPredFacTwo = csmComoveKickFac(msr->param.csm,
+						   dTime, 0.5*dDelta);
 		in.duFac     = dDelta;
 		in.duPredFac = 0.5*dDelta;
 #endif
@@ -2414,14 +2187,14 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 		 ** cased in some way.
 		 */
 		dTime += dDelta/2.0;
-		a = msrTime2Exp(msr,dTime);
-		H = msrTime2Hub(msr,dTime);
+		a = csmTime2Exp(msr->param.csm,dTime);
+		H = csmTime2Hub(msr->param.csm,dTime);
 		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
 #ifdef GASOLINE
 		dTime -= dDelta/4.0;
-		a = msrTime2Exp(msr,dTime);
-		H = msrTime2Hub(msr,dTime);
+		a = csmTime2Exp(msr->param.csm,dTime);
+		H = csmTime2Hub(msr->param.csm,dTime);
 
 		in.dvPredFacOne = (1.0 - 0.5*H*dDelta)/(1.0 + 0.5*H*dDelta);
 		in.dvPredFacTwo = 0.5*dDelta/pow(a,3.0)/(1.0 + 0.5*H*dDelta);
@@ -2446,7 +2219,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 #else
 		in.dvFacOne = 1.0;		/* no hubble drag, man! */
 #endif
-		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+		in.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
 #ifdef GASOLINE
 #ifdef GLASS	  
 	        in.dvPredFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
@@ -2465,8 +2238,8 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		 ** cased in some way.
 		 */
 		dTime += dDelta/2.0;
-		a = msrTime2Exp(msr,dTime);
-		H = msrTime2Hub(msr,dTime);
+		a = csmTime2Exp(msr->param.csm,dTime);
+		H = csmTime2Hub(msr->param.csm,dTime);
 		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
 #ifdef GASOLINE
@@ -2493,7 +2266,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 #else
 		in.dvFacOne = 1.0;		/* no hubble drag, man! */
 #endif
-		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+		in.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
 #ifdef GASOLINE
 #ifdef GLASS	  
 	        in.dvPredFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
@@ -2512,8 +2285,8 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		 ** cased in some way.
 		 */
 		dTime += dDelta/2.0;
-		a = msrTime2Exp(msr,dTime);
-		H = msrTime2Hub(msr,dTime);
+		a = csmTime2Exp(msr->param.csm,dTime);
+		H = csmTime2Hub(msr->param.csm,dTime);
 		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
 #ifdef GASOLINE
@@ -2665,7 +2438,7 @@ double msrReadCheck(MSR msr,int *piStep)
 	 ** Read the old parameters.
 	 */
 	FDL_read(fdl,"bPeriodic",&msr->param.bPeriodic);
-	FDL_read(fdl,"bComove",&msr->param.bComove);
+	FDL_read(fdl,"bComove",&msr->param.csm->bComove);
 	if (!prmSpecified(msr->prm,"bParaRead"))
 		FDL_read(fdl,"bParaRead",&msr->param.bParaRead);
 	if (!prmSpecified(msr->prm,"bParaWrite"))
@@ -2707,8 +2480,10 @@ double msrReadCheck(MSR msr,int *piStep)
 		FDL_read(fdl,"dDelta",&msr->param.dDelta);
 	if (!prmSpecified(msr->prm,"dEta"))
 		FDL_read(fdl,"dEta",&msr->param.dEta);
-	if (!prmSpecified(msr->prm,"dEtaCourant"))
+	if (iVersion > 4) {
+	    if (!prmSpecified(msr->prm,"dEtaCourant"))
 		FDL_read(fdl,"dEtaCourant",&msr->param.dEtaCourant);
+	    }
 	if (!prmSpecified(msr->prm,"bEpsVel"))
 		FDL_read(fdl,"bEpsVel",&msr->param.bEpsVel);
 	if (!prmSpecified(msr->prm,"bNonSymp"))
@@ -2730,8 +2505,12 @@ double msrReadCheck(MSR msr,int *piStep)
 		msr->param.dyPeriod = msr->param.dPeriod;
 		msr->param.dzPeriod = msr->param.dPeriod;
 		}
-	FDL_read(fdl,"dHubble0",&msr->param.dHubble0);
-	FDL_read(fdl,"dOmega0",&msr->param.dOmega0);
+	FDL_read(fdl,"dHubble0",&msr->param.csm->dHubble0);
+	FDL_read(fdl,"dOmega0",&msr->param.csm->dOmega0);
+	if (iVersion > 4) {
+	    FDL_read(fdl,"dLambda",&msr->param.csm->dLambda);
+	    FDL_read(fdl,"dOmegaRad",&msr->param.csm->dOmegaRad);
+	    }
 	if (iVersion > 3) {
 		if (!prmSpecified(msr->prm,"dTheta"))
 			FDL_read(fdl,"dTheta",&msr->param.dTheta);
@@ -2946,7 +2725,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	 ** Write the old parameters.
 	 */
 	FDL_write(fdl,"bPeriodic",&msr->param.bPeriodic);
-	FDL_write(fdl,"bComove",&msr->param.bComove);
+	FDL_write(fdl,"bComove",&msr->param.csm->bComove);
 	FDL_write(fdl,"bParaRead",&msr->param.bParaRead);
 	FDL_write(fdl,"bParaWrite",&msr->param.bParaWrite);
 	FDL_write(fdl,"bCannonical",&msr->param.bCannonical);
@@ -2979,8 +2758,10 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"dxPeriod",&msr->param.dxPeriod);
 	FDL_write(fdl,"dyPeriod",&msr->param.dyPeriod);
 	FDL_write(fdl,"dzPeriod",&msr->param.dzPeriod);
-	FDL_write(fdl,"dHubble0",&msr->param.dHubble0);
-	FDL_write(fdl,"dOmega0",&msr->param.dOmega0);
+	FDL_write(fdl,"dHubble0",&msr->param.csm->dHubble0);
+	FDL_write(fdl,"dOmega0",&msr->param.csm->dOmega0);
+	FDL_write(fdl,"dLambda",&msr->param.csm->dLambda);
+	FDL_write(fdl,"dOmegaRad",&msr->param.csm->dOmegaRad);
 	FDL_write(fdl,"dTheta",&msr->param.dTheta);
 	FDL_write(fdl,"dTheta2",&msr->param.dTheta2);
 	FDL_write(fdl,"dCentMass",&msr->param.dCentMass);
@@ -3064,12 +2845,12 @@ void msrReadOuts(MSR msr,double dTime)
 			ret = sscanf(&achIn[1],"%lf",&z);
 			if (ret != 1) goto NoMoreOuts;
 			a = 1.0/(z+1.0);
-			msr->pdOutTime[i] = msrExp2Time(msr,a);
+			msr->pdOutTime[i] = csmExp2Time(msr->param.csm,a);
 			break;
 		case 'a':
 			ret = sscanf(&achIn[1],"%lf",&a);
 			if (ret != 1) goto NoMoreOuts;
-			msr->pdOutTime[i] = msrExp2Time(msr,a);
+			msr->pdOutTime[i] = csmExp2Time(msr->param.csm,a);
 			break;
 		case 't':
 			ret = sscanf(&achIn[1],"%lf",&msr->pdOutTime[i]);
@@ -3084,7 +2865,7 @@ void msrReadOuts(MSR msr,double dTime)
 			ret = sscanf(achIn,"%lf",&z);
 			if (ret != 1) goto NoMoreOuts;
 			a = 1.0/(z+1.0);
-			msr->pdOutTime[i] = msrExp2Time(msr,a);
+			msr->pdOutTime[i] = csmExp2Time(msr->param.csm,a);
 			}
 		++i;
 		if(i > msr->nMaxOuts) {
@@ -3148,7 +2929,7 @@ int msrRestart(MSR msr)
 
 int msrComove(MSR msr)
 {
-	return(msr->param.bComove);
+	return(msr->param.csm->bComove);
 	}
 
 
@@ -3175,7 +2956,7 @@ void msrSwitchTheta(MSR msr,double dTime)
 {
 	double a;
 
-	a = msrTime2Exp(msr,dTime);
+	a = csmTime2Exp(msr->param.csm,dTime);
 	if (a >= 1.0/3.0) msr->dCrit = msr->param.dTheta2; 
 	}
 
@@ -3275,7 +3056,7 @@ void msrDensityStep(MSR msr, double dTime)
     if (msr->param.bVDetails) printf("Calculating Rung Densities...\n");
     msrSmooth(msr, dTime, SMX_DENSITY, 0);
     in.dEta = msrEta(msr);
-    expand = msrTime2Exp(msr, dTime);
+    expand = csmTime2Exp(msr->param.csm, dTime);
     in.dRhoFac = 1.0/(expand*expand*expand);
     pstDensityStep(msr->pst, &in, sizeof(in), NULL, NULL);
     }
@@ -3287,7 +3068,7 @@ void msrAccelStep(MSR msr, double dTime)
     double a;
 
     in.dEta = msrEta(msr);
-    a = msrTime2Exp(msr,dTime);
+    a = csmTime2Exp(msr->param.csm,dTime);
     if(msr->param.bCannonical) {
 	in.dVelFac = 1.0/(a*a);
 	}
@@ -3748,7 +3529,7 @@ void msrSphStep(MSR msr, double dTime)
     
     if (!msrDoGas(msr)) return;
 
-    in.dCosmoFac = msrTime2Exp(msr, dTime);
+    in.dCosmoFac = csmTime2Exp(msr->param.csm, dTime);
     in.dEtaCourant = msrEtaCourant(msr);
     pstSphStep(msr->pst, &in, sizeof(in), NULL, NULL);
     }
