@@ -1279,6 +1279,11 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	else {
 		pkd->nNodes = NumBinaryNodes(pkd,nBucket,0,pkd->nLocal-1);
 		}
+	/*
+	 ** We need at least one particle per processor.
+	 */
+	assert(pkd->nNodes > 0);
+
 	pkd->kdNodes = mdlMalloc(pkd->mdl,pkd->nNodes*sizeof(KDN));
 	/*
 	 ** Now we really build the tree.
