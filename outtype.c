@@ -119,6 +119,8 @@ void pkdOutArray(PKD pkd,char *pszFileName,int iArrType, int iBinaryOutput)
 	FLOAT fOut;
 	float FloatOut;
 	double DoubleOut;
+	int IntOut;
+	long long LongOut;
 	int i;
 
 	fp = fopen(pszFileName,"a");
@@ -135,20 +137,41 @@ void pkdOutArray(PKD pkd,char *pszFileName,int iArrType, int iBinaryOutput)
 		break;
 	case 1:
 		for (i=0;i<pkd->nLocal;++i) {
-			FloatOut = ArrType(&pkd->pStore[i],iArrType);
-			fwrite(&FloatOut, sizeof(float), 1, fp );
+			switch (iArrType) {
+			case OUT_IORDER_ARRAY:
+				IntOut = pkd->pStore[i].iOrder;
+				fwrite(&IntOut, sizeof(IntOut), 1, fp );
+				break;
+			default:
+				FloatOut = ArrType(&pkd->pStore[i],iArrType);
+				fwrite(&FloatOut, sizeof(float), 1, fp );
+				}
 			}
 		break;
 	case 2:
 		for (i=0;i<pkd->nLocal;++i) {
-			DoubleOut = ArrType(&pkd->pStore[i],iArrType);
-			fwrite(&DoubleOut, sizeof(double), 1, fp );
+			switch (iArrType) {
+			case OUT_IORDER_ARRAY:
+				LongOut = pkd->pStore[i].iOrder;
+				fwrite(&LongOut, sizeof(LongOut), 1, fp );
+				break;
+			default:
+				DoubleOut = ArrType(&pkd->pStore[i],iArrType);
+				fwrite(&DoubleOut, sizeof(double), 1, fp );
+				}
 			}
+
 		break;
 	case 3:
 		for (i=0;i<pkd->nLocal;++i) {
-			fOut = ArrType(&pkd->pStore[i],iArrType);
-			fwrite(&fOut, sizeof(FLOAT), 1, fp );
+			switch (iArrType) {
+			case OUT_IORDER_ARRAY:
+				fwrite(&(pkd->pStore[i].iOrder), sizeof(pkd->pStore[i].iOrder), 1, fp );
+				break;
+			default:
+				fOut = ArrType(&pkd->pStore[i],iArrType);
+				fwrite(&fOut, sizeof(FLOAT), 1, fp );
+				}
 			}
 		break;
 		}
