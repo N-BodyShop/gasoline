@@ -32,20 +32,21 @@ SPX_LIBMDL = v_sqrt1.o $(MDL)/mdl.o -lm
 #
 #       T3D MPP defines
 #
-T3D_MDL = $(HOME)/port/mdl/mpp
-V_SQRT = $(HOME)/port/v_sqrt/lib
-V_SQRT1 = $(HOME)/port/v_sqrt1/lib
+T3D_MDL = $(HOME)/ptools/mdl/mpp
+V_SQRT = $(HOME)/ptools/v_sqrt/lib
+V_SQRT1 = $(HOME)/ptools/v_sqrt1/lib
 RPC = $(HOME)/rpc
 RPCOBJS = $(RPC)/xdr.o $(RPC)/xdr_mem.o $(RPC)/xdr_rec.o \
           $(RPC)/xdr_reference.o $(RPC)/xdr_stdio.o $(RPC)/xdr_float.o
 
-T3D_CFLAGS = -O3 -DCRAY_T3D -I$(MDL) -I$(V_SQRT)
-T3D_LIBMDL = -O3 -L $(V_SQRT) -L $(V_SQRT1) $(MDL)/mdl.o -lv_sqrtc -lv_sqrtc1 -lm
+T3D_CFLAGS = -O3 -DCRAY_T3D -I$(T3D_MDL) -I$(V_SQRT)
+T3D_LIBMDL = -O3 -L $(V_SQRT) -L $(V_SQRT1) hyperlib.o $(T3D_MDL)/mdl.o \
+	-lv_sqrtc -lv_sqrtc1 -lm
 T3D_LD_FLAGS = 
 
 OBJS	= 	main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 		ewald.o walk.o eccanom.o hypanom.o
-EXTRA_OBJ = 	erf.o v_sqrt1.o
+EXTRA_OBJ = 	erf.o v_sqrt1.o hyperlib.o
 
 default:	
 	@echo "Please tell me what architecture to make."
@@ -78,3 +79,9 @@ t3d:
 
 pkdgrav: $(OBJS) $(EXTRA_OBJ)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -o pkdgrav $(OBJS) $(LIBMDL)
+
+
+
+
+
+

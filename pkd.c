@@ -948,6 +948,7 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	int l,n,i,d,m,j,diff;
 	KDN *c;
 	char ach[256];
+	float fSplit;
 
 	pkd->nBucket = nBucket;
 	n = pkd->nLocal;
@@ -989,19 +990,38 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 
 			m = (c[i].pLower + c[i].pUpper)/2;
 			pkdSelect(pkd,d,m,c[i].pLower,c[i].pUpper);
-
-			c[i].fSplit = pkd->pStore[m].r[d];
-			c[LOWER(i)].bnd = c[i].bnd;
-			c[LOWER(i)].bnd.fMax[d] = c[i].fSplit;
-			c[LOWER(i)].pLower = c[i].pLower;
-			c[LOWER(i)].pUpper = m;
-			c[UPPER(i)].bnd = c[i].bnd;
-			c[UPPER(i)].bnd.fMin[d] = c[i].fSplit;
-			c[UPPER(i)].pLower = m+1;
-			c[UPPER(i)].pUpper = c[i].pUpper;
+			/*
+			 ** Make sure we really did find the correct median.
+			 */
 			diff = (m-c[i].pLower+1)-(c[i].pUpper-m);
 			assert(diff == 0 || diff == 1);
-			i = LOWER(i);
+			fSplit = pkd->pStore[m].r[d];
+			/*
+			 ** Partition to avoid the "Fabio effect"
+			 ** Note: this returns an index to the first value which
+			 ** is greater-than-or-equal to fSplit.
+			 */
+			m = pkdLowerPart(pkd,d,fSplit,c[i].pLower,c[i].pUpper);
+			/*
+			 ** Careful if we make this a bucket by the above partition!
+			 */
+			if (m > c[i].pLower && m <= c[i].pUpper) {
+				c[i].fSplit = fSplit;
+				c[LOWER(i)].bnd = c[i].bnd;
+				c[LOWER(i)].bnd.fMax[d] = fSplit;
+				c[LOWER(i)].pLower = c[i].pLower;
+				c[LOWER(i)].pUpper = m-1;
+				c[UPPER(i)].bnd = c[i].bnd;
+				c[UPPER(i)].bnd.fMin[d] = fSplit;
+				c[UPPER(i)].pLower = m;
+				c[UPPER(i)].pUpper = c[i].pUpper;
+				i = LOWER(i);
+				}
+			else {
+				c[i].iDim = -1;		/* to indicate a bucket! */
+				SETNEXT(i);
+				if (i == ROOT) break;
+				}
 			}
 		else {
 			c[i].iDim = -1;		/* to indicate a bucket! */

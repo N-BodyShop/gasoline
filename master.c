@@ -10,6 +10,8 @@
 #ifndef CRAY_T3D
 #include <rpc/types.h>
 #include <rpc/xdr.h>
+#else
+#include "hyperlib.h"
 #endif
 
 #include "master.h"
@@ -722,9 +724,9 @@ void msrBuildTree(MSR msr)
 	inc.iCell = ROOT;
 	inc.nCell = nCell;
 	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
-
+#if (0)
 	for (i=1;i<nCell;++i) {
-		printf("\nLTT:%d\n",i);
+		printf("\nLTTO:%d\n",i);
 		printf("    iDim:%1d fSplit:%g pLower:%d pUpper:%d\n",
 			   pkdn[i].iDim,pkdn[i].fSplit,pkdn[i].pLower,pkdn[i].pUpper);
 		printf("    bnd:(%g,%g) (%g,%g) (%g,%g)\n",
@@ -744,7 +746,7 @@ void msrBuildTree(MSR msr)
 		printf("    yyyz:%g xxyy:%g xxyz:%g xyyz:%g\n",
 			   m->Hyyyz,m->Hxxyy,m->Hxxyz,m->Hxyyz);
 		}
-
+#endif
 	pstDistribCells(msr->pst,pkdn,nCell*sizeof(KDN),NULL,NULL);
 	}
 

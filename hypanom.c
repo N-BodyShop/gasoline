@@ -9,6 +9,10 @@
 #include <math.h>
 #include <assert.h>
 
+#ifdef CRAY_T3D
+#include "hyperlib.h"
+#endif
+
 #define MAX_HYPERBOLA_ITTR		32
 /*
  ** This upper bound should be plenty because it corresponds to
