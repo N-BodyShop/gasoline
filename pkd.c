@@ -3327,8 +3327,13 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 #endif
 				}
 			if (bSqrtPhi) {
+				/*
+				 ** NOTE: The factor of 3.5 keeps this criterion in sync
+				 ** with DensityStep. The nominal value of dEta for both
+				 ** cases is then 0.02-0.03.
+				 */
 				double dtemp =
-					dEta*sqrt(dAccFac*fabs(pkd->pStore[i].fPot))/acc; /*DEBUG bizarre factor of 3.5 removed!*/
+					dEta*3.5*sqrt(dAccFac*fabs(pkd->pStore[i].fPot))/acc;
 				if (dtemp < dT)
 					dT = dtemp;
 				}
