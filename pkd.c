@@ -1373,25 +1373,31 @@ int NumBinaryNodes(PKD pkd,int nBucket,int pLower,int pUpper)
 	BND bnd;
 	int i,j,m,d,l,u;
 	FLOAT fSplit;
+	int bGoodBounds;	/* is the cell a finite size? */
 
 	if (pLower > pUpper) return(0);
 	else {
-		if (pUpper-pLower+1 > nBucket) {
-			/*
-			 ** We need to find the bounding box.
-			 */
+		/*
+		 ** We need to find the bounding box.
+		 */
+		for (j=0;j<3;++j) {
+			bnd.fMin[j] = pkd->pStore[pLower].r[j];
+			bnd.fMax[j] = pkd->pStore[pLower].r[j];
+			}
+		for (i=pLower+1;i<=pUpper;++i) {
 			for (j=0;j<3;++j) {
-				bnd.fMin[j] = pkd->pStore[pLower].r[j];
-				bnd.fMax[j] = pkd->pStore[pLower].r[j];
+				if (pkd->pStore[i].r[j] < bnd.fMin[j]) 
+					bnd.fMin[j] = pkd->pStore[i].r[j];
+				else if (pkd->pStore[i].r[j] > bnd.fMax[j])
+					bnd.fMax[j] = pkd->pStore[i].r[j];
 				}
-			for (i=pLower+1;i<=pUpper;++i) {
-				for (j=0;j<3;++j) {
-					if (pkd->pStore[i].r[j] < bnd.fMin[j]) 
-						bnd.fMin[j] = pkd->pStore[i].r[j];
-					else if (pkd->pStore[i].r[j] > bnd.fMax[j])
-						bnd.fMax[j] = pkd->pStore[i].r[j];
-					}
-				}	
+			}	
+		bGoodBounds = 0;
+		for (j=0;j<3;++j) {
+			if (bnd.fMax[j] > bnd.fMin[j])
+			    bGoodBounds = 1;
+			}
+		if ((pUpper-pLower+1 > nBucket) && bGoodBounds) {
 			/*
 			 ** Now we need to determine the longest axis.
 			 */
@@ -1432,6 +1438,7 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 	int i,j,m,d,c;
 	FLOAT fm;
 	double dOpen;
+	int bGoodBounds;	/* Is the cell a finite size? */
 
 	if (pLower > pUpper) return(-1);
 	else {
@@ -1458,7 +1465,12 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 					pkdn->bnd.fMax[j] = pkd->pStore[i].r[j];
 				}
 			}	
-		if (pUpper-pLower+1 > nBucket) {
+		bGoodBounds = 0;
+		for (j=0;j<3;++j) {
+			if (pkdn->bnd.fMax[j] > pkdn->bnd.fMin[j])
+			    bGoodBounds = 1;
+			}
+		if ((pUpper-pLower+1 > nBucket) && bGoodBounds) {
 			/*
 			 ** Now we need to determine the longest axis.
 			 */
@@ -3194,7 +3206,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant)
 			       p->iOrder,p->iActive,p->iTreeActive,p->iRung,
 			       sqrt(0.25*p->fBall2),p->fDensity,p->u,p->uPred,p->c,p->mumax,
 			       dT);
-#endif			        }
+#endif
 	       if(dT < p->dt)
 			p->dt = dT;
 	       }
