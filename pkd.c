@@ -2219,6 +2219,7 @@ int NumBinaryNodes(PKD pkd,int nBucket,int pLower,int pUpper)
 	int i,j,m,d,l,u;
 	FLOAT fSplit;
 	int bGoodBounds;	/* is the cell a finite size? */
+	PARTICLE *pStore = pkd->pStore;
 
 	if (pLower > pUpper) return(0);
 	else {
@@ -2226,15 +2227,15 @@ int NumBinaryNodes(PKD pkd,int nBucket,int pLower,int pUpper)
 		 ** We need to find the bounding box.
 		 */
 		for (j=0;j<3;++j) {
-			bnd.fMin[j] = pkd->pStore[pLower].r[j];
-			bnd.fMax[j] = pkd->pStore[pLower].r[j];
+			bnd.fMin[j] = pStore[pLower].r[j];
+			bnd.fMax[j] = pStore[pLower].r[j];
 			}
 		for (i=pLower+1;i<=pUpper;++i) {
 			for (j=0;j<3;++j) {
-				if (pkd->pStore[i].r[j] < bnd.fMin[j]) 
-					bnd.fMin[j] = pkd->pStore[i].r[j];
-				else if (pkd->pStore[i].r[j] > bnd.fMax[j])
-					bnd.fMax[j] = pkd->pStore[i].r[j];
+				if (pStore[i].r[j] < bnd.fMin[j]) 
+					bnd.fMin[j] = pStore[i].r[j];
+				else if (pStore[i].r[j] > bnd.fMax[j])
+					bnd.fMax[j] = pStore[i].r[j];
 				}
 			}	
 		bGoodBounds = 0;
@@ -2732,6 +2733,9 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 	BND bndActive;
 	BND bndTmp;
 	char achDiag[256];
+	const int bDetailTimer = 0; /* Change to 1 to get detailed timing on
+				     * interacts, walks, and Ewald
+				     */
 
 	*pdFlop = 0.0;
 	pkdClearTimer(pkd,1);
@@ -2756,6 +2760,7 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 	*pdCellSum = 0.0;
 	*pdSoftSum = 0.0;
 	iCell = pkd->iRoot;
+	if(!bDetailTimer) pkdStartTimer(pkd,2);
 	while (iCell != -1) {
 		if (c[iCell].iLower != -1) {
 			iCell = c[iCell].iLower;
@@ -2786,27 +2791,27 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 			/*
 			 ** Calculate gravity on this bucket.
 			 */
-			pkdStartTimer(pkd,1);
+			if(bDetailTimer) pkdStartTimer(pkd,1);
 			pkdBucketWalk(pkd,iCell,nReps,iOrder); /* ignored in Flop count! */
-			pkdStopTimer(pkd,1);
+			if(bDetailTimer) pkdStopTimer(pkd,1);
 			c[iCell].bnd = bndTmp;
 			*nActive += n;
 			*pdPartSum += n*pkd->nPart + 
 				n*(2*(c[iCell].pUpper-c[iCell].pLower) - n + 1)/2;
 			*pdCellSum += n*pkd->nCellNewt;
 			*pdSoftSum += n*pkd->nCellSoft;
-			pkdStartTimer(pkd,2);
+			if(bDetailTimer) pkdStartTimer(pkd,2);
 			dFlopI = pkdBucketInteract(pkd,iCell,iOrder);
 			*pdFlop += dFlopI;
-			pkdStopTimer(pkd,2);
+			if(bDetailTimer) pkdStopTimer(pkd,2);
 			/*
 			 * Now do Ewald part.
 			 */
 			if (bPeriodic && bEwald) {
-				pkdStartTimer(pkd,3);
+				if(bDetailTimer) pkdStartTimer(pkd,3);
 				dFlopE = pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
 				*pdFlop += dFlopE;
-				pkdStopTimer(pkd,3);
+				if(bDetailTimer) pkdStopTimer(pkd,3);
 				}
 			else {
 			    dFlopE = 0.0;
@@ -2822,6 +2827,7 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 			}
 		iCell = c[iCell].iUpper;
 		}
+	if(!bDetailTimer) pkdStopTimer(pkd,2);
 	if (bDoSun) {
 		const double dTinyBox = 1e-14;
 		int iDummy = pkd->nStore;
@@ -3346,7 +3352,7 @@ void fg(MDL mdl,double mu,FLOAT *x,FLOAT *v,double dt) {
 		sprintf(ach,"dec soln failed, dconverge: %g dx: %g dec: %g\n",
 				converge, dx, dec);
 		mdlDiag(mdl,ach);
-		exit(1);
+		mdlassert(mdl, 0);
 		}
 	/*
 	 * Update the orbit.
@@ -3375,29 +3381,40 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 #ifdef SLIDING_PATCH
 	FLOAT fShear;
 #endif
+	int bInBox = 1;
+	FLOAT lfCenter[3];
 
 	mdlDiag(pkd->mdl, "Into pkddrift\n");
+	for(j = 0; j < 3; j++)
+		lfCenter[j] = fCenter[j];
 	n = pkdLocal(pkd);
-	for (i=0;i<n;++i) {
-		p = &pkd->pStore[i];
-#ifdef AGGS
-		if (IS_AGG(p))
-			continue;
-#endif
 #ifdef OLD_KEPLER
-		if (p->iDriftType == KEPLER) /*DEBUG a bit ugly...*/
+	if (p->iDriftType == KEPLER) /*DEBUG a bit ugly...*/
 #else
-		if (bFandG)
+	if (bFandG)
+#endif
+		for (i=0;i<n;++i) {
+			p = &pkd->pStore[i];
+#ifdef AGGS
+			if (IS_AGG(p))
+				continue;
 #endif
 			fg(pkd->mdl,fCentMass + p->fMass,p->r,p->v,dDelta);
-		else {
+		}
+	else {
+		p = pkd->pStore;
+		for (i=0;i<n;++i,++p) {
+#ifdef AGGS
+			if (IS_AGG(p))
+				continue;
+#endif
 #ifdef SLIDING_PATCH
 			fShear = 0;
 #endif
 			for (j=0;j<3;++j) {
 				p->r[j] += dDelta*p->v[j];
 				if (bPeriodic) {
-					if (p->r[j] >= fCenter[j] + 0.5*pkd->fPeriod[j]) {
+					if (p->r[j] >= lfCenter[j] + 0.5*pkd->fPeriod[j]) {
 						p->r[j] -= pkd->fPeriod[j];
 #ifdef SLIDING_PATCH
 						if (j == 0) {
@@ -3408,7 +3425,7 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 							}
 #endif
 						}
-					if (p->r[j] < fCenter[j] - 0.5*pkd->fPeriod[j]) {
+					if (p->r[j] < lfCenter[j] - 0.5*pkd->fPeriod[j]) {
 						p->r[j] += pkd->fPeriod[j];
 #ifdef SLIDING_PATCH
 						if (j == 0) {
@@ -3419,8 +3436,8 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 							}
 #endif
 						}
-					mdlassert(pkd->mdl,p->r[j] >= fCenter[j]-0.5*pkd->fPeriod[j]);
-					mdlassert(pkd->mdl,p->r[j] <  fCenter[j]+0.5*pkd->fPeriod[j]);
+					bInBox = bInBox && (p->r[j] >= lfCenter[j]-0.5*pkd->fPeriod[j]);
+					bInBox = bInBox && (p->r[j] <  lfCenter[j]+0.5*pkd->fPeriod[j]);
 					}
 				}
 #ifdef SLIDING_PATCH
@@ -3428,6 +3445,7 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 #endif
 			}
 		}
+	mdlassert(pkd->mdl, bInBox);
 	mdlDiag(pkd->mdl, "Out of pkddrift\n");
 	}
 
