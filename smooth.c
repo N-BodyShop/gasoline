@@ -209,7 +209,6 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int pi)
 	 ** This could mearly be the closest to ri[3]! 
 	 ** Warning: in parallel ri[3] SHOULD be contained in the LOCAL DOMAIN!
 	 */
-/*	if (pi==15076) fprintf(stderr,"In smBallSearch.  r[3]=%g, %g, %g\n",x,y,z); */
 	while (c[cell].iDim >= 0) {
 		if (ri[c[cell].iDim] < c[cell].fSplit) cell = c[cell].iLower;
 		else cell = c[cell].iUpper;
@@ -239,17 +238,9 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int pi)
 			fBall2 = pq->fKey;
 			}
 		}
-/*	if (pi==15076) {
-	    fprintf(stderr,"After pq.  cell=%d, iRoot=%d\n",cell,smx->pkd->iRoot);
-	    ct=-100;
-	    cp=-100;
-	} */
 	if (cell == smx->pkd->iRoot) return(pq);
 	while (c[cell].iParent != -1) {
 	    if (c[cell].iSibling != -1) { 
-/*	    if (pi==15076 && ct !=-100 && cp !=-100)
-		fprintf(stderr,"in while...cell=%d, iSibling=%d, iNext=%d, ct=%d\n",
-			 cell,c[cell].iSibling,c[ct].iNext,ct); */
 		cp = c[cell].iSibling;
 		ct = cp;
 		ct = c[ct].iNext;
@@ -287,8 +278,6 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int pi)
 					}
 				}
 		GetNext_1:
-/*			if (pi==15076 && cell==1) fprintf(stderr,"cell=%d, cp=%d, iNext=%d\n",
-							    cell,cp,c[cp].iNext); */
 			cp = c[cp].iNext;
 			if (cp == ct) break;
 			}
@@ -326,7 +315,6 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	/*
 	 ** Check if we are finished!
 	 */
-/*	fprintf(stderr,"Beginning StartParticle... pNext = %d\n",pNext); */
 	if (pNext == pkd->nLocal) goto DoneSmooth;
 	if (pkd->pStore[pNext].fBall2 >= 0) {
 		++pNext;
@@ -368,11 +356,7 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	/*
 	 ** Priority Queue must be built. 'pi' must be defined.
 	 */
-	if (pi==15076) fprintf(stderr,"before smBallSearch\n.  pi=%d, r[3]=%g,%g,%g\n",pi,
-		        p[pi].r[0],p[pi].r[1],p[pi].r[2]);
 	pq = smBallSearch(smx,pq,p[pi].r,pi);
-	if (pi==15076) fprintf(stderr,"after smBallSearch\n.  pi=%d, r[3]=%g,%g,%g\n",pi,
-		        p[pi].r[0],p[pi].r[1],p[pi].r[2]);
 	/*
 	 ** Start non-local search.
 	 */

@@ -88,7 +88,8 @@ void main(int argc,char **argv)
 
 	msrBuildTree(msr,0,dMass);
 	msrMassCheck(msr,dMass,"After msrBuildTree");
-	msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax);
+/*	msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax); */
+	msrDensity(msr);
 	msrMassCheck(msr,dMass,"After msrGravity");
 	msrCalcE(msr,MSR_INIT_ECOSMO,dTime,&E,&T,&U);
 	msrMassCheck(msr,dMass,"After msrCalcE");
