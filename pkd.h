@@ -434,7 +434,8 @@ void pkdReadTipsy(PKD,char *,int,int,int,double,double);
 void pkdSetSoft(PKD pkd,double dSoft);
 #ifdef CHANGESOFT
 void pkdPhysicalSoft(PKD pkd,double, double, int);
-void pkdVariableSoft(PKD pkd,double, double, int);
+void pkdPreVariableSoft(PKD pkd);
+void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul);
 #endif
 void pkdCalcBound(PKD,BND *,BND *,BND *,BND *);
 void pkdGasWeight(PKD);

@@ -1,8 +1,6 @@
 #ifndef DUMPFRAME_HINCLUDED
 #define DUMPFRAME_HINCLUDED
 
-#include "dumpvoxel.h"
-
 #define DF_NXPIXMAX 800
 #define DF_NYPIXMAX 600
 /* PST */
@@ -34,7 +32,7 @@ enum df_dimension {
 enum df_projectstyle {
 	DF_PROJECT_NULL,
 	DF_PROJECT_ORTHO,
-	DF_PROJECT_PERSPECTIVE,
+	DF_PROJECT_PERSPECTIVE
 	};
 
 /* in principle voxels can have encoding options 
@@ -54,7 +52,7 @@ enum df_encodestyle {
 enum df_renderstyle {
 	DF_RENDER_NULL,
 	DF_RENDER_POINT,
-	DF_RENDER_TSC,
+	DF_RENDER_TSC
 	};
 
 enum df_numbering {
@@ -172,5 +170,7 @@ void dfGetCoeff3R( struct DumpFrameContext *df, int ifs );
 void dfGetCoeff2( struct DumpFrameContext *df, int ifs );
 
 void dfGetCoeff( struct DumpFrameContext *df, int ifs );
+
+#include "dumpvoxel.h"
 
 #endif

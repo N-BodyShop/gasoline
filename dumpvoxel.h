@@ -2,7 +2,6 @@
 #define DUMPVOXEL_HINCLUDED
 
 #include "dumpframe.h"
-
 /* PST */
 
 struct inDumpVoxel {
@@ -24,8 +23,6 @@ struct inDumpVoxel {
     };
 
 
-#endif
-
 void dfSetupVoxel( struct DumpFrameContext *df, double dTime, double dStep, struct inDumpVoxel *vin );
 
 void dfAddParticlesVoxel( PKD pkd, int type, double dMassMin, double dMassMax);
@@ -33,4 +30,6 @@ void dfAddParticlesVoxel( PKD pkd, int type, double dMassMin, double dMassMax);
 void dfRenderVoxel( PKD pkd, struct inDumpVoxel *in );
 
 void dfFinishVoxel( struct DumpFrameContext *df, double dTime, double dStep, struct inDumpVoxel *in );
+
+#endif
 
