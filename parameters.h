@@ -49,6 +49,7 @@ struct parameters {
         int bDoSelfGravity;
 	int bFandG;
 	int bHeliocentric;
+	double dSunSoft;
 	int bLogHalo;
 	int bHernquistSpheroid;
 	int bNFWSpheroid;

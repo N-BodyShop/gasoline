@@ -702,6 +702,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"iWallRunTime",1,&msr->param.iWallRunTime,
 				sizeof(int),"wall",
 				"<Maximum Wallclock time (in minutes) to run> = 0 = infinite");
+	msr->param.dSunSoft = 0.0;
+	prmAddParam(msr->prm,"dSunSoft", 2, &msr->param.dSunSoft,
+		    sizeof(double), "sunSoft",
+		    "<Softening length of the Sun in heliocentric coordinates> = 0.0");
 #ifdef GASOLINE
 	msr->param.bSphStep = 1;
 	prmAddParam(msr->prm,"bSphStep",0,&msr->param.bSphStep,sizeof(int),
@@ -1215,6 +1219,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		msr->param.iMaxRung = 1;
 		if (msr->param.bVWarnings)
 			(void) fprintf(stderr,"WARNING: iMaxRung set to 1\n");
+		}
+		if(msr->param.iMaxRung > 29) {
+			fprintf(stderr, "WARNING: Cannot have %d rungs, reducing to 29 (the maximum)\n", msr->param.iMaxRung);
+			msr->param.iMaxRung = 29;
 		}
 
 	if (msr->param.bGravStep && !msr->param.bDoGravity) {
@@ -1747,6 +1755,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bFandG: %d",msr->param.bFandG);
 	fprintf(fp," bHeliocentric: %d",msr->param.bHeliocentric);
 	fprintf(fp," dCentMass: %g",msr->param.dCentMass);
+	fprintf(fp," dSunSoft: %g",msr->param.dSunSoft);
 	fprintf(fp,"\n# bLogHalo: %d",msr->param.bLogHalo );
 	fprintf(fp," bHernquistSpheroid: %d",msr->param.bHernquistSpheroid );
 	fprintf(fp," bNFWSpheroid: %d",msr->param.bNFWSpheroid );
@@ -3233,6 +3242,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		in.bDoSun = msr->param.bHeliocentric;
 		in.dEwCut = msr->param.dEwCut;
 		in.dEwhCut = msr->param.dEwhCut;
+		in.dSunSoft = msr->param.dSunSoft;
 		sec = msrTime();
 		pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
 		dsec = msrTime() - sec;
@@ -3304,6 +3314,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bIndirect = msr->param.bHeliocentric;
 		inExt.bDoSun = bDoSun;  /* Treat the Sun explicitly. */
 		inExt.dSunMass = msr->param.dCentMass;
+		inExt.dSunSoft = msr->param.dSunSoft;
 		if(inExt.bIndirect)
 		    for (j=0;j<3;++j) inExt.aSun[j] = out.aSun[j];
 		inExt.bLogHalo = msr->param.bLogHalo;

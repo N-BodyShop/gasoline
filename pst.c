@@ -2955,7 +2955,7 @@ void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		plcl->pkd->dTime = in->dTime;
 #endif
 		pkdGravAll(plcl->pkd,in->nReps,in->bPeriodic,in->iOrder,in->bEwald,
-				   in->iEwOrder,in->dEwCut,in->dEwhCut,in->bDoSun,out->aSun,
+				   in->iEwOrder,in->dEwCut,in->dEwhCut,in->bDoSun,in->dSunSoft,out->aSun,
 				   &out->nActive,&out->dPartSum,&out->dCellSum,&out->dSoftSum,
 				   &cs,&out->dFlop);
 		out->dWSum = pkdGetTimer(plcl->pkd,1);
@@ -2996,7 +2996,7 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		if (in->bIndirect) {
-			pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass);
+			pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass,in->dSunSoft);
 			}
 		if (in->bLogHalo) {
 			pkdLogHalo(plcl->pkd);

@@ -2724,7 +2724,7 @@ void pkdColorCell(PKD pkd,int iCell,FLOAT fColor)
 
 void
 pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
-		   double fEwCut,double fEwhCut,int bDoSun,double *aSun,int *nActive,
+		   double fEwCut,double fEwhCut,int bDoSun,double dSunSoft,double *aSun,int *nActive,
 		   double *pdPartSum,double *pdCellSum,double *pdSoftSum,CASTAT *pcs,
 		   double *pdFlop)
 {
@@ -2846,12 +2846,13 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 		for (j=0;j<3;++j) {
 			pkd->pStore[iDummy].r[j] = 0.0;
 			pkd->pStore[iDummy].a[j] = 0.0;
-			pkd->pStore[iDummy].fSoft = 0.0;
 			c[pkd->iFreeCell].bnd.fMin[j] = -dTinyBox;
 			c[pkd->iFreeCell].bnd.fMax[j] = dTinyBox;
 			}
 		TYPESet(&(pkd->pStore[iDummy]),TYPE_ACTIVE);
 		pkd->pStore[iDummy].fPot = 0;
+		pkd->pStore[iDummy].fSoft = dSunSoft;
+		c[pkd->iFreeCell].fSoft = dSunSoft;
 		c[pkd->iFreeCell].pLower = iDummy;
 		c[pkd->iFreeCell].pUpper = iDummy;
 		c[pkd->iFreeCell].iDim = -1;	/* It is really a bucket! */
@@ -2890,10 +2891,10 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 	}
 
 
-void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass)
+void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass,double dSunSoft)
 {
 	PARTICLE *p;
-	double t,idt2;
+	double t,idt2,a,b;
 	int i,j,n;
 
 	p = pkd->pStore;
@@ -2902,25 +2903,27 @@ void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass)
 		if (TYPEQueryACTIVE(&(p[i]))) {
 			t = 0;
 			for (j=0;j<3;++j) t += p[i].r[j]*p[i].r[j];
-			t = (t == 0 ? 0 : 1/sqrt(t)); /* gravity at origin = zero */
-			p[i].fPot -= dSunMass*t;
-			t = t*t*t;
-			idt2 = (p[i].fMass + dSunMass)*t;
+			if(t == 0)
+				a = b = 0;
+			else
+				SPLINE(t, (p[i].fSoft + dSunSoft), a, b);
+			p[i].fPot -= dSunMass*a;
+			idt2 = (p[i].fMass + dSunMass)*b;
 			if (idt2 > p[i].dtGrav) p[i].dtGrav = idt2;
 			/*
 			 ** The way that aSun[j] gets added in here is confusing, but this
 			 ** is the correct way! (aSun[] is the acceleration on the Sun).
 			 */
 			if (bDoSun) {
-				t *= dSunMass;
+				b *= dSunMass;
 				for (j=0;j<3;++j) {					
-					p[i].a[j] -= (aSun[j] + p[i].r[j]*t);
+					p[i].a[j] -= (aSun[j] + p[i].r[j]*b);
 					}				
 				}
 			else {
-				t *= p[i].fMass;
+				b *= p[i].fMass;
 				for (j=0;j<3;++j) {
-					p[i].a[j] -= (aSun[j] - p[i].r[j]*t);
+					p[i].a[j] -= (aSun[j] - p[i].r[j]*b);
 					}
 				}
 			}

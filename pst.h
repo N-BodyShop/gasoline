@@ -62,7 +62,6 @@ typedef struct pstContext {
 	} * PST;
 
 
-#define PST_SERVICES		100
 #define PST_FILENAME_SIZE	512
 
 enum pst_service {
@@ -409,6 +408,7 @@ struct inGravity {
 	int bEwald;
 	int iEwOrder;
     int bDoSun;
+	double dSunSoft;
 	double dEwCut;
 	double dEwhCut;
 #ifdef SLIDING_PATCH
@@ -456,6 +456,7 @@ struct inGravExternal {
     int bDoSun;
 	double dTime;
     double dSunMass;
+	double dSunSoft;
     double aSun[3];
 	/*
 	 ** For external galaxy potential stuff

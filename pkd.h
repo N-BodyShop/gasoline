@@ -520,7 +520,7 @@ double pkdCalcOpen(KDN *,int,double,int);
 void pkdBuildLocal(PKD,int,int,double,int,int,int,KDN *);
 void pkdBuildBinary(PKD,int,int,double,int,int,int,KDN *);
 void pkdThreadTree(PKD pkd,int iCell,int iNext);
-void pkdGravAll(PKD,int,int,int,int,int,double,double,int,double *,int *,
+void pkdGravAll(PKD,int,int,int,int,int,double,double,int,double,double *,int *,
 				double *,double *,double *,CASTAT *,double *);
 void pkdCalcEandL(PKD,double *,double *,double *,double []);
 void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
@@ -583,7 +583,7 @@ struct outGetNParts {
 void pkdGetNParts(PKD pkd, struct outGetNParts *out );
 void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int, int nMaxOrderGas,
 				  int nMaxOrderDark);
-void pkdSunIndirect(PKD,double *,int,double);
+void pkdSunIndirect(PKD,double *,int,double,double);
 void pkdLogHalo(PKD);
 void pkdHernquistSpheroid(PKD pkd);
 void pkdNFWSpheroid(PKD pkd);
