@@ -710,6 +710,10 @@ double clEdot( CL *cl, PERBARYON *Y, RATE *Rate, double rho,
 	   (wTln0*RT0->Cool_Line_HeI+wTln1*RT1->Cool_Line_HeI) * Y->HeI +
 	   (wTln0*RT0->Cool_Line_HeII+wTln1*RT1->Cool_Line_HeII) * Y->HeII );
 
+/* supernova feedback heating rate.  XXX - this is not clean; cooling
+   shouldn't have to dig into the particle structure. */
+  Edot += cl->p->fESNrate * cl->dErgPerGmPerSecUnit;
+
   /* 
    * In equilibrium ndot_Phot + ndot_Coll - ndot_Radr = 0
    * However, there has been a net change ndot so we adjust the rates

@@ -20,6 +20,9 @@ typedef struct smfParameters {
 	int bCannonical;
 	int bGrowSmoothList;
 #endif
+#ifdef STARFORM
+        double dMinMassFrac;
+#endif    
 #ifdef COLLISIONS
 	double dTime;
 	double dDelta;
@@ -132,6 +135,22 @@ void combHKViscosity(void *,void *);
 void HKViscosity(PARTICLE *,int,NN *,SMF *);
 void HKViscositySym(PARTICLE *,int,NN *,SMF *);
 
+#ifdef STARFORM
+
+#define SMX_DIST_DELETED_GAS		22
+void initDistDeletedGas(void *p1);
+void combDistDeletedGas(void *p1,void *p2);
+void DistDeletedGas(PARTICLE *, int, NN *, SMF *);
+
+#define SMX_DELETE_GAS		23
+void DeleteGas(PARTICLE *, int, NN *, SMF *);
+
+#define SMX_DIST_SN_ENERGY	24
+void initDistSNEnergy(void *p1);
+void combDistSNEnergy(void *p1,void *p2);
+void DistSNEnergy(PARTICLE *, int, NN *, SMF *);
+
+#endif
 #endif
 
 #ifdef COLLISIONS

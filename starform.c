@@ -8,6 +8,9 @@
 #include "starform.h"
 #include "millerscalo.h"
 
+#define max(A,B) ((A) > (B) ? (A) : (B))
+#define min(A,B) ((A) < (B) ? (A) : (B))
+
 /*
  * Star forming module for GASOLINE
  */
@@ -29,8 +32,8 @@ void stfmInitialize(STFM *pstfm)
     stfm->dGmUnit = 0;
     stfm->dStarEff = 0.0;
     stfm->dMinGasMass = 0.0;
+    stfm->dMinMassFrac = 0.0;
     stfm->dMaxStarMass = 0.0;
-    
     *pstfm = stfm;
     }
 
@@ -42,7 +45,8 @@ void stfmInitialize(STFM *pstfm)
               d(ln(rhostar))/dt=cstar/tdyn
 
 */
-
+        /* seconds per year = 3600*24*365.25 */
+#define SEC_YR 3.15576e07;
 	/* mass of hydrogen atom in grams */
 #define MHYDR 1.67e-24
 	/* solar mass in grams */
@@ -50,56 +54,27 @@ void stfmInitialize(STFM *pstfm)
 
 void stfmInitConstants(STFM stfm) 
 {
-    const double dMRem=1.4;		/* mass of the supernovae
-					   remnant in solar masses. */
-    const double mSN=8.;	/* Mass above which stars supernova */
-    double eff;			/* fraction of gas mass going into
-				   FORMING stars */
-    double dEsn=1.e51;		/* Energy of Supernovae in ergs. */
     const double dHDenMin=0.1; /* minimum density for star
 				     formation in atoms/CC */
-    const double dPSNTime=2.e7;	/* exponential decay time for
-				   supernova in years */
-    double dSNTime;		/* decay time in system units */
-    const double dYield=0.02;	/* Fraction of metals returned to ISM
-				   per unit mass of star formation */
-    double dMgtMSN;		/* mass of stars greater than SN mass */
-    double dMtot;		/* total mass of stars */
-    double dNgtMSN;		/* number of stars greater than SN mass */
-    MSPARAM MSparam;
-    
+
     assert(stfm->dSecUnit != 0.0);
     assert(stfm->dGmPerCcUnit != 0.0);
     assert(stfm->dGmUnit != 0.0);
-
+    
     stfm->dCStar = 0.1;
     stfm->dTempMax = 3.0e4;
-    stfm->dSoftMin = 1.0e30;
+    stfm->dSoftMin = 1.0;
     
     stfm->dPhysDenMin = dHDenMin/stfm->dGmPerCcUnit*MHYDR;
-    dEsn /= stfm->dErgUnit;
-    
-    dSNTime = dPSNTime*3600*24*365.25/stfm->dSecUnit;
-    stfm->dSNFrac = exp(-stfm->dDeltaT/dSNTime);
-    
-    MSInitialize(&MSparam);
-    dNgtMSN = dMSCumNumber(MSparam, mSN);
-    dMtot = dMSCumMass(MSparam, 0.0);
-    dMgtMSN = dMSCumMass(MSparam, mSN);
-    
-    /* adjust for mass lost to SN, and mass gained from SN remnants */
-    eff = stfm->dStarEff;
-    stfm->dStarEff = eff*(1.0 - dMgtMSN/dMtot + dMRem/dMtot*dNgtMSN);
 
-    stfm->dESNdM = eff*stfm->dGmUnit/MSOLG/dMtot*dNgtMSN*dEsn/(1.0 -
-							     stfm->dStarEff);
-    stfm->dESNdM *= (1.0/stfm->dSNFrac - 1.0)*stfm->dSNFrac;
-    stfm->dYlddE = dYield/(stfm->dGmUnit/MSOLG/dMtot*dNgtMSN*dEsn);
     stfm->bInitialized = 1;
-    free(MSparam);
     }
 
-void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p, double dTime)
+void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
+		   double dTime, /* current time */
+		   int *nFormed, /* number of stars formed */
+		   double *dMassFormed,	/* mass of stars formed */
+		   int *nDeleted) /* gas particles deleted */
 {
     double tdyn;
     double tform;
@@ -111,27 +86,24 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p, double dTime)
     double T;
     CL *cl = &(pkd->cl);
     double dExp = 1.0/(1.0 + cl->z);
+    double dCosmoFac = dExp*dExp*dExp;
     PARTICLE starp;
     double dMprob;
     double dDeltaM;
-    
-    /*
-     * Adjust supernovea energy.
-     */
-    p->fSNRes *= stfm->dSNFrac;
-    if(p->fSNRes < 1.0e-4*stfm->dESNdM)
-	p->fSNRes = 0.0;
+    double l_jeans2;
+    int small_jeans = 0;
 
     /*
      * Is particle in convergent part of flow?
      */
+    
     if(p->divv >= 0.0)
 	return;
 
     /*
      * Determine dynamical time.
      */
-    tdyn = 1.0/sqrt(4.0*M_PI*dExp*dExp*dExp/p->fDensity);
+    tdyn = 1.0/sqrt(4.0*M_PI*p->fDensity/dCosmoFac);
 
     /*
      * Determine cooling time.
@@ -145,30 +117,29 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p, double dTime)
 	       - p->PdV*cl->dErgPerGmPerSecUnit);
     tcool /= cl->dSecUnit;
 
-    if(tcool < 0.0) return;
+    if(tcool < 0.0 && T > stfm->dTempMax) return;
     /*
      * Determine sound crossing time.
      */
     tsound = sqrt(0.25*p->fBall2)/p->c;
-    
-#if 0
-    if(p->fBall2 <= stfm->dSoftMin) /* XXX There should probably be a
-				       criteria such that stars form
-				       if the Jean's length is less
-				       than the softening.  C.F.
-				       the code in
-				       tipsy:starform_func() */
-	too_small = 1;
-#endif
+
+    /* 
+     * criteria that stars form if the Jean's length is less than the
+     * softening
+     */
+    l_jeans2 = M_PI*p->c*p->c/p->fDensity*dCosmoFac;
+    if (l_jeans2 < p->fSoft*stfm->dSoftMin) 
+        small_jeans = 1;
+
+    if (!small_jeans && tsound <= tdyn)
+        return;
+
     /*
      * Determine if this particle satisfies all conditions.
      */
-    if(!too_small && tsound <= tdyn)
-	return;
-
     
     if(p->fDensity < stfm->dOverDenMin ||
-       p->fDensity*cl->dComovingGmPerCcUnit/MHYDR < stfm->dPhysDenMin)
+       p->fDensity/dCosmoFac < stfm->dPhysDenMin)
 	return;
 
     if(tcool < 0.0 || tdyn > tcool || T < stfm->dTempMax)
@@ -183,49 +154,57 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p, double dTime)
     /*
      * Decrement mass of particle.
      */
-    dDeltaM = p->fGasMass*stfm->dStarEff;
-    p->fGasMass -= dDeltaM;
-    p->fSNRes /= 1.0 - stfm->dStarEff;
-    p->fSNRes += stfm->dESNdM*dDeltaM;
-    /*
-     * XXX also adjust metals and age.
-     */
+
+    dDeltaM = p->fMass*stfm->dStarEff;
+    p->fMass -= dDeltaM;
     /* 
-     * XXX do this deletion later.
+     * Note on number of stars formed:
+     * n = log(dMinGasMass/dInitMass)/log(1-dStarEff) = max no. stars 
+     * formed per gas particle, e.g. if min gas mass = 10% initial mass,
+     * dStarEff = 1/3, max no. stars formed = 6 (round up so gas mass 
+     * goes below min gas mass)
      */
-    if(p->fGasMass < stfm->dMinGasMass) {
-	pkdDeleteParticle(pkd, p - pkd->pStore);
+
+    starp = *p; 		/* grab copy before possible deletion */
+
+    if(p->fMass < stfm->dMinGasMass) {
+	(*nDeleted)++;
+	pkdDeleteParticle(pkd, p);
 	}
-    /*
-     * Calculate metalicity, and add into star part of metalicity.
-     * Include Fe?
-     */
+
     /*
      * form star
      */
-    if(p->fGasMass < stfm->dMinGasMass
-       || p->fMass - p->fGasMass >  stfm->dMaxStarMass) {
-	starp = *p;
-	if(p->fGasMass < stfm->dMinGasMass)
-	    starp.fMass = p->fMass;
-	else
-	    starp.fMass = p->fMass - p->fGasMass;
-	p->fMass = p->fGasMass;	/* reduce mass of gas particle */
-	starp.fTimeForm = dTime;
-	pkdNewParticle(pkd, starp);
-	}
-    }
 
-void pkdFormStars(PKD pkd, STFM stfm, double dTime)
+    starp.fMass = dDeltaM;
+    starp.fTimeForm = dTime;
+    starp.fBallMax = 0.0;
+    TYPEReset(&starp, TYPE_GAS);
+    TYPESet(&starp, TYPE_STAR);
+    TYPEReset(&starp, TYPE_NbrOfACTIVE); /* just a precaution */
+    
+    (*nFormed)++;
+    *dMassFormed += dDeltaM;
+    
+    pkdNewParticle(pkd, starp);    
+
+}
+
+void pkdFormStars(PKD pkd, STFM stfm, double dTime, int *nFormed,
+		  double *dMassFormed, int *nDeleted)
 {
     int i;
     PARTICLE *p;
     int n = pkdLocal(pkd);
     
+    *nFormed = 0;
+    *nDeleted = 0;
+    *dMassFormed = 0.0;
+    
     for(i = 0; i < n; ++i) {
         p = &pkd->pStore[i];
 	if(pkdIsGas(pkd, p))
-	    stfmFormStars(stfm, pkd, p, dTime);
+	    stfmFormStars(stfm, pkd, p, dTime, nFormed, dMassFormed, nDeleted);
 	}
     }
 

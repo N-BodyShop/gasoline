@@ -657,6 +657,39 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bFastGas = 1;
 	prmAddParam(msr->prm,"bFastGas",0,&msr->param.bFastGas,sizeof(int),
 				"Fgas","<Fast Gas Method> = 1");
+#ifdef STARFORM
+	msr->param.bStarForm = 0;
+	prmAddParam(msr->prm,"bStarForm",0,&msr->param.bStarForm,sizeof(int),
+				"stfm","<Star Forming> = 0");
+	msr->param.bFeedBack = 0;
+	prmAddParam(msr->prm,"bFeedBack",0,&msr->param.bFeedBack,sizeof(int),
+				"fdbk","<Stars provide feedback> = 0");
+	stfmInitialize(&msr->param.stfm);
+	msr->param.stfm->dOverDenMin = 2.0;
+	prmAddParam(msr->prm,"dOverDenMin", 2, &msr->param.stfm->dOverDenMin,
+		    sizeof(double), "stODmin",
+		    "<Minimum overdensity for forming stars> = 0");
+	msr->param.stfm->dStarEff = .3333;
+	prmAddParam(msr->prm,"dStarEff", 2, &msr->param.stfm->dStarEff,
+		    sizeof(double), "stEff",
+		    "<Fraction of gas converted into stars per timestep> = .3333");
+	msr->param.stfm->dMinMassFrac = .1;
+	prmAddParam(msr->prm,"dMinMassFrac", 2, &msr->param.stfm->dMinMassFrac,
+		    sizeof(double), "stMinFrac",
+		    "<Minimum fraction of average mass of neighbour particles required for gas particles to avoid deletion> = .1");
+	msr->param.stfm->dMinGasMass = 0.0;
+	prmAddParam(msr->prm,"dMinGasMass", 2, &msr->param.stfm->dMinGasMass,
+		    sizeof(double), "stMinGas",
+		    "<Minimum mass of a gas particle> = 0.0");
+	msr->param.stfm->dMaxStarMass = 0.0;
+	prmAddParam(msr->prm,"dMaxStarMass", 2, &msr->param.stfm->dMaxStarMass,
+		    sizeof(double), "stMaxStarMass",
+		    "<Maximum amount of star mass a hybrid particle can contain = 0.0");
+
+/* supernova constants */
+	fbInitialize(&msr->param.fb);
+
+#endif /* STARFORM */
 #endif /* GASOLINE */
 #ifdef GLASS
 	msr->param.dGlassDamper = 0.0;
@@ -998,6 +1031,38 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		/* code comoving density --> g per cc = msr->param.dGmPerCcUnit (1+z)^3 */
 		msr->param.dComovingGmPerCcUnit = msr->param.dGmPerCcUnit;
 		}
+#ifdef STARFORM
+	    
+	if(msr->param.bStarForm) {
+	    assert (prmSpecified(msr->prm, "dMsolUnit") &&
+		    prmSpecified(msr->prm, "dKpcUnit"));
+
+	    assert(msr->param.iGasModel == GASMODEL_COOLING ||
+		   msr->param.iGasModel == GASMODEL_COOLING_NONEQM);
+
+	    assert(msr->param.stfm->dStarEff > 0 && 
+                msr->param.stfm->dStarEff < 1);
+	    assert(msr->param.stfm->dMinMassFrac > 0 && 
+                msr->param.stfm->dMinMassFrac < 1);
+	    assert(msr->param.stfm->dMinGasMass > 0);
+
+	    msr->param.stfm->dSecUnit = msr->param.dSecUnit;
+	    msr->param.stfm->dGmPerCcUnit = msr->param.dGmPerCcUnit;
+	    msr->param.stfm->dGmUnit = msr->param.dMsolUnit*MSOLG;
+	    msr->param.stfm->dErgUnit =
+		GCGS*pow(msr->param.dMsolUnit*MSOLG, 2.0)
+		/msr->param.dKpcUnit*KPCCM;
+	    msr->param.stfm->dDeltaT = msr->param.dDelta;
+
+	    stfmInitConstants(msr->param.stfm) ;
+
+	    msr->param.fb->dSecUnit = msr->param.dSecUnit;
+	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
+	    msr->param.fb->dErgPerGmUnit = msr->param.dErgPerGmUnit;
+	    }
+	
+	    
+#endif /* STARFORM */
 #endif /* GASOLINE */
 
 #ifdef ROT_FRAME
@@ -1228,6 +1293,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef GASOLINE
 	fprintf(fp," GASOLINE");
 #endif
+#ifdef STARFORM
+	fprintf(fp," STARFORM");
+#endif
 #ifdef SHOCKTRACK
 	fprintf(fp," SHOCKTRACK");
 #endif
@@ -1384,6 +1452,15 @@ void msrLogParams(MSR msr,FILE *fp)
         fprintf(fp," dSNTMax: %g",msr->param.dSNTMax);
 	fprintf(fp," dSNMetalCut: %g",msr->param.dSNMetalCut);
 	fprintf(fp," dSNHeatFraction: %g",msr->param.dSNHeatFraction);
+#endif
+#ifdef STARFORM
+	fprintf(fp,"\n# Star Formation: bStarForm: %d",msr->param.bStarForm);
+	fprintf(fp," bFeedBack: %d",msr->param.bFeedBack);	
+	fprintf(fp," dOverDenMin: %g",msr->param.stfm->dOverDenMin);
+	fprintf(fp," dStarEff: %g",msr->param.stfm->dStarEff);
+	fprintf(fp," dMinMassFrac: %g",msr->param.stfm->dMinMassFrac);
+	fprintf(fp," dMinGasMass: %g",msr->param.stfm->dMinGasMass);
+	fprintf(fp," dMaxStarMass: %g",msr->param.stfm->dMaxStarMass);
 #endif
 	fprintf(fp,"\n# bPatch: %d",msr->param.bPatch);
 	fprintf(fp," dOrbFreq: %g",msr->param.dOrbFreq);
@@ -2431,6 +2508,9 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.bGeometric = msr->param.bGeometric;
 	in.smf.bCannonical = msr->param.bCannonical;
 	in.smf.bGrowSmoothList = 0;
+#endif
+#ifdef STARFORM
+        in.smf.dMinMassFrac = msr->param.stfm->dMinMassFrac;
 #endif
 #ifdef COLLISIONS
 	in.smf.dCentMass = msr->param.dCentMass; /* for Hill sphere checks */
@@ -4243,7 +4323,9 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 			    msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
 			    }
 			  else {
-                            if (msr->param.bViscosityLimiter || msr->param.bShockTracker) 
+                            if (msr->param.bViscosityLimiter
+				|| msr->param.bShockTracker
+				|| msr->param.bStarForm) 
 			      msrReSmooth(msr, dTime, SMX_DIVVORT, 1);
 			    msrUpdateShockTracker(msr, dDelta);
   			    msrSphViscosityLimiter(msr, dTime);
@@ -4353,8 +4435,10 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			       msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
 			       } 
 			   else {
-			       if (msr->param.bViscosityLimiter || msr->param.bShockTracker)
-					   msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+			       if (msr->param.bViscosityLimiter
+				   || msr->param.bShockTracker
+				   || msr->param.bStarForm)
+				   msrReSmooth(msr,dTime,SMX_DIVVORT,1);
 			       msrUpdateShockTracker(msr, dDelta);
 			       msrSphViscosityLimiter(msr, dTime);
 			       msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
@@ -4569,7 +4653,10 @@ void msrTopStepKDK(MSR msr,
 			if (msr->param.bVDetails)
 			  printf("Smooth Active Particles: %d\n",msr->nSmoothActive);
 
-			if (msr->param.bViscosityLimiter || msr->param.bBulkViscosity || msr->param.bShockTracker) {
+			if (msr->param.bViscosityLimiter
+			    || msr->param.bBulkViscosity
+			    || msr->param.bShockTracker
+			    || msr->param.bStarForm) {
 			  msrReSmooth(msr,dTime,SMX_DIVVORT,1);
 			}
 			msrSphViscosityLimiter(msr, dTime);
@@ -4650,6 +4737,10 @@ msrAddDelParticles(MSR msr)
 
     pstNewOrder(msr->pst,pNewOrder,sizeof(*pNewOrder)*msr->nThreads,NULL,NULL);
 
+    if (msr->param.bVDetails)
+	printf("New numbers of particles: %d gas %d dark %d star\n",
+	       msr->nGas, msr->nDark, msr->nStar);
+    
     in.nGas = msr->nGas;
     in.nDark = msr->nDark;
     in.nStar = msr->nStar;
@@ -4820,7 +4911,8 @@ void msrInitSph(MSR msr,double dTime)
 		}
 
 	if (msrDoGas(msr)) {
-	        if (msr->param.bViscosityLimiter || msr->param.bBulkViscosity) {
+	        if (msr->param.bViscosityLimiter || msr->param.bBulkViscosity
+		    || msr->param.bStarForm) {
 		        msrReSmooth(msr,dTime,SMX_DIVVORT,1);
 			}
 		msrSphViscosityLimiter(msr, dTime);
@@ -5047,6 +5139,108 @@ void msrInitCooling(MSR msr)
 	}
 
 #endif /* GASOLINE */
+
+void msrFormStars(MSR msr, double dTime)
+{
+#ifdef STARFORM
+    struct inFormStars in;
+    struct outFormStars outFS;
+    struct inFeedback inFB;
+    struct outFeedback outFB;
+    double dMass = -1.0;
+    int i;
+    int iDum;
+
+    if(msr->param.bStarForm == 0)
+	return;
+    
+    in.dTime = dTime;
+    in.stfm = *msr->param.stfm;
+    inFB.dTime = dTime;
+    inFB.dDelta = msr->param.dDelta;
+    inFB.fb  = *msr->param.fb;
+    
+    if (msr->param.bVDetails) printf("Form Stars ... ");
+
+    dMass = msrMassCheck(msr, -1.0, "Form Stars");
+    
+    msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE);
+    msrDomainDecomp(msr, 0, 1);
+    msrBuildTree(msr,1,dMass,1);
+    pstFormStars(msr->pst, &in, sizeof(in), &outFS, NULL);
+    if (msr->param.bVDetails)
+	printf("%d Stars formed with mass %g, %d gas deleted\n",
+	       outFS.nFormed, outFS.dMassFormed, outFS.nDeleted);
+    /* there are two gas particle deletion criteria:
+
+       1) in pstFormStars: gas particles with mass less than
+       stfm->dMinGasMass are marked for deletion
+
+       2) in DeleteGas (see smoothfcn.c): gas particles with 
+       mass less than dMinMassFrac of the average mass of neighbouring
+       gas particles are also marked for deletion 
+
+       - eh, Feb 7/01*/
+
+    /*
+     * Find low mass gas particles and mark them for deletion.
+     */
+    if (msr->param.bVDetails) printf("Delete Gas ...\n");
+    msrSmooth(msr, dTime, SMX_DELETE_GAS, 0);
+    
+    /*
+     * Record star formation events XXX - not done.
+     * NB.  At the moment each star is a star formation event.
+     */
+      
+    /*
+     * Distribute mass, and metals of deleted gas particles.
+     */
+    if (msr->param.bVDetails) printf("Distribute Deleted Gas ...\n");
+    msrActiveType(msr, TYPE_DELETED, TYPE_SMOOTHACTIVE);
+    msrSmooth(msr, dTime, SMX_DIST_DELETED_GAS, 1);
+    /*
+     * adjust particle numbers
+     */
+    msrAddDelParticles(msr);
+    msrMassCheck(msr, dMass, "Form stars: after particle adjustment");
+    /*
+     * Calculate energy of SN for any stars for the next timestep.  This
+     * requires looking at past star forming events.  Also calculate
+     * mass loss.
+     */
+    if(msr->param.bFeedBack) {
+	if (msr->param.bVDetails) printf("Calculate Feedback ...\n");
+	pstFeedback(msr->pst, &inFB, sizeof(inFB),
+		    &outFB, &iDum);
+	if(msr->param.bVDetails) {
+	    printf("Feedback totals: mass, energy, metalicity\n");
+	    for(i = 0; i < FB_NFEEDBACKS; i++)
+		printf("feedback %d: %g %g %g\n", i,
+		       outFB.fbTotals[i].dMassLoss,
+		       outFB.fbTotals[i].dEnergy,
+		       outFB.fbTotals[i].dMassLoss != 0.0 ?
+		       outFB.fbTotals[i].dMetals
+		       /outFB.fbTotals[i].dMassLoss : 0.0);
+	    }
+
+
+	/*
+	 * spread mass lost from SN, (along with energy and metals)
+	 * to neighboring gas particles.
+	 */
+	if (msr->param.bVDetails) printf("Distribute SN Energy ...\n");
+	msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
+	msrBuildTree(msr,1,-1.0,1);
+
+	msrResetType(msr, TYPE_STAR, TYPE_SMOOTHDONE);
+	msrActiveType(msr, TYPE_STAR, TYPE_SMOOTHACTIVE);
+	assert(msr->nSmoothActive == msr->nStar);
+	msrSmooth(msr, dTime, SMX_DIST_SN_ENERGY, 1);
+	msrMassCheck(msr, dMass, "Form stars: after feedback");
+	}
+#endif
+    }
 
 #ifdef GLASS
 

@@ -1,3 +1,5 @@
+#ifndef MILLERSCALO_HINCLUDED
+#define MILLERSCALO_HINCLUDED
 /*
     Uses the 3 segment power law fit for the Miller-Scalo IMF
     (Ap.J. Supp., 41,1979).
@@ -23,3 +25,4 @@ double dMSIMF(MSPARAM p, double mass);
 double dMSCumNumber(MSPARAM p, double mass);
 double dMSCumMass(MSPARAM p, double mass);
 
+#endif

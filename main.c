@@ -250,8 +250,14 @@ int main(int argc,char **argv)
 								  &dWMax,&dIMax,&dEMax,&iSec);
 				else
 #endif
-					msrTopStepKDK(msr,iStep-1,dTime,msrDelta(msr),0,0,1,
-								  &dMultiEff,&dWMax,&dIMax,&dEMax,&iSec);
+				{
+				    msrFormStars(msr, dTime);
+				    msrTopStepKDK(msr,iStep-1,dTime,
+						  msrDelta(msr),0,0,1,
+						  &dMultiEff,&dWMax,&dIMax,
+						  &dEMax,&iSec);
+				    }
+				
 				msrRungStats(msr);
 				msrCoolVelocity(msr,dTime,dMass);	/* Supercooling if specified */
 				msrMassCheck(msr,dMass,"After CoolVelocity in KDK");
@@ -275,6 +281,7 @@ int main(int argc,char **argv)
 			else {
 				lSec = time(0);
 				msr->bDoneDomainDecomp = 0;
+				msrFormStars(msr, dTime);
 				msrTopStepDKD(msr,iStep-1,dTime,msrDelta(msr),&dMultiEff);
 				msrRungStats(msr);
 				msrCoolVelocity(msr,dTime,dMass); /* Supercooling if specified */

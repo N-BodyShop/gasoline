@@ -4,16 +4,24 @@
 #include <stdlib.h>
 #include "millerscalo.h"
 
+/* Miller-Scalo IMF (Miller & Scalo, Ap.J. Supp., 41, 513, 1979) in
+   stars per unit logarithmic mass.  Divide by M (mass) for IMF in
+   stars per unit mass.  Also IMF is defined per yer per pc^2,
+   integrated over a cylinder that extends "several hundred parsecs on
+   either side of the plane of the galaxy" */
+
 void MSInitialize(MSPARAM *pms) 
 {
     MSPARAM ms;
+    
     struct MillerScaloContext initms = 
 	{ 	42.0,	-0.4, .1, /* parameters from Ap.J. Supp., 41,1979 */
 		42.0,	-1.5, 1.0,
 		240.0,	-2.3, 10.0,
 		100.0};
-    
+
     ms = (MSPARAM) malloc(sizeof(struct MillerScaloContext));
+    
     assert(ms != NULL);
     *ms = initms;
     *pms = ms;
@@ -36,6 +44,7 @@ double dMSIMF(MSPARAM p, double mass)
     return dIMF;
     }
 
+
 /*
  * Cumulative number of stars with mass greater than "mass".
  */
@@ -52,7 +61,7 @@ double dMSCumNumber(MSPARAM p, double mass)
     if(mass > p->m2) {
 	dCumN += p->a2/p->b2*(pow(p->m3, p->b2) - pow(mass, p->b2));
 	return dCumN;
-	}
+    }
     else {
 	dCumN += p->a2/p->b2*(pow(p->m3, p->b2) - pow(p->m2, p->b2));
 	}
@@ -103,21 +112,40 @@ int
 main(int argc, char **argv)
 {
     int nsamp;
-    int i;
+    int i, imax;
     double dlgm;
     double lgm;
     double Ntot;
     double Mtot;
+    double dMassT1, dMassT2, dMass, part, sum;
     
+    MSPARAM MSparam;
+    MSInitialize (&MSparam);
+
+    sum = 0;
+    dMassT1 = 3;
+    dMassT2 = 8;
+    imax = 101;
+/*    for (i = 0; i < imax; i++) {
+        dMass = dMassT1 + i*(dMassT2-dMassT1)/(float) imax;
+        part = dMSIMFSec (MSparam, dMass);
+        printf ("%g %g\n", dMass, part);
+        sum += part*0.05;
+    }
+    printf ("sum = %g\n", sum);
+*/
+    printf ("number SN Ia = %g\n", dNSNIa (MSparam, dMassT1, dMassT2));
+    printf ("mass in SN Ia %g\n", dMSNIa (MSparam, dMassT1, dMassT2));
+
     assert(argc == 2);
     
     nsamp = atoi(argv[1]);
     dlgm = (2.0 + 1.0)/nsamp;
     
-    Ntot = dMSCumNumber(&MSparam, 0.0);
-    Mtot = dMSCumMass(&MSparam, 0.0);
+    Ntot = dMSCumNumber(MSparam, 0.0);
+    Mtot = dMSCumMass(MSparam, 0.0);
     
-    printf("%g %g\n", Ntot, Mtot);
+    printf("Ntot, Mtot = %g %g\n", Ntot, Mtot);
     
     for(i = 0; i < nsamp; i++) {
 	double mass;
@@ -125,9 +153,11 @@ main(int argc, char **argv)
 	lgm = -1 + i*dlgm;
 
 	mass = pow(10.0, lgm);
-	printf("%g %g %g %g\n", mass, dMSIMF(&MSparam, mass),
-	       dMSCumNumber(&MSparam, mass)/Ntot,
-	       dMSCumMass(&MSparam, mass)/Mtot);
+
+
+	printf("%g %g %g %g\n", mass, dMSIMF(MSparam, mass),
+	       dMSCumNumber(MSparam, mass),
+	       dMSCumMass(MSparam, mass));
 	}
     return 0;
     }

@@ -11,7 +11,9 @@ EXE = gasoline
 #CODEDEF = -DCOLLISIONS -DSLIDING_PATCH
 #CODEDEF = -DSUPERCOOL
 #CODEDEF = -DGROWMAS
-CODEDEF = -DGASOLINE -DSUPERNOVA
+#CODEDEF = -DGASOLINE
+#CODEDEF = -DSUPERNOVA
+#CODEDEF = -DSTARFORM
 #CODEDEF = -DDEBUG -HSHRINK
 
 #ev6
@@ -20,7 +22,7 @@ CODEDEF = -DGASOLINE -DSUPERNOVA
 
 #CC = cc
 # -DSUPERNOVA
-#CODEDEF = -DGASOLINE -DSHOCKTRACK
+CODEDEF = -DGASOLINE  -DSTARFORM
 
 #
 #       NULL defines
@@ -153,7 +155,9 @@ KSR_LIBMDL		= $(KSR_MDL)/mdl.o -lm -lrpc
 
 OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
-	  smoothfcn.o collision.o qqsmooth.o cooling.o cosmo.o romberg.o
+	  smoothfcn.o collision.o qqsmooth.o cooling.o cosmo.o romberg.o \
+	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
+	  startime.o
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 
@@ -194,7 +198,7 @@ pvm:
 	mv -f $(EXE) $(XDIR)
 
 pthread:
-	cd $(PTHREAD_MDL); make
+	cd $(PTHREAD_MDL); make "CC=$(CC) CFLAGS=$(CFLAGS)"
 	make $(EXE) "CFLAGS=$(PTHREAD_CFLAGS)" "LD_FLAGS=$(PTHREAD_LD_FLAGS)"\
 		"MDL=$(PTHREAD_MDL)" "XOBJ=$(PTHREAD_XOBJ)" "LIBMDL=$(PTHREAD_LIBMDL)"
 
@@ -267,8 +271,16 @@ qqsmooth.o: smooth.h pkd.h floattype.h smoothfcn.h
 smooth.o: smooth.h pkd.h floattype.h smoothfcn.h
 smoothfcn.o: smoothfcn.h pkd.h floattype.h ssdefs.h ssio.h collision.h
 walk.o: walk.h pkd.h floattype.h
-cooling.o: cooling.h
-
+cooling.o: pkd.h floattype.h cooling.h
+feedback.o: pkd.h floattype.h cooling.h feedback.h supernova.h startime.h
+feedback.o: millerscalo.h
+millerscalo.o: millerscalo.h
+starform.o: pkd.h floattype.h cooling.h starform.h millerscalo.h
+startime.o: startime.h
+supernova.o: pkd.h floattype.h cooling.h feedback.h supernova.h startime.h
+supernova.o: millerscalo.h supernovaia.h
+supernovaia.o: supernova.h startime.h millerscalo.h feedback.h pkd.h
+supernovaia.o: floattype.h cooling.h supernovaia.h
 
 
 

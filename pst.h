@@ -10,6 +10,11 @@
 #include "collision.h"
 #endif /* COLLISIONS */
 
+#ifdef STARFORM
+#include "starform.h"
+#include "feedback.h"
+#endif
+
 typedef struct lclBlock {
 	char *pszDataPath;
 	PKD	pkd;
@@ -162,7 +167,9 @@ enum pst_service {
       PST_COUNTSUPERNOVA,
       PST_ADDSUPERNOVA,
       PST_CLEARTIMER,
-      PST_BALLMAX
+      PST_BALLMAX,
+      PST_FORMSTARS,
+      PST_FEEDBACK
       };
 
 void pstAddServices(PST,MDL);
@@ -1056,6 +1063,38 @@ void pstInitCooling(PST,void *,int,void *,int *);
 
 void pstInitUV(PST,void *,int,void *,int *);
 
+#ifdef STARFORM
+/* PST_FORMSTARS */
+struct inFormStars
+{
+    struct stfmContext stfm;
+    double dTime;
+    };
+
+struct outFormStars 
+{
+    int nFormed;
+    int nDeleted;
+    double dMassFormed;
+    };
+
+void pstFormStars(PST,void *,int,void *,int *);
+
+struct inFeedback
+{
+    struct fbContext fb;
+    double dTime;
+    double dDelta;
+    };
+
+struct outFeedback
+{
+    FBEffects fbTotals[FB_NFEEDBACKS];
+    };
+
+void pstFeedback(PST,void *,int,void *,int *);
+
+#endif
 #endif
 
 /* PST_GROWMASS */
@@ -1066,8 +1105,6 @@ struct inGrowMass
     };
 
 void pstGrowMass(PST,void *,int,void *,int *);
-
-#endif
 
 /* PST_CLEARTIMER */
 struct inClearTimer 
@@ -1088,4 +1125,5 @@ struct inKickVpred {
 	double z;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
+#endif
 #endif

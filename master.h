@@ -244,5 +244,6 @@ void msrMarkEncounters(MSR msr, double dTmax);
 void msrLinearKDK(MSR msr, double dStep, double dTime, double dDelta);
 void msrDoCollisions(MSR msr, double dTime, double dDelta);
 #endif /* COLLISIONS */
+void msrFormStars(MSR msr, double dTime);
 
 #endif

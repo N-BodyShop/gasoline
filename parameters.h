@@ -147,6 +147,10 @@ struct parameters {
         double dSNTMax;
 	double dSNMetalCut;
 	double dSNHeatFraction;
+	int    bStarForm;
+	int    bFeedBack;
+	STFM   stfm;
+	FB     fb;
 #ifdef GLASS
 	/*
 	 ** Additional parameters for GLASS.

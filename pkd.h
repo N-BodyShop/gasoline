@@ -92,6 +92,11 @@ typedef struct particle {
 #endif
 	FLOAT fMetals;
 	FLOAT fTimeForm;
+#ifdef STARFORM
+        FLOAT fESNrate;
+        FLOAT fMSN;
+	FLOAT fSNMetals;
+#endif
 #endif
 #ifdef COLLISIONS
 	FLOAT w[3];			/* spin vector */
@@ -139,6 +144,10 @@ typedef struct particle {
 #define TYPE_STAR              (1<<10)
 #define TYPE_SUPERCOOL         (1<<11)
 
+/* Particle marked for deletion.  Will be deleted in next
+   msrAddDelParticles(); */
+#define TYPE_DELETED           (1<<12)
+
 /* Combination Masks */
 #define TYPE_ALLACTIVE			(TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
 #define TYPE_ALL				(TYPE_GAS|TYPE_DARK|TYPE_STAR)
@@ -178,6 +187,9 @@ typedef struct chkParticle {
 #ifdef GASOLINE
 	FLOAT u;
 	FLOAT fMetals;
+#endif
+#ifdef STARFORM
+        FLOAT fTimeForm;
 #endif
 #ifdef COLLISIONS
 	FLOAT w[3];
@@ -483,7 +495,7 @@ void pkdCoolVelocity(PKD,int,double,double,double);
 void pkdGrowMass(PKD pkd,int nGrowMass, double dDeltaM);
 void pkdInitAccel(PKD);
 int pkdOrdWeight(PKD,int,int,int,int,int *,int *);
-void pkdDeleteParticle(PKD pkd, int i);
+void pkdDeleteParticle(PKD pkd, PARTICLE *p);
 void pkdNewParticle(PKD pkd, PARTICLE p);
 int pkdResetTouchRung(PKD pkd, unsigned int iTestMask, unsigned int iSetMask);
 int pkdActiveExactType(PKD pkd, unsigned int iFilterMask, unsigned int iTestMask, unsigned int iSetMask);

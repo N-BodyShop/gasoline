@@ -340,6 +340,16 @@ void pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inSmooth),0);
 #endif
 #endif /* COLLISIONS */
+#ifdef STARFORM
+	mdlAddService(mdl,PST_FORMSTARS,pst,
+		      (void (*)(void *,void *,int,void *,int *)) pstFormStars,
+		      sizeof(struct inFormStars),sizeof(struct outFormStars));
+	
+	mdlAddService(mdl,PST_FEEDBACK,pst,
+		      (void (*)(void *,void *,int,void *,int *))
+		      pstFeedback, sizeof(struct inFeedback),
+		      sizeof(struct outFeedback));
+#endif
 	mdlAddService(mdl,PST_CLEARTIMER,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstClearTimer,
 				  sizeof(struct inClearTimer),0);
@@ -4759,3 +4769,58 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 #endif
 #endif /* NEED_VPRED */
+
+#ifdef STARFORM
+void
+pstFormStars(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inFormStars *in = vin;
+	struct outFormStars *out = vout;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inFormStars));
+	if (pst->nLeaves > 1) {
+	    struct outFormStars fsStats;
+	    
+		mdlReqService(pst->mdl,pst->idUpper,PST_FORMSTARS,in,nIn);
+		pstFormStars(pst->pstLower,in,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,&fsStats,NULL);
+		out->nFormed += fsStats.nFormed;
+		out->nDeleted += fsStats.nDeleted;
+		out->dMassFormed += fsStats.dMassFormed;
+		}
+	else {
+		pkdFormStars(pst->plcl->pkd,&in->stfm, in->dTime,
+			     &out->nFormed, &out->dMassFormed, &out->nDeleted);
+		}
+	if (pnOut) *pnOut = sizeof(struct outFormStars);
+	}
+
+void
+pstFeedback(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inFeedback *in = vin;
+	struct outFeedback *out = vout;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inFeedback));
+	if (pst->nLeaves > 1) {
+	    FBEffects fbTotals[FB_NFEEDBACKS];
+	    int i;
+
+	    mdlReqService(pst->mdl,pst->idUpper,PST_FEEDBACK,in,nIn);
+	    pstFeedback(pst->pstLower,in,nIn, vout, pnOut);
+	    mdlGetReply(pst->mdl,pst->idUpper,fbTotals, NULL);
+	    for(i = 0; i < FB_NFEEDBACKS; i++){
+		out->fbTotals[i].dMassLoss += fbTotals[i].dMassLoss;
+		out->fbTotals[i].dEnergy += fbTotals[i].dEnergy;
+		out->fbTotals[i].dMetals += fbTotals[i].dMetals;
+		}
+	    }
+	else {
+		pkdFeedback(pst->plcl->pkd,&in->fb, in->dTime,
+			    in->dDelta, out->fbTotals);
+		}
+	if (pnOut) *pnOut = FB_NFEEDBACKS*sizeof(FBEffects);
+	}
+
+#endif
+

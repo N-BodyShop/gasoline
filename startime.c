@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include <math.h>
+#include <limits.h>
 #include <assert.h>
 #include <stdlib.h>
-#include "pkd.h"
-#include "millerscalo.h"
-#include "supernova.h"
 #include "startime.h"
 
 #define max(A,B) ((A) > (B) ? (A) : (B))
@@ -28,16 +26,10 @@ void PadovaInitialize(PDVAPARAM *ppdva)
     }
 
 
-void PadovaCoefInit (PDVAPARAM ppdva, SN sn, double dMetals)
+void PadovaCoefInit (PDVAPARAM ppdva, double dMetals)
 {
     double logZ;
-    double Z;
-    double dMOx, dXOx;
-/* calculate oxygen mass from Fe mass from Raiteri, et al, 1996 */
-
-    dMOx = sn->dMOxconst* pow(dMetals/sn->dMFeconst, sn->dMOxexp/sn->dMFeexp);
-    dXOx = dMOx/p->fMass;
-    Z = ppdva->zsol*dXOx/ppdva->xoxsol;
+    double Z = dMetals;
     
     Z = min(Z, ppdva->zmax);
     Z = max(Z, ppdva->zmin);
@@ -47,7 +39,7 @@ void PadovaCoefInit (PDVAPARAM ppdva, SN sn, double dMetals)
     ppdva->a2 = ppdva->a20 + ppdva->a21*logZ + ppdva->a22*logZ*logZ;
 }
 
-double dSTLtimeMStar (PDVAPARAM ppdva, SN sn, double dStarMass,
+double dSTLtimeMStar (PDVAPARAM ppdva, double dStarMass,
 		      double dMetals) 
 {
     /* finds stellar lifetime in yr corresponding to stellar 
@@ -55,15 +47,14 @@ double dSTLtimeMStar (PDVAPARAM ppdva, SN sn, double dStarMass,
     double logStarMass, logLtime, Ltime;
     
     logStarMass = log10(dStarMass);
-    PadovaCoefInit (ppdva, sn, dMetals);
+    PadovaCoefInit (ppdva, dMetals);
     logLtime = ppdva->a0 + ppdva->a1 *logStarMass + ppdva->a2*logStarMass*logStarMass;
     Ltime = pow(10.0, logLtime);
     
     return Ltime;
 }
 
-double dSTMStarLtime (PDVAPARAM ppdva, SN sn, double dStarLtime,
-		      double dMetals) 
+double dSTMStarLtime (PDVAPARAM ppdva, double dStarLtime, double dMetals) 
 {
     /* finds stellar mass in solar masses corresponding to stellar 
        lifetime dStarTime in yr */
@@ -71,9 +62,9 @@ double dSTMStarLtime (PDVAPARAM ppdva, SN sn, double dStarLtime,
     double a, b, c;
     
     if(dStarLtime <= 0.0)	/* Time can be zero */
-	return FLOAT_MAXVAL;
+	return DBL_MAX;
     
-    PadovaCoefInit (ppdva, sn, dMetals);
+    PadovaCoefInit (ppdva, dMetals);
     c = ppdva->a0;
     c -= log10(dStarLtime);
     b = ppdva->a1;

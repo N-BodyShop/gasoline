@@ -109,7 +109,7 @@ typedef struct {
    double     Y_eMAX;
 
    MDL        mdl; /* For diag/debug outputs */
-   void       *p; /* particle pointer for debug */
+   struct particle *p; /* particle pointer needed for SN feedback */
    
 } CL;
 

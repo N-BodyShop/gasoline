@@ -183,6 +183,7 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	int i;
 	unsigned int qiActive;
 
+	assert(TYPETest(p,TYPE_GAS));
 	ih2 = 4.0/(BALL2(p));
 	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
 	if (TYPETest(p,TYPE_ACTIVE)) {
@@ -192,6 +193,7 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			KERNEL(rs,r2);
 			rs *= fNorm;
 			q = nnList[i].pPart;
+	assert(TYPETest(q,TYPE_GAS));
 			p->fDensity += rs*q->fMass;
 			if (TYPETest(q,TYPE_DensZeroed)) 
 				q->fDensity += rs*p->fMass;
@@ -209,6 +211,7 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			KERNEL(rs,r2);
 			rs *= fNorm;
 			q = nnList[i].pPart;
+	assert(TYPETest(q,TYPE_GAS));
 			if (TYPETest(p,TYPE_DensZeroed)) 
 				p->fDensity += rs*q->fMass;
 			else {
@@ -1355,6 +1358,8 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT fNorm,dv,vFac,a2;
 	int i;
  
+	mdlassert(smf->pkd->mdl, TYPETest(p,TYPE_GAS));
+	
 	pDensity = p->fDensity;
 	pMass = p->fMass;
 	ih2 = 4.0/BALL2(p);
@@ -1366,6 +1371,7 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		/* p active */
 		for (i=0;i<nSmooth;++i) {
 	        q = nnList[i].pPart;
+		mdlassert(smf->pkd->mdl, TYPETest(q,TYPE_GAS));
 	        r2 = nnList[i].fDist2*ih2;
 			DKERNEL(rs1,r2);
 			rs1 *= fNorm;
@@ -1429,6 +1435,7 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		/* p not active */
 		for (i=0;i<nSmooth;++i) {
 	        q = nnList[i].pPart;
+		mdlassert(smf->pkd->mdl, TYPETest(q,TYPE_GAS));
 			if (!TYPEQueryACTIVE(q)) continue; /* neither active */
 
 	        r2 = nnList[i].fDist2*ih2;
@@ -1850,6 +1857,168 @@ void HKViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	}
 
+#ifdef STARFORM
+void initDistDeletedGas(void *p1)
+{
+    /*
+     * Warning: kludgery.  We need to accumulate mass in the cached
+     * particle, but we also need to keep the original mass around.
+     * Lets us another (hopefully unused) field to hold the original
+     * mass.
+     */
+    ((PARTICLE *)p1)->PdV = ((PARTICLE *)p1)->fMass;
+
+    /*
+     * Zero out accumulated quantities.
+     */
+    ((PARTICLE *)p1)->v[0] = 0.0;
+    ((PARTICLE *)p1)->v[1] = 0.0;
+    ((PARTICLE *)p1)->v[2] = 0.0;
+    ((PARTICLE *)p1)->u = 0.0;
+    ((PARTICLE *)p1)->fMetals = 0.0;
+    }
+
+void combDistDeletedGas(void *p1,void *p2)
+{
+    /*
+     * See kudgery notice above.
+     */
+    FLOAT fAddedMass = ((PARTICLE *)p2)->fMass - ((PARTICLE *)p2)->PdV;
+    
+    ((PARTICLE *)p1)->fMass += fAddedMass;
+    ((PARTICLE *)p1)->v[0] += ((PARTICLE *)p2)->v[0];
+    ((PARTICLE *)p1)->v[1] += ((PARTICLE *)p2)->v[1];
+    ((PARTICLE *)p1)->v[2] += ((PARTICLE *)p2)->v[2];
+    ((PARTICLE *)p1)->u += ((PARTICLE *)p2)->u;
+    ((PARTICLE *)p1)->fMetals += ((PARTICLE *)p2)->fMetals;
+    }
+
+void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{	PARTICLE *q;
+	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u;
+	int i;
+
+	assert(TYPETest(p, TYPE_GAS));
+	ih2 = 4.0/BALL2(p);
+        rstot = 0;        
+        fNorm_u = 0;
+	for (i=0;i<nSmooth;++i) {
+            q = nnList[i].pPart;
+	    if(TYPETest(q, TYPE_DELETED))
+		continue;
+	    assert(TYPETest(q, TYPE_GAS));
+            r2 = nnList[i].fDist2*ih2;            
+            KERNEL(rs,r2);
+            rstot += rs;
+            fNorm_u += q->fMass*rs;
+        }
+	assert(rstot > 0.0);
+        fNorm = 1./rstot;
+        fNorm_u = p->fMass/fNorm_u;        
+	for (i=0;i<nSmooth;++i) {
+            q = nnList[i].pPart;
+	    if(TYPETest(q, TYPE_DELETED))
+		continue;
+
+            r2 = nnList[i].fDist2*ih2;            
+            KERNEL(rs,r2);
+	    /*
+	     * All these quantities are per unit mass.
+	     */
+            q->u += rs*fNorm_u*p->u;
+            q->v[0] += rs*fNorm_u*p->v[0];            
+            q->v[1] += rs*fNorm_u*p->v[1];
+            q->v[2] += rs*fNorm_u*p->v[2];
+            q->fMetals += rs*fNorm_u*p->fMetals;
+
+            rs *= fNorm;
+            q->fMass += rs*p->fMass;
+        }
+}
+
+void DeleteGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+/* flag low mass gas particles for deletion */
+	PARTICLE *q;
+	FLOAT fMasstot,fMassavg;
+	int i;
+
+	assert(TYPETest(p, TYPE_GAS));
+        fMasstot = 0;
+	for (i=0;i<nSmooth;++i) {
+            q = nnList[i].pPart;
+	    assert(TYPETest(q, TYPE_GAS));
+            fMasstot += q->fMass;
+        }
+        fMassavg = fMasstot/(FLOAT) nSmooth;
+        if (p->fMass < smf->dMinMassFrac*fMassavg) {
+            pkdDeleteParticle(smf->pkd, p);
+        }
+        
+}
+
+void initDistSNEnergy(void *p1)
+{
+    /*
+     * Warning: kludgery.  We need to accumulate mass in the cached
+     * particle, but we also need to keep the original mass around.
+     * Lets us another (hopefully unused) field to hold the original
+     * mass.
+     */
+    ((PARTICLE *)p1)->PdV = ((PARTICLE *)p1)->fMass;
+
+    /*
+     * Zero out accumulated quantities.
+     */
+    ((PARTICLE *)p1)->fESNrate = 0.0;
+    ((PARTICLE *)p1)->fMetals = 0.0;
+    }
+
+void combDistSNEnergy(void *p1,void *p2)
+{
+    /*
+     * See kudgery notice above.
+     */
+    FLOAT fAddedMass = ((PARTICLE *)p2)->fMass - ((PARTICLE *)p2)->PdV;
+    
+    ((PARTICLE *)p1)->fMass += fAddedMass;
+    ((PARTICLE *)p1)->fESNrate += ((PARTICLE *)p2)->fESNrate;
+    ((PARTICLE *)p1)->fMetals += ((PARTICLE *)p2)->fMetals;
+    }
+
+void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u;
+	int i;
+
+	assert(TYPETest(p, TYPE_STAR));
+	ih2 = 4.0/BALL2(p);
+        rstot = 0;        
+        fNorm_u = 0;
+	
+	for (i=0;i<nSmooth;++i) {
+            r2 = nnList[i].fDist2*ih2;            
+            KERNEL(rs,r2);
+            rstot += rs;
+            q = nnList[i].pPart;
+	    assert(TYPETest(q, TYPE_GAS));
+            fNorm_u += q->fMass*rs;
+        }
+        fNorm = 1./rstot;
+        fNorm_u = p->fMSN/fNorm_u;
+	for (i=0;i<nSmooth;++i) {
+            q = nnList[i].pPart;
+            r2 = nnList[i].fDist2*ih2;            
+            KERNEL(rs,r2);
+            q->fESNrate += rs*fNorm_u*p->fESNrate;
+            q->fMetals += rs*fNorm_u*p->fSNMetals;
+	    
+            rs *= fNorm;            
+            q->fMass += rs*p->fMSN;
+        }
+}
+#endif /* STARFORM */
 #endif /* GASOLINE */
 
 #ifdef COLLISIONS
