@@ -161,9 +161,9 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri,int *cpStart)
 	    lz = smx->pkd->fPeriod[2];
 	    }
 	else {
-	    lx = HUGE;
-	    ly = HUGE;
-	    lz = HUGE;
+	    lx = FLT_MAX;
+	    ly = FLT_MAX;
+	    lz = FLT_MAX;
 	    }
 	idSelf = smx->pkd->idSelf;
 	fBall2 = pq->fKey;
@@ -362,9 +362,9 @@ int smBallGather(SMX smx,float fBall2,float *ri)
 	    lz = smx->pkd->fPeriod[2];
 	    }
 	else {
-	    lx = HUGE;
-	    ly = HUGE;
-	    lz = HUGE;
+	    lx = FLT_MAX;
+	    ly = FLT_MAX;
+	    lz = FLT_MAX;
 	    }
 	nCnt = 0;
 	cp = ROOT;
@@ -464,9 +464,9 @@ void smSmooth(SMX smx)
 	    lz = smx->pkd->fPeriod[2];
 	    }
 	else {
-	    lx = HUGE;
-	    ly = HUGE;
-	    lz = HUGE;
+	    lx = FLT_MAX;
+	    ly = FLT_MAX;
+	    lz = FLT_MAX;
 	    }
 	/*
 	 ** Clear Mark array and pqHash.
@@ -680,9 +680,9 @@ void smReSmooth(SMX smx)
 	    lz = pkd->fPeriod[2];
 	    }
 	else {
-	    lx = HUGE;
-	    ly = HUGE;
-	    lz = HUGE;
+	    lx = FLT_MAX;
+	    ly = FLT_MAX;
+	    lz = FLT_MAX;
 	    }
 	for (pi=0;pi<pkdActive(pkd);++pi) {
 		if (p[pi].iActive == 0) continue;
