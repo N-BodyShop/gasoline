@@ -165,59 +165,39 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,double dvFac)
 
 void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive)
 {
-	int i,j,bFirst;
+	int i,j;
 
 	/*
 	 ** Initialize the bounds to 0 at the beginning
 	 */
 	for (j=0;j<3;++j) {
-		pbnd->fMin[j] = 0.0;
-		pbnd->fMax[j] = 0.0;
-		pbndActive->fMin[j] = 0.0;
-		pbndActive->fMax[j] = 0.0;
+		pbnd->fMin[j] = FLT_MAX;
+		pbnd->fMax[j] = -FLT_MAX;
+		pbndActive->fMin[j] = FLT_MAX;
+		pbndActive->fMax[j] = -FLT_MAX;
 		}
 	/*
 	 ** Calculate Local Bounds.
 	 */
-	bFirst = 1;
 	for (i=0;i<pkd->nLocal;++i) {
-		if (bFirst) {
-			bFirst = 0;
-			for (j=0;j<3;++j) {
+		for (j=0;j<3;++j) {
+			if (pkd->pStore[i].r[j] < pbnd->fMin[j]) 
 				pbnd->fMin[j] = pkd->pStore[i].r[j];
+			else if (pkd->pStore[i].r[j] > pbnd->fMax[j])
 				pbnd->fMax[j] = pkd->pStore[i].r[j];
-				}
 			}
-		else {
-			for (j=0;j<3;++j) {
-				if (pkd->pStore[i].r[j] < pbnd->fMin[j]) 
-					pbnd->fMin[j] = pkd->pStore[i].r[j];
-				else if (pkd->pStore[i].r[j] > pbnd->fMax[j])
-					pbnd->fMax[j] = pkd->pStore[i].r[j];
-				}
-			}			
 		}
 	/*
 	 ** Calculate Active Bounds.
 	 */
-	bFirst = 1;
 	for (i=0;i<pkd->nLocal;++i) {
 		if (pkd->pStore[i].iActive) {
-			if (bFirst) {
-				bFirst = 0;
-				for (j=0;j<3;++j) {
+			for (j=0;j<3;++j) {
+				if (pkd->pStore[i].r[j] < pbndActive->fMin[j]) 
 					pbndActive->fMin[j] = pkd->pStore[i].r[j];
+				else if (pkd->pStore[i].r[j] > pbndActive->fMax[j])
 					pbndActive->fMax[j] = pkd->pStore[i].r[j];
-					}
 				}
-			else {
-				for (j=0;j<3;++j) {
-					if (pkd->pStore[i].r[j] < pbndActive->fMin[j]) 
-						pbndActive->fMin[j] = pkd->pStore[i].r[j];
-					else if (pkd->pStore[i].r[j] > pbndActive->fMax[j])
-						pbndActive->fMax[j] = pkd->pStore[i].r[j];
-					}
-				}			
 			}
 		}
 	}
@@ -1303,6 +1283,10 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	pkd->nSplit = l;
 	pkd->nNodes = l<<1;
 	if (pkd->kdNodes) mdlFree(pkd->mdl,pkd->kdNodes);
+	if(n == 0) {
+	    pkd->kdNodes = NULL;
+	    return;
+	    }
 	pkd->kdNodes = mdlMalloc(pkd->mdl,pkd->nNodes*sizeof(KDN));
 	assert(pkd->kdNodes != NULL);
 	sprintf(ach,"nNodes:%d nSplit:%d nLevels:%d nBucket:%d\n",

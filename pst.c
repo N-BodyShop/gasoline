@@ -405,7 +405,7 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 	}
 
 
-#define NUM_SAFETY	0
+#define NUM_SAFETY	2
 
 void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 {
@@ -505,7 +505,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	 ** we have to relax the condition that work be balanced and try to
 	 ** max out the number of particles in the subset which had too many.
 	 */
-	if (nLow > nLowerStore-NUM_SAFETY) {
+	if (nLow > nLowerStore-NUM_SAFETY*pst->nLower) {
 		fl = pst->bnd.fMin[d];
 		fu = fm;
 		fmm = (fl + fu)/2;
@@ -529,8 +529,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			/*
 			printf("Fit ittr:%d l:%d\n",ittr,nLow);
 			*/
-			if (nLow > nLowerStore) fu = fm;
-			else if (nLow < nLowerStore) fl = fm;
+			if (nLow > nLowerStore-NUM_SAFETY*pst->nLower) fu = fm;
+			else if (nLow < nLowerStore-NUM_SAFETY*pst->nLower) fl = fm;
 			else {
 				fl = fm;
 				break;
@@ -543,7 +543,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		*/
 		assert(nLow <= nLowerStore);
 		}
-	else if (nHigh > nUpperStore-NUM_SAFETY) {
+	else if (nHigh > nUpperStore-NUM_SAFETY*pst->nUpper) {
 		fl = fm;
 		fu = pst->bnd.fMax[d];
 		fmm = (fl + fu)/2;
@@ -567,8 +567,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			/*
 			printf("Fit ittr:%d u:%d\n",ittr,nHigh);
 			*/
-			if (nHigh > nUpperStore) fl = fm;
-			else if (nHigh < nUpperStore) fu = fm;
+			if (nHigh > nUpperStore-NUM_SAFETY*pst->nUpper) fl = fm;
+			else if (nHigh < nUpperStore-NUM_SAFETY*pst->nUpper) fu = fm;
 			else {
 				fu = fm;
 				break;
@@ -605,7 +605,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	    nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
 	    nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
 
-	    if (nLowTot > nLowerStore) {
+	    if (nLowTot > nLowerStore-NUM_SAFETY*pst->nLower) {
 		    fl = pst->bnd.fMin[d];
 		    fu = fm;
 		    fmm = (fl + fu)/2;
@@ -629,8 +629,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			    /*
 			    printf("Inactive Fit ittr:%d l:%d\n",ittr,nLowTot);
 			    */
-			    if (nLowTot > nLowerStore) fu = fm;
-			    else if (nLowTot < nLowerStore) fl = fm;
+			    if (nLowTot > nLowerStore-NUM_SAFETY*pst->nLower) fu = fm;
+			    else if (nLowTot < nLowerStore-NUM_SAFETY*pst->nLower) fl = fm;
 			    else {
 				    fl = fm;
 				    break;
@@ -643,7 +643,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		    */
 		    assert(nLowTot <= nLowerStore);
 		    }
-	    else if (nHighTot > nUpperStore) {
+	    else if (nHighTot > nUpperStore-NUM_SAFETY*pst->nUpper) {
 		    fl = fm;
 		    fu = pst->bnd.fMax[d];
 		    fmm = (fl + fu)/2;
@@ -667,8 +667,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			    /*
 			    printf("Inactive Fit ittr:%d u:%d\n",ittr,nHighTot);
 			    */
-			    if (nHighTot > nUpperStore) fl = fm;
-			    else if (nHighTot < nUpperStore) fu = fm;
+			    if (nHighTot > nUpperStore-NUM_SAFETY*pst->nUpper) fl = fm;
+			    else if (nHighTot < nUpperStore-NUM_SAFETY*pst->nUpper) fu = fm;
 			    else {
 				    fu = fm;
 				    break;
@@ -895,10 +895,19 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 ** Next determine the longest axis based on the active bounds.
 		 */
 		d = 0;
-		for (j=1;j<3;++j) {
+		if(pst->bndActive.fMax[0] > pst->bndActive.fMin[0]) {
+		    for (j=1;j<3;++j) {
 			if (pst->bndActive.fMax[j]-pst->bndActive.fMin[j] > 
 				pst->bndActive.fMax[d]-pst->bndActive.fMin[d]) d = j;
-			}
+			    }
+		    	}
+		else {		/* no active particles */
+		    for (j=1;j<3;++j) {
+			if (pst->bnd.fMax[j]-pst->bnd.fMin[j] > 
+				pst->bnd.fMax[d]-pst->bnd.fMin[d]) d = j;
+			    }
+		    	}
+
 		pst->iSplitDim = d;
 		
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
