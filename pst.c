@@ -932,7 +932,8 @@ void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->dcTSum += outUp.dcTSum;
 		}
 	else {
-		pkdGravAll(plcl->pkd,in->nReps,in->bPeriodic,in->dEwCut,in->dEwhCut,
+		pkdGravAll(plcl->pkd,in->nReps,in->bPeriodic,in->iOrder,in->iEwOrder,
+				   in->dEwCut,in->dEwhCut,
 				   &out->dPartSum,&out->dCellSum,&csPart,&csCell);
 		out->dWSum = pkdGetTimer(plcl->pkd,1);
 		out->dISum = pkdGetTimer(plcl->pkd,2);

@@ -182,6 +182,8 @@ void pstDensity(PST,void *,int,void *,int *);
 struct inGravity {
 	int nReps;
 	int bPeriodic;
+	int iOrder;
+	int iEwOrder;
 	double dEwCut;
 	double dEwhCut;
 	};

@@ -67,53 +67,53 @@ typedef struct bndBound {
 	} BND;
 
 struct pkdCalcCellStruct {
-	float Qxx,Qyy,Qzz,Qxy,Qxz,Qyz;
+	double Qxx,Qyy,Qzz,Qxy,Qxz,Qyz;
 	/*
 	 ** Reduced multipole moments for l>2 !!!
 	 */
-	float Oxxx,Oxyy,Oxxy,Oyyy,Oxxz,Oyyz,Oxyz;
-	float Hxxxx,Hxyyy,Hxxxy,Hyyyy,Hxxxz,Hyyyz,Hxxyy,Hxxyz,Hxyyz;
-	float Bmax,B2,B3,B4,B5,B6;
+	double Oxxx,Oxyy,Oxxy,Oyyy,Oxxz,Oyyz,Oxyz;
+	double Hxxxx,Hxyyy,Hxxxy,Hyyyy,Hxxxz,Hyyyz,Hxxyy,Hxxyz,Hxyyz;
+	double Bmax,B2,B3,B4,B5,B6;
 	};
 
 typedef struct kdNode {
 	int iDim;
-	float fSplit;
+	double fSplit;
 	BND bnd;
 	int pLower;		/* also doubles as thread id for the LTT */
 	int pUpper;
-	float fMass;
-	float fSoft;
+	double fMass;
+	double fSoft;
 	float r[3];
 	struct pkdCalcCellStruct mom;
-	float fOpen2;
+	double fOpen2;
 	} KDN;
 
 typedef struct ilPart {
-	float m,h;
-	float x,y,z;
+	double m,h;
+	double x,y,z;
 	} ILP;
 
 typedef struct ilCellSoft {
-	float m,h;
-	float x,y,z;
-	float xx,yy,zz,xy,xz,yz;
+	double m,h;
+	double x,y,z;
+	double xx,yy,zz,xy,xz,yz;
 	} ILCS;
 
 /*
  ** Reduced moment tensor components.
  */
 typedef struct ilCellNewt {
-	float m;
-	float x,y,z;
-	float xx,yy,xy,xz,yz;
-	float xxx,xyy,xxy,yyy,xxz,yyz,xyz;
-	float xxxx,xyyy,xxxy,yyyy,xxxz,yyyz,xxyy,xxyz,xyyz;
+	double m;
+	double x,y,z;
+	double xx,yy,xy,xz,yz;
+	double xxx,xyy,xxy,yyy,xxz,yyz,xyz;
+	double xxxx,xyyy,xxxy,yyyy,xxxz,yyyz,xxyy,xxyz,xyyz;
 	} ILCN;
 
 typedef struct ewaldTable {
-	float hx,hy,hz;
-	float k2,k3x,k3y,k3z;
+	double hx,hy,hz;
+	double hPot,hax,hay,haz;
 	} EWT;
 
 typedef struct pkdContext {
@@ -151,6 +151,7 @@ typedef struct pkdContext {
 	/*
 	 ** Ewald summation setup.
 	 */
+	ILCN ilcnRoot;
 	int nMaxEwhLoop;
 	int nEwhLoop;
 	EWT *ewt;
@@ -243,7 +244,8 @@ void pkdCombine(KDN *,KDN *,KDN *);
 void pkdCalcCell(PKD,KDN *,float *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);
 void pkdBuildLocal(PKD,int,int,double,int,KDN *);
-void pkdGravAll(PKD,int,int,float,float,double *,double *,CASTAT *,CASTAT *); 
+void pkdGravAll(PKD,int,int,int,int,double,double,
+				double *,double *,CASTAT *,CASTAT *); 
 void pkdCalcE(PKD,double *,double *);
 void pkdDrift(PKD,double,float *);
 void pkdKick(PKD pkd,double,double);

@@ -14,6 +14,7 @@ struct parameters {
 	int iLogInterval;
 	int iCheckInterval;
 	int iOrder;
+	int iEwOrder;
 	int nReplicas;
 	int nSteps;
 	int nSmooth;

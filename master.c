@@ -88,6 +88,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.iOrder = 4;
 	prmAddParam(msr->prm,"iOrder",1,&msr->param.iOrder,"or",
 				"<multipole expansion order: 1, 2, 3 or 4> = 4");
+	msr->param.iEwOrder = 4;
+	prmAddParam(msr->prm,"iEwOrder",1,&msr->param.iEwOrder,"ewo",
+				"<Ewald multipole expansion order: 1, 2, 3 or 4> = 4");
 	msr->param.nReplicas = 0;
 	prmAddParam(msr->prm,"nReplicas",1,&msr->param.nReplicas,"nrep",
 				"<nReplicas> = 0 for -p, or 1 for +p");
@@ -903,6 +906,7 @@ void msrGravity(MSR msr,int *piSec,double *pdWMax,double *pdIMax,
 	sec = time(0);
     in.nReps = msr->param.nReplicas;
     in.bPeriodic = msr->param.bPeriodic;
+	in.iOrder = msr->param.iOrder;
     in.dEwCut = msr->param.dEwCut;
     in.dEwhCut = msr->param.dEwhCut;
 	pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);

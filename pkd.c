@@ -1003,7 +1003,8 @@ void pkdBucketWeight(PKD pkd,int iBucket,float fWeight)
 	}
 
 
-void pkdGravAll(PKD pkd,int nReps,int bPeriodic,float fEwCut,float fEwhCut,
+void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
+				double fEwCut,double fEwhCut,
 				double *pdPartSum,double *pdCellSum,CASTAT *pcsPart,
 				CASTAT *pcsCell)
 {
@@ -1018,7 +1019,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,float fEwCut,float fEwhCut,
 	*pdCellSum = 0.0;
 	if (bPeriodic) {
 		pkdStartTimer(pkd,3);
-		pkdEwaldInit(pkd,fEwhCut);
+		pkdEwaldInit(pkd,fEwhCut,iEwOrder);
 		pkdStopTimer(pkd,3);
 		}
 	/*
@@ -1037,16 +1038,16 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,float fEwCut,float fEwhCut,
 		else {
 			n = c[iCell].pUpper - c[iCell].pLower + 1;
 			pkdStartTimer(pkd,1);
-			pkdBucketWalk(pkd,iCell,nReps);
+			pkdBucketWalk(pkd,iCell,nReps,iOrder);
 			pkdStopTimer(pkd,1);
 			*pdPartSum += n*pkd->nPart + n*(n-1)/2;
 			*pdCellSum += n*(pkd->nCellSoft + pkd->nCellNewt);
 			pkdStartTimer(pkd,2);
-			pkdBucketInteract(pkd,iCell);
+			pkdBucketInteract(pkd,iCell,iOrder);
 			pkdStopTimer(pkd,2);
 			if (bPeriodic) {
 				pkdStartTimer(pkd,3);
-				pkdBucketEwald(pkd,iCell,nReps,fEwCut);
+				pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
 				pkdStopTimer(pkd,3);
 				}
 			fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 

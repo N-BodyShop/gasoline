@@ -3,7 +3,7 @@
 
 #include "pkd.h"
 
-void pkdEwaldInit(PKD,float);
-void pkdBucketEwald(PKD,int,int,float);
+void pkdEwaldInit(PKD,double,int);
+void pkdBucketEwald(PKD,int,int,double,int);
 
 #endif

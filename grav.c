@@ -3,7 +3,7 @@
 #include "mdl.h"
 #include "pkd.h"
 #include "grav.h"
-
+#include "qeval.h"
 
 void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 {	
@@ -15,10 +15,8 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	int n,i,j;
 	double fPot,ax,ay,az;
 	double x,y,z,dx,dy,dz,d2,h,twoh,a,b,c,d;
-	double qirx,qiry,qirz,qir,tr,qir3;
-	double hirx,hiry,hirz,hir,xxyy,xxzz,yyzz,xyzz,xzzz,yzzz;
-	double oirx,oiry,oirz,oir,xxy,xyy,xyz,xzz,yzz;
-	double dir,dir2,dir3,dir4,dir5,dir6;
+	double dir2,qirx,qiry,qirz,qir,tr,qir3;
+	double gam[6];
 	double *sqrttmp,*d2a;
 
 	/*
@@ -91,87 +89,17 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			}
 		if (pkd->nCellNewt>0) v_sqrt1(pkd->nCellNewt,pkd->d2a,pkd->sqrttmp);
 		for (j=0;j<pkd->nCellNewt;++j) {
-			dir = pkd->sqrttmp[j];
-			dir2 = dir*dir;
-			dir3 = dir2*dir;
-			dir4 = dir3*dir;
-			dir5 = dir4*dir;
-			dir6 = dir5*dir;
-			/*
-			 ** Normalize dx,dy and dz for the higher order moments.
-			 */
-			dx = dir*(x - ilcn[j].x);
-			dy = dir*(y - ilcn[j].y);
-			dz = dir*(z - ilcn[j].z);
-			switch (iOrder) {
-			case 4:
-				/*
-				 ** Hexadecapole interaction.
-				 */
-				xxyy = ilcn[j].xxyy;
-				xxzz = -ilcn[j].xxxx - xxyy;
-				yyzz = xxyy - ilcn[j].yyyy;
-				xyzz = -ilcn[j].xxxy - ilcn[j].xyyy;
-				xzzz = -ilcn[j].xxxz - ilcn[j].xyyz;
-				yzzz = -ilcn[j].xxyz - ilcn[j].yyyz;
-				hirx = dx*(dx*(ilcn[j].xxxx*dx + 3*ilcn[j].xxxy*dy + 3*ilcn[j].xxxz*dz) +
-						   3*xxyy*dy*dy + 3*xxzz*dz*dz + 6*ilcn[j].xxyz*dy*dz) +
-							   dy*(3*xyzz*dz*dz + 3*ilcn[j].xyyz*dy*dz + ilcn[j].xyyy*dy*dy) +
-								   xzzz*dz*dz*dz;
-				hiry = dy*(dy*(3*ilcn[j].xyyy*dx + ilcn[j].yyyy*dy + 3*ilcn[j].yyyz*dz) +
-						   3*xxyy*dx*dx + 3*yyzz*dz*dz + 6*ilcn[j].xyyz*dx*dz) +
-							   dx*(3*xyzz*dz*dz + 3*ilcn[j].xxyz*dx*dz + ilcn[j].xxxy*dx*dx) +
-								   yzzz*dz*dz*dz;
-				hirz = dz*(dz*(3*xzzz*dx + 3*yzzz*dy - (xxzz+yyzz)*dz) +
-						   3*xxzz*dx*dx + 3*yyzz*dy*dy + 6*xyzz*dx*dy) +
-							   dx*(3*ilcn[j].xyyz*dy*dy + 3*ilcn[j].xxyz*dx*dy + ilcn[j].xxxy*dx*dx) +
-								   ilcn[j].yyyz*dy*dy*dy;
-				hir = hirx*dx + hiry*dy + hirz*dz;
-				fPot -= (1.0/24.0)*dir5*(105*hir);
-				ax -= (1.0/24.0)*dir6*(945*hir*dx - 420*hirx);
-				ay -= (1.0/24.0)*dir6*(945*hir*dy - 420*hiry);
-				az -= (1.0/24.0)*dir6*(945*hir*dz - 420*hirz);
-			case 3:
-				/*
-				 ** Octopole interaction.
-				 */
-				xxy = ilcn[j].xxy;
-				xyy = ilcn[j].xyy;
-				xyz = ilcn[j].xyz;
-				xzz = -ilcn[j].xxx - xyy;
-				yzz = -xxy - ilcn[j].yyy;
-				oirx = dx*(ilcn[j].xxx*dx + 2*xxy*dy + 2*ilcn[j].xxz*dz) +
-					xyy*dy*dy + xzz*dz*dz + 2*xyz*dy*dz;
-				oiry = dy*(2*xyy*dx + ilcn[j].yyy*dy + 2*ilcn[j].yyz*dz) +
-					xxy*dx*dx + yzz*dz*dz + 2*xyz*dx*dz;
-				oirz = dz*(2*xzz*dx + 2*yzz*dy - (ilcn[j].xxz + ilcn[j].yyz)*dz) +
-					ilcn[j].xxz*dx*dx + ilcn[j].yyz*dy*dy + 2*xyz*dx*dy;
-				oir = oirx*dx + oiry*dy + oirz*dz;
-				fPot -= (1.0/6.0)*dir4*(15*oir);
-				ax -= (1.0/6.0)*dir5*(105*oir*dx - 45*oirx);
-				ay -= (1.0/6.0)*dir5*(105*oir*dy - 45*oiry);
-				az -= (1.0/6.0)*dir5*(105*oir*dz - 45*oirz);
-			case 2:
-				/*
-				 ** Quadrupole interaction.
-				 */
-				qirx = ilcn[j].xx*dx + ilcn[j].xy*dy + ilcn[j].xz*dz;
-				qiry = ilcn[j].xy*dx + ilcn[j].yy*dy + ilcn[j].yz*dz;
-				qirz = ilcn[j].xz*dx + ilcn[j].yz*dy - (ilcn[j].xx + ilcn[j].yy)*dz;
-				qir = qirx*dx + qiry*dy + qirz*dz;
-				fPot -= 0.5*dir3*(3*qir);
-				ax -= 0.5*dir4*(15*qir*dx - 6*qirx);
-				ay -= 0.5*dir4*(15*qir*dy - 6*qiry);
-				az -= 0.5*dir4*(15*qir*dz - 6*qirz);
-			case 1:
-				/*
-				 ** Monopole interaction.
-				 */
-				fPot -= dir*ilcn[j].m;
-				ax -= dx*dir2*ilcn[j].m;
-				ay -= dy*dir2*ilcn[j].m;
-				az -= dz*dir2*ilcn[j].m;
-				}
+			gam[0] = pkd->sqrttmp[j];
+			dir2 = gam[0]*gam[0];
+			gam[1] = gam[0]*dir2;
+			gam[2] = 3*gam[1]*dir2;
+			gam[3] = 5*gam[2]*dir2;
+			gam[4] = 7*gam[3]*dir2;
+			gam[5] = 9*gam[4]*dir2;
+			dx = x - ilcn[j].x;
+			dy = y - ilcn[j].y;
+			dz = z - ilcn[j].z;
+			QEVAL(iOrder,ilcn[j],gam,dx,dy,dz,ax,ay,az,fPot);
 			}
 		p[i].fPot = fPot;
 		p[i].a[0] = ax;
