@@ -4659,7 +4659,6 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 	
 #ifdef GROWMASS
 	out.dMass = 0.0;
-#endif
 #ifndef SUPPRESSMASSCHECKREPORT      
 	if (msr->param.bVDetails) puts("doing mass check...");
 #endif
@@ -4669,6 +4668,7 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 		printf("ERROR: Mass not conserved (%s): %.15e != %.15e!\n",
 			   pszWhere,dMass,out.dMass);
 		}	
+#endif
 	return(out.dMass);
 	}
 
@@ -4679,6 +4679,8 @@ void msrMassMetalsEnergyCheck(MSR msr,double *dTotMass,
 	
 #ifdef GROWMASS
 	out.dTotMass = 0.0;
+	out.dTotMetals = 0.0;
+	out.dTotEnergy = 0.0;
 #else
 #ifndef SUPPRESSMASSCHECKREPORT      
 	if (msr->param.bVDetails) puts("doing mass check...");
