@@ -1264,6 +1264,7 @@ void pstDensity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	struct inDensity *in = vin;
 
+	fprintf(stderr,"In pstDensity...\n");
 	assert(nIn == sizeof(struct inDensity));
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_DENSITY,in,nIn);
@@ -1277,12 +1278,16 @@ void pstDensity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 		smInitialize(&smx,plcl->pkd,in->nSmooth,in->bGatherScatter);
 		if (in->bGatherScatter) {
+                        fprintf(stderr,"In GatherScatter\n");
 			smSmooth(smx,smDensitySym);
 			}
 		else {
+                        fprintf(stderr,"In no GatherScatter\n");
 			smSmooth(smx,smDensity);
 			}
+                fprintf(stderr,"Before smFinish\n");
 		smFinish(smx);
+                fprintf(stderr,"After smFinish\n");
 #endif
 		}
 	if (pnOut) *pnOut = 0;

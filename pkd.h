@@ -76,6 +76,8 @@ typedef struct kdNode {
 	int pUpper;
 	int iLower;
 	int iUpper;
+        int iSibling;
+        int iParent;
 	int iNext;
 	double fMass;
 	double fSoft;
@@ -183,33 +185,33 @@ typedef struct CacheStatistics {
 #define pkdRoot(iCell,id)\
 {\
 	id = -1;\
-	iCell = ROOT;\
+	iCell = pkd->iRoot;\
 	}
 
-#define pkdIsRoot(iCell,id)		((id==-1)?((iCell==ROOT)?1:0):0)
+#define pkdIsRoot(iCell,id)		((id==-1)?((iCell==pkd->iRoot)?1:0):0)
 
 #define pkdLower(pkd,iCell,id)\
 {\
 	if (id == -1) {\
 		id = pkd->kdTop[iCell].pLower;\
-		if (id != -1) iCell = ROOT;\
+		if (id != -1) iCell = pkd->iRoot;\
 		}\
-	iCell = LOWER(iCell);\
+	iCell = pkd->kdNodes[iCell].iLower;\
 	}
 
 #define pkdUpper(pkd,iCell,id)\
 {\
 	if (id == -1) {\
 		id = pkd->kdTop[iCell].pLower;\
-		if (id != -1) iCell = ROOT;\
+		if (id != -1) iCell = pkd->iRoot;\
 		}\
-	iCell = UPPER(iCell);\
+	iCell = pkd->kdNodes[iCell].iUpper;\
 	}
 
 #define pkdParent(pkd,iCell,id)\
 {\
-	iCell = PARENT(iCell);\
-	if (iCell == ROOT) {\
+	iCell = pkd->kdNodes[iCell].iParent;\
+	if (iCell == pkd->iRoot) {\
 		if (id != -1) {\
 			iCell = pkd->piLeaf[id];\
 			id = -1;\
@@ -219,12 +221,12 @@ typedef struct CacheStatistics {
 
 #define pkdNext(pkd,iCell,id)\
 {\
-	SETNEXT(iCell);\
-	if (iCell == ROOT) {\
+	iCell = pkd->kdNodes[iCell].iUpper;\
+	if (iCell == pkd->iRoot) {\
 		if (id != -1) {\
 			iCell = pkd->piLeaf[id];\
 			id = -1;\
-			SETNEXT(iCell);\
+			iCell = pkd->kdNodes[iCell].iUpper;\
 			}\
 		}\
 	}

@@ -203,15 +203,15 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 	lz = smx->pkd->fPeriod[2];
 	idSelf = smx->pkd->idSelf;
 	fBall2 = pq->fKey;
-	cell = ROOT;
+	cell = smx->pkd->iRoot;
 	/*
 	 ** First find the "local" Bucket.
 	 ** This could mearly be the closest to ri[3]! 
 	 ** Warning: in parallel ri[3] SHOULD be contained in the LOCAL DOMAIN!
 	 */
 	while (c[cell].iDim >= 0) {
-		if (ri[c[cell].iDim] < c[cell].fSplit) cell = LOWER(cell);
-		else cell = UPPER(cell);
+		if (ri[c[cell].iDim] < c[cell].fSplit) cell = c[cell].iLower;
+		else cell = c[c[cell].iLower].iUpper;
 		}
 	pUpper = c[cell].pUpper;
 	for (pj=c[cell].pLower;pj<=pUpper;++pj) {
@@ -238,14 +238,15 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 			fBall2 = pq->fKey;
 			}
 		}
-	while (cell != ROOT) {
-		cp = SIBLING(cell);
+	while (cell != smx->pkd->iRoot) {
+	    if (c[cell].iSibling != -1) {
+		cp = c[cell].iSibling;
 		ct = cp;
-		SETNEXT(ct);
+		ct = c[ct].iUpper;
 		while (1) {
 			INTERSECT(&c[cp],fBall2,lx,ly,lz,x,y,z,sx,sy,sz,GetNext_1);
 			if (c[cp].iDim >= 0) {
-				cp = LOWER(cp);
+				cp = c[cp].iLower;
 				continue;
 				}
 			else {
@@ -276,10 +277,11 @@ PQ *smBallSearch(SMX smx,PQ *pq,float *ri)
 					}
 				}
 		GetNext_1:
-			SETNEXT(cp);
+			cp = c[cp].iUpper;
 			if (cp == ct) break;
 			}
-		cell = PARENT(cell);
+	            }
+		cell = c[cell].iParent;
 		}
 	return(pq);
 	}
@@ -312,6 +314,7 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	/*
 	 ** Check if we are finished!
 	 */
+/*	fprintf(stderr,"Beginning StartParticle... pNext = %d\n",pNext); */
 	if (pNext == pkd->nLocal) goto DoneSmooth;
 	if (pkd->pStore[pNext].fBall2 >= 0) {
 		++pNext;
@@ -321,10 +324,10 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	x = p[pi].r[0];
 	y = p[pi].r[1];
 	z = p[pi].r[2];
-	cell = ROOT;
+	cell = pkd->iRoot;
 	while (c[cell].iDim >= 0) {
-		if (p[pi].r[c[cell].iDim] < c[cell].fSplit) cell = LOWER(cell);
-		else cell = UPPER(cell);
+		if (p[pi].r[c[cell].iDim] < c[cell].fSplit) cell = c[cell].iLower;
+		else cell = c[c[cell].iLower].iUpper;
 		}
 	/*
 	 ** Add local stuff to the prioq.
@@ -361,7 +364,8 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 	idcell = -1;	/* We are in the LTT now ! */
 	cell = pkd->piLeaf[pkd->idSelf];
 	while (!pkdIsRoot(cell,idcell)) {
-		cp = SIBLING(cell);
+	    if (c[cell].iSibling != -1) {
+		cp = c[cell].iSibling;
 		id = idcell;
 		ct = cp;
 		idct = id;
@@ -414,8 +418,9 @@ void smSmooth(SMX smx,void (*fncSmooth)(SMX,int,int,NN *))
 			pkdNext(pkd,cp,id);
 			if (cp == ct && id == idct) break;
 			}
+	           }
 		pkdParent(pkd,cell,idcell);
-		}
+	        }
 	/*
 	 ** Create Nearest-Neighbor List and try to pick next particle.
 	 */

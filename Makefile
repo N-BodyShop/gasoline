@@ -9,7 +9,8 @@ BDIR	=	$(HOME)/pvm3/bin
 XDIR	=	$(BDIR)/$(PVM_ARCH)
 
 PVM_MDL		=	../mdl/pvm
-PVM_CFLAGS	=	-mips4 -O3 -I$(PVMDIR)/include -I$(PVM_MDL)
+PVM_CFLAGS	=	-DSMOOTH_CODE -mips4 -O3 -I$(PVMDIR)/include -I$(PVM_MDL)
+#PVM_CFLAGS	=	-DSMOOTH_CODE -mips4 -g -I$(PVMDIR)/include -I$(PVM_MDL)
 PVM_LIBMDL	=	v_sqrt1.o $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) /local/lib/libmalloc.a -lm
 
 #
@@ -56,7 +57,7 @@ T3DMPI_LIBMDL = -O3 -L $(V_SQRT) -L $(V_SQRT1) -L $(RPC) hyperlib.o \
 T3DMPI_LD_FLAGS = 
 
 OBJS	= 	main.o master.o param.o outtype.o pkd.o pst.o grav.o \
-		ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o
+		ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o
 EXTRA_OBJ = 	erf.o v_sqrt1.o v_sqrt1.ksr.o hyperlib.o
 
 default:	

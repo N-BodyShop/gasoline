@@ -88,7 +88,9 @@ void main(int argc,char **argv)
 
 	msrBuildTree(msr,0,dMass);
 	msrMassCheck(msr,dMass,"After msrBuildTree");
-	msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax);
+/* Stick msrDensity in here */
+	msrDensity(msr);
+/*	msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax); */
 	msrMassCheck(msr,dMass,"After msrGravity");
 	msrCalcE(msr,MSR_INIT_ECOSMO,dTime,&E,&T,&U);
 	msrMassCheck(msr,dMass,"After msrCalcE");
@@ -188,7 +190,7 @@ void main(int argc,char **argv)
 				;
 				}
 			}
-		} 
+	        } 
 	else {
 		msrReorder(msr);
 		msrMassCheck(msr,dMass,"After msrReorder in OutArray");
@@ -198,9 +200,9 @@ void main(int argc,char **argv)
 		sprintf(achFile,"%s.pot",msrOutName(msr));
 		msrOutArray(msr,achFile,OUT_POT_ARRAY);
 		msrMassCheck(msr,dMass,"After msrOutArray");
-
-		sprintf(achFile,"%s.buc",msrOutName(msr));
-		msrOutArray(msr,achFile,OUT_COLOR_ARRAY);
+		sprintf(achFile,"%s.den",msrOutName(msr));
+		msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
+		msrMassCheck(msr,dMass,"After msrOutArray");
 		}
 	msrFinish(msr);
 	mdlFinish(mdl);

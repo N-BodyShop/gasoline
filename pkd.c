@@ -1185,6 +1185,37 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 		}
 	}
 
+void pkdFamily(PKD pkd,int iCell)
+{
+    int l,u;
+
+    if (iCell == -1) return;
+    else if (pkd->kdNodes[iCell].iDim != -1) {
+	l = pkd->kdNodes[iCell].iLower;
+	u = pkd->kdNodes[iCell].iUpper;
+	if (u == -1) {
+	    assert(l != -1);
+	    pkd->kdNodes[l].iSibling = -1;
+	    pkd->kdNodes[l].iParent = iCell;
+	    pkdFamily(pkd,l);
+	}
+	else if (l == -1) {
+	    assert(u != -1);
+	    pkd->kdNodes[u].iSibling = -1;
+	    pkd->kdNodes[u].iParent = iCell;
+	    pkdFamily(pkd,u);
+	}
+	else {
+	    pkd->kdNodes[l].iSibling = u;
+	    pkd->kdNodes[l].iParent = iCell;
+	    pkd->kdNodes[u].iSibling = l;
+	    pkd->kdNodes[u].iParent = iCell;
+	    pkdFamily(pkd,l);
+	    pkdFamily(pkd,u);
+	}
+    }
+}
+	
 
 void pkdThreadTree(PKD pkd,int iCell,int iNext)
 {
@@ -1254,6 +1285,8 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 								 iOpenType,dCrit,iOrder);
 		}
 	assert(pkd->iFreeCell == pkd->nNodes);
+        /* SET UP PARENTS */
+	pkdFamily(pkd,pkd->iRoot);
 	/*
 	 ** Thread the tree.
 	 */
@@ -1349,6 +1382,8 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 			}
 		}
 	pkdUpPass(pkd,pkd->iRoot,iOpenType,dCrit,iOrder);
+        /* SET UP PARENTS */
+	pkdFamily(pkd,pkd->iRoot);
 	/*
 	 ** Thread the tree.
 	 */
