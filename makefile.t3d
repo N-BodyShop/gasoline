@@ -1,0 +1,59 @@
+#       MPP makefile for pkdgrav
+#
+MDL = $(HOME)/port/mdl/mpp
+#MDL = $(HOME)/port/mdl/mpp
+V_SQRT = $(HOME)/port/v_sqrt/lib
+V_SQRT1 = $(HOME)/port/v_sqrt1/lib
+RPC = $(HOME)/rpc
+RPCOBJS = $(RPC)/xdr.o $(RPC)/xdr_mem.o $(RPC)/xdr_rec.o \
+          $(RPC)/xdr_reference.o $(RPC)/xdr_stdio.o $(RPC)/xdr_float.o
+
+#CC_FLAGS = -g -I$(MDL) -I$(HOME)
+#LD_LIBS = $(MDL)/mdl.o $(RPCOBJS) -lm
+CC_FLAGS = -O3 -DCRAY-T3D -I$(MDL) -I$(V_SQRT)
+LD_LIBS = -O3 -L $(V_SQRT) -L $(V_SQRT1) $(MDL)/mdl.o -lv_sqrtc -lv_sqrtc1 -lm
+LD_FLAGS = 
+
+default: mdl pkdgrav
+
+mdl:
+	cd $(MDL); make
+
+pkdgrav : main.o master.o param.o pst.o pkd.o outtype.o \
+	grav.o ewald.o erf.o walk.o $(LD_MDL) $(MDL)/mdl.c $(MDL)/mdl.h
+	cc $(LD_FLAGS) -o pkdgrav main.o master.o param.o pst.o pkd.o \
+    	outtype.o grav.o ewald.o erf.o walk.o $(LD_LIBS)
+
+main.o: main.c
+	cc $(CC_FLAGS) -c main.c
+
+master.o: master.c
+	cc $(CC_FLAGS) -c master.c
+
+param.o: param.c
+	cc $(CC_FLAGS) -c param.c
+
+pst.o: pst.c
+	cc $(CC_FLAGS) -c pst.c
+
+pkd.o: pkd.c
+	cc $(CC_FLAGS) -c pkd.c
+
+outtype.o: outtype.c
+	cc $(CC_FLAGS) -c outtype.c
+
+grav.o: grav.c
+	cc $(CC_FLAGS) -c grav.c
+
+ewald.o: ewald.c
+	cc $(CC_FLAGS) -c ewald.c
+
+erf.o: erf.c
+	cc $(CC_FLAGS) -c erf.c
+
+walk.o: walk.c
+	cc $(CC_FLAGS) -c walk.c
+
+
+
+# DO NOT DELETE THIS LINE -- make depend depends on it.
