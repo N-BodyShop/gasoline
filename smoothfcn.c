@@ -1336,8 +1336,10 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	rdotv = r2 = 0; /* to keep compiler happy */
 	for (i=0;i<w->nWalls;i++) {
-		/* NOTE: following check may be invalid if dt is too large! */
-		if (p->iPrevCol == -i - 1) continue;
+		/* skip check if previous collision was with this wall, *unless*
+		   this is a cylindrical wall. In that case we have to check for
+		   collision with a different part of the wall */
+		if ( (p->iPrevCol == -i - 1) && (w->wall[i].type != 1) ) continue;
 		ndotr = ndotv = 0;
 		for (j=0;j<3;j++) {
 			ndotr += w->wall[i].n[j] * p->r[j];
@@ -1354,9 +1356,11 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				}
 			if (vv == 0) continue;
 			target = w->wall[i].radius - R;
-			if (rr > target*target) continue; /* no collision from outside */
 			dsc = rv*rv - rr*vv + target*target*vv;
-			assert(dsc >= 0);
+			if (dsc < 0) continue;	/* no intersection with cylinder */
+			/* if dsc > 0, there are two values of dt that satisfy the
+			   equations. Whether we start inside or outside, we always
+			   want the larger so we're colliding from the inside. */
 			dt = ( sqrt(dsc) - rv ) / vv;
 			if (dt <= 0) continue; /* should do an overlap check here */
 			if (smf->dCollapseLimit) {
