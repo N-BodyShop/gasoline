@@ -945,7 +945,7 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,int iOrder)
 		c[iCell].fMass = 0.0;
 		c[iCell].fSoft = 0.0;
 		for (j=0;j<3;++j) {
-		    	c[iCell].bnd.fMin[j] = p[u].r[j];
+			c[iCell].bnd.fMin[j] = p[u].r[j];
 			c[iCell].bnd.fMax[j] = p[u].r[j];
 			c[iCell].r[j] = 0.0;
 			}
@@ -1293,7 +1293,9 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 								 iOpenType,dCrit,iOrder);
 		}
 	assert(pkd->iFreeCell == pkd->nNodes);
-        /* SET UP PARENTS */
+	/*
+	 ** Set up parent and sibling pointers.
+	 */
 	pkdFamily(pkd,pkd->iRoot);
 	/*
 	 ** Thread the tree.
@@ -1390,86 +1392,15 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 			}
 		}
 	pkdUpPass(pkd,pkd->iRoot,iOpenType,dCrit,iOrder);
-        /* SET UP PARENTS */
+	/*
+	 ** Set up parent and sibling pointers.
+	 */
 	pkdFamily(pkd,pkd->iRoot);
 	/*
 	 ** Thread the tree.
 	 */
 	pkdThreadTree(pkd,pkd->iRoot,-1);
 	*pRoot = c[pkd->iRoot];
-	}
-
-
-void Squeeze(PKD pkd,int iCell,int bActiveOnly)
-{
-	KDN *pkdn;
-	int i,j,l,u,bFirst;
-
-	if (iCell == -1) return;
-	else if (pkd->kdNodes[iCell].iDim != -1) {
-		l = pkd->kdNodes[iCell].iLower;
-		u = pkd->kdNodes[iCell].iUpper;
-		if (u == -1) {
-			assert(l != -1);
-			Squeeze(pkd,l,bActiveOnly);
-			pkd->kdNodes[iCell].bnd = pkd->kdNodes[l].bnd;
-			}
-		else if (l == -1) {
-			assert(u != -1);
-			Squeeze(pkd,u,bActiveOnly);
-			pkd->kdNodes[iCell].bnd = pkd->kdNodes[u].bnd;
-			}
-		else {
-			Squeeze(pkd,l,bActiveOnly);
-			Squeeze(pkd,u,bActiveOnly);
-			/*
-			 ** Combine the bounds.
-			 */
-			pkdCombine(&pkd->kdNodes[l],&pkd->kdNodes[u],&pkd->kdNodes[iCell]);
-			}
-		}
-	else {
-		/*
-		 ** It is a bucket, find the bounds of the particles or of the 
-		 ** active particles only depending on the flag.
-		 */
-		pkdn = &pkd->kdNodes[iCell];
-		for (j=0;j<3;++j) {
-			pkdn->bnd.fMin[j] = 0.0;
-			pkdn->bnd.fMax[j] = 0.0;
-			}
-		/*
-		 ** Calculate Bounds.
-		 */
-		bFirst = 1;
-		for (i=pkdn->pLower;i<=pkdn->pUpper;++i) {
-			if (pkd->pStore[i].iActive || !bActiveOnly) {
-				if (bFirst) {
-					bFirst = 0;
-					for (j=0;j<3;++j) {
-						pkdn->bnd.fMin[j] = pkd->pStore[i].r[j];
-						pkdn->bnd.fMax[j] = pkd->pStore[i].r[j];
-						}
-					}
-				else {
-					for (j=0;j<3;++j) {
-						if (pkd->pStore[i].r[j] < pkdn->bnd.fMin[j]) 
-							pkdn->bnd.fMin[j] = pkd->pStore[i].r[j];
-						else if (pkd->pStore[i].r[j] > pkdn->bnd.fMax[j])
-							pkdn->bnd.fMax[j] = pkd->pStore[i].r[j];
-						}
-					}			
-				}
-			}
-		}
-	}
-
-
-void pkdSqueeze(PKD pkd,int bActiveOnly,BND *pbnd)
-{
-	int iCell = pkd->iRoot;
-
-	Squeeze(pkd,iCell,bActiveOnly);
 	}
 
 
@@ -1480,7 +1411,8 @@ void pkdBucketWeight(PKD pkd,int iBucket,float fWeight)
 	
 	pbuc = &pkd->kdNodes[iBucket];
 	for (pj=pbuc->pLower;pj<=pbuc->pUpper;++pj) {
-		pkd->pStore[pj].fWeight = fWeight;
+		if (pkd->pStore[pj].iActive) 
+			pkd->pStore[pj].fWeight = fWeight;
 		}
 	}
 
@@ -1499,13 +1431,13 @@ void pkdColorCell(PKD pkd,int iCell,float fColor)
 
 
 void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
-				double fEwCut,double fEwhCut,
+				double fEwCut,double fEwhCut,int *nActive,
 				double *pdPartSum,double *pdCellSum,CASTAT *pcs)
 {
 	KDN *c = pkd->kdNodes;
 	int iCell,n;
 	float fWeight;
-	float fColor;
+	int i;
 
 	pkdClearTimer(pkd,1);
 	pkdClearTimer(pkd,2);
@@ -1519,7 +1451,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	/*
 	 ** Walk over the local buckets!
 	 */
-	fColor = 1.0;
+	*nActive = 0;
 	*pdPartSum = 0.0;
 	*pdCellSum = 0.0;
 	iCell = pkd->iRoot;
@@ -1528,23 +1460,33 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			iCell = c[iCell].iLower;
 			continue;
 			}
-		/*
-		 ** Calculate gravity on this bucket.
-		 */
-		n = c[iCell].pUpper - c[iCell].pLower + 1;
-		pkdStartTimer(pkd,1);
-		pkdBucketWalk(pkd,iCell,nReps,iOrder);
-		pkdStopTimer(pkd,1);
-		*pdPartSum += n*pkd->nPart + n*(n-1)/2;
-		*pdCellSum += n*(pkd->nCellSoft + pkd->nCellNewt);
-		pkdStartTimer(pkd,2);
-		pkdBucketInteract(pkd,iCell,iOrder);
-		pkdStopTimer(pkd,2);
-		fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 
-			1.0*(pkd->nPart + (n-1)/2.0);
-		pkdBucketWeight(pkd,iCell,fWeight);
-		pkdColorCell(pkd,iCell,fColor);
-		fColor += 1.0;
+		n = 0;
+		for (i=c[iCell].pLower;i<=c[iCell].pUpper;++i) {
+			if (pkd->pStore[i].iActive) ++n;
+			}
+		if (n > 0) {
+			/*
+			 ** Calculate gravity on this bucket.
+			 */
+			pkdStartTimer(pkd,1);
+			pkdBucketWalk(pkd,iCell,nReps,iOrder);
+			pkdStopTimer(pkd,1);
+			*nActive += n;
+			*pdPartSum += n*pkd->nPart + n*(n-1)/2;
+			*pdCellSum += n*(pkd->nCellSoft + pkd->nCellNewt);
+			pkdStartTimer(pkd,2);
+			pkdBucketInteract(pkd,iCell,iOrder);
+			pkdStopTimer(pkd,2);
+			fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 
+				1.0*(pkd->nPart + (n-1)/2.0);
+			/*
+			 ** pkdBucketWeight, only updates the weights of the active
+			 ** particles. Although, this isn't really a requirement it
+			 ** might be a good idea, if weights correspond to different 
+			 ** tasks at different times.
+			 */
+			pkdBucketWeight(pkd,iCell,fWeight);
+			}
 		iCell = c[iCell].iUpper;
 		}
 	/*
@@ -1575,10 +1517,11 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			    iCell = c[iCell].iLower;
 			    continue;
 			    }
-		    /*
-		     ** Calculate Ewald on this bucket.
-		     */
-		    pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
+			/*
+			 ** Calculate Ewald on this bucket.
+			 ** Note, it will only affect the active particles.
+			 */
+			pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
 		    iCell = c[iCell].iUpper;
 		    }
 	    pkdStopTimer(pkd,3);

@@ -200,6 +200,7 @@ struct inGravity {
 	double dEwhCut;
 	};
 struct outGravity {
+	int nActive;
 	double dPartSum;
 	double dCellSum;
 	/*	
@@ -327,29 +328,20 @@ void pstMassCheck(PST,void *,int,void *,int *);
 #define PST_ACTIVEORDER		38
 void pstActiveOrder(PST,void *,int,void *,int *);
 
-#define PST_SQUEEZE			39
-struct inSqueeze {
-	int bActiveOnly;
-	};
-struct outSqueeze {
-	BND bnd;
-	};
-void pstSqueeze(PST,void *,int,void *,int *);
-
-#define PST_SETRUNG		40
+#define PST_SETRUNG		39
 struct inSetRung {
     int iRung;
     };
 void pstSetRung(PST,void *,int,void *,int *);
 
-#define PST_ACTIVERUNG		41
+#define PST_ACTIVERUNG		40
 struct inActiveRung {
     int iRung;
     int bGreater;
     };
 void pstActiveRung(PST,void *,int,void *,int *);
 
-#define PST_CURRRUNG		42
+#define PST_CURRRUNG		41
 struct inCurrRung {
     int iRung;
     };
@@ -358,7 +350,7 @@ struct outCurrRung {
     };
 void pstCurrRung(PST,void *,int,void *,int *);
 
-#define PST_DENSITYRUNG		43
+#define PST_DENSITYRUNG		42
 struct inDensityRung {
     int iRung;
     double dDelta;
@@ -370,7 +362,7 @@ struct outDensityRung {
     };
 void pstDensityRung(PST,void *,int,void *,int *);
 
-#define PST_RUNGSTATS		44
+#define PST_RUNGSTATS		43
 struct inRungStats {
 	int iRung;
 	};
@@ -379,7 +371,7 @@ struct outRungStats {
 	};
 void pstRungStats(PST,void *,int,void *,int *);
 
-#define PST_GETMAP			45
+#define PST_GETMAP			44
 struct inGetMap {
 	int nStart;
 	};

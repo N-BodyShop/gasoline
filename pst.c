@@ -90,8 +90,6 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_MASSCHECK,pst,
 		      (void (*)(void *,void *,int,void *,int *))pstMassCheck,
 				  0,sizeof(struct outMassCheck));
-	mdlAddService(mdl,PST_SQUEEZE,pst,pstSqueeze,
-				  sizeof(struct inSqueeze),0);
 	mdlAddService(mdl,PST_ACTIVEORDER,pst,
 		      (void (*)(void *,void *,int,void *,int *))pstActiveOrder,
 		      0,0);
@@ -464,7 +462,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		nHigh = outWtLow.nHigh + outWtHigh.nHigh;
 		fLow = outWtLow.fLow + outWtHigh.fLow;
 		fHigh = outWtLow.fHigh + outWtHigh.fHigh;
+		/*
 		printf("ittr:%d l:%d u:%d lw:%f uw:%f\n",ittr,nLow,nHigh,fLow,fHigh);
+		*/
 		if (fLow/pst->nLower > fHigh/pst->nUpper) fu = fm;
 		else if (fLow/pst->nLower < fHigh/pst->nUpper) fl = fm;
 		else break;
@@ -498,7 +498,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			 */
 			nLow = outWtLow.nLow + outWtHigh.nLow;
 			nHigh = outWtLow.nHigh + outWtHigh.nHigh;
+			/*
 			printf("Fit ittr:%d l:%d\n",ittr,nLow);
+			*/
 			if (nLow > nLowerStore) fu = fm;
 			else if (nLow < nLowerStore) fl = fm;
 			else {
@@ -508,7 +510,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			fmm = (fl + fu)/2;
 			++ittr;
 			}
+		/*
 		printf("Fit ittr:%d l:%d <= %d\n",ittr,nLow,nLowerStore);
+		*/
 		assert(nLow <= nLowerStore);
 		}
 	else if (nHigh > nUpperStore-NUM_SAFETY) {
@@ -532,7 +536,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			 */
 			nLow = outWtLow.nLow + outWtHigh.nLow;
 			nHigh = outWtLow.nHigh + outWtHigh.nHigh;
+			/*
 			printf("Fit ittr:%d u:%d\n",ittr,nHigh);
+			*/
 			if (nHigh > nUpperStore) fl = fm;
 			else if (nHigh < nUpperStore) fu = fm;
 			else {
@@ -542,7 +548,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			fmm = (fl + fu)/2;
 			++ittr;
 			}
+		/*
 		printf("Fit ittr:%d u:%d <= %d\n",ittr,nHigh,nUpperStore);
+		*/
 		assert(nHigh <= nUpperStore);
 		}
 	pst->fSplit = fm;
@@ -590,7 +598,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			 */
 			nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
 			nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
+			/*
 			printf("Inactive Fit ittr:%d l:%d\n",ittr,nLowTot);
+			*/
 			if (nLowTot > nLowerStore) fu = fm;
 			else if (nLowTot < nLowerStore) fl = fm;
 			else {
@@ -600,7 +610,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			fmm = (fl + fu)/2;
 			++ittr;
 			}
+		/*
 		printf("Inactive Fit ittr:%d l:%d <= %d\n",ittr,nLowTot,nLowerStore);
+		*/
 		assert(nLowTot <= nLowerStore);
 		}
 	else if (nHighTot > nUpperStore-NUM_SAFETY) {
@@ -624,7 +636,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			 */
 			nLowTot = nLow + outWtLow.nLow + outWtHigh.nLow;
 			nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
+			/*
 			printf("Inactive Fit ittr:%d u:%d\n",ittr,nHighTot);
+			*/
 			if (nHighTot > nUpperStore) fl = fm;
 			else if (nHighTot < nUpperStore) fu = fm;
 			else {
@@ -634,7 +648,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 			fmm = (fl + fu)/2;
 			++ittr;
 			}
+		/*
 		printf("Inactive Fit ittr:%d u:%d <= %d\n",ittr,nHighTot,nUpperStore);
+		*/
 		assert(nHighTot <= nUpperStore);
 		}
 	pst->fSplitInactive = fm;
@@ -1254,12 +1270,6 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pst->nLeaves > 1) {
 		pst->kdn.iDim = pst->iSplitDim;
 		pst->kdn.fSplit = pst->fSplit;
-		if (in->bActiveOnly) {
-			pst->kdn.bnd = pst->bndActive;
-			}
-		else {
-			pst->kdn.bnd = pst->bnd;
-			}
 		pst->kdn.pLower = -1;
 		pst->kdn.pUpper = 1;
 		mdlReqService(pst->mdl,pst->idUpper,PST_BUILDTREE,in,nIn);
@@ -1267,6 +1277,7 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,&out2,NULL);
 		/*
 		 ** Combine to find cell mass, cm, softening.
+		 ** This also combine the bounds to set pst->kdn.bnd!
 		 */
 		pkdCombine(&out1.kdn,&out2.kdn,&pst->kdn);
 		/*
@@ -1285,7 +1296,7 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		if (in->bBinary) {
 			pkdBuildBinary(plcl->pkd,in->nBucket,in->iOpenType,in->dCrit,
-						  in->iOrder,in->bActiveOnly,&pst->kdn);
+						   in->iOrder,in->bActiveOnly,&pst->kdn);
 			}
 		else {
 			pkdBuildLocal(plcl->pkd,in->nBucket,in->iOpenType,in->dCrit,
@@ -1299,41 +1310,6 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	 */
 	out->kdn = pst->kdn;
 	if (pnOut) *pnOut = sizeof(struct outBuildTree);
-	}
-
-
-void pstSqueeze(PST pst,void *vin,int nIn,void *vout,int *pnOut)
-{
-	LCL *plcl = pst->plcl;
-	struct inSqueeze *in = vin;
-	struct outSqueeze *out = vout;
-	struct outSqueeze out1,out2;
-	int j;
-
-	assert(nIn == sizeof(struct inSqueeze));
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_SQUEEZE,in,nIn);
-		pstSqueeze(pst->pstLower,in,nIn,&out1,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,&out2,NULL);
-		/*
-		 ** Combine the bounds of out1 and out2.
-		 */
-		for (j=0;j<3;++j) {
-			if (out2.bnd.fMin[j] < out1.bnd.fMin[j])
-				out->bnd.fMin[j] = out2.bnd.fMin[j];
-			else
-				out->bnd.fMin[j] = out1.bnd.fMin[j];
-			if (out2.bnd.fMax[j] > out1.bnd.fMax[j])
-				out->bnd.fMax[j] = out2.bnd.fMax[j];
-			else
-				out->bnd.fMax[j] = out1.bnd.fMax[j];
-			}
-		}
-	else {
-		pkdSqueeze(plcl->pkd,in->bActiveOnly,&out->bnd);
-		}
-	pst->kdn.bnd = out->bnd;
-	if (pnOut) *pnOut = sizeof(struct outSqueeze);
 	}
 
 
@@ -1385,6 +1361,7 @@ void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
 		out->dPartSum += outUp.dPartSum;
 		out->dCellSum += outUp.dCellSum;
+		out->nActive += outUp.nActive;
 		out->dWSum += outUp.dWSum;
 		out->dISum += outUp.dISum;
 		out->dESum += outUp.dESum;
@@ -1408,7 +1385,7 @@ void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdGravAll(plcl->pkd,in->nReps,in->bPeriodic,in->iOrder,in->iEwOrder,
-				   in->dEwCut,in->dEwhCut,
+				   in->dEwCut,in->dEwhCut,&out->nActive,
 				   &out->dPartSum,&out->dCellSum,&cs);
 		out->dWSum = pkdGetTimer(plcl->pkd,1);
 		out->dISum = pkdGetTimer(plcl->pkd,2);

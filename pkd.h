@@ -261,7 +261,7 @@ void pkdCalcCell(PKD,KDN *,float *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);
 void pkdBuildLocal(PKD,int,int,double,int,int,KDN *);
 void pkdBuildBinary(PKD,int,int,double,int,int,KDN *);
-void pkdGravAll(PKD,int,int,int,int,double,double,
+void pkdGravAll(PKD,int,int,int,int,double,double,int *,
 				double *,double *,CASTAT *); 
 void pkdCalcE(PKD,double *,double *);
 void pkdDrift(PKD,double,float *,int);
@@ -273,7 +273,6 @@ void pkdCalcRoot(PKD,struct ilCellNewt *);
 void pkdDistribRoot(PKD,struct ilCellNewt *);
 void pkdSwapAll(PKD pkd, int idSwap);
 double pkdMassCheck(PKD pkd);
-void pkdSqueeze(PKD,int,BND *);
 void pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
 int pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta,

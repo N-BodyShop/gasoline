@@ -1072,7 +1072,7 @@ void msrBuildTree(MSR msr,int bActiveOnly,double dMass)
 	inc.nCell = nCell;
 	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
 	msrMassCheck(msr,dMass,"After pstColCells in msrBuildTree");
-#if (1)
+#if (0)
 	for (i=1;i<nCell;++i) {
 		struct pkdCalcCellStruct *m;
 
@@ -1104,15 +1104,6 @@ void msrBuildTree(MSR msr,int bActiveOnly,double dMass)
 	msrMassCheck(msr,dMass,"After pstCalcRoot in msrBuildTree");
 	pstDistribRoot(msr->pst,&root,sizeof(struct ioCalcRoot),NULL,NULL);
 	msrMassCheck(msr,dMass,"After pstDistribRoot in msrBuildTree");
-	}
-
-
-void msrSqueeze(MSR msr,int bActiveOnly)
-{
-	struct inSqueeze in;
-  
-	in.bActiveOnly = bActiveOnly;
-	pstSqueeze(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
 
@@ -1223,6 +1214,7 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	FILE *fp;
 	int id,i;
 	int inswap;
+	int iDim;
 
 	pst0 = msr->pst;
 	while(pst0->nLeaves > 1)
@@ -1266,32 +1258,30 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	 * First write our own particles.
 	 */
 	assert(msr->pMap[0] == 0);
-	pkdOutVector(plcl->pkd,achOutFile,0, iType); 
-	pkdOutVector(plcl->pkd,achOutFile,1, iType); 
-	pkdOutVector(plcl->pkd,achOutFile,2, iType); 
-	for (i=1;i<msr->nThreads;++i) {
-		id = msr->pMap[i];
-	    /* 
-	     * Swap particles with the remote processor.
-	     */
-	    inswap = 0;
-	    mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-	    pkdSwapAll(plcl->pkd, id);
-	    mdlGetReply(pst0->mdl,id,NULL,NULL);
-	    /* 
-	     * Write the swapped particles.
-	     */
-	    pkdOutVector(plcl->pkd,achOutFile,0, iType); 
-	    pkdOutVector(plcl->pkd,achOutFile,1, iType); 
-	    pkdOutVector(plcl->pkd,achOutFile,2, iType); 
-	    /* 
-	     * Swap them back again.
-	     */
-	    inswap = 0;
-	    mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-	    pkdSwapAll(plcl->pkd, id);
-	    mdlGetReply(pst0->mdl,id,NULL,NULL);
-	    }
+	for (iDim=0;iDim<3;++iDim) {
+		pkdOutVector(plcl->pkd,achOutFile,iDim,iType); 
+		for (i=1;i<msr->nThreads;++i) {
+			id = msr->pMap[i];
+			/* 
+			 * Swap particles with the remote processor.
+			 */
+			inswap = 0;
+			mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+			pkdSwapAll(plcl->pkd, id);
+			mdlGetReply(pst0->mdl,id,NULL,NULL);
+			/* 
+			 * Write the swapped particles.
+			 */
+			pkdOutVector(plcl->pkd,achOutFile,iDim,iType); 
+			/* 
+			 * Swap them back again.
+			 */
+			inswap = 0;
+			mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+			pkdSwapAll(plcl->pkd,id);
+			mdlGetReply(pst0->mdl,id,NULL,NULL);
+			}
+		}
 	}
 
 
@@ -1311,8 +1301,8 @@ void msrDensity(MSR msr)
 	}
 
 
-void msrGravity(MSR msr,double dStep,int *piSec,double *pdWMax,double *pdIMax,
-				double *pdEMax)
+void msrGravity(MSR msr,double dStep,
+				int *piSec,double *pdWMax,double *pdIMax,double *pdEMax)
 {
 	struct inGravity in;
 	struct outGravity out;
@@ -1324,7 +1314,7 @@ void msrGravity(MSR msr,double dStep,int *piSec,double *pdWMax,double *pdIMax,
 	double dEAvg,dEMax,dEMin;
 	double iP;
 
-	printf("Calculating Gravity, Step:%.3f\n",dStep);
+	printf("Calculating Gravity, Step:%.1f\n",dStep);
 	sec = time(0);
     in.nReps = msr->param.nReplicas;
     in.bPeriodic = msr->param.bPeriodic;
@@ -1336,8 +1326,8 @@ void msrGravity(MSR msr,double dStep,int *piSec,double *pdWMax,double *pdIMax,
 	dsec = time(0) - sec;
 	printf("Gravity Calculated, Wallclock:%d secs\n",dsec);
 	*piSec = dsec;
-	dPartAvg = out.dPartSum/msr->N;
-	dCellAvg = out.dCellSum/msr->N;
+	dPartAvg = out.dPartSum/out.nActive;
+	dCellAvg = out.dCellSum/out.nActive;
 	iP = 1.0/msr->nThreads;
 	dWAvg = out.dWSum*iP;
 	dIAvg = out.dISum*iP;
@@ -1355,17 +1345,19 @@ void msrGravity(MSR msr,double dStep,int *piSec,double *pdWMax,double *pdIMax,
 	printf("Walk CPU     Avg:%10f Max:%10f Min:%10f\n",dWAvg,dWMax,dWMin);
 	printf("Interact CPU Avg:%10f Max:%10f Min:%10f\n",dIAvg,dIMax,dIMin);
 	printf("Ewald CPU    Avg:%10f Max:%10f Min:%10f\n",dEAvg,dEMax,dEMin);	
-	printf("Particle Cache Statistics (average per processor):\n");
-	printf("    Accesses:    %10g\n",out.dpASum*iP);
-	printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
-	printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
-	printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
-	printf("Cell Cache Statistics (average per processor):\n");
-	printf("    Accesses:    %10g\n",out.dcASum*iP);
-	printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
-	printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
-	printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
-	printf("\n");
+	if (msr->nThreads > 1) {
+		printf("Particle Cache Statistics (average per processor):\n");
+		printf("    Accesses:    %10g\n",out.dpASum*iP);
+		printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
+		printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
+		printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
+		printf("Cell Cache Statistics (average per processor):\n");
+		printf("    Accesses:    %10g\n",out.dcASum*iP);
+		printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
+		printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
+		printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
+		printf("\n");
+		}
 	}
 
 
@@ -1838,9 +1830,8 @@ void msrReadOuts(MSR msr,double dTime)
 	 ** Add Data Subpath for local and non-local names.
 	 */
 	achFile[0] = 0;
-	strcat(achFile,msr->param.achDataSubPath);
-	strcat(achFile,"/");
-	sprintf(achFile,"%s.red",msr->param.achOutName);
+	sprintf(achFile,"%s/%s.red",msr->param.achDataSubPath,
+			msr->param.achOutName);
 	/*
 	 ** Add local Data Path.
 	 */
@@ -2065,10 +2056,10 @@ void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung)
 		if (msr->param.bVerbose) {
 		      printf("Adjust, iRung: %d\n", iRung);
 		      }
-
 		msrDrift(msr,dTime,0.5*dDelta);
 		msrActiveRung(msr, iRung, 1);
 		msrBuildTree(msr,0,dMass);
+		printf("Adjust, iRung: %d\n", iRung);
 		msrDensityRung(msr,iRung, dDelta, dTime+0.5*dDelta);
 		msrDrift(msr,dTime,-0.5*dDelta);
 		}
@@ -2082,15 +2073,18 @@ void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung)
 			    }
 			msrActiveRung(msr, iRung, 0);
 			msrBuildTree(msr,0,dMass);
-			msrGravity(msr,dStep + 1.0/(iRung+1), &iSec,&dWMax,&dIMax,&dEMax);
+			printf("Kick, iRung: %d\n", iRung);
+			msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax);
 			msrKick(msr, dTime, dDelta);
+			msrRungStats(msr);
 			}
-		msrTopStep(msr, dStep + 1.0/(iRung+1), dTime+0.5*dDelta, 0.5*dDelta,iRung+1);
+		msrTopStep(msr,dStep,dTime+0.5*dDelta,0.5*dDelta,iRung+1);
 		}
 	else {    
 		if (msr->param.bVerbose) {
-		    printf("Drift, iRung: %d\n", iRung);
+		    printf("Drift, iRung: %d\n",iRung-1);
 		    }
+		printf("Drift, iRung: %d\n",iRung-1);
 		msrDrift(msr,dTime,dDelta);
 		}
 	}
