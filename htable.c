@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <malloc.h>
 #include "htable.h"
 
 #define N	10000
