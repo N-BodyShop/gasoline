@@ -188,6 +188,18 @@ T3EMPI_LIBMDL	= $(T3EMPI_MDL)/mdl.o -lmpi -lm
 T3DMPI_LD_FLAGS	= $(BASE_LD_FLAGS)
 
 #
+#       LINUX Charm  defines
+#
+CHARM=../charm/net-linux/bin/charmc
+CHARMLINK=
+CHARM_MDL			= ../mdl/charm
+CHARM_CFLAGS		= -verbose -g -I$(CHARM_MDL) $(BASE_DEF) 
+CHARM_MDL_CFLAGS	= -verbose -g -Wall
+CHARM_LD_FLAGS		=  $(BASE_LD_FLAGS) -language charm++ -memory os
+CHARM_XOBJ                = erf.o v_sqrt1.o
+CHARM_LIBMDL              = $(CHARM_MDL)/mdl.o $(CHARMLINK) -lm
+
+#
 #       KSR1 defines
 #
 KSR_MDL			= ../mdl/ksr
@@ -297,6 +309,11 @@ ksr:
 	cd $(KSR_MDL); make
 	make $(EXE) "CFLAGS=$(KSR_CFLAGS)" "LD_FLAGS=$(KSR_LD_FLAGS)"\
 		"MDL=$(KSR_MDL)" "XOBJ=$(KSR_XOBJ)" "LIBMDL=$(KSR_LIBMDL)"
+
+charm:
+	cd $(CHARM_MDL); make CC=$(CHARM) "CFLAGS=$(CHARM_MDL_CFLAGS)"
+	make $(EXE) CC=$(CHARM) "CFLAGS=$(CHARM_CFLAGS)" "LD_FLAGS=$(CHARM_LD_FLAGS)"\
+		"MDL=$(CHARM_MDL)" "XOBJ=$(CHARM_XOBJ)" "LIBMDL=$(CHARM_LIBMDL)"
 
 $(EXE): $(OBJ) $(XOBJ)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -o $@ $(OBJ) $(XOBJ) $(LIBMDL)
