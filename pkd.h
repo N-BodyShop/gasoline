@@ -113,7 +113,7 @@ typedef struct ilCellNewt {
 
 typedef struct ewaldTable {
 	double hx,hy,hz;
-	double hPot,hax,hay,haz;
+	double hCfac,hSfac;
 	} EWT;
 
 typedef struct pkdContext {

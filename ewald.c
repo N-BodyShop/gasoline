@@ -18,7 +18,7 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 	double fPot,ax,ay,az;
 	double dx,dy,dz,dxo,dyo,dzo,r2,r,dir,dir2,a;
 	double gam[6];
-	double hdotx,s;
+	double hdotx,s,c;
 	
 	if(!iOrder) return;
 	mom = pkd->ilcnRoot;
@@ -76,11 +76,12 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 			}
 		for (i=0;i<pkd->nEwhLoop;++i) {
 			hdotx = pkd->ewt[i].hx*dx + pkd->ewt[i].hy*dy + pkd->ewt[i].hz*dz;
+			c = cos(hdotx);
 			s = sin(hdotx);
-			fPot -= pkd->ewt[i].hPot*cos(hdotx);
-			ax -= pkd->ewt[i].hax*s;
-			ay -= pkd->ewt[i].hay*s;
-			az -= pkd->ewt[i].haz*s;
+			fPot -= pkd->ewt[i].hCfac*c + pkd->ewt[i].hSfac*s;
+			ax -= pkd->ewt[i].hx*(pkd->ewt[i].hCfac*s - pkd->ewt[i].hSfac*c);
+			ay -= pkd->ewt[i].hy*(pkd->ewt[i].hCfac*s - pkd->ewt[i].hSfac*c);
+			az -= pkd->ewt[i].hz*(pkd->ewt[i].hCfac*s - pkd->ewt[i].hSfac*c);
 			}
 		p[j].fPot += fPot;
 		p[j].a[0] += ax;
@@ -97,7 +98,7 @@ void pkdEwaldInit(PKD pkd,double fhCut,int iOrder)
 	struct ilCellNewt mom;
 	int i,hReps,hx,hy,hz,h2;
 	double alpha,k4,L,tr;
-	double gam[6],mfac,ax,ay,az;
+	double gam[6],mfacc,mfacs;
 
 	/*
 	 ** First setup the root cell reduced moments.
@@ -155,15 +156,14 @@ void pkdEwaldInit(PKD pkd,double fhCut,int iOrder)
 				gam[3] = -2*M_PI/L*gam[2];
 				gam[4] = 2*M_PI/L*gam[3];
 				gam[5] = -2*M_PI/L*gam[4];
-				mfac = 0.0;
-				QEVAL(iOrder,mom,gam,hx,hy,hz,ax,ay,az,mfac);
+				mfacc = 0.0;
+				mfacs = 0.0;
+				QEVAL_H(iOrder,mom,gam,hx,hy,hz,mfacc, mfacs);
 				pkd->ewt[i].hx = 2*M_PI/L*hx;
 				pkd->ewt[i].hy = 2*M_PI/L*hy;
 				pkd->ewt[i].hz = 2*M_PI/L*hz;
-				pkd->ewt[i].hPot = mfac;
-				pkd->ewt[i].hax = pkd->ewt[i].hx*mfac;
-				pkd->ewt[i].hay = pkd->ewt[i].hy*mfac;
-				pkd->ewt[i].haz = pkd->ewt[i].hz*mfac;
+				pkd->ewt[i].hCfac = mfacc;
+				pkd->ewt[i].hSfac = mfacs;
 				++i;
 				}
 			}
