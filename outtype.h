@@ -33,6 +33,7 @@
 #endif
 #define OUT_SOFT_ARRAY          32
 #define OUT_IORDER_ARRAY	33
+#define OUT_IGASORDER_ARRAY	34
 
 #define OUT_H_ARRAY			19
 
@@ -51,6 +52,8 @@
 #define OUT_GRADRHO_VECTOR      5
 #define OUT_ACCELPRES_VECTOR	6
 #endif
+#define OUT_RFORM_VECTOR	7
+#define OUT_VFORM_VECTOR	8
 
 void pkdOutArray(PKD,char *,int,int);
 void pkdOutVector(PKD,char *,int,int,int);

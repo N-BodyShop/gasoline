@@ -5352,6 +5352,8 @@ void msrInitSph(MSR msr,double dTime)
 	switch (msr->param.iGasModel) {
 	case GASMODEL_COOLING:
 	case GASMODEL_COOLING_NONEQM:
+	    if(msr->param.bRestart)
+		break;		/* Already OK from checkpoint */
 		/*
 		* Get a consistent initial state where energy is consistent with 
 		* the initial density and input temperature and the ionization

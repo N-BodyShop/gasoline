@@ -21,6 +21,10 @@
 #include "collision.h"
 #endif
 
+#ifdef _LARGE_FILES
+#define fseek fseeko
+#endif
+
 /*
  BalsaraSwitch hackery
 */
@@ -241,26 +245,26 @@ void pkdSeek(PKD pkd,FILE *fp,int nStart,int bStandard)
 	if (bStandard) lStart = 32;
 	else lStart = sizeof(struct dump);
 	if (nStart > pkd->nGas) {
-		if (bStandard) lStart += pkd->nGas*48;
+		if (bStandard) lStart += pkd->nGas*48L;
 		else lStart += pkd->nGas*sizeof(struct gas_particle);
 		nStart -= pkd->nGas;
 		if (nStart > pkd->nDark) {
-			if (bStandard) lStart += pkd->nDark*36;
+			if (bStandard) lStart += pkd->nDark*36L;
 			else lStart += pkd->nDark*sizeof(struct dark_particle);
 			nStart -= pkd->nDark;
-			if (bStandard) lStart += nStart*44;
+			if (bStandard) lStart += nStart*44L;
 			else lStart += nStart*sizeof(struct star_particle);
 			}
 		else {
-			if (bStandard) lStart += nStart*36;
+			if (bStandard) lStart += nStart*36L;
 			else lStart += nStart*sizeof(struct dark_particle);
 			}
 		}
 	else {
-		if (bStandard) lStart += nStart*48;
+		if (bStandard) lStart += nStart*48L;
 		else lStart += nStart*sizeof(struct gas_particle);
 		}
-	fseek(fp,lStart,0);
+	assert(fseek(fp,lStart,0) == 0);
 	}
 
 
@@ -3418,13 +3422,18 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef STARFORM
 		p->fESNrate = 0.0;
 		p->fTimeForm = cp.fTimeForm;
+		for (j=0;j<3;++j) {
+			p->rForm[j] = cp.rForm[j];
+			p->vForm[j] = cp.vForm[j];
+			}
+		p->fDensity = cp.fDenForm;
+		p->iGasOrder = cp.iGasOrder;
 #endif
 		p->fMetals = cp.fMetals;
 #ifndef NOCOOLING		
-		/* Place holders -- later fixed in pkdInitEnergy */
-		p->Y_HI = 0.75;
-		p->Y_HeI = 0.0625;
-		p->Y_HeII = 0.0;
+		p->Y_HI = cp.Y_HI;
+		p->Y_HeI = cp.Y_HeI;
+		p->Y_HeII = cp.Y_HeII;
 #endif
 #endif
 #ifdef COLLISIONS
@@ -3478,8 +3487,19 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 #ifdef GASOLINE
 		cp.u = pkd->pStore[i].u;
 		cp.fMetals = pkd->pStore[i].fMetals;
+#ifndef NOCOOLING		
+		cp.Y_HI = pkd->pStore[i].Y_HI;
+		cp.Y_HeI = pkd->pStore[i].Y_HeI;
+		cp.Y_HeII = pkd->pStore[i].Y_HeII;
+#endif
 #ifdef STARFORM
 		cp.fTimeForm = pkd->pStore[i].fTimeForm;
+		for (j=0;j<3;++j) {
+			cp.rForm[j] = pkd->pStore[i].rForm[j];
+			cp.vForm[j] = pkd->pStore[i].vForm[j];
+			}
+		cp.fDenForm = pkd->pStore[i].fDensity;
+		cp.iGasOrder = pkd->pStore[i].iGasOrder;
 #endif
 #endif
 #ifdef COLLISIONS
@@ -3746,9 +3766,6 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 			dT = FLOAT_MAXVAL;
 			if (bEpsAcc && acc>0) {
 #ifdef GASOLINE
-#ifdef DEBUG
-			     if ((pkd->pStore[i].iOrder % 1000) == 0) printf("dT %i: %g %g %g, %g %g %g\n",pkd->pStore[i].iOrder,pkd->pStore[i].fBall2,4.0*dhMinOverSoft*pkd->pStore[i].fSoft*pkd->pStore[i].fSoft,acc,dhMinOverSoft,dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc),dEta*sqrt((dhMinOverSoft*pkd->pStore[i].fSoft)/acc));
-#endif
 			     if (pkdIsGas(pkd, &(pkd->pStore[i])) && dhMinOverSoft < 1 && pkd->pStore[i].fBall2<4.0*pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) {
 			        if (pkd->pStore[i].fBall2 > 4.0*dhMinOverSoft
 				    *pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
@@ -4474,12 +4491,12 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 
 void pkdUpdateShockTracker(PKD pkd, double dDelta, double dShockTrackerA, double dShockTrackerB )
 {
+#ifdef SHOCKTRACK
 	PARTICLE *p;
 	int i,n;
 	double conh,factor;
 	double dv2,a2,ap2,adotap=1;
 
-#ifdef SHOCKTRACK
         if (dShockTrackerB == 0) printf("Doing cheap shock tracking\n");
 	p = pkd->pStore;
 	n = pkdLocal(pkd);

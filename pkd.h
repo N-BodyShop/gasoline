@@ -96,6 +96,9 @@ typedef struct particle {
         FLOAT fESNrate;
         FLOAT fMSN;
 	FLOAT fSNMetals;
+	FLOAT rForm[3];		/* record pos and vel of star formation */
+	FLOAT vForm[3];
+        int iGasOrder;		/* gas from which star formed */
 #endif
 #endif
 #ifdef COLLISIONS
@@ -189,9 +192,16 @@ typedef struct chkParticle {
 #ifdef GASOLINE
 	FLOAT u;
 	FLOAT fMetals;
+#ifndef NOCOOLING
+	FLOAT Y_HI,Y_HeI,Y_HeII;	/* Abundance of ions */
 #endif
 #ifdef STARFORM
         FLOAT fTimeForm;
+	FLOAT rForm[3];		/* record pos and vel of star formation */
+	FLOAT vForm[3];
+	FLOAT fDenForm;
+	int iGasOrder;
+#endif
 #endif
 #ifdef COLLISIONS
 	int iOrgIdx; /* added for version 7 */
@@ -257,6 +267,9 @@ typedef struct ilCellNewt {
 	double xxxx,xyyy,xxxy,yyyy,xxxz,yyyz,xxyy,xxyz,xyyz;
 	double xxzz,xyzz,xzzz,yyzz,yzzz,zzzz;
 	} ILCN;
+
+/* IBM brain damage */
+#undef hz
 
 typedef struct ewaldTable {
 	double hx,hy,hz;

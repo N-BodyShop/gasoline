@@ -470,6 +470,24 @@ int main(int argc,char **argv)
 					strncat(achFile,".HeII",256);
 					msrOutArray(msr,achFile,OUT_HeII_ARRAY);
 					}
+				if(msr->param.bStarForm) {
+					msrReorder(msr);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".igasorder",256);
+					msrOutArray(msr,achFile,OUT_IGASORDER_ARRAY);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".rhoform",256);
+					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".Tform",256);
+					msrOutArray(msr,achFile,OUT_U_ARRAY);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".rform",256);
+					msrOutVector(msr,achFile,OUT_RFORM_VECTOR);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".vform",256);
+					msrOutVector(msr,achFile,OUT_VFORM_VECTOR);
+				    }
 #endif
 				if (msr->param.bDodtOutput) {
 					msrReorder(msr);

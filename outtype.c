@@ -74,6 +74,10 @@ FLOAT ArrType(PARTICLE *p,int iType)
 	case OUT_USN_ARRAY:
                 return(p->uSN);
 #endif
+#ifdef STARFORM
+	case OUT_IGASORDER_ARRAY:
+	    return((FLOAT) p->iGasOrder);
+#endif
 #endif
 	case OUT_H_ARRAY:
 		return(sqrt(p->fBall2*0.25));
@@ -101,11 +105,19 @@ FLOAT VecType(PARTICLE *p,int iDim,int iType)
 	case OUT_VPRED_VECTOR:
 		return(p->vPred[iDim]);
 #endif
-#if defined(GASOLINE) && defined(SHOCKTRACK)
+#if defined(GASOLINE)
+#if defined(SHOCKTRACK)
 	case OUT_GRADRHO_VECTOR:
 		return(p->gradrho[iDim]);
 	case OUT_ACCELPRES_VECTOR:
 		return(p->aPres[iDim]);
+#endif
+#if defined(STARFORM)
+	case OUT_RFORM_VECTOR:
+	    return(p->rForm[iDim]);
+	case OUT_VFORM_VECTOR:
+	    return(p->vForm[iDim]);
+#endif
 #endif
 	default:
 		return(0.0);

@@ -82,6 +82,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     double dDeltaM;
     double l_jeans2;
     int small_jeans = 0;
+    int j;
 
     /*
      * Is particle in convergent part of flow?
@@ -178,6 +179,17 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     starp.fMass = dDeltaM;
     starp.fTimeForm = dTime;
     starp.fBallMax = 0.0;
+    /*
+     * Save quantities
+     */
+    for(j = 0; j < 3; j++) {
+	starp.rForm[j] = starp.r[j];
+	starp.vForm[j] = starp.v[j];
+	}
+    starp.u = T;
+    starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in
+				       NewParticle() */
+    
     TYPEReset(&starp, TYPE_GAS);
     TYPESet(&starp, TYPE_STAR);
     TYPEReset(&starp, TYPE_NbrOfACTIVE); /* just a precaution */
