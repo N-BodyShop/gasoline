@@ -18,6 +18,7 @@ typedef struct msrContext {
 	LCL lcl;
 	float fCenter[3];
 	struct parameters param;
+	int bStandard;
 	int nThreads;
 	int N;
 	int iOpenType;
@@ -44,7 +45,7 @@ void msrLogParams(MSR msr, FILE *fp);
 void msrFinish(MSR);
 double msrReadTipsy(MSR);
 void msrWriteTipsy(MSR,char *,double);
-void msrSetSoft(MSR msr);
+void msrSetSoft(MSR msr,double);
 void msrBuildTree(MSR);
 void msrDomainColor(MSR);
 void msrReorder(MSR);

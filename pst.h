@@ -51,16 +51,13 @@ void pstFinish(PST);
 struct inSetAdd {
 	int id;
 	};
-void pstSetAdd(PST,char *,int,char *,int *);
+void pstSetAdd(PST,void *,int,void *,int *);
 
 #define PST_LEVELIZE		3
 struct inLevelize {
 	int iLvl;
 	};
-void pstLevelize(PST,char *,int,char *,int *);
-
-#define PST_SHOWPST			4
-void pstShowPst(PST,char *,int,char *,int *);
+void pstLevelize(PST,void *,int,void *,int *);
 
 #define PST_READTIPSY		5
 struct inReadTipsy {
@@ -71,16 +68,16 @@ struct inReadTipsy {
 	float fPeriod[3];
 	char achInFile[PST_FILENAME_SIZE];
 	};
-void pstReadTipsy(PST,char *,int,char *,int *);
+void pstReadTipsy(PST,void *,int,void *,int *);
 
 #define PST_DOMAINDECOMP	6
-void pstDomainDecomp(PST,char *,int,char *,int *);
+void pstDomainDecomp(PST,void *,int,void *,int *);
 
 #define PST_CALCBOUND		7
 struct outCalcBound {
 	BND bnd;
 	};
-void pstCalcBound(PST,char *,int,char *,int *);
+void pstCalcBound(PST,void *,int,void *,int *);
 
 #define PST_WEIGHT			8
 struct inWeight {
@@ -95,13 +92,13 @@ struct outWeight {
 	float fLow;
 	float fHigh;
 	};
-void pstWeight(PST,char *,int,char *,int *);
+void pstWeight(PST,void *,int,void *,int *);
 
 #define PST_FREESTORE		9
 struct outFreeStore {
 	int nFreeStore;
 	};
-void pstFreeStore(PST,char *,int,char *,int *);
+void pstFreeStore(PST,void *,int,void *,int *);
 
 /*
  ** This structure is used by reject collectors and SwapRejects
@@ -118,33 +115,33 @@ struct inColRejects {
 	float fSplit;
 	int iSplitSide;
 	};
-void pstColRejects(PST,char *,int,char *,int *);
+void pstColRejects(PST,void *,int,void *,int *);
 
 #define PST_SWAPREJECTS		11
-void pstSwapRejects(PST,char *,int,char *,int *);
+void pstSwapRejects(PST,void *,int,void *,int *);
 
 #define PST_DOMAINCOLOR		12
-void pstDomainColor(PST,char *,int,char *,int *);
+void pstDomainColor(PST,void *,int,void *,int *);
 
 #define PST_COLORDREJECTS	13
 struct inColOrdRejects {
 	int nOrdSplit;
 	int iSplitSide;
 	};
-void pstColOrdRejects(PST,char *,int,char *,int *);
+void pstColOrdRejects(PST,void *,int,void *,int *);
 
 #define PST_DOMAINORDER		14
-void pstDomainOrder(PST,char *,int,char *,int *);
+void pstDomainOrder(PST,void *,int,void *,int *);
 
 #define PST_LOCALORDER		15
-void pstLocalOrder(PST,char *,int,char *,int *);
+void pstLocalOrder(PST,void *,int,void *,int *);
 
 #define PST_OUTARRAY		16
 struct inOutArray {
 	char achOutFile[PST_FILENAME_SIZE];
 	int iType;
 	};
-void pstOutArray(PST,char *,int,char *,int *);
+void pstOutArray(PST,void *,int,void *,int *);
 
 #define PST_OUTVECTOR		17
 struct inOutVector {
@@ -152,13 +149,14 @@ struct inOutVector {
 	int iDim;
 	int iType;
 	};
-void pstOutVector(PST,char *,int,char *,int *);
+void pstOutVector(PST,void *,int,void *,int *);
 
 #define PST_WRITETIPSY		18
 struct inWriteTipsy {
+	int bStandard;
 	char achOutFile[PST_FILENAME_SIZE];
 	};
-void pstWriteTipsy(PST,char *,int,char *,int *);
+void pstWriteTipsy(PST,void *,int,void *,int *);
 
 #define PST_BUILDTREE		19
 struct inBuildTree {
@@ -167,14 +165,14 @@ struct inBuildTree {
 	int iOpenType;
 	double dCrit;
 	};
-void pstBuildTree(PST,char *,int,char *,int *);
+void pstBuildTree(PST,void *,int,void *,int *);
 
 #define PST_DENSITY			20
 struct inDensity {
 	int nSmooth;
 	int bGatherScatter;
 	};
-void pstDensity(PST,char *,int,char *,int *);
+void pstDensity(PST,void *,int,void *,int *);
 
 #define PST_GRAVITY			21
 struct inGravity {
@@ -199,28 +197,28 @@ struct outGravity {
 	double dEMax;
 	double dEMin;
 	};
-void pstGravity(PST,char *,int,char *,int *);
+void pstGravity(PST,void *,int,void *,int *);
 
 #define PST_CALCE			22
 struct outCalcE {
 	double T;
 	double U;
 	};
-void pstCalcE(PST,char *,int,char *,int *);
+void pstCalcE(PST,void *,int,void *,int *);
 
 #define PST_DRIFT			23
 struct inDrift {
 	double dDelta;
 	float fCenter[3];
 	};
-void pstDrift(PST,char *,int,char *,int *);
+void pstDrift(PST,void *,int,void *,int *);
 
 #define PST_KICK			24
 struct inKick {
 	double dvFacOne;
 	double dvFacTwo;
 	};
-void pstKick(PST,char *,int,char *,int *);
+void pstKick(PST,void *,int,void *,int *);
 
 #define PST_READCHECK		25
 struct inReadCheck {
@@ -232,26 +230,26 @@ struct inReadCheck {
 	float fPeriod[3];
 	char achInFile[PST_FILENAME_SIZE];
 	};
-void pstReadCheck(PST,char *,int,char *,int *);
+void pstReadCheck(PST,void *,int,void *,int *);
 
 #define PST_WRITECHECK		26
 struct inWriteCheck {
 	int nStart;
 	char achOutFile[PST_FILENAME_SIZE];
 	};
-void pstWriteCheck(PST,char *,int,char *,int *);
+void pstWriteCheck(PST,void *,int,void *,int *);
 
 #define PST_SETSOFT		27
 struct inSetSoft {
 	double dSoft;
 	};
-void pstSetSoft(PST,char *,int,char *,int *);
+void pstSetSoft(PST,void *,int,void *,int *);
 
 #define PST_SETTOTAL		28
 struct outSetTotal {
 	int nTotal;
 	};
-void pstSetTotal(PST,char *,int,char *,int *);
+void pstSetTotal(PST,void *,int,void *,int *);
 
 #endif
 

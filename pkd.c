@@ -6,6 +6,8 @@
 #include <assert.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <rpc/types.h>
+#include <rpc/xdr.h>
 #include "pkd.h"
 #include "ewald.h"
 #include "grav.h"
@@ -309,7 +311,7 @@ int pkdSwapRejects(PKD pkd,int idSwap)
 	if (idSwap != -1) {
 		nBuf = (pkd->nStore - pkd->nLocal)*sizeof(PARTICLE);
 		nOutBytes = pkd->nRejects*sizeof(PARTICLE);
-		mdlSwap(pkd->mdl,idSwap,nBuf,(char *)&pkd->pStore[pkd->nLocal],
+		mdlSwap(pkd->mdl,idSwap,nBuf,&pkd->pStore[pkd->nLocal],
 				nOutBytes,&nSndBytes,&nRcvBytes);
 		pkd->nLocal += nRcvBytes/sizeof(PARTICLE);
 		pkd->nRejects -= nSndBytes/sizeof(PARTICLE);
@@ -418,7 +420,8 @@ void pkdLocalOrder(PKD pkd,int nStart)
 	}
 
 
-void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd)
+void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
+				   int bStandard)
 {
 	FILE *fp;
 	int i,j;
@@ -440,20 +443,50 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd)
 	 */
 	fp = fopen(pszFileName,"r+");
 	assert(fp != NULL);
-	lStart = sizeof(struct dump)+nStart*sizeof(struct dark_particle);
-	fseek(fp,lStart,0);
-	/* 
-	 ** Write Stuff!
-	 */
-	for (i=0;i<pkd->nLocal;++i) {
-		for (j=0;j<3;++j) {
-			dp.pos[j] = pkd->pStore[i].r[j];
-			dp.vel[j] = pkd->pStore[i].v[j];
+	if (bStandard) {
+		XDR xdrs;
+		/*
+		 ** Seek according to true XDR size structures!
+		 ** This may be a bit dicey, but it should work as long
+		 ** as no one changes the tipsy binary format!
+		 */
+		assert(sizeof(struct dark_particle) == 9*sizeof(float));
+		assert(sizeof(struct dump) == sizeof(double)+6*sizeof(int));
+		lStart = 32 + nStart*36;
+		fseek(fp,lStart,0);
+		/* 
+		 ** Write Stuff!
+		 */
+		xdrstdio_create(&xdrs,fp,XDR_ENCODE);
+		for (i=0;i<pkd->nLocal;++i) {
+			xdr_float(&xdrs,&pkd->pStore[i].fMass);
+			for (j=0;j<3;++j) {
+				xdr_float(&xdrs,&pkd->pStore[i].r[j]);
+				}
+			for (j=0;j<3;++j) {
+				xdr_float(&xdrs,&pkd->pStore[i].v[j]);
+				}
+			xdr_float(&xdrs,&pkd->pStore[i].fSoft);
+			xdr_float(&xdrs,&pkd->pStore[i].fPot);
 			}
-		dp.mass = pkd->pStore[i].fMass;
-		dp.eps = pkd->pStore[i].fSoft;
-		dp.phi = pkd->pStore[i].fPot;
-		fwrite(&dp,sizeof(struct dark_particle),1,fp);
+		xdr_destroy(&xdrs);
+		}
+	else {
+		lStart = sizeof(struct dump)+nStart*sizeof(struct dark_particle);
+		fseek(fp,lStart,0);
+		/* 
+		 ** Write Stuff!
+		 */
+		for (i=0;i<pkd->nLocal;++i) {
+			for (j=0;j<3;++j) {
+				dp.pos[j] = pkd->pStore[i].r[j];
+				dp.vel[j] = pkd->pStore[i].v[j];
+				}
+			dp.mass = pkd->pStore[i].fMass;
+			dp.eps = pkd->pStore[i].fSoft;
+			dp.phi = pkd->pStore[i].fPot;
+			fwrite(&dp,sizeof(struct dark_particle),1,fp);
+			}
 		}
 	fclose(fp);
 	}

@@ -221,7 +221,7 @@ int pkdNodes(PKD);
 void pkdDomainColor(PKD);
 int pkdColOrdRejects(PKD,int,int);
 void pkdLocalOrder(PKD,int);
-void pkdWriteTipsy(PKD,char *,int,int);
+void pkdWriteTipsy(PKD,char *,int,int,int);
 void pkdBuildLocal(PKD,int,int,double,KDN *);
 void pkdBuildTop(PKD,int,double,KDN *,int,int *);
 void pkdGravAll(PKD,int,int,float,float,double *,double *); 

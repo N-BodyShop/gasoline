@@ -6,10 +6,13 @@
 #include <assert.h>
 #include <time.h>
 #include <math.h>
+#include <rpc/types.h>
+#include <rpc/xdr.h>
 #include "master.h"
 #include "tipsydefs.h"
 #include "opentype.h"
 #include "checkdefs.h"
+
 
 
 void _msrLeader(void)
@@ -36,10 +39,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 {
 	MSR msr;
 	int j,ret;
-	int id,iDum;
-	char in[SIZE(inSetAdd)];
-	char inLvl[SIZE(inLevelize)];
-	char *outShow;
+	int id;
+	struct inSetAdd inAdd;
+	struct inLevelize inLvl;
 	
 	msr = (MSR)malloc(sizeof(struct msrContext));
 	assert(msr != NULL);
@@ -64,6 +66,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.bRestart = 0;
 	prmAddParam(msr->prm,"bRestart",0,&msr->param.bRestart,"restart",
 				"restart from checkpoint");
+	/*
+	 ** Added bStandard as a new parameter, but can't add it to 
+	 ** msr->params because this would change the checkpoint 
+	 ** format. Need to generalize the checkpoint format to handle
+	 ** these types of changes!
+	 */
+	msr->bStandard = 0;
+	prmAddParam(msr->prm,"bStandard",0,&msr->bStandard,"std",
+				"output in standard TIPSY binary format");
 	msr->param.nBucket = 8;
 	prmAddParam(msr->prm,"nBucket",1,&msr->param.nBucket,"b",
 				"<max number of particles in a bucket> = 8");
@@ -220,87 +231,82 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	pstInitialize(&msr->pst,msr->mdl,&msr->lcl);
 	for (id=1;id<msr->nThreads;++id) {
 		if (msr->param.bVerbose) printf("Adding %d to the pst\n",id);
-		DATA(in,inSetAdd)->id = id;
-		pstSetAdd(msr->pst,in,SIZE(inSetAdd),NULL,NULL);
+		inAdd.id = id;
+		pstSetAdd(msr->pst,&inAdd,sizeof(inAdd),NULL,NULL);
 		}
 	if (msr->param.bVerbose) printf("\n");
 	/*
 	 ** Levelize the PST.
 	 */
-	DATA(inLvl,inLevelize)->iLvl = 0;
-	pstLevelize(msr->pst,inLvl,SIZE(inLevelize),NULL,NULL);
-	if (msr->param.bVerbose) {
-		printf("PROCESSOR SET TREE - PST\n");
-		outShow = (char *)malloc(MDL_MAX_SERVICE_BYTES);
-		assert(outShow != NULL);
-		pstShowPst(msr->pst,NULL,0,outShow,&iDum);
-		printf("%s\n",outShow);
-		}
+	inLvl.iLvl = 0;
+	pstLevelize(msr->pst,&inLvl,sizeof(inLvl),NULL,NULL);
 	}
 
-void msrLogParams(MSR msr, FILE *fp)
+
+void msrLogParams(MSR msr,FILE *fp)
 {
-        int i;
+	int i;
   
-	fprintf(fp, "# nThreads: %d", msr->param.nThreads);
-	fprintf(fp, " bDiag: %d", msr->param.bDiag);
-	fprintf(fp, " bVerbose: %d", msr->param.bVerbose);
-	fprintf(fp, " bPeriodic: %d", msr->param.bPeriodic);
-	fprintf(fp, " bRestart: %d", msr->param.bRestart);
-	fprintf(fp, " nBucket: %d", msr->param.nBucket);
-	fprintf(fp, "\n# nSteps: %d", msr->param.nSteps);
-	fprintf(fp, " iOutInterval: %d", msr->param.iOutInterval);
-	fprintf(fp, " iLogInterval: %d", msr->param.iLogInterval);
-	fprintf(fp, " iCheckInterval: %d", msr->param.iCheckInterval);
-	fprintf(fp, " iOrder: %d", msr->param.iOrder);
-	fprintf(fp, "\n# nReplicas: %d", msr->param.nReplicas);
-        if(prmArgSpecified(msr->prm, "dSoft"))
-          fprintf(fp, " dSoft: %g", msr->param.dSoft);
-        else
-          fprintf(fp, " dSoft: input");
-	fprintf(fp, " dDelta: %g", msr->param.dDelta);
-	fprintf(fp, " dEwCut: %f", msr->param.dEwCut);
-	fprintf(fp, " dEwhCut: %f", msr->param.dEwhCut);
-        fprintf(fp,"\n#");
+	fprintf(fp,"# nThreads: %d",msr->param.nThreads);
+	fprintf(fp," bDiag: %d",msr->param.bDiag);
+	fprintf(fp," bVerbose: %d",msr->param.bVerbose);
+	fprintf(fp," bPeriodic: %d",msr->param.bPeriodic);
+	fprintf(fp," bRestart: %d",msr->param.bRestart);
+	fprintf(fp," nBucket: %d",msr->param.nBucket);
+	fprintf(fp,"\n# nSteps: %d",msr->param.nSteps);
+	fprintf(fp," iOutInterval: %d",msr->param.iOutInterval);
+	fprintf(fp," iLogInterval: %d",msr->param.iLogInterval);
+	fprintf(fp," iCheckInterval: %d",msr->param.iCheckInterval);
+	fprintf(fp," iOrder: %d",msr->param.iOrder);
+	fprintf(fp,"\n# nReplicas: %d",msr->param.nReplicas);
+	if (prmArgSpecified(msr->prm,"dSoft"))
+		fprintf(fp," dSoft: %g",msr->param.dSoft);
+	else
+		fprintf(fp," dSoft: input");
+	fprintf(fp," dDelta: %g",msr->param.dDelta);
+	fprintf(fp," dEwCut: %f",msr->param.dEwCut);
+	fprintf(fp," dEwhCut: %f",msr->param.dEwhCut);
+	fprintf(fp,"\n#");
 	switch (msr->iOpenType) {
 	case OPEN_JOSH:
-		fprintf(fp, " iOpenType: JOSH");
+		fprintf(fp," iOpenType: JOSH");
 		break;
 	case OPEN_ABSPAR:
-		fprintf(fp, " iOpenType: ABSPAR");
+		fprintf(fp," iOpenType: ABSPAR");
 		break;
 	case OPEN_RELPAR:
-		fprintf(fp, " iOpenType: RELPAR");
+		fprintf(fp," iOpenType: RELPAR");
 		break;
 	case OPEN_ABSTOT:
-		fprintf(fp, " iOpenType: ABSTOT");
+		fprintf(fp," iOpenType: ABSTOT");
 		break;
 	case OPEN_RELTOT:
-		fprintf(fp, " iOpenType: RELTOT");
+		fprintf(fp," iOpenType: RELTOT");
 		break;
 	default:
-		fprintf(fp, " iOpenType: NONE?");
+		fprintf(fp," iOpenType: NONE?");
 		}
-	fprintf(fp, " dTheta: %f", msr->param.dTheta);
-	fprintf(fp, " dAbsPartial: %g", msr->param.dAbsPartial);
-	fprintf(fp, " dRealPartial: %g", msr->param.dRelPartial);
-	fprintf(fp, " dAbsTotal: %g", msr->param.dAbsTotal);
-	fprintf(fp, " dRelTotal: %g", msr->param.dRelTotal);
-	fprintf(fp, "\n# dPeriod: %g", msr->param.dPeriod);
-	fprintf(fp, " achInFile: %s", msr->param.achInFile);
-	fprintf(fp, " achOutName: %s", msr->param.achOutName); 
-	fprintf(fp, " bComove: %d", msr->param.bComove);
-	fprintf(fp, " dHubble0: %g", msr->param.dHubble0);
-	fprintf(fp, " dOmega0: %g", msr->param.dOmega0);
-	fprintf(fp, "\n# achDataSubPath: %s", msr->param.achDataSubPath);
-	fprintf(fp, " dExtraStore: %f", msr->param.dExtraStore);
-	fprintf(fp, " nSmooth: %d", msr->param.nSmooth);
-	fprintf(fp, " bGatherScatter: %d\n", msr->param.bGatherScatter);
-        fprintf(fp, "# RedOut:");
-        for(i = 0; i < msr->nRed; i++)
-            fprintf(fp, " %f", msrRedOut(msr, i));
-        fprintf(fp, "\n");
-}
+	fprintf(fp," dTheta: %f",msr->param.dTheta);
+	fprintf(fp," dAbsPartial: %g",msr->param.dAbsPartial);
+	fprintf(fp," dRealPartial: %g",msr->param.dRelPartial);
+	fprintf(fp," dAbsTotal: %g",msr->param.dAbsTotal);
+	fprintf(fp," dRelTotal: %g",msr->param.dRelTotal);
+	fprintf(fp,"\n# dPeriod: %g",msr->param.dPeriod);
+	fprintf(fp," achInFile: %s",msr->param.achInFile);
+	fprintf(fp," achOutName: %s",msr->param.achOutName); 
+	fprintf(fp," bComove: %d",msr->param.bComove);
+	fprintf(fp," dHubble0: %g",msr->param.dHubble0);
+	fprintf(fp," dOmega0: %g",msr->param.dOmega0);
+	fprintf(fp,"\n# achDataSubPath: %s",msr->param.achDataSubPath);
+	fprintf(fp," dExtraStore: %f",msr->param.dExtraStore);
+	fprintf(fp," nSmooth: %d",msr->param.nSmooth);
+	fprintf(fp," bGatherScatter: %d\n",msr->param.bGatherScatter);
+	fprintf(fp,"# RedOut:");
+	for (i=0;i<msr->nRed;i++)
+		fprintf(fp," %f",msrRedOut(msr, i));
+	fprintf(fp,"\n");
+	}
+
 
 void msrFinish(MSR msr)
 {
@@ -322,13 +328,13 @@ void msrFinish(MSR msr)
 
 double Expand2Time(double dExpansion,double dHubble0)
 {
-	return(2/(3*dHubble0)*pow(dExpansion,1.5));
+	return(2.0/(3.0*dHubble0)*pow(dExpansion,1.5));
 	}
 
 
 double Time2Expand(double dTime,double dHubble0)
 {
-	return(pow(3*dHubble0*dTime/2,2.0/3.0));
+	return(pow(3.0*dHubble0*dTime/2.0,2.0/3.0));
 	}
 
 
@@ -336,7 +342,7 @@ double msrReadTipsy(MSR msr)
 {
 	FILE *fp;
 	struct dump h;
-	char in[SIZE(inReadTipsy)];
+	struct inReadTipsy in;
 	char achInFile[PST_FILENAME_SIZE];
 	int j;
 	LCL *plcl = msr->pst->plcl;
@@ -350,7 +356,7 @@ double msrReadTipsy(MSR msr)
 		strcat(achInFile,msr->param.achDataSubPath);
 		strcat(achInFile,"/");
 		strcat(achInFile,msr->param.achInFile);
-		strcpy(DATA(in,inReadTipsy)->achInFile,achInFile);
+		strcpy(in.achInFile,achInFile);
 		/*
 		 ** Add local Data Path.
 		 */
@@ -359,7 +365,7 @@ double msrReadTipsy(MSR msr)
 			strcat(achInFile,plcl->pszDataPath);
 			strcat(achInFile,"/");
 			}
-		strcat(achInFile,DATA(in,inReadTipsy)->achInFile);
+		strcat(achInFile,in.achInFile);
 
 		fp = fopen(achInFile,"r");
 		if (!fp) {
@@ -390,7 +396,7 @@ double msrReadTipsy(MSR msr)
                     exit(1);
                     }
 		dTime = Expand2Time(h.time,msr->param.dHubble0);
-		msr->dRedshift = 1/h.time - 1;
+		msr->dRedshift = 1.0/h.time - 1.0;
 		}
 	else {
 		dTime = h.time;
@@ -405,30 +411,45 @@ double msrReadTipsy(MSR msr)
 			printf("Reading file...\nN:%d Time:%g\n",msr->N,dTime);
 			}
 		}
-	DATA(in,inReadTipsy)->nStart = 0;
-	DATA(in,inReadTipsy)->nEnd = msr->N - 1;
-	DATA(in,inReadTipsy)->iOrder = msr->param.iOrder;
+	in.nStart = 0;
+	in.nEnd = msr->N - 1;
+	in.iOrder = msr->param.iOrder;
 	/*
 	 ** Since pstReadTipsy causes the allocation of the local particle
 	 ** store, we need to tell it the percentage of extra storage it
 	 ** should allocate for load balancing differences in the number of
 	 ** particles.
 	 */
-	DATA(in,inReadTipsy)->fExtraStore = msr->param.dExtraStore;
+	in.fExtraStore = msr->param.dExtraStore;
 	/*
 	 ** Provide the period.
 	 */
 	for (j=0;j<3;++j) {
-		DATA(in,inReadTipsy)->fPeriod[j] = msr->param.dPeriod;
+		in.fPeriod[j] = msr->param.dPeriod;
 		}
 	/*
 	 ** Do a parallel Read of the input file, may be benificial for
 	 ** some systems, or if there are multiple identical physical files. 
 	 ** Start child threads reading!
 	 */
-	pstReadTipsy(msr->pst,in,SIZE(inReadTipsy),NULL,NULL);
+	pstReadTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	if (msr->param.bVerbose) puts("Input file has been successfully read.");
 	return(dTime);
+	}
+
+
+int xdrWriteHeader(XDR *pxdrs,struct dump *ph)
+{
+	int pad = 0;
+	
+	if (!xdr_double(pxdrs,&ph->time)) return 0;
+	if (!xdr_int(pxdrs,&ph->nbodies)) return 0;
+	if (!xdr_int(pxdrs,&ph->ndim)) return 0;
+	if (!xdr_int(pxdrs,&ph->nsph)) return 0;
+	if (!xdr_int(pxdrs,&ph->ndark)) return 0;
+	if (!xdr_int(pxdrs,&ph->nstar)) return 0;
+	if (!xdr_int(pxdrs,&pad)) return 0;
+	return 1;
 	}
 
 
@@ -436,7 +457,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 {
 	FILE *fp;
 	struct dump h;
-	char in[SIZE(inWriteTipsy)];
+	struct inWriteTipsy in;
 	char achOutFile[PST_FILENAME_SIZE];
 	LCL *plcl = msr->pst->plcl;
 	
@@ -447,7 +468,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	strcat(achOutFile,msr->param.achDataSubPath);
 	strcat(achOutFile,"/");
 	strcat(achOutFile,pszFileName);
-	strcpy(DATA(in,inWriteTipsy)->achOutFile,achOutFile);
+	strcpy(in.achOutFile,achOutFile);
 	/*
 	 ** Add local Data Path.
 	 */
@@ -456,7 +477,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		strcat(achOutFile,plcl->pszDataPath);
 		strcat(achOutFile,"/");
 		}
-	strcat(achOutFile,DATA(in,inWriteTipsy)->achOutFile);
+	strcat(achOutFile,in.achOutFile);
 	
 	fp = fopen(achOutFile,"w");
 	if (!fp) {
@@ -465,6 +486,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		mdlFinish(msr->mdl);
 		exit(1);
 		}
+	in.bStandard = msr->bStandard;
 	/*
 	 ** Assume tipsy format for now, and dark matter only.
 	 */
@@ -479,37 +501,48 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	h.ndim = 3;
 	if (msr->param.bVerbose) {
 		if (msr->param.bComove) {
-			printf("Writing file...\nTime:%g Redshift:%g\n",msr->N,
-				   dTime,(1/h.time - 1));
+			printf("Writing file...\nTime:%g Redshift:%g\n",
+				   dTime,(1.0/h.time - 1.0));
 			}
 		else {
-			printf("Writing file...\nTime:%g\n",msr->N,dTime);
+			printf("Writing file...\nTime:%g\n",dTime);
 			}
 		}
-	fwrite(&h,sizeof(struct dump),1,fp);
+	if (in.bStandard) {
+		XDR xdrs;
+
+		assert(sizeof(struct dump) == sizeof(double)+6*sizeof(int));
+		xdrstdio_create(&xdrs,fp,XDR_ENCODE);
+		xdrWriteHeader(&xdrs,&h);
+		xdr_destroy(&xdrs);
+		}
+	else {
+		fwrite(&h,sizeof(struct dump),1,fp);
+		}
 	fclose(fp);
 	/*
 	 ** Do a parallel write to the output file.
 	 */
-	pstWriteTipsy(msr->pst,in,SIZE(inWriteTipsy),NULL,NULL);
+	pstWriteTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	if (msr->param.bVerbose) {
 		puts("Output file has been successfully written.");
 		}
 	}
 
 
-void msrSetSoft(MSR msr)
+void msrSetSoft(MSR msr,double dSoft)
 {
-  char in[SIZE(inSetSoft)];
+	struct inSetSoft in;
   
-  if (msr->param.bVerbose) printf("Set Softening...\n");
-  DATA(in, inSetSoft)->dSoft = msr->param.dSoft;
-  pstSetSoft(msr->pst, in, SIZE(inSetSoft), NULL, NULL);
-}
+	if (msr->param.bVerbose) printf("Set Softening...\n");
+	in.dSoft = dSoft;
+	pstSetSoft(msr->pst,&in,sizeof(in),NULL,NULL);
+	}
+
 
 void msrBuildTree(MSR msr)
 {
-	char in[SIZE(inBuildTree)];
+	struct inBuildTree in;
 	int sec,dsec;
 	int i;
 	KDN *pkdn;
@@ -522,12 +555,12 @@ void msrBuildTree(MSR msr)
 		printf("Domain Decomposition complete, Wallclock: %d secs\n\n",dsec);
 		}
 	if (msr->param.bVerbose) printf("Building local trees...\n");
-	DATA(in,inBuildTree)->iCell	= 1;	/* ROOT */
-	DATA(in,inBuildTree)->nBucket = msr->param.nBucket;
-	DATA(in,inBuildTree)->iOpenType = msr->iOpenType;
-	DATA(in,inBuildTree)->dCrit = msr->dCrit;
+	in.iCell = 1;	/* ROOT */
+	in.nBucket = msr->param.nBucket;
+	in.iOpenType = msr->iOpenType;
+	in.dCrit = msr->dCrit;
 	sec = time(0);
-	pstBuildTree(msr->pst,in,SIZE(inBuildTree),NULL,NULL);
+	pstBuildTree(msr->pst,&in,sizeof(in),NULL,NULL);
 	dsec = time(0) - sec;
 	if (msr->param.bVerbose) {
 		printf("Local Trees built, Wallclock: %d secs\n\n",dsec);
@@ -569,7 +602,7 @@ void msrReorder(MSR msr)
 
 void msrOutArray(MSR msr,char *pszFile,int iType)
 {
-	char in[SIZE(inOutArray)];
+	struct inOutArray in;
 	char achOutFile[PST_FILENAME_SIZE];
 	LCL *plcl = msr->pst->plcl;
 	FILE *fp;
@@ -582,7 +615,7 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 		strcat(achOutFile,msr->param.achDataSubPath);
 		strcat(achOutFile,"/");
 		strcat(achOutFile,pszFile);
-		strcpy(DATA(in,inOutArray)->achOutFile,achOutFile);
+		strcpy(in.achOutFile,achOutFile);
 		/*
 		 ** Add local Data Path.
 		 */
@@ -591,7 +624,7 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 			strcat(achOutFile,plcl->pszDataPath);
 			strcat(achOutFile,"/");
 			}
-		strcat(achOutFile,DATA(in,inOutArray)->achOutFile);
+		strcat(achOutFile,in.achOutFile);
 
 		fp = fopen(achOutFile,"w");
 		if (!fp) {
@@ -612,14 +645,14 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 	 */
 	fprintf(fp,"%d\n",msr->N);
 	fclose(fp);
-	DATA(in,inOutArray)->iType = iType;
-	pstOutArray(msr->pst,in,SIZE(inOutArray),NULL,NULL);
+	in.iType = iType;
+	pstOutArray(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
 
 void msrOutVector(MSR msr,char *pszFile,int iType)
 {
-	char in[SIZE(inOutVector)];
+	struct inOutVector in;
 	char achOutFile[PST_FILENAME_SIZE];
 	LCL *plcl = msr->pst->plcl;
 	FILE *fp;
@@ -632,7 +665,7 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 		strcat(achOutFile,msr->param.achDataSubPath);
 		strcat(achOutFile,"/");
 		strcat(achOutFile,pszFile);
-		strcpy(DATA(in,inOutVector)->achOutFile,achOutFile);
+		strcpy(in.achOutFile,achOutFile);
 		/*
 		 ** Add local Data Path.
 		 */
@@ -641,7 +674,7 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 			strcat(achOutFile,plcl->pszDataPath);
 			strcat(achOutFile,"/");
 			}
-		strcat(achOutFile,DATA(in,inOutVector)->achOutFile);
+		strcat(achOutFile,in.achOutFile);
 
 		fp = fopen(achOutFile,"w");
 		if (!fp) {
@@ -662,26 +695,26 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	 */
 	fprintf(fp,"%d\n",msr->N);
 	fclose(fp);
-	DATA(in,inOutVector)->iType = iType;
-	DATA(in,inOutVector)->iDim = 0;
-	pstOutVector(msr->pst,in,SIZE(inOutVector),NULL,NULL);
-	DATA(in,inOutVector)->iDim = 1;
-	pstOutVector(msr->pst,in,SIZE(inOutVector),NULL,NULL);
-	DATA(in,inOutVector)->iDim = 2;
-	pstOutVector(msr->pst,in,SIZE(inOutVector),NULL,NULL);
+	in.iType = iType;
+	in.iDim = 0;
+	pstOutVector(msr->pst,&in,sizeof(in),NULL,NULL);
+	in.iDim = 1;
+	pstOutVector(msr->pst,&in,sizeof(in),NULL,NULL);
+	in.iDim = 2;
+	pstOutVector(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
 
 void msrDensity(MSR msr)
 {
-	char in[SIZE(inDensity)];
+	struct inDensity in;
 	int sec,dsec;
 
-	DATA(in,inDensity)->nSmooth = msr->param.nSmooth;
-	DATA(in,inDensity)->bGatherScatter = msr->param.bGatherScatter;
+	in.nSmooth = msr->param.nSmooth;
+	in.bGatherScatter = msr->param.bGatherScatter;
 	if (msr->param.bVerbose) printf("Calculating Densities...\n");
 	sec = time(0);
-	pstDensity(msr->pst,in,SIZE(inDensity),NULL,NULL);
+	pstDensity(msr->pst,&in,sizeof(in),NULL,NULL);
 	dsec = time(0) - sec;
 	printf("Densities Calculated, Wallclock:%d secs\n\n",dsec);
 	}
@@ -690,8 +723,8 @@ void msrDensity(MSR msr)
 void msrGravity(MSR msr,int *piSec,double *pdWMax,double *pdIMax,
 				double *pdEMax)
 {
-	char in[SIZE(inGravity)];
-	char out[SIZE(outGravity)];
+	struct inGravity in;
+	struct outGravity out;
 	int iDum;
 	int sec,dsec;
 	double dPartAvg,dCellAvg;
@@ -701,28 +734,28 @@ void msrGravity(MSR msr,int *piSec,double *pdWMax,double *pdIMax,
 
 	if (msr->param.bVerbose) printf("Calculating Gravity...\n");
 	sec = time(0);
-    DATA(in,inGravity)->nReps = msr->param.nReplicas;
-    DATA(in,inGravity)->bPeriodic = msr->param.bPeriodic;
-    DATA(in,inGravity)->dEwCut = msr->param.dEwCut;
-    DATA(in,inGravity)->dEwhCut = msr->param.dEwhCut;
-	pstGravity(msr->pst,in,SIZE(inGravity),out,&iDum);
+    in.nReps = msr->param.nReplicas;
+    in.bPeriodic = msr->param.bPeriodic;
+    in.dEwCut = msr->param.dEwCut;
+    in.dEwhCut = msr->param.dEwhCut;
+	pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
 	dsec = time(0) - sec;
 	printf("Gravity Calculated, Wallclock:%d secs\n",dsec);
 	*piSec = dsec;
-	dPartAvg = DATA(out,outGravity)->dPartSum/msr->N;
-	dCellAvg = DATA(out,outGravity)->dCellSum/msr->N;
-	dWAvg = DATA(out,outGravity)->dWSum/msr->nThreads;
-	dIAvg = DATA(out,outGravity)->dISum/msr->nThreads;
-	dEAvg = DATA(out,outGravity)->dESum/msr->nThreads;
-	dWMax = DATA(out,outGravity)->dWMax;
+	dPartAvg = out.dPartSum/msr->N;
+	dCellAvg = out.dCellSum/msr->N;
+	dWAvg = out.dWSum/msr->nThreads;
+	dIAvg = out.dISum/msr->nThreads;
+	dEAvg = out.dESum/msr->nThreads;
+	dWMax = out.dWMax;
 	*pdWMax = dWMax;
-	dIMax = DATA(out,outGravity)->dIMax;
+	dIMax = out.dIMax;
 	*pdIMax = dIMax;
-	dEMax = DATA(out,outGravity)->dEMax;
+	dEMax = out.dEMax;
 	*pdEMax = dEMax;
-	dWMin = DATA(out,outGravity)->dWMin;
-	dIMin = DATA(out,outGravity)->dIMin;
-	dEMin = DATA(out,outGravity)->dEMin;
+	dWMin = out.dWMin;
+	dIMin = out.dIMin;
+	dEMin = out.dEMin;
 	printf("dPartAvg:%f dCellAvg:%f\n",dPartAvg,dCellAvg);
 	printf("Walk CPU     Avg:%10f Max:%10f Min:%10f\n",dWAvg,dWMax,dWMin);
 	printf("Interact CPU Avg:%10f Max:%10f Min:%10f\n",dIAvg,dIMax,dIMin);
@@ -736,21 +769,20 @@ void msrStepCosmo(MSR msr,double dTime)
 	double a;
 	
 	a = Time2Expand(dTime,msr->param.dHubble0);
-	msr->dRedshift = 1/a - 1;
-	msr->dHubble = msr->param.dHubble0*(1+msr->dRedshift)*
-		sqrt(1+msr->param.dOmega0*msr->dRedshift);
+	msr->dRedshift = 1.0/a - 1.0;
+	msr->dHubble = msr->param.dHubble0*(1.0+msr->dRedshift)*
+		sqrt(1.0+msr->param.dOmega0*msr->dRedshift);
 	if (msr->param.bComove) msr->dCosmoFac = a;	
 	}
 
 
 void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U)
 {
-	char out[SIZE(outCalcE)];
-	int iDum;
+	struct outCalcE out;
 
-	pstCalcE(msr->pst,NULL,0,out,&iDum);
-	*T = DATA(out,outCalcE)->T;
-	*U = DATA(out,outCalcE)->U;
+	pstCalcE(msr->pst,NULL,0,&out,NULL);
+	*T = out.T;
+	*U = out.U;
 	/*
 	 ** Do the comoving coordinates stuff.
 	 */
@@ -772,26 +804,24 @@ void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U)
 
 void msrDrift(MSR msr,double dDelta)
 {
-	char in[SIZE(inDrift)];
+	struct inDrift in;
 	int j;
 
-	DATA(in,inDrift)->dDelta = dDelta;
+	in.dDelta = dDelta;
 	for (j=0;j<3;++j) {
-		DATA(in,inDrift)->fCenter[j] = msr->fCenter[j];
+		in.fCenter[j] = msr->fCenter[j];
 		}
-	pstDrift(msr->pst,in,SIZE(inDrift),NULL,NULL);
+	pstDrift(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
 
 void msrKick(MSR msr,double dDelta)
 {
-	char in[SIZE(inKick)];
+	struct inKick in;
 	
-	DATA(in,inKick)->dvFacOne = 
-		(1 - msr->dHubble*dDelta)/(1 + msr->dHubble*dDelta);
-	DATA(in,inKick)->dvFacTwo = 
-		dDelta/pow(msr->dCosmoFac,3)/(1 + msr->dHubble*dDelta);
-	pstKick(msr->pst,in,SIZE(inKick),NULL,NULL);
+	in.dvFacOne = (1.0 - msr->dHubble*dDelta)/(1.0 + msr->dHubble*dDelta);
+	in.dvFacTwo = dDelta/pow(msr->dCosmoFac,3.0)/(1.0 + msr->dHubble*dDelta);
+	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
 
@@ -799,7 +829,7 @@ double msrReadCheck(MSR msr,int *piStep)
 {
 	FILE *fp;
 	struct msrCheckPointHeader h;
-	char in[SIZE(inReadCheck)];
+	struct inReadCheck in;
 	char achInFile[PST_FILENAME_SIZE];
 	int i,j,bNewCheck;
 	LCL *plcl = msr->pst->plcl;
@@ -810,13 +840,12 @@ double msrReadCheck(MSR msr,int *piStep)
 	 */
 	sprintf(achInFile,"%s/%s.chk",msr->param.achDataSubPath,
 			msr->param.achOutName);
-	strcpy(DATA(in,inReadCheck)->achInFile,achInFile);
+	strcpy(in.achInFile,achInFile);
 	/*
 	 ** Add local Data Path.
 	 */
 	if (plcl->pszDataPath) {
-		sprintf(achInFile,"%s/%s",plcl->pszDataPath,
-				DATA(in,inReadCheck)->achInFile);
+		sprintf(achInFile,"%s/%s",plcl->pszDataPath,in.achInFile);
 		}
 	fp = fopen(achInFile,"r");
 	if (!fp) {
@@ -827,13 +856,12 @@ double msrReadCheck(MSR msr,int *piStep)
 		 */
 		sprintf(achInFile,"%s/%s.ochk",msr->param.achDataSubPath,
 				msr->param.achOutName);
-		strcpy(DATA(in,inReadCheck)->achInFile,achInFile);
+		strcpy(in.achInFile,achInFile);
 		/*
 		 ** Add local Data Path.
 		 */
 		if (plcl->pszDataPath) {
-			sprintf(achInFile,"%s/%s",plcl->pszDataPath,
-					DATA(in,inReadCheck)->achInFile);
+			sprintf(achInFile,"%s/%s",plcl->pszDataPath,in.achInFile);
 			}
 		fp = fopen(achInFile,"r");
 		if (!fp) {
@@ -875,29 +903,29 @@ double msrReadCheck(MSR msr,int *piStep)
 			printf("Reading checkpoint file...\nN:%d Time:%g\n",msr->N,dTime);
 			}
 		}
-	DATA(in,inReadCheck)->nStart = 0;
-	DATA(in,inReadCheck)->nEnd = msr->N - 1;
-	DATA(in,inReadCheck)->iOrder = msr->param.iOrder;
+	in.nStart = 0;
+	in.nEnd = msr->N - 1;
+	in.iOrder = msr->param.iOrder;
 	/*
 	 ** Since pstReadCheck causes the allocation of the local particle
 	 ** store, we need to tell it the percentage of extra storage it
 	 ** should allocate for load balancing differences in the number of
 	 ** particles.
 	 */
-	DATA(in,inReadCheck)->fExtraStore = msr->param.dExtraStore;
+	in.fExtraStore = msr->param.dExtraStore;
 	/*
 	 ** Provide the period.
 	 */
 	for (j=0;j<3;++j) {
-		DATA(in,inReadCheck)->fPeriod[j] = msr->param.dPeriod;
+		in.fPeriod[j] = msr->param.dPeriod;
 		}
 	/*
 	 ** Do a parallel Read of the input file, may be benificial for
 	 ** some systems, or if there are multiple identical physical files. 
 	 ** Start child threads reading!
 	 */
-	DATA(in,inReadCheck)->bNewCheck = bNewCheck;
-	pstReadCheck(msr->pst,in,SIZE(inReadCheck),NULL,NULL);
+	in.bNewCheck = bNewCheck;
+	pstReadCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	if (msr->param.bVerbose) puts("Checkpoint file has been successfully read.");
 	return(dTime);
 	}
@@ -907,8 +935,8 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 {
 	FILE *fp;
 	struct msrCheckPointHeader h;
-	char in[SIZE(inWriteCheck)];
-	char oute[SIZE(outSetTotal)];
+	struct inWriteCheck in;
+	struct outSetTotal oute;
 	char achOutFile[PST_FILENAME_SIZE];
 	char achOutTmp[PST_FILENAME_SIZE];
 	char achOutBak[PST_FILENAME_SIZE];
@@ -923,7 +951,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	strcat(achOutFile,msr->param.achDataSubPath);
 	strcat(achOutFile,"/");
 	sprintf(achOutFile,"%s.chk",msr->param.achOutName);
-	strcpy(DATA(in,inWriteCheck)->achOutFile,achOutFile);
+	strcpy(in.achOutFile,achOutFile);
 	/*
 	 ** Add local Data Path.
 	 */
@@ -932,11 +960,11 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 		strcat(achOutFile,plcl->pszDataPath);
 		strcat(achOutFile,"/");
 		}
-	strcat(achOutFile,DATA(in,inWriteCheck)->achOutFile);
-	sprintf(achOutTmp, "%s%s", achOutFile, ".tmp");
-	sprintf(achOutBak, "%s%s", achOutFile, ".bak");
+	strcat(achOutFile,in.achOutFile);
+	sprintf(achOutTmp,"%s%s",achOutFile,".tmp");
+	sprintf(achOutBak,"%s%s",achOutFile,".bak");
 #ifdef SAFE_CHECK
-	strcat(DATA(in,inWriteCheck)->achOutFile, ".tmp");	
+	strcat(in.achOutFile,".tmp");	
 	fp = fopen(achOutTmp,"w");
 #else
 	fp = fopen(achOutFile,"w");
@@ -966,11 +994,11 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 		}
 	if (msr->param.bVerbose) {
 		if (msr->param.bComove) {
-			printf("Writing checkpoint file...\nTime:%g Redshift:%g\n",msr->N,
-				   dTime,(1/dTime - 1));
+			printf("Writing checkpoint file...\nTime:%g Redshift:%g\n",
+				   dTime,(1.0/dTime - 1.0));
 			}
 		else {
-			printf("Writing checkpoint file...\nTime:%g\n",msr->N,dTime);
+			printf("Writing checkpoint file...\nTime:%g\n",dTime);
 			}
 		}
 	fwrite(&h,sizeof(struct msrCheckPointHeader),1,fp);
@@ -978,14 +1006,14 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	/*
 	 ** Do a parallel write to the output file.
 	 */
-	pstSetTotal(msr->pst,NULL,0,oute,&iDum);
-	DATA(in,inWriteCheck)->nStart = 0;
-	pstWriteCheck(msr->pst,in,SIZE(inWriteCheck),NULL,NULL);
+	pstSetTotal(msr->pst,NULL,0,&oute,&iDum);
+	in.nStart = 0;
+	pstWriteCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	if (msr->param.bVerbose) {
 		puts("Checkpoint file has been successfully written.");
 		}
-	sprintf(ach, "mv -f %s %s; mv %s %s", achOutFile, achOutBak,
-		achOutTmp, achOutFile);
+	sprintf(ach,"mv -f %s %s; mv %s %s",achOutFile,achOutBak,achOutTmp,
+			achOutFile);
 #ifdef SAFE_CHECK
 	system(ach);
 #endif
@@ -1101,3 +1129,22 @@ int msrComove(MSR msr)
 {
 	return(msr->param.bComove);
 	}
+
+
+double msrSoft(MSR msr)
+{
+	return(msr->param.dSoft);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
