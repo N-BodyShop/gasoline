@@ -192,10 +192,12 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	/*
 	 * Cooling
 	 */
-#if defined(GASOLINE) && !defined(NOCOOLING)
+#ifdef GASOLINE
+#ifndef NOCOOLING
 	pkd->cl = clInit();
 #else
 	pkd->cl = NULL;
+#endif	
 #endif	
 
 	*ppkd = pkd;
@@ -221,7 +223,7 @@ void pkdFinish(PKD pkd)
 	free(pkd->sqrttmp);
 	free(pkd->d2a);
 	free(pkd->ewt);
-#ifndef NOCOOLING
+#if defined(GASOLINE) && !defined(NOCOOLING)
 	clFinalize(pkd->cl);
 #endif
 	mdlFree(pkd->mdl,pkd->pStore);
