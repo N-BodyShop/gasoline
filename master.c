@@ -894,6 +894,9 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	char in[SIZE(inWriteCheck)];
 	char oute[SIZE(outSetTotal)];
 	char achOutFile[PST_FILENAME_SIZE];
+	char achOutTmp[PST_FILENAME_SIZE];
+	char achOutBak[PST_FILENAME_SIZE];
+	char ach[4*PST_FILENAME_SIZE];
 	int iDum,i;
 	LCL *plcl = msr->pst->plcl;
 	
@@ -914,10 +917,13 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 		strcat(achOutFile,"/");
 		}
 	strcat(achOutFile,DATA(in,inWriteCheck)->achOutFile);
+	sprintf(achOutTmp, "%s%s", achOutFile, ".tmp");
+	sprintf(achOutBak, "%s%s", achOutFile, ".bak");
+	strcat(DATA(in,inWriteCheck)->achOutFile, ".tmp");
 	
-	fp = fopen(achOutFile,"w");
+	fp = fopen(achOutTmp,"w");
 	if (!fp) {
-		printf("Could not open OutFile:%s\n",achOutFile);
+		printf("Could not open OutFile:%s\n",achOutTmp);
 		msrFinish(msr);
 		mdlFinish(msr->mdl);
 		exit(1);
@@ -959,6 +965,9 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	if (msr->param.bVerbose) {
 		puts("Checkpoint file has been successfully written.");
 		}
+	sprintf(ach, "mv -f %s %s; mv %s %s", achOutFile, achOutBak,
+		achOutTmp, achOutFile);
+	system(ach);
 	}
 
 
