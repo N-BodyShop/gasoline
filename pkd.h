@@ -563,7 +563,7 @@ int pkdResetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask);
 int pkdCountType(PKD pkd, unsigned int iFilterMask, unsigned int iTestMask);
 int pkdActiveMaskRung(PKD pkd, unsigned int iSetMask, int iRung, int bGreater );
 int pkdActiveTypeRung(PKD pkd, unsigned int iTestMask, unsigned int iSetMask, int iRung, int bGreater);
-int pkdSetTypeFromFile(PKD pkd, int iSetMask, char *file, int *niOrder, int *nSet);
+int pkdSetTypeFromFile(PKD pkd, int iSetMask, int biGasOrder, char *file, int *pniOrder, int *pnSet, int *pnSetiGasOrder);
 
 void pkdSetParticleTypes(PKD pkd, int nSuperCool);
 void pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,

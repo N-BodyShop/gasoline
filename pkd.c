@@ -4491,38 +4491,90 @@ pkdActiveTypeRung(PKD pkd, unsigned iTestMask, unsigned iSetMask, int iRung, int
     return nActive;
     }
 
-int pkdSetTypeFromFile(PKD pkd, int iSetMask, char *file, int *pniOrder, int *pnSet)
-{
-  PARTICLE *p;
+struct SortStruct {
+  int iOrder;
+  int iStore;
+};
+
+int CompSortStruct(const void * a, const void * b) {
+  return ( ( ((struct SortStruct *) a)->iOrder < ((struct SortStruct *) b)->iOrder ? -1 : 1 ) );
+}
+
+void pkdSetTypeFromFileSweep(PKD pkd, int iSetMask, char *file, 
+	   struct SortStruct *ss, int nss, int *pniOrder, int *pnSet) {
   int niOrder = 0, nSet = 0;
-  int iOrder, nRet, i;
+  int iOrder, iOrderOld, nRet, i;
   FILE *fp;
+  int iss;
 
   fp = fopen( file, "r" );
   assert( fp != NULL );
 
+  iss = 0;
+  iOrderOld = -1;
   while ( (nRet=fscanf( fp, "%d\n", &iOrder )) == 1 ) {
 	niOrder++;
-	for(i=0;i<pkdLocal(pkd);++i) {
-	  p = &pkd->pStore[i];
-	  if (p->iOrder == iOrder) {
-		TYPESet(p,iSetMask);
-		nSet++;
-	  }
-#if defined(STARFORM) || defined(SIMPLESF)
-	  if ( TYPETest(&pkd->pStore[i], TYPE_STAR) && p->iGasOrder == iOrder) {
-		TYPESet(p,iSetMask);
-		nSet++;
-	  }
-#endif
+	assert( iOrder > iOrderOld );
+	iOrderOld = iOrder;
+	while (ss[iss].iOrder < iOrder) {
+	  iss++;
+	  if (iss >= nss) goto DoneSS;
+	}
+	if (iOrder == ss[iss].iOrder) {
+	  TYPESet(&(pkd->pStore[ss[iss].iStore]),iSetMask);
+	  nSet++;
 	}
   }
-
-  *pniOrder = niOrder;
-  *pnSet = nSet;
-
+ 
+DoneSS:
   fclose(fp);
-  return nSet;
+
+  *pniOrder += niOrder;
+  *pnSet += nSet;
+
+  return;
+}
+
+
+int pkdSetTypeFromFile(PKD pkd, int iSetMask, int biGasOrder, char *file, int *pniOrder, int *pnSet, int *pnSetiGasOrder)
+{
+  struct SortStruct *ss;
+  int i,nss;
+
+  *pniOrder = 0;
+  *pnSet = 0;
+  *pnSetiGasOrder = 0;
+
+  nss = pkdLocal(pkd);
+  ss = malloc(sizeof(*ss)*nss);
+  assert( ss != NULL );
+
+  for(i=0;i<pkdLocal(pkd);++i) {
+	ss[i].iOrder = 	pkd->pStore[i].iOrder;
+	ss[i].iStore = i;
+  }
+
+  qsort( ss, nss, sizeof(*ss), CompSortStruct );
+
+  pkdSetTypeFromFileSweep(pkd, iSetMask, file, ss, nss, pniOrder, pnSet);
+
+#if defined(STARFORM) || defined(SIMPLESF)
+  if (biGasOrder) {
+	for(i=0;i<pkdLocal(pkd);++i) {
+	  ss[i].iOrder =   ( TYPETest(&pkd->pStore[i], TYPE_STAR) ? 
+						 pkd->pStore[i].iGasOrder : -1 );
+	  ss[i].iStore = i;
+	}
+	
+	qsort( ss, nss, sizeof(*ss), CompSortStruct );
+	
+	pkdSetTypeFromFileSweep(pkd, iSetMask, file, ss, nss, pniOrder, pnSetiGasOrder);
+  }
+#endif
+
+  free( ss );
+
+  return *pnSet+*pnSetiGasOrder;
 }
 
 

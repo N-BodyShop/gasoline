@@ -788,12 +788,14 @@ void pstActiveTypeRung(PST,void *,int,void *,int *);
 #define PST_SETTYPEFROMFILEMAXLEN 160
 struct inSetTypeFromFile {
   int iSetMask;
+  int biGasOrder;
   char file[PST_SETTYPEFROMFILEMAXLEN];
 };
 
 struct outSetTypeFromFile {
   int niOrder;
   int nSet;
+  int nSetiGasOrder;
 };
 
 void pstSetTypeFromFile(PST,void *,int,void *,int *);

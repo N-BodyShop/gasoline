@@ -4213,7 +4213,7 @@ double msrReadCheck(MSR msr,int *piStep)
 		if (!prmSpecified(msr->prm,"dFracNoDomainDecomp"))
 			FDL_read(fdl,"dFracNoDomainDecomp",&msr->param.dFracNoDomainDecomp);
 #ifndef NOCOOLING
-#ifdef COOLING_COSMO
+#if defined(COOLING_COSMO) && defined(GASOLINE)
 		if (!prmSpecified(msr->prm,"dMassFracHelium"))
 			FDL_read(fdl,"dMassFracHelium",&msr->param.CoolParam.dMassFracHelium);
 #endif
@@ -4476,7 +4476,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"dTheta",&msr->param.dTheta);
 	FDL_write(fdl,"dTheta2",&msr->param.dTheta2);
 	FDL_write(fdl,"dCentMass",&msr->param.dCentMass);
-#if !defined(NOCOOLING) && defined(COOLING_COSMO)
+#if defined(GASOLINE) && !defined(NOCOOLING) && defined(COOLING_COSMO)
 	FDL_write(fdl,"dMassFracHelium",&msr->param.CoolParam.dMassFracHelium);
 #else
 	{
@@ -5863,7 +5863,7 @@ int msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart) {
 
 void msrDumpFrame(MSR msr, double dTime, double dStep)
 {
-	double sec,dsec1,dsec2;
+	double sec,dsec1,dsec2,dExp;
 
 	sec = msrTime();
 
@@ -5906,7 +5906,8 @@ void msrDumpFrame(MSR msr, double dTime, double dStep)
 		  pstOldestStar(msr->pst, NULL, 0, &com[0], NULL);
 		  }
 
-		dfSetupFrame( msr->df, dTime, dStep, &com[0], &in );
+		dExp = csmTime2Exp(msr->param.csm,dTime);
+		dfSetupFrame( msr->df, dTime, dStep, dExp, &com[0], &in );
 
 		Image = dfAllocateImage( in.nxPix, in.nyPix );
 		
@@ -7422,19 +7423,20 @@ int msrSetTypeFromFile(MSR msr, char *file, int iSetMask)
 	struct outSetTypeFromFile out;
 
 	in.iSetMask = iSetMask;
+	in.biGasOrder = 1; /* Set from Parent Gas iOrder for stars? */
 	assert(strlen(file) < PST_SETTYPEFROMFILEMAXLEN);
 	strcpy( &(in.file[0]), file );
 
 	fp = fopen( file, "r" );
 	if (!fp) {
-	  fprintf(stderr,"ERROR: Could not iOrder list file:%s\n",file);
+	  fprintf(stderr,"ERROR: Could not open iOrder list file:%s\n",file);
 	  assert(0);
 	  }
 	fclose(fp);
 
 	pstSetTypeFromFile(msr->pst,&in,sizeof(in),&out,NULL);
 	
-	if (msr->param.bVDetails) printf("%d iOrder numbers read.  %d photogenic particles seleected.",out.niOrder,out.nSet);
+	if (msr->param.bVDetails) printf("%d iOrder numbers read.  %d direct and %d Gas Parent iOrder photogenic particles selected.",out.niOrder,out.nSet,out.nSetiGasOrder);
 	
-	return out.nSet;
+	return out.nSet+out.nSetiGasOrder;
 	}

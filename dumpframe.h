@@ -78,12 +78,14 @@ enum df_target {
 struct inDumpFrame {
 	double dTime;
 	double dStep;
+    double dExp;
 	/* 2D Projection info */
 	double r[3]; /* Centre */
 	double x[3]; /* Projection vectors */
 	double y[3];
 	double z[3];
 	double zClipNear,zClipFar,zEye;
+    int bExpansion; /* Rescale lengths into physical units with Expansion factor? */
 	int bPeriodic; /* Is it periodic? */
 	int nxRepNeg,nxRepPos; /* Replicas for Periodic */
 	int nyRepNeg,nyRepPos;
@@ -132,6 +134,7 @@ struct dfFrameSetup {
 	int bEyeAbsolute; /* Eye position is in absolute coordinates (default relative to target point) */
 	int bAnchor;
 	int nxPix,nyPix;    /* Pixmap dimensions */
+    int bExpansion; /* Rescale lengths into physical units with Expansion factor? */
 	int bPeriodic; /* Is it periodic? */
 	int iProject;      /* Projection */
 
@@ -202,7 +205,7 @@ void dfParseOptions( struct DumpFrameContext *df, char * filename );
 
 void dfParseCameraDirections( struct DumpFrameContext *df, char * filename );
 
-void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, double *com, struct inDumpFrame *in );
+void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, double dExp, double *com, struct inDumpFrame *in );
 
 void dfMergeImage( struct inDumpFrame *in, void *Image1, int *nImage1, void *Image2, int *nImage2 );
 void dfClearImage( struct inDumpFrame *in, void *Image, int *nImage );

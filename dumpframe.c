@@ -139,6 +139,7 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 	in->r[2] = fs->target[2];
 	in->nxPix = fs->nxPix;
 	in->nyPix = fs->nyPix;
+	in->bExpansion = fs->bExpansion;
 	in->bPeriodic = fs->bPeriodic;
 	in->iProject = fs->iProject;
 	in->pScale1 = fs->pScale1;
@@ -184,6 +185,9 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 	else {
 		in->zEye = LEN( in->z );
 		}
+
+	if (fs->bExpansion) in->zEye/= in->dExp; /* Use physical units for sizing? */
+	/* zEye is used to scale viewport */
 
 	assert( in->zEye > 0 );
 	if (fs->bzClipFrac) {
@@ -469,6 +473,7 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 	fs.zClipNear = 0.01;
 	fs.zClipFar = 2.0;
 	fs.bzClipFrac = 1;
+    fs.bExpansion = 0;  /* to physical? */
     fs.bPeriodic = 0;  /* Periodic? */
 	fs.iProject = DF_PROJECT_PERSPECTIVE;
 	/* Render */
@@ -616,6 +621,9 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 			fs.bzEye2 = 1;
 			nitem = sscanf( line, "%s %lf", command, &fs.zEye2 );
 			assert( nitem == 2 );
+			}
+		else if (!strcmp( command, "exp") || !strcmp( command, "physical") ) {
+			fs.bExpansion = 1;
 			}
 		else if (!strcmp( command, "fov") || !strcmp( command, "FOV")  ) {
 			nitem = sscanf( line, "%s %lf", command, &fs.FOV );
@@ -769,13 +777,14 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 	fclose(fp);
 	}
 
-void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, double *com, struct inDumpFrame *vin ) {
+void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, double dExp, double *com, struct inDumpFrame *vin ) {
 	struct dfFrameSetup fs;
 
 	int ifs = df->iFrameSetup;
 
 	vin->dTime = dTime;
 	vin->dStep = dStep;
+	vin->dExp = dExp;
 	vin->bVDetails = df->bVDetails;
 	vin->dMassStarMin = df->dMassStarMin;
 	vin->dMassStarMax = df->dMassStarMax;

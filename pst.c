@@ -3944,9 +3944,10 @@ void pstSetTypeFromFile(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,&outtmp,pnOut);
 		assert(out->niOrder == outtmp.niOrder);
 		out->nSet += outtmp.nSet;
+		out->nSetiGasOrder += outtmp.nSetiGasOrder;
 		}
 	else {
-		pkdSetTypeFromFile(plcl->pkd,in->iSetMask,in->file,&out->niOrder,&out->nSet);
+		pkdSetTypeFromFile(plcl->pkd,in->iSetMask,in->biGasOrder,in->file,&out->niOrder,&out->nSet,&out->nSetiGasOrder);
 		}
 
 	if (pnOut) *pnOut = sizeof(out);
