@@ -223,6 +223,10 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive)
 	}
 
 
+/*
+ ** Partition particles between iFrom and iTo into those < fSplit and
+ ** those >= to fSplit.  Find number and weight in each partition.
+ */
 int pkdWeight(PKD pkd,int d,float fSplit,int iSplitSide,int iFrom,int iTo,
 			  int *pnLow,int *pnHigh,float *pfLow,float *pfHigh)
 {
