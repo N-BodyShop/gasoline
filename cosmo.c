@@ -3,6 +3,10 @@
 #include <math.h>
 #include <assert.h>
 
+#ifdef CRAY_T3D
+#include "hyperlib.h"
+#endif
+
 #include "cosmo.h"
 
 /*
