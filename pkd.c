@@ -1477,7 +1477,9 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			pkdBucketWalk(pkd,iCell,nReps,iOrder);
 			pkdStopTimer(pkd,1);
 			*nActive += n;
-			*pdPartSum += n*pkd->nPart + n*(n-1)/2;
+			*pdPartSum += n*pkd->nPart +
+			     n*(2*(c[iCell].pUpper - c[iCell].pLower)
+				- n + 1)/2;
 			*pdCellSum += n*(pkd->nCellSoft + pkd->nCellNewt);
 			pkdStartTimer(pkd,2);
 			pkdBucketInteract(pkd,iCell,iOrder);
