@@ -567,7 +567,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"bViscosityLimiter",0,&msr->param.bViscosityLimiter,sizeof(int),
 				"vlim","<Balsara Viscosity Limiter> = 0");
 	msr->param.bViscosityLimitdt = 0;
-	prmAddParam(msr->prm,"bViscosityLimitdt",0,&msr->param.bViscosityLimiter,sizeof(int),
+	prmAddParam(msr->prm,"bViscosityLimitdt",0,&msr->param.bViscosityLimitdt,sizeof(int),
 				"vlim","<Balsara Viscosity Limit dt> = 0");
 	msr->param.bBulkViscosity = 0;
 	prmAddParam(msr->prm,"bBulkViscosity",0,&msr->param.bBulkViscosity,sizeof(int),

@@ -4036,19 +4036,21 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 			/*
 			 * Courant condition goes here.
 			 */
-			if (p->mumax>0.0) 
+	       if (p->mumax>0.0) {
 				if (bViscosityLimitdt) 
 				  dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(p->c + 0.6*(p->c + 2*p->BalsaraSwitch*p->mumax)));
 				else
 				  dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(p->c + 0.6*(p->c + 2*p->mumax)));
+	                   }
 	       else
 			   dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(1.6*p->c));
-			if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */
+
+	       if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */
 				dTu = dEtauDot*p->u/fabs(p->PdV);
 				if (dTu < dT) 
 					dT = dTu;
 				}
-			if(dT < p->dt)
+		if(dT < p->dt)
 				p->dt = dT;
 			}
 		}
