@@ -69,6 +69,9 @@ double dSTMStarLtime (PDVAPARAM ppdva, double dStarLtime, double dMetals)
     c -= log10(dStarLtime);
     b = ppdva->a1;
     a = ppdva->a2;
+    if(b*b - 4*a*c < 0.0) 	/* time is too small for fitting
+				   formula */
+	return DBL_MAX;
 
     logStarMass = (-b - sqrt(b*b - 4*a*c))/(2*a);
     StarMass = pow(10., logStarMass);
