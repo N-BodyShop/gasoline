@@ -211,8 +211,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 			}
 		p->u = 0.0;
 		p->uPred = 0.0;
-		p->Y_HI = (pkd->cl).Y_H;
-		p->Y_HeI = (pkd->cl).Y_He;
+		/* Place holders -- later fixed in pkdInitEnergy */
+		p->Y_HI = 0.75;
+		p->Y_HeI = 0.0625;
 		p->Y_HeII = 0.0;
 		
 		p->c = 0.0;
@@ -3254,6 +3255,9 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z)
     for(i=0;i<pkdLocal(pkd);++i,++p) {
                 if (TYPEQueryTREEACTIVE(p) && pkdIsGas(pkd,p)) {
 		        T = p->u / dTuFac;
+			p->Y_HI = (pkd->cl).Y_H;
+			p->Y_HeI = (pkd->cl).Y_He;
+			p->Y_HeII = 0.0;
 			pkdPARTICLE2PERBARYON(&Y, p, cl->Y_H, cl->Y_He);
 			clRates( cl, &r, T );
 			clAbunds( cl, &Y, &r, p->fDensity * cl->dComovingGmPerCcUnit );
