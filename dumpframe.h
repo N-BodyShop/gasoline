@@ -203,7 +203,7 @@ void dfRenderParticle( struct inDumpFrame *in, void *vImage,
 					  double *r, double fMass, double fSoft, double fBall2, int iActive );
 
 void dfRenderParticlesInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark, int iTypeStar,
-						   double *pr, double *pfMass, double *pfSoft, double *pfBall2, int *piActive, 
+						   double *pr, double *pfMass, double *pfSoft, double *pfBall2, unsigned int *piActive, 
 						   void *p, int sizeofp );
 void dfRenderParticles( struct inDumpFrame *in, void *vImage, void *pStore, int n );
 
