@@ -663,9 +663,12 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 
 void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoSplitDimFind)
 {
-	int NUM_SAFETY = 4; 	/* slop space when filling up memory */
+	int NUM_SAFETY = 4; 	/* minimum margin space per processor when
+				   filling up memory */
 	int nSafeTot;		/* total slop space we have to play with */
-	int margin;             /* more slop */
+	int margin;             /* margin of accuracy for filling up memory */
+	int iSloppy = 2;	/* controls whether we are sloppy in filling
+				   up memory: 2=>sloppy, 1=> not */
 	int d,ittr,nOut;
 	int nLow=-1,nHigh=-1,nLowerStore,nUpperStore;
 	FLOAT fLow,fHigh;
@@ -737,7 +740,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 
 	fl = pst->bnd.fMin[dBnd];
 	fu = pst->bnd.fMax[dBnd];
-	fm = pst->fSplit;
+	fm = pst->fSplit; /* This is from the previous timestep */
 	ittr = -1;
 	
         if (bDoRootFind || fm<fl || fm>fu ) {
@@ -757,7 +760,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 	     nTotalActive = outWtLow.nLow + outWtHigh.nLow
 	       + outWtLow.nHigh + outWtHigh.nHigh;
 	     pFlag = 1;
-	     if (nTotalActive <=1) {
+	     if (!bDoRootFind) {
 	          pFlag = 0; /* Divide them all */
 		  mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 		  inWt.iSplitSide = 0;
@@ -871,17 +874,21 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 	    nHighTot = outWtLow.nHigh + outWtHigh.nHigh;
 	    
 	    nSafeTot = nLowerStore + nUpperStore - (nLowTot + nHighTot);
+	    if(nSafeTot <= iSloppy*NUM_SAFETY*pst->nLeaves)
+		iSloppy = 1; /* NO slop to play with */
+
 	    if(nSafeTot/pst->nLeaves < NUM_SAFETY) {
 	           NUM_SAFETY = nSafeTot/pst->nLeaves;
-		   sprintf(ach,"id: %d tripped inactive NUM_SAFETY %d  Low %d/%d  High %d/%d\n",
-			   pst->mdl->idSelf, NUM_SAFETY, nLowTot, nLowerStore, nHighTot, nUpperStore);
-		   mdlDiag(pst->mdl,ach);
 		   mdlprintf(pst->mdl,"id: %d tripped inactive NUM_SAFETY %d  Low %d/%d  High %d/%d\n",
-			     pst->mdl->idSelf, NUM_SAFETY, nLowTot, nLowerStore, nHighTot, nUpperStore);
+			     pst->mdl->idSelf, NUM_SAFETY, nLowTot,
+			     nLowerStore, nHighTot, nUpperStore);
 	    }
 	    
-	    margin = nSafeTot/pst->nLeaves/20;
-	    if (margin < NUM_SAFETY/2) margin = NUM_SAFETY/2;
+	    /*
+	     ** Only be accurate to 5% of available space
+	     */
+	    margin = 0.05*nSafeTot/pst->nLeaves;
+	    if (margin < NUM_SAFETY) margin = NUM_SAFETY;
 
 	    mdlprintf(pst->mdl,"id: %d  %d Low %d/%d   %d High %d/%d  NUM_SAFETY %d margin %d\n",
 		      pst->mdl->idSelf, pst->nLower,nLowTot, nLowerStore, pst->nUpper,nHighTot, nUpperStore,NUM_SAFETY,margin);
@@ -926,16 +933,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 			  if(nLowTot != nLast)
 			    nDiff = nLowTot - nLast;
 			  nLast = nLowTot;
-			  /*
-			    if (nLowTot > nLowerStore-NUM_SAFETY*pst->nLower) fl = fm;
-			    else if (nLowTot < nLowerStore-2*NUM_SAFETY*pst->nLower) fu = fm;
-			  */
-			  /*
-			    if (nLowTot/pst->nLower > nHighTot/pst->nUpper) fl = fm;
-			    else if (nLowTot/pst->nLower < nHighTot/pst->nUpper-NUM_SAFETY) fu = fm;
-			  */
 			  if (nLowTot > nLowerStore-margin*pst->nLower) fl = fm;
-			  else if (nLowTot < nLowerStore-2*margin*pst->nLower) fu = fm;
+			  else if (nLowTot < nLowerStore-iSloppy*margin*pst->nLower) fu = fm;
 			  else {
 			    fl = fm;
 			    break;
@@ -944,9 +943,16 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 			      break;
 			  else if (fu > fl) fmm = 0.5*(fl+fu);
 			  else {
-			    fmm = 0.5*(fl+fu+pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]);
-			    if (fmm > pst->bnd.fMax[dBnd]) fmm = 0.5*(fl+fu-(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
-			    mdlassert(pst->mdl, fmm >= pst->bnd.fMin[dBnd] && fmm <= pst->bnd.fMax[dBnd]);
+			    fmm = 0.5*(fl+fu+(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
+			    if (fmm > pst->bnd.fMax[dBnd])
+				fmm = 0.5*(fl+fu-(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
+			    /*
+		 	     * Make sure split is inside bounds (within
+			     * roundoff)
+			     */
+			    mdlassert(pst->mdl,
+				      fmm - pst->bnd.fMin[dBnd] >= -1e-14*fabs(fmm)
+				      && fmm <= pst->bnd.fMax[dBnd]);
 			  }
 			  ++ittr;
 		    }
@@ -999,16 +1005,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 			  if(nLowTot != nLast)
 			    nDiff = nLowTot - nLast;
 			  nLast = nLowTot;
-			  /*
-			    if (nHighTot > nUpperStore-NUM_SAFETY*pst->nUpper) fu = fm;
-			    else if (nHighTot < nUpperStore-2*NUM_SAFETY*pst->nUpper) fl = fm;
-			  */
-			  /*
-			    if (nHighTot/pst->nUpper > nLowTot/pst->nLower) fu = fm;
-			    else if (nHighTot/pst->nUpper < nLowTot/pst->nLower-NUM_SAFETY) fl = fm;
-			  */
 			  if (nHighTot > nUpperStore-margin*pst->nUpper) fu = fm;
-			  else if (nHighTot < nUpperStore-2*margin*pst->nUpper) fl = fm;
+			  else if (nHighTot < nUpperStore-iSloppy*margin*pst->nUpper) fl = fm;
 			  else {
 			    fu = fm;
 			    break;
@@ -1017,9 +1015,16 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 			      break;
 			  else if (fu > fl) fmm = 0.5*(fl+fu);
 			  else {
-			    fmm = 0.5*(fl+fu+pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]);
-			    if (fmm > pst->bnd.fMax[dBnd]) fmm = 0.5*(fl+fu-(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
-			    mdlassert(pst->mdl, fmm >= pst->bnd.fMin[dBnd] && fmm <= pst->bnd.fMax[dBnd]);
+			    fmm = 0.5*(fl+fu+(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
+			    if (fmm > pst->bnd.fMax[dBnd])
+				fmm = 0.5*(fl+fu-(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
+			    /*
+		 	     * Make sure split is inside bounds (within
+			     * roundoff)
+			     */
+			    mdlassert(pst->mdl,
+				      fmm - pst->bnd.fMin[dBnd] >= -1e-14*fabs(fmm)
+				      && fmm <= pst->bnd.fMax[dBnd]);
 			  }
 			  ++ittr;
 		    }
@@ -1034,139 +1039,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 		    mdlPrintTimer(pst->mdl,"TIME fix upper II _pstRootSplit ",&t);
 	    }
 
-	    if (nLowTot < NUM_SAFETY*pst->nLower) {
-	            sprintf(ach,"id: %d: nLowTot < NUM_SAFETY*pst->nLower %d %d %d %d\n",
-			    pst->mdl->idSelf, nLowTot, nLowerStore, NUM_SAFETY, pst->nLower);
-		    mdlDiag(pst->mdl,ach);
-		    if (fm > pst->bnd.fMax[dBnd]) fm=pst->bnd.fMax[dBnd];
-		    if (fm < pst->bnd.fMin[dBnd]) fm=pst->bnd.fMin[dBnd];
-		    fu = fm;
-		    if (fu > fl) fmm = 0.5*(fl+fu);
-		    else {
-		      fmm = 0.5*(fl+fu+pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]);
-		      if (fmm > pst->bnd.fMax[dBnd]) fmm = 0.5*(fl+fu-(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
-		      mdlassert(pst->mdl, fmm >= pst->bnd.fMin[dBnd] && fmm <= pst->bnd.fMax[dBnd]);
-		    }
-		    ittr = 1;
-		    nLast = nLowTot;
-		    while (ittr < MAX_ITTR) {
-		          fm = fmm;
-			  inWtWrap.iSplitDim = d;
-			  inWtWrap.fSplit = fm;	
-			  inWtWrap.fSplit2 = pst->fSplit;
-			  inWtWrap.ittr = ittr;
-			  inWtWrap.iSplitSide = 1;
-			  inWtWrap.pFlag = 0;
-			  mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHTWRAP,&inWtWrap,sizeof(inWtWrap));
-			  inWtWrap.iSplitSide = 0;
-			  pstWeightWrap(pst->pstLower,&inWtWrap,sizeof(inWtWrap),&outWtLow,NULL);
-			  mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
-				/*
-				** Add lower and Upper subsets numbers of particles
-				*/
-			  nLowTot = outWtLow.nLow + outWtHigh.nLow;
-			  nHighTot = outWtLow.nHigh + outWtHigh.nHigh;
-				/*
-				  mdlprintf(pst->mdl, "id: %d (%d) %d th guess reverse split: %f (%f,%f) (%f,%f) Low %d High %d\n",
-				  pst->mdl->idSelf, pst->iLvl, ittr, fm, fl, fu, pst->bnd.fMin[dBnd], pst->bnd.fMax[dBnd],nLowTot,nHighTot);
-				*/
-			  if(nLowTot != nLast)
-			    nDiff = nLowTot - nLast;
-			  nLast = nLowTot;
-			  if (nLowTot > margin*pst->nLower) fl = fm;
-			  else if (nLowTot < NUM_SAFETY*pst->nLower) fu = fm;
-			  else {
-			    fl = fm;
-			    break;
-			  }
-			  if (fu == fl)
-			      break;
-			  else if (fu > fl) fmm = 0.5*(fl+fu);
-			  else {
-			    fmm = 0.5*(fl+fu+pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]);
-			    if (fmm > pst->bnd.fMax[dBnd]) fmm = 0.5*(fl+fu-(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
-			    mdlassert(pst->mdl, fmm >= pst->bnd.fMin[dBnd] && fmm <= pst->bnd.fMax[dBnd]);
-			  }
-			  ++ittr;
-		    }
-		    mdlprintf(pst->mdl, "id: %d (%d) Fix too few Low %d th guess reverse split: %f (%f,%f) (%f,%f) Low %d High %d\n",
-			      pst->mdl->idSelf, pst->iLvl, ittr, fm, fl, fu, pst->bnd.fMin[dBnd], pst->bnd.fMax[dBnd],nLowTot,nHighTot);
-		    if(nLowTot != nLowerStore-NUM_SAFETY*pst->nLower) {
-		      if(abs(nDiff) > 1)
-			mdlprintf(pst->mdl, "id: %d delta of %d, check NUM_SAFTEY\n",
-				  pst->mdl->idSelf, nDiff);
-		    }
-		    mdlassert(pst->mdl,nLowTot <= nLowerStore);
-		    mdlPrintTimer(pst->mdl,"TIME fix lower II _pstRootSplit ",&t);
-	    }
-	    if (nHighTot < NUM_SAFETY*pst->nUpper) {
-	            sprintf(ach,"id: %d: nHighTot > nUpperStore-NUM_SAFETY*pst->nUpper %d %d %d %d\n",
-		      pst->mdl->idSelf, nHighTot, nUpperStore, NUM_SAFETY, pst->nUpper);
-		    mdlDiag(pst->mdl,ach);
-		    if (fm > pst->bnd.fMax[dBnd]) fm=pst->bnd.fMax[dBnd];
-		    if (fm < pst->bnd.fMin[dBnd]) fm=pst->bnd.fMin[dBnd];
-		    fl = fm;
-		    if (fu > fl) fmm = 0.5*(fl+fu);
-		    else {
-		      fmm = 0.5*(fl+fu+pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]);
-		      if (fmm > pst->bnd.fMax[dBnd]) fmm = 0.5*(fl+fu-(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
-		      mdlassert(pst->mdl, fmm >= pst->bnd.fMin[dBnd] && fmm <= pst->bnd.fMax[dBnd]);
-		    }
-		    ittr = 1; 
-		    nLast = nLowTot;
-		    while (ittr < MAX_ITTR) {
-		          fm = fmm;
-			  inWtWrap.iSplitDim = d;
-			  inWtWrap.fSplit = fm;
-			  inWtWrap.fSplit2 = pst->fSplit;
-			  inWtWrap.ittr = ittr;
-			  inWtWrap.iSplitSide = 1;
-			  inWtWrap.pFlag = 0;
-			  mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHTWRAP,&inWtWrap,sizeof(inWtWrap));
-			  inWtWrap.iSplitSide = 0;
-			  pstWeightWrap(pst->pstLower,&inWtWrap,sizeof(inWtWrap),&outWtLow,NULL);
-			  mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
-			  /*
-			  ** Add lower and Upper subsets numbers of particles
-			  */
-			  nLowTot = outWtLow.nLow + outWtHigh.nLow;
-			  nHighTot = outWtLow.nHigh + outWtHigh.nHigh;
-				/*				
-								mdlprintf(pst->mdl, "id: %d (%d) %d th guess reverse split: %f (%f,%f) (%f,%f) Low %d High %d\n",
-								pst->mdl->idSelf, pst->iLvl, ittr, fm, fl, fu, pst->bnd.fMin[dBnd], pst->bnd.fMax[dBnd],nLowTot,nHighTot);
-				*/
-			  if(nLowTot != nLast)
-			    nDiff = nLowTot - nLast;
-			  nLast = nLowTot;
-			  if (nHighTot > margin*pst->nUpper) fu = fm;
-			  else if (nHighTot < NUM_SAFETY*pst->nUpper) fl = fm;
-			  else {
-			    fu = fm;
-			    break;
-			  }
-			  if (fu == fl)
-			      break;
-			  else if (fu > fl) fmm = 0.5*(fl+fu);
-			  else {
-			    fmm = 0.5*(fl+fu+pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]);
-			    if (fmm > pst->bnd.fMax[dBnd]) fmm = 0.5*(fl+fu-(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
-			    mdlassert(pst->mdl, fmm >= pst->bnd.fMin[dBnd] && fmm <= pst->bnd.fMax[dBnd]);
-			  }
-			  ++ittr;
-		    }
-		    mdlprintf(pst->mdl, "id: %d (%d) Fix Too few High %d th guess reverse split: %f (%f,%f) (%f,%f) Low %d High %d\n",
-			      pst->mdl->idSelf, pst->iLvl, ittr, fm, fl, fu, pst->bnd.fMin[dBnd], pst->bnd.fMax[dBnd],nLowTot,nHighTot);
-		    if(nHighTot != nUpperStore-NUM_SAFETY*pst->nUpper) {
-		      if(abs(nDiff) > 1)
-			mdlprintf(pst->mdl, "id: %d delta of %d, check NUM_SAFETY\n",
-				  pst->mdl->idSelf, nDiff);
-		    }
-		    mdlassert(pst->mdl,nHighTot <= nUpperStore);
-		    mdlPrintTimer(pst->mdl,"TIME fix upper II _pstRootSplit ",&t);
-	    }
-
-	    mdlassert(pst->mdl, nLowTot >= pst->nLower);
-	    mdlassert(pst->mdl, nHighTot >= pst->nUpper);
+	    mdlassert(pst->mdl, nLowTot >= 0);
+	    mdlassert(pst->mdl, nHighTot >= 0);
 	    mdlassert(pst->mdl, nLowTot <= nLowerStore);
 	    mdlassert(pst->mdl, nHighTot <= nUpperStore);
 
@@ -1877,6 +1751,15 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pst->bnd = outBnd.bnd;
 		pst->bndActive = outBnd.bndActive;
 		pst->bndTreeActive = outBnd.bndTreeActive;
+		if(pst->bnd.fMin[0] > pst->bnd.fMax[0]) {
+		/*
+		 ** No particles in this branch!
+		 */
+		    pstMassCheck(pst,NULL,0,&outMass,NULL); /* sanity check */
+		    assert(outMass.dMass == 0.0);
+		    if (pnOut) *pnOut = 0;
+		    return;
+		    }
 		/*
 		 ** Next determine the longest axis 
 		 */
@@ -1899,11 +1782,7 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		_pstRootSplit(pst,d,dMass, in->bDoRootFind, in->bDoSplitDimFind );
 		mdlPrintTimer(pst->mdl,"TIME RootSplit done in pstDomainDecomp",&t);
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
-#if 0
-		if (dMass != outMass.dMass) {
-#else
-  if (fabs(dMass - outMass.dMass) > MASS_EPS*dMass) {
-#endif
+  		if (fabs(dMass - outMass.dMass) > MASS_EPS*dMass) {
 			printf("ERROR id:%d lvl:%d:_pstRootSplit mass not cons.\n",
 				   pst->idSelf,pst->iLvl);
 			}
@@ -1919,7 +1798,7 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (pst->nUpper > 1) 
 			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
-		mdlPrintTimer(pst->mdl,"TIME Sublevels done in pstDomainDecomp ",&t);
+	mdlPrintTimer(pst->mdl,"TIME Sublevels done in pstDomainDecomp ",&t);
 
 	if (pnOut) *pnOut = 0;
 

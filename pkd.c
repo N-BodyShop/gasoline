@@ -2304,6 +2304,8 @@ void pkdThreadTree(PKD pkd,int iCell,int iNext)
 void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		    int iOrder,int bTreeActiveOnly,int bGravity, KDN *pRoot)
 {
+	int bEmpty = 0;
+
 	/*
 	 ** Make sure the particles are in Active/Inactive order.
 	 */
@@ -2328,8 +2330,14 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		}
 	/*
 	 ** We need at least one particle per processor.
-	 */
 	mdlassert(pkd->mdl,pkd->nNodes > 0);
+	 ** Let's relax this --trq
+	 */
+	if(pkd->nNodes == 0) {
+	    pkd->nNodes = 1;
+	    bEmpty = 1;
+	    printf("id:%d has an empty local tree\n",pkd->idSelf);
+	}
 
 	/*
 	 ** Need to allocate a special extra cell that we will use to calculate
@@ -2349,7 +2357,38 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		pkd->iRoot = BuildBinary(pkd,nBucket,0,pkd->nLocal-1,
 					 iOpenType,dCrit,iOrder, bGravity);
 		}
-	mdlassert(pkd->mdl,pkd->iFreeCell == pkd->nNodes);
+	mdlassert(pkd->mdl,bEmpty || pkd->iFreeCell == pkd->nNodes);
+	if(bEmpty) {
+	    KDN *pkdn;
+	    int j;
+	    
+	    /*
+	     * Set up an empty bucket.
+	     */
+	    pkd->iRoot = 0;
+	    pkdn = &pkd->kdNodes[0];
+	    pkdn->pLower = 0;
+	    pkdn->pUpper = -1;
+	    for (j=0;j<3;++j) {
+	        pkdn->bnd.fMin[j] = FLOAT_MAXVAL;
+		pkdn->bnd.fMax[j] = -FLOAT_MAXVAL;
+		pkdn->bndBall.fMin[j] = FLOAT_MAXVAL;
+		pkdn->bndBall.fMax[j] = -FLOAT_MAXVAL;
+	        }
+	    pkdn->iDim = -1; /* it is a bucket! */
+	    pkdn->fSplit = 0.0;
+	    pkdn->iLower = -1;
+	    pkdn->iUpper = -1;
+	    pkdn->fMass = 0.0;
+	    pkdn->fSoft = 0.0;
+	    for (j=0;j<3;++j) {
+	        pkdn->r[j] = 0.0;
+		}
+	    if(bGravity) {
+	        pkdCalcCell(pkd,pkdn,pkdn->r,iOrder,&pkdn->mom);
+		pkdn->fOpen2 = 0.0;
+	      }
+	    }
 	/*
 	 ** Thread the tree.
 	 */

@@ -215,7 +215,10 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	/*
 	 ** Allocate mark array.
 	 */
-	smx->piMark = (int *)malloc(pkdLocal(pkd)*sizeof(int));
+	if(pkdLocal(pkd) == 0)
+	    smx->piMark = (int *)malloc(sizeof(int));
+	else
+	    smx->piMark = (int *)malloc(pkdLocal(pkd)*sizeof(int));
 	assert(smx->piMark != NULL);
 	/*
 	 ** Allocate Nearest-Neighbor List.
