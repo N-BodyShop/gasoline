@@ -4343,7 +4343,8 @@ pstDoSpecialParticles(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pst->nLeaves > 1) {
 		double aFrame[3];
 		int k;
-		mdlReqService(pst->mdl,pst->idUpper,PST_NUMREJECTS,vin,nIn);
+		mdlReqService(pst->mdl,pst->idUpper,PST_DOSPECIALPARTICLES,
+			      vin,nIn);
 		pstDoSpecialParticles(pst->pstLower,vin,nIn,vout,pnOut);
 		if (in->bNonInertial) for (k=0;k<3;k++) aFrame[k] = out->aFrame[k];
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);

@@ -966,6 +966,8 @@ void pstRandomVelocities(PST,void *,int,void *,int *);
 
 #ifdef SPECIAL_PARTICLES
 
+#include "special.h"
+
 /* PST_GETSPECIALPARTICLES */
 struct inGetSpecial {
 	int nSpecial;
