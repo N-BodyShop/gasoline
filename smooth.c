@@ -1195,7 +1195,7 @@ void smMarkSmooth(SMX smx,SMF *smf,int iMarkType)
 			/*mdlDiag(smx->pkd->mdl, "smINTERSECTSCATTER: Before\n" );*/
 			INTERSECTSCATTER(pkdn,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNextCell);
 			/*mdlDiag(smx->pkd->mdl, "smINTERSECTSCATTER: After\n" );*/
-			if (pkdn->iDim >= 0) {
+			if (pkdn->iDim >= 0 || id == -1) {
 				if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
 				pkdLower(pkd,cp,id);
 				continue;
