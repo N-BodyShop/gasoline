@@ -92,6 +92,13 @@ typedef struct particle {
 #endif
 	FLOAT fMetals;
 	FLOAT fTimeForm;
+#ifdef SIMPLESF
+    FLOAT fMassStar;
+	FLOAT fESN;
+	FLOAT rForm[3];		/* record pos and vel of star formation */
+	FLOAT vForm[3];
+	int iGasOrder;		/* gas from which star formed */
+#endif
 #ifdef STARFORM
         FLOAT fESNrate;
         FLOAT fMSN;
@@ -202,7 +209,15 @@ typedef struct chkParticle {
 	FLOAT Y_HI,Y_HeI,Y_HeII;	/* Abundance of ions */
 #endif
 #ifdef STARFORM
-        FLOAT fTimeForm;
+	FLOAT fTimeForm;
+	FLOAT rForm[3];		/* record pos and vel of star formation */
+	FLOAT vForm[3];
+	FLOAT fDenForm;
+	int iGasOrder;
+#endif
+#ifdef SIMPLESF
+	FLOAT fMassStar;
+	FLOAT fTimeForm;
 	FLOAT rForm[3];		/* record pos and vel of star formation */
 	FLOAT vForm[3];
 	FLOAT fDenForm;
@@ -586,6 +601,14 @@ struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCu
 void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, double dTMax,
 		     double duTFac,int iGasModel, double dPdVMetal, double dPdVNonMetal );
 #endif
+#ifdef SIMPLESF
+void pkdSimpleStarForm(PKD pkd, double dRateCoeff, double dTMax, double dDenMin, double dDelta, double dTime,
+					   double dInitStarMass, double dESNPerStarMass, double dtCoolingShutoff,
+					   int *nFormed, /* number of stars formed */
+					   double *dMassFormed,	/* mass of stars formed */
+					   int *nDeleted); /* gas particles deleted */
+#endif
+
 void pkdUpdateuDot(PKD,double,double,double,int,int);
 void pkdUpdateShockTracker(PKD,double, double, double);
 void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma);

@@ -825,13 +825,44 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bFastGas = 1;
 	prmAddParam(msr->prm,"bFastGas",0,&msr->param.bFastGas,sizeof(int),
 				"Fgas","<Fast Gas Method> = 1");
-#ifdef STARFORM
 	msr->param.bStarForm = 0;
 	prmAddParam(msr->prm,"bStarForm",0,&msr->param.bStarForm,sizeof(int),
 				"stfm","<Star Forming> = 0");
 	msr->param.bFeedBack = 0;
 	prmAddParam(msr->prm,"bFeedBack",0,&msr->param.bFeedBack,sizeof(int),
 				"fdbk","<Stars provide feedback> = 0");
+#ifdef SIMPLESF
+	msr->param.SSF_dComovingDenMin = 200.0;
+	prmAddParam(msr->prm,"SSF_dComovingDenMin", 2, &msr->param.SSF_dComovingDenMin,
+		    sizeof(double), "stODmin",
+		    "<Minimum overdensity for forming stars> = 2");
+	msr->param.SSF_dPhysDenMin =  7e-26;
+	prmAddParam(msr->prm,"SSF_dPhysDenMin", 2, &msr->param.SSF_dPhysDenMin,
+		    sizeof(double), "stPDmin",
+		    "<Minimum physical density for forming stars (gm/cc)> =  7e-26");
+    msr->param.SSF_dInitStarMass = 0;
+    prmAddParam(msr->prm,"SSF_dInitStarMass", 2, &msr->param.SSF_dInitStarMass,
+				sizeof(double), "stm0",
+				"<Initial star mass> = 0");
+	msr->param.SSF_dESNPerStarMass = 1.25e16;
+	prmAddParam(msr->prm,"SSF_dESNPerStarMass", 2, &msr->param.SSF_dESNPerStarMass,
+		    sizeof(double), "ESNPerStarMass",
+		    "<ESN per star mass, erg per g of stars> = 1.25e16");
+	msr->param.SSF_dTMax = 3e4;
+	prmAddParam(msr->prm,"SSF_dTMax", 2, &msr->param.SSF_dTMax,
+		    sizeof(double), "SSF_dTMax",
+		    "<Maximum temperature for forming stars, K> = 3e4");
+	msr->param.SSF_dEfficiency = 0.1;
+	prmAddParam(msr->prm,"SSF_dEfficiency", 2, &msr->param.SSF_dEfficiency,
+		    sizeof(double), "SSF_dEfficiency",
+		    "<SF Efficiency> = 0.1");
+	msr->param.SSF_dtCoolingShutoff = 30e6;
+	prmAddParam(msr->prm,"SSF_dtCoolingShutoff", 2, &msr->param.SSF_dtCoolingShutoff,
+		    sizeof(double), "SSF_dtCoolingShutoff",
+		    "<SF Cooling Shutoff duration> = 30e6");
+#endif /* SIMPLESF */
+
+#ifdef STARFORM
 	stfmInitialize(&msr->param.stfm);
 	msr->param.stfm->dOverDenMin = 2.0;
 	prmAddParam(msr->prm,"dOverDenMin", 2, &msr->param.stfm->dOverDenMin,
@@ -1259,8 +1290,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		/* code comoving density --> g per cc = msr->param.dGmPerCcUnit (1+z)^3 */
 		msr->param.dComovingGmPerCcUnit = msr->param.dGmPerCcUnit;
 		}
-#ifdef STARFORM
-	    
+
 	if(msr->param.bStarForm) {
 	    assert (prmSpecified(msr->prm, "dMsolUnit") &&
 		    prmSpecified(msr->prm, "dKpcUnit"));
@@ -1271,6 +1301,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 					"EOS with starformation\n");
 			}
 
+#ifdef STARFORM
 	    assert((msr->param.stfm->dStarEff > 0 && 
                 msr->param.stfm->dStarEff < 1) ||
 			   msr->param.stfm->dInitStarMass > 0);
@@ -1300,10 +1331,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
 	    msr->param.fb->dErgPerGmUnit = msr->param.dErgPerGmUnit;
 	    msr->param.fb->dInitStarMass = msr->param.stfm->dInitStarMass;
+#endif /* STARFORM */
+#ifdef SIMPLESF		
+		assert(msr->param.SSF_dInitStarMass > 0);
+#endif
 	    }
 	
 	    
-#endif /* STARFORM */
 #endif /* GASOLINE */
 
 #ifdef ROT_FRAME
@@ -1573,6 +1607,12 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef STARFORM
 	fprintf(fp," STARFORM");
 #endif
+#ifdef SIMPLESF
+	fprintf(fp," SIMPLESF");
+#endif
+#ifdef LARGEFBALL
+	fprintf(fp," LARGEFBALL");
+#endif
 #ifdef SHOCKTRACK
 	fprintf(fp," SHOCKTRACK");
 #endif
@@ -1765,6 +1805,17 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dMinMassFrac: %g",msr->param.stfm->dMinMassFrac);
 	fprintf(fp," dMinGasMass: %g",msr->param.stfm->dMinGasMass);
 	fprintf(fp," dMaxStarMass: %g",msr->param.stfm->dMaxStarMass);
+#endif
+#ifdef SIMPLESF
+	fprintf(fp,"\n# SSF: bStarForm: %d",msr->param.bStarForm);
+	fprintf(fp," bFeedBack: %d",msr->param.bFeedBack);	
+	fprintf(fp," SSF_dEfficiency: %g",msr->param.SSF_dEfficiency);
+	fprintf(fp," SSF_dTMax: %g",msr->param.SSF_dTMax);
+	fprintf(fp," SSF_dPhysDenMin: %g",msr->param.SSF_dPhysDenMin);
+	fprintf(fp," SSF_dComovingDenMin: %g",msr->param.SSF_dComovingDenMin);
+	fprintf(fp," SSF_dESNPerStarMass: %g",msr->param.SSF_dESNPerStarMass);
+	fprintf(fp," SSF_dInitStarMass: %g",msr->param.SSF_dInitStarMass);
+	fprintf(fp," SSF_dtCoolingShutoff: %g",msr->param.SSF_dtCoolingShutoff);
 #endif
 	fprintf(fp,"\n# bPatch: %d",msr->param.bPatch);
 	fprintf(fp," dOrbFreq: %g",msr->param.dOrbFreq);
@@ -2766,7 +2817,11 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 	    /* 
 	     * Write the swapped particles.
 	     */
+#ifdef SIMPLESF
+	    pkdOutArray(plcl->pkd,achOutFile,iType,((iType==OUT_TCOOLAGAIN_ARRAY || iType==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput));
+#else
 	    pkdOutArray(plcl->pkd,achOutFile,iType,msr->param.iBinaryOutput); 
+#endif
 	    /* 
 	     * Swap them back again.
 	     */
@@ -5107,6 +5162,9 @@ void msrTopStepKDK(MSR msr,
 		dTime += dDelta;
 		dStep += 1.0/(1 << iRung);
 #endif
+#ifdef SIMPLESF
+		msrSimpleStarForm(msr, dTime, dDelta);
+#endif
 		/* 
 		 ** Dump Frame
 		 */
@@ -5882,6 +5940,71 @@ void msrFormStars(MSR msr, double dTime)
 		printf("Feedback Calculated, Wallclock: %f secs\n\n",dsec);
 		}
 
+#endif
+    }
+
+void msrSimpleStarForm(MSR msr, double dTime, double dDelta)
+{
+/* Note: Must be called with an SPH tree built and available */
+#ifdef SIMPLESF
+    struct inSimpleStarForm in;
+    struct outSimpleStarForm out;
+	double a,d1,d2;
+
+    double dMass = -1.0;
+	double sec,sec1,dsec;
+
+    if(msr->param.bStarForm == 0) return;
+    
+	sec = msrTime();
+
+    a = csmTime2Exp(msr->param.csm,dTime);
+
+	/* Convert input parameters to code units */
+    in.dRateCoeff = msr->param.SSF_dEfficiency*sqrt(4.*M_PI/pow(a,3)); /* G=1 */
+	in.dTMax = msr->param.SSF_dTMax;
+	d1 = msr->param.SSF_dComovingDenMin;
+	d2 = msr->param.SSF_dPhysDenMin/msr->param.dGmPerCcUnit*pow(a,3);
+	in.dDenMin = (d1>d2 ? d1 : d2);
+	in.dDelta = dDelta;
+
+	in.dTime = dTime;
+	in.dInitStarMass = msr->param.SSF_dInitStarMass;
+	in.dESNPerStarMass = msr->param.SSF_dESNPerStarMass/msr->param.dErgPerGmUnit;
+#define SECONDSPERYEAR   31557600.
+	in.dtCoolingShutoff = msr->param.SSF_dtCoolingShutoff*SECONDSPERYEAR/msr->param.dSecUnit;
+    
+    if (msr->param.bVDetails) printf("Simple Star Form ... ");
+
+    dMass = msrMassCheck(msr, -1.0, "Form Stars");
+	msrActiveType(msr,0,TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE);
+	/* New stars will be set to TYPE_SMOOTHACTIVE when created */
+	
+    pstSimpleStarForm(msr->pst, &in, sizeof(in), &out, NULL);
+    if (msr->param.bVDetails)
+		printf("%d Stars formed with mass %g, %d gas deleted\n",
+			   out.nFormed, out.dMassFormed, out.nDeleted);
+
+    /*
+     * adjust particle numbers
+     */
+    msrAddDelParticles(msr);
+    msrMassCheck(msr, dMass, "Form stars: after particle adjustment");
+
+	sec1 = msrTime();
+	dsec = sec1 - sec;
+	printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
+
+	if (msr->param.bFeedBack && out.nFormed) {
+		/* Build a tree to distribute energy from SN, if nFormed > 0  */
+
+		/* Any new stars have been set to SMOOTHACTIVE */
+		msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_ACTIVE);
+		msrBuildTree(msr,1,dMass,1);
+		msrSmooth(msr, dTime, SMX_SIMPLESF_FEEDBACK, 1);
+		dsec = msrTime() - sec1;
+		printf("Feedback Calculated, Wallclock: %f secs\n\n",dsec);
+		}
 #endif
     }
 

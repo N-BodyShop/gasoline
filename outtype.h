@@ -34,6 +34,8 @@
 #define OUT_SOFT_ARRAY          32
 #define OUT_IORDER_ARRAY	33
 #define OUT_IGASORDER_ARRAY	34
+#define OUT_TCOOLAGAIN_ARRAY 35
+#define OUT_MSTAR_ARRAY      36
 
 #define OUT_H_ARRAY			19
 

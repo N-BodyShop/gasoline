@@ -1114,7 +1114,7 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
       clTempIteration( d );
       clDerivs( d, t, E-1, (&dEdt)-1 );
       if (fabs(dEdt) > 0) {
-	dtEst = fabs(*E/dEdt);
+		  dtEst = fabs(*E/dEdt);
 
       /* 
 	 Since there is no time dependence and the function is smooth

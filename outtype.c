@@ -78,6 +78,12 @@ FLOAT ArrType(PARTICLE *p,int iType)
 	case OUT_IGASORDER_ARRAY:
 	    return((FLOAT) p->iGasOrder);
 #endif
+#ifdef SIMPLESF
+	case OUT_TCOOLAGAIN_ARRAY:
+		return(p->fTimeForm);
+	case OUT_MSTAR_ARRAY:
+		return(p->fMassStar);
+#endif
 #endif
 	case OUT_H_ARRAY:
 		return(sqrt(p->fBall2*0.25));

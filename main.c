@@ -510,6 +510,17 @@ int main(int argc,char **argv)
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
 					strncat(achFile,".vform",256);
 					msrOutVector(msr,achFile,OUT_VFORM_VECTOR);
+#ifdef SIMPLESF
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".divv",256);
+					msrOutArray(msr,achFile,OUT_DIVV_ARRAY);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".tCoolAgain",256);
+					msrOutArray(msr,achFile,OUT_TCOOLAGAIN_ARRAY);
+					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".mStar",256);
+					msrOutArray(msr,achFile,OUT_MSTAR_ARRAY);
+#endif
 				    }
 #endif
 				if (msr->param.bDodtOutput) {

@@ -398,6 +398,11 @@ pstAddServices(PST pst,MDL mdl)
 		      pstFeedback, sizeof(struct inFeedback),
 		      sizeof(struct outFeedback));
 #endif
+#ifdef SIMPLESF
+	mdlAddService(mdl,PST_SIMPLESTARFORM,pst,
+		      (void (*)(void *,void *,int,void *,int *)) pstSimpleStarForm,
+		      sizeof(struct inSimpleStarForm),sizeof(struct outSimpleStarForm));
+#endif
 	mdlAddService(mdl,PST_CLEARTIMER,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstClearTimer,
 				  sizeof(struct inClearTimer),0);
@@ -5083,6 +5088,34 @@ pstFeedback(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = FB_NFEEDBACKS*sizeof(FBEffects);
 	}
 
+#endif
+
+#ifdef SIMPLESF
+void
+pstSimpleStarForm(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inSimpleStarForm *in = vin;
+	struct outSimpleStarForm *out = vout;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inSimpleStarForm));
+	if (pst->nLeaves > 1) {
+	    struct outSimpleStarForm fsStats;
+	    
+		mdlReqService(pst->mdl,pst->idUpper,PST_SIMPLESTARFORM,in,nIn);
+		pstSimpleStarForm(pst->pstLower,in,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,&fsStats,NULL);
+		out->nFormed += fsStats.nFormed;
+		out->nDeleted += fsStats.nDeleted;
+		out->dMassFormed += fsStats.dMassFormed;
+		}
+	else {
+		pkdSimpleStarForm(pst->plcl->pkd, in->dRateCoeff, in->dTMax, in->dDenMin, in->dDelta, in->dTime,
+						  in->dInitStarMass, in->dESNPerStarMass, in->dtCoolingShutoff,
+						  &out->nFormed, &out->dMassFormed, &out->nDeleted);
+		}
+
+	if (pnOut) *pnOut = sizeof(struct outSimpleStarForm);
+	}
 #endif
 
 void

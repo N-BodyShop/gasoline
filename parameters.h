@@ -168,10 +168,19 @@ struct parameters {
 	double dSNTMax;
 	double dSNMetalCut;
 	double dSNHeatFraction;
-	int    bStarForm;
-	int    bFeedBack;
 	double dDumpFrameStep;
 	double dDumpFrameTime;
+	int    bStarForm;
+	int    bFeedBack;
+#ifdef SIMPLESF
+	double SSF_dEfficiency;
+    double SSF_dTMax;
+    double SSF_dPhysDenMin;
+    double SSF_dComovingDenMin;
+    double SSF_dESNPerStarMass;
+    double SSF_dInitStarMass;
+	double SSF_dtCoolingShutoff;
+#endif
 #ifdef STARFORM
 	STFM   stfm;
 	FB     fb;

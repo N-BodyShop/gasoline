@@ -192,6 +192,8 @@ enum pst_service {
       PST_BALLMAX,
       PST_FORMSTARS,
       PST_FEEDBACK,
+      PST_SIMPLESTARFORM,
+	  PST_SSFCREATESTARS,
       PST_DUMPFRAME,
       PST_DUMPVOXEL
       };
@@ -1274,6 +1276,32 @@ struct outFeedback
 void pstFeedback(PST,void *,int,void *,int *);
 
 #endif
+
+#ifdef SIMPLESF
+struct inSimpleStarForm
+{
+    double dRateCoeff;
+    double dTMax;
+    double dDenMin;
+    double dDelta;
+
+	double dTime;
+	double dInitStarMass;
+	double dESNPerStarMass;
+	double dtCoolingShutoff;
+    };
+
+struct outSimpleStarForm 
+{
+    int nFormed;
+    int nDeleted;
+    double dMassFormed;
+    };
+
+void pstSimpleStarForm(PST,void *,int,void *,int *);
+
+#endif
+
 #endif
 
 /* Return is pixmap */

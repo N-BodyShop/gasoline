@@ -272,5 +272,6 @@ void msrAggsActivate(MSR msr);
 void msrAggsDeactivate(MSR msr);
 #endif
 void msrFormStars(MSR msr, double dTime);
+void msrSimpleStarForm(MSR msr, double dTime, double dDelta);
 
 #endif

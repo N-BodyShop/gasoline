@@ -153,6 +153,17 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		smx->fcnPost = NULL;
 		break;
 #endif
+#ifdef SIMPLESF
+	case SMX_SIMPLESF_FEEDBACK:
+		assert(bSymmetric != 0);
+		smx->fcnSmooth = SimpleSF_Feedback;
+		initParticle = NULL;
+		init = initSimpleSF_Feedback;
+		comb = combSimpleSF_Feedback;
+		smx->fcnPost = NULL;
+		break;
+#endif
+
 #endif	       
 #ifdef COLLISIONS
 	case SMX_REJECTS:

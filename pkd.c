@@ -285,6 +285,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				  int bStandard,int iReadIOrder,double dvFac,double dTuFac)
 {
 	FILE *fp,*fp2 = NULL;
+#ifdef SIMPLESF
+	FILE *fpmStar = NULL, *fptCoolAgain = NULL;
+#endif
 	int i,j, iSetMask;
 	PARTICLE *p;
 	struct dark_particle dp;
@@ -309,11 +312,14 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		p->u = 0.0;
 		p->uPred = 0.0;
 #ifdef SUPERNOVA
-                p->uSN = 0.0;
-	        p->PdVSN = 0.0;
+		p->uSN = 0.0;
+		p->PdVSN = 0.0;
 #endif
 #ifdef STARFORM
 		p->fESNrate = 0.0;
+#endif
+#ifdef SIMPLESF
+		p->fMassStar = 0;
 #endif
 #ifdef SHOCKTRACK
 		p->ShockTracker = 0.0;
@@ -351,7 +357,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		fp2 = fopen(atmp,"r");
 		mdlassert(pkd->mdl,fp2 != NULL);
 		/*
-		 ** Seek to right place in file, assumes 4 byte iOrders
+		 ** Seek to right place in file
 		 */
 		switch(iReadIOrder) {
 		case 1:
@@ -368,6 +374,35 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 			mdlassert(pkd->mdl,0);
 			}
 		}
+
+#ifdef SIMPLESF
+	{
+		char atmp[160];
+		sprintf(atmp,"%s.tCoolAgain",pszFileName);
+		fptCoolAgain = fopen(atmp,"r");
+		if (fptCoolAgain!=NULL) {
+			/*
+			 ** Seek to right place in file
+			 */
+			pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
+			}
+		else {
+			fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+			}
+
+		sprintf(atmp,"%s.mStar",pszFileName);
+		fpmStar = fopen(atmp,"r");
+		if (fpmStar!=NULL) {
+			/*
+			 ** Seek to right place in file
+			 */
+			pkdGenericSeek(pkd,fpmStar,nStart,sizeof(int),sizeof(float));
+			}
+		else {
+			fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+			}
+		}
+#endif
 
 	/*
 	 ** Read Stuff!
@@ -504,6 +539,16 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				fread(&p->iOrder,sizeof(p->iOrder),1,fp2);
 				break;
 				}
+#ifdef SIMPLESF
+			if (fptCoolAgain!=NULL) {
+				fread(&fTmp,sizeof(float),1,fptCoolAgain);
+				if (pkdIsGasByOrder(pkd,p)) p->fTimeForm = fTmp;
+				}
+			if (fpmStar!=NULL) {
+				fread(&fTmp,sizeof(float),1,fpmStar);
+				if (pkdIsGasByOrder(pkd,p)) p->fMassStar = fTmp;
+				}
+#endif
 			}
 		xdr_destroy(&xdrs);
 		}
@@ -596,6 +641,17 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				fread(&p->iOrder,sizeof(p->iOrder),1,fp2);
 				break;
 				}
+
+#ifdef SIMPLESF
+			if (fptCoolAgain!=NULL) {
+				fread(&fTmp,sizeof(float),1,fptCoolAgain);
+				if (pkdIsGasByOrder(pkd,p)) p->fTimeForm = fTmp;
+				}
+			if (fpmStar!=NULL) {
+				fread(&fTmp,sizeof(float),1,fpmStar);
+				if (pkdIsGasByOrder(pkd,p)) p->fMassStar = fTmp;
+				}
+#endif
 			}
 		}
 	if (fp2!=NULL) fclose(fp2);
@@ -3356,6 +3412,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 					p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
 				}
 				if (iGasModel != GASMODEL_ISOTHERMAL) {
+#ifdef SSFDEBUG
+			    if (p->iOrder==5514) printf("%i: %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta);
+#endif
 #ifndef NOCOOLING				
 				  p->uPred = p->u + p->uDot*duPredDelta;
 				  p->u = p->u + p->uDot*duDelta;
@@ -3448,8 +3507,18 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
                 p->uSN = 0.0;
                 p->PdVSN = 0.0;
 #endif
-#ifdef STARFORM
+#ifdef STARFORM 
 		p->fESNrate = 0.0;
+		p->fTimeForm = cp.fTimeForm;
+		for (j=0;j<3;++j) {
+			p->rForm[j] = cp.rForm[j];
+			p->vForm[j] = cp.vForm[j];
+			}
+		p->fDensity = cp.fDenForm;
+		p->iGasOrder = cp.iGasOrder;
+#endif
+#ifdef SIMPLESF
+		p->fMassStar = cp.fMassStar;
 		p->fTimeForm = cp.fTimeForm;
 		for (j=0;j<3;++j) {
 			p->rForm[j] = cp.rForm[j];
@@ -3523,6 +3592,16 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 		cp.Y_HeII = pkd->pStore[i].Y_HeII;
 #endif
 #ifdef STARFORM
+		cp.fTimeForm = pkd->pStore[i].fTimeForm;
+		for (j=0;j<3;++j) {
+			cp.rForm[j] = pkd->pStore[i].rForm[j];
+			cp.vForm[j] = pkd->pStore[i].vForm[j];
+			}
+		cp.fDenForm = pkd->pStore[i].fDensity;
+		cp.iGasOrder = pkd->pStore[i].iGasOrder;
+#endif
+#ifdef SIMPLESF
+		cp.fMassStar = pkd->pStore[i].fMassStar;
 		cp.fTimeForm = pkd->pStore[i].fTimeForm;
 		for (j=0;j<3;++j) {
 			cp.rForm[j] = pkd->pStore[i].rForm[j];
@@ -4474,7 +4553,98 @@ void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, doubl
       }
     }
 }
+#endif
 
+
+#ifdef SIMPLESF
+void pkdSimpleStarForm(PKD pkd, double dRateCoeff, double dTMax, double dDenMin, double dDelta, double dTime,
+					   double dInitStarMass, double dESNPerStarMass, double dtCoolingShutoff,
+					   int *nFormed, /* number of stars formed */
+					   double *dMassFormed,	/* mass of stars formed */
+					   int *nDeleted) /* gas particles deleted */
+{
+    int i,j;
+    PARTICLE *p;
+    int n = pkdLocal(pkd);
+
+    double E;
+    PERBARYON Y;
+    double T;
+    CL *cl = pkd->cl;
+
+	double mstardot;
+    PARTICLE starp;
+    
+    *nFormed = 0;
+    *nDeleted = 0;
+    *dMassFormed = 0.0;
+
+    for(i = 0; i < n; ++i) {
+        p = &pkd->pStore[i];
+/*		if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) { */
+		if(TYPEFilter(p,TYPE_GAS,TYPE_GAS)) {
+			/* Make sure cool again up to date */
+			if (p->fTimeForm < dTime) p->fTimeForm = dTime;
+
+			/* Ref: stfmFormStars(stfm, pkd, p, dTime, nFormed, dMassFormed, nDeleted); */
+			/* Is particle in convergent part of flow?  */
+			if (p->divv >= 0.0 || p->fDensity < dDenMin) continue;
+			
+			E = p->u * cl->dErgPerGmUnit;
+			pkdPARTICLE2PERBARYON(&Y, p, cl->Y_H, cl->Y_He);
+			if ((T = clTemperature(Y.Total, E)) > dTMax) continue; 
+			
+			mstardot = dRateCoeff*sqrt(p->fDensity)*(p->fMass-p->fMassStar); /* Predictor corrector for second order? */
+
+			p->fMassStar += mstardot*dDelta; /* sanity checks occur later */
+
+			/* Star formation event? */
+			if (p->fMassStar > dInitStarMass) { 
+				starp = *p; 		/* grab copy before possible deletion */
+				starp.fESN = p->u + dESNPerStarMass; /* ESN per unit mass -- includes gas internal energy */
+
+				if (p->fMassStar > p->fMass-0.5*dInitStarMass) {
+					starp.fMass = p->fMass;
+					p->fMassStar = 0;
+					(*nDeleted)++;
+					pkdDeleteParticle(pkd, p);
+					}
+				else {
+					starp.fMass = dInitStarMass;
+					p->fMass -= dInitStarMass;
+					p->fMassStar -= dInitStarMass;
+					assert(p->fMass > 0);
+					}
+
+				starp.PdV = dtCoolingShutoff; /* Max local Cooling shutoff period */
+
+				/*
+				 * Save quantities -- as per old STARFORM
+				 */
+				for(j = 0; j < 3; j++) {
+					starp.rForm[j] = starp.r[j];
+					starp.vForm[j] = starp.v[j];
+					}
+				starp.u = T;
+				starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in NewParticle() */
+
+				starp.fTimeForm = dTime;
+				starp.fBallMax = 0.0;
+    
+				TYPEReset(&starp, TYPE_GAS);
+				TYPESet(&starp, TYPE_STAR);
+
+				/* Energy distribution */
+				TYPESet(&starp, TYPE_SMOOTHACTIVE);
+
+				(*nFormed)++;
+				*dMassFormed += starp.fMass;
+				
+				pkdNewParticle(pkd, starp);    
+				}
+			}
+		}
+	}
 
 #endif
 
@@ -4518,7 +4688,20 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 								  p->fDensity*cl->dComovingGmPerCcUnit, dt);
 #endif
 
+
 				p->uDot = (E*cl->diErgPerGmUnit - p->u)/duDelta;
+#ifdef SSFDEBUG
+			    if (p->iOrder==5514) printf("udot %i: %f %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta,p->PdV);
+#endif
+#ifdef SIMPLESF 
+				if (dTime < p->fTimeForm) {
+					if (p->uDot<p->PdV) p->uDot = p->PdV;
+#ifdef SSFDEBUG
+					if (p->iOrder==5514) printf("reset udot %i: %f %f %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta,(E*cl->diErgPerGmUnit - p->u)/duDelta,p->PdV);
+#endif
+					}
+#endif
+
 #ifdef COOLDEBUG
 				if (E*cl->diErgPerGmUnit<1e-6*p->u || p->iOrder == 784461 || p->iOrder == 602270 || p->iOrder == 96299 || p->iOrder == 722701) 
 					fprintf(stderr,"udot error? %i: %g %g %g -> %g %i\n",p->iOrder,p->uPred,p->uDot,duDelta,p->u + p->uDot*duDelta,p->iRung);
@@ -4860,14 +5043,28 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 				  dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(p->c + 0.6*(p->c + 2*p->mumax)));
 	                   }
 	       else
+#if defined(PRES_HK) || defined(PRES_MONAGHAN) || defined(SIMPLESF)
+			   dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(1.6*p->c+(10./FLT_MAX)));
+#else
 			   dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(1.6*p->c));
+#endif
 
 	       if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */
+#ifdef SSFDEBUG
+			    if (p->u<=0) printf("p->iOrder: %i\n",p->iOrder);
+#endif
+#ifdef SSFDEBUG
+			    if (p->iOrder==5514) printf("dT1 %i: %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,dT);
+#endif
 			    assert(p->u > 0);
 				dTu = dEtauDot*p->u/fabs(p->PdV);
 				if (dTu < dT) 
 					dT = dTu;
 				}
+#ifdef SSFDEBUG
+		   if (p->iOrder==5514) printf("dT2 %i: %f %f %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,dT,dTu,p->PdV);
+#endif
+
 		if(dT < p->dt)
 				p->dt = dT;
 			}
@@ -5336,11 +5533,14 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 				if (p->uPred+p->uDot*duDelta < 0) 
 					fprintf(stderr,"upred error %i: %g %g %g -> %g %i\n",p->iOrder,p->uPred,p->uDot,duDelta,p->uPred + p->uDot*duDelta,p->iRung);
 #endif
+#ifdef SSFDEBUG
+			    if (p->iOrder==5514) printf("%i: %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta);
+#endif
 			  p->uPred = p->uPred + p->uDot*duDelta;
 #else
 			  p->uPred = p->uPred + p->PdV*duDelta;
 #endif
-#if defined(PRES_HK) || defined(PRES_MONAGHAN) 
+#if defined(PRES_HK) || defined(PRES_MONAGHAN) || defined(SIMPLESF)
 			  if (p->uPred < 0) p->uPred = 0;
 #endif
 			  mdlassert(pkd->mdl,p->uPred >= 0);

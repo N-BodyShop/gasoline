@@ -2053,6 +2053,60 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         }
 }
 #endif /* STARFORM */
+
+#ifdef SIMPLESF
+void initSimpleSF_Feedback(void *p1)
+{
+    /*
+     * Zero out accumulated quantities.
+     */
+    ((PARTICLE *)p1)->u = 0.0;
+    ((PARTICLE *)p1)->fMetals = 0.0;
+    ((PARTICLE *)p1)->fTimeForm = 0.0;
+    }
+
+void combSimpleSF_Feedback(void *p1,void *p2)
+{
+    ((PARTICLE *)p1)->u += ((PARTICLE *)p2)->u;
+    ((PARTICLE *)p1)->fMetals += ((PARTICLE *)p2)->fMetals;
+    ((PARTICLE *)p1)->fTimeForm += ((PARTICLE *)p2)->fTimeForm;
+    }
+
+void SimpleSF_Feedback(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fNorm_t;
+	int i;
+
+	assert(TYPETest(p, TYPE_STAR));
+	ih2 = 4.0/BALL2(p);
+	rstot = 0;        
+	for (i=0;i<nSmooth;++i) {
+		r2 = nnList[i].fDist2*ih2;            
+		KERNEL(rs,r2);
+		rstot += rs;
+        }
+	
+	fNorm = 1./rstot;
+	fNorm_u = fNorm*p->fMass*p->fESN;
+	assert(fNorm_u > 0);
+
+	fNorm_t = fNorm*p->PdV; /* p->PdV store the cooling delay dtCoolingShutoff */
+	assert(fNorm_t > 0);
+
+	for (i=0;i<nSmooth;++i) {
+		q = nnList[i].pPart;
+	    assert(TYPETest(q, TYPE_GAS));
+		r2 = nnList[i].fDist2*ih2;            
+		KERNEL(rs,r2);
+		q->u += rs*fNorm_u/q->fMass;
+		q->fMetals += rs*fNorm;
+		q->fTimeForm += rs*fNorm_t;
+        }
+	}
+
+#endif /* SIMPLESF */
+
 #endif /* GASOLINE */
 
 #ifdef COLLISIONS

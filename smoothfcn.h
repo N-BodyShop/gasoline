@@ -170,6 +170,15 @@ void combDistSNEnergy(void *p1,void *p2);
 void DistSNEnergy(PARTICLE *, int, NN *, SMF *);
 
 #endif
+
+#ifdef SIMPLESF
+#define SMX_SIMPLESF_FEEDBACK  24
+void initSimpleSF_Feedback(void *p1);
+void combSimpleSF_Feedback(void *p1,void *p2);
+void SimpleSF_Feedback(PARTICLE *, int, NN *, SMF *);
+
+#endif
+
 #endif
 
 #ifdef COLLISIONS
