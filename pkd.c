@@ -127,7 +127,7 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	int j;
 	
 	pkd = (PKD)malloc(sizeof(struct pkdContext));
-	mdlassert(pkd->mdl,pkd != NULL);
+	mdlassert(mdl,pkd != NULL);
 	pkd->mdl = mdl;
 	pkd->iOrder = iOrder;
 	pkd->idSelf = mdlSelf(mdl);
