@@ -128,7 +128,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * softening
      */
     l_jeans2 = M_PI*p->c*p->c/p->fDensity*dCosmoFac;
-    if (l_jeans2 < p->fSoft*stfm->dSoftMin) 
+    if (l_jeans2 < p->fSoft*p->fSoft*stfm->dSoftMin*stfm->dSoftMin) 
         small_jeans = 1;
 
     if (!small_jeans && tsound <= tdyn)
@@ -148,7 +148,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	tform = tcool;
     
     dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
-    if(dMprob > (rand()/((double) RAND_MAX)))
+    if(dMprob < (rand()/((double) RAND_MAX)))
 	return;
     
     /*
