@@ -22,6 +22,7 @@ struct parameters {
 	int bNonSymp;
 	int bDoDensity;
 	int bSymCool;
+	int bDoGravity;
 	int nBucket;
 	int iOutInterval;
 	int iLogInterval;
@@ -40,11 +41,15 @@ struct parameters {
 	double dEwCut;
 	double dEwhCut;
 	double dTheta;
+	double dTheta2;
 	double dAbsPartial;
 	double dRelPartial;
 	double dAbsTotal;
 	double dRelTotal;
 	double dPeriod;
+	double dxPeriod;
+	double dyPeriod;
+	double dzPeriod;
 	double dHubble0;
 	double dOmega0;
 	double dRedTo;

@@ -74,7 +74,10 @@ void pkdOutArray(PKD pkd,char *pszFileName,int iArrType)
 		fprintf(fp,"%.8g\n",fOut);
 		}
 	i = fclose(fp);
-	assert(i == 0);
+	if (i != 0) {
+		perror("pkdOutArray: could not close file");
+		exit(1);
+		}
 	}
 
 
@@ -94,7 +97,10 @@ void pkdOutVector(PKD pkd,char *pszFileName,int iDim,int iVecType)
 		fprintf(fp,"%.8g\n",fOut);
 		}
 	i = fclose(fp);
-	assert(i == 0);
+	if (i != 0) {
+		perror("pkdOutVector: could not close file");
+		exit(1);
+		}
 	}
 
 
