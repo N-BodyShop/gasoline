@@ -260,6 +260,6 @@ void pkdWriteCheck(PKD,char *,int,int);
 void pkdDistribCells(PKD,int,KDN *);
 void pkdCalcRoot(PKD,struct ilCellNewt *);
 void pkdDistribRoot(PKD,struct ilCellNewt *);
-
+double pkdMassCheck(PKD pkd);
 #endif
 

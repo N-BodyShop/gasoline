@@ -7,10 +7,10 @@
 #include <time.h>
 #include <math.h>
 
-#ifndef CRAY_T3D
 #include <rpc/types.h>
 #include <rpc/xdr.h>
-#else
+
+#ifdef CRAY_T3D
 #include "hyperlib.h"
 #endif
 
@@ -165,7 +165,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	strcpy(msr->param.achDataSubPath,".");
 	prmAddParam(msr->prm,"achDataSubPath",3,&msr->param.achDataSubPath,256,
 				NULL,NULL);
-	msr->param.dExtraStore = 0.10;
+	msr->param.dExtraStore = 0.1;
 	prmAddParam(msr->prm,"dExtraStore",2,&msr->param.dExtraStore,
 				sizeof(double),NULL,NULL);
 	msr->param.nSmooth = 64;
@@ -777,7 +777,6 @@ double msrReadTipsy(MSR msr)
 	}
 
 
-#ifndef CRAY_T3D
 int xdrWriteHeader(XDR *pxdrs,struct dump *ph)
 {
 	int pad = 0;
@@ -791,7 +790,6 @@ int xdrWriteHeader(XDR *pxdrs,struct dump *ph)
 	if (!xdr_int(pxdrs,&pad)) return 0;
 	return 1;
 	}
-#endif
 
 
 void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
@@ -857,14 +855,11 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 			}
 		}
 	if (in.bStandard) {
-#ifndef CRAY_T3D
 		XDR xdrs;
 
-		assert(sizeof(struct dump) == sizeof(double)+6*sizeof(int));
 		xdrstdio_create(&xdrs,fp,XDR_ENCODE);
 		xdrWriteHeader(&xdrs,&h);
 		xdr_destroy(&xdrs);
-#endif
 		}
 	else {
 		fwrite(&h,sizeof(struct dump),1,fp);
@@ -888,7 +883,7 @@ void msrSetSoft(MSR msr,double dSoft)
 	}
 
 
-void msrBuildTree(MSR msr)
+void msrBuildTree(MSR msr,double dMass)
 {
 	struct inBuildTree in;
 	struct outBuildTree out;
@@ -901,6 +896,7 @@ void msrBuildTree(MSR msr)
 	if (msr->param.bVerbose) printf("Domain Decomposition...\n");
 	sec = time(0);
 	pstDomainDecomp(msr->pst,NULL,0,NULL,NULL);
+	msrMassCheck(msr,dMass,"After pstDomainDecomp in msrBuildTree");
 	dsec = time(0) - sec;
 	if (msr->param.bVerbose) {
 		printf("Domain Decomposition complete, Wallclock: %d secs\n\n",dsec);
@@ -913,6 +909,7 @@ void msrBuildTree(MSR msr)
 	in.dCrit = msr->dCrit;
 	sec = time(0);
 	pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
+	msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
 	dsec = time(0) - sec;
 	if (msr->param.bVerbose) {
 		printf("Tree built, Wallclock: %d secs\n\n",dsec);
@@ -923,6 +920,7 @@ void msrBuildTree(MSR msr)
 	inc.iCell = ROOT;
 	inc.nCell = nCell;
 	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
+	msrMassCheck(msr,dMass,"After pstColCells in msrBuildTree");
 #if (0)
 	for (i=1;i<nCell;++i) {
 		struct pkdCalcCellStruct *m;
@@ -949,9 +947,12 @@ void msrBuildTree(MSR msr)
 		}
 #endif
 	pstDistribCells(msr->pst,pkdn,nCell*sizeof(KDN),NULL,NULL);
+	msrMassCheck(msr,dMass,"After pstDistribCells in msrBuildTree");
 	free(pkdn);
 	pstCalcRoot(msr->pst,NULL,0,&root,&iDum);
+	msrMassCheck(msr,dMass,"After pstCalcRoot in msrBuildTree");
 	pstDistribRoot(msr->pst,&root,sizeof(struct ioCalcRoot),NULL,NULL);
+	msrMassCheck(msr,dMass,"After pstDistribRoot in msrBuildTree");
 	}
 
 
@@ -1456,10 +1457,10 @@ int msrOutTime(MSR msr,double dTime)
 	}
 
 
-int cmpTime(void *v1,void *v2) 
+int cmpTime(const void *v1,const void *v2) 
 {
-	double *d1 = v1;
-	double *d2 = v2;
+	double *d1 = (double *)v1;
+	double *d2 = (double *)v2;
 
 	if (*d1 < *d2) return(-1);
 	else if (*d1 == *d2) return(0);
@@ -1604,7 +1605,21 @@ double msrSoft(MSR msr)
 	}
 
 
+double msrMassCheck(MSR msr,double dMass,char *pszWhere)
+{
+	struct outMassCheck out;
 
+	if (msr->param.bVerbose) puts("doing mass check...");
+	pstMassCheck(msr->pst,NULL,0,&out,NULL);
+	if (dMass < 0.0) return(out.dMass);
+	else if (dMass != out.dMass) {
+		printf("ERROR: Mass not conserved (%s): %.15f != %.15f!\n",
+			   pszWhere,dMass,out.dMass);
+		_msrExit(msr);
+		return(0.0);
+		}
+	else return(out.dMass);
+	}
 
 
 

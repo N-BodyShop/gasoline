@@ -55,7 +55,7 @@ double msrComoveKickFac(MSR,double,double);
 double msrReadTipsy(MSR);
 void msrWriteTipsy(MSR,char *,double);
 void msrSetSoft(MSR msr,double);
-void msrBuildTree(MSR);
+void msrBuildTree(MSR,double);
 void msrDomainColor(MSR);
 void msrReorder(MSR);
 void msrOutArray(MSR,char *,int);
@@ -69,6 +69,7 @@ double msrReadCheck(MSR,int *);
 void msrWriteCheck(MSR,double,int);
 int msrOutTime(MSR,double);
 void msrReadOuts(MSR,double);
+double msrMassCheck(MSR,double,char *);
 /*
  ** Interface functions.
  */

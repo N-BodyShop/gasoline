@@ -111,6 +111,7 @@ typedef struct outReject {
 	int id;
 	int nRejects;
 	int nSpace;
+	int nLocal;
 	} OREJ;
 
 #define PST_COLREJECTS		10
@@ -306,6 +307,12 @@ void pstCalcRoot(PST,void *,int,void *,int *);
 
 #define PST_DISTRIBROOT		34
 void pstDistribRoot(PST,void *,int,void *,int *);
+
+#define PST_MASSCHECK		35
+struct outMassCheck {
+	double dMass;
+	};
+void pstMassCheck(PST,void *,int,void *,int *);
 
 #endif
 

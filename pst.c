@@ -83,6 +83,8 @@ void pstAddServices(PST pst,MDL mdl)
 				  0,sizeof(struct ioCalcRoot));
 	mdlAddService(mdl,PST_DISTRIBROOT,pst,pstDistribRoot,
 				  sizeof(struct ioCalcRoot),0);
+	mdlAddService(mdl,PST_MASSCHECK,pst,pstMassCheck,
+				  0,sizeof(struct outMassCheck));
 	}
 
 
@@ -223,7 +225,25 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 {
 	int id,i,i1,i2,nLarge,id1,id2;
-	
+	int s1,s2,r1,r2;
+
+	/*
+	 ** Check to see if there is enough space...
+	 */
+	s1 = 0;
+    r1 = 0;
+	for (i=0;i<n1;++i) {
+		s1 += p1[i].nSpace;
+		r1 += p1[i].nRejects;
+		}
+	s2 = 0;
+	r2 = 0;
+	for (i=0;i<n2;++i) {
+		s2 += p2[i].nSpace;
+		r2 += p2[i].nRejects;
+		}
+	assert(r1 <= s2);
+	assert(r2 <= s1);
 	/*
 	 ** First invalidate the pidSwap array.
 	 */
@@ -293,12 +313,14 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 	}
 
 
-void _pstRootSplit(PST pst,int iSplitDim)
+#define NUM_SAFETY	2
+
+void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 {
 	int d,ittr,nOut;
 	int nLow,nHigh,nLowerStore,nUpperStore;
 	float fLow,fHigh;
-	float fl,fu,fm;
+	float fl,fu,fm,fmm;
 	struct outFreeStore outFree;
 	struct inWeight inWt;
 	struct outWeight outWtLow;
@@ -306,6 +328,9 @@ void _pstRootSplit(PST pst,int iSplitDim)
 	struct inColRejects inCol;
 	OREJ *pLowerRej,*pUpperRej;
 	int *pidSwap,iRet;
+
+	struct outMassCheck outMass;
+	int i,iLowSum,iHighSum;
 
 	/*
 	 ** First find out how much free storage there is available for particles
@@ -322,9 +347,10 @@ void _pstRootSplit(PST pst,int iSplitDim)
 	d = iSplitDim;
 	fl = pst->bnd.fMin[d];
 	fu = pst->bnd.fMax[d];
-	fm = (fl + fu)/2;
+	fmm = (fl + fu)/2;
 	ittr = 0;
-	while (fl < fm && fm < fu) {
+	while (fl < fmm && fmm < fu) {
+		fm = fmm;
 		inWt.iSplitDim = d;
 		inWt.fSplit = fm;
 		inWt.ittr = ittr;
@@ -346,7 +372,8 @@ void _pstRootSplit(PST pst,int iSplitDim)
 		if (fLow/pst->nLower > fHigh/pst->nUpper) fu = fm;
 		else if (fLow/pst->nLower < fHigh/pst->nUpper) fl = fm;
 		else break;
-		fm = (fl + fu)/2;
+
+		fmm = (fl + fu)/2;
 		++ittr;
 		}
 	/*
@@ -354,12 +381,13 @@ void _pstRootSplit(PST pst,int iSplitDim)
 	 ** we have to relax the condition that work be balanced and try to
 	 ** max out the number of particles in the subset which had too many.
 	 */
-	if (nLow > nLowerStore) {
+	if (nLow > nLowerStore-NUM_SAFETY) {
 		fl = pst->bnd.fMin[d];
 		fu = fm;
-		fm = (fl + fu)/2;
+		fmm = (fl + fu)/2;
 		ittr = 0;
-	    while (fl < fm && fm < fu) {
+	    while (fl < fmm && fmm < fu) {
+			fm = fmm;
 			inWt.iSplitDim = d;
 			inWt.fSplit = fm;
 			inWt.ittr = ittr;
@@ -372,6 +400,7 @@ void _pstRootSplit(PST pst,int iSplitDim)
 			 ** Add lower and Upper subsets weights and numbers
 			 */
 			nLow = outWtLow.nLow + outWtHigh.nLow;
+			nHigh = outWtLow.nHigh + outWtHigh.nHigh;
 /*
 			printf("Fit ittr:%d l:%d\n",ittr,nLow);
 */
@@ -381,18 +410,21 @@ void _pstRootSplit(PST pst,int iSplitDim)
 				fl = fm;
 				break;
 				}
-			fm = (fl + fu)/2;
+			fmm = (fl + fu)/2;
 			++ittr;
 			}
-		fm = fl;
+		/*
+		printf("Fit ittr:%d l:%d <= %d\n",ittr,nLow,nLowerStore);
+		*/
 		assert(nLow <= nLowerStore);
 		}
-	else if (nHigh > nUpperStore) {
+	else if (nHigh > nUpperStore-NUM_SAFETY) {
 		fl = fm;
 		fu = pst->bnd.fMax[d];
-		fm = (fl + fu)/2;
+		fmm = (fl + fu)/2;
 		ittr = 0;
-	    while (fl < fm && fm < fu) {
+	    while (fl < fmm && fmm < fu) {
+			fm = fmm;
 			inWt.iSplitDim = d;
 			inWt.fSplit = fm;
 			inWt.ittr = ittr;
@@ -404,6 +436,7 @@ void _pstRootSplit(PST pst,int iSplitDim)
 			/*
 			 ** Add lower and Upper subsets weights and numbers
 			 */
+			nLow = outWtLow.nLow + outWtHigh.nLow;
 			nHigh = outWtLow.nHigh + outWtHigh.nHigh;
 /*
 			printf("Fit ittr:%d u:%d\n",ittr,nHigh);
@@ -414,10 +447,12 @@ void _pstRootSplit(PST pst,int iSplitDim)
 				fu = fm;
 				break;
 				}
-			fm = (fl + fu)/2;
+			fmm = (fl + fu)/2;
 			++ittr;
 			}
-		fm = fu;
+		/*
+		printf("Fit ittr:%d u:%d <= %d\n",ittr,nHigh,nUpperStore);
+		*/
 		assert(nHigh <= nUpperStore);
 		}
 	pst->fSplit = fm;
@@ -435,6 +470,7 @@ void _pstRootSplit(PST pst,int iSplitDim)
 	assert(pUpperRej != NULL);
 	pidSwap = malloc(mdlThreads(pst->mdl)*sizeof(int));
 	assert(pidSwap != NULL);
+
 	inCol.fSplit = pst->fSplit;
 	inCol.iSplitDim = pst->iSplitDim;
 	inCol.iSplitSide = 1;
@@ -444,6 +480,45 @@ void _pstRootSplit(PST pst,int iSplitDim)
 	assert(nOut/sizeof(OREJ) == pst->nLower);
 	mdlGetReply(pst->mdl,pst->idUpper,pUpperRej,&nOut);
 	assert(nOut/sizeof(OREJ) == pst->nUpper);
+
+#ifdef PARANOID_CHECK
+	iLowSum = 0;
+	iHighSum = 0;
+	for (i=0;i<pst->nLower;++i) {
+		iLowSum += pLowerRej[i].nLocal;
+		iHighSum += pLowerRej[i].nRejects;
+		}
+	for (i=0;i<pst->nUpper;++i) {
+		iHighSum += pUpperRej[i].nLocal;
+		iLowSum += pUpperRej[i].nRejects;
+		}
+	printf("%d l:%d nLow:%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
+		   nLow,iLowSum,nHigh,iHighSum);
+	iLowSum = 0;
+	iHighSum = 0;
+	for (i=0;i<pst->nLower;++i) {
+		iLowSum += pLowerRej[i].nLocal;
+		iHighSum += pLowerRej[i].nRejects;
+		}
+	printf("%d l:%d nLow:%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
+		   outWtLow.nLow,iLowSum,outWtLow.nHigh,iHighSum);
+	iLowSum = 0;
+	iHighSum = 0;
+	for (i=0;i<pst->nUpper;++i) {
+		iHighSum += pUpperRej[i].nLocal;
+		iLowSum += pUpperRej[i].nRejects;
+		}
+	printf("%d l:%d nLow:%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
+		   outWtHigh.nLow,iLowSum,outWtHigh.nHigh,iHighSum);
+#endif
+	
+	pstMassCheck(pst,NULL,0,&outMass,NULL);
+	if (dMass != outMass.dMass) {
+		printf("ERROR id:%d lvl:%d:in _pstRootSplit after ColRejects\n",
+			   pst->idSelf,pst->iLvl);
+		}
+
+	ittr = 0;
 	while (1) {
 		iRet = _pstRejMatch(pst,pst->nLower,pLowerRej,
 							pst->nUpper,pUpperRej,pidSwap);
@@ -455,6 +530,13 @@ void _pstRootSplit(PST pst,int iSplitDim)
 		assert(nOut/sizeof(OREJ) == pst->nLower);
 		mdlGetReply(pst->mdl,pst->idUpper,pUpperRej,&nOut);
 		assert(nOut/sizeof(OREJ) == pst->nUpper);
+
+		pstMassCheck(pst,NULL,0,&outMass,NULL);
+		if (dMass != outMass.dMass) {
+			printf("ERROR id:%d lvl:%d iter:%d in _pstRootSplit after Swap\n",
+				   pst->idSelf,pst->iLvl,ittr);
+			}
+		++ittr;
 		}
 	free(pLowerRej);
 	free(pUpperRej);
@@ -466,7 +548,9 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	int nOut,d,j;
 	struct outCalcBound outBnd;
-	
+	struct outMassCheck outMass;
+	double dMass;
+
 	assert(nIn == 0);
 	if (pst->nLeaves > 1) {
 		/*
@@ -483,7 +567,16 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 				pst->bnd.fMax[d]-pst->bnd.fMin[d]) d = j;
 			}
 		pst->iSplitDim = d;
-		_pstRootSplit(pst,d);
+		
+		pstMassCheck(pst,NULL,0,&outMass,NULL);
+		dMass = outMass.dMass;
+		_pstRootSplit(pst,d,dMass);
+		pstMassCheck(pst,NULL,0,&outMass,NULL);
+		if (dMass != outMass.dMass) {
+			printf("ERROR id:%d lvl:%d:_pstRootSplit mass not cons.\n",
+				   pst->idSelf,pst->iLvl);
+			}
+
 		/*
 		 ** Now go on to DD of next levels.
 		 */
@@ -633,6 +726,8 @@ void pstColRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 										  in->fSplit,in->iSplitSide);
 		pOutRej->nSpace = pkdSwapSpace(plcl->pkd);
 		pOutRej->id = pst->idSelf;
+		pOutRej->nLocal = pkdLocal(plcl->pkd);
+
 		if (pnOut) *pnOut = sizeof(OREJ);
 		}
 	}
@@ -1474,6 +1569,27 @@ void pstDistribRoot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pkdDistribRoot(plcl->pkd,&in->ilcn);
 		}
 	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstMassCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct outMassCheck *out = vout;
+	double dMass;
+	
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_MASSCHECK,NULL,0);
+		pstMassCheck(pst->pstLower,NULL,0,vout,pnOut);
+		dMass = out->dMass;
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		out->dMass += dMass;
+		}
+	else {
+		out->dMass = pkdMassCheck(plcl->pkd);
+		}
+	if (pnOut) *pnOut = sizeof(struct outMassCheck);
 	}
 
 

@@ -6,10 +6,8 @@
 #include <assert.h>
 #include <sys/time.h>
 
-#ifndef CRAY_T3D
 #include <rpc/types.h>
 #include <rpc/xdr.h>
-#endif
 
 #include "pkd.h"
 #include "ewald.h"
@@ -304,8 +302,13 @@ int pkdColRejects(PKD pkd,int d,float fSplit,int iSplitSide)
 {
 	int nSplit,iRejects,i;
 
-	if (iSplitSide) nSplit = pkdLowerPart(pkd,d,fSplit,0,pkd->nLocal-1);
-	else nSplit = pkdUpperPart(pkd,d,fSplit,0,pkd->nLocal-1);
+	assert(pkd->nRejects == 0);
+	if (iSplitSide) {
+		nSplit = pkdLowerPart(pkd,d,fSplit,0,pkd->nLocal-1);
+		}
+	else {
+		nSplit = pkdUpperPart(pkd,d,fSplit,0,pkd->nLocal-1);
+		}
 	pkd->nRejects = pkd->nLocal - nSplit;
 	iRejects = pkd->nStore - pkd->nRejects;
 	pkd->nLocal = nSplit;
@@ -461,7 +464,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 	fp = fopen(pszFileName,"r+");
 	assert(fp != NULL);
 	if (bStandard) {
-#ifndef CRAY_T3D
 		float vTemp;
 		XDR xdrs;
 		/*
@@ -469,8 +471,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 		 ** This may be a bit dicey, but it should work as long
 		 ** as no one changes the tipsy binary format!
 		 */
-		assert(sizeof(struct dark_particle) == 9*sizeof(float));
-		assert(sizeof(struct dump) == sizeof(double)+6*sizeof(int));
 		lStart = 32 + nStart*36;
 		fseek(fp,lStart,0);
 		/* 
@@ -490,7 +490,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,int nEnd,
 			xdr_float(&xdrs,&pkd->pStore[i].fPot);
 			}
 		xdr_destroy(&xdrs);
-#endif
 		}
 	else {
 		lStart = sizeof(struct dump)+nStart*sizeof(struct dark_particle);
@@ -1081,7 +1080,9 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 				}
 			fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 
 			    1.0*(pkd->nPart + (n-1)/2.0);
+
 			pkdBucketWeight(pkd,iCell,fWeight);
+
 			SETNEXT(iCell);
 			if (iCell == ROOT) break;
 			}
@@ -1355,5 +1356,18 @@ void pkdDistribRoot(PKD pkd,struct ilCellNewt *pcc)
 	}
 
 
+double pkdMassCheck(PKD pkd) 
+{
+	double dMass=0.0;
+	int i,iRej;
 
+	for (i=0;i<pkdLocal(pkd);++i) {
+		dMass += pkd->pStore[i].fMass;
+		}
+	iRej = pkd->nStore - pkd->nRejects;
+	for (i=0;i<pkd->nRejects;++i) {
+		dMass += pkd->pStore[iRej+i].fMass;
+		}
+	return(dMass);
+	}
 
