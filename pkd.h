@@ -530,6 +530,7 @@ void pkdCoolVelocity(PKD,int,double,double,double);
 void pkdGrowMass(PKD pkd,int nGrowMass, double dDeltaM);
 void pkdInitAccel(PKD);
 int pkdOrdWeight(PKD,int,int,int,int,int *,int *);
+void pkdUnDeleteParticle(PKD pkd, PARTICLE *p);
 void pkdDeleteParticle(PKD pkd, PARTICLE *p);
 void pkdNewParticle(PKD pkd, PARTICLE p);
 int pkdResetTouchRung(PKD pkd, unsigned int iTestMask, unsigned int iSetMask);

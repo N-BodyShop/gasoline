@@ -3898,6 +3898,15 @@ int pkdRungParticles(PKD pkd,int iRung)
 	}
 
 void
+pkdUnDeleteParticle(PKD pkd, PARTICLE *p)
+{
+    assert(TYPETest(p, TYPE_DELETED));
+    
+    TYPEReset(p, TYPE_DELETED);
+    p->iOrder = -2 - p->iOrder;
+    }
+
+void
 pkdDeleteParticle(PKD pkd, PARTICLE *p)
 {
     p->iOrder = -2 - p->iOrder;
