@@ -21,7 +21,7 @@ XDIR	=	$(BDIR)/$(PVM_ARCH)
 
 MDL		=	$(SDIR)/../mdl/pvm
 CC=gcc
-CFLAGS	=	-g -DSMOOTH_CODE -O2 -I$(PVMDIR)/include -I$(MDL)
+CFLAGS	=	-g -O2 -I$(PVMDIR)/include -I$(MDL)
 LIB	=	$(MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
 
 default:	mdl pkdgrav
