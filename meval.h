@@ -1,17 +1,17 @@
-#ifndef QEVAL_HINCLUDED
-#define QEVAL_HINCLUDED
+#ifndef MEVAL_HINCLUDED
+#define MEVAL_HINCLUDED
 /*
- ** QEVAL() Macro, reduced multipole supporting up to l=4
+ ** MEVAL() Macro, complete multipole supporting up to l=4
  **             Joachim Stadel (May 1995)
- ** Parameters to QEVAL MACRO are:
+ ** Parameters to MEVAL MACRO are:
  **   iOrder:   (int) order of expansion.
- **   mom:      (struct ilCellNewt) contains the reduced multipoles.
+ **   mom:      (struct ilCellNewt) contains the COMPLETE multipoles.
  **   gam:      (double *) array of gamma numbers.
  **   dx,dy,dz: (double) displacements FROM the expansion center of mass.
  **   ax,ay,az: (double) acceleration (accumulated to)
  **   fPot:             (double) potential (accumulated to)
  */
-#define QEVAL(iOrder,mom,gam,dx,dy,dz,ax,ay,az,fPot)\
+#define MEVAL(iOrder,mom,gam,dx,dy,dz,ax,ay,az,fPot)\
 {\
 double Qmirx,Qmiry,Qmirz,Qmir,Qta;\
 double Qxx, Qyy, Qzz, Qxy, Qxz, Qyz, Qx, Qy, Qz, Qtr, Qhx, Qhy, Qhz, Qh;\
@@ -72,32 +72,11 @@ ay -= dy*Qta;\
 az -= dz*Qta;\
 }\
 }
-
-#define QEVAL_H(iOrder,mom,gam,dx,dy,dz,fPotc,fPots)\
-{\
-double Qmirx,Qmiry,Qmirz,Qmir;\
-switch (iOrder) {\
-case 4:\
-Qmirx = (1.0/6.0)*(mom.xzzz*dz*dz*dz + 3*mom.xyzz*dy*dz*dz + 3*mom.xyyz*dy*dy*dz + mom.xyyy*dy*dy*dy + 3*mom.xxzz*dx*dz*dz + 6*mom.xxyz*dx*dy*dz + 3*mom.xxyy*dx*dy*dy + 3*mom.xxxz*dx*dx*dz + 3*mom.xxxy*dx*dx*dy + mom.xxxx*dx*dx*dx);\
-Qmiry = (1.0/6.0)*(mom.yzzz*dz*dz*dz + 3*mom.xyzz*dx*dz*dz + 3*mom.xxyz*dx*dx*dz + mom.xxxy*dx*dx*dx + 3*mom.yyzz*dy*dz*dz + 6*mom.xyyz*dx*dy*dz + 3*mom.xxyy*dx*dx*dy + 3*mom.yyyz*dy*dy*dz + 3*mom.xyyy*dx*dy*dy + mom.yyyy*dy*dy*dy);\
-Qmirz = (1.0/6.0)*(mom.yyyz*dy*dy*dy + 3*mom.xyyz*dx*dy*dy + 3*mom.xxyz*dx*dx*dy + mom.xxxz*dx*dx*dx + 3*mom.yyzz*dy*dy*dz + 6*mom.xyzz*dx*dy*dz + 3*mom.xxzz*dx*dx*dz + 3*mom.yzzz*dy*dz*dz + 3*mom.xzzz*dx*dz*dz + mom.zzzz*dz*dz*dz);\
-Qmir = (1.0/4.0)*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
-fPotc -= gam[4]*Qmir;\
-case 3:\
-Qmirx = (1.0/2.0)*(mom.xzz*dz*dz + 2*mom.xyz*dy*dz + mom.xyy*dy*dy + 2*mom.xxz*dx*dz + 2*mom.xxy*dx*dy + mom.xxx*dx*dx);\
-Qmiry = (1.0/2.0)*(mom.yzz*dz*dz + 2*mom.xyz*dx*dz + mom.xxy*dx*dx + 2*mom.yyz*dy*dz + 2*mom.xyy*dx*dy + mom.yyy*dy*dy);\
-Qmirz = (1.0/2.0)*(mom.yyz*dy*dy + 2*mom.xyz*dx*dy + mom.xxz*dx*dx + 2*mom.yzz*dy*dz + 2*mom.xzz*dx*dz + mom.zzz*dz*dz);\
-Qmir = (1.0/3.0)*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
-fPots += gam[3]*Qmir;\
-case 2:\
-Qmirx = (1.0/1.0)*(mom.xz*dz + mom.xy*dy + mom.xx*dx);\
-Qmiry = (1.0/1.0)*(mom.yz*dz + mom.xy*dx + mom.yy*dy);\
-Qmirz = (1.0/1.0)*(mom.yz*dy + mom.xz*dx + mom.zz*dz);\
-Qmir = (1.0/2.0)*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
-fPotc -= gam[2]*Qmir;\
-case 1:\
-default:\
-fPotc -= gam[0]*mom.m;\
-}\
-}
 #endif
+
+
+
+
+
+
+

@@ -19,7 +19,7 @@ KSR_MDL = ../mdl/ksr
 
 KSR_CFLAGS = -O2 -w2 -I$(KSR_MDL)
 KSR_LD_FLAGS = -para
-KSR_LIBMDL = erf.o v_sqrt1.o $(KSR_MDL)/mdl.o -lm -lrpc
+KSR_LIBMDL = erf.o v_sqrt1.ksr.o $(KSR_MDL)/mdl.o -lm -lrpc
 
 #
 #       SP1/2 defines
@@ -46,7 +46,7 @@ T3D_LD_FLAGS =
 
 OBJS	= 	main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 		ewald.o walk.o eccanom.o hypanom.o
-EXTRA_OBJ = 	erf.o v_sqrt1.o hyperlib.o
+EXTRA_OBJ = 	erf.o v_sqrt1.o v_sqrt1.ksr.o hyperlib.o
 
 default:	
 	@echo "Please tell me what architecture to make."
@@ -79,6 +79,12 @@ t3d:
 
 pkdgrav: $(OBJS) $(EXTRA_OBJ)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -o pkdgrav $(OBJS) $(LIBMDL)
+
+
+
+
+
+
 
 
 

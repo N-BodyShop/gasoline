@@ -1,11 +1,16 @@
 #include <stdio.h>
 #include <math.h>
+#include <assert.h>
 #include "mdl.h"
 #include "pkd.h"
 #include "grav.h"
 #include "qeval.h"
 
-#define NATIVE_SQRT (defined(_MIPS_ISA) && (_MIPS_ISA == _MIPS_ISA_MIPS4))
+#define NATIVE_SQRT (defined(_MIPS_ISA) && (_MIPS_ISA == _MIPS_ISA_MIPS4)) 
+
+#if !(NATIVE_SQRT)
+void v_sqrt1(int,double *,double *);
+#endif
 
 void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 {	
@@ -19,7 +24,9 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	double x,y,z,dx,dy,dz,dir,d2,h,twoh,a,b,c,d;
 	double dir2,qirx,qiry,qirz,qir,tr,qir3;
 	double gam[6];
+#if !(NATIVE_SQRT)
 	double *sqrttmp,*d2a;
+#endif
 
 	/*
 	 ** Now process the two interaction lists for each particle.
@@ -45,6 +52,7 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dy = y - ilp[j].y;
 			dz = z - ilp[j].z;
 			pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
+			assert(pkd->d2a[j] > 0.0);
 			}
 		if (pkd->nPart>0) v_sqrt1(pkd->nPart,pkd->d2a,pkd->sqrttmp);
 #endif
@@ -55,10 +63,10 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			twoh = h + ilp[j].h;
 #if (NATIVE_SQRT)
 			d2 = dx*dx + dy*dy + dz*dz;
-			dir = 1.0/sqrt(d2);
-			SPLINE(dir,d2,twoh,a,b,c,d);
+			assert(d2 > 0.0);
+			SPLINE(d2,twoh,a,b);
 #else
-			SPLINE(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b,c,d);
+			SPLINEM(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b);
 #endif
 			a *= ilp[j].m;
 			b *= ilp[j].m;
@@ -73,6 +81,7 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dy = y - ilcs[j].y;
 			dz = z - ilcs[j].z;
 			pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
+			assert(pkd->d2a[j] > 0.0);
 			}
 		if (pkd->nCellSoft>0) v_sqrt1(pkd->nCellSoft,pkd->d2a,pkd->sqrttmp);
 #endif
@@ -83,10 +92,11 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			twoh = h + ilcs[j].h;
 #if (NATIVE_SQRT)
 			d2 = dx*dx + dy*dy + dz*dz;
+			assert(d2 > 0.0);
 			dir = 1.0/sqrt(d2);
-			SPLINE(dir,d2,twoh,a,b,c,d);
+			SPLINEQ(dir,d2,twoh,a,b,c,d);
 #else
-			SPLINE(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b,c,d);
+			SPLINEQ(pkd->sqrttmp[j],pkd->d2a[j],twoh,a,b,c,d);
 #endif
 			qirx = ilcs[j].xx*dx + ilcs[j].xy*dy + ilcs[j].xz*dz;
 			qiry = ilcs[j].xy*dx + ilcs[j].yy*dy + ilcs[j].yz*dz;
@@ -105,6 +115,7 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dy = y - ilcn[j].y;
 			dz = z - ilcn[j].z;
 			pkd->d2a[j] = dx*dx + dy*dy + dz*dz;
+			assert(pkd->d2a[j] > 0.0);
 			}
 		if (pkd->nCellNewt>0) v_sqrt1(pkd->nCellNewt,pkd->d2a,pkd->sqrttmp);
 #endif
@@ -114,6 +125,7 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dz = z - ilcn[j].z;
 #if (NATIVE_SQRT)
 			d2 = dx*dx + dy*dy + dz*dz;
+			assert(d2 > 0.0);
 			gam[0] = 1.0/sqrt(d2);
 #else
 			gam[0] = pkd->sqrttmp[j];
@@ -145,8 +157,7 @@ void pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dz = p[j].r[2] - p[i].r[2];
 			d2 = dx*dx + dy*dy + dz*dz;
 			twoh = p[i].fSoft + p[j].fSoft;
-			dir = 1.0/sqrt(d2);
-			SPLINE(dir,d2,twoh,a,b,c,d);
+			SPLINE(d2,twoh,a,b);
 			p[j].fPot -= a*p[i].fMass;
 			p[j].a[0] -= dx*b*p[i].fMass;
 			p[j].a[1] -= dy*b*p[i].fMass;

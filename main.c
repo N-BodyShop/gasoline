@@ -7,15 +7,9 @@
 #include "master.h"
 #include "outtype.h"
 
-
-void main_ch(MDL mdl)
+void AddServices(MDL mdl,PST pst)
 {
-	PST pst;
-	LCL lcl;
 	int nThreads,nCell;
-
-	lcl.pszDataPath = (char *)getenv("PTOOLS_DATA_PATH");
-	pstInitialize(&pst,mdl,&lcl);
 
 	nThreads = mdlThreads(mdl);
 	mdlAddService(mdl,PST_SETADD,pst,pstSetAdd,
@@ -81,6 +75,23 @@ void main_ch(MDL mdl)
 				  sizeof(struct inColCells),nCell*sizeof(KDN));
 	mdlAddService(mdl,PST_DISTRIBCELLS,pst,pstDistribCells,
 				  nCell*sizeof(KDN),0);
+	mdlAddService(mdl,PST_CALCROOT,pst,pstCalcRoot,
+				  0,sizeof(struct ioCalcRoot));
+	mdlAddService(mdl,PST_DISTRIBROOT,pst,pstDistribRoot,
+				  sizeof(struct ioCalcRoot),0);
+	}
+
+
+void main_ch(MDL mdl)
+{
+	PST pst;
+	LCL lcl;
+
+	lcl.pszDataPath = (char *)getenv("PTOOLS_DATA_PATH");
+	pstInitialize(&pst,mdl,&lcl);
+
+	AddServices(mdl,pst);
+
 	mdlHandler(mdl);
 
 	pstFinish(pst);

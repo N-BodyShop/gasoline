@@ -1,158 +1,58 @@
 #ifndef QEVAL_HINCLUDED
 #define QEVAL_HINCLUDED
-
 /*
- ** QEVAL() Macro, reduced quadrupole evaluator currently supports up to Hexadecapole order.
- **		Joachim Stadel (May 1995)
+ ** QEVAL() Macro, reduced multipole supporting up to l=4
+ **             Joachim Stadel (May 1995)
  ** Parameters to QEVAL MACRO are:
  **   iOrder:   (int) order of expansion.
- **   mom:	(struct ilCellNewt) contains the reduced multipoles.
- **   gam:	(double *) array of gamma numbers.
- **   dx,dy,dz:	(double) displacements FROM the expansion center of mass.	
- **   ax,ay,az: (double) acceleration (accumulated to) 
- **   fPot:		(double) potential (accumulated to)
+ **   mom:      (struct ilCellNewt) contains the reduced multipoles.
+ **   gam:      (double *) array of gamma numbers.
+ **   dx,dy,dz: (double) displacements FROM the expansion center of mass.
+ **   ax,ay,az: (double) acceleration (accumulated to)
+ **   fPot:             (double) potential (accumulated to)
  */
 #define QEVAL(iOrder,mom,gam,dx,dy,dz,ax,ay,az,fPot)\
 {\
-	double Qmirx,Qmiry,Qmirz,Qmir,Qta;\
-	double Qxxyy,Qxxzz,Qyyzz,Qxyzz,Qxzzz,Qyzzz,Qxzz,Qyzz;\
-	Qta = 0.0;\
-	switch (iOrder) {\
-	case 4:\
-		/*\
-		 ** Hexadecapole interaction.\
-		 */\
-		Qxxyy = mom.xxyy;\
-		Qxxzz = -mom.xxxx - Qxxyy;\
-		Qyyzz = -Qxxyy - mom.yyyy;\
-		Qxyzz = -mom.xxxy - mom.xyyy;\
-		Qxzzz = -mom.xxxz - mom.xyyz;\
-		Qyzzz = -mom.xxyz - mom.yyyz;\
-		Qmirx = (1.0/6.0)*(dx*(dx*(mom.xxxx*dx + 3*mom.xxxy*dy + 3*mom.xxxz*dz) +\
-							   3*Qxxyy*dy*dy + 3*Qxxzz*dz*dz + 6*mom.xxyz*dy*dz) +\
-						   dy*(3*Qxyzz*dz*dz + 3*mom.xyyz*dy*dz + mom.xyyy*dy*dy) +\
-						   Qxzzz*dz*dz*dz);\
-		Qmiry = (1.0/6.0)*(dy*(dy*(3*mom.xyyy*dx + mom.yyyy*dy + 3*mom.yyyz*dz) +\
-							   3*Qxxyy*dx*dx + 3*Qyyzz*dz*dz + 6*mom.xyyz*dx*dz) +\
-						   dx*(3*Qxyzz*dz*dz + 3*mom.xxyz*dx*dz + mom.xxxy*dx*dx) +\
-						   Qyzzz*dz*dz*dz);\
-		Qmirz = (1.0/6.0)*(dz*(dz*(3*Qxzzz*dx + 3*Qyzzz*dy - (Qxxzz + Qyyzz)*dz) +\
-							   3*Qxxzz*dx*dx + 3*Qyyzz*dy*dy + 6*Qxyzz*dx*dy) +\
-						   dx*(3*mom.xyyz*dy*dy + 3*mom.xxyz*dx*dy + mom.xxxz*dx*dx) +\
-						   mom.yyyz*dy*dy*dy);\
-		Qmir = 0.25*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
-		fPot -= gam[4]*Qmir;\
-		Qta += gam[5]*Qmir;\
-		ax += gam[4]*Qmirx;\
-		ay += gam[4]*Qmiry;\
-		az += gam[4]*Qmirz;\
-	case 3:\
-		/*\
-		 ** Octopole interaction.\
-		 */\
-		Qxzz = -mom.xxx - mom.xyy;\
-		Qyzz = -mom.xxy - mom.yyy;\
-		Qmirx = 0.5*(dx*(mom.xxx*dx + 2*mom.xxy*dy + 2*mom.xxz*dz) +\
-					 mom.xyy*dy*dy + Qxzz*dz*dz + 2*mom.xyz*dy*dz);\
-		Qmiry = 0.5*(dy*(2*mom.xyy*dx + mom.yyy*dy + 2*mom.yyz*dz) +\
-					 mom.xxy*dx*dx + Qyzz*dz*dz + 2*mom.xyz*dx*dz);\
-		Qmirz = 0.5*(dz*(2*Qxzz*dx + 2*Qyzz*dy - (mom.xxz + mom.yyz)*dz) +\
-					 mom.xxz*dx*dx + mom.yyz*dy*dy + 2*mom.xyz*dx*dy);\
-		Qmir = (1.0/3.0)*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
-		fPot -= gam[3]*Qmir;\
-		Qta += gam[4]*Qmir;\
-		ax += gam[3]*Qmirx;\
-		ay += gam[3]*Qmiry;\
-		az += gam[3]*Qmirz;\
-	case 2:\
-		/*\
-		 ** Quadrupole interaction.\
-		 */\
-		Qmirx = mom.xx*dx + mom.xy*dy + mom.xz*dz;\
-		Qmiry = mom.xy*dx + mom.yy*dy + mom.yz*dz;\
-		Qmirz = mom.xz*dx + mom.yz*dy - (mom.xx + mom.yy)*dz;\
-		Qmir = 0.5*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
-		fPot -= gam[2]*Qmir;\
-		Qta += gam[3]*Qmir;\
-		ax += gam[2]*Qmirx;\
-		ay += gam[2]*Qmiry;\
-		az += gam[2]*Qmirz;\
-	case 1:\
-	default:\
-		/*\
-		 ** Monopole interaction.\
-		 */\
-		fPot -= gam[0]*mom.m;\
-		Qta += gam[1]*mom.m;\
-		ax -= dx*Qta;\
-		ay -= dy*Qta;\
-		az -= dz*Qta;\
-		}\
-	}
-
-#define QEVAL_H(iOrder,mom,gam,dx,dy,dz,fPotc,fPots)\
-{\
-	double Qmirx,Qmiry,Qmirz,Qmir;\
-	double Qxxyy,Qxxzz,Qyyzz,Qxyzz,Qxzzz,Qyzzz,Qxzz,Qyzz;\
-	switch (iOrder) {\
-	case 4:\
-		/*\
-		 ** Hexadecapole interaction.\
-		 */\
-		Qxxyy = mom.xxyy;\
-		Qxxzz = -mom.xxxx - Qxxyy;\
-		Qyyzz = -Qxxyy - mom.yyyy;\
-		Qxyzz = -mom.xxxy - mom.xyyy;\
-		Qxzzz = -mom.xxxz - mom.xyyz;\
-		Qyzzz = -mom.xxyz - mom.yyyz;\
-		Qmirx = (1.0/6.0)*(dx*(dx*(mom.xxxx*dx + 3*mom.xxxy*dy + 3*mom.xxxz*dz) +\
-							   3*Qxxyy*dy*dy + 3*Qxxzz*dz*dz + 6*mom.xxyz*dy*dz) +\
-						   dy*(3*Qxyzz*dz*dz + 3*mom.xyyz*dy*dz + mom.xyyy*dy*dy) +\
-						   Qxzzz*dz*dz*dz);\
-		Qmiry = (1.0/6.0)*(dy*(dy*(3*mom.xyyy*dx + mom.yyyy*dy + 3*mom.yyyz*dz) +\
-							   3*Qxxyy*dx*dx + 3*Qyyzz*dz*dz + 6*mom.xyyz*dx*dz) +\
-						   dx*(3*Qxyzz*dz*dz + 3*mom.xxyz*dx*dz + mom.xxxy*dx*dx) +\
-						   Qyzzz*dz*dz*dz);\
-		Qmirz = (1.0/6.0)*(dz*(dz*(3*Qxzzz*dx + 3*Qyzzz*dy - (Qxxzz + Qyyzz)*dz) +\
-							   3*Qxxzz*dx*dx + 3*Qyyzz*dy*dy + 6*Qxyzz*dx*dy) +\
-						   dx*(3*mom.xyyz*dy*dy + 3*mom.xxyz*dx*dy + mom.xxxz*dx*dx) +\
-						   mom.yyyz*dy*dy*dy);\
-		Qmir = 0.25*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
-		fPotc -= gam[4]*Qmir;\
-	case 3:\
-		/*\
-		 ** Octopole interaction.\
-		 */\
-		Qxzz = -mom.xxx - mom.xyy;\
-		Qyzz = -mom.xxy - mom.yyy;\
-		Qmirx = 0.5*(dx*(mom.xxx*dx + 2*mom.xxy*dy + 2*mom.xxz*dz) +\
-					 mom.xyy*dy*dy + Qxzz*dz*dz + 2*mom.xyz*dy*dz);\
-		Qmiry = 0.5*(dy*(2*mom.xyy*dx + mom.yyy*dy + 2*mom.yyz*dz) +\
-					 mom.xxy*dx*dx + Qyzz*dz*dz + 2*mom.xyz*dx*dz);\
-		Qmirz = 0.5*(dz*(2*Qxzz*dx + 2*Qyzz*dy - (mom.xxz + mom.yyz)*dz) +\
-					 mom.xxz*dx*dx + mom.yyz*dy*dy + 2*mom.xyz*dx*dy);\
-		Qmir = (1.0/3.0)*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
-		fPots += gam[3]*Qmir;\
-	case 2:\
-		/*\
-		 ** Quadrupole interaction.\
-		 */\
-		Qmirx = mom.xx*dx + mom.xy*dy + mom.xz*dz;\
-		Qmiry = mom.xy*dx + mom.yy*dy + mom.yz*dz;\
-		Qmirz = mom.xz*dx + mom.yz*dy - (mom.xx + mom.yy)*dz;\
-		Qmir = 0.5*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
-		fPotc -= gam[2]*Qmir;\
-	case 1:\
-	default:\
-		/*\
-		 ** Monopole interaction.\
-		 */\
-		fPotc -= gam[0]*mom.m;\
-		}\
-	}
+double Qmirx,Qmiry,Qmirz,Qmir,Qta;\
+Qta = 0.0;\
+switch (iOrder) {\
+case 4:\
+Qmirx = (1.0/6.0)*(mom.xzzz*dz*dz*dz + 3*mom.xyzz*dy*dz*dz + 3*mom.xyyz*dy*dy*dz + mom.xyyy*dy*dy*dy + 3*mom.xxzz*dx*dz*dz + 6*mom.xxyz*dx*dy*dz + 3*mom.xxyy*dx*dy*dy + 3*mom.xxxz*dx*dx*dz + 3*mom.xxxy*dx*dx*dy + mom.xxxx*dx*dx*dx);\
+Qmiry = (1.0/6.0)*(mom.yzzz*dz*dz*dz + 3*mom.xyzz*dx*dz*dz + 3*mom.xxyz*dx*dx*dz + mom.xxxy*dx*dx*dx + 3*mom.yyzz*dy*dz*dz + 6*mom.xyyz*dx*dy*dz + 3*mom.xxyy*dx*dx*dy + 3*mom.yyyz*dy*dy*dz + 3*mom.xyyy*dx*dy*dy + mom.yyyy*dy*dy*dy);\
+Qmirz = (1.0/6.0)*(mom.yyyz*dy*dy*dy + 3*mom.xyyz*dx*dy*dy + 3*mom.xxyz*dx*dx*dy + mom.xxxz*dx*dx*dx + 3*mom.yyzz*dy*dy*dz + 6*mom.xyzz*dx*dy*dz + 3*mom.xxzz*dx*dx*dz + 3*mom.yzzz*dy*dz*dz + 3*mom.xzzz*dx*dz*dz + mom.zzzz*dz*dz*dz);\
+Qmir = (1.0/4.0)*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
+fPot -= gam[4]*Qmir;\
+Qta += gam[5]*Qmir;\
+ax += gam[4]*Qmirx;\
+ay += gam[4]*Qmiry;\
+az += gam[4]*Qmirz;\
+case 3:\
+Qmirx = (1.0/2.0)*(mom.xzz*dz*dz + 2*mom.xyz*dy*dz + mom.xyy*dy*dy + 2*mom.xxz*dx*dz + 2*mom.xxy*dx*dy + mom.xxx*dx*dx);\
+Qmiry = (1.0/2.0)*(mom.yzz*dz*dz + 2*mom.xyz*dx*dz + mom.xxy*dx*dx + 2*mom.yyz*dy*dz + 2*mom.xyy*dx*dy + mom.yyy*dy*dy);\
+Qmirz = (1.0/2.0)*(mom.yyz*dy*dy + 2*mom.xyz*dx*dy + mom.xxz*dx*dx + 2*mom.yzz*dy*dz + 2*mom.xzz*dx*dz + mom.zzz*dz*dz);\
+Qmir = (1.0/3.0)*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
+fPot -= gam[3]*Qmir;\
+Qta += gam[4]*Qmir;\
+ax += gam[3]*Qmirx;\
+ay += gam[3]*Qmiry;\
+az += gam[3]*Qmirz;\
+case 2:\
+Qmirx = (1.0/1.0)*(mom.xz*dz + mom.xy*dy + mom.xx*dx);\
+Qmiry = (1.0/1.0)*(mom.yz*dz + mom.xy*dx + mom.yy*dy);\
+Qmirz = (1.0/1.0)*(mom.yz*dy + mom.xz*dx + mom.zz*dz);\
+Qmir = (1.0/2.0)*(Qmirx*dx + Qmiry*dy + Qmirz*dz);\
+fPot -= gam[2]*Qmir;\
+Qta += gam[3]*Qmir;\
+ax += gam[2]*Qmirx;\
+ay += gam[2]*Qmiry;\
+az += gam[2]*Qmirz;\
+case 1:\
+default:\
+fPot -= gam[0]*mom.m;\
+Qta += gam[1]*mom.m;\
+ax -= dx*Qta;\
+ay -= dy*Qta;\
+az -= dz*Qta;\
+}\
+}
 #endif
-
-
-
-
-

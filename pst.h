@@ -288,6 +288,14 @@ void pstColCells(PST,void *,int,void *,int *);
 #define PST_DISTRIBCELLS	32
 void pstDistribCells(PST,void *,int,void *,int *);
 
+#define PST_CALCROOT		33
+struct ioCalcRoot {
+	struct ilCellNewt ilcn;
+	};
+void pstCalcRoot(PST,void *,int,void *,int *);
+
+#define PST_DISTRIBROOT		34
+void pstDistribRoot(PST,void *,int,void *,int *);
 
 #endif
 

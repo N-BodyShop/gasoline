@@ -20,7 +20,6 @@
 #include "checkdefs.h"
 
 
-
 void _msrLeader(void)
 {
     puts("USAGE: main [SETTINGS | FLAGS] [SIM_FILE]");
@@ -238,10 +237,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->nRed = 0;
         if(msrComove(msr)) msrReadRed(msr);
         
+	pstInitialize(&msr->pst,msr->mdl,&msr->lcl);
+
+	AddServices(msr->mdl,msr->pst);
 	/*
 	 ** Create the processor subset tree.
 	 */
-	pstInitialize(&msr->pst,msr->mdl,&msr->lcl);
 	for (id=1;id<msr->nThreads;++id) {
 		if (msr->param.bVerbose) printf("Adding %d to the pst\n",id);
 		inAdd.id = id;
@@ -391,6 +392,7 @@ double msrTime2Exp(MSR msr,double dTime)
 		 ** Bad value.
 		 */
 		assert(0);
+		return(0.0);
 		}
 	}
 
@@ -445,6 +447,7 @@ double msrExp2Time(MSR msr,double dExp)
 		 ** Bad value.
 		 */
 		assert(0);
+		return(0.0);
 		}	
 	}
 
@@ -694,10 +697,10 @@ void msrBuildTree(MSR msr)
 	struct inBuildTree in;
 	struct outBuildTree out;
 	struct inColCells inc;
+	struct ioCalcRoot root;
 	KDN *pkdn;
 	int sec,dsec;
-	int i,iDum,nCell;
-	struct pkdCalcCellStruct *m;
+	int iDum,nCell;
 
 	if (msr->param.bVerbose) printf("Domain Decomposition...\n");
 	sec = time(0);
@@ -726,6 +729,8 @@ void msrBuildTree(MSR msr)
 	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
 #if (0)
 	for (i=1;i<nCell;++i) {
+		struct pkdCalcCellStruct *m;
+
 		printf("\nLTTO:%d\n",i);
 		printf("    iDim:%1d fSplit:%g pLower:%d pUpper:%d\n",
 			   pkdn[i].iDim,pkdn[i].fSplit,pkdn[i].pLower,pkdn[i].pUpper);
@@ -748,6 +753,9 @@ void msrBuildTree(MSR msr)
 		}
 #endif
 	pstDistribCells(msr->pst,pkdn,nCell*sizeof(KDN),NULL,NULL);
+
+	pstCalcRoot(msr->pst,NULL,0,&root,&iDum);
+	pstDistribRoot(msr->pst,&root,sizeof(struct ioCalcRoot),NULL,NULL);
 	}
 
 

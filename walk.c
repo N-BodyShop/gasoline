@@ -7,12 +7,61 @@
 #include "pkd.h"
 
 
+#define SETILIST(iOrder,ilcn,pkdn,x,y,z)\
+{\
+	double tr;\
+	switch (iOrder) {\
+	case 4:\
+		ilcn.xxxx = pkdn->mom.Hxxxx;\
+		ilcn.xyyy = pkdn->mom.Hxyyy;\
+		ilcn.xxxy = pkdn->mom.Hxxxy;\
+		ilcn.yyyy = pkdn->mom.Hyyyy;\
+		ilcn.xxxz = pkdn->mom.Hxxxz;\
+		ilcn.yyyz = pkdn->mom.Hyyyz;\
+		ilcn.xxyy = pkdn->mom.Hxxyy;\
+		ilcn.xxyz = pkdn->mom.Hxxyz;\
+		ilcn.xyyz = pkdn->mom.Hxyyz;\
+		ilcn.xxzz = -pkdn->mom.Hxxxx - pkdn->mom.Hxxyy;\
+		ilcn.xyzz = -pkdn->mom.Hxxxy - pkdn->mom.Hxyyy;\
+		ilcn.xzzz = -pkdn->mom.Hxxxz - pkdn->mom.Hxyyz;\
+		ilcn.yyzz = -pkdn->mom.Hxxyy - pkdn->mom.Hyyyy;\
+		ilcn.yzzz = -pkdn->mom.Hxxyz - pkdn->mom.Hyyyz;\
+		ilcn.zzzz = -ilcn.xxzz - ilcn.yyzz;\
+	case 3:\
+		ilcn.xxx = pkdn->mom.Oxxx;\
+		ilcn.xyy = pkdn->mom.Oxyy;\
+		ilcn.xxy = pkdn->mom.Oxxy;\
+		ilcn.yyy = pkdn->mom.Oyyy;\
+		ilcn.xxz = pkdn->mom.Oxxz;\
+		ilcn.yyz = pkdn->mom.Oyyz;\
+		ilcn.xyz = pkdn->mom.Oxyz;\
+		ilcn.xzz = -pkdn->mom.Oxxx - pkdn->mom.Oxyy;\
+		ilcn.yzz = -pkdn->mom.Oxxy - pkdn->mom.Oyyy;\
+		ilcn.zzz = -pkdn->mom.Oxxz - pkdn->mom.Oyyz;\
+	case 2:\
+		tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;\
+		ilcn.xx = pkdn->mom.Qxx - tr/3.0;\
+		ilcn.yy = pkdn->mom.Qyy - tr/3.0;\
+		ilcn.zz = pkdn->mom.Qzz - tr/3.0;\
+		ilcn.xy = pkdn->mom.Qxy;\
+		ilcn.xz = pkdn->mom.Qxz;\
+		ilcn.yz = pkdn->mom.Qyz;\
+	case 1:\
+	default:\
+		ilcn.m = pkdn->fMass;\
+		ilcn.x = x;\
+		ilcn.y = y;\
+		ilcn.z = z;\
+		}\
+	}
+
+
 void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3],int iOrder)
 {
 	PARTICLE *p;
 	KDN *pkdn,*pbuc;
 	int iCell,nPart,nCellSoft,nCellNewt,n,pj,bIntersect;
-	float x,y,z,twoh2,tr;
+	float x,y,z,twoh2;
 
 	nPart = pkd->nPart;
 	nCellSoft = pkd->nCellSoft;
@@ -105,39 +154,7 @@ void pkdLocalWalk(PKD pkd,int iBucket,float fSoftMax,int bRep,float rOffset[3],i
 					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
 						}
 					}
-				switch (iOrder) {
-				case 4:
-					pkd->ilcn[nCellNewt].xxxx = pkdn->mom.Hxxxx;
-					pkd->ilcn[nCellNewt].xyyy = pkdn->mom.Hxyyy;
-					pkd->ilcn[nCellNewt].xxxy = pkdn->mom.Hxxxy;
-					pkd->ilcn[nCellNewt].yyyy = pkdn->mom.Hyyyy;
-					pkd->ilcn[nCellNewt].xxxz = pkdn->mom.Hxxxz;
-					pkd->ilcn[nCellNewt].yyyz = pkdn->mom.Hyyyz;
-					pkd->ilcn[nCellNewt].xxyy = pkdn->mom.Hxxyy;
-					pkd->ilcn[nCellNewt].xxyz = pkdn->mom.Hxxyz;
-					pkd->ilcn[nCellNewt].xyyz = pkdn->mom.Hxyyz;
-				case 3:
-					pkd->ilcn[nCellNewt].xxx = pkdn->mom.Oxxx;
-					pkd->ilcn[nCellNewt].xyy = pkdn->mom.Oxyy;
-					pkd->ilcn[nCellNewt].xxy = pkdn->mom.Oxxy;
-					pkd->ilcn[nCellNewt].yyy = pkdn->mom.Oyyy;
-					pkd->ilcn[nCellNewt].xxz = pkdn->mom.Oxxz;
-					pkd->ilcn[nCellNewt].yyz = pkdn->mom.Oyyz;
-					pkd->ilcn[nCellNewt].xyz = pkdn->mom.Oxyz;
-				case 2:
-					tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;
-					pkd->ilcn[nCellNewt].xx = pkdn->mom.Qxx - tr/3.0;
-					pkd->ilcn[nCellNewt].yy = pkdn->mom.Qyy - tr/3.0;
-					pkd->ilcn[nCellNewt].xy = pkdn->mom.Qxy;
-					pkd->ilcn[nCellNewt].xz = pkdn->mom.Qxz;
-					pkd->ilcn[nCellNewt].yz = pkdn->mom.Qyz;
-				case 1:
-				default:
-					pkd->ilcn[nCellNewt].m = pkdn->fMass;
-					pkd->ilcn[nCellNewt].x = x;
-					pkd->ilcn[nCellNewt].y = y;
-					pkd->ilcn[nCellNewt].z = z;
-					}
+				SETILIST(iOrder,pkd->ilcn[nCellNewt],pkdn,x,y,z);
 				++nCellNewt;
 				}
 			SETNEXT(iCell);
@@ -155,7 +172,7 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3],in
 	PARTICLE *p;
 	KDN *pkdn,*pbuc;
 	int iCell,nPart,nCellSoft,nCellNewt,n,j,bIntersect;
-	float x,y,z,twoh2,tr;
+	float x,y,z,twoh2;
 
 	assert(id != pkd->idSelf);
 	nPart = pkd->nPart;
@@ -250,39 +267,7 @@ void pkdRemoteWalk(PKD pkd,int iBucket,float fSoftMax,int id,float rOffset[3],in
 					    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
 						}
 					}
-				switch (iOrder) {
-				case 4:
-					pkd->ilcn[nCellNewt].xxxx = pkdn->mom.Hxxxx;
-					pkd->ilcn[nCellNewt].xyyy = pkdn->mom.Hxyyy;
-					pkd->ilcn[nCellNewt].xxxy = pkdn->mom.Hxxxy;
-					pkd->ilcn[nCellNewt].yyyy = pkdn->mom.Hyyyy;
-					pkd->ilcn[nCellNewt].xxxz = pkdn->mom.Hxxxz;
-					pkd->ilcn[nCellNewt].yyyz = pkdn->mom.Hyyyz;
-					pkd->ilcn[nCellNewt].xxyy = pkdn->mom.Hxxyy;
-					pkd->ilcn[nCellNewt].xxyz = pkdn->mom.Hxxyz;
-					pkd->ilcn[nCellNewt].xyyz = pkdn->mom.Hxyyz;
-				case 3:
-					pkd->ilcn[nCellNewt].xxx = pkdn->mom.Oxxx;
-					pkd->ilcn[nCellNewt].xyy = pkdn->mom.Oxyy;
-					pkd->ilcn[nCellNewt].xxy = pkdn->mom.Oxxy;
-					pkd->ilcn[nCellNewt].yyy = pkdn->mom.Oyyy;
-					pkd->ilcn[nCellNewt].xxz = pkdn->mom.Oxxz;
-					pkd->ilcn[nCellNewt].yyz = pkdn->mom.Oyyz;
-					pkd->ilcn[nCellNewt].xyz = pkdn->mom.Oxyz;
-				case 2:
-					tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;
-					pkd->ilcn[nCellNewt].xx = pkdn->mom.Qxx - tr/3.0;
-					pkd->ilcn[nCellNewt].yy = pkdn->mom.Qyy - tr/3.0;
-					pkd->ilcn[nCellNewt].xy = pkdn->mom.Qxy;
-					pkd->ilcn[nCellNewt].xz = pkdn->mom.Qxz;
-					pkd->ilcn[nCellNewt].yz = pkdn->mom.Qyz;
-				case 1:
-				default:
-					pkd->ilcn[nCellNewt].m = pkdn->fMass;
-					pkd->ilcn[nCellNewt].x = x;
-					pkd->ilcn[nCellNewt].y = y;
-					pkd->ilcn[nCellNewt].z = z;
-					}
+				SETILIST(iOrder,pkd->ilcn[nCellNewt],pkdn,x,y,z);
 				++nCellNewt;
 				}
 			mdlRelease(pkd->mdl,CID_CELL,pkdn);
@@ -300,7 +285,7 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
 {
 	KDN *pbuc,*pkdn;
 	int iCell,id,ix,iy,iz,bRep,bIntersect,pj;
-	float x,y,z,rOffset[3],fSoftMax,twoh2,tr;
+	float x,y,z,rOffset[3],fSoftMax,twoh2;
 	
 	pbuc = &pkd->kdNodes[iBucket];
 	/*
@@ -406,39 +391,7 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
 									    pkd->d2a = realloc(pkd->d2a,pkd->nSqrtTmp*sizeof(double));
 										}
 									}
-								switch (iOrder) {
-								case 4:
-									pkd->ilcn[pkd->nCellNewt].xxxx = pkdn->mom.Hxxxx;
-									pkd->ilcn[pkd->nCellNewt].xyyy = pkdn->mom.Hxyyy;
-									pkd->ilcn[pkd->nCellNewt].xxxy = pkdn->mom.Hxxxy;
-									pkd->ilcn[pkd->nCellNewt].yyyy = pkdn->mom.Hyyyy;
-									pkd->ilcn[pkd->nCellNewt].xxxz = pkdn->mom.Hxxxz;
-									pkd->ilcn[pkd->nCellNewt].yyyz = pkdn->mom.Hyyyz;
-									pkd->ilcn[pkd->nCellNewt].xxyy = pkdn->mom.Hxxyy;
-									pkd->ilcn[pkd->nCellNewt].xxyz = pkdn->mom.Hxxyz;
-									pkd->ilcn[pkd->nCellNewt].xyyz = pkdn->mom.Hxyyz;
-								case 3:
-									pkd->ilcn[pkd->nCellNewt].xxx = pkdn->mom.Oxxx;
-									pkd->ilcn[pkd->nCellNewt].xyy = pkdn->mom.Oxyy;
-									pkd->ilcn[pkd->nCellNewt].xxy = pkdn->mom.Oxxy;
-									pkd->ilcn[pkd->nCellNewt].yyy = pkdn->mom.Oyyy;
-									pkd->ilcn[pkd->nCellNewt].xxz = pkdn->mom.Oxxz;
-									pkd->ilcn[pkd->nCellNewt].yyz = pkdn->mom.Oyyz;
-									pkd->ilcn[pkd->nCellNewt].xyz = pkdn->mom.Oxyz;
-								case 2:
-									tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;
-									pkd->ilcn[pkd->nCellNewt].xx = pkdn->mom.Qxx - tr/3.0;
-									pkd->ilcn[pkd->nCellNewt].yy = pkdn->mom.Qyy - tr/3.0;
-									pkd->ilcn[pkd->nCellNewt].xy = pkdn->mom.Qxy;
-									pkd->ilcn[pkd->nCellNewt].xz = pkdn->mom.Qxz;
-									pkd->ilcn[pkd->nCellNewt].yz = pkdn->mom.Qyz;
-								case 1:
-								default:
-									pkd->ilcn[pkd->nCellNewt].m = pkdn->fMass;
-									pkd->ilcn[pkd->nCellNewt].x = x;
-									pkd->ilcn[pkd->nCellNewt].y = y;
-									pkd->ilcn[pkd->nCellNewt].z = z;
-									}
+								SETILIST(iOrder,pkd->ilcn[pkd->nCellNewt],pkdn,x,y,z);
 								++pkd->nCellNewt;
 								}
 							SETNEXT(iCell);

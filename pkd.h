@@ -101,14 +101,17 @@ typedef struct ilCellSoft {
 	} ILCS;
 
 /*
- ** Reduced moment tensor components.
+ ** moment tensor components.
  */
 typedef struct ilCellNewt {
 	double m;
 	double x,y,z;
 	double xx,yy,xy,xz,yz;
+	double zz;
 	double xxx,xyy,xxy,yyy,xxz,yyz,xyz;
+	double xzz,yzz,zzz;
 	double xxxx,xyyy,xxxy,yyyy,xxxz,yyyz,xxyy,xxyz,xyyz;
+	double xxzz,xyzz,xzzz,yyzz,yzzz,zzzz;
 	} ILCN;
 
 typedef struct ewaldTable {
@@ -253,6 +256,8 @@ void pkdReadCheckOld(PKD,char *,int,int);
 void pkdReadCheckNew(PKD,char *,int,int);
 void pkdWriteCheckNew(PKD,char *,int);
 void pkdDistribCells(PKD,int,KDN *);
+void pkdCalcRoot(PKD,struct ilCellNewt *);
+void pkdDistribRoot(PKD,struct ilCellNewt *);
 
 #endif
 

@@ -75,7 +75,6 @@ void pstLevelize(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	struct inLevelize *in = vin;
-	int l,n;
 
 	assert(nIn == sizeof(struct inLevelize));
 	pst->iLvl = in->iLvl;
@@ -1259,4 +1258,92 @@ void pstDistribCells(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	if (pnOut) *pnOut = 0;
 	}
+
+
+void pstCalcRoot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct ioCalcRoot *out = vout;
+	struct ioCalcRoot occ;
+
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_CALCROOT,vin,nIn);
+		pstCalcRoot(pst->pstLower,vin,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&occ,NULL);
+		out->ilcn.xxxx += occ.ilcn.xxxx;
+		out->ilcn.xyyy += occ.ilcn.xyyy;
+		out->ilcn.xxxy += occ.ilcn.xxxy;
+		out->ilcn.yyyy += occ.ilcn.yyyy;
+		out->ilcn.xxxz += occ.ilcn.xxxz;
+		out->ilcn.yyyz += occ.ilcn.yyyz;
+		out->ilcn.xxyy += occ.ilcn.xxyy;
+		out->ilcn.xxyz += occ.ilcn.xxyz;
+		out->ilcn.xyyz += occ.ilcn.xyyz;
+		out->ilcn.xxzz += occ.ilcn.xxzz;
+		out->ilcn.xyzz += occ.ilcn.xyzz;
+		out->ilcn.xzzz += occ.ilcn.xzzz;
+		out->ilcn.yyzz += occ.ilcn.yyzz;
+		out->ilcn.yzzz += occ.ilcn.yzzz;
+		out->ilcn.zzzz += occ.ilcn.zzzz;
+		out->ilcn.xxx += occ.ilcn.xxx;
+		out->ilcn.xyy += occ.ilcn.xyy;
+		out->ilcn.xxy += occ.ilcn.xxy;
+		out->ilcn.yyy += occ.ilcn.yyy;
+		out->ilcn.xxz += occ.ilcn.xxz;
+		out->ilcn.yyz += occ.ilcn.yyz;
+		out->ilcn.xyz += occ.ilcn.xyz;
+		out->ilcn.xzz += occ.ilcn.xzz;
+		out->ilcn.yzz += occ.ilcn.yzz;
+		out->ilcn.zzz += occ.ilcn.zzz;
+		}
+	else {
+		pkdCalcRoot(plcl->pkd,&occ.ilcn);
+		out->ilcn.xxxx = occ.ilcn.xxxx;
+		out->ilcn.xyyy = occ.ilcn.xyyy;
+		out->ilcn.xxxy = occ.ilcn.xxxy;
+		out->ilcn.yyyy = occ.ilcn.yyyy;
+		out->ilcn.xxxz = occ.ilcn.xxxz;
+		out->ilcn.yyyz = occ.ilcn.yyyz;
+		out->ilcn.xxyy = occ.ilcn.xxyy;
+		out->ilcn.xxyz = occ.ilcn.xxyz;
+		out->ilcn.xyyz = occ.ilcn.xyyz;
+		out->ilcn.xxzz = occ.ilcn.xxzz;
+		out->ilcn.xyzz = occ.ilcn.xyzz;
+		out->ilcn.xzzz = occ.ilcn.xzzz;
+		out->ilcn.yyzz = occ.ilcn.yyzz;
+		out->ilcn.yzzz = occ.ilcn.yzzz;
+		out->ilcn.zzzz = occ.ilcn.zzzz;
+		out->ilcn.xxx = occ.ilcn.xxx;
+		out->ilcn.xyy = occ.ilcn.xyy;
+		out->ilcn.xxy = occ.ilcn.xxy;
+		out->ilcn.yyy = occ.ilcn.yyy;
+		out->ilcn.xxz = occ.ilcn.xxz;
+		out->ilcn.yyz = occ.ilcn.yyz;
+		out->ilcn.xyz = occ.ilcn.xyz;
+		out->ilcn.xzz = occ.ilcn.xzz;
+		out->ilcn.yzz = occ.ilcn.yzz;
+		out->ilcn.zzz = occ.ilcn.zzz;
+		}
+	if (pnOut) *pnOut = sizeof(struct ioCalcRoot);
+	}
+
+
+void pstDistribRoot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct ioCalcRoot *in = vin;
+
+	assert(nIn == sizeof(struct ioCalcRoot));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DISTRIBROOT,vin,nIn);
+		pstDistribRoot(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdDistribRoot(plcl->pkd,&in->ilcn);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
 

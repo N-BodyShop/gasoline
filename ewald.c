@@ -4,6 +4,7 @@
 #include <assert.h>
 #include "ewald.h"
 #include "pkd.h"
+#include "meval.h"
 #include "qeval.h"
 
 
@@ -70,7 +71,7 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 					gam[4] = 7*gam[3]*dir2 + alphan*a;
 					alphan *= 2*alpha2;
 					gam[5] = 9*gam[4]*dir2 + alphan*a;
-					QEVAL(iOrder,mom,gam,dxo,dyo,dzo,ax,ay,az,fPot);
+					MEVAL(iOrder,mom,gam,dxo,dyo,dzo,ax,ay,az,fPot);
 					}
 				}
 			}
@@ -78,10 +79,10 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 			hdotx = pkd->ewt[i].hx*dx + pkd->ewt[i].hy*dy + pkd->ewt[i].hz*dz;
 			c = cos(hdotx);
 			s = sin(hdotx);
-			fPot -= pkd->ewt[i].hCfac*c + pkd->ewt[i].hSfac*s;
-			ax -= pkd->ewt[i].hx*(pkd->ewt[i].hCfac*s - pkd->ewt[i].hSfac*c);
-			ay -= pkd->ewt[i].hy*(pkd->ewt[i].hCfac*s - pkd->ewt[i].hSfac*c);
-			az -= pkd->ewt[i].hz*(pkd->ewt[i].hCfac*s - pkd->ewt[i].hSfac*c);
+			fPot += pkd->ewt[i].hCfac*c + pkd->ewt[i].hSfac*s;
+			ax += pkd->ewt[i].hx*(pkd->ewt[i].hCfac*s - pkd->ewt[i].hSfac*c);
+			ay += pkd->ewt[i].hy*(pkd->ewt[i].hCfac*s - pkd->ewt[i].hSfac*c);
+			az += pkd->ewt[i].hz*(pkd->ewt[i].hCfac*s - pkd->ewt[i].hSfac*c);
 			}
 		p[j].fPot += fPot;
 		p[j].a[0] += ax;
@@ -94,43 +95,13 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 
 void pkdEwaldInit(PKD pkd,double fhCut,int iOrder)
 {
-	KDN *pkdn;
 	struct ilCellNewt mom;
 	int i,hReps,hx,hy,hz,h2;
-	double alpha,k4,L,tr;
+	double alpha,k4,L;
 	double gam[6],mfacc,mfacs;
+	double ax,ay,az;
 
-	/*
-	 ** First setup the root cell reduced moments.
-	 */
-	pkdn = &pkd->kdTop[ROOT];
-	mom.xxxx = pkdn->mom.Hxxxx;
-	mom.xyyy = pkdn->mom.Hxyyy;
-	mom.xxxy = pkdn->mom.Hxxxy;
-	mom.yyyy = pkdn->mom.Hyyyy;
-	mom.xxxz = pkdn->mom.Hxxxz;
-	mom.yyyz = pkdn->mom.Hyyyz;
-	mom.xxyy = pkdn->mom.Hxxyy;
-	mom.xxyz = pkdn->mom.Hxxyz;
-	mom.xyyz = pkdn->mom.Hxyyz;
-	mom.xxx = pkdn->mom.Oxxx;
-	mom.xyy = pkdn->mom.Oxyy;
-	mom.xxy = pkdn->mom.Oxxy;
-	mom.yyy = pkdn->mom.Oyyy;
-	mom.xxz = pkdn->mom.Oxxz;
-	mom.yyz = pkdn->mom.Oyyz;
-	mom.xyz = pkdn->mom.Oxyz;
-	tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;
-	mom.xx = pkdn->mom.Qxx - tr/3.0;
-	mom.yy = pkdn->mom.Qyy - tr/3.0;
-	mom.xy = pkdn->mom.Qxy;
-	mom.xz = pkdn->mom.Qxz;
-	mom.yz = pkdn->mom.Qyz;
-	mom.m = pkdn->fMass;
-	mom.x = pkdn->r[0];
-	mom.y = pkdn->r[1];
-	mom.z = pkdn->r[2];
-	pkd->ilcnRoot = mom;
+	mom = pkd->ilcnRoot;
 	/*
 	 ** Now setup stuff for the h-loop.
 	 */
@@ -150,15 +121,34 @@ void pkdEwaldInit(PKD pkd,double fhCut,int iOrder)
 					pkd->ewt = realloc(pkd->ewt,pkd->nMaxEwhLoop*sizeof(EWT));
 					assert(pkd->ewt != NULL);
 					}
-				gam[0] = -exp(-k4*h2)/(M_PI*h2*L);
-				gam[1] = -2*M_PI/L*gam[0];
-				gam[2] = 2*M_PI/L*gam[1];
+				gam[0] = exp(-k4*h2)/(M_PI*h2*L);
+				gam[1] = 2*M_PI/L*gam[0];
+				gam[2] = -2*M_PI/L*gam[1];
 				gam[3] = -2*M_PI/L*gam[2];
 				gam[4] = 2*M_PI/L*gam[3];
 				gam[5] = -2*M_PI/L*gam[4];
+				gam[1] = 0.0;
+				gam[3] = 0.0;
+				gam[5] = 0.0;
+				ax = 0.0;
+				ay = 0.0;
+				az = 0.0;
 				mfacc = 0.0;
+				QEVAL(iOrder,mom,gam,hx,hy,hz,ax,ay,az,mfacc);
+				gam[0] = exp(-k4*h2)/(M_PI*h2*L);
+				gam[1] = 2*M_PI/L*gam[0];
+				gam[2] = -2*M_PI/L*gam[1];
+				gam[3] = -2*M_PI/L*gam[2];
+				gam[4] = 2*M_PI/L*gam[3];
+				gam[5] = -2*M_PI/L*gam[4];
+				gam[0] = 0.0;
+				gam[2] = 0.0;
+				gam[4] = 0.0;
+				ax = 0.0;
+				ay = 0.0;
+				az = 0.0;
 				mfacs = 0.0;
-				QEVAL_H(iOrder,mom,gam,hx,hy,hz,mfacc, mfacs);
+				QEVAL(iOrder,mom,gam,hx,hy,hz,ax,ay,az,mfacs);
 				pkd->ewt[i].hx = 2*M_PI/L*hx;
 				pkd->ewt[i].hy = 2*M_PI/L*hy;
 				pkd->ewt[i].hz = 2*M_PI/L*hz;

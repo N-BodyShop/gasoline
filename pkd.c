@@ -523,9 +523,7 @@ void pkdSetSoft(PKD pkd,double dSoft)
 
 void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 {
-	KDN *p;
 	int j;
-	float dx,dy,dz;	
 
 	/*
 	 ** Combine the bounds.
@@ -824,23 +822,7 @@ double pkdCalcOpen(KDN *pkdn,int iOpenType,double dCrit,int iOrder)
 	else if (iOpenType == OPEN_JOSH) {
 		/*
 		 ** Set openening criterion to an approximation of Josh's theta.
-		 ** Will be equivalent to Josh's theta for sufficiently cubical
-		 ** cells. The longest side will be chosen.
 		 */
-		int j;
-		double d,Bdel,dx,dy,dz,d2;
-		float rc[3];
-
-		Bdel = 0.0;
-		for (j=0;j<3;++j) {
-			rc[j] = 0.5*(pkdn->bnd.fMin[j] + pkdn->bnd.fMax[j]);
-			d = pkdn->bnd.fMax[j] - pkdn->bnd.fMin[j];
-			if (d > Bdel) Bdel = d;
-			}
-		dx = pkdn->r[0] - rc[0];
-		dy = pkdn->r[1] - rc[1];
-		dz = pkdn->r[2] - rc[2];
-		d2 = dx*dx + dy*dy + dz*dz;
 		dOpen = 2/sqrt(3.0)*pkdn->mom.Bmax/dCrit;
 		if (dOpen < pkdn->mom.Bmax) dOpen = pkdn->mom.Bmax;
 		}
@@ -859,9 +841,7 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,int iOrder)
 	KDN *c;
 	PARTICLE *p;
 	int l,u,pj,j;
-	double dx,dy,dz;
 	double dOpen;
-	float rx,ry,rz,d2,d1;
 
 	c = pkd->kdNodes;
 	p = pkd->pStore;
@@ -996,6 +976,18 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 			diff = (m-c[i].pLower+1)-(c[i].pUpper-m);
 			assert(diff == 0 || diff == 1);
 			fSplit = pkd->pStore[m].r[d];
+
+			c[i].fSplit = fSplit;
+			c[LOWER(i)].bnd = c[i].bnd;
+			c[LOWER(i)].bnd.fMax[d] = fSplit;
+			c[LOWER(i)].pLower = c[i].pLower;
+			c[LOWER(i)].pUpper = m;
+			c[UPPER(i)].bnd = c[i].bnd;
+			c[UPPER(i)].bnd.fMin[d] = fSplit;
+			c[UPPER(i)].pLower = m+1;
+			c[UPPER(i)].pUpper = c[i].pUpper;
+			i = LOWER(i);
+#if (0)
 			/*
 			 ** Partition to avoid the "Fabio effect"
 			 ** Note: this returns an index to the first value which
@@ -1022,6 +1014,7 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 				SETNEXT(i);
 				if (i == ROOT) break;
 				}
+#endif
 			}
 		else {
 			c[i].iDim = -1;		/* to indicate a bucket! */
@@ -1279,6 +1272,106 @@ void pkdDistribCells(PKD pkd,int nCell,KDN *pkdn)
 		pkd->kdTop[i] = pkdn[i];
 		if (pkdn[i].pLower >= 0) pkd->piLeaf[pkdn[i].pLower] = i;
 		}
+	}
+
+
+void pkdCalcRoot(PKD pkd,struct ilCellNewt *pcc)
+{
+	KDN *pkdn;
+	int pj;
+	double m,dx,dy,dz;
+
+	/*
+	 ** Initialize moments.
+	 */
+	pcc->xxxx = 0.0;
+	pcc->xyyy = 0.0;
+	pcc->xxxy = 0.0;
+	pcc->yyyy = 0.0;
+	pcc->xxxz = 0.0;
+	pcc->yyyz = 0.0;
+	pcc->xxyy = 0.0;
+	pcc->xxyz = 0.0;
+	pcc->xyyz = 0.0;
+	pcc->xxzz = 0.0;
+	pcc->xyzz = 0.0;
+	pcc->xzzz = 0.0;
+	pcc->yyzz = 0.0;
+	pcc->yzzz = 0.0;
+	pcc->zzzz = 0.0;
+	pcc->xxx = 0.0;
+	pcc->xyy = 0.0;
+	pcc->xxy = 0.0;
+	pcc->yyy = 0.0;
+	pcc->xxz = 0.0;
+	pcc->yyz = 0.0;
+	pcc->xyz = 0.0;
+	pcc->xzz = 0.0;
+	pcc->yzz = 0.0;
+	pcc->zzz = 0.0;
+	/*
+	 ** Calculate moments.
+	 */
+	pkdn = &pkd->kdNodes[ROOT];
+	for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
+		m = pkd->pStore[pj].fMass;
+		dx = pkd->pStore[pj].r[0] - pkdn->r[0];
+		dy = pkd->pStore[pj].r[1] - pkdn->r[1];
+		dz = pkd->pStore[pj].r[2] - pkdn->r[2];
+		/*
+		 ** Calculate COMPLETE hexadecapole moment...
+		 */
+		pcc->xxxx += m*dx*dx*dx*dx;
+		pcc->xyyy += m*dx*dy*dy*dy;
+		pcc->xxxy += m*dx*dx*dx*dy;
+		pcc->yyyy += m*dy*dy*dy*dy;
+		pcc->xxxz += m*dx*dx*dx*dz;
+		pcc->yyyz += m*dy*dy*dy*dz;
+		pcc->xxyy += m*dx*dx*dy*dy;
+		pcc->xxyz += m*dx*dx*dy*dz;
+		pcc->xyyz += m*dx*dy*dy*dz;
+		pcc->xxzz += m*dx*dx*dz*dz;
+		pcc->xyzz += m*dx*dy*dz*dz;
+		pcc->xzzz += m*dx*dz*dz*dz;
+		pcc->yyzz += m*dy*dy*dz*dz;
+		pcc->yzzz += m*dy*dz*dz*dz;
+		pcc->zzzz += m*dz*dz*dz*dz;
+		/*
+		 ** Calculate COMPLETE octopole moment...
+		 */
+		pcc->xxx += m*dx*dx*dx;
+		pcc->xyy += m*dx*dy*dy;
+		pcc->xxy += m*dx*dx*dy;
+		pcc->yyy += m*dy*dy*dy;
+		pcc->xxz += m*dx*dx*dz;
+		pcc->yyz += m*dy*dy*dz;
+		pcc->xyz += m*dx*dy*dz;
+		pcc->xzz += m*dx*dz*dz;
+		pcc->yzz += m*dy*dz*dz;
+		pcc->zzz += m*dz*dz*dz;
+		}
+	}
+
+
+void pkdDistribRoot(PKD pkd,struct ilCellNewt *pcc)
+{
+	KDN *pkdn;
+
+	pkd->ilcnRoot = *pcc;
+	/*
+	 ** Must set the quadrupole, mass and cm.
+	 */
+	pkdn = &pkd->kdNodes[ROOT];
+	pkd->ilcnRoot.m = pkdn->fMass;
+	pkd->ilcnRoot.x = pkdn->r[0];
+	pkd->ilcnRoot.y = pkdn->r[1];
+	pkd->ilcnRoot.z = pkdn->r[2];
+	pkd->ilcnRoot.xx = pkdn->mom.Qxx;
+	pkd->ilcnRoot.xy = pkdn->mom.Qxy;
+	pkd->ilcnRoot.xz = pkdn->mom.Qxz;
+	pkd->ilcnRoot.yy = pkdn->mom.Qyy;
+	pkd->ilcnRoot.yz = pkdn->mom.Qyz;
+	pkd->ilcnRoot.zz = pkdn->mom.Qzz;
 	}
 
 
