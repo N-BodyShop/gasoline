@@ -77,7 +77,6 @@ enum pst_service {
       PST_GRAVITY,
       PST_CALCE,
       PST_DRIFT,
-      PST_DRIFTRUNG,
       PST_KICK,
       PST_READCHECK,
       PST_WRITECHECK,
@@ -91,19 +90,26 @@ enum pst_service {
       PST_ONENODEREADINIT,
       PST_SWAPALL,
       PST_MASSCHECK,
+      PST_ACTIVETYPEORDER,
       PST_ACTIVEORDER,
-      PST_TREEACTIVEORDER,
       PST_SETRUNG,
       PST_ACTIVERUNG,
-      PST_TREEACTIVERUNG,
       PST_CURRRUNG,
       PST_DENSITYSTEP,
       PST_RUNGSTATS,
       PST_GETMAP,
       PST_ACCELSTEP,
       PST_COOLVELOCITY,
-      PST_ACTIVECOOL,
-      PST_TREEACTIVECOOL,
+      PST_RESETTOUCHRUNG,
+      PST_ACTIVEEXACTTYPE,
+      PST_ACTIVETYPE,
+      PST_SETTYPE,
+      PST_RESETTYPE,
+      PST_COUNTTYPE,
+      PST_ACTIVEMASKRUNG,
+      PST_ACTIVETYPERUNG,
+      PST_SETPARTICLETYPES,
+      PST_MARKSMOOTH,
       PST_RESMOOTH,
       PST_INITACCEL,
       PST_DTTORUNG,
@@ -114,15 +120,10 @@ enum pst_service {
       PST_NEWORDER,
       PST_SETNPARTS,
       PST_GRAVEXTERNAL,
-      PST_ACTIVEGAS,
-      PST_TREEACTIVEGAS,
-      PST_ACTIVESTAR,
-      PST_TREEACTIVESTAR,
-      PST_ACTIVEDARK,
-      PST_TREEACTIVEDARK,
       PST_GETGASPRESSURE,
+      PST_INITENERGY,
       PST_KICKVPRED,
-      PST_KICKVPREDRUNG,
+      PST_KICKRHOPRED,
       PST_SPHCURRRUNG,
       PST_RANDOMVELOCITIES,
       PST_NUMREJECTS,
@@ -140,6 +141,8 @@ enum pst_service {
       PST_QQSMOOTH,
       PST_SPHSTEP,
       PST_SPHVISCOSITYLIMITER,
+      PST_INITCOOLING,
+      PST_INITUV,
       PST_GROWMASS	
       };
 
@@ -270,6 +273,7 @@ struct inWriteTipsy {
 	int bStandard;
 	double dvFac;
 	double duTFac;
+        double iGasModel;
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteTipsy(PST,void *,int,void *,int *);
@@ -361,7 +365,7 @@ struct inDrift {
 	FLOAT fCentMass;
 	};
 void pstDrift(PST,void *,int,void *,int *);
-void pstDriftRung(PST,void *,int,void *,int *);
+
 
 /* #define PST_KICK			24 */
 struct inKick {
@@ -369,9 +373,19 @@ struct inKick {
 	double dvFacTwo;
 	double dvPredFacOne;
 	double dvPredFacTwo;
-        double duFac;
-        double duPredFac;
+        double duDelta;
+        double duPredDelta;
+        double duDotLimit;
+        int iGasModel;
+        double z;
 	};
+struct outKick {
+        double Time;
+        double MaxTime;
+        double SumTime;
+        int nSum;
+        };
+
 void pstKick(PST,void *,int,void *,int *);
 
 /* #define PST_READCHECK		25 */
@@ -450,11 +464,14 @@ struct outMassCheck {
 	};
 void pstMassCheck(PST,void *,int,void *,int *);
 
+struct inActiveTypeOrder {
+        unsigned int iTestMask;
+        };
+
+void pstActiveTypeOrder(PST,void *,int,void *,int *);
+
 /* #define PST_ACTIVEORDER		38 */
 void pstActiveOrder(PST,void *,int,void *,int *);
-
-/* #define PST_TREEACTIVEORDER */
-void pstTreeActiveOrder(PST,void *,int,void *,int *);
 
 /* #define PST_SETRUNG		39 */
 struct inSetRung {
@@ -467,10 +484,8 @@ struct inActiveRung {
     int iRung;
     int bGreater;
     };
-void pstActiveRung(PST,void *,int,void *,int *);
 
-/* #define PST_TREEACTIVERUNG */
-void pstTreeActiveRung(PST,void *,int,void *,int *);
+void pstActiveRung(PST,void *,int,void *,int *);
 
 /* #define PST_CURRRUNG		41 */
 struct inCurrRung {
@@ -523,19 +538,47 @@ struct inCoolVelocity {
 	};
 void pstCoolVelocity(PST,void *,int,void *,int *);
 
-/* #define PST_ACTIVECOOL			47 */
-struct inActiveCool {
+struct inResetTouchRung {
+        unsigned int iTestMask;
+        unsigned int iSetMask;
+        };
+void pstResetTouchRung(PST,void *,int,void *,int *);
+
+struct inActiveType {
+        unsigned int iFilterMask;
+        unsigned int iTestMask;
+        unsigned int iSetMask;
+        int iRung;
+        int bGreater;
+        };
+
+void pstActiveExactType(PST,void *,int,void *,int *);
+void pstActiveType(PST,void *,int,void *,int *);
+void pstSetType(PST,void *,int,void *,int *);
+void pstResetType(PST,void *,int,void *,int *);
+void pstCountType(PST,void *,int,void *,int *);
+void pstActiveMaskRung(PST,void *,int,void *,int *);
+void pstActiveTypeRung(PST,void *,int,void *,int *);
+
+struct inSetParticleTypes {
 	int nSuperCool;
 	};
-void pstActiveCool(PST,void *,int,void *,int *);
 
-/* #define PST_TREEACTIVECOOL */
-void pstTreeActiveCool(PST,void *,int,void *,int *);
+void pstSetParticleTypes(PST,void *,int,void *,int *);
 
 /* #define PST_RESMOOTH			48 */
+struct inMarkSmooth {
+	int nSmooth;
+        int bPeriodic;
+	int bSymmetric;
+	int iSmoothType;
+	SMF smf;
+	};
+void pstMarkSmooth(PST,void *,int,void *,int *);
+
 struct inReSmooth {
 	int nSmooth;
-    int bPeriodic;
+        int bPeriodic;
 	int bSymmetric;
 	int iSmoothType;
 	SMF smf;
@@ -618,37 +661,61 @@ struct inGravExternal {
 	};
 void pstGravExternal(PST,void *,int,void *,int *);
 
-void pstActiveStar(PST,void *,int,void *,int *);
-
-void pstTreeActiveStar(PST,void *,int,void *,int *);
-
-void pstActiveDark(PST,void *,int,void *,int *);
-
-void pstTreeActiveDark(PST,void *,int,void *,int *);
-
 #ifdef GASOLINE
 
-/* #define PST_ACTIVEGAS			58 */
-void pstActiveGas(PST,void *,int,void *,int *);
+struct inGetGasPressure {
+        enum GasModel iGasModel; 
+  /* Adiabatic */
+        double gamma;
+        double gammam1;
+  /* Isothermal */
 
-/* #define PST_TREEACTIVEGAS */
-void pstTreeActiveGas(PST,void *,int,void *,int *);
+  /* Ion equilibrium */
+
+  /* Ion evolving */
+#ifdef GLASS
+  /* Glass */
+        double dGlassPoverRhoL;
+        double dGlassPoverRhoR;
+        double dGlassxL;
+        double dGlassxR;
+        double dxBoundL;
+        double dxBoundR;
+#endif
+	};
 
 /* #define PST_GETGASPRESSURE */
 void pstGetGasPressure(PST, void *,int,void *,int *);
+
+struct inInitEnergy {
+        double dTuFac;
+        double z;
+};
+
+void pstInitEnergy(PST, void *,int,void *,int *);
 
 /* #define PST_KICKVPRED			60 */
 struct inKickVpred {
 	double dvFacOne;
 	double dvFacTwo;
-        double duFac;
+        double duDelta;
+        double duDotLimit;
+        int iGasModel;
+        double z;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
-void pstKickVpredRung(PST,void *,int,void *,int *);
+
+/* #define PST_KICKVPRED			60 */
+struct inKickRhopred {
+	double dHubbFac;
+	double dDelta;
+	};
+void pstKickRhopred(PST,void *,int,void *,int *);
 
 /* #define PST_SPHCURRRUNG			61 */
 struct inSphCurrRung {
     int iRung;
+    int bGreater;
     };
 struct outSphCurrRung {
     int iCurrent;
@@ -764,6 +831,23 @@ struct inSphViscosityLimiter {
     int bOn;
     };
 void pstSphViscosityLimiter(PST,void *,int,void *,int *);
+
+struct inInitCooling {
+    double dGmPerCcUnit;
+    double dComovingGmPerCcUnit;
+    double dErgPerGmUnit;
+    double dSecUnit;
+    double dMassFracHelium;
+    double Tmin;
+    double Tmax;
+    int    nTable;
+    double z;
+    };
+
+void pstInitCooling(PST,void *,int,void *,int *);
+
+void pstInitUV(PST,void *,int,void *,int *);
+
 #endif
 
 /* #define PST_GROWMASS		76 */

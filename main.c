@@ -63,8 +63,10 @@ int main(int argc,char **argv)
 	    }
 	first = 0;
 #endif /* TINY_PTHREAD_STACK */
-
-	setbuf(stdout,(char *) NULL); /* no stdout buffering */
+        /*
+	setbuf(stdout,(char *) NULL); 
+	*/
+	/* no stdout buffering */
 
 	lStart=time(0);
 	mdlInitialize(&mdl,argv,main_ch);
@@ -102,6 +104,7 @@ int main(int argc,char **argv)
 			}
 		if(msrKDK(msr) || msr->param.bEpsVel) {
 			msrActiveRung(msr,0,1);
+                        msrDomainDecomp(msr);
 			msrInitAccel(msr);
 #ifdef GASOLINE
 			msrInitSph(msr, dTime);
@@ -133,6 +136,13 @@ int main(int argc,char **argv)
 #else /* COLLISIONS */
 	dTime = msrReadTipsy(msr);
 #endif /* !COLLISIONS */
+#ifdef GASOLINE
+#ifdef PREHEAT
+	if (msr->param.bSN) msrInitSN(msr);
+#endif
+	if (msr->param.iGasModel == GASMODEL_COOLING || msr->param.iGasModel == GASMODEL_COOLING_NONEQM) 
+	        msrInitCooling(msr);
+#endif
 	msrInitStep(msr);
 #ifdef GLASS
 	msrInitGlass(msr);
@@ -178,11 +188,13 @@ int main(int argc,char **argv)
 		/*
 		 ** Build tree, activating all particles first (just in case).
 		 */
-		msrActiveRung(msr,0,1);
+		msrActiveType(msr, TYPE_ALL, TYPE_ACTIVE);
+                msrDomainDecomp(msr);
 		msrInitAccel(msr);
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
 #endif
+		msrActiveType(msr, TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE);
 		msrBuildTree(msr,0,dMass,0);
 		msrMassCheck(msr,dMass,"After msrBuildTree");
 		if (msrDoGravity(msr)) {
@@ -198,11 +210,24 @@ int main(int argc,char **argv)
 						dEMax,dMultiEff);
 				}
 			}
-		
+#ifdef TOUCHRUNG
+#ifdef GASOLINE
+		/* Setup initial information about who touches what rung */
+		if (msrFastGas(msr)) {
+		        msrInitTimeSteps(msr,dTime,msrDelta(msr));
+			assert(msr->param.iMaxRung < 32);
+                        msrResetTouchRung(msr, TYPE_GAS, ~0);
+			msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_DensACTIVE );
+			msrBuildTree(msr,1,-1.0,1);
+			msrSmooth(msr,dTime,SMX_MARKDENSITY,1);
+		        }
+#endif
+#endif
+		/*
 		fprintf(stderr,"WallRunTime: %d\n",msr->param.iWallRunTime);
-
+		*/
 		for (iStep=msr->param.iStartStep+1;
-		     iStep<=msrSteps(msr); ++iStep) {
+                            iStep<=msrSteps(msr);++iStep) {
 			if (msrComove(msr)) {
 				msrSwitchTheta(msr,dTime);
 				}
@@ -239,6 +264,7 @@ int main(int argc,char **argv)
 				}
 			else {
 				lSec = time(0);
+				msr->bDoneDomainDecomp = 0;
 				msrTopStepDKD(msr, iStep-1, dTime,
 					      msrDelta(msr), &dMultiEff);
 				msrRungStats(msr);
@@ -252,7 +278,8 @@ int main(int argc,char **argv)
 					        ** Output a log file line.
 					        ** Reactivate all particles.
 					        */
-					        msrActiveRung(msr,0,1);
+					        msrActiveType(msr, TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE);
+                                                msrDomainDecomp(msr);
 						msrBuildTree(msr,0,dMass,0);
 						msrMassCheck(msr,dMass,"After msrBuildTree in DKD-log");
 						msrInitAccel(msr);
@@ -281,6 +308,11 @@ int main(int argc,char **argv)
 			    || iStep == msrSteps(msr) || iStop
 			    || (msrOutInterval(msr) > 0 &&
 				iStep%msrOutInterval(msr) == 0)) {
+				if (msr->nGas && !msr->param.bKDK) {
+				        msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+		                        msrBuildTree(msr,1,-1.0,1);
+					msrSmooth(msr,dTime,SMX_DENSITY,1);
+				        }
 				msrReorder(msr);
 				msrMassCheck(msr,dMass,"After msrReorder in OutTime");
 				sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
@@ -290,13 +322,30 @@ int main(int argc,char **argv)
 				msrWriteTipsy(msr,achFile,dTime);
 #endif /* !COLLISIONS */
 				if (msrDoDensity(msr)) {
-					msrActiveRung(msr,0,1);
+					msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+                                        msrDomainDecomp(msr);
 					msrBuildTree(msr,0,dMass,1);
 					msrSmooth(msr,dTime,SMX_DENSITY,1);
 					msrReorder(msr);
 					sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
+				        msrReorder(msr);
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
 					msrMassCheck(msr,dMass,"After msrOutArray in OutTime");
+					}
+				if (msr->param.bDohOutput) {
+				        msrReorder(msr);
+				        sprintf(achFile,"%s.%05d.h",msrOutName(msr),iStep);
+				        msrReorder(msr);
+					msrOutArray(msr,achFile,OUT_H_ARRAY);
+					}
+				if (msr->param.bDoIonOutput) {
+				        msrReorder(msr);
+					sprintf(achFile,"%s.%05d.HI",msrOutName(msr),iStep);
+					msrOutArray(msr,achFile,OUT_HI_ARRAY);
+					sprintf(achFile,"%s.%05d.HeI",msrOutName(msr),iStep);
+					msrOutArray(msr,achFile,OUT_HeI_ARRAY);
+					sprintf(achFile,"%s.%05d.HeII",msrOutName(msr),iStep);
+					msrOutArray(msr,achFile,OUT_HeII_ARRAY);
 					}
 				/*
 				 ** Don't allow duplicate outputs.
@@ -305,6 +354,52 @@ int main(int argc,char **argv)
 				}
 			if (iStep == msrSteps(msr) || iStop) {
 				msrWriteCheck(msr,dTime,iStep);
+				msrMassCheck(msr,dMass,"After msrWriteCheck");
+				}
+			else if (msrOutInterval(msr) > 0) {
+				if (iStep%msrOutInterval(msr) == 0) {
+				        if (msr->nGas && !msr->param.bKDK) {
+				                msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+		                                msrBuildTree(msr,1,-1.0,1);
+					        msrSmooth(msr,dTime,SMX_DENSITY,1);
+				        }
+					msrReorder(msr);
+					msrMassCheck(msr,dMass,"After msrReorder in OutInt");
+					sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
+#ifdef COLLISIONS
+					msrWriteSS(msr,achFile,dTime);
+#else /* COLLISIONS */
+					msrWriteTipsy(msr,achFile,dTime);
+					msrMassCheck(msr,dMass,"After msrWriteTipsy in OutInt");
+#endif /* !COLLISIONS */
+					if (msrDoDensity(msr)) {
+ 					        msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+                                                msrDomainDecomp(msr);
+						msrBuildTree(msr,0,dMass,1);
+						msrMassCheck(msr,dMass,"After msrBuildTree in OutInt");
+						msrSmooth(msr,dTime,SMX_DENSITY,1);
+						msrMassCheck(msr,dMass,"After msrSmooth in OutInt");
+						sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
+					        msrReorder(msr);
+						msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
+						msrMassCheck(msr,dMass,"After msrOutArray in OutInt");
+					        }
+				        if (msr->param.bDohOutput) {
+				                msrReorder(msr);
+				                sprintf(achFile,"%s.%05d.h",msrOutName(msr),iStep);
+				                msrReorder(msr);
+					        msrOutArray(msr,achFile,OUT_H_ARRAY);
+					        }
+				        if (msr->param.bDoIonOutput) {
+				                msrReorder(msr);
+						sprintf(achFile,"%s.%05d.HI",msrOutName(msr),iStep);
+						msrOutArray(msr,achFile,OUT_HI_ARRAY);
+						sprintf(achFile,"%s.%05d.HeI",msrOutName(msr),iStep);
+						msrOutArray(msr,achFile,OUT_HeI_ARRAY);
+						sprintf(achFile,"%s.%05d.HeII",msrOutName(msr),iStep);
+						msrOutArray(msr,achFile,OUT_HeII_ARRAY);
+					        }
+					}
 				}
 			if (msr->param.iWallRunTime > 0) {
 			    if (msr->param.iWallRunTime*60 - (time(0)-lStart) < ((int) (lSec*1.5)) ) {
@@ -333,7 +428,8 @@ int main(int argc,char **argv)
 		 ** Build tree, activating all particles first (just in case).
 		 */
 		if (msrDoDensity(msr)) {
-			msrActiveRung(msr,0,1);
+			msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+                        msrDomainDecomp(msr);
 			msrBuildTree(msr,0,dMass,1);
 			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Density");
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
@@ -341,6 +437,7 @@ int main(int argc,char **argv)
 			msrReorder(msr);
 			msrMassCheck(msr,dMass,"After msrReorder in OutSingle Density");
 			sprintf(achFile,"%s.den",msrOutName(msr));
+			msrReorder(msr);
 			msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
 			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Density");
 #if 0/*DEBUG*/
@@ -373,7 +470,8 @@ int main(int argc,char **argv)
 #endif
 			}
 		else if (msrDoGravity(msr)) {
-			msrActiveRung(msr,0,1);
+			msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+                        msrDomainDecomp(msr);
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Gravity");
 			msrInitAccel(msr);
@@ -385,6 +483,7 @@ int main(int argc,char **argv)
 			msrOutVector(msr,achFile,OUT_ACCEL_VECTOR);
 			msrMassCheck(msr,dMass,"After msrOutVector in OutSingle Gravity");
 			sprintf(achFile,"%s.pot",msrOutName(msr));
+			msrReorder(msr);
 			msrOutArray(msr,achFile,OUT_POT_ARRAY);
 			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Gravity");
 			msrInitDt(msr);
@@ -397,8 +496,26 @@ int main(int argc,char **argv)
 			sprintf(achFile,"%s.dt",msrOutName(msr));
 			msrOutArray(msr,achFile,OUT_DT_ARRAY);
 			}
+		if (msr->param.bDohOutput) {
+			msrReorder(msr);
+			sprintf(achFile,"%s.%05d.h",msrOutName(msr),iStep);
+			msrReorder(msr);
+			msrOutArray(msr,achFile,OUT_H_ARRAY);
+		        }
+                if (msr->param.bDoIonOutput) {
+			msrReorder(msr);
+                        sprintf(achFile,"%s.%05d.HI",msrOutName(msr),iStep);
+                        msrOutArray(msr,achFile,OUT_HI_ARRAY);
+			sprintf(achFile,"%s.%05d.HeI",msrOutName(msr),iStep);
+			msrOutArray(msr,achFile,OUT_HeI_ARRAY);
+			sprintf(achFile,"%s.%05d.HeII",msrOutName(msr),iStep);
+			msrOutArray(msr,achFile,OUT_HeII_ARRAY);
+			}
 		}
 	msrFinish(msr);
 	mdlFinish(mdl);
 	return 0;
 	}
+
+
+

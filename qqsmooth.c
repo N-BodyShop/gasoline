@@ -90,7 +90,7 @@ void pkdQQCalcBound(PKD pkd,BND *pbnd,BND *pbndActive)
 	 ** Calculate Active Bounds.
 	 */
 	for (i=0;i<pkd->nLocal;++i) {
-	    if (pkd->pStore[i].iActive) {
+	    if (AM_test(&(pkd->pStore[i]),AM_ACTIVE)) {
 			fq = PARTQQ(&pkd->pStore[i], 0);
 			fQ = PARTQQ(&pkd->pStore[i], 1);
 			fh = 0.5*(fq + fQ)*pkd->pStore[i].fRedHill;
@@ -397,7 +397,7 @@ void smQQSmooth(SMX smx,SMF *smf)
 	
 	nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
 	for (pi=0;pi<nTree;++pi) {
-		if (p[pi].iActive == 0) continue;
+		if (!TYPEQueryACTIVE(&(p[pi]))) continue;
 		/*
 		 ** Do a Gather on q and Q, adjusted for Hill sphere.
 		 */
@@ -487,3 +487,5 @@ CheckForEncounter(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     }
 
 #endif /* COLLISIONS */
+/*  LocalWords:  ifdef
+ */

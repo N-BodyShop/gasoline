@@ -15,8 +15,13 @@
 #define OUT_U_ARRAY			7
 #define OUT_UDOT_ARRAY		8
 #define OUT_HSMDIVV_ARRAY	9
+#define OUT_HI_ARRAY            16
+#define OUT_HeI_ARRAY           17
+#define OUT_HeII_ARRAY          18
 
 #endif
+
+#define OUT_H_ARRAY             19
 
 #define OUT_DT_ARRAY		10
 

@@ -199,8 +199,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	 */
 	for (i=0;i<nLocal;++i) {
 		p = &pkd->pStore[i];
-		p->iActive = 1;
-		p->iTreeActive = 0;
+		TYPEClear(p);
+		p->iTouchRung = 0;
 		p->iRung = 0;
 		p->fWeight = 1.0;
 		p->fDensity = 0.0;
@@ -211,6 +211,10 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 			}
 		p->u = 0.0;
 		p->uPred = 0.0;
+		p->Y_HI = (pkd->cl).Y_H;
+		p->Y_HeI = (pkd->cl).Y_He;
+		p->Y_HeII = 0.0;
+		
 		p->c = 0.0;
 		p->fMetals = 0.0;
 		p->fTimeForm = 0.0;
@@ -405,7 +409,7 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive)
 	 ** Calculate Active Bounds.
 	 */
 	for (i=0;i<pkd->nLocal;++i) {
-		if (pkd->pStore[i].iActive) {
+		if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
 			for (j=0;j<3;++j) {
 				if (pkd->pStore[i].r[j] < pbndActive->fMin[j]) 
 					pbndActive->fMin[j] = pkd->pStore[i].r[j];
@@ -418,7 +422,7 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive)
 	 ** Calculate TreeActive Bounds.
 	 */
 	for (i=0;i<pkd->nLocal;++i) {
-		if (pkd->pStore[i].iTreeActive) {
+		if (TYPEQueryTREEACTIVE(&(pkd->pStore[i]))) {
 			for (j=0;j<3;++j) {
 				if (pkd->pStore[i].r[j] < pbndTreeActive->fMin[j]) 
 					pbndTreeActive->fMin[j] = pkd->pStore[i].r[j];
@@ -439,7 +443,7 @@ int pkdWeight(PKD pkd,int d,FLOAT fSplit,int iSplitSide,int iFrom,int iTo,
 {
 	int i,iPart;
 	FLOAT fLower,fUpper;
-	
+
 	/*
 	 ** First partition the memory about fSplit for particles iFrom to iTo.
 	 */
@@ -528,6 +532,12 @@ int pkdLowerPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 int pkdUpperPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 {
 	PARTICLE pTemp;
+	int i0,j0,k;
+
+	i0=i; j0=j;
+        if (i0==0 && j0==3557) {
+	  k=0;
+	  }
 
 #ifdef COLLISIONS
 	assert(d < 5);
@@ -542,6 +552,7 @@ int pkdUpperPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
             if (++i > j) goto done;
         while (pkd->pStore[j].r[d] >= fSplit)
             if (i > --j) goto done;
+
 		pTemp = pkd->pStore[i];
 		pkd->pStore[i] = pkd->pStore[j];
 		pkd->pStore[j] = pTemp;
@@ -589,7 +600,7 @@ int pkdUpperOrdPart(PKD pkd,int nOrdSplit,int i,int j)
 	}
 
 
-void pkdActiveOrder(PKD pkd)
+int pkdActiveTypeOrder(PKD pkd, unsigned int iTestMask)
 {
 	PARTICLE pTemp;
 	int i=0;
@@ -597,20 +608,23 @@ void pkdActiveOrder(PKD pkd)
 
 	if (i > j) goto done;
     while (1) {
-        while (pkd->pStore[i].iActive)
+        while (TYPETest(&(pkd->pStore[i]), iTestMask ))
             if (++i > j) goto done;
-        while (!pkd->pStore[j].iActive)
+        while (!TYPETest(&(pkd->pStore[j]), iTestMask ))
             if (i > --j) goto done;
 		pTemp = pkd->pStore[i];
 		pkd->pStore[i] = pkd->pStore[j];
 		pkd->pStore[j] = pTemp;
         }
  done:
-	pkd->nActive = i;
-	}
+        if ( iTestMask & TYPE_ACTIVE )       pkd->nActive = i;
+        if ( iTestMask & TYPE_TREEACTIVE )   pkd->nTreeActive = i;
+        if ( iTestMask & TYPE_SMOOTHACTIVE ) pkd->nSmoothActive = i;
+	return (i);
+        }
 
 
-void pkdTreeActiveOrder(PKD pkd)
+int pkdActiveOrder(PKD pkd)
 {
 	PARTICLE pTemp;
 	int i=0;
@@ -618,16 +632,16 @@ void pkdTreeActiveOrder(PKD pkd)
 
 	if (i > j) goto done;
     while (1) {
-        while (pkd->pStore[i].iTreeActive)
+        while (TYPEQueryACTIVE(&(pkd->pStore[i])))
             if (++i > j) goto done;
-        while (!pkd->pStore[j].iTreeActive)
+        while (!TYPEQueryACTIVE(&(pkd->pStore[j])))
             if (i > --j) goto done;
 		pTemp = pkd->pStore[i];
 		pkd->pStore[i] = pkd->pStore[j];
 		pkd->pStore[j] = pTemp;
         }
  done:
-	pkd->nTreeActive = i;
+	return (pkd->nActive = i);
 	}
 
 
@@ -653,9 +667,9 @@ int pkdColRejects(PKD pkd,int d,FLOAT fSplit,FLOAT fSplitInactive,
 					      pkdActive(pkd),pkdLocal(pkd)-1);
 		}
 	for(i = 0; i < nSplit; ++i)
-	    assert(pkd->pStore[i].iActive == 1);
+	    assert(TYPEQueryACTIVE(&(pkd->pStore[i])));
 	for(i = pkdActive(pkd); i < nSplitInactive; ++i)
-	    assert(pkd->pStore[i].iActive == 0);
+	    assert(!TYPEQueryACTIVE(&(pkd->pStore[i])));
 
 	nSplitInactive -= pkdActive(pkd);
 	/*
@@ -742,6 +756,11 @@ int pkdTreeActive(PKD pkd)
 	return(pkd->nTreeActive);
 	}
 
+int pkdSmoothActive(PKD pkd)
+{
+	return(pkd->nSmoothActive);
+	}
+
 int pkdInactive(PKD pkd)
 {
 	return(pkd->nLocal - pkd->nActive);
@@ -809,7 +828,7 @@ void pkdLocalOrder(PKD pkd)
 
 
 void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
-				   int bStandard,double dvFac,double duTFac)
+				   int bStandard,double dvFac,double duTFac,int iGasModel)
 {
 	PARTICLE *p;
 	FILE *fp;
@@ -870,13 +889,23 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 				/*
 				 ** Convert thermal energy to tempertature.
 				 */
-				vTemp = duTFac*p->u;
+			        switch (iGasModel) {
+				case GASMODEL_COOLING:
+				case GASMODEL_COOLING_NONEQM:
+				        vTemp = clTemperature( 2*(pkd->cl).Y_H - p->Y_HI + 
+							       3*(pkd->cl).Y_He - 2*p->Y_HeI - p->Y_HeII,
+							       p->u * (pkd->cl).dErgPerGmUnit );
+					break;
+				default:
+				        vTemp = duTFac*p->u;
+				        }
 				fTmp = vTemp;
 				xdr_float(&xdrs,&fTmp);
-				fTmp = sqrt(0.25*p->fBall2);
+				/* fTmp = sqrt(0.25*p->fBall2);  Write softening in tipsy outputs */
+                                fTmp = p->fSoft;
 				xdr_float(&xdrs,&fTmp);
 #ifdef DEBUG
-				/* Store mumax in metals for now */
+				/* Store divv in metals for now */
 				fTmp = p->divv;
 #else
 				fTmp = p->fMetals;
@@ -1608,7 +1637,7 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	/*
 	 ** Make sure the particles are in Active/Inactive order.
 	 */
-	pkdTreeActiveOrder(pkd);
+	pkdActiveTypeOrder(pkd, TYPE_ACTIVE|TYPE_TREEACTIVE );
 	if (pkd->kdNodes) {
 		/*
 		 ** Close caching space and free up nodes.
@@ -1674,7 +1703,7 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	/*
 	 ** Make sure the particles are in Active/Inactive order.
 	 */
-	pkdTreeActiveOrder(pkd);
+	pkdActiveTypeOrder(pkd, TYPE_ACTIVE|TYPE_TREEACTIVE );
 	pkd->nBucket = nBucket;
 	if (bTreeActiveOnly) n = pkd->nTreeActive;
 	else n = pkd->nLocal;
@@ -1787,7 +1816,7 @@ void pkdBucketWeight(PKD pkd,int iBucket,FLOAT fWeight)
 	
 	pbuc = &pkd->kdNodes[iBucket];
 	for (pj=pbuc->pLower;pj<=pbuc->pUpper;++pj) {
-		if (pkd->pStore[pj].iActive) 
+		if (TYPEQueryACTIVE(&(pkd->pStore[pj])))
 			pkd->pStore[pj].fWeight = fWeight;
 		}
 	}
@@ -1856,7 +1885,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 		    bndActive.fMax[j] = -FLOAT_MAXVAL;
 		    }
 		for (i=c[iCell].pLower;i<=c[iCell].pUpper;++i) {
-			if (pkd->pStore[i].iActive) {
+			if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
 			    ++n;
 			    for (j=0;j<3;++j) {
 				if (pkd->pStore[i].r[j] < bndActive.fMin[j]) 
@@ -1929,7 +1958,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			c[pkd->iFreeCell].bnd.fMin[j] = -dTinyBox;
 			c[pkd->iFreeCell].bnd.fMax[j] = dTinyBox;
 			}
-		pkd->pStore[iDummy].iActive = 1;
+		TYPESet(&(pkd->pStore[iDummy]),TYPE_ACTIVE);
 		pkd->pStore[iDummy].fPot = 0;
 		c[pkd->iFreeCell].pLower = iDummy;
 		c[pkd->iFreeCell].pUpper = iDummy;
@@ -1966,6 +1995,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	sprintf(achDiag, "nMaxPart: %d, nMaxSoftCell: %d, nMaxNewtCell: %d\n",
 		pkd->nMaxPart, pkd->nMaxCellSoft, pkd->nMaxCellNewt);
 	mdlDiag(pkd->mdl, achDiag);
+
 	}
 
 
@@ -1978,7 +2008,7 @@ void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass)
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
-		if (p[i].iActive) {
+		if (TYPEQueryACTIVE(&(p[i]))) {
 			t = 0;
 			for (j=0;j<3;++j) t += p[i].r[j]*p[i].r[j];
 			t = 1.0/sqrt(t);
@@ -2016,7 +2046,7 @@ void pkdLogHalo(PKD pkd)
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
-		if (p[i].iActive) {
+		if (TYPEQueryACTIVE(&(p[i]))) {
 			double x = p[i].r[0];
 			double y = p[i].r[1];
 			double z = p[i].r[2];
@@ -2044,7 +2074,7 @@ void pkdHernquistSpheroid(PKD pkd)
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
-		if (p[i].iActive) {
+		if (TYPEQueryACTIVE(&(p[i]))) {
 			double x = p[i].r[0];
 			double y = p[i].r[1];
 			double z = p[i].r[2];
@@ -2073,7 +2103,7 @@ void pkdMiyamotoDisk(PKD pkd)
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
-		if (p[i].iActive) {
+		if (TYPEQueryACTIVE(&(p[i]))) {
 			double x = p[i].r[0];
 			double y = p[i].r[1];
 			double z = p[i].r[2];
@@ -2250,94 +2280,126 @@ void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 		}
 	}
 
-void pkdDriftRung(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
-			  FLOAT fCentMass)
-{
-	PARTICLE *p;
-	int i,j,n;
-
-	p = pkd->pStore;
-	n = pkdLocal(pkd);
-	for (i=0;i<n;++i) {
-	    if(p[i].iActive) {
-#ifdef COLLISIONS
-		if (p[i].iDriftType == KEPLER) /*DEBUG a bit ugly...*/
-#else /* COLLISIONS */
-		if (bFandG)
-#endif /* !COLLISIONS */
-			fg(pkd->mdl,fCentMass + p[i].fMass,p[i].r,p[i].v,dDelta);
-		else {
-			for (j=0;j<3;++j) {
-				p[i].r[j] += dDelta*p[i].v[j];
-				if (bPeriodic) {
-					if (p[i].r[j] >= fCenter[j]+0.5*pkd->fPeriod[j])
-						p[i].r[j] -= pkd->fPeriod[j];
-					if (p[i].r[j] < fCenter[j]-0.5*pkd->fPeriod[j])
-						p[i].r[j] += pkd->fPeriod[j];
-					}
-				}
-			}
-	            } 
-		}
-	}
-
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
-			 double dvPredFacTwo, double duFac, double duPredFac)
+	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
+	     double z, double duDotLimit )
 {
 	PARTICLE *p;
 	int i,j,n;
+#ifdef GASOLINE
+	int bCool = 0;
+	CL *cl;
+	PERBARYON Y;
+	double E,dt,dtPred;
+
+	pkdClearTimer(pkd,1);
+	pkdStartTimer(pkd,1);
+
+	switch (iGasModel) {
+	case GASMODEL_COOLING:
+	case GASMODEL_COOLING_NONEQM:
+	         bCool = 1;
+	         cl = &(pkd->cl);
+                 clRatesRedshift( cl, z );
+		 dt = duDelta * cl->dSecUnit;
+		 dtPred = duPredDelta * cl->dSecUnit;
+		 break;
+		 }
+#endif
 
 #ifdef DEBUG
 	printf("pkdKick: %f %f %f %f %f %f\n",dvFacOne,dvFacTwo,
-	       dvPredFacOne,dvPredFacTwo,duFac,duPredFac );
+	       dvPredFacOne,dvPredFacTwo,duDelta,duPredDelta );
 #endif
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
-	for (i=0;i<n;++i) {
+	for (i=0;i<n;++i,++p) {
 #ifdef GASOLINE
 #ifdef DEBUG
-		if (pkdIsGas(pkd,(p+i)) && ((p+i)->iOrder % 300)==0) {
-		        printf("Particle %i: %i %i %i %f %f %f %f   %f %f %f %f %f %f\n",
-			       (p+i)->iOrder,(p+i)->iActive,(p+i)->iTreeActive,(p+i)->iRung,
-			       (p+i)->r[0],(p+i)->fDensity,(p+i)->u,(p+i)->uPred,
-			       (p+i)->a[0],(p+i)->a[1],(p+i)->a[2],(p+i)->PdV,
-			       (p+i)->PdVpres,(p+i)->PdVvisc);
+		if (pkdIsGas(pkd,p) && (p->iOrder % 300)==0) {
+		        printf("Kicking %i: %i %i %i %f %f %f %f   %f %f %f %f %f %f\n",
+			       p->iOrder,TYPEQueryACTIVE(p),
+                               TYPEQueryTREEACTIVE(p),p->iRung,
+			       p->r[0],p->fDensity,p->u,p->uPred,
+			       p->a[0],p->a[1],p->a[2],p->PdV,
+			       p->PdVpres,p->PdVvisc);
 		}
 #endif
 #endif
-	    if(p[i].iActive) {
+	    if(TYPEQueryACTIVE(p)) {
 #ifdef GASOLINE
-			if(pkdIsGas(pkd, &p[i])) {
+	                if(pkdIsGas(pkd, p)) {
 				for (j=0;j<3;++j) {
-					p[i].vPred[j] = p[i].v[j]*dvPredFacOne + 
-						p[i].a[j]*dvPredFacTwo;
+					p->vPred[j] = p->v[j]*dvPredFacOne + 
+						p->a[j]*dvPredFacTwo;
 					}
-				if (p[i].PdV*duPredFac/p[i].u < -0.2) {
-					p[i].uPred = p[i].u*exp(p[i].PdV*duPredFac/p[i].u);
-					}
-				else {
-					p[i].uPred = p[i].u + p[i].PdV*duPredFac;
-					}
-				if (p[i].PdV*duFac/p[i].u < -0.2) {
-					p[i].u = p[i].u*exp(p[i].PdV*duFac/p[i].u);
-					}
-				else {
-					p[i].u = p[i].u + p[i].PdV*duFac;
-					}
+				if (bCool) {
+				       pkdPARTICLE2PERBARYON(&Y, p, cl->Y_H, cl->Y_He);
+				       E = p->u * cl->dErgPerGmUnit;
+#ifdef COOLDEBUG
+				       if ((p->iOrder % 300)==0) {
+					    printf("COOL: %i ",p->iOrder);
+					    clIntegrateEnergyDEBUG(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							   p->fDensity*cl->dComovingGmPerCcUnit, dtPred);
+					    printf("\n");
+				            }
+				       else {
+					    clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							   p->fDensity*cl->dComovingGmPerCcUnit, dtPred);
+				            }
+#else				       
+				       clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							 p->fDensity*cl->dComovingGmPerCcUnit, dtPred);
+#endif
+				       p->uPred = E * cl->diErgPerGmUnit;
+
+				       pkdPARTICLE2PERBARYON(&Y, p, cl->Y_H, cl->Y_He);
+				       E = p->u * cl->dErgPerGmUnit;
+#ifdef COOLDEBUG
+				       if ((p->iOrder % 300)==0) {
+					    printf("COOL: %i ",p->iOrder);
+					    clIntegrateEnergyDEBUG(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							   p->fDensity*cl->dComovingGmPerCcUnit, dt);
+					    printf("\n");
+				            }
+				       else {
+					    clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							   p->fDensity*cl->dComovingGmPerCcUnit, dt);
+				            }
+#else				       
+				       clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							 p->fDensity*cl->dComovingGmPerCcUnit, dt);
+#endif
+				       pkdPERBARYON2PARTICLE(&Y, p);
+				       p->u = E * cl->diErgPerGmUnit;
+				       }
+				else { 
+ 				       if (p->PdV*duPredDelta < duDotLimit*p->u) 
+					      p->uPred = p->u * exp(p->PdV*duPredDelta/p->u);
+				       else 
+					      p->uPred = p->u + p->PdV*duPredDelta;
+
+ 				       if (p->PdV*duDelta < duDotLimit*p->u) 
+					      p->u = p->u * exp(p->PdV*duDelta/p->u);
+				       else 
+				              p->u = p->u + p->PdV*duDelta;
+				       }
 				}
 			
 #endif
 			for (j=0;j<3;++j) {
-				p[i].v[j] = p[i].v[j]*dvFacOne + p[i].a[j]*dvFacTwo;
+				p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
 #ifdef SAND_PILE
-				if (p[i].r[2] > 2*p[i].fSoft)
-					p[i].v[2] -= 0.25*dvFacTwo; /* uniform 0.25 -z accel. */
-				if (p[i].r[2] > 10)
-					p[i].v[2] = -1; /* uniform velocity above z = 10 */
+				if (p->r[2] > 2*p->fSoft)
+					p->v[2] -= 0.25*dvFacTwo; /* uniform 0.25 -z accel. */
+				if (p->r[2] > 10)
+					p->v[2] = -1; /* uniform velocity above z = 10 */
 #endif /* SAND_PILE */
 				}
 			}
 	    }
+
+	pkdStopTimer(pkd,1);
 	}
 
 
@@ -2378,7 +2440,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 			pkd->pStore[i].w[j] = cp.w[j];
 		pkd->pStore[i].iColor = cp.iColor;
 #endif /* COLLISIONS */
-		pkd->pStore[i].iActive = 1;
+		TYPESet(&(pkd->pStore[i]),TYPE_ACTIVE);
 		pkd->pStore[i].iRung = 0;
 		pkd->pStore[i].fWeight = 1.0;	/* set the initial weight to 1.0 */
 		pkd->pStore[i].fDensity = 0.0;
@@ -2581,7 +2643,7 @@ pkdSetRung(PKD pkd, int iRung)
 	}
     }
 
-void
+int
 pkdActiveRung(PKD pkd, int iRung, int bGreater)
 {
     int i;
@@ -2592,38 +2654,17 @@ pkdActiveRung(PKD pkd, int iRung, int bGreater)
     for(i = 0; i < pkdLocal(pkd); ++i) {
 	if(pkd->pStore[i].iRung == iRung
 	   || (bGreater && pkd->pStore[i].iRung > iRung)) {
-	    pkd->pStore[i].iActive = 1;
+	    TYPESet(&(pkd->pStore[i]),TYPE_ACTIVE);
 	    ++nActive;
 	    }
 	else
-	    pkd->pStore[i].iActive = 0;
+	    TYPEReset(&(pkd->pStore[i]),TYPE_ACTIVE);
 	}
     sprintf(out, "nActive: %d\n", nActive);
     mdlDiag(pkd->mdl, out);
+    pkd->nActive = nActive;
+    return nActive;
     }
-
-
-void
-pkdTreeActiveRung(PKD pkd, int iRung, int bGreater)
-{
-    int i;
-    int nTreeActive;
-    char out[128];
-    
-    nTreeActive = 0;
-    for(i = 0; i < pkdLocal(pkd); ++i) {
-	if(pkd->pStore[i].iRung == iRung
-	   || (bGreater && pkd->pStore[i].iRung > iRung)) {
-	    pkd->pStore[i].iTreeActive = 1;
-	    ++nTreeActive;
-	    }
-	else
-	    pkd->pStore[i].iTreeActive = 0;
-	}
-    sprintf(out, "nTreeActive: %d\n", nTreeActive);
-    mdlDiag(pkd->mdl, out);
-    }
-
 
 int
 pkdCurrRung(PKD pkd, int iRung)
@@ -2648,7 +2689,7 @@ pkdDensityStep(PKD pkd, double dEta, double dRhoFac)
     double dT;
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
-		if(pkd->pStore[i].iActive) {
+		if(TYPEQueryACTIVE(&(pkd->pStore[i]))) {
 			dT = dEta/sqrt(pkd->pStore[i].fDensity*dRhoFac);
 			if(dT < pkd->pStore[i].dt)
 				pkd->pStore[i].dt = dT;
@@ -2668,7 +2709,7 @@ pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac, int bDoGravit
     double dT;
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
-	if(pkd->pStore[i].iActive) {
+	if(TYPEQueryACTIVE(&(pkd->pStore[i]))) {
 	    vel = 0;
             acc = 0;
 	    for(j = 0; j < 3; j++) {
@@ -2689,10 +2730,11 @@ pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac, int bDoGravit
 		dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
 #endif
 #ifdef DEBUG
-		if ((pkd->pStore[i].iOrder % 300)==0) {
-			        printf("Particle %i: %i %i %f %f %f %f %f   dT_a %f\n",
-				       pkd->pStore[i].iOrder,pkd->pStore[i].iActive,pkd->pStore[i].iTreeActive,
-				       sqrt(0.25*pkd->pStore[i].fBall2),pkd->pStore[i].a[0],
+		if ((pkd->pStore[i].iOrder % 300)==0 || dT<1e-6) {
+			        printf("dt_a %i: %i %i %f %g %g %g  %f %f %f %f   dt_a %g\n",
+				       pkd->pStore[i].iOrder,TYPEQueryACTIVE(&(pkd->pStore[i])),
+                                       TYPEQueryTREEACTIVE(&(pkd->pStore[i])),
+				       sqrt(0.25*pkd->pStore[i].fBall2),pkd->pStore[i].PdV,pkd->pStore[i].u,pkd->pStore[i].PoverRho2,pkd->pStore[i].a[0],
 				       pkd->pStore[i].a[1],pkd->pStore[i].a[2],pkd->pStore[i].fSoft,dT);
 			        }
 #endif
@@ -2719,7 +2761,7 @@ pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll)
     iMaxRungOut = 0;
     for(i = 0; i < pkdLocal(pkd); ++i) {
 		if(pkd->pStore[i].iRung >= iRung) {
-			assert(pkd->pStore[i].iActive == 1);
+			assert(TYPEQueryACTIVE(&(pkd->pStore[i])));
 			if(bAll) {          /* Assign all rungs at iRung and above */
 				iSteps = dDelta/pkd->pStore[i].dt;
 				/* insure that integer boundary goes
@@ -2758,7 +2800,7 @@ pkdInitDt(PKD pkd, double dDelta)
     int i;
     
     for(i = 0; i < pkdLocal(pkd); ++i) {
-		if(pkd->pStore[i].iActive)
+		if(TYPEQueryACTIVE(&(pkd->pStore[i])))
 			pkd->pStore[i].dt = dDelta;
 		}
     }
@@ -2779,7 +2821,7 @@ void
 pkdDeleteParticle(PKD pkd, int i)
 {
     pkd->pStore[i].iOrder = -2 - pkd->pStore[i].iOrder;
-	pkd->pStore[i].iActive = 0;
+	TYPEReset(&(pkd->pStore[i]),TYPE_ACTIVE);
     }
 
 void
@@ -2820,7 +2862,7 @@ pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 #else
 	    ++ndDark;
 #endif
-	    if(p->iActive)
+	    if(TYPEQueryACTIVE(p))
 		++pkd->nActive;
 	    continue;
 	    }
@@ -2835,7 +2877,7 @@ pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 		--ndStar;
 	    else
 		assert(0);
-	    if(p->iActive)
+	    if(TYPEQueryACTIVE(p))
 		--pkd->nActive;
 	    }
 	else {
@@ -2895,33 +2937,206 @@ void pkdCoolVelocity(PKD pkd,int nSuperCool,double dCoolFac,
 		}
 	}
 
-
-void pkdActiveCool(PKD pkd,int nSuperCool)
+int pkdResetTouchRung(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
 {
-    int i;
-    
-    for(i=0;i<pkdLocal(pkd);++i) {
-		if (pkd->pStore[i].iOrder < nSuperCool) {
-			pkd->pStore[i].iActive = 1;
-			}
-		else {
-			pkd->pStore[i].iActive = 0;
-			}
+    PARTICLE *p;
+    int i, nActive = 0;
+
+    for(i=0;i<pkdLocal(pkd);++i) { 
+                p = &pkd->pStore[i];
+		if (TYPETest( p, iTestMask )) {
+		        if (p->iTouchRung & iSetMask) {
+			       p->iTouchRung &= (~iSetMask);
+			       TYPESet( p, TYPE_SMOOTHACTIVE );
+			       nActive++;
+			       }
+		        }
 		}
+    return nActive;
     }
 
-void pkdTreeActiveCool(PKD pkd,int nSuperCool)
+int pkdActiveExactType(PKD pkd, unsigned int iFilterMask, unsigned int iTestMask, unsigned int iSetMask)
 {
-    int i;
-    
-    for(i=0;i<pkdLocal(pkd);++i) {
-		if (pkd->pStore[i].iOrder < nSuperCool) {
-			pkd->pStore[i].iTreeActive = 1;
+    PARTICLE *p;
+    int i, nActive = 0;
+
+    for(i=0;i<pkdLocal(pkd);++i) { 
+                p = &pkd->pStore[i];
+                /* DEBUG: Paranoia check */
+                assert( TYPETest( p, TYPE_ALL ) );
+		if (TYPEFilter( p, iFilterMask, iTestMask )) {
+			TYPESet( p, iSetMask );
+                        nActive++;
 			}
 		else {
-			pkd->pStore[i].iTreeActive = 0;
+			TYPEReset( p, iSetMask );
 			}
 		}
+    if (iSetMask & TYPE_ACTIVE) pkd->nActive = nActive;
+    if (iSetMask & TYPE_TREEACTIVE) pkd->nTreeActive = nActive;
+    if (iSetMask & TYPE_SMOOTHACTIVE) pkd->nSmoothActive = nActive;
+    return nActive;
+    }
+
+int pkdSetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
+{
+    PARTICLE *p;
+    int i, nActive = 0;
+
+    for(i=0;i<pkdLocal(pkd);++i) {
+                p = &pkd->pStore[i];
+                /* DEBUG: Paranoia check */
+                assert( TYPETest( p, TYPE_ALL ) );
+		if (TYPETest( p, iTestMask )) {
+			TYPESet( p, iSetMask );
+                        nActive++;
+			}
+		}
+    /*
+      Need to fix this up:
+    if (iSetMask & TYPE_ACTIVE) pkd->nActive = nActive;
+    if (iSetMask & TYPE_TREEACTIVE) pkd->nTreeActive = nActive;
+    if (iSetMask & TYPE_SMOOTHACTIVE) pkd->nSmoothActive = nActive;
+    */
+    return nActive;
+    }
+
+int pkdResetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
+{
+    PARTICLE *p;
+    int i, nActive = 0;
+
+    for(i=0;i<pkdLocal(pkd);++i) {
+                p = &pkd->pStore[i];
+                /* DEBUG: Paranoia check */
+                assert( TYPETest( p, TYPE_ALL ) );
+		if (TYPETest( p, iTestMask )) {
+			TYPEReset( p, iSetMask );
+                        nActive++;
+			}
+		}
+    /*
+    if (iSetMask & TYPE_ACTIVE) pkd->nActive = nActive;
+    if (iSetMask & TYPE_TREEACTIVE) pkd->nTreeActive = nActive;
+    if (iSetMask & TYPE_SMOOTHACTIVE) pkd->nSmoothActive = nActive;
+    */
+    return nActive;
+    }
+
+int pkdCountType(PKD pkd, unsigned int iFilterMask, unsigned int iTestMask)
+{
+    PARTICLE *p;
+    int i, nActive = 0;
+
+    for(i=0;i<pkdLocal(pkd);++i) {
+                p = &pkd->pStore[i];
+		if (TYPEFilter( p, iFilterMask, iTestMask )) {
+                        nActive++;
+			}
+		}
+    {
+       char debug[100];
+       sprintf(debug, "Filter %d:%d, Counted: %d\n",iFilterMask,iTestMask,nActive);
+       mdlDiag(pkd->mdl,debug);
+       }
+    return nActive;
+    }
+
+int pkdActiveType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
+{
+    PARTICLE *p;
+    int i, nActive = 0;
+
+    for(i=0;i<pkdLocal(pkd);++i) {
+                p = &pkd->pStore[i];
+                /* DEBUG: Paranoia check */
+                assert( TYPETest( p, TYPE_ALL ) );
+		if (TYPETest( p, iTestMask )) {
+			TYPESet( p, iSetMask );
+                        nActive++;
+			}
+		else {
+			TYPEReset( p, iSetMask );
+			}
+		}
+    if (iSetMask & TYPE_ACTIVE      ) pkd->nActive       = nActive;
+    if (iSetMask & TYPE_TREEACTIVE  ) pkd->nTreeActive   = nActive;
+    if (iSetMask & TYPE_SMOOTHACTIVE) pkd->nSmoothActive = nActive;
+    return nActive;
+    }
+
+int
+pkdActiveMaskRung(PKD pkd, unsigned iSetMask, int iRung, int bGreater)
+{
+    PARTICLE *p;
+    int i;
+    int nActive;
+    char out[128];
+    
+    nActive = 0;
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+        p = &pkd->pStore[i];
+	if(p->iRung == iRung
+	   || (bGreater && p->iRung > iRung)) {
+	    TYPESet( p, iSetMask );
+	    ++nActive;
+	    }
+	else
+	    TYPEReset( p, iSetMask );
+	}
+    sprintf(out, "nActive: %d\n", nActive);
+    mdlDiag(pkd->mdl, out);
+
+    if ( iSetMask & TYPE_ACTIVE      ) pkd->nActive       = nActive;
+    if ( iSetMask & TYPE_TREEACTIVE  ) pkd->nTreeActive   = nActive;
+    if ( iSetMask & TYPE_SMOOTHACTIVE) pkd->nSmoothActive = nActive;
+    return nActive;
+    }
+
+int
+pkdActiveTypeRung(PKD pkd, unsigned iTestMask, unsigned iSetMask, int iRung, int bGreater)
+{
+    PARTICLE *p;
+    int i;
+    int nActive;
+    char out[128];
+    
+    nActive = 0;
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+        p = &pkd->pStore[i];
+        /* DEBUG: Paranoia check */
+        assert( TYPETest( p, TYPE_ALL ) );
+	if( TYPETest( p, iTestMask ) && 
+           ( p->iRung == iRung || (bGreater && p->iRung > iRung) )) {
+	    TYPESet( p, iSetMask );
+	    ++nActive;
+	    }
+	else
+	    TYPEReset( p, iSetMask );
+	}
+    sprintf(out, "nActive: %d\n", nActive);
+    mdlDiag(pkd->mdl, out);
+
+    if ( iSetMask & TYPE_ACTIVE      ) pkd->nActive       = nActive;
+    if ( iSetMask & TYPE_TREEACTIVE  ) pkd->nTreeActive   = nActive;
+    if ( iSetMask & TYPE_SMOOTHACTIVE) pkd->nSmoothActive = nActive;
+    return nActive;
+    }
+
+void pkdSetParticleTypes(PKD pkd, int nSuperCool) {
+    PARTICLE *p;
+    int i, iSetMask;
+    
+    for(i=0;i<pkdLocal(pkd);++i) {
+                p = &pkd->pStore[i];
+                iSetMask = 0;
+                if (pkdIsGas (pkd,p)) iSetMask |= TYPE_GAS;
+                if (pkdIsDark(pkd,p)) iSetMask |= TYPE_DARK;
+                if (pkdIsStar(pkd,p)) iSetMask |= TYPE_STAR;
+                if (p->iOrder < nSuperCool) iSetMask |= TYPE_SUPERCOOL;
+
+                TYPESet( p, iSetMask );
+                }
     }
 
 void pkdGrowMass(PKD pkd,int nGrowMass, double dDeltaM)
@@ -2942,7 +3157,7 @@ void pkdInitAccel(PKD pkd)
     int i,j;
     
     for(i=0;i<pkdLocal(pkd);++i) {
-		if (pkd->pStore[i].iActive) {
+		if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
 			for (j=0;j<3;++j) {
 				pkd->pStore[i].a[j] = 0;
 				}
@@ -2966,107 +3181,26 @@ int pkdIsStar(PKD pkd,PARTICLE *p) {
 	else return 0;
 	}
 
-void pkdActiveStar(PKD pkd) 
-{
-    int i;
-    
-    for(i=0;i<pkdLocal(pkd);++i) {
-		if (pkdIsStar(pkd,&pkd->pStore[i])) 
-			pkd->pStore[i].iActive = 1;
-		else 
-			pkd->pStore[i].iActive = 0;
-		}
-    }
-
-void pkdTreeActiveStar(PKD pkd)
-{
-    PARTICLE *p;
-    float PoverRho;
-    int i;
-
-    for(i=0;i<pkdLocal(pkd);++i) {
-                p = &pkd->pStore[i];
-                if (pkdIsStar(pkd,p)) 
-		        p->iTreeActive = 1;
-                else 
-		        p->iTreeActive = 0;
-		}
-    }
-
-void pkdActiveDark(PKD pkd) 
-{
-    int i;
-    
-    for(i=0;i<pkdLocal(pkd);++i) {
-		if (pkdIsDark(pkd,&pkd->pStore[i])) 
-			pkd->pStore[i].iActive = 1;
-		else 
-			pkd->pStore[i].iActive = 0;
-		}
-    }
-
-void pkdTreeActiveDark(PKD pkd)
-{
-    PARTICLE *p;
-    float PoverRho;
-    int i;
-
-    for(i=0;i<pkdLocal(pkd);++i) {
-                p = &pkd->pStore[i];
-                if (pkdIsDark(pkd,p)) 
-		        p->iTreeActive = 1;
-                else 
-		        p->iTreeActive = 0;
-		}
-    }
-
 #ifdef GASOLINE
 
-void pkdActiveGas(PKD pkd) 
-{
-    int i;
-    
-    for(i=0;i<pkdLocal(pkd);++i) {
-		if (pkdIsGas(pkd,&pkd->pStore[i])) 
-			pkd->pStore[i].iActive = 1;
-		else 
-			pkd->pStore[i].iActive = 0;
-		}
-    }
-
-void pkdTreeActiveGas(PKD pkd)
-{
-    PARTICLE *p;
-    float PoverRho;
-    int i;
-
-    for(i=0;i<pkdLocal(pkd);++i) {
-                p = &pkd->pStore[i];
-                if (pkdIsGas(pkd,p)) 
-		        p->iTreeActive = 1;
-                else 
-		        p->iTreeActive = 0;
-		}
-    }
-
 /* Note: Uses uPred */
-void pkdAdiabaticGasPressure(PKD pkd, GASPARAMETERS *in)
+void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma)
 {
     PARTICLE *p;
-    float PoverRho;
+    double PoverRho;
     int i;
 
-    for(i=0;i<pkdLocal(pkd);++i) {
-                p = &pkd->pStore[i];
-                if (p->iTreeActive) {
-		        PoverRho = in->gammam1*p->uPred;
+    p = pkd->pStore;
+    for(i=0;i<pkdLocal(pkd);++i,++p) {
+                if (TYPEQueryTREEACTIVE(p)) {
+		        PoverRho = gammam1*p->uPred;
 			p->PoverRho2 = PoverRho/p->fDensity;
-   			p->c = sqrt(in->gamma*PoverRho);
+   			p->c = sqrt(gamma*PoverRho);
 		        }
 #ifdef DEBUG
 		if (pkdIsGas(pkd,p) && (p->iOrder % 1000)==0) {
-		        printf("Particle %i: %i %i %f %f %f  %f %f %f %f %f\n",
-			       p->iOrder,p->iActive,p->iTreeActive,
+		        printf("Pressure %i: %i %i %f %f %f  %f %f %f %f %f\n",
+			       p->iOrder,TYPEQueryACTIVE(p),TYPEQueryTREEACTIVE(p),
 			       p->r[0],p->r[1],p->r[2],sqrt(0.25*p->fBall2),p->fDensity,p->uPred,
 			       p->PoverRho2*p->fDensity*p->fDensity,p->c);
 		        } 
@@ -3074,18 +3208,52 @@ void pkdAdiabaticGasPressure(PKD pkd, GASPARAMETERS *in)
                 }
     }
 
+void pkdInitEnergy(PKD pkd, double dTuFac, double z)
+{
+    PARTICLE *p;
+    int i;
+    CL *cl;
+    PERBARYON Y;
+    RATE r;
+    double T;
+
+    cl = &(pkd->cl);
+    clRatesRedshift( cl, z );
+
+    p = pkd->pStore;
+    for(i=0;i<pkdLocal(pkd);++i,++p) {
+                if (TYPEQueryTREEACTIVE(p) && pkdIsGas(pkd,p)) {
+		        T = p->u / dTuFac;
+			pkdPARTICLE2PERBARYON(&Y, p, cl->Y_H, cl->Y_He);
+			clRates( cl, &r, T );
+			clAbunds( cl, &Y, &r, p->fDensity * cl->dComovingGmPerCcUnit );
+			pkdPERBARYON2PARTICLE(&Y, p);
+                        p->u = clThermalEnergy( Y.Total, T ) * cl->diErgPerGmUnit;
+			p->uPred = p->u;
+#ifdef DEBUG
+			if ((p->iOrder % 1000)==0) {
+			         printf("InitEnergy %i: %f %g   %f %f %f %g\n",
+				        p->iOrder,T,p->u * cl->dErgPerGmUnit,
+					Y.HI,Y.HeI,Y.HeII,p->fDensity * cl->dComovingGmPerCcUnit);
+		                 } 
+#endif            
+		        }
+                }
+    }
+
 #ifdef GLASS
 /* Currently wired to have no more than two regions with different
    Pressures (densities) split by x=0 with a linear connection */
-void pkdGlassGasPressure(PKD pkd, GASPARAMETERS *in)
+void pkdGlassGasPressure(PKD pkd, void *vin)
 {
     PARTICLE *p;
     double PoverRho,xx,nsp=2.5;
     int i;
+    struct inGetGasPressure *in = vin;
 
     for(i=0;i<pkdLocal(pkd);++i) {
                 p = &pkd->pStore[i];
-                if (p->iTreeActive) {
+                if (TYPEQueryTREEACTIVE(p)) {
     		        if (p->r[0] < -nsp*in->dGlassxL) {
 			  if (p->r[0] > in->dxBoundL + nsp*in->dGlassxL)
 			       PoverRho=in->dGlassPoverRhoL;  
@@ -3123,91 +3291,128 @@ void pkdGlassGasPressure(PKD pkd, GASPARAMETERS *in)
 		        }
 #ifdef DEBUG
 		if (pkdIsGas(pkd,p) && (p->iOrder % 1000)==0) 
-		        printf("Particle %i: %i %i %f %f %f  %f %f %f %f %f\n",
-			       p->iOrder,p->iActive,p->iTreeActive,
+		        printf("Glass P %i: %i %i %f %f %f  %f %f %f %f %f\n",
+			       p->iOrder,TYPEQueryACTIVE(p),TYPEQueryTREEACTIVE(p),
 			       p->r[0],p->r[1],p->r[2],sqrt(0.25*p->fBall2),p->fDensity,p->uPred,p->PoverRho2*p->fDensity*p->fDensity,p->c);
 #endif
                 }
     }
+
 #endif
 
-void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duFac)
+void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int iGasModel,
+		  double z, double duDotLimit)
+{
+	PARTICLE *p;
+	int i,j,n;
+#ifdef GASOLINE
+	int bCool = 0;
+	CL *cl;
+	PERBARYON Y;
+	double E,dt;
+
+	pkdClearTimer(pkd,1);
+	pkdStartTimer(pkd,1);
+
+	switch (iGasModel) {
+	case GASMODEL_COOLING:
+	case GASMODEL_COOLING_NONEQM:
+	         bCool = 1;
+		 cl = &(pkd->cl);
+		 clRatesRedshift( cl, z );
+		 dt = duDelta * cl->dSecUnit;
+		 break;
+		 }
+#endif
+
+#ifdef DEBUG
+	printf("pkdKickVpred: %f %f %f\n",dvFacOne,dvFacTwo,duDelta);
+#endif
+        p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i,++p) {
+#ifdef DEBUG
+		if (pkdIsGas(pkd,p) && (p->iOrder % 3000)==0) {
+		        printf("Vpreding %i: %i %i %f %f %f %f   %f %f %f %f\n",
+			       p->iOrder,TYPEQueryACTIVE(p),
+                               TYPEQueryTREEACTIVE(p),
+			       sqrt(0.25*p->fBall2),p->fDensity,p->u,p->uPred,
+			       p->a[0],p->a[1],p->a[2],p->PdV);
+		        }
+#endif
+#ifdef GASOLINE
+ 	        if (pkdIsGas(pkd, p)) {
+			for (j=0;j<3;++j) {
+				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;
+				}
+			if (bCool) {
+                                pkdPARTICLE2PERBARYON(&Y, p, cl->Y_H, cl->Y_He);
+				E = p->uPred * cl->dErgPerGmUnit;
+#ifdef COOLDEBUG
+				if ((p->iOrder % 300)==0) {
+					printf("COOL: %i ",p->iOrder);
+					clIntegrateEnergyDEBUG(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							       p->fDensity*cl->dComovingGmPerCcUnit, dt);
+					printf("\n");
+				        }
+				else {
+					clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+							  p->fDensity*cl->dComovingGmPerCcUnit, dt);
+				        }
+#else				       
+				clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+						  p->fDensity*cl->dComovingGmPerCcUnit, dt);
+#endif
+				p->uPred = E * cl->diErgPerGmUnit;
+			        }
+			else {
+			        if (p->PdV*duDelta < duDotLimit*p->uPred) 
+				         p->uPred = p->uPred * exp(p->PdV*duDelta/p->uPred);
+				else 
+			                 p->uPred = p->uPred + p->PdV*duDelta;
+			        }
+		        }
+#endif
+	        }
+
+        pkdStopTimer(pkd,1);
+	}
+
+void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta)
 {
 	PARTICLE *p;
 	int i,j,n;
 
 #ifdef DEBUG
-	printf("pkdKickVpred: %f %f %f\n",dvFacOne,dvFacTwo,duFac);
+	printf("pkdKickRhopred: %g %g\n",dHubbFac,dDelta);
 #endif
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
 #ifdef DEBUG
 		if (pkdIsGas(pkd,(p+i)) && ((p+i)->iOrder % 3000)==0) {
-			printf("Particle %i: %i %i %f %f %f %f   %f %f %f %f\n",
-			       (p+i)->iOrder,(p+i)->iActive,(p+i)->iTreeActive,
+		        printf("Rhopreding %i: %i %i %f %f %f %f   %f %f %f %f\n",
+			       (p+i)->iOrder,TYPEQueryACTIVE(p+i),
+                               TYPEQueryTREEACTIVE(p+i),
 			       sqrt(0.25*(p+i)->fBall2),(p+i)->fDensity,(p+i)->u,(p+i)->uPred,
 			       (p+i)->a[0],(p+i)->a[1],(p+i)->a[2],(p+i)->PdV);
-			}
-#endif
-		if(pkdIsGas(pkd, &p[i])) {
-			for (j=0;j<3;++j) {
-				p[i].vPred[j] = p[i].vPred[j]*dvFacOne + p[i].a[j]*dvFacTwo;
-				}
-			if (p[i].PdV*duFac/p[i].u < -0.2) {
-				p[i].uPred = p[i].u*exp(p[i].PdV*duFac/p[i].u);
-				}
-			else {
-				p[i].uPred = p[i].uPred + p[i].PdV*duFac;
-				}
-			}
-		}
-	}
-
-
-void pkdKickVpredRung(PKD pkd, double dvFacOne, double dvFacTwo, double duFac)
-{
-	PARTICLE *p;
-	int i,j,n;
-
-#ifdef DEBUG
-	printf("pkdKickVpred: %f %f %f\n",dvFacOne,dvFacTwo,duFac);
-#endif
-	p = pkd->pStore;
-	n = pkdLocal(pkd);
-	for (i=0;i<n;++i) {
-	    if(p[i].iActive) {
-#ifdef DEBUG
-			if (pkdIsGas(pkd,(p+i)) && ((p+i)->iOrder % 3000)==0) {
-		        printf("Particle %i: %i %i %f %f %f %f   %f %f %f %f\n",
-					   (p+i)->iOrder,(p+i)->iActive,(p+i)->iTreeActive,
-					   sqrt(0.25*(p+i)->fBall2),(p+i)->fDensity,(p+i)->u,(p+i)->uPred,
-					   (p+i)->a[0],(p+i)->a[1],(p+i)->a[2],(p+i)->PdV);
 		        }
 #endif
- 	        if(pkdIsGas(pkd, &p[i])) {
-				for (j=0;j<3;++j) {
-					p[i].vPred[j] = p[i].vPred[j]*dvFacOne + p[i].a[j]*dvFacTwo;
-					}
-				if (p[i].PdV*duFac/p[i].u < -0.2) {
-					p[i].uPred = p[i].u*exp(p[i].PdV*duFac/p[i].u);
-					}
-				else {
-					p[i].uPred = p[i].uPred + p[i].PdV*duFac;
-					}
-				}
+ 	        if(TYPEFilter( &p[i], TYPE_GAS|TYPE_ACTIVE, TYPE_GAS )) {
+			p[i].fDensity = p[i].fDensity*( 1 + dDelta*( dHubbFac - p[i].divv ));
 			}
-		}
+	        }
 	}
 
-int pkdSphCurrRung(PKD pkd, int iRung)
+int pkdSphCurrRung(PKD pkd, int iRung, int bGreater)
 {
     int i;
     int iCurrent;
     
     iCurrent = 0;
     for(i = 0; i < pkdLocal(pkd); ++i) {
-		if(pkdIsGas(pkd, &pkd->pStore[i]) && pkd->pStore[i].iRung == iRung) {
+		if(pkdIsGas(pkd, &pkd->pStore[i]) && (pkd->pStore[i].iRung == iRung ||
+                    (pkd->pStore[i].iRung > iRung && bGreater))) {
 			iCurrent = 1;
 			break;
 			}
@@ -3224,7 +3429,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant)
 
     for(i = 0; i < pkdLocal(pkd); ++i) {
         p = &pkd->pStore[i];
-        if(pkdIsGas(pkd, p) && p->iActive) {
+        if(pkdIsGas(pkd, p) && TYPEQueryACTIVE(p)) {
 	       /*
 		* Courant condition goes here.
 		*/
@@ -3234,9 +3439,9 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant)
                         dT = dEtaCourant*dCosmoFac*( sqrt(0.25*p->fBall2)/(1.6*p->c) );
 
 #ifdef DEBUG	      
-	       if ((p->iOrder % 300) == 0) 
-		        printf("Particle %i: %i %i %i %f %f %f %f %f %f   dT_c %f\n",
-			       p->iOrder,p->iActive,p->iTreeActive,p->iRung,
+	       if ((p->iOrder % 300) == 0 || dT<1e-6) 
+		        printf("dt_C %i: %i %i %i %f %f %f %f %f %f   dT_c %g\n",
+			       p->iOrder,TYPEQueryACTIVE(p),TYPEQueryTREEACTIVE(p),p->iRung,
 			       sqrt(0.25*p->fBall2),p->fDensity,p->u,p->uPred,p->c,p->mumax,
 			       dT);
 #endif
@@ -3260,13 +3465,16 @@ pkdSphViscosityLimiter(PKD pkd, int bOn)
 #ifdef DEBUG
 	                if ((p->iOrder % 300) == 0) 
 		               printf("Particle %i: %i %i %i %f %f %f %f %f %f   Curl\n",
-				 p->iOrder,p->iActive,p->iTreeActive,p->iRung,
+				 p->iOrder,TYPEQueryACTIVE(p),TYPEQueryTREEACTIVE(p),p->iRung,
 				 sqrt(0.25*p->fBall2),p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]
 				 );
 #endif		
     	                if (p->divv!=0.0) {         	 
-                               p->divv = fabs(p->divv)/(fabs(p->divv)+sqrt(p->curlv[0]*p->curlv[0]+
+                               p->BalsaraSwitch = fabs(p->divv)/(fabs(p->divv)+sqrt(p->curlv[0]*p->curlv[0]+
 			         p->curlv[1]*p->curlv[1]+p->curlv[2]*p->curlv[2]));
+                               }
+                        else { 
+                               p->BalsaraSwitch = 0.0;
                                }
 	                }
 	       }
@@ -3275,12 +3483,11 @@ pkdSphViscosityLimiter(PKD pkd, int bOn)
         for(i = 0; i < pkdLocal(pkd); ++i) {
                p = &pkd->pStore[i];
                if(pkdIsGas(pkd, p)) {
-                        p->divv=1.0;
+                        p->BalsaraSwitch = 1.0;
                         }
 	       }
         }
     }
-
 
 #endif
 
@@ -3341,7 +3548,9 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 	 */
 	for (i=0;i<nLocal;++i) {
 		p = &pkd->pStore[i];
-		p->iActive = 1;
+		TYPEClear(p);
+                TYPESet(p,TYPE_ACTIVE);
+		p->iTouchRung = 0;
 		p->iRung = 0;
 		p->fWeight = 1.0;
 		p->fDensity = 0.0;
@@ -3459,7 +3668,7 @@ pkdHillStep(PKD pkd,double dEta)
 
 	for (i=0;i<pkdLocal(pkd);i++) {
 		p = &pkd->pStore[i];
-		if (p->iActive) {
+		if (TYPEQueryACTIVE(p)) {
 			r2 = a2 = 0;
 			/*DEBUG could use Manhattan metric here...*/
 			for (j=0;j<3;j++) {
@@ -3494,7 +3703,7 @@ pkdMarkEncounters(PKD pkd,double dt)
 	if (dt <= 0) { /* initialize */
 		for (i=0;i<pkdLocal(pkd);++i) {
 			p = &pkd->pStore[i];
-			p->iActive = 1;/*DEBUG redundant?*/
+			TYPESet(p,TYPE_ACTIVE);/*DEBUG redundant?*/
 			p->iDriftType = KEPLER;
 			p->dTEnc = HUGE_VAL;
 /*DEBUG			p->idNbr.iPid = p->idNbr.iIndex =
@@ -3504,11 +3713,11 @@ pkdMarkEncounters(PKD pkd,double dt)
 	else {
 		for (i=0;i<pkdLocal(pkd);++i) {
 			if (p->dTEnc < dt) {
-				p->iActive = 1;
+				TYPESet(p,TYPE_ACTIVE);
 				p->iDriftType = NORMAL;
 				}
 			else {
-				p->iActive = 0;
+				TYPEReset(p,TYPE_ACTIVE);
 				p->iDriftType = KEPLER;
 				}
 			}

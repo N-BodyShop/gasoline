@@ -13,6 +13,7 @@ typedef struct smfParameters {
 	double algam;
 	int bGeometric;
         int bCannonical;
+        int bGrowSmoothList;
 #ifdef COLLISIONS
 	double dTime;
 	double dDelta;
@@ -39,6 +40,12 @@ void initDensity(void *);
 void combDensity(void *,void *);
 void Density(PARTICLE *,int,NN *,SMF *);
 void DensitySym(PARTICLE *,int,NN *,SMF *);
+
+#define SMX_MARKDENSITY		6
+void initMarkDensity(void *);
+void combMarkDensity(void *,void *);
+void MarkDensity(PARTICLE *,int,NN *,SMF *);
+void MarkDensitySym(PARTICLE *,int,NN *,SMF *);
 
 #define SMX_MEANVEL		2
 void initMeanVel(void *);

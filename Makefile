@@ -1,20 +1,28 @@
 #
 # Makefile for pkdgrav or gasoline (specify below)
 #
-CC = cc
 #EXE = pkdgrav
 EXE = gasoline
+
 #CODEDEF = #-DCOLLISIONS -DFIX_COLLAPSE -DI32N_A_BOX -DSAND_PILE
 #CODEDEF = -DSUPERCOOL
 #CODEDEF = -DGROWMASS
 #CODEDEF = -DGASOLINE
 #CODEDEF = -DDEBUG -HSHRINK
-CODEDEF = -DGASOLINE
+
+#ev6
+#CC = ccc
+#CODEDEF = -DGASOLINE -DCCC
+
+CC = cc
+CODEDEF = -DGASOLINE 
 
 #
 #       NULL defines
 #
 NULL_MDL		= ../mdl/null
+#ev6 flags:
+#NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
 NULL_CFLAGS		= -O2 -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -O3 -g -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -g -I$(NULL_MDL) $(CODEDEF)
@@ -31,6 +39,16 @@ SGI_LD_FLAGS	= -mips4 -64 -r10000
 SGI_XOBJ		=
 SGI_LIBMDL		= $(SGI_MDL)/mdl.o -lmpi -lm
 SGI_MDL_CFLAGS	= -O2 -mips4 -64 -r10000
+
+#
+#       LINUX LAM MPI defines
+#
+LAM_MDL			= ../mdl/mpi
+LAM_CFLAGS		= -O3 -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX -I/net/lam-6.3-b1/include
+LAM_LD_FLAGS	= -L/net/lam-6.3-b1/lib -lmpi -ltstdio -lt -largs -ltrillium -ltstdio -lmpi++
+LAM_XOBJ		=
+LAM_LIBMDL		= $(LAM_MDL)/mdl.o -L/net/lam-6.3-b1/lib -lmpi -ltstdio -lt -largs -ltrillium -ltstdio -lmpi++
+LAM_MDL_CFLAGS	= -O3 -I$(LAM_MDL) $(CODEDEF) -DMPI_LINUX  -I/net/lam-6.3-b1/include 
 
 #
 #       SP1/2 defines
@@ -60,7 +78,7 @@ PVM_LIBMDL	= $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
 #       PTHREAD defines
 #
 PTHREAD_MDL			= ../mdl/pthread
-PTHREAD_CFLAGS		= -O3 -malign-double -D_REENTRANT -I$(PTHREAD_MDL) $(CODEDEF)
+PTHREAD_CFLAGS		= -O3 -D_REENTRANT -I$(PTHREAD_MDL) $(CODEDEF)
 PTHREAD_LD_FLAGS 	=
 PTHREAD_XOBJ		= erf.o v_sqrt1.o
 PTHREAD_LIBMDL 		= $(PTHREAD_MDL)/mdl.o -lm -lpthread
@@ -123,7 +141,7 @@ KSR_LIBMDL		= $(KSR_MDL)/mdl.o -lm -lrpc
 
 OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
-	  smoothfcn.o collision.o qqsmooth.o cosmo.o romberg.o
+	  smoothfcn.o collision.o qqsmooth.o cooling.o cosmo.o romberg.o
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 
@@ -148,7 +166,7 @@ $(XDIR):
 	- mkdir $(XDIR)
 
 null:
-	cd $(NULL_MDL); make
+	cd $(NULL_MDL); make "CC=$(CC)" "CFLAGS=$(NULL_CFLAGS)"
 	make $(EXE) "CFLAGS=$(NULL_CFLAGS)" "LD_FLAGS=$(NULL_LD_FLAGS)"\
 		"MDL=$(NULL_MDL)" "XOBJ=$(NULL_XOBJ)" "LIBMDL=$(NULL_LIBMDL)"
 
@@ -172,6 +190,12 @@ pthread_sgi:
 	cd $(PTHREAD_MDL); make CC=cc "CC_FLAGS=$(PTHREAD_SGI_MDL_CFLAGS)"
 	make $(EXE) "CFLAGS=$(PTHREAD_SGI_CFLAGS)" "LD_FLAGS=$(PTHREAD_SGI_LD_FLAGS)"\
 		"MDL=$(PTHREAD_SGI_MDL)" "XOBJ=$(PTHREAD_SGI_XOBJ)" "LIBMDL=$(PTHREAD_SGI_LIBMDL)"
+
+lam_mpi:
+	cd $(LAM_MDL); make CC=pgcc "CC_FLAGS=$(LAM_MDL_CFLAGS)"
+	make $(EXE) CC=pgcc "CFLAGS=$(LAM_CFLAGS)" "LD_FLAGS=$(LAM_LD_FLAGS)"\
+		"MDL=$(LAM_MDL)" "XOBJ=$(LAM_XOBJ)" "LIBMDL=$(LAM_LIBMDL)"
+
 
 mpi: spx
 
@@ -229,3 +253,9 @@ qqsmooth.o: smooth.h pkd.h floattype.h smoothfcn.h
 smooth.o: smooth.h pkd.h floattype.h smoothfcn.h
 smoothfcn.o: smoothfcn.h pkd.h floattype.h ssdefs.h collision.h
 walk.o: walk.h pkd.h floattype.h
+cooling.o: cooling.h
+
+
+
+
+

@@ -31,7 +31,15 @@ FLOAT ArrType(PARTICLE *p,int iType)
 		return(p->u);
 	case OUT_UDOT_ARRAY:
                 return 0;
+	case OUT_HI_ARRAY:
+                return(p->Y_HI);
+	case OUT_HeI_ARRAY:
+                return(p->Y_HeI);
+	case OUT_HeII_ARRAY:
+                return(p->Y_HeII);
 #endif
+	case OUT_H_ARRAY:
+                return(sqrt(p->fBall2*0.25));
 #ifdef COLLISIONS
 	case OUT_REJECTS_ARRAY:
 		/* Rejected particles indicated by their iOrder, otherwise -1 */
@@ -106,3 +114,13 @@ void pkdOutVector(PKD pkd,char *pszFileName,int iDim,int iVecType)
 		exit(1);
 		}
 	}
+
+
+
+
+
+
+
+
+
+

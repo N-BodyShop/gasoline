@@ -1,4 +1,4 @@
-FDL checkpoint_5 (
+FDL checkpoint_6 (
 	ELEMENT version (
 		TYPE int
 		)
@@ -83,6 +83,12 @@ FDL checkpoint_5 (
 			ELEMENT bBinary (
 				TYPE int
 				)	
+			ELEMENT bDoGravity (
+				TYPE int
+				)	
+			ELEMENT bDoGas (
+				TYPE int
+				)	
 			ELEMENT bFandG (
 				TYPE int
 				)	
@@ -117,6 +123,9 @@ FDL checkpoint_5 (
 				TYPE int
 				)
 			ELEMENT nReplicas (
+				TYPE int
+				)
+			ELEMENT iStartStep (
 				TYPE int
 				)
 			ELEMENT nSteps (
@@ -182,6 +191,12 @@ FDL checkpoint_5 (
 			ELEMENT dCentMass (
 				TYPE double
 				)
+			ELEMENT dMassFracHelium (
+				TYPE double
+				)
+			ELEMENT dFracNoDomainDecomp (
+				TYPE double
+				)
 			)
 		)
 	ARRAY particle_array (
@@ -224,3 +239,5 @@ FDL checkpoint_5 (
 			)
 		)
 	)
+
+

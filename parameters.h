@@ -28,9 +28,10 @@ struct parameters {
 	int bISqrtRho;
 	int bNonSymp;
 	int bDoDensity;
+	int bDohOutput;
+	int bDoIonOutput;
 	int bSymCool;
 	int bDoGravity;
-        int bDoGas;
 	int bFandG;
 	int bHeliocentric;
 	int bLogHalo;
@@ -51,7 +52,6 @@ struct parameters {
 	int nGrowMass;
         int iWallRunTime;
 	double dEta;
-	double dEtaCourant;
 	double dExtraStore;
 	double dSoft;
 	double dDelta;
@@ -59,6 +59,7 @@ struct parameters {
 	double dEwhCut;
 	double dTheta;
 	double dTheta2;
+        double daSwitchTheta;
 	double dAbsPartial;
 	double dRelPartial;
 	double dAbsTotal;
@@ -79,11 +80,14 @@ struct parameters {
 	double dGrowDeltaM;
 	double dGrowStartT;
 	double dGrowEndT;
+        double dFracNoDomainDecomp;
 	/*
 	 ** Additional parameters for GASOLINE.
 	 */
 	int bGeometric;
         int iGasModel;
+	double dEtaCourant;
+        double duDotLimit;
 	double dConstAlpha;
 	double dConstBeta;
 	double dConstGamma;
@@ -91,8 +95,19 @@ struct parameters {
 	double dGasConst;
 	double dMsolUnit;
 	double dKpcUnit;
+	double dGmPerCcUnit;
+	double dComovingGmPerCcUnit;
+	double dErgPerGmUnit;
+	double dSecUnit;
+        double dMassFracHelium;
+        double dCoolingTmin;
+        double dCoolingTmax;
+        int    nCoolingTable;
         int    bViscosityLimiter;
         int    bBulkViscosity;
+        int    bDoGas;
+        int    bUV;
+        int    bSN;
 #ifdef GLASS
 	/*
 	 ** Additional parameters for GLASS.

@@ -4,6 +4,7 @@
 #include <sys/resource.h>
 #include "mdl.h"
 #include "floattype.h"
+#include "cooling.h"
 
 #define CID_TOP		0
 #define CID_PARTICLE	0
@@ -24,9 +25,9 @@
 
 typedef struct particle {
 	int iOrder;
-        int iActive;            /* active for current kick */
-        int iTreeActive;        /* active for tree */
+        unsigned int iActive;  
 	int iRung;
+        unsigned int iTouchRung; /* To be removed */
 	int cpStart;
 	FLOAT fWeight;
 	FLOAT fMass;
@@ -57,8 +58,13 @@ typedef struct particle {
         FLOAT PdVvisc;          /* P dV from shock (testing) */
         FLOAT PdVpres;          /* P dV from adiabatic compression (testing) */
 #endif
-        FLOAT divv;             /* Balsara viscosity reduction: reuse to avoid this cost? */
+        FLOAT divv;             /* Balsara viscosity reduction */
         FLOAT curlv[3];         
+        FLOAT BalsaraSwitch;
+  
+        FLOAT udot;             /* Rate of change of u -- for predicting */
+        FLOAT Y_HI, Y_HeI, Y_HeII;  /* Abundance of ions */
+
 	FLOAT fMetals;
 	FLOAT fTimeForm;
 #endif
@@ -76,8 +82,63 @@ typedef struct particle {
 
 	} PARTICLE;
 
+/* Active Type Masks */
 
-#define CHECKPOINT_VERSION 5
+/* Active: -- eg. Calculate new acceleration, PdV, etc... for this particle */
+#define TYPE_ACTIVE            1
+/* In the Tree: */
+#define TYPE_TREEACTIVE        2
+/* Gather to/Scatter from this particle with in smooths: */
+#define TYPE_SMOOTHACTIVE      4
+/* Smooth has processed this particle */
+#define TYPE_SMOOTHDONE        8
+
+/* Types used for Fast Density only (so far) */
+/* Sum Fast Density on this particle */
+#define TYPE_DensACTIVE        16
+/* Neighbour of active particle: */
+/* Neighbour of DENSACTIVE (incl. DENSACTIVE): */
+#define TYPE_NbrOfDensACTIVE           32
+/* Neighbour of Neighbour of DENSACTIVE (incl. DENSACTIVE & NACTIVE): */
+#define TYPE_NbrOfNbrOfDensACTIVE          64
+/* Neighbour of NOT-DENSACTIVE: */
+#define TYPE_NbrOfNonDensACTIVE        128
+
+/* Particle Type Masks */
+
+#define TYPE_GAS               256
+#define TYPE_DARK              512
+#define TYPE_STAR              1024
+#define TYPE_SUPERCOOL         2048
+
+/* Combination Masks */
+#define TYPE_ALL               (TYPE_GAS|TYPE_DARK|TYPE_STAR)
+
+/* Type Macros */
+int TYPEQueryACTIVE      ( PARTICLE *a );
+int TYPEQueryTREEACTIVE  ( PARTICLE *a );
+int TYPEQuerySMOOTHACTIVE( PARTICLE *a );
+int TYPETest  ( PARTICLE *a, unsigned int mask );
+int TYPEFilter( PARTICLE *a, unsigned int filter, unsigned int mask );
+int TYPESet   ( PARTICLE *a, unsigned int mask );
+int TYPEReset ( PARTICLE *a, unsigned int mask );
+/* This retains Particle Type and clears all flags: */
+int TYPEClearACTIVE( PARTICLE *a ); 
+
+/* Warning: This erases Particle Type */
+int TYPEClear( PARTICLE *a ); 
+
+#define TYPEQueryACTIVE(a)       ((a)->iActive & TYPE_ACTIVE)
+#define TYPEQueryTREEACTIVE(a)   ((a)->iActive & TYPE_TREEACTIVE)
+#define TYPEQuerySMOOTHACTIVE(a) ((a)->iActive & TYPE_SMOOTHACTIVE)
+#define TYPETest(a,b)            ((a)->iActive & (b))
+#define TYPEFilter(a,b,c)        (((a)->iActive & (b))==(c))
+#define TYPESet(a,b)             ((a)->iActive |= (b))
+#define TYPEReset(a,b)           ((a)->iActive &= (~(b)))
+#define TYPEClearACTIVE(a)       ((a)->iActive &= (TYPE_GAS|TYPE_DARK|TYPE_STAR|TYPE_SUPERCOOL))
+#define TYPEClear(a)             ((a)->iActive = 0)
+
+#define CHECKPOINT_VERSION 6
 
 typedef struct chkParticle {
 	int iOrder;
@@ -186,6 +247,7 @@ typedef struct pkdContext {
 	int nLocal;
 	int nActive;
         int nTreeActive;
+        int nSmoothActive;
 	int nDark;
 	int nGas;
 	int nStar;
@@ -233,6 +295,10 @@ typedef struct pkdContext {
 		double sec;
 		double stamp;
 		} ti[MAX_TIMERS];
+        /* 
+	 ** Cooling 
+	 */
+        CL  cl;
 #ifdef COLLISIONS
 	double dImpactTime;
 	COLLIDER Collider1,Collider2;
@@ -255,30 +321,10 @@ typedef struct CacheStatistics {
 
 enum GasModel { GASMODEL_ADIABATIC, 
 		GASMODEL_ISOTHERMAL, 
-                GASMODEL_IONEQM, 
-		GASMODEL_IONEVOLVE,
+                GASMODEL_COOLING, 
+		GASMODEL_COOLING_NONEQM,
    		GASMODEL_GLASS }; 
 
-typedef struct GasParameters {
-        enum GasModel iGasModel; 
-  /* Adiabatic */
-        double gamma;
-        double gammam1;
-  /* Isothermal */
-
-  /* Ion equilibrium */
-
-  /* Ion evolving */
-#ifdef GLASS
-  /* Glass */
-        double dGlassPoverRhoL;
-        double dGlassPoverRhoR;
-        double dGlassxL;
-        double dGlassxR;
-        double dxBoundL;
-        double dxBoundR;
-#endif
-	} GASPARAMETERS;
 
 #ifdef GASOLINE
 
@@ -351,8 +397,8 @@ int pkdLowerPart(PKD,int,FLOAT,int,int);
 int pkdUpperPart(PKD,int,FLOAT,int,int);
 int pkdLowerOrdPart(PKD,int,int,int);
 int pkdUpperOrdPart(PKD,int,int,int);
-void pkdActiveOrder(PKD);
-void pkdTreeActiveOrder(PKD);
+int pkdActiveTypeOrder(PKD, unsigned int);
+int pkdActiveOrder(PKD);
 int pkdColRejects(PKD,int,FLOAT,FLOAT,int);
 int pkdSwapRejects(PKD,int);
 int pkdSwapSpace(PKD);
@@ -366,7 +412,7 @@ int pkdNodes(PKD);
 void pkdDomainColor(PKD);
 int pkdColOrdRejects(PKD,int,int);
 void pkdLocalOrder(PKD);
-void pkdWriteTipsy(PKD,char *,int,int,double,double);
+void pkdWriteTipsy(PKD,char *,int,int,double,double,int);
 void pkdCombine(KDN *,KDN *,KDN *);
 void pkdCalcCell(PKD,KDN *,FLOAT *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);
@@ -377,8 +423,7 @@ void pkdGravAll(PKD,int,int,int,int,double,double,int,double *,int *,
 				double *,double *,double *,CASTAT *,double *); 
 void pkdCalcE(PKD,double *,double *,double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,FLOAT);
-void pkdDriftRung(PKD,double,FLOAT *,int,int,FLOAT);
-void pkdKick(PKD pkd,double,double, double, double, double, double);
+void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double);
 void pkdReadCheck(PKD,char *,int,int,int,int);
 void pkdWriteCheck(PKD,char *,int,int);
 void pkdDistribCells(PKD,int,KDN *);
@@ -387,7 +432,7 @@ void pkdDistribRoot(PKD,struct ilCellNewt *);
 void pkdSwapAll(PKD pkd, int idSwap);
 double pkdMassCheck(PKD pkd);
 void pkdSetRung(PKD pkd, int iRung);
-void pkdActiveRung(PKD pkd, int iRung, int bGreater);
+int pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
 void pkdDensityStep(PKD pkd, double dEta, double
 		    dRhoFac);
@@ -399,16 +444,26 @@ void pkdInitDt(PKD pkd, double dDelta);
 
 int pkdRungParticles(PKD,int);
 void pkdCoolVelocity(PKD,int,double,double,double);
-void pkdActiveCool(PKD,int);
-void pkdTreeActiveCool(PKD,int);
 void pkdGrowMass(PKD pkd,int nGrowMass, double dDeltaM);
 void pkdInitAccel(PKD);
 int pkdOrdWeight(PKD,int,int,int,int,int *,int *);
 void pkdDeleteParticle(PKD pkd, int i);
 void pkdNewParticle(PKD pkd, PARTICLE p);
+
+int pkdResetTouchRung(PKD pkd, unsigned int iTestMask, unsigned int iSetMask);
+int pkdActiveExactType(PKD pkd, unsigned int iFilterMask, unsigned int iTestMask, unsigned int iSetMask);
+int pkdActiveType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask);
+int pkdSetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask);
+int pkdResetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask);
+int pkdCountType(PKD pkd, unsigned int iFilterMask, unsigned int iTestMask);
+int pkdActiveMaskRung(PKD pkd, unsigned int iSetMask, int iRung, int bGreater );
+int pkdActiveTypeRung(PKD pkd, unsigned int iTestMask, unsigned int iSetMask, int iRung, int bGreater);
+
 int pkdIsGas(PKD,PARTICLE *);
 int pkdIsDark(PKD,PARTICLE *);
 int pkdIsStar(PKD,PARTICLE *);
+void pkdSetParticleTypes(PKD pkd, int nSuperCool);
+
 void pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 		  int *nDeltaStar);
 void pkdNewOrder(PKD pkd, int nStart);
@@ -418,22 +473,37 @@ void pkdSunIndirect(PKD,double *,int,double);
 void pkdLogHalo(PKD);
 void pkdHernquistSpheroid(PKD pkd);
 void pkdMiyamotoDisk(PKD pkd);
-void pkdActiveStar(PKD);
-void pkdTreeActiveStar(PKD pkd);
-void pkdActiveDark(PKD);
-void pkdTreeActiveDark(PKD pkd);
+
 #ifdef GASOLINE
-void pkdActiveGas(PKD);
-void pkdTreeActiveGas(PKD pkd);
-void pkdAdiabaticGasPressure(PKD, GASPARAMETERS *in);
+void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma);
+void pkdInitEnergy(PKD pkd, double dTuFac, double z);
 #ifdef GLASS
-void pkdGlassGasPressure(PKD, GASPARAMETERS *in);
+void pkdGlassGasPressure(PKD, void *in);
 #endif
-void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duFac);
-void pkdKickVpredRung(PKD pkd, double dvFacOne, double dvFacTwo, double duFac);
-int pkdSphCurrRung(PKD pkd, int iRung);
+void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int iGasModel, double z, double duDotLimit);
+void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);
+int pkdSphCurrRung(PKD pkd, int iRung, int bGreater);
 void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant);
 void pkdSphViscosityLimiter(PKD pkd, int bOn);
+
+void pkdPARTICLE2PERBARYON(PERBARYON *Y, PARTICLE *p, double HTotal, double HeTotal);
+
+#define pkdPARTICLE2PERBARYON(Y, p, HTotal, HeTotal) { \
+    (Y)->HI = (p)->Y_HI; \
+    (Y)->HII = HTotal - (Y)->HI; \
+    (Y)->HeI = (p)->Y_HeI; \
+    (Y)->HeII = (p)->Y_HeII; \
+    (Y)->HeIII = HeTotal - (Y)->HeI - (Y)->HeII; \
+    (Y)->e = (Y)->HII + (Y)->HeII + 2*(Y)->HeIII; \
+    (Y)->Total = (Y)->e + HTotal + HeTotal; }
+
+void pkdPERBARYON2PARTICLE(PERBARYON *Y, PARTICLE *p);
+
+#define pkdPERBARYON2PARTICLE(Y, p) { \
+    (p)->Y_HI = (Y)->HI; \
+    (p)->Y_HeI = (Y)->HeI; \
+    (p)->Y_HeII = (Y)->HeII; }
+
 #endif
 #ifdef GLASS
 void pkdRandomVelocities(PKD pkd, double dMaxVL, double dMaxVR);
@@ -454,3 +524,7 @@ void pkdQQBuild(PKD pkd, int nBucket, int bActiveOnly, KDN *pRoot);
 #endif /* COLLISIONS */
 
 #endif
+
+
+
+

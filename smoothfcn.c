@@ -74,6 +74,72 @@ void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	}
 
+void initMarkDensity(void *p)
+{
+	((PARTICLE *)p)->fDensity = 0.0;
+	}
+
+void combMarkDensity(void *p1,void *p2)
+{
+	((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
+	((PARTICLE *)p1)->iActive |= ((PARTICLE *)p2)->iActive;
+	}
+
+void MarkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	assert(0);
+}
+
+void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT fNorm,ih2,r2,rs;
+	int i;
+	unsigned int qiActive;
+
+	ih2 = 4.0/(BALL2(p));
+	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
+        if (TYPETest(p, TYPE_DensACTIVE)) {
+	        TYPESet( p, TYPE_NbrOfDensACTIVE );
+  	        for (i=0;i<nSmooth;++i) {
+		       r2 = nnList[i].fDist2*ih2;
+		       rs = 2.0 - sqrt(r2);
+		       if (r2 < 1.0) rs = (1.0 - 0.75*rs*r2);
+#ifdef HSHRINK
+		       else if (r2 < 4.0) rs = 0.25*rs*rs*rs;
+		       else rs = 0.0;
+#else
+		       else rs = 0.25*rs*rs*rs;
+#endif
+		       rs *= fNorm;
+		       q = nnList[i].pPart;
+	               p->fDensity += rs*q->fMass;
+	               q->fDensity += rs*p->fMass;
+		       TYPESet( q, TYPE_NbrOfDensACTIVE );
+		       }
+                } 
+        else {
+	        qiActive = 0;
+                for (i=0;i<nSmooth;++i) {
+		       r2 = nnList[i].fDist2*ih2;
+		       rs = 2.0 - sqrt(r2);
+		       if (r2 < 1.0) rs = (1.0 - 0.75*rs*r2);
+#ifdef HSHRINK
+		       else if (r2 < 4.0) rs = 0.25*rs*rs*rs;
+		       else rs = 0.0;
+#else
+    		       else rs = 0.25*rs*rs*rs;
+#endif
+                       rs *= fNorm;
+		       q = nnList[i].pPart;
+		       p->fDensity += rs*q->fMass;
+		       q->fDensity += rs*p->fMass;
+		       qiActive |= q->iActive;
+		       }
+		if (qiActive & TYPE_DensACTIVE) TYPESet( p, TYPE_NbrOfDensACTIVE );
+	        }
+        }
+
 #ifdef SUPERCOOL
 void initMeanVel(void *p)
 {
@@ -152,40 +218,46 @@ void MeanVelSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 /* Original Particle */
 void initSphPressureTermsParticle(void *p)
 {
-	((PARTICLE *)p)->mumax = 0.0;
-	((PARTICLE *)p)->PdV = 0.0;
+        if (TYPEQueryACTIVE((PARTICLE *) p)) {
+                ((PARTICLE *)p)->mumax = 0.0;
+	        ((PARTICLE *)p)->PdV = 0.0;
 #ifdef DEBUG
-	((PARTICLE *)p)->PdVvisc = 0.0;
-	((PARTICLE *)p)->PdVpres = 0.0;
+		((PARTICLE *)p)->PdVvisc = 0.0;
+		((PARTICLE *)p)->PdVpres = 0.0;
 #endif
+	        }
 	}
 
 /* Cached copies of particle */
 void initSphPressureTerms(void *p)
 {
-	((PARTICLE *)p)->mumax = 0.0;
-	((PARTICLE *)p)->PdV = 0.0;
+        if (TYPEQueryACTIVE((PARTICLE *) p)) {
+	        ((PARTICLE *)p)->mumax = 0.0;
+		((PARTICLE *)p)->PdV = 0.0;
 #ifdef DEBUG
-	((PARTICLE *)p)->PdVvisc = 0.0;
-	((PARTICLE *)p)->PdVpres = 0.0;
+		((PARTICLE *)p)->PdVvisc = 0.0;
+		((PARTICLE *)p)->PdVpres = 0.0;
 #endif
-	((PARTICLE *)p)->a[0] = 0.0;
-	((PARTICLE *)p)->a[1] = 0.0;
-	((PARTICLE *)p)->a[2] = 0.0;
+		((PARTICLE *)p)->a[0] = 0.0;
+		((PARTICLE *)p)->a[1] = 0.0;
+		((PARTICLE *)p)->a[2] = 0.0;
+	        }
 	}
 
 void combSphPressureTerms(void *p1,void *p2)
 {
-	((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
+        if (TYPEQueryACTIVE((PARTICLE *) p1)) {
+	        ((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
 #ifdef DEBUG
-	((PARTICLE *)p1)->PdVvisc += ((PARTICLE *)p2)->PdVvisc;
-	((PARTICLE *)p1)->PdVpres += ((PARTICLE *)p2)->PdVpres;
+		((PARTICLE *)p1)->PdVvisc += ((PARTICLE *)p2)->PdVvisc;
+		((PARTICLE *)p1)->PdVpres += ((PARTICLE *)p2)->PdVpres;
 #endif
-	if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
-	  ((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
-	((PARTICLE *)p1)->a[0] += ((PARTICLE *)p2)->a[0];
-	((PARTICLE *)p1)->a[1] += ((PARTICLE *)p2)->a[1];
-	((PARTICLE *)p1)->a[2] += ((PARTICLE *)p2)->a[2];	
+		if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
+		  ((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
+		((PARTICLE *)p1)->a[0] += ((PARTICLE *)p2)->a[0];
+		((PARTICLE *)p1)->a[1] += ((PARTICLE *)p2)->a[1];
+		((PARTICLE *)p1)->a[2] += ((PARTICLE *)p2)->a[2];	
+	        }
 	}
 
 /* Gather only version -- untested */
@@ -199,7 +271,7 @@ void SphPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT fNorm,fNorm1,fNorm2,fTmp;
 	int i;
 
-	if (!p->iActive) return;
+	if (!TYPEQueryACTIVE(p)) return;
 
 	pc = p->c;
 	pDensity = p->fDensity;
@@ -261,7 +333,7 @@ void SphPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			if (absmu>pmumax) pmumax=absmu;
 
                         /* viscosity term */
-		        visc = 0.5*(p->divv+q->divv)*(smf->alpha * (pc + q->c) 
+		        visc = 0.5*(p->BalsaraSwitch+q->BalsaraSwitch)*(smf->alpha * (pc + q->c) 
 			    +   smf->beta  * 2 * absmu ) 
 			    * absmu / (pDensity + q->fDensity);
 		        pPdV += rs1 * (pPoverRho2 + 0.5*visc) * dvdotdr;
@@ -299,7 +371,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	aFac = (smf->a);        /* comoving acceleration factor */
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
 
-	if (p->iActive) {
+	if (TYPEQueryACTIVE(p)) {
 	  /* p active */
 	  pmumax = p->mumax;
 	  pPdV=0.0;
@@ -336,7 +408,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dvz = p->vPred[2] - q->vPred[2];
 		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
 
-		if (q->iActive) {
+		if (TYPEQueryACTIVE(q)) {
 		  /* q active */
 		  rp = rs1 * pMass;
 		  if (dvdotdr>0.0) {
@@ -368,7 +440,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			if (absmu>pmumax) pmumax=absmu;
 			if (absmu>q->mumax) q->mumax=absmu;
                         /* viscosity term */
-		        visc = 0.5*(p->divv+q->divv)*(smf->alpha * (pc + q->c) 
+		        visc = 0.5*(p->BalsaraSwitch+q->BalsaraSwitch)*(smf->alpha * (pc + q->c) 
 			    +   smf->beta  * 2 * absmu ) 
 			    * absmu / (pDensity + q->fDensity);
 		        pPdV += rq * (pPoverRho2 + 0.5*visc) * dvdotdr;
@@ -413,7 +485,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			/* mu terms for gas time step */
 			if (absmu>pmumax) pmumax=absmu;
                         /* viscosity term */
-		        visc = 0.5*(p->divv+q->divv)*(smf->alpha * (pc + q->c) 
+		        visc = 0.5*(p->BalsaraSwitch+q->BalsaraSwitch)*(smf->alpha * (pc + q->c) 
 			    +   smf->beta  * 2 * absmu ) 
 			    * absmu / (pDensity + q->fDensity);
 		        pPdV += rq * (pPoverRho2 + 0.5*visc) * dvdotdr;
@@ -440,7 +512,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
           /* p not active */
 	  for (i=0;i<nSmooth;++i) {
 	        q = nnList[i].pPart;
-		if (!q->iActive) continue; /* neither active */
+		if (!TYPEQueryACTIVE(q)) continue; /* neither active */
 
 	        r2 = nnList[i].fDist2*ih2;
 	        r = sqrt(r2);
@@ -488,7 +560,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			/* mu terms for gas time step */
 			if (absmu>q->mumax) q->mumax=absmu;
                         /* viscosity */
-		        visc = 0.5*(p->divv+q->divv)*(smf->alpha * (pc + q->c) 
+		        visc = 0.5*(p->BalsaraSwitch+q->BalsaraSwitch)*(smf->alpha * (pc + q->c) 
 			    +   smf->beta  * 2 * absmu ) 
 			    * absmu / (pDensity + q->fDensity);
 			q->PdV += rp * (q->PoverRho2 + 0.5*visc) * dvdotdr;
@@ -509,18 +581,22 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 void initDivVort(void *p)
 {
-	((PARTICLE *)p)->divv = 0.0;
-	((PARTICLE *)p)->curlv[0] = 0.0;
-	((PARTICLE *)p)->curlv[1] = 0.0;
-	((PARTICLE *)p)->curlv[2] = 0.0;
+        if (TYPEQueryACTIVE((PARTICLE *) p )) {
+	        ((PARTICLE *)p)->divv = 0.0;
+		((PARTICLE *)p)->curlv[0] = 0.0;
+		((PARTICLE *)p)->curlv[1] = 0.0;
+		((PARTICLE *)p)->curlv[2] = 0.0;
+	        }
 	}
 
 void combDivVort(void *p1,void *p2)
 {
-	((PARTICLE *)p1)->divv += ((PARTICLE *)p2)->divv;
-	((PARTICLE *)p1)->curlv[0] += ((PARTICLE *)p2)->curlv[0];
-	((PARTICLE *)p1)->curlv[1] += ((PARTICLE *)p2)->curlv[1];
-	((PARTICLE *)p1)->curlv[2] += ((PARTICLE *)p2)->curlv[2];
+        if (TYPEQueryACTIVE((PARTICLE *) p1 )) {
+ 	        ((PARTICLE *)p1)->divv += ((PARTICLE *)p2)->divv;
+		((PARTICLE *)p1)->curlv[0] += ((PARTICLE *)p2)->curlv[0];
+		((PARTICLE *)p1)->curlv[1] += ((PARTICLE *)p2)->curlv[1];
+		((PARTICLE *)p1)->curlv[2] += ((PARTICLE *)p2)->curlv[2];
+	        }
 	}
 
 /* Gather only version -- untested */
@@ -534,7 +610,7 @@ void DivVort(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT fNorm,vFac,a2;
 	int i;
 
-	if (!p->iActive) return;
+	if (!TYPEQueryACTIVE( p )) return;
 
 	pDensity = p->fDensity;
 	ih2 = 4.0/BALL2(p);
@@ -603,7 +679,7 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	fNorm = 0.5*M_1_PI*ih2*ih2*sqrt(ih2); 
 	vFac = (smf->bCannonical ? 1./a2 : 1.0); /* converts v to xdot */
 
-	if (p->iActive) {
+	if (TYPEQueryACTIVE( p )) {
 	  /* p active */
 	  for (i=0;i<nSmooth;++i) {
 	        q = nnList[i].pPart;
@@ -635,7 +711,7 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dvz = p->vPred[2] - q->vPred[2];
 		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
 
-		if (q->iActive) {
+		if (TYPEQueryACTIVE( q )) {
      		        /* q active */
 		        rp = rs1 * pMass/pDensity;
 			p->divv -= rq*dvdotdr;
@@ -666,7 +742,7 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
           /* p not active */
 	  for (i=0;i<nSmooth;++i) {
 	        q = nnList[i].pPart;
-		if (!q->iActive) continue; /* neither active */
+		if (!TYPEQueryACTIVE( q )) continue; /* neither active */
 
 	        r2 = nnList[i].fDist2*ih2;
 	        r = sqrt(r2);
@@ -709,40 +785,46 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 /* Original Particle */
 void initHKPressureTermsParticle(void *p)
 {
-	((PARTICLE *)p)->mumax = 0.0;
-	((PARTICLE *)p)->PdV = 0.0;
+        if (TYPEQueryACTIVE((PARTICLE *) p)) {
+ 	         ((PARTICLE *)p)->mumax = 0.0;
+		 ((PARTICLE *)p)->PdV = 0.0;
 #ifdef DEBUG
-	((PARTICLE *)p)->PdVvisc = 0.0;
-	((PARTICLE *)p)->PdVpres = 0.0;
+		 ((PARTICLE *)p)->PdVvisc = 0.0;
+		 ((PARTICLE *)p)->PdVpres = 0.0;
 #endif
+	         }
 	}
 
 /* Cached copies of particle */
 void initHKPressureTerms(void *p)
 {
-	((PARTICLE *)p)->mumax = 0.0;
-	((PARTICLE *)p)->PdV = 0.0;
+        if (TYPEQueryACTIVE((PARTICLE *) p)) {
+	         ((PARTICLE *)p)->mumax = 0.0;
+		 ((PARTICLE *)p)->PdV = 0.0;
 #ifdef DEBUG
-	((PARTICLE *)p)->PdVvisc = 0.0;
-	((PARTICLE *)p)->PdVpres = 0.0;
+		 ((PARTICLE *)p)->PdVvisc = 0.0;
+		 ((PARTICLE *)p)->PdVpres = 0.0;
 #endif
-	((PARTICLE *)p)->a[0] = 0.0;
-	((PARTICLE *)p)->a[1] = 0.0;
-	((PARTICLE *)p)->a[2] = 0.0;
+		 ((PARTICLE *)p)->a[0] = 0.0;
+		 ((PARTICLE *)p)->a[1] = 0.0;
+		 ((PARTICLE *)p)->a[2] = 0.0;
+	         }
 	}
 
 void combHKPressureTerms(void *p1,void *p2)
 {
-	((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
+        if (TYPEQueryACTIVE((PARTICLE *) p1)) {
+	         ((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
 #ifdef DEBUG
-	((PARTICLE *)p1)->PdVvisc += ((PARTICLE *)p2)->PdVvisc;
-	((PARTICLE *)p1)->PdVpres += ((PARTICLE *)p2)->PdVpres;
+		 ((PARTICLE *)p1)->PdVvisc += ((PARTICLE *)p2)->PdVvisc;
+		 ((PARTICLE *)p1)->PdVpres += ((PARTICLE *)p2)->PdVpres;
 #endif
-	if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
-	  ((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
-	((PARTICLE *)p1)->a[0] += ((PARTICLE *)p2)->a[0];
-	((PARTICLE *)p1)->a[1] += ((PARTICLE *)p2)->a[1];
-	((PARTICLE *)p1)->a[2] += ((PARTICLE *)p2)->a[2];	
+		 if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
+		   ((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
+		 ((PARTICLE *)p1)->a[0] += ((PARTICLE *)p2)->a[0];
+		 ((PARTICLE *)p1)->a[1] += ((PARTICLE *)p2)->a[1];
+		 ((PARTICLE *)p1)->a[2] += ((PARTICLE *)p2)->a[2];	
+	         }
 	}
 
 /* Gather only version -- (untested)  */
@@ -756,7 +838,7 @@ void HKPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT fNorm,fNorm1,aFac,vFac,fTmp;
 	int i;
 
-	if (!p->iActive) return;
+	if (!TYPEQueryACTIVE(p)) return;
 
 	pc = p->c;
 	pDensity = p->fDensity;
@@ -887,7 +969,7 @@ void HKPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
 
 		if (dvdotdr>0.0) {
-		  if (p->iActive) {
+		  if (TYPEQueryACTIVE(p)) {
 		        p->PdV += rq * pPoverRho2 * dvdotdr;
 			rq *= (pPoverRho2 + q->PoverRho2);
 			rq *= aFac;
@@ -895,7 +977,7 @@ void HKPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		        p->a[1] -= rq * dy;
 		        p->a[2] -= rq * dz;
 		        }
-		  if (q->iActive) {
+		  if (TYPEQueryACTIVE(q)) {
 			q->PdV += rp * q->PoverRho2 * dvdotdr;
 			rp *= (pPoverRho2 + q->PoverRho2);
 			rp *= aFac; /* convert to comoving acceleration */
@@ -914,7 +996,7 @@ void HKPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		  hav=0.5*(qh+ph);
 		  absmu = -hav*dvdotdr*smf->a 
 			    / (nnList[i].fDist2+0.01*hav*hav);
-		  if (p->iActive) {
+		  if (TYPEQueryACTIVE(p)) {
 			if (absmu>p->mumax) p->mumax=absmu;
 		        p->PdV += rq * (pPoverRho2 + 0.5*visc) * dvdotdr;
 			rq *= (pPoverRho2 + q->PoverRho2 + visc);
@@ -923,7 +1005,7 @@ void HKPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		        p->a[1] -= rq * dy;
 		        p->a[2] -= rq * dz;
 		        }
-		  if (q->iActive) {
+		  if (TYPEQueryACTIVE(q)) {
 			if (absmu>q->mumax) q->mumax=absmu;
 			q->PdV += rp * (q->PoverRho2 + 0.5*visc) * dvdotdr;
 			rp *= (pPoverRho2 + q->PoverRho2 + visc);
@@ -1014,11 +1096,11 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT vx,vy,vz,rdotv,v2,sr,D,dt;
 	int i;
 
-	assert(p->iActive);
+	assert(TYPEQueryACTIVE(p));
 
 	for (i=0;i<nSmooth;++i) {
 		pn = nnList[i].pPart;
-		if (pn == p || !(pn->iActive))
+		if (pn == p || !TYPEQueryACTIVE(pn)))
 			continue;
 		if (COLLISION(pkd->dImpactTime) &&
 			(pkd->Collider1.id.iPid == nnList[i].iPid &&

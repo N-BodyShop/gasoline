@@ -72,6 +72,13 @@ typedef struct msrContext {
 	 */
 	int iTreeType;
 	int bGravityTree;
+        /*
+         * Domain Decomposition Done
+         */
+        int bDoneDomainDecomp;
+        int nActive;
+        int nTreeActive;
+        int nSmoothActive;
 	} * MSR;
 
 
@@ -81,9 +88,11 @@ void msrLogParams(MSR msr, FILE *fp);
 int msrGetLock(MSR msr);
 int msrCheckForStop(MSR msr);
 void msrFinish(MSR);
+int msrReadASCII(MSR, char *, int, double *);
 double msrReadTipsy(MSR);
 void msrWriteTipsy(MSR,char *,double);
 void msrSetSoft(MSR msr,double);
+void msrDomainDecomp(MSR);
 void msrBuildTree(MSR,int,double,int);
 void msrDomainColor(MSR);
 void msrReorder(MSR);
@@ -95,7 +104,6 @@ void msrReSmooth(MSR,double,int,int);
 void msrGravity(MSR,double,int,int *,double *,double *,double *,int *);
 void msrCalcE(MSR,int,double,double *,double *,double *,double *);
 void msrDrift(MSR,double,double);
-void msrDriftRung(MSR,double,double);
 void msrKick(MSR,double,double);
 double msrReadCheck(MSR,int *);
 void msrWriteCheck(MSR,double,int);
@@ -119,7 +127,48 @@ void msrTopStepKDK(MSR msr,
 		   int *piSec);
 
 void msrRungStats(MSR);
+
+/*------------------*/
+/* Active Functions */
+/*------------------*/
 void msrActiveRung(MSR msr, int iRung, int bGreater);
+void msrActiveOrder(MSR msr);
+
+/* Deprecated functions */
+/*
+void msrSmoothActiveRung(MSR msr, int iRung, int bGreater);
+void msrActiveGas(MSR msr);
+void msrActiveDark(MSR msr);
+void msrActiveStar(MSR msr);
+void msrTreeActiveGas(MSR msr);
+void msrTreeActiveDark(MSR msr);
+void msrTreeActiveStar(MSR msr);
+void msrSmoothActiveGas(MSR msr);
+void msrSmoothActiveDark(MSR msr);
+void msrSmoothActiveStar(MSR msr);
+void msrActiveOrder(MSR msr);
+void msrTreeActiveOrder(MSR msr);
+#ifdef SUPERCOOL
+void msrActiveCool(MSR msr);
+void msrTreeActiveCool(MSR msr);
+void msrSmoothActiveCool(MSR msr);
+#endif
+*/
+
+/* Replacement functions */
+void msrResetTouchRung(MSR msr, unsigned int iTestMask, unsigned int iSetMask);
+void msrActiveExactType(MSR msr, unsigned int iFilterMask, unsigned int iTestMask, unsigned int iSetMask);
+void msrActiveType(MSR msr, unsigned int iTestMask, unsigned int iSetMask);
+void msrSetType(MSR msr, unsigned int iTestMask, unsigned int iSetMask);
+void msrResetType(MSR msr, unsigned int iTestMask, unsigned int iSetMask);
+int  msrCountType(MSR msr, unsigned int iFilterMask, unsigned int iTestMask);
+void msrActiveMaskRung(MSR msr, unsigned int iSetMask, int iRung, int bGreater);
+void msrActiveTypeRung(MSR msr, unsigned int iTestMask, unsigned int iSetMask, int iRung, int bGreater);
+void msrActiveTypeOrder(MSR msr, unsigned int iTestMask );
+/*------------------*/
+/* Active Functions */
+/*------------------*/
+
 void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime,
 		     int bAll);
 void msrCoolVelocity(MSR,double,double);
@@ -147,18 +196,21 @@ double msrSoft(MSR);
 int msrDoDensity(MSR);
 int msrDoGravity(MSR msr);
 int msrDoGas(MSR msr);
+int msrFastGas(MSR msr);
 void msrInitStep(MSR msr);
 void msrSetRung(MSR msr, int iRung);
 void msrInitAccel(MSR msr);
 void msrSwitchTheta(MSR msr,double);
 int msrMaxOrder(MSR msr);
 
+void msrInitTimeSteps(MSR,double,double);
+
 #ifdef GASOLINE
-void msrSphTreeActiveRung(MSR msr, int iRung, int bGreater);
 void msrInitSph(MSR,double);
-int msrSphCurrRung(MSR msr, int iRung);
+int msrSphCurrRung(MSR msr, int iRung, int bGreater);
 void msrSphStep(MSR msr, double dTime);
-void msrSphViscosityLimiter(MSR msr, int bOn, double dTime, int bSymmetric);
+void msrSphViscosityLimiter(MSR msr, int bOn, double dTime);
+void msrInitCooling(MSR msr);
 #endif
 #ifdef GLASS
 void msrInitGlass(MSR);

@@ -43,7 +43,7 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 	k1 = M_PI/(alpha2*L*L*L);
 	ka = 2.0*alpha/sqrt(M_PI);
 	for(j=0;j<n;++j) {
-		if (!p[j].iActive) continue;
+		if (!TYPEQueryACTIVE(&(p[j]))) continue;
 		fPot = mom.m*k1;
 		ax = 0.0;
 		ay = 0.0;

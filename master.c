@@ -151,6 +151,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoDensity = 1;
 	prmAddParam(msr->prm,"bDoDensity",0,&msr->param.bDoDensity,sizeof(int),
 				"den","enable/disable density outputs = +den");
+	msr->param.bDohOutput = 1;
+	prmAddParam(msr->prm,"bDohOutput",0,&msr->param.bDohOutput,sizeof(int),
+				"hout","enable/disable h outputs = +hout");
+	msr->param.bDoIonOutput = 1;
+	prmAddParam(msr->prm,"bDoIonOutput",0,&msr->param.bDoIonOutput,sizeof(int),
+				"Iout","enable/disable Ion outputs (cooling only) = +Iout");
 	msr->param.nBucket = 8;
 	prmAddParam(msr->prm,"nBucket",1,&msr->param.nBucket,sizeof(int),"b",
 				"<max number of particles in a bucket> = 8");
@@ -190,6 +196,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dEtaCourant = 0.4;
 	prmAddParam(msr->prm,"dEtaCourant",2,&msr->param.dEtaCourant,sizeof(double),"etaC",
 				"<Courant criterion>");
+	msr->param.duDotLimit = -0.2;
+	prmAddParam(msr->prm,"duDotLimit",2,&msr->param.duDotLimit,sizeof(double),"uDL",
+				"<uDotLimit:  Treat udot/u < duDotLimit specially> = -0.2 < 0");
 	msr->param.bEpsVel = 1;
 	prmAddParam(msr->prm,"bEpsVel",0,&msr->param.bEpsVel,sizeof(int),
 				"ev", "<Epsilon on V (or sqrt(Eps/a)) timestepping>");
@@ -216,7 +225,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dTheta",2,&msr->param.dTheta,sizeof(double),"theta",
 				"<Barnes opening criterion> = 0.8");
 	prmAddParam(msr->prm,"dTheta2",2,&msr->param.dTheta2,sizeof(double),
-				"theta2","<Barnes opening criterion after a Redshift of 2> = 0.8");
+				"theta2","<Barnes opening criterion after a < daSwitchTheta> = 0.8");
+	msr->param.daSwitchTheta = 1./3.;
+	prmAddParam(msr->prm,"daSwitchTheta",2,&msr->param.daSwitchTheta,sizeof(double),"aSwitchTheta",
+				"<a to switch theta at> = 1./3.");
 	msr->param.dAbsPartial = 0.0;
 	prmAddParam(msr->prm,"dAbsPartial",2,&msr->param.dAbsPartial,sizeof(double),"ap",
 				"<absolute partial error opening criterion>");
@@ -314,12 +326,39 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dGrowEndT",2,&msr->param.dGrowEndT,
 		    sizeof(double),
 		    "gmet","<End time for growing mass> = 1.0");
+        msr->param.dFracNoDomainDecomp = 0.0;
+	prmAddParam(msr->prm,"dFracNoDomainDecomp",2,&msr->param.dFracNoDomainDecomp,
+		    sizeof(double),
+		    "fndd","<Fraction of Active Particles for no new DD> = 0.0");
+        msr->param.dMassFracHelium = 0.25;
+	prmAddParam(msr->prm,"dMassFracHelium",2,&msr->param.dMassFracHelium,
+		    sizeof(double),
+		    "hmf","<Primordial Helium Fraction (by mass)> = 0.25");
+        msr->param.dCoolingTmin = 10;
+	prmAddParam(msr->prm,"dCoolingTmin",2,&msr->param.dCoolingTmin,
+		    sizeof(double),
+		    "ctmin","<Minimum Temperature for Cooling> = 10K");
+        msr->param.dCoolingTmax = 1e9;
+	prmAddParam(msr->prm,"dCoolingTmax",2,&msr->param.dCoolingTmax,
+		    sizeof(double),
+		    "ctmax","<Maximum Temperature for Cooling> = 1e9K");
+        msr->param.nCoolingTable = 15001;
+	prmAddParam(msr->prm,"dMassFracHelium",0,&msr->param.nCoolingTable,
+		    sizeof(int),
+		    "nctable","<# Cooling table elements> = 15001");
+
 	msr->param.bDoGravity = 1;
 	prmAddParam(msr->prm,"bDoGravity",0,&msr->param.bDoGravity,sizeof(int),"g",
 				"calculate gravity/don't calculate gravity = +g");
 	msr->param.bDoGas = 1;
 	prmAddParam(msr->prm,"bDoGas",0,&msr->param.bDoGas,sizeof(int),"gas",
 				"calculate gas/don't calculate gas = +gas");
+	msr->param.bUV = 1;
+	prmAddParam(msr->prm,"bUV",0,&msr->param.bUV,sizeof(int),"UV",
+				"read in an Ultra Violet file = +UV");
+	msr->param.bSN = 0;
+	prmAddParam(msr->prm,"bSN",0,&msr->param.bSN,sizeof(int),"SN",
+				"read in a Supernova file = +SN");
 	msr->param.bFandG = 0;
 	prmAddParam(msr->prm,"bFandG",0,&msr->param.bFandG,sizeof(int),"fg",
 				"use/don't use Kepler orbit drifts = -fg");
@@ -387,7 +426,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bBulkViscosity = 0;
 	prmAddParam(msr->prm,"bBulkViscosity",0,&msr->param.bBulkViscosity,sizeof(int),
 				"vlim","Bulk Viscosity");
-
 
 #endif
 #ifdef GLASS
@@ -471,6 +509,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		printf("ERROR: no input file specified\n");
 		_msrExit(msr);
 		}
+
 	/*
 	 ** Should we have restarted, maybe?
 	 */
@@ -506,6 +545,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		msr->param.dzPeriod = msr->param.dPeriod;
 		}
 #ifdef GASOLINE
+	assert(msr->param.duDotLimit <= 0);
+
         if (msr->param.bBulkViscosity) {
 	        if (!prmSpecified(msr->prm,"dConstAlpha"))
                         msr->param.dConstAlpha=0.5;
@@ -563,6 +604,17 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->nOuts = 0;
 
 #ifdef GASOLINE
+	if(msr->param.iGasModel != GASMODEL_COOLING &&
+	   msr->param.iGasModel != GASMODEL_COOLING_NONEQM) {
+	  /* Need these for units: */
+		msr->param.bDoIonOutput = 0;
+                msr->param.bUV = 0;
+		}
+	else {
+                assert (prmSpecified(msr->prm, "dMsolUnit") &&
+			prmSpecified(msr->prm, "dKpcUnit"));
+	        }
+
 	/* bolzman constant in cgs */
 #define KBOLTZ	1.38e-16
 	/* mass of hydrogen atom in grams */
@@ -581,7 +633,16 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	   && prmSpecified(msr->prm, "dKpcUnit")) {
 		msr->param.dGasConst = msr->param.dKpcUnit*KPCCM*KBOLTZ
 			/MHYDR/GCGS/msr->param.dMsolUnit/MSOLG;
+		/* code energy per unit mass --> erg per g */
+		msr->param.dErgPerGmUnit = GCGS*msr->param.dMsolUnit*MSOLG/(msr->param.dKpcUnit*KPCCM);
+		/* code density --> g per cc */
+		msr->param.dGmPerCcUnit = (msr->param.dMsolUnit*MSOLG)/pow(msr->param.dKpcUnit*KPCCM,3.0);
+		/* code time --> seconds */
+		msr->param.dSecUnit = sqrt(1/(msr->param.dGmPerCcUnit*GCGS));
+		/* code comoving density --> g per cc = msr->param.dGmPerCcUnit (1+z)^3 */
+		msr->param.dComovingGmPerCcUnit = msr->param.dGmPerCcUnit;
 		}
+
 #endif
 
 #ifdef COLLISIONS
@@ -672,6 +733,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	 */
 	msr->iTreeType = MSR_TREE_NONE;
 	msr->iCurrMaxRung = 0;
+        /*
+	 ** Mark the Domain Decompositon as not done
+         */
+        msr->bDoneDomainDecomp = 0;
 	}
 
 
@@ -775,15 +840,16 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dEta: %g",msr->param.dEta);
 	fprintf(fp," dEtaCourant: %g",msr->param.dEtaCourant);
 	fprintf(fp," iMaxRung: %d",msr->param.iMaxRung);
-	fprintf(fp," bEpsVel: %d",msr->param.bEpsVel);
+	fprintf(fp,"\n# bEpsVel: %d",msr->param.bEpsVel);
 	fprintf(fp," bSqrtPhi: %d",msr->param.bSqrtPhi);
 	fprintf(fp," bISqrtRho: %d",msr->param.bISqrtRho);
 	fprintf(fp," bNonSymp: %d",msr->param.bNonSymp);
 	fprintf(fp,"\n# bDoGravity: %d",msr->param.bDoGravity);
-	fprintf(fp,"# bDoGas: %d",msr->param.bDoGas);
-	fprintf(fp," bFandG: %d",msr->param.bFandG);
+	fprintf(fp," bDoGas: %d",msr->param.bDoGas);	
+        fprintf(fp," bFandG: %d",msr->param.bFandG);
 	fprintf(fp," bHeliocentric: %d",msr->param.bHeliocentric);
 	fprintf(fp," dCentMass: %g",msr->param.dCentMass);
+	fprintf(fp,"\n# dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
 #ifdef GROWMASS
 	fprintf(fp,"\n# GROWMASS: nGrowMass: %d",msr->param.nGrowMass);
 	fprintf(fp," dGrowDeltaM: %g",msr->param.dGrowDeltaM);
@@ -795,13 +861,13 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," iGasModel: %d",msr->param.iGasModel);
 	fprintf(fp," dConstAlpha: %g",msr->param.dConstAlpha);
 	fprintf(fp," dConstBeta: %g",msr->param.dConstBeta);
-	fprintf(fp," dConstGamma: %g",msr->param.dConstGamma);
+	fprintf(fp,"\n# dConstGamma: %g",msr->param.dConstGamma);
 	fprintf(fp," dMeanMolWeight: %g",msr->param.dMeanMolWeight);
 	fprintf(fp," dGasConst: %g",msr->param.dGasConst);
 	fprintf(fp," dMsolUnit: %g",msr->param.dMsolUnit);
 	fprintf(fp," dKpcUnit: %g",msr->param.dKpcUnit);
-	fprintf(fp,"\n# SPH: bViscosityLimiter: %d",msr->param.bViscosityLimiter);
-	fprintf(fp," SPH: bBulkViscosity: %d",msr->param.bBulkViscosity);
+	fprintf(fp,"\n# bViscosityLimiter: %d",msr->param.bViscosityLimiter);
+	fprintf(fp," bBulkViscosity: %d",msr->param.bBulkViscosity);
 #endif
 #ifdef COLLISIONS
 	fprintf(fp,"\n# Collisions:");
@@ -955,6 +1021,7 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
     char achInFile[PST_FILENAME_SIZE];
     int nid;
     int inswap;
+    struct inSetParticleTypes intype;
 	
     nParts = malloc(msr->nThreads*sizeof(*nParts));
     for (id=0;id<msr->nThreads;++id) {
@@ -1001,6 +1068,8 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
      */
     pkdReadTipsy(plcl->pkd,achInFile,0,nParts[0],in->bStandard,in->dvFac,
 				 in->dTuFac);
+    intype.nSuperCool = msr->param.nSuperCool;
+    pstSetParticleTypes(msr->pst, &intype, sizeof(intype), NULL, NULL);
     }
 
 int xdrHeader(XDR *pxdrs,struct dump *ph)
@@ -1026,6 +1095,7 @@ double msrReadTipsy(MSR msr)
 	char achInFile[PST_FILENAME_SIZE];
 	LCL *plcl = msr->pst->plcl;
 	double dTime,aTo,tTo,z;
+        struct inSetParticleTypes intype;
 	
 	if (msr->param.achInFile[0]) {
 		/*
@@ -1210,6 +1280,8 @@ double msrReadTipsy(MSR msr)
 	    pstReadTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
 	    msrOneNodeReadTipsy(msr, &in);
+        intype.nSuperCool = msr->param.nSuperCool;
+        pstSetParticleTypes(msr->pst, &intype, sizeof(intype), NULL, NULL);
 	if (msr->param.bVDetails) puts("Input file has been successfully read.");
 	/*
 	 ** Now read in the output points, passing the initial time.
@@ -1253,7 +1325,7 @@ void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
      * First write our own particles.
      */
     pkdWriteTipsy(plcl->pkd,achOutFile,plcl->nWriteStart,in->bStandard,
-				  in->dvFac,in->duTFac); 
+				  in->dvFac,in->duTFac,in->iGasModel); 
     nStart = plcl->pkd->nLocal;
 	assert(msr->pMap[0] == 0);
     for (i=1;i<msr->nThreads;++i) {
@@ -1269,7 +1341,7 @@ void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
 		 * Write the swapped particles.
 		 */
 		pkdWriteTipsy(plcl->pkd,achOutFile,nStart,
-					  in->bStandard, in->dvFac, in->duTFac); 
+					  in->bStandard, in->dvFac, in->duTFac,in->iGasModel); 
 		nStart += plcl->pkd->nLocal;
 		/* 
 		 * Swap them back again.
@@ -1329,6 +1401,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 #else
 	in.duTFac = 1.0;
 #endif
+	in.iGasModel = msr->param.iGasModel;
 	/*
 	 ** Assume tipsy format for now.
 	 */
@@ -1389,8 +1462,31 @@ void msrSetSoft(MSR msr,double dSoft)
 	}
 
 
-void msrBuildTree(MSR msr,int bActiveOnly,
-		  double dMass,int bSmooth)
+void msrDomainDecomp(MSR msr)
+{
+        if (msr->bDoneDomainDecomp && msr->nActive < msr->N*msr->param.dFracNoDomainDecomp) {
+	        printf("Skipping Domain Decomposition (nActive = %d/%d)\n",
+                     msr->nActive, msr->N );
+                return;
+                }
+
+	if (msr->param.bVDetails) {
+		int sec,dsec;
+		printf("nActive %d nTreeActive %d nSmoothActive %d\n",msr->nActive,msr->nTreeActive,msr->nSmoothActive);
+		printf("Domain Decomposition...\n");
+		sec = time(0);
+		pstDomainDecomp(msr->pst,NULL, 0,NULL,NULL);
+                msr->bDoneDomainDecomp = 1; 
+		dsec = time(0) - sec;
+		printf("Domain Decomposition complete, Wallclock: %d secs\n\n",dsec);
+		}
+	else {
+		pstDomainDecomp(msr->pst,NULL, 0,NULL,NULL);
+                msr->bDoneDomainDecomp = 1; 
+		}
+        }
+
+void msrBuildTree(MSR msr,int bActiveOnly, double dMass,int bSmooth)
 {
 	struct inBuildTree in;
 	struct outBuildTree out;
@@ -1399,25 +1495,12 @@ void msrBuildTree(MSR msr,int bActiveOnly,
 	KDN *pkdn;
 	int iDum,nCell;
 
-	if (msr->param.bVDetails) {
-		int sec,dsec;
-		printf("Domain Decomposition...\n");
-		sec = time(0);
-		pstDomainDecomp(msr->pst,NULL,0,NULL,NULL);
-		msrMassCheck(msr,dMass,"After pstDomainDecomp in msrBuildTree");
-		dsec = time(0) - sec;
-		printf("Domain Decomposition complete, Wallclock: %d secs\n\n",dsec);
-		printf("Building local trees...\n");
-		}
-	else {
-		pstDomainDecomp(msr->pst,NULL,0,NULL,NULL);
-		msrMassCheck(msr,dMass,"After pstDomainDecomp in msrBuildTree");
-		}
+	if (msr->param.bVDetails) printf("Building local trees...\n");
 
 	/*
 	 ** First make sure the particles are in Active/Inactive order.
 	 */
-	pstActiveOrder(msr->pst,NULL,0,NULL,NULL);
+	msrActiveTypeOrder(msr, TYPE_ACTIVE|TYPE_TREEACTIVE );
 	in.nBucket = msr->param.nBucket;
 	in.iOpenType = msr->iOpenType;
 	in.iOrder = (msr->param.iOrder >= msr->param.iEwOrder)?
@@ -1446,6 +1529,7 @@ void msrBuildTree(MSR msr,int bActiveOnly,
 		int sec,dsec;
 		sec = time(0);
 		pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
+	        printf("Done pstBuildTree\n");
 		msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
 		dsec = time(0) - sec;
 		printf("Tree built, Wallclock: %d secs\n\n",dsec);
@@ -1522,10 +1606,14 @@ void msrReorder(MSR msr)
 		pstDomainOrder(msr->pst,&in,sizeof(in),NULL,NULL);
 		pstLocalOrder(msr->pst,NULL,0,NULL,NULL);
 		}
-	/*
+ 	/*
 	 ** Mark tree as void.
 	 */
 	msr->iTreeType = MSR_TREE_NONE;
+ 	/*
+	 ** Mark domain decomp as not done.
+	 */
+	msr->bDoneDomainDecomp = 0;
 	}
 
 
@@ -1673,19 +1761,19 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 
 void msrGetGasPressure(MSR msr)
 {
-  GASPARAMETERS in;
+  struct inGetGasPressure in;
   
   in.iGasModel = (enum GasModel) msr->param.iGasModel;
 
   switch ( in.iGasModel ) {
 
   case GASMODEL_ADIABATIC:
+  case GASMODEL_COOLING:
+  case GASMODEL_COOLING_NONEQM:
     in.gamma = msr->param.dConstGamma;
     in.gammam1 = in.gamma-1;
     break;
   case GASMODEL_ISOTHERMAL:
-  case GASMODEL_IONEQM:
-  case GASMODEL_IONEVOLVE:
     assert(0);
     break;
   case GASMODEL_GLASS:
@@ -1735,6 +1823,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.bGeometric = msr->param.bGeometric;
 	in.smf.bCannonical = msr->param.bCannonical;
 #endif
+        in.smf.bGrowSmoothList = 0;
 	if (msr->param.bVStep) {
 		int sec,dsec;
 		printf("Smoothing...\n");
@@ -1769,11 +1858,15 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   	        in.smf.H = 0.0;
 	        in.smf.a = 1.0;
 	        }
+#ifdef GASOLINE
 	in.smf.alpha = msr->param.dConstAlpha;
 	in.smf.beta = msr->param.dConstBeta;
 	in.smf.gamma = msr->param.dConstGamma;
 	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
 	in.smf.bGeometric = msr->param.bGeometric;
+	in.smf.bCannonical = msr->param.bCannonical;
+#endif
+        in.smf.bGrowSmoothList = 0;
 	if (msr->param.bVStep) {
 		int sec,dsec;
 		printf("ReSmoothing...\n");
@@ -1784,6 +1877,49 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 		}
 	else {
 		pstReSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
+		}
+	}
+
+
+void msrMarkSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
+{
+	struct inReSmooth in;
+
+	/*
+	 ** Make sure that the type of tree is a density binary tree!
+	 */
+	assert(msr->iTreeType == MSR_TREE_DENSITY);
+	in.nSmooth = msr->param.nSmooth;
+	in.bPeriodic = msr->param.bPeriodic;
+	in.bSymmetric = bSymmetric;
+	in.iSmoothType = iSmoothType;
+	if (msr->param.csm->bComove) {
+  	        in.smf.H = csmTime2Hub(msr->param.csm,dTime);
+	        in.smf.a = csmTime2Exp(msr->param.csm,dTime);
+	        }
+        else {
+  	        in.smf.H = 0.0;
+	        in.smf.a = 1.0;
+	        }
+#ifdef GASOLINE
+	in.smf.alpha = msr->param.dConstAlpha;
+	in.smf.beta = msr->param.dConstBeta;
+	in.smf.gamma = msr->param.dConstGamma;
+	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
+	in.smf.bGeometric = msr->param.bGeometric;
+	in.smf.bCannonical = msr->param.bCannonical;
+#endif
+        in.smf.bGrowSmoothList = 0;
+	if (msr->param.bVStep) {
+		int sec,dsec;
+		printf("MarkSmoothing...\n");
+		sec = time(0);
+		pstMarkSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
+		dsec = time(0) - sec;
+		printf("MarkSmooth Calculated, Wallclock:%d secs\n\n",dsec);
+		}
+	else {
+		pstMarkSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
 		}
 	}
 
@@ -1946,10 +2082,12 @@ void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U,doub
 void msrDrift(MSR msr,double dTime,double dDelta)
 {
 	struct inDrift in;
+	struct outKick out;
 	int j;
 #ifdef GASOLINE
 	double H,a;
 	struct inKickVpred invpr;
+	struct inKickRhopred inRhop;
 #endif
 
 #ifdef COLLISIONS
@@ -1976,6 +2114,20 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	msr->iTreeType = MSR_TREE_NONE;
 	
 #ifdef GASOLINE
+#ifdef PREDRHO
+	if (msr->param.bPredRho == 2) {
+	        if (msr->param.bComove) 
+  	                 inRhop.dHubbFac = 3*csmTime2Hub(msr->param.csm, dTime + dDelta/2.0);
+                else
+		         inRhop.dHubbFac = 0.0;
+
+		inRhop.dDelta = dDelta;
+
+		/* Non Active Gas particles need to have updated densities */
+		pstKickRhopred(msr->pst,&inRhop,sizeof(inRhop),NULL,NULL);
+                }
+#endif
+
 	if (msr->param.bCannonical) {
 #ifdef GLASS	  
 	        invpr.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
@@ -1983,9 +2135,12 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.dvFacOne = 1.0;	/* no hubble drag, man! */
 #endif
 		invpr.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
-#ifdef GASOLINE
-		invpr.duFac    = dDelta;
-#endif
+		invpr.duDelta  = dDelta;
+		invpr.iGasModel = msr->param.iGasModel;
+		dTime += dDelta/2.0;
+		a = csmTime2Exp(msr->param.csm,dTime);
+		invpr.z = 1/a - 1;
+		invpr.duDotLimit = msr->param.duDotLimit;
 	        }
 	else {
 		/*
@@ -1998,82 +2153,21 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		H = csmTime2Hub(msr->param.csm,dTime);
 		invpr.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		invpr.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
-#ifdef GASOLINE
-		invpr.duFac    = dDelta;
-#endif
+		invpr.duDelta  = dDelta;
+		invpr.iGasModel = msr->param.iGasModel;
+		invpr.z = 1/a - 1;
+		invpr.duDotLimit = msr->param.duDotLimit;
 		}
-	pstKickVpred(msr->pst,&invpr,sizeof(invpr),NULL,NULL);
+	pstKickVpred(msr->pst,&invpr,sizeof(invpr),&out,NULL);
+	printf("Drift (Vpred): Avg Wallclock %f, Max Wallclock %f\n",
+	       out.SumTime/out.nSum,out.MaxTime);
 #endif
 	}
 
-void msrDriftRung(MSR msr,double dTime,double dDelta)
-{
-	struct inDrift in;
-	int j;
-#ifdef GASOLINE
-	double H,a;
-	struct inKickVpred invpr;
-#endif
-
-#ifdef COLLISIONS
-	msrDoCollisions(msr,dTime,dDelta);
-#endif /* COLLISIONS */
-
-	if (msr->param.bCannonical) {
-		in.dDelta = csmComoveDriftFac(msr->param.csm,dTime,dDelta);
-		}
-	else {
-		in.dDelta = dDelta;
-		}
-	for (j=0;j<3;++j) {
-		in.fCenter[j] = msr->fCenter[j];
-		}
-	in.bPeriodic = msr->param.bPeriodic;
-	in.bFandG = msr->param.bFandG; /* for NOW! */
-	in.fCentMass = msr->param.dCentMass;
-	pstDriftRung(msr->pst,&in,sizeof(in),NULL,NULL);
-	/*
-	 ** Once we move the particles the tree should no longer be considered 
-	 ** valid.
-	 */
-	msr->iTreeType = MSR_TREE_NONE;
-	
-#ifdef GASOLINE
-	if (msr->param.bCannonical) {
-#ifdef GLASS	  
-	        invpr.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
-#else
-		invpr.dvFacOne = 1.0;	/* no hubble drag, man! */
-#endif
-		invpr.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
-#ifdef GASOLINE
-		invpr.duFac    = dDelta;
-#endif
-		}
-	else {
-		/*
-		 ** Careful! For non-cannonical we want H and a at the 
-		 ** HALF-STEP! This is a bit messy but has to be special
-		 ** cased in some way.
-		 */
-		dTime += dDelta/2.0;
-		a = csmTime2Exp(msr->param.csm,dTime);
-		H = csmTime2Hub(msr->param.csm,dTime);
-		invpr.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
-		invpr.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
-#ifdef GASOLINE
-		invpr.duFac    = dDelta;
-#endif
-		}
-	pstKickVpredRung(msr->pst,&invpr,sizeof(invpr),NULL,NULL);
-#endif
-	}
-
-/* Untested after TreeActive changes */
+/* Untested */
 void msrCoolVelocity(MSR msr,double dTime,double dMass)
 {
 #ifdef SUPERCOOL
-	struct inActiveCool ina;
 	struct inCoolVelocity in;
 	
 	if (msr->param.nSuperCool > 0) {
@@ -2081,9 +2175,9 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 		 ** Activate all for densities if bSymCool == 0
 		 */
 		if (msr->param.bSymCool) {
-			ina.nSuperCool = msr->param.nSuperCool;
-			pstActiveCool(msr->pst,&ina,sizeof(ina),NULL,NULL);
-			pstTreeActiveCool(msr->pst,&ina,sizeof(ina),NULL,NULL);
+			msrActiveType(msr, TYPE_SUPERCOOL, TYPE_ACTIVE );
+			msrActiveType(msr, TYPE_ALL, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+                        msrDomainDecomp(msr);
 			msrBuildTree(msr,1,dMass,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
 			msrReSmooth(msr,dTime,SMX_MEANVEL,1);
@@ -2094,12 +2188,12 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 			 ** the particles so that the mean velocity can be 
 			 ** calculated.
 			 */
-			msrActiveRung(msr,0,1); /* activate all */
-			msrTreeActiveRung(msr,0,1); /* activate all */
+                        /* activate all */
+			msrActiveTypeRung(msr, TYPE_SUPERCOOL, TYPE_ACTIVE, 0,1); 
+			msrActiveType(msr, TYPE_ALL, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+                        msrDomainDecomp(msr);
 			msrBuildTree(msr,0,SMX_DENSITY,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,0);
-			ina.nSuperCool = msr->param.nSuperCool;
-			pstActiveCool(msr->pst,&ina,sizeof(ina),NULL,NULL);
 			msrReSmooth(msr,dTime,SMX_MEANVEL,0);
 			}
 		/*
@@ -2134,6 +2228,7 @@ void msrKick(MSR msr,double dTime,double dDelta)
 {
 	double H,a;
 	struct inKick in;
+	struct outKick out;
 	
         if (msr->param.bCannonical) {
 #ifdef GLASS	  
@@ -2143,7 +2238,13 @@ void msrKick(MSR msr,double dTime,double dDelta)
 #endif
 		in.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
 #ifdef GASOLINE
-		in.duFac    = dDelta;
+		in.duDelta    = dDelta;
+		in.duPredDelta = dDelta;
+		in.iGasModel = msr->param.iGasModel;
+		dTime += dDelta/2.0;
+		a = csmTime2Exp(msr->param.csm,dTime);
+		in.z = 1/a - 1;
+		in.duDotLimit = msr->param.duDotLimit;
 #endif
 		}
 	else {
@@ -2158,10 +2259,16 @@ void msrKick(MSR msr,double dTime,double dDelta)
 		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
 #ifdef GASOLINE
-		in.duFac    = dDelta;
+		in.duDelta    = dDelta;
+		in.duPredDelta = dDelta;
+		in.iGasModel = msr->param.iGasModel;
+		in.z = 1/a - 1;
+		in.duDotLimit = msr->param.duDotLimit;
 #endif
 		}
-	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
+	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
+	printf("Kick: Avg Wallclock %f, Max Wallclock %f\n",
+	       out.SumTime/out.nSum,out.MaxTime);
 	}
 
 /*
@@ -2171,6 +2278,7 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 {
 	double H,a;
 	struct inKick in;
+	struct outKick out;
 	
 	if (msr->param.bCannonical) {
 #ifdef GLASS	  
@@ -2185,10 +2293,14 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 #else
 		in.dvPredFacOne = 1.0;
 #endif
-		in.dvPredFacTwo = csmComoveKickFac(msr->param.csm,
-						   dTime, 0.5*dDelta);
-		in.duFac     = dDelta;
-		in.duPredFac = 0.5*dDelta;
+		in.dvPredFacTwo = csmComoveKickFac(msr->param.csm,dTime,0.5*dDelta);
+		in.duDelta      = dDelta;
+		in.duPredDelta  = 0.5*dDelta;
+		in.iGasModel = msr->param.iGasModel;
+		dTime += dDelta/2.0;
+		a = csmTime2Exp(msr->param.csm,dTime);
+		in.z = 1/a - 1;
+		in.duDotLimit = msr->param.duDotLimit;
 #endif
 		}
 	else {
@@ -2209,11 +2321,16 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 
 		in.dvPredFacOne = (1.0 - 0.5*H*dDelta)/(1.0 + 0.5*H*dDelta);
 		in.dvPredFacTwo = 0.5*dDelta/pow(a,3.0)/(1.0 + 0.5*H*dDelta);
-		in.duFac     = dDelta;
-		in.duPredFac = 0.5*dDelta;
+		in.duDelta      = dDelta;
+		in.duPredDelta  = 0.5*dDelta;
+		in.iGasModel = msr->param.iGasModel;
+		in.z = 1/a - 1;
+		in.duDotLimit = msr->param.duDotLimit;
 #endif
 		}
-	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
+	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
+	printf("Kick: Avg Wallclock %f, Max Wallclock %f\n",
+	       out.SumTime/out.nSum,out.MaxTime);
 	}
 
 /*
@@ -2223,6 +2340,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 {
 	double H,a;
 	struct inKick in;
+	struct outKick out;
 	
 	if (msr->param.bCannonical) {
 #ifdef GLASS	  
@@ -2238,8 +2356,13 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.dvPredFacOne = 1.0;
 #endif
 		in.dvPredFacTwo = 0.0;
-		in.duFac        = dDelta;
-		in.duPredFac    = 0.0;
+		in.duDelta      = dDelta;
+		in.duPredDelta  = 0.0;
+		in.iGasModel = msr->param.iGasModel;
+		dTime += dDelta/2.0;
+		a = csmTime2Exp(msr->param.csm,dTime);
+		in.z = 1/a - 1;
+		in.duDotLimit = msr->param.duDotLimit;
 #endif
 		}
 	else {
@@ -2256,11 +2379,16 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 #ifdef GASOLINE
 		in.dvPredFacOne = 1.0;
 		in.dvPredFacTwo = 0.0;
-		in.duFac        = dDelta;
-		in.duPredFac    = 0.0;
+		in.duDelta      = dDelta;
+		in.duPredDelta  = 0.0;
+		in.iGasModel = msr->param.iGasModel;
+		in.z = 1/a - 1;
+		in.duDotLimit = msr->param.duDotLimit;
 #endif
 		}
-	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
+	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
+	printf("KickOpen: Avg Wallclock %f, Max Wallclock %f\n",
+	       out.SumTime/out.nSum,out.MaxTime);
 	}
 
 /*
@@ -2270,6 +2398,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 {
 	double H,a;
 	struct inKick in;
+	struct outKick out;
 	
 	if (msr->param.bCannonical) {
 #ifdef GLASS	  
@@ -2285,8 +2414,13 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.dvPredFacOne = 1.0;
 #endif
 		in.dvPredFacTwo = in.dvFacTwo;
-		in.duFac        = dDelta;
-		in.duPredFac    = dDelta;
+		in.duDelta      = dDelta;
+		in.duPredDelta  = dDelta;
+		in.iGasModel = msr->param.iGasModel;
+		dTime += dDelta/2.0;
+		a = csmTime2Exp(msr->param.csm,dTime);
+		in.z = 1/a - 1;
+		in.duDotLimit = msr->param.duDotLimit;
 #endif
 		}
 	else {
@@ -2303,11 +2437,16 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 #ifdef GASOLINE
 		in.dvPredFacOne = in.dvFacOne;
 		in.dvPredFacTwo = in.dvFacTwo;
-		in.duFac        = dDelta;
-		in.duPredFac    = dDelta;
+		in.duDelta      = dDelta;
+		in.duPredDelta  = dDelta;
+		in.iGasModel = msr->param.iGasModel;
+		in.z = 1/a - 1;
+		in.duDotLimit = msr->param.duDotLimit;
 #endif
 		}
-	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
+	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
+	printf("KickClose: Avg Wallclock %f, Max Wallclock %f\n",
+	       out.SumTime/out.nSum,out.MaxTime);
 	}
 
 void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
@@ -2380,6 +2519,7 @@ double msrReadCheck(MSR msr,int *piStep)
 {
 	struct inReadCheck in;
 	struct inSetNParts inset;
+	struct inSetParticleTypes intype;
 	char achInFile[PST_FILENAME_SIZE];
 	int i;
 	LCL *plcl = msr->pst->plcl;
@@ -2534,6 +2674,20 @@ double msrReadCheck(MSR msr,int *piStep)
 		if (!prmSpecified(msr->prm,"dTheta2"))
 			msr->param.dTheta2 = msr->dCrit;
 		}
+	if (iVersion > 5) {
+	        if (!prmSpecified(msr->prm,"bDoGravity"))
+	                FDL_read(fdl,"bDoGravity",&msr->param.bDoGravity);
+	        if (!prmSpecified(msr->prm,"bDoGas"))
+	                FDL_read(fdl,"bDoGas",&msr->param.bDoGas);
+	        if (!prmSpecified(msr->prm,"dEtaCourant"))
+	                FDL_read(fdl,"dEtaCourant",&msr->param.dEtaCourant);
+	        if (!prmSpecified(msr->prm,"iStartStep"))
+	                FDL_read(fdl,"iStartStep",&msr->param.iStartStep);
+	        if (!prmSpecified(msr->prm,"dFracNoDomainDecomp"))
+	                FDL_read(fdl,"dFracNoDomainDecomp",&msr->param.dFracNoDomainDecomp);
+	        if (!prmSpecified(msr->prm,"dMassFracHelium"))
+	                FDL_read(fdl,"dMassFracHelium",&msr->param.dMassFracHelium);
+	        }
 	if (iVersion > 3) {
 	    FDL_read(fdl, "max_order", &msr->nMaxOrder);
 	    FDL_read(fdl, "max_order_gas", &msr->nMaxOrderGas);
@@ -2619,6 +2773,8 @@ double msrReadCheck(MSR msr,int *piStep)
 	inset.nMaxOrderGas = msr->nMaxOrderGas;
 	inset.nMaxOrderDark = msr->nMaxOrderDark;
 	pstSetNParts(msr->pst, &inset, sizeof(inset), NULL, NULL);
+        intype.nSuperCool = msr->param.nSuperCool;
+	pstSetParticleTypes(msr->pst, &intype, sizeof(intype), NULL, NULL);
 	/*
 	 ** Set up the output counter.
 	 */
@@ -2704,7 +2860,10 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	 */
 	_msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
 	pszFdl = getenv("PKDGRAV_CHECKPOINT_FDL");
-	assert(pszFdl != NULL);
+	if (pszFdl == NULL) {
+          fprintf(stderr,"PKDGRAV_CHECKPOINT_FDL environment variable not set\n");
+          return;
+        }	  
 	fdl = FDL_create(achOutFile,pszFdl);
 	iVersion = CHECKPOINT_VERSION;
 	FDL_write(fdl,"version",&iVersion);
@@ -2743,6 +2902,8 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"bStandard",&msr->param.bStandard);
 	FDL_write(fdl,"bKDK",&msr->param.bKDK);
 	FDL_write(fdl,"bBinary",&msr->param.bBinary);
+	FDL_write(fdl,"bDoGravity",&msr->param.bDoGravity);
+	FDL_write(fdl,"bDoGas",&msr->param.bDoGas);
 	FDL_write(fdl,"bFandG",&msr->param.bFandG);
 	FDL_write(fdl,"bHeliocentric",&msr->param.bHeliocentric);
 	FDL_write(fdl,"bLogHalo",&msr->param.bLogHalo);
@@ -2755,11 +2916,12 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"iExpOrder",&msr->param.iOrder);
 	FDL_write(fdl,"iEwOrder",&msr->param.iEwOrder);
 	FDL_write(fdl,"nReplicas",&msr->param.nReplicas);
+	FDL_write(fdl,"iStartStep",&msr->param.iStartStep);
 	FDL_write(fdl,"nSteps",&msr->param.nSteps);
 	FDL_write(fdl,"dExtraStore",&msr->param.dExtraStore);
 	FDL_write(fdl,"dDelta",&msr->param.dDelta);
 	FDL_write(fdl,"dEta",&msr->param.dEta);
-	FDL_write(fdl,"dEtaCourant",&msr->param.dEta);
+	FDL_write(fdl,"dEtaCourant",&msr->param.dEtaCourant);
 	FDL_write(fdl,"bEpsVel",&msr->param.bEpsVel);
 	FDL_write(fdl,"bNonSymp",&msr->param.bNonSymp);
 	FDL_write(fdl,"iMaxRung",&msr->param.iMaxRung);
@@ -2776,6 +2938,8 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"dTheta",&msr->param.dTheta);
 	FDL_write(fdl,"dTheta2",&msr->param.dTheta2);
 	FDL_write(fdl,"dCentMass",&msr->param.dCentMass);
+	FDL_write(fdl,"dMassFracHelium",&msr->param.dMassFracHelium);
+	FDL_write(fdl,"dFracNoDomainDecomp",&msr->param.dFracNoDomainDecomp);
 	if (msr->param.bVDetails)
 		printf("Writing checkpoint file...\nTime:%g\n",dTime);
 	/*
@@ -2968,7 +3132,7 @@ void msrSwitchTheta(MSR msr,double dTime)
 	double a;
 
 	a = csmTime2Exp(msr->param.csm,dTime);
-	if (a >= 1.0/3.0) msr->dCrit = msr->param.dTheta2; 
+	if (a >= msr->param.daSwitchTheta) msr->dCrit = msr->param.dTheta2; 
 	}
 
 
@@ -3044,9 +3208,140 @@ void msrActiveRung(MSR msr, int iRung, int bGreater)
 
     in.iRung = iRung;
     in.bGreater = bGreater;
-    pstActiveRung(msr->pst, &in, sizeof(in), NULL, NULL);
+    pstActiveRung(msr->pst, &in, sizeof(in), &(msr->nActive), NULL);
     }
 
+void msrActiveTypeOrder(MSR msr, unsigned int iTestMask )
+{
+    struct inActiveTypeOrder in;
+    int nActive;
+
+    in.iTestMask = iTestMask;
+    pstActiveTypeOrder(msr->pst,&in,sizeof(in),&nActive,NULL);
+
+    if (iTestMask & TYPE_ACTIVE)       msr->nActive       = nActive;
+    if (iTestMask & TYPE_TREEACTIVE)   msr->nTreeActive   = nActive;
+    if (iTestMask & TYPE_SMOOTHACTIVE) msr->nSmoothActive = nActive;
+    }
+
+void msrActiveOrder(MSR msr)
+{
+    pstActiveOrder(msr->pst,NULL,0,&(msr->nActive),NULL);
+    }
+
+void msrResetTouchRung(MSR msr, unsigned int iTestMask, unsigned int iSetMask) 
+{
+    struct inResetTouchRung in;
+    int nActive;
+
+    in.iTestMask = iTestMask;
+    in.iSetMask = iSetMask;
+
+    pstResetTouchRung(msr->pst,&in,sizeof(in),&nActive,NULL);
+    }
+
+void msrActiveExactType(MSR msr, unsigned int iFilterMask, unsigned int iTestMask, unsigned int iSetMask) 
+{
+    struct inActiveType in;
+    int nActive;
+
+    in.iFilterMask = iFilterMask;
+    in.iTestMask = iTestMask;
+    in.iSetMask = iSetMask;
+
+    pstActiveExactType(msr->pst,&in,sizeof(in),&nActive,NULL);
+
+    if (iSetMask & TYPE_ACTIVE      ) msr->nActive       = nActive;
+    if (iSetMask & TYPE_TREEACTIVE  ) msr->nTreeActive   = nActive;
+    if (iSetMask & TYPE_SMOOTHACTIVE) msr->nSmoothActive = nActive;
+    }
+
+void msrActiveType(MSR msr, unsigned int iTestMask, unsigned int iSetMask) 
+{
+    struct inActiveType in;
+    int nActive;
+
+    in.iTestMask = iTestMask;
+    in.iSetMask = iSetMask;
+
+    pstActiveType(msr->pst,&in,sizeof(in),&nActive,NULL);
+
+    if (iSetMask & TYPE_ACTIVE      ) msr->nActive       = nActive;
+    if (iSetMask & TYPE_TREEACTIVE  ) msr->nTreeActive   = nActive;
+    if (iSetMask & TYPE_SMOOTHACTIVE) msr->nSmoothActive = nActive;
+    }
+
+void msrSetType(MSR msr, unsigned int iTestMask, unsigned int iSetMask) 
+{
+    struct inActiveType in;
+    int nActive;
+
+    in.iTestMask = iTestMask;
+    in.iSetMask = iSetMask;
+
+    pstSetType(msr->pst,&in,sizeof(in),&nActive,NULL);
+
+    }
+
+void msrResetType(MSR msr, unsigned int iTestMask, unsigned int iSetMask) 
+{
+    struct inActiveType in;
+    int nActive;
+
+    in.iTestMask = iTestMask;
+    in.iSetMask = iSetMask;
+
+    pstResetType(msr->pst,&in,sizeof(in),&nActive,NULL);
+
+    if (msr->param.bVDetails) printf("nResetType: %d\n",nActive);
+    }
+
+int msrCountType(MSR msr, unsigned int iFilterMask, unsigned int iTestMask) 
+{
+    struct inActiveType in;
+    int nActive;
+
+    in.iFilterMask = iFilterMask;
+    in.iTestMask = iTestMask;
+
+    pstCountType(msr->pst,&in,sizeof(in),&nActive,NULL);
+
+    return nActive;
+    }
+
+void msrActiveMaskRung(MSR msr, unsigned int iSetMask, int iRung, int bGreater) 
+{
+    struct inActiveType in;
+    int nActive;
+
+    in.iTestMask = (~0);
+    in.iSetMask = iSetMask;
+    in.iRung = iRung;
+    in.bGreater = bGreater;
+
+    pstActiveMaskRung(msr->pst,&in,sizeof(in),&nActive,NULL);
+
+    if (iSetMask & TYPE_ACTIVE      ) msr->nActive       = nActive;
+    if (iSetMask & TYPE_TREEACTIVE  ) msr->nTreeActive   = nActive;
+    if (iSetMask & TYPE_SMOOTHACTIVE) msr->nSmoothActive = nActive;
+    }
+
+void msrActiveTypeRung(MSR msr, unsigned int iTestMask, unsigned int iSetMask, int iRung, int bGreater) 
+{
+    struct inActiveType in;
+    int nActive;
+
+    in.iTestMask = iTestMask;
+    in.iSetMask = iSetMask;
+    in.iRung = iRung;
+    in.bGreater = bGreater;
+
+    pstActiveTypeRung(msr->pst,&in,sizeof(in),&nActive,NULL);
+
+    if (iSetMask & TYPE_ACTIVE      ) msr->nActive       = nActive;
+    if (iSetMask & TYPE_TREEACTIVE  ) msr->nTreeActive   = nActive;
+    if (iSetMask & TYPE_SMOOTHACTIVE) msr->nSmoothActive = nActive;
+    }
 
 int msrCurrRung(MSR msr, int iRung)
 {
@@ -3127,8 +3422,8 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 	if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
 	    if(iRung < msrMaxRung(msr)-1) {
 			if (msr->param.bVDetails) printf("Adjust, iRung: %d\n", iRung);
-			msrDrift(msr,dTime,0.5*dDelta);
 			msrActiveRung(msr, iRung, 1);
+			msrDrift(msr,dTime,0.5*dDelta);
 			dTime += 0.5*dDelta;
 			msrInitDt(msr);
 #ifdef COLLISIONS
@@ -3136,11 +3431,13 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 #endif
 			if(msr->param.bEpsVel || msr->param.bSqrtPhi) {
 			    msrInitAccel(msr);
+			    msrDomainDecomp(msr);
 			    msrBuildTree(msr,0,dMass,0);
 			    msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			    msrAccelStep(msr, dTime);
 			    }
 			if(msr->param.bISqrtRho) {
+			    msrDomainDecomp(msr);
 			    msrBuildTree(msr,0,dMass,1);
 			    msrDensityStep(msr, dTime);
 			    }
@@ -3156,9 +3453,11 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 		msrActiveRung(msr, iRung, 0);
 		msrInitAccel(msr);
 #ifdef GASOLINE
-		if(msrSphCurrRung(msr, iRung)) {
+		if(msrSphCurrRung(msr, iRung, 0)) {
 			if (msr->param.bVDetails) printf("SPH, iRung: %d\n", iRung);
-            	        msrSphTreeActiveRung(msr, iRung, 0);
+           	        msrActiveTypeRung(msr, TYPE_GAS, TYPE_ACTIVE, iRung, 0 );
+                        msrDomainDecomp(msr);
+           	        msrActiveType(msr, TYPE_GAS, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 			msrBuildTree(msr,1,-1.0,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
 			if (msrDoGas(msr)) {
@@ -3169,7 +3468,8 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 			    msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
 			    }
 			  else {
-  			    msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime,1);
+                            if (msr->param.bViscosityLimiter) msrReSmooth(msr, dTime, SMX_DIVVORT, 1);
+  			    msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime);
 			    msrGetGasPressure(msr);
 			    msrActiveRung(msr, iRung, 0);
 			    msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
@@ -3180,6 +3480,7 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 		if(msrCurrRung(msr, iRung)) {
 		    if(msrDoGravity(msr)) {
    		        if (msr->param.bVDetails) printf("Gravity, iRung: %d\n", iRung);
+                        msrDomainDecomp(msr);
 			msrBuildTree(msr,0,dMass,0);
 			msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
@@ -3228,6 +3529,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 		if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
 			if (msr->param.bVDetails) printf("Adjust, iRung: %d\n", iRung);
 			msrActiveRung(msr, iRung, 1);
+ 			msrActiveType(msr, TYPE_ALL, TYPE_SMOOTHACTIVE|TYPE_TREEACTIVE );
 			msrInitDt(msr);
 #ifdef HILL_STEP
 			msrHillStep(msr);
@@ -3236,12 +3538,14 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			    msrAccelStep(msr, dTime);
 			    }
 			if(msr->param.bISqrtRho) {
+                            msrDomainDecomp(msr);
 			    msrBuildTree(msr,0,dMass,1);
 			    msrDensityStep(msr, dTime);
 			    }
 #endif
 /*DEBUG out of date
 #ifdef SMOOTH_STEP
+                        msrDomainDecomp(msr);
 			msrBuildTree(msr,0,dMass,1);
 			msrSmooth(msr,dTime,SMX_TIMESTEP,0);
 #endif
@@ -3257,24 +3561,25 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 		msrTopStepNS(msr, dStep, dTime, 0.5*dDelta,iRung+1, 0, pdActiveSum);
 		dStep += 1.0/(2 << iRung);
 		msrActiveRung(msr, iRung, 0);
+                msrDomainDecomp(msr);
 		msrInitAccel(msr);
 #ifdef GASOLINE
-		if(msrSphCurrRung(msr, iRung)) {
+		if(msrSphCurrRung(msr, iRung, 0)) {
 			if (msr->param.bVDetails) printf("SPH, iRung: %d\n", iRung);
-            	        msrSphTreeActiveRung(msr, iRung, 0);
+           	        msrActiveTypeRung(msr, TYPE_GAS, TYPE_ACTIVE, iRung, 0 );
+           	        msrActiveType(msr, TYPE_GAS, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 			msrBuildTree(msr,1,-1.0,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
 			if (msrDoGas(msr)) {
  			   if (msr->param.bBulkViscosity) {
   			       msrReSmooth(msr,dTime,SMX_DIVVORT,1);
 			       msrGetGasPressure(msr);
-			       msrActiveRung(msr, iRung, 0);
 			       msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
 			       } 
 			   else {
-			       msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime,1);
+                               if (msr->param.bViscosityLimiter) msrReSmooth(msr, dTime, SMX_DIVVORT, 1);
+			       msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime);
 			       msrGetGasPressure(msr);
-			       msrActiveRung(msr, iRung, 0); 
 			       msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
 			       }
 			   }
@@ -3283,6 +3588,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 		if(msrCurrRung(msr, iRung)) {
 		    if(msrDoGravity(msr)) {
 			if (msr->param.bVDetails) printf("Gravity, iRung: %d\n", iRung);
+           	        msrActiveType(msr, TYPE_ALL, TYPE_TREEACTIVE );
 			msrBuildTree(msr,0,dMass,0);
 			msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
@@ -3335,6 +3641,7 @@ void msrTopStepKDK(MSR msr,
     if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
 		if (msr->param.bVDetails) printf("Adjust, iRung: %d\n",iRung);
 		msrActiveRung(msr, iRung, 1);
+		msrActiveType(msr, TYPE_ALL, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 		msrInitDt(msr);
 #ifdef HILL_STEP
 		msrHillStep(msr);
@@ -3342,6 +3649,7 @@ void msrTopStepKDK(MSR msr,
 		if(msr->param.bEpsVel || msr->param.bSqrtPhi)
 		    msrAccelStep(msr, dTime);
 		if(msr->param.bISqrtRho) {
+                    msrDomainDecomp(msr);
 		    msrBuildTree(msr,0,dMass,1);
 		    msrDensityStep(msr, dTime);
 		    }
@@ -3360,6 +3668,7 @@ void msrTopStepKDK(MSR msr,
 		}
     if (msr->param.bVDetails) printf("Kick, iRung: %d\n", iRung);
     msrActiveRung(msr, iRung, 0);
+    msrActiveType(msr, TYPE_ALL, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
     msrKickKDKOpen(msr,dTime,0.5*dDelta);
     if (msrCurrMaxRung(msr) > iRung) {
 		/*
@@ -3376,35 +3685,55 @@ void msrTopStepKDK(MSR msr,
 		}
     else {
 		if (msr->param.bVDetails) printf("Drift, iRung: %d\n", iRung);
+		msrActiveMaskRung(msr, TYPE_ACTIVE, iKickRung, 1);
 		/* This Drifts everybody */
 		msrDrift(msr,dTime,dDelta);
 		/* JW: Changed this to be consistent (was dTime += 0.5*dDelta) */
 		dTime += dDelta;
 		dStep += 1.0/(1 << iRung);
-		msrActiveRung(msr, iKickRung, 1);
+                msrDomainDecomp(msr);
 		msrInitAccel(msr);
 #ifdef GASOLINE
 		if (msr->param.bVDetails)
 			printf("SPH, iRung: %d to %d\n", iRung, iKickRung);
-		msrSphTreeActiveRung(msr, iKickRung, 1);
-		msrBuildTree(msr,1,-1.0,1);
-		msrSmooth(msr,dTime,SMX_DENSITY,1);
-		if (msrDoGas(msr)) {
-		    if (msr->param.bBulkViscosity) {
-  			msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-			msrGetGasPressure(msr);
-			msrActiveRung(msr, iKickRung, 1);
-			msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
-			} 
-		    else {
-		        msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime,1);
-			msrGetGasPressure(msr);
-			msrActiveRung(msr, iKickRung, 1); 
-			msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
+        	msrActiveTypeRung(msr, TYPE_GAS, TYPE_ACTIVE, iKickRung, 1 );
+        	msrActiveType(msr, TYPE_GAS, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+		printf("nActive %d nTreeActive %d nSmoothActive %d\n",msr->nActive,msr->nTreeActive,msr->nSmoothActive);
+                if(msrDoGas(msr) && msrSphCurrRung(msr, iKickRung, 1)) {
+           		msrBuildTree(msr,1,-1.0,1);
+		        if (msr->param.bBulkViscosity) {
+ 		               msrSmooth(msr,dTime,SMX_DENSITY,1);
+			       msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE );
+			       msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+			       msrGetGasPressure(msr);
+			       msrActiveRung(msr, iKickRung, 1);
+			       msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
+			       }
+			else {
+                               msrResetType(msr, TYPE_GAS, TYPE_SMOOTHDONE|TYPE_NbrOfDensACTIVE );
+                               msrActiveType(msr, TYPE_ACTIVE, TYPE_SMOOTHACTIVE|TYPE_DensACTIVE );
+                               if (msr->param.bVDetails) printf("Dens Active Particles: %d\n",msr->nSmoothActive );
+			       msrActiveType(msr, TYPE_GAS, TYPE_SMOOTHACTIVE );
+                               msrSmooth(msr,dTime,SMX_MARKDENSITY,1);
+			       /*
+                               if (msr->param.bVDetails) printf("Neighbours: %d ",
+                                  msrCountType(msr, TYPE_NbrOfDensACTIVE, TYPE_NbrOfDensACTIVE ) );
+			       */
+                               msrActiveType(msr, TYPE_NbrOfDensACTIVE,  TYPE_SMOOTHACTIVE );
+                               if (msr->param.bVDetails) printf("Smooth Active Particles: %d\n",msr->nSmoothActive );
+                               if (msr->param.bViscosityLimiter) {
+				      msrReSmooth(msr, dTime, SMX_DIVVORT, 1);
+			              }
+			       msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime);
+			       msrGetGasPressure(msr);
+			       msrActiveRung(msr, iKickRung, 1); 
+			       msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
+			       }
 		        }
-		    }
 #endif
 		if(msrDoGravity(msr)) {
+        	        msrActiveRung(msr, iKickRung, 1 );
+			msrActiveType(msr, TYPE_ALL, TYPE_TREEACTIVE );
 			if (msr->param.bVDetails)
 				printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
 			msrBuildTree(msr,0,dMass,0);
@@ -3429,6 +3758,7 @@ msrAddDelParticles(MSR msr)
     struct outColNParts *pColNParts;
     int *pNewOrder;
     struct inSetNParts in;
+    struct inSetParticleTypes intype;
     int iOut;
     int i;
     
@@ -3468,6 +3798,8 @@ msrAddDelParticles(MSR msr)
     in.nMaxOrderGas = msr->nMaxOrderGas;
     in.nMaxOrderDark = msr->nMaxOrderDark;
     pstSetNParts(msr->pst, &in, sizeof(in), NULL, NULL);
+    intype.nSuperCool = msr->param.nSuperCool;
+    pstSetParticleTypes(msr->pst, &intype, sizeof(intype), NULL, NULL);
     
     free(pNewOrder);
     free(pColNParts);
@@ -3493,23 +3825,64 @@ void msrInitAccel(MSR msr)
 	pstInitAccel(msr->pst,NULL,0,NULL,NULL);
 	}
 
-#ifdef GASOLINE
+void msrInitTimeSteps(MSR msr,double dTime,double dDelta) 
+{
+        double dMass = -1.0;
 
-void msrSphTreeActiveRung(MSR msr, int iRung, int bGreater)
-{ 
-        /* JW: Only active rungs really need forces calculated */
-        /* For now everything goes into the pot */
-	pstActiveGas(msr->pst, NULL,0,NULL,NULL);
-        /* For tree everything goes into the pot */
-	pstTreeActiveGas(msr->pst, NULL,0,NULL,NULL);
-        }
+	msrActiveType(msr, TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+	msrInitDt(msr);
+#ifdef HILL_STEP
+	msrHillStep(msr);
+#else
+	if(msr->param.bEpsVel || msr->param.bSqrtPhi)
+                msrAccelStep(msr, dTime);
+	if(msr->param.bISqrtRho) {
+	        msrDomainDecomp(msr);
+		msrBuildTree(msr,0,dMass,1);
+		msrDensityStep(msr, dTime);
+		}
+#endif
+/*DEBUG out of date
+#ifdef SMOOTH_STEP
+	msrBuildTree(msr,0,dMass,1);
+	msrSmooth(msr,dTime,SMX_TIMESTEP,0);
+#endif
+*/
+#ifdef GASOLINE
+	msrSphStep(msr, dTime);
+#endif
+	msrDtToRung(msr,0, dDelta, 1);
+	msrRungStats(msr);
+	}
+
+#ifdef GASOLINE
 
 void msrInitSph(MSR msr,double dTime)
 {
-	pstActiveGas(msr->pst,NULL,0,NULL,NULL);
-	pstTreeActiveGas(msr->pst,NULL,0,NULL,NULL);
+        struct inInitEnergy in;
+	double a;
+
+	msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+
 	msrBuildTree(msr,1,-1.0,1);
 	msrSmooth(msr,dTime,SMX_DENSITY,1);
+
+	switch (msr->param.iGasModel) {
+	case GASMODEL_COOLING:
+	case GASMODEL_COOLING_NONEQM:
+	       /*
+		* Get a consistent initial state where energy is consistent with 
+		* the initial density and input temperature and the ionization
+		* fraction is the consistent equilibrium state.
+		**/
+	       in.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
+		 msr->param.dMeanMolWeight;
+	       a = csmTime2Exp(msr->param.csm,dTime);
+	       in.z = 1/a - 1;
+	       pstInitEnergy(msr->pst, &in, sizeof(in), NULL, NULL);
+	       break;
+	}
+
 	if (msrDoGas(msr)) {
 	   if (msr->param.bBulkViscosity) {
 	      msrReSmooth(msr,dTime,SMX_DIVVORT,1);
@@ -3517,19 +3890,21 @@ void msrInitSph(MSR msr,double dTime)
 	      msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
 	      } 
 	   else {
-	      msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime,1);
+              if (msr->param.bViscosityLimiter) msrReSmooth(msr, dTime, SMX_DIVVORT, 1);
+	      msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime);
 	      msrGetGasPressure(msr);
 	      msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
 	      }
 	   }
-	}
+        }
 
-int msrSphCurrRung(MSR msr, int iRung)
+int msrSphCurrRung(MSR msr, int iRung, int bGreater)
 {
     struct inSphCurrRung in;
     struct outSphCurrRung out;
 
     in.iRung = iRung;
+    in.bGreater = bGreater;
     pstSphCurrRung(msr->pst, &in, sizeof(in), &out, NULL);
     return out.iCurrent;
     }
@@ -3545,15 +3920,49 @@ void msrSphStep(MSR msr, double dTime)
     pstSphStep(msr->pst, &in, sizeof(in), NULL, NULL);
     }
 
-void msrSphViscosityLimiter(MSR msr, int bOn, double dTime, int bSymmetric)
+void msrSphViscosityLimiter(MSR msr, int bOn, double dTime)
 {
     struct inSphViscosityLimiter in;
     
-    if (bOn)  msrReSmooth(msr, dTime, SMX_DIVVORT, bSymmetric);
     in.bOn = bOn;
     pstSphViscosityLimiter(msr->pst, &in, sizeof(in), NULL, NULL);
     }
 
+#ifdef PREHEAT
+/* Fabulous SN preheating */
+void msrInitSN(MSR msr) 
+{
+}
+#endif
+
+void msrInitCooling(MSR msr)
+{
+        int nUV;
+	UVSPECTRUM *UVData = NULL;
+	struct inInitCooling in;
+
+	in.dGmPerCcUnit = msr->param.dGmPerCcUnit;
+	in.dComovingGmPerCcUnit = msr->param.dComovingGmPerCcUnit;
+	in.dErgPerGmUnit = msr->param.dErgPerGmUnit;
+	in.dSecUnit = msr->param.dSecUnit;
+        in.dMassFracHelium = msr->param.dMassFracHelium;
+        in.Tmin = msr->param.dCoolingTmin;
+	in.Tmax = msr->param.dCoolingTmax;
+	in.nTable = msr->param.nCoolingTable;
+	in.z = 60.0; /*dummy value*/
+
+        pstInitCooling(msr->pst,&in,sizeof(struct inInitCooling),NULL,NULL);
+
+	if (msr->param.bUV) {
+	         nUV = msrReadASCII(msr, "UV", 7, NULL);
+	         if (nUV) {
+	                  UVData = malloc(sizeof(UVSPECTRUM)*nUV);
+  	                  nUV = msrReadASCII(msr, "UV", 7, (double *) UVData);
+			  assert( sizeof(UVSPECTRUM)*nUV <= CL_NMAXBYTETABLE );
+			  pstInitUV(msr->pst,UVData, sizeof(UVSPECTRUM)*nUV,NULL,NULL);
+		          }
+		 }
+        }
 #endif
 
 #ifdef GLASS
@@ -3596,6 +4005,8 @@ msrFindRejects(MSR msr)
 
 	if (msr->param.bVStart)	puts("Checking for rejected ICs...");
 	msrActiveRung(msr,0,1); /* redundant if particles just loaded */
+        msrDomainDecomp(msr);
+	msrActiveType(msr, TYPE_SMOOTHACTIVE|TYPE_TREEACTIVE ); /* redundant if particles just loaded */
 	msrBuildTree(msr,0,-1.0,1);
 	msr->param.nSmooth = 8; /*DEBUG nicer if we could pass this directly...*/
 	msrSmooth(msr,0.0,SMX_REJECTS,0);
@@ -3784,12 +4195,15 @@ msrPlanetsKDK(MSR msr,double dStep,double dTime,double dDelta,double *pdWMax,
 			  double *pdIMax,double *pdEMax,int *piSec)
 {
 	struct inKick in;
+	struct outKick out;
 
 	msrActiveRung(msr,0,1); /* just in case */
 	in.dvFacOne = 1.0;
 	in.dvFacTwo = 0.5*dDelta;
     if (msr->param.bVDetails) printf("Planets Kick\n");
-	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
+	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
+	printf("Kick: Avg Wallclock %f, Max Wallclock %f\n",
+	       out.SumTime/out.nSum,out.MaxTime);
 	if (msr->param.bVDetails) printf("Planets Drift\n");
 	msrPlanetsDrift(msr,dStep,dTime,dDelta);
 	dTime += 0.5*dDelta; /* not used */
@@ -3799,11 +4213,14 @@ msrPlanetsKDK(MSR msr,double dStep,double dTime,double dDelta,double *pdWMax,
 	if(msrDoGravity(msr)) {
 		int nDum;
 		if (msr->param.bVDetails) printf("Planets Gravity\n");
+                msrDomainDecomp(msr);
 		msrBuildTree(msr,0,-1.0,0);
 		msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nDum);
 		}
     if (msr->param.bVDetails) printf("Planets Kick\n");
-	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
+	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
+	printf("Kick: Avg Wallclock %f, Max Wallclock %f\n",
+	       out.SumTime/out.nSum,out.MaxTime);
 	}
 
 void
@@ -3886,7 +4303,7 @@ msrMarkEncounters(MSR msr,double dTMax)
 	struct inMarkEncounters in;
 
 	/* initializes if dTMax <= 0 */
-	/* SET iDriftType to NORMAL and iActive to 1; otherwise iActive to 0 */
+	/* SET iDriftType to NORMAL and set ACTIVE; otherwise reset ACTIVE */
 	/* note msrMarkEncounters() is necessary because msrFindEncounter()
 	   must be called *before* the Kepler drift (to see how long to drift
 	   for) and all particles must be updated at that time */
@@ -3908,6 +4325,7 @@ msrLinearKDK(MSR msr,double dStep,double dTime,double dDelta)
 		double dDum;
 		int iDum;
 		if (msr->param.bVDetails) printf("Linear Gravity\n");
+                msrDomainDecomp(msr);
 		msrBuildTree(msr,0,-1.0,0);
 		msrGravity(msr,dStep,msrDoSun(msr),&iDum,&dDum,&dDum,&dDum,&iDum);
 		}
@@ -3962,7 +4380,7 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 			inDo.dEpsT = msr->param.dEpsT;
 			pstDoCollision(msr->pst,&inDo,sizeof(inDo),&outDo,NULL);
 			/*
-			 ** If there's a merger, the deleted particle has iActive set
+			 ** If there's a merger, the deleted particle has ACTIVE set
 			 ** to zero, so we can still use the old tree and ReSmooth().
 			 ** Deleted particles are cleaned up outside this loop.
 			 */
@@ -4051,7 +4469,7 @@ msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 	/*
 	 ** First make sure the particles are in Active/Inactive order.
 	 */
-	pstActiveOrder(msr->pst,NULL,0,NULL,NULL);
+	msrActiveOrder(msr);
 	in.nBucket = msr->param.nBucket;
 	msr->bGravityTree = 0;
 	msr->iTreeType = MSR_TREE_QQ;
@@ -4075,3 +4493,98 @@ msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 	}
 
 #endif /* COLLISIONS */
+
+/* Note if dDataOut is NULL it just counts the number of valid input lines */
+int msrReadASCII(MSR msr, char *extension, int nDataPerLine, double *dDataOut)
+{
+	char achFile[PST_FILENAME_SIZE];
+	char ach[PST_FILENAME_SIZE];
+	LCL *plcl = &msr->lcl;
+	FILE *fp;
+	int i,ret;
+	char achIn[160];
+	double *dData;
+
+	if (dDataOut == NULL) 
+	        dData = malloc(sizeof(double)*nDataPerLine);
+	else
+	        dData = dDataOut;
+	
+	assert( nDataPerLine > 0 && nDataPerLine <= 10 );
+	/*
+	 ** Add Data Subpath for local and non-local names.
+	 */
+	achFile[0] = 0;
+	sprintf(achFile,"%s/%s.%s",msr->param.achDataSubPath,
+			msr->param.achOutName, extension);
+	/*
+	 ** Add local Data Path.
+	 */
+	if (plcl->pszDataPath) {
+		strcpy(ach,achFile);
+		sprintf(achFile,"%s/%s",plcl->pszDataPath,ach);
+		}
+	fp = fopen(achFile,"r");
+	if (!fp) {
+		if (msr->param.bVWarnings)
+			printf("WARNING: Could not open .%s input file:%s\n",extension,achFile);
+		return 0;
+		}
+
+	i = 0;
+	while (1) {
+		if (!fgets(achIn,160,fp)) goto Done;
+		switch (nDataPerLine) {
+		case 1:
+  		        ret = sscanf(achIn,"%lf",dData); 
+		        break;
+		case 2:
+  		        ret = sscanf(achIn,"%lf %lf",dData,dData+1); 
+			break;
+		case 3:
+  		        ret = sscanf(achIn,"%lf %lf %lf",dData,dData+1,dData+2); 
+			break;
+		case 4:
+  		        ret = sscanf(achIn,"%lf %lf %lf %lf",dData,dData+1,dData+2,dData+3); 
+			break;
+		case 5:
+  		        ret = sscanf(achIn,"%lf %lf %lf %lf %lf",dData,dData+1,dData+2,dData+3,dData+4); 
+			break;
+		case 6:
+  		        ret = sscanf(achIn,"%lf %lf %lf %lf %lf %lf",dData,dData+1,dData+2,dData+3,dData+4,dData+5); 
+			break;
+		case 7:
+  		        ret = sscanf(achIn,"%lf %lf %lf %lf %lf %lf %lf",
+				     dData,dData+1,dData+2,dData+3,dData+4,dData+5,dData+6); 
+			break;
+		case 8:
+  		        ret = sscanf(achIn,"%lf %lf %lf %lf %lf %lf %lf %lf",
+				     dData,dData+1,dData+2,dData+3,dData+4,dData+5,dData+6,dData+7); 
+			break;
+		case 9:
+  		        ret = sscanf(achIn,"%lf %lf %lf %lf %lf %lf %lf %lf %lf",
+				     dData,dData+1,dData+2,dData+3,dData+4,dData+5,dData+6,dData+7,dData+8); 
+			break;
+		case 10:
+  		        ret = sscanf(achIn,"%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+				     dData,dData+1,dData+2,dData+3,dData+4,dData+5,dData+6,dData+7,dData+8,dData+9); 
+			break;
+		        }
+		if (ret != nDataPerLine) goto Done;
+		++i;
+		if (dDataOut != NULL) dData += nDataPerLine;
+		}
+ Done:
+	fclose(fp);
+	if (dDataOut != NULL && msr->param.bVDetails) printf("Read %i lines from %s\n",i,achFile);
+	if (dDataOut == NULL) free(dData);
+        return i;
+	}
+
+
+
+
+
+
+
+

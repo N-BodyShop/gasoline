@@ -396,7 +396,7 @@ pkdBounce(PKD pkd,double dEpsN,double dEpsT,COLLIDER **pOut,int *pnOut)
 void
 pkdFrag(PKD pkd,COLLIDER **pOut,int *pnOut)
 {
-	/* note: be sure new particles have p->iActive = 1 */
+	/* note: be sure new particles have ACTIVE set */
 	/* may need to assert(*pnOut <= MAX_NUM_FRAG) */
 	/* remember to set id info for logging purposes */
 	}

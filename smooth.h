@@ -271,6 +271,7 @@ typedef struct smContext {
 int smInitialize(SMX *,PKD,SMF *,int,int,int,int,int);
 void smFinish(SMX,SMF *);
 void smSmooth(SMX,SMF *);
+void smMarkSmooth(SMX,SMF *);
 void smReSmooth(SMX,SMF *);
 void smGrowList(SMX smx);
 
