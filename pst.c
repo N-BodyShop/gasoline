@@ -131,11 +131,17 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_ACTIVEORDER,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstActiveOrder,
 				  0,0);
+	mdlAddService(mdl,PST_TREEACTIVEORDER,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstTreeActiveOrder,
+				  0,0);
 	mdlAddService(mdl,PST_SETRUNG,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetRung,
 				  sizeof(struct inSetRung),0);
 	mdlAddService(mdl,PST_ACTIVERUNG,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstActiveRung,
+				  sizeof(struct inActiveRung),0);
+	mdlAddService(mdl,PST_TREEACTIVERUNG,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstTreeActiveRung,
 				  sizeof(struct inActiveRung),0);
 	mdlAddService(mdl,PST_CURRRUNG,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstCurrRung,
@@ -158,6 +164,9 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_ACTIVECOOL,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstActiveCool,
 				  sizeof(struct inActiveCool),0);
+	mdlAddService(mdl,PST_TREEACTIVECOOL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstTreeActiveCool,
+				  sizeof(struct inActiveCool),0);
 	mdlAddService(mdl,PST_GROWMASS,pst,
 		      (void (*)(void *,void *,int,void *,int *)) pstGrowMass,
 		      sizeof(struct inGrowMass),0);
@@ -173,19 +182,46 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_INITDT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstInitDt,
 				  sizeof(struct inInitDt),0);
+	mdlAddService(mdl,PST_ACTIVESTAR,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstActiveStar,
+				  0,0);
+	mdlAddService(mdl,PST_TREEACTIVESTAR,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstTreeActiveStar,
+				  0,0);
+	mdlAddService(mdl,PST_ACTIVEDARK,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstActiveDark,
+				  0,0);
+	mdlAddService(mdl,PST_TREEACTIVEDARK,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstTreeActiveDark,
+				  0,0);
 #ifdef GASOLINE
 	mdlAddService(mdl,PST_ACTIVEGAS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstActiveGas,
 				  0,0);
-	mdlAddService(mdl,PST_CALCETHDOT,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstCalcEthdot,
+	mdlAddService(mdl,PST_TREEACTIVEGAS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstTreeActiveGas,
 				  0,0);
+	mdlAddService(mdl,PST_GETGASPRESSURE,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstGetGasPressure,
+				  sizeof(struct GasParameters),0);
 	mdlAddService(mdl,PST_KICKVPRED,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstKickVpred, 
 				  sizeof(struct inKickVpred),0);
 	mdlAddService(mdl,PST_SPHSTEP,pst,
 		      (void (*)(void *,void *,int,void *,int *)) pstSphStep, 
 		      sizeof(struct inSphStep),0);
+
+	mdlAddService(mdl,PST_SPHVISCOSITYLIMITER,pst,
+		      (void (*)(void *,void *,int,void *,int *)) 
+		      pstSphViscosityLimiter, 
+		      sizeof(struct inSphViscosityLimiter),0);
+
+
+#endif
+#ifdef GLASS
+	mdlAddService(mdl,PST_RANDOMVELOCITIES,pst,
+		      (void (*)(void *,void *,int,void *,int *)) pstRandomVelocities, 
+		      sizeof(struct inRandomVelocities),0);
 #endif
 	mdlAddService(mdl,PST_COLNPARTS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstColNParts,
@@ -1049,8 +1085,9 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 ** First calculate the Bounds for the set.
 		 */
 		pstCalcBound(pst,NULL,0,&outBnd,&nOut);
-		pst->bndActive = outBnd.bndActive;
 		pst->bnd = outBnd.bnd;
+		pst->bndActive = outBnd.bndActive;
+		pst->bndTreeActive = outBnd.bndTreeActive;
 		/*
 		 ** Next determine the longest axis based on the active bounds.
 		 */
@@ -1121,10 +1158,16 @@ void pstCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			if (outBnd.bndActive.fMax[j] > out->bndActive.fMax[j]) {
 				out->bndActive.fMax[j] = outBnd.bndActive.fMax[j];
 				}
+			if (outBnd.bndTreeActive.fMin[j] < out->bndTreeActive.fMin[j]) {
+				out->bndTreeActive.fMin[j] = outBnd.bndTreeActive.fMin[j];
+				}
+			if (outBnd.bndTreeActive.fMax[j] > out->bndTreeActive.fMax[j]) {
+				out->bndTreeActive.fMax[j] = outBnd.bndTreeActive.fMax[j];
+				}
 			}
 		}
 	else {
-		pkdCalcBound(plcl->pkd,&out->bnd,&out->bndActive);
+		pkdCalcBound(plcl->pkd,&out->bnd,&out->bndActive,&out->bndTreeActive);
 		}
 	if (pnOut) *pnOut = sizeof(struct outCalcBound); 
 	}
@@ -1557,6 +1600,23 @@ void pstActiveOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+void pstTreeActiveOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_TREEACTIVEORDER,NULL,0);
+		pstTreeActiveOrder(pst->pstLower,NULL,0,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdTreeActiveOrder(plcl->pkd);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
 void pstOutArray(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -1709,12 +1769,12 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		if (in->bBinary) {
 			pkdBuildBinary(plcl->pkd,in->nBucket,in->iOpenType,in->dCrit,
-				       in->iOrder,in->bActiveOnly,
+				       in->iOrder,in->bTreeActiveOnly,
 				       in->bGravity, &pst->kdn);
 			}
 		else {
 			pkdBuildLocal(plcl->pkd,in->nBucket,in->iOpenType,in->dCrit,
-				      in->iOrder,in->bActiveOnly,
+				      in->iOrder,in->bTreeActiveOnly,
 				      in->bGravity, &pst->kdn);
 			}
 		pst->kdn.pLower = pst->idSelf;
@@ -1872,9 +1932,10 @@ void pstCalcE(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,&outE,NULL);
 		out->T += outE.T;
 		out->U += outE.U;
+		out->Eth += outE.Eth;
 		}
 	else {
-		pkdCalcE(plcl->pkd,&out->T,&out->U);
+		pkdCalcE(plcl->pkd,&out->T,&out->U,&out->Eth);
 		}
 	if (pnOut) *pnOut = sizeof(struct outCalcE);
 	}
@@ -1899,6 +1960,25 @@ void pstDrift(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+void pstDriftRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inDrift *in = vin;
+
+	assert(nIn == sizeof(struct inDrift));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DRIFTRUNG,in,nIn);
+		pstDriftRung(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdDriftRung(plcl->pkd,in->dDelta,in->fCenter,in->bPeriodic,in->bFandG,
+				 in->fCentMass);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
 void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -1912,7 +1992,7 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdKick(plcl->pkd,in->dvFacOne,in->dvFacTwo,
-			in->dvPredFacOne, in->dvPredFacTwo);
+			in->dvPredFacOne, in->dvPredFacTwo, in->duFac, in->duPredFac);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2342,6 +2422,24 @@ pstActiveRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 void
+pstTreeActiveRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inActiveRung *in = vin;
+	
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_TREEACTIVERUNG,vin,nIn);
+		pstTreeActiveRung(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdTreeActiveRung(plcl->pkd, in->iRung, in->bGreater);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void
 pstCurrRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -2395,8 +2493,8 @@ void pstAccelStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
 		}
 	else {
-		pkdAccelStep(plcl->pkd, in->dEta, in->dVelFac,
-			     in->dAccFac, in->bEpsVel, in->bSqrtPhi);
+		pkdAccelStep(plcl->pkd, in->dEta, in->dVelFac, in->dAccFac, in->bDoGravity,
+			     in->bEpsVel, in->bSqrtPhi);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2498,6 +2596,23 @@ void pstActiveCool(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
+void pstTreeActiveCool(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inActiveCool *in = vin;
+	
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_TREEACTIVECOOL,vin,nIn);
+		pstTreeActiveCool(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdTreeActiveCool(plcl->pkd,in->nSuperCool);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
 void pstGrowMass(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -2561,6 +2676,70 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+void pstActiveStar(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVESTAR,vin,nIn);
+		pstActiveStar(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdActiveStar(plcl->pkd);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void pstTreeActiveStar(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_TREEACTIVESTAR,vin,nIn);
+		pstTreeActiveStar(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdTreeActiveStar(plcl->pkd);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void pstActiveDark(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVEDARK,vin,nIn);
+		pstActiveDark(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdActiveDark(plcl->pkd);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void pstTreeActiveDark(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_TREEACTIVEDARK,vin,nIn);
+		pstTreeActiveDark(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdTreeActiveDark(plcl->pkd);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
 #ifdef GASOLINE
 
 void pstActiveGas(PST pst,void *vin,int nIn,void *vout,int *pnOut)
@@ -2579,22 +2758,53 @@ void pstActiveGas(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
-
-void pstCalcEthdot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+void pstTreeActiveGas(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	
 	assert(nIn == 0);
 	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_CALCETHDOT,vin,nIn);
-		pstCalcEthdot(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlReqService(pst->mdl,pst->idUpper,PST_TREEACTIVEGAS,vin,nIn);
+		pstTreeActiveGas(pst->pstLower,vin,nIn,NULL,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdCalcEthdot(plcl->pkd);
+		pkdTreeActiveGas(plcl->pkd);
 		}
 	if (pnOut) *pnOut = 0;
 	}
+
+void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+        GASPARAMETERS *in = vin;
+	
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_GETGASPRESSURE,vin,nIn);
+		pstGetGasPressure(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+          	switch( in->iGasModel ) {
+		case GASMODEL_ADIABATIC: 
+			 pkdAdiabaticGasPressure(plcl->pkd, in);
+			 break;
+		case GASMODEL_ISOTHERMAL:
+		case GASMODEL_IONEQM:
+		case GASMODEL_IONEVOLVE:
+		         assert(0);
+		case GASMODEL_GLASS:
+#ifdef GLASS		  
+			 pkdGlassGasPressure(plcl->pkd, in);
+#else
+			 assert(0);
+#endif
+			 break;
+		         }
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
 
 void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -2608,7 +2818,24 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo);
+		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo,in->duFac);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void pstKickVpredRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inKickVpred *in = vin;
+
+	assert(nIn == sizeof(struct inKickVpred));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_KICKVPREDRUNG,in,nIn);
+		pstKickVpredRung(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdKickVpredRung(plcl->pkd,in->dvFacOne,in->dvFacTwo,in->duFac);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2648,7 +2875,44 @@ void pstSphStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdSphStep(plcl->pkd,in->dCosmoFac);
+		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void pstSphViscosityLimiter(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inSphViscosityLimiter *in = vin;
+
+	assert(nIn == sizeof(struct inSphViscosityLimiter));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_SPHVISCOSITYLIMITER,in,nIn);
+		pstSphViscosityLimiter(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdSphViscosityLimiter(plcl->pkd,in->bOn);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+#endif
+
+#ifdef GLASS
+void pstRandomVelocities(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inRandomVelocities *in = vin;
+
+	assert(nIn == sizeof(struct inRandomVelocities));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_RANDOMVELOCITIES,in,nIn);
+		pstRandomVelocities(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdRandomVelocities(plcl->pkd,in->dMaxVelocityL,in->dMaxVelocityR);
 		}
 	if (pnOut) *pnOut = 0;
 	}

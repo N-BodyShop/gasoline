@@ -12,6 +12,7 @@ typedef struct smfParameters {
 	double gamma;
 	double algam;
 	int bGeometric;
+        int bCannonical;
 #ifdef COLLISIONS
 	double dTime;
 	double dDelta;
@@ -47,6 +48,29 @@ void MeanVelSym(PARTICLE *,int,NN *,SMF *);
 
 #ifdef GASOLINE
 
+#define SMX_SPHPRESSURETERMS    3
+void initSphPressureTermsParticle(void *);
+void initSphPressureTerms(void *);
+void combSphPressureTerms(void *,void *);
+void SphPressureTerms(PARTICLE *,int,NN *,SMF *);
+void SphPressureTermsSym(PARTICLE *,int,NN *,SMF *);
+
+#define SMX_DIVVORT             4
+void initDivVort(void *);
+void combDivVort(void *,void *);
+void DivVort(PARTICLE *,int,NN *,SMF *);
+void DivVortSym(PARTICLE *,int,NN *,SMF *);
+
+#define SMX_HKPRESSURETERMS    5
+void initHKPressureTermsParticle(void *);
+void initHKPressureTerms(void *);
+void combHKPressureTerms(void *,void *);
+void HKPressureTerms(PARTICLE *,int,NN *,SMF *);
+void HKPressureTermsSym(PARTICLE *,int,NN *,SMF *);
+
+#endif
+
+#ifdef OLDGASOLINE
 #define SMX_HSMDIVV		3
 void initHsmDivv(void *);
 void combHsmDivv(void *,void *);

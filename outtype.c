@@ -30,9 +30,7 @@ FLOAT ArrType(PARTICLE *p,int iType)
 	case OUT_U_ARRAY:
 		return(p->u);
 	case OUT_UDOT_ARRAY:
-		return(p->du);
-	case OUT_HSMDIVV_ARRAY:
-		return(p->fHsmDivv);
+                return 0;
 #endif
 #ifdef COLLISIONS
 	case OUT_REJECTS_ARRAY:

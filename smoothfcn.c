@@ -7,6 +7,16 @@
 #include "collision.h"
 #endif /* COLLISIONS */
 
+/* HSHRINK uses an effective h of (pi/6)^(1/3) times h for nSmooth neighbours */
+#ifdef HSHRINK
+#define dSHRINKFACTOR        0.805995977
+#define BALL2(a) ((a)->fBall2*(dSHRINKFACTOR*dSHRINKFACTOR))
+
+#else
+#define BALL2(a) ((a)->fBall2)
+
+#endif
+
 void initDensity(void *p)
 {
 	((PARTICLE *)p)->fDensity = 0.0;
@@ -22,13 +32,18 @@ void Density(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT ih2,r2,rs,fDensity;
 	int i;
 
-	ih2 = 4.0/p->fBall2;
+	ih2 = 4.0/BALL2(p);
 	fDensity = 0.0;
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2*ih2;
 		rs = 2.0 - sqrt(r2);
 		if (r2 < 1.0) rs = (1.0 - 0.75*rs*r2);
+#ifdef HSHRINK
+		else if (r2 < 4.0) rs = 0.25*rs*rs*rs;
+		else rs = 0.0;
+#else
 		else rs = 0.25*rs*rs*rs;
+#endif
 		fDensity += rs*nnList[i].pPart->fMass;
 		}
 	p->fDensity = M_1_PI*sqrt(ih2)*ih2*fDensity; 
@@ -40,13 +55,18 @@ void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT fNorm,ih2,r2,rs;
 	int i;
 
-	ih2 = 4.0/p->fBall2;
+	ih2 = 4.0/(BALL2(p));
 	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2*ih2;
 		rs = 2.0 - sqrt(r2);
 		if (r2 < 1.0) rs = (1.0 - 0.75*rs*r2);
+#ifdef HSHRINK
+		else if (r2 < 4.0) rs = 0.25*rs*rs*rs;
+		else rs = 0.0;
+#else
 		else rs = 0.25*rs*rs*rs;
+#endif
 		rs *= fNorm;
 		q = nnList[i].pPart;
 		p->fDensity += rs*q->fMass;
@@ -55,7 +75,6 @@ void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	}
 
 #ifdef SUPERCOOL
-
 void initMeanVel(void *p)
 {
 	int j;
@@ -80,13 +99,18 @@ void MeanVel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT fNorm,ih2,r2,rs;
 	int i,j;
 
-	ih2 = 4.0/p->fBall2;
+	ih2 = 4.0/BALL2(p);
 	fNorm = M_1_PI*sqrt(ih2)*ih2;
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2*ih2;
 		rs = 2.0 - sqrt(r2);
 		if (r2 < 1.0) rs = (1.0 - 0.75*rs*r2);
+#ifdef HSHRINK
+		else if (r2 < 4.0) rs = 0.25*rs*rs*rs;
+		else rs = 0.0;
+#else
 		else rs = 0.25*rs*rs*rs;
+#endif
 		rs *= fNorm;
 		q = nnList[i].pPart;
 		for (j=0;j<3;++j) {
@@ -101,13 +125,18 @@ void MeanVelSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT fNorm,ih2,r2,rs;
 	int i,j;
 
-	ih2 = 4.0/p->fBall2;
+	ih2 = 4.0/BALL2(p);
 	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2*ih2;
 		rs = 2.0 - sqrt(r2);
 		if (r2 < 1.0) rs = (1.0 - 0.75*rs*r2);
+#ifdef HSHRINK
+		else if (r2 < 4.0) rs = 0.25*rs*rs*rs;
+		else rs = 0.0;
+#else
 		else rs = 0.25*rs*rs*rs;
+#endif
 		rs *= fNorm;
 		q = nnList[i].pPart;
 		for (j=0;j<3;++j) {
@@ -116,275 +145,796 @@ void MeanVelSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			}
 		}
 	}
-
 #endif
 
 
 #ifdef GASOLINE
-
-void initHsmDivv(void *p)
+/* Original Particle */
+void initSphPressureTermsParticle(void *p)
 {
-	((PARTICLE *)p)->fDensity = 0.0;
-	((PARTICLE *)p)->fHsmDivv = 0.0;
+	((PARTICLE *)p)->mumax = 0.0;
+	((PARTICLE *)p)->PdV = 0.0;
+#ifdef DEBUG
+	((PARTICLE *)p)->PdVvisc = 0.0;
+	((PARTICLE *)p)->PdVpres = 0.0;
+#endif
 	}
 
-void combHsmDivv(void *p1,void *p2)
+/* Cached copies of particle */
+void initSphPressureTerms(void *p)
 {
-	((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
-	((PARTICLE *)p1)->fHsmDivv += ((PARTICLE *)p2)->fHsmDivv;
+	((PARTICLE *)p)->mumax = 0.0;
+	((PARTICLE *)p)->PdV = 0.0;
+#ifdef DEBUG
+	((PARTICLE *)p)->PdVvisc = 0.0;
+	((PARTICLE *)p)->PdVpres = 0.0;
+#endif
+	((PARTICLE *)p)->a[0] = 0.0;
+	((PARTICLE *)p)->a[1] = 0.0;
+	((PARTICLE *)p)->a[2] = 0.0;
 	}
 
-void postHsmDivv(PARTICLE *p,SMF *smf)
+void combSphPressureTerms(void *p1,void *p2)
 {
-	p->fHsmDivv *= 0.5*sqrt(p->fBall2)/p->fDensity;
-	}
-
-void HsmDivv(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
-{
-	PARTICLE *q;
-	FLOAT ih2,r2,r,rs,rs1;
-	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr,fHsmDivv,fDensity;
-	FLOAT fNorm,fNorm1,fTmp;
-	int i;
-
-	ih2 = 4.0/p->fBall2;
-	fNorm = M_1_PI*sqrt(ih2)*ih2;
-	fNorm1 = fNorm*ih2*smf->a;	/* converts to physical velocities */
-	fDensity = 0.0;
-	fHsmDivv = 0.0;
-	for (i=0;i<nSmooth;++i) {
-		q = nnList[i].pPart;
-		r2 = nnList[i].fDist2*ih2;
-		dx = nnList[i].dx;
-		dy = nnList[i].dy;
-		dz = nnList[i].dz;
-		r = sqrt(r2);
-		rs = 2.0 - r;
-		if (r2 < 1.0) {
-			rs = (1.0 - 0.75*rs*r2);
-			rs1 = -3 + 2.25*r;
-			}
-		else {
-			rs1 = -0.75*rs*rs/r;
-			rs = 0.25*rs*rs*rs;
-			}
-		dvx = p->vPred[0] - q->vPred[0];
-		dvy = p->vPred[1] - q->vPred[1];
-		dvz = p->vPred[2] - q->vPred[2];
-		dvdotdr = dvx*dx + dvy*dy + dvz*dz + nnList[i].fDist2*smf->H;
-		rs1 *= dvdotdr;
-		fDensity += rs*q->fMass;
-		fHsmDivv -= rs1*q->fMass;
- 		}
-	p->fDensity = fNorm*fDensity;
-	p->fHsmDivv = fNorm1*fHsmDivv;
-	}
-
-void HsmDivvSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
-{
-	PARTICLE *q;
-	FLOAT ih2,r2,r,rs,rs1;
-	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	FLOAT fNorm,fNorm1;
-	int i;
-
-	ih2 = 4.0/p->fBall2;
-	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
-	fNorm1 = fNorm*ih2*smf->a;		/* converts to physical velocities */
-	for (i=0;i<nSmooth;++i) {
-		q = nnList[i].pPart;
-		r2 = nnList[i].fDist2*ih2;
-		dx = nnList[i].dx;
-		dy = nnList[i].dy;
-		dz = nnList[i].dz;
-		r = sqrt(r2);
-		rs = 2.0 - r;
-		if (r2 < 1.0) {
-			rs = (1.0 - 0.75*rs*r2);
-			rs1 = -3 + 2.25*r;
-			}
-		else {
-			rs1 = -0.75*rs*rs/r;
-			rs = 0.25*rs*rs*rs;
-			}
-		rs *= fNorm;
-		rs1 *= fNorm1;
-		dvx = p->vPred[0] - q->vPred[0];
-		dvy = p->vPred[1] - q->vPred[1];
-		dvz = p->vPred[2] - q->vPred[2];
-		dvdotdr = dvx*dx + dvy*dy + dvz*dz + nnList[i].fDist2*smf->H;
-		rs1 *= dvdotdr;
-		p->fDensity += rs*q->fMass;
-		q->fDensity += rs*p->fMass;
-		p->fHsmDivv -= rs1*q->fMass;
-		q->fHsmDivv -= rs1*p->fMass;
- 		}
-	}
-
-
-void initEthdotBV(void *p)
-{
-	((PARTICLE *)p)->du = 0.0;
-	}
-
-void combEthdotBV(void *p1,void *p2)
-{
-	((PARTICLE *)p1)->du += ((PARTICLE *)p2)->du;
-	}
-
-void EthdotBVSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
-{
-	PARTICLE *q;
-	FLOAT ih2,r2,r,rs;
-	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	FLOAT fNorm;
-	int i;
-	FLOAT qi,qj,Viscij,Eijp,Eijq;
-
-	ih2 = 4.0/p->fBall2;
-	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2*ih2;
-	for (i=0;i<nSmooth;++i) {
-		q = nnList[i].pPart;
-		if (p == q) continue;
-		r2 = nnList[i].fDist2*ih2;
-		dx = nnList[i].dx;
-		dy = nnList[i].dy;
-		dz = nnList[i].dz;
-		r = sqrt(r2);
-		if (r2 < 1.0) {
-			rs = -3 + 2.25*r;
-			}
-		else {
-			rs = 2.0 - r;
-			rs *= -0.75*rs/r;
-			}
-		rs *= fNorm;
-		dvx = p->vPred[0] - q->vPred[0];
-		dvy = p->vPred[1] - q->vPred[1];
-		dvz = p->vPred[2] - q->vPred[2];
-		dvdotdr = dvx*dx + dvy*dy + dvz*dz + nnList[i].fDist2*smf->H;
-		rs *= dvdotdr;
-		if (dvdotdr > 0) {
-			Viscij = 0;
-			}
-		else {
-			if (p->fHsmDivv < 0) {
-				qi = (smf->beta*p->fHsmDivv - smf->algam*sqrt(p->u))*
-					p->fHsmDivv;
-				}
-			else {
-				qi = 0.0;
-				}
-			if (q->fHsmDivv < 0) {
-				qj = (smf->beta*q->fHsmDivv - smf->algam*sqrt(q->u))*
-					q->fHsmDivv;
-				}
-			else {
-				qj = 0.0;
-				}
-			Viscij = qi/p->fDensity + qj/q->fDensity;
-			}
-		if (smf->bGeometric) {
-			Eijp = 0.5*Viscij + (smf->gamma - 1)*
-				sqrt((p->u*q->u)/(p->fDensity*q->fDensity));
-			Eijq = Eijp;
-			}
-		else {
-			Eijp = 0.5*Viscij + (smf->gamma - 1)*p->u/p->fDensity;
-			Eijq = 0.5*Viscij + (smf->gamma - 1)*q->u/q->fDensity;
-			}
-		p->du += rs*q->fMass*Eijp;
-		q->du += rs*p->fMass*Eijq;
- 		}
-	}
-
-
-void initAccsph(void *p)
-{
-	((PARTICLE *)p)->a[0] = 0.0;	
-	((PARTICLE *)p)->a[1] = 0.0;	
-	((PARTICLE *)p)->a[2] = 0.0;	
-	}
-
-void combAccsph(void *p1,void *p2)
-{
+	((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
+#ifdef DEBUG
+	((PARTICLE *)p1)->PdVvisc += ((PARTICLE *)p2)->PdVvisc;
+	((PARTICLE *)p1)->PdVpres += ((PARTICLE *)p2)->PdVpres;
+#endif
+	if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
+	  ((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
 	((PARTICLE *)p1)->a[0] += ((PARTICLE *)p2)->a[0];
 	((PARTICLE *)p1)->a[1] += ((PARTICLE *)p2)->a[1];
 	((PARTICLE *)p1)->a[2] += ((PARTICLE *)p2)->a[2];	
 	}
 
-void AccsphBVSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+/* Gather only version -- untested */
+void SphPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	FLOAT ih2,r2,r,rs;
+	FLOAT ih2,r2,r,rs1;
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	FLOAT fNorm;
+	FLOAT pPoverRho2,pPdV,pa[3],pmumax;
+	FLOAT ph,pc,pDensity,visc,hav,vFac,absmu;
+	FLOAT fNorm,fNorm1,fNorm2,fTmp;
 	int i;
-	FLOAT qi,qj,Viscij,aij;
 
-	ih2 = 4.0/p->fBall2;
-	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2*ih2;
+	if (!p->iActive) return;
 
-	/*
-	 ** We probably don't want this. This needs to be changed.
-	 */
-	fNorm *= smf->a;	/* converts to physical accelerations */
+	pc = p->c;
+	pDensity = p->fDensity;
+	pPoverRho2 = p->PoverRho2;
+	pmumax = p->mumax;
+	ph = sqrt(0.25*BALL2(p));
+	ih2 = 4.0/BALL2(p);
+	fNorm = M_1_PI*ih2/ph;
+	fNorm1 = fNorm*ih2;	
+	fNorm2 = fNorm1*(smf->a);    /* Comoving accelerations */
+	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
 
+	pPdV=0.0;
+	pa[0]=0.0;
+	pa[1]=0.0;
+	pa[2]=0.0;
 	for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
 		r2 = nnList[i].fDist2*ih2;
+		r = sqrt(r2);
+		if (r2 < 1.0) {
+			rs1 = -3 + 2.25*r;
+			}
+#ifdef HSHRINK
+		else if (r2 < 4.0) {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+		else rs1 = 0.0;
+#else
+		else {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+#endif
+		rs1 *= q->fMass;
+
 		dx = nnList[i].dx;
 		dy = nnList[i].dy;
 		dz = nnList[i].dz;
-		r = sqrt(r2);
-		if (r2 < 1.0) {
-			rs = -3 + 2.25*r;
-			}
-		else {
-			rs = 2.0 - r;
-			rs *= -0.75*rs/r;
-			}
-		rs *= fNorm;
 		dvx = p->vPred[0] - q->vPred[0];
 		dvy = p->vPred[1] - q->vPred[1];
 		dvz = p->vPred[2] - q->vPred[2];
-		dvdotdr = dvx*dx + dvy*dy + dvz*dz + nnList[i].fDist2*smf->H;
-		if (dvdotdr > 0) {
-			Viscij = 0;
-			}
+		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
+		if (dvdotdr>0.0) {
+		        pPdV += rs1 * pPoverRho2 * dvdotdr;
+			rs1 *= (pPoverRho2 + q->PoverRho2);
+		        pa[0] -= rs1 * dx;
+		        pa[1] -= rs1 * dy;
+		        pa[2] -= rs1 * dz;
+              		}
 		else {
-			if (p->fHsmDivv < 0) {
-				qi = (smf->beta*p->fHsmDivv - smf->algam*sqrt(p->u))*
-					p->fHsmDivv;
-				}
-			else {
-				qi = 0.0;
-				}
-			if (q->fHsmDivv < 0) {
-				qj = (smf->beta*q->fHsmDivv - smf->algam*sqrt(q->u))*
-					q->fHsmDivv;
-				}
-			else {
-				qj = 0.0;
-				}
-			Viscij = qi/p->fDensity + qj/q->fDensity;
-			}
-		if (smf->bGeometric) {
-			aij = 2.0*(smf->gamma - 1)*sqrt(p->u*q->u)/
-				sqrt(p->fDensity*q->fDensity) + Viscij;
-			}
-		else {
-			aij = (smf->gamma - 1)*p->u/p->fDensity +
-				(smf->gamma - 1)*q->u/q->fDensity + Viscij;
-			}
-		p->a[0] -= rs*q->fMass*aij*dx;
-		p->a[1] -= rs*q->fMass*aij*dy;
-		p->a[2] -= rs*q->fMass*aij*dz;
-		q->a[0] += rs*p->fMass*aij*dx;
-		q->a[1] += rs*p->fMass*aij*dy;
-		q->a[2] += rs*p->fMass*aij*dz;
+		        hav = 0.5*(ph+sqrt(0.25*BALL2(q)));
+			/* mu 
+			   multiply by a to be consistent with physical c */
+		        absmu = -hav*dvdotdr*smf->a 
+			    / (nnList[i].fDist2+0.01*hav*hav);
+			/* mu terms for gas time step */
+			if (absmu>pmumax) pmumax=absmu;
+
+                        /* viscosity term */
+		        visc = 0.5*(p->divv+q->divv)*(smf->alpha * (pc + q->c) 
+			    +   smf->beta  * 2 * absmu ) 
+			    * absmu / (pDensity + q->fDensity);
+		        pPdV += rs1 * (pPoverRho2 + 0.5*visc) * dvdotdr;
+			rs1 *= (pPoverRho2 + q->PoverRho2 + visc);
+		        pa[0] -= rs1 * dx;
+		        pa[1] -= rs1 * dy;
+		        pa[2] -= rs1 * dz;
+              		}
  		}
+	p->PdV += fNorm1*pPdV;
+	p->mumax = pmumax;
+	p->a[0] += fNorm2*pa[0];
+	p->a[1] += fNorm2*pa[1];
+	p->a[2] += fNorm2*pa[2];
 	}
+
+void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT ih2,r2,r,rs1,rq,rp;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT pPoverRho2,pPdV,pa[3],pMass,pmumax;
+	FLOAT ph,pc,pDensity,visc,hav,absmu;
+	FLOAT fNorm,fNorm1,aFac,vFac,fTmp;
+	int i;
+
+	pc = p->c;
+	pDensity = p->fDensity;
+	pMass = p->fMass;
+	pPoverRho2 = p->PoverRho2;
+	ph = sqrt(0.25*BALL2(p));
+	ih2 = 4.0/BALL2(p);
+	fNorm = 0.5*M_1_PI*ih2/ph;
+	fNorm1 = fNorm*ih2;	/* converts to physical u */
+	aFac = (smf->a);        /* comoving acceleration factor */
+	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
+
+	if (p->iActive) {
+	  /* p active */
+	  pmumax = p->mumax;
+	  pPdV=0.0;
+	  pa[0]=0.0;
+	  pa[1]=0.0;
+	  pa[2]=0.0;
+	  for (i=0;i<nSmooth;++i) {
+	        q = nnList[i].pPart;
+	        r2 = nnList[i].fDist2*ih2;
+	        r = sqrt(r2);
+		if (r2 < 1.0) {
+			rs1 = -3 + 2.25*r;
+			}
+#ifdef HSHRINK		
+		else if (r2 < 4.0) {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}	
+		else rs1 = 0.0;
+#else
+		else {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}	
+#endif
+		rs1 *= fNorm1;
+		rq = rs1 * q->fMass;
+
+		dx = nnList[i].dx;
+		dy = nnList[i].dy;
+		dz = nnList[i].dz;
+		dvx = p->vPred[0] - q->vPred[0];
+		dvy = p->vPred[1] - q->vPred[1];
+		dvz = p->vPred[2] - q->vPred[2];
+		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
+
+		if (q->iActive) {
+		  /* q active */
+		  rp = rs1 * pMass;
+		  if (dvdotdr>0.0) {
+		        pPdV += rq * pPoverRho2 * dvdotdr;
+			q->PdV += rp * q->PoverRho2 * dvdotdr;
+			rq *= (pPoverRho2 + q->PoverRho2);
+			rp *= (pPoverRho2 + q->PoverRho2);
+#ifdef DEBUG
+		        p->PdVpres += rq * (pPoverRho2) * dvdotdr;
+			q->PdVpres += rp * (q->PoverRho2) * dvdotdr;
+#endif
+			rp *= aFac; /* convert to comoving acceleration */
+			rq *= aFac;
+		        pa[0] -= rq * dx;
+		        pa[1] -= rq * dy;
+		        pa[2] -= rq * dz;
+		        q->a[0] += rp * dx;
+		        q->a[1] += rp * dy;
+		        q->a[2] += rp * dz;
+              		}
+		  else {
+             		/* h mean - using just hp probably ok */
+		        hav=0.5*(ph+sqrt(0.25*BALL2(q)));
+			/* mu 
+			   multiply by a to be consistent with physical c */
+		        absmu = -hav*dvdotdr*smf->a 
+			    / (nnList[i].fDist2+0.01*hav*hav);
+			/* mu terms for gas time step */
+			if (absmu>pmumax) pmumax=absmu;
+			if (absmu>q->mumax) q->mumax=absmu;
+                        /* viscosity term */
+		        visc = 0.5*(p->divv+q->divv)*(smf->alpha * (pc + q->c) 
+			    +   smf->beta  * 2 * absmu ) 
+			    * absmu / (pDensity + q->fDensity);
+		        pPdV += rq * (pPoverRho2 + 0.5*visc) * dvdotdr;
+			q->PdV += rp * (q->PoverRho2 + 0.5*visc) * dvdotdr;
+			rq *= (pPoverRho2 + q->PoverRho2 + visc);
+			rp *= (pPoverRho2 + q->PoverRho2 + visc);
+#ifdef DEBUG			
+		        p->PdVpres += rq * (pPoverRho2) * dvdotdr;
+			q->PdVpres += rp * (q->PoverRho2) * dvdotdr;
+		        p->PdVvisc += rq * (0.5*visc) * dvdotdr;
+			q->PdVvisc += rp * (0.5*visc) * dvdotdr;
+#endif
+			rp *= aFac; /* convert to comoving acceleration */
+			rq *= aFac;
+
+		        pa[0] -= rq * dx;
+		        pa[1] -= rq * dy;
+		        pa[2] -= rq * dz;
+		        q->a[0] += rp * dx;
+		        q->a[1] += rp * dy;
+		        q->a[2] += rp * dz;
+              		}
+                  }
+		else {
+		  /* q not active */
+		  if (dvdotdr>0.0) {
+		        pPdV += rq * pPoverRho2 * dvdotdr;
+			rq *= (pPoverRho2 + q->PoverRho2);
+			rq *= aFac; /* convert to comoving acceleration */
+
+		        pa[0] -= rq * dx;
+		        pa[1] -= rq * dy;
+		        pa[2] -= rq * dz;
+              		}
+		  else {
+             		/* h mean */
+		        hav = 0.5*(ph+sqrt(0.25*BALL2(q)));
+			/* mu 
+			   multiply by a to be consistent with physical c */
+		        absmu = -hav*dvdotdr*smf->a 
+			    / (nnList[i].fDist2+0.01*hav*hav);
+			/* mu terms for gas time step */
+			if (absmu>pmumax) pmumax=absmu;
+                        /* viscosity term */
+		        visc = 0.5*(p->divv+q->divv)*(smf->alpha * (pc + q->c) 
+			    +   smf->beta  * 2 * absmu ) 
+			    * absmu / (pDensity + q->fDensity);
+		        pPdV += rq * (pPoverRho2 + 0.5*visc) * dvdotdr;
+			rq *= (pPoverRho2 + q->PoverRho2 + visc);
+#ifdef DEBUG			
+		        p->PdVpres += rq * (pPoverRho2) * dvdotdr;
+		        p->PdVvisc += rq * (0.5*visc) * dvdotdr;
+#endif
+			rq *= aFac; /* convert to comoving acceleration */
+
+		        pa[0] -= rq * dx;
+		        pa[1] -= rq * dy;
+		        pa[2] -= rq * dz;
+              		}
+ 		  }
+	        }
+          p->PdV += pPdV;
+	  p->mumax = pmumax;
+	  p->a[0] += pa[0];
+	  p->a[1] += pa[1];
+	  p->a[2] += pa[2];
+	  }
+        else {
+          /* p not active */
+	  for (i=0;i<nSmooth;++i) {
+	        q = nnList[i].pPart;
+		if (!q->iActive) continue; /* neither active */
+
+	        r2 = nnList[i].fDist2*ih2;
+	        r = sqrt(r2);
+		if (r2 < 1.0) {
+			rs1 = -3 + 2.25*r;
+			}
+#ifdef HSHRINK
+		else if (r2 < 4.0) {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+		else rs1 = 0.0;
+#else
+		else {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+#endif
+		rs1 *= fNorm1;
+		rp = rs1 * pMass;
+
+		dx = nnList[i].dx;
+		dy = nnList[i].dy;
+		dz = nnList[i].dz;
+		dvx = p->vPred[0] - q->vPred[0];
+		dvy = p->vPred[1] - q->vPred[1];
+		dvz = p->vPred[2] - q->vPred[2];
+		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
+		if (dvdotdr>0.0) {
+			q->PdV += rp * q->PoverRho2 * dvdotdr;
+			rp *= (pPoverRho2 + q->PoverRho2);
+			rp *= aFac; /* convert to comoving acceleration */
+
+		        q->a[0] += rp * dx;
+		        q->a[1] += rp * dy;
+		        q->a[2] += rp * dz;
+              		}
+		else {
+             		/* h mean */
+		        hav = 0.5*(ph+sqrt(0.25*BALL2(q)));
+			/* mu 
+			   multiply by a to be consistent with physical c */
+		        absmu = -hav*dvdotdr*smf->a 
+			    / (nnList[i].fDist2+0.01*hav*hav);
+			/* mu terms for gas time step */
+			if (absmu>q->mumax) q->mumax=absmu;
+                        /* viscosity */
+		        visc = 0.5*(p->divv+q->divv)*(smf->alpha * (pc + q->c) 
+			    +   smf->beta  * 2 * absmu ) 
+			    * absmu / (pDensity + q->fDensity);
+			q->PdV += rp * (q->PoverRho2 + 0.5*visc) * dvdotdr;
+			rp *= (pPoverRho2 + q->PoverRho2 + visc);
+#ifdef DEBUG			
+			q->PdVpres += rp * (q->PoverRho2) * dvdotdr;
+			q->PdVvisc += rp * (0.5*visc) * dvdotdr;
+#endif
+			rp *= aFac; /* convert to comoving acceleration */
+
+		        q->a[0] += rp * dx;
+		        q->a[1] += rp * dy;
+		        q->a[2] += rp * dz;
+              		}
+	        }
+	  } 
+        }
+
+void initDivVort(void *p)
+{
+	((PARTICLE *)p)->divv = 0.0;
+	((PARTICLE *)p)->curlv[0] = 0.0;
+	((PARTICLE *)p)->curlv[1] = 0.0;
+	((PARTICLE *)p)->curlv[2] = 0.0;
+	}
+
+void combDivVort(void *p1,void *p2)
+{
+	((PARTICLE *)p1)->divv += ((PARTICLE *)p2)->divv;
+	((PARTICLE *)p1)->curlv[0] += ((PARTICLE *)p2)->curlv[0];
+	((PARTICLE *)p1)->curlv[1] += ((PARTICLE *)p2)->curlv[1];
+	((PARTICLE *)p1)->curlv[2] += ((PARTICLE *)p2)->curlv[2];
+	}
+
+/* Gather only version -- untested */
+void DivVort(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT ih2,r2,r,rs1;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT pcurlv[3],pdivv;
+	FLOAT pDensity;
+	FLOAT fNorm,vFac,a2;
+	int i;
+
+	if (!p->iActive) return;
+
+	pDensity = p->fDensity;
+	ih2 = 4.0/BALL2(p);
+        a2 = (smf->a*smf->a);
+	fNorm = M_1_PI*ih2*ih2; 
+	vFac = (smf->bCannonical ? 1./a2 : 1.0); /* converts v to xdot */
+
+	pdivv=0.0;
+	pcurlv[0]=0.0;
+	pcurlv[1]=0.0;
+	pcurlv[2]=0.0;
+	for (i=0;i<nSmooth;++i) {
+		q = nnList[i].pPart;
+		r2 = nnList[i].fDist2*ih2;
+		r = sqrt(r2);
+		if (r2 < 1.0) {
+			rs1 = -3 + 2.25*r;
+			}
+#ifdef HSHRINK
+		else if (r2 < 4.0) {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+		else rs1 = 0.0;
+#else
+		else {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+#endif
+		rs1 *= q->fMass/q->fDensity;
+
+		dx = nnList[i].dx;
+		dy = nnList[i].dy;
+		dz = nnList[i].dz;
+		dvx = p->vPred[0] - q->vPred[0];
+		dvy = p->vPred[1] - q->vPred[1];
+		dvz = p->vPred[2] - q->vPred[2];
+		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
+		pdivv += rs1*dvdotdr;
+		pcurlv[0] += rs1*(dvz*dy - dvy*dz);
+		pcurlv[1] += rs1*(dvx*dz - dvz*dx);
+		pcurlv[2] += rs1*(dvy*dx - dvx*dy);
+ 		}
+	p->divv -=  fNorm*pdivv;  /* physical */
+	p->curlv[0] += fNorm*vFac*pcurlv[0];
+	p->curlv[1] += fNorm*vFac*pcurlv[1];
+	p->curlv[2] += fNorm*vFac*pcurlv[2];
+	}
+
+/* Output is physical divv and curlv -- thus a*h_co*divv is physical */
+void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT ih2,r2,r,rs1,rq,rp;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT pMass,pDensity;
+	FLOAT fNorm,dv,vFac,a2;
+	FLOAT pcurlv[3],pdivv;
+	int i;
+ 
+	pDensity = p->fDensity;
+	pMass = p->fMass;
+	ih2 = 4.0/BALL2(p);
+	a2 = (smf->a*smf->a);
+	fNorm = 0.5*M_1_PI*ih2*ih2*sqrt(ih2); 
+	vFac = (smf->bCannonical ? 1./a2 : 1.0); /* converts v to xdot */
+
+	if (p->iActive) {
+	  /* p active */
+	  for (i=0;i<nSmooth;++i) {
+	        q = nnList[i].pPart;
+	        r2 = nnList[i].fDist2*ih2;
+	        r = sqrt(r2);
+		if (r2 < 1.0) {
+			rs1 = -3 + 2.25*r;
+			}
+#ifdef HSHRINK
+		else if (r2 < 4.0) {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+		else rs1 = 0.0;
+#else
+		else {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+#endif
+		rs1 *= fNorm;
+		rq = rs1 * q->fMass/q->fDensity;
+
+		dx = nnList[i].dx;
+		dy = nnList[i].dy;
+		dz = nnList[i].dz;
+		dvx = p->vPred[0] - q->vPred[0];
+		dvy = p->vPred[1] - q->vPred[1];
+		dvz = p->vPred[2] - q->vPred[2];
+		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
+
+		if (q->iActive) {
+     		        /* q active */
+		        rp = rs1 * pMass/pDensity;
+			p->divv -= rq*dvdotdr;
+			q->divv -= rp*dvdotdr;
+			dv=vFac*(dvz*dy - dvy*dz);
+			p->curlv[0] += rq*dv;
+			q->curlv[0] += rp*dv;
+			dv=vFac*(dvx*dz - dvz*dx);
+			p->curlv[1] += rq*dv;
+			q->curlv[1] += rp*dv;
+			dv=vFac*(dvy*dx - dvx*dy);
+			p->curlv[2] += rq*dv;
+			q->curlv[2] += rp*dv;
+		        }
+ 		else {
+		        /* q inactive */
+     		        p->divv -= rq*dvdotdr;
+			dv=vFac*(dvz*dy - dvy*dz);
+			p->curlv[0] += rq*dv;
+			dv=vFac*(dvx*dz - dvz*dx);
+			p->curlv[1] += rq*dv;
+			dv=vFac*(dvy*dx - dvx*dy);
+			p->curlv[2] += rq*dv;
+		        }
+	        }
+	  } 
+        else {
+          /* p not active */
+	  for (i=0;i<nSmooth;++i) {
+	        q = nnList[i].pPart;
+		if (!q->iActive) continue; /* neither active */
+
+	        r2 = nnList[i].fDist2*ih2;
+	        r = sqrt(r2);
+		if (r2 < 1.0) {
+			rs1 = -3 + 2.25*r;
+			}
+#ifdef HSHRINK
+		else if (r2 < 4.0) {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+		else rs1 = 0.0;
+#else
+		else {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+#endif
+		rp = rs1 * fNorm*pMass/pDensity;
+
+		dx = nnList[i].dx;
+		dy = nnList[i].dy;
+		dz = nnList[i].dz;
+		dvx = p->vPred[0] - q->vPred[0];
+		dvy = p->vPred[1] - q->vPred[1];
+		dvz = p->vPred[2] - q->vPred[2];
+		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
+		/* q active */
+		q->divv -= rp*dvdotdr;
+		dv=vFac*(dvz*dy - dvy*dz);
+		q->curlv[0] += rp*dv;
+		dv=vFac*(dvx*dz - dvz*dx);
+		q->curlv[1] += rp*dv;
+		dv=vFac*(dvy*dx - dvx*dy);
+		q->curlv[2] += rp*dv;
+	        }
+	  } 
+        }
+
+/* Original Particle */
+void initHKPressureTermsParticle(void *p)
+{
+	((PARTICLE *)p)->mumax = 0.0;
+	((PARTICLE *)p)->PdV = 0.0;
+#ifdef DEBUG
+	((PARTICLE *)p)->PdVvisc = 0.0;
+	((PARTICLE *)p)->PdVpres = 0.0;
+#endif
+	}
+
+/* Cached copies of particle */
+void initHKPressureTerms(void *p)
+{
+	((PARTICLE *)p)->mumax = 0.0;
+	((PARTICLE *)p)->PdV = 0.0;
+#ifdef DEBUG
+	((PARTICLE *)p)->PdVvisc = 0.0;
+	((PARTICLE *)p)->PdVpres = 0.0;
+#endif
+	((PARTICLE *)p)->a[0] = 0.0;
+	((PARTICLE *)p)->a[1] = 0.0;
+	((PARTICLE *)p)->a[2] = 0.0;
+	}
+
+void combHKPressureTerms(void *p1,void *p2)
+{
+	((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
+#ifdef DEBUG
+	((PARTICLE *)p1)->PdVvisc += ((PARTICLE *)p2)->PdVvisc;
+	((PARTICLE *)p1)->PdVpres += ((PARTICLE *)p2)->PdVpres;
+#endif
+	if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
+	  ((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
+	((PARTICLE *)p1)->a[0] += ((PARTICLE *)p2)->a[0];
+	((PARTICLE *)p1)->a[1] += ((PARTICLE *)p2)->a[1];
+	((PARTICLE *)p1)->a[2] += ((PARTICLE *)p2)->a[2];	
+	}
+
+/* Gather only version -- (untested)  */
+void HKPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT ih2,r2,r,rs1,rq,rp;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT pPoverRho2,pQonRho2,qQonRho2,qhdivv;
+	FLOAT ph,pc,pDensity,visc,absmu,qh,pMass,hav;
+	FLOAT fNorm,fNorm1,aFac,vFac,fTmp;
+	int i;
+
+	if (!p->iActive) return;
+
+	pc = p->c;
+	pDensity = p->fDensity;
+	pMass = p->fMass;
+	pPoverRho2 = p->PoverRho2;
+	ph = sqrt(0.25*BALL2(p));
+	/* QonRho2 given same scaling with a as PonRho2 */
+	pQonRho2 = (p->divv>0.0 ? 0.0 : fabs(p->divv)*ph*smf->a
+		    *(smf->alpha*pc + smf->beta*fabs(p->divv)*ph*smf->a)/pDensity );
+	ih2 = 4.0/BALL2(p);
+	fNorm = 0.5*M_1_PI*ih2/ph;
+	fNorm1 = fNorm*ih2;	/* converts to physical u */
+	aFac = (smf->a);        /* comoving acceleration factor */
+	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
+
+	for (i=0;i<nSmooth;++i) {
+	        q = nnList[i].pPart;
+	        r2 = nnList[i].fDist2*ih2;
+	        r = sqrt(r2);
+		if (r2 < 1.0) {
+			rs1 = -3 + 2.25*r;
+			}
+#ifdef HSHRINK
+		else if (r2 < 4.0) {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+		else rs1 = 0.0;
+#else
+		else {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+#endif
+		rs1 *= fNorm1 * q->fMass;;
+
+		dx = nnList[i].dx;
+		dy = nnList[i].dy;
+		dz = nnList[i].dz;
+		dvx = p->vPred[0] - q->vPred[0];
+		dvy = p->vPred[1] - q->vPred[1];
+		dvz = p->vPred[2] - q->vPred[2];
+		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
+
+		if (dvdotdr>0.0) {
+		  p->PdV += rs1 * pPoverRho2 * dvdotdr;
+		  rs1 *= (pPoverRho2 + q->PoverRho2);
+		  rs1 *= aFac;
+		  p->a[0] -= rs1 * dx;
+		  p->a[1] -= rs1 * dy;
+		  p->a[2] -= rs1 * dz;
+		  }
+ 	        else {
+		  qh=sqrt(0.25*BALL2(q));
+		  qhdivv = qh*fabs(q->divv)*smf->a; /* units of physical velocity */
+		  qQonRho2 = ( qhdivv>0.0 ? 0.0 : 
+			qhdivv*(smf->alpha*q->c + smf->beta*qhdivv)/q->fDensity );
+		  visc = pQonRho2 + qQonRho2;
+		  /* mu -- same timestep criteria as standard sph above (for now) */
+		  hav=0.5*(qh+ph);
+		  absmu = -hav*dvdotdr*smf->a 
+			    / (nnList[i].fDist2+0.01*hav*hav);
+		  if (absmu>p->mumax) p->mumax=absmu;
+		  p->PdV += rs1 * (pPoverRho2 + 0.5*visc) * dvdotdr;
+		  rs1 *= (pPoverRho2 + q->PoverRho2 + visc);
+		  rs1 *= aFac; /* convert to comoving acceleration */
+		  p->a[0] -= rs1 * dx;
+		  p->a[1] -= rs1 * dy;
+		  p->a[2] -= rs1 * dz;
+		  }
+                }
+        }
+
+/* Bulk viscosity and standard pressure forces */
+void HKPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT ih2,r2,r,rs1,rq,rp;
+	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
+	FLOAT pPoverRho2,pQonRho2,qQonRho2,qhdivv;
+	FLOAT ph,pc,pDensity,visc,absmu,qh,pMass,hav;
+	FLOAT fNorm,fNorm1,aFac,vFac,fTmp;
+	int i;
+
+	pc = p->c;
+	pDensity = p->fDensity;
+	pMass = p->fMass;
+	pPoverRho2 = p->PoverRho2;
+	ph = sqrt(0.25*BALL2(p));
+	/* QonRho2 given same scaling with a as PonRho2 */
+	pQonRho2 = (p->divv>0.0 ? 0.0 : fabs(p->divv)*ph*smf->a
+		    *(smf->alpha*pc + smf->beta*fabs(p->divv)*ph*smf->a)/pDensity );
+	ih2 = 4.0/BALL2(p);
+	fNorm = 0.5*M_1_PI*ih2/ph;
+	fNorm1 = fNorm*ih2;	/* converts to physical u */
+	aFac = (smf->a);        /* comoving acceleration factor */
+	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
+
+	for (i=0;i<nSmooth;++i) {
+	        q = nnList[i].pPart;
+	        r2 = nnList[i].fDist2*ih2;
+	        r = sqrt(r2);
+		if (r2 < 1.0) {
+			rs1 = -3 + 2.25*r;
+			}
+#ifdef HSHRINK
+		else if (r2 < 4.0) {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+		else rs1 = 0.0;
+#else
+		else {
+		        rs1 = 2.0 - r;
+			rs1 = -0.75*rs1*rs1/r;
+			}
+#endif
+		rs1 *= fNorm1;
+		rq = rs1 * q->fMass;
+		rp = rs1 * pMass;
+
+		dx = nnList[i].dx;
+		dy = nnList[i].dy;
+		dz = nnList[i].dz;
+		dvx = p->vPred[0] - q->vPred[0];
+		dvy = p->vPred[1] - q->vPred[1];
+		dvz = p->vPred[2] - q->vPred[2];
+		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
+
+		if (dvdotdr>0.0) {
+		  if (p->iActive) {
+		        p->PdV += rq * pPoverRho2 * dvdotdr;
+			rq *= (pPoverRho2 + q->PoverRho2);
+			rq *= aFac;
+		        p->a[0] -= rq * dx;
+		        p->a[1] -= rq * dy;
+		        p->a[2] -= rq * dz;
+		        }
+		  if (q->iActive) {
+			q->PdV += rp * q->PoverRho2 * dvdotdr;
+			rp *= (pPoverRho2 + q->PoverRho2);
+			rp *= aFac; /* convert to comoving acceleration */
+		        q->a[0] += rp * dx;
+		        q->a[1] += rp * dy;
+		        q->a[2] += rp * dz;
+              		}
+		  }
+ 	        else {
+		  qh=sqrt(0.25*BALL2(q));
+		  qhdivv = qh*fabs(q->divv)*smf->a; /* units of physical velocity */
+		  qQonRho2 = ( qhdivv>0.0 ? 0.0 : 
+			qhdivv*(smf->alpha*q->c + smf->beta*qhdivv)/q->fDensity );
+		  visc = pQonRho2 + qQonRho2;
+		  /* mu -- same timestep criteria as standard sph above (for now) */
+		  hav=0.5*(qh+ph);
+		  absmu = -hav*dvdotdr*smf->a 
+			    / (nnList[i].fDist2+0.01*hav*hav);
+		  if (p->iActive) {
+			if (absmu>p->mumax) p->mumax=absmu;
+		        p->PdV += rq * (pPoverRho2 + 0.5*visc) * dvdotdr;
+			rq *= (pPoverRho2 + q->PoverRho2 + visc);
+			rq *= aFac; /* convert to comoving acceleration */
+		        p->a[0] -= rq * dx;
+		        p->a[1] -= rq * dy;
+		        p->a[2] -= rq * dz;
+		        }
+		  if (q->iActive) {
+			if (absmu>q->mumax) q->mumax=absmu;
+			q->PdV += rp * (q->PoverRho2 + 0.5*visc) * dvdotdr;
+			rp *= (pPoverRho2 + q->PoverRho2 + visc);
+			rp *= aFac; /* convert to comoving acceleration */
+		        q->a[0] += rp * dx;
+		        q->a[1] += rp * dy;
+		        q->a[2] += rp * dz;
+              		}
+		  }
+                }
+        }
 
 #endif
 

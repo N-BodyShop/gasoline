@@ -36,8 +36,9 @@ typedef struct pstContext {
 	int nLower;
 	int nUpper;
 	int iLvl;
-	BND	bnd;
+	BND bnd;
 	BND bndActive;
+	BND bndTreeActive;
 	int iSplitDim;
 	int iOrdSplit;
 	FLOAT fSplit;
@@ -53,23 +54,112 @@ typedef struct pstContext {
 #define PST_SERVICES		100
 #define PST_FILENAME_SIZE	512
 
+enum pst_service {
+      PST_SRV_STOP,
+      PST_SETADD,
+      PST_LEVELIZE,
+      PST_READTIPSY,
+      PST_DOMAINDECOMP,
+      PST_CALCBOUND,
+      PST_WEIGHT,
+      PST_FREESTORE,
+      PST_COLREJECTS,
+      PST_SWAPREJECTS,
+      PST_DOMAINCOLOR,
+      PST_COLORDREJECTS,
+      PST_DOMAINORDER,
+      PST_LOCALORDER,
+      PST_OUTARRAY,
+      PST_OUTVECTOR,
+      PST_WRITETIPSY,
+      PST_BUILDTREE,
+      PST_SMOOTH,
+      PST_GRAVITY,
+      PST_CALCE,
+      PST_DRIFT,
+      PST_DRIFTRUNG,
+      PST_KICK,
+      PST_READCHECK,
+      PST_WRITECHECK,
+      PST_SETSOFT,
+      PST_SETTOTAL,
+      PST_CALCCELL,
+      PST_COLCELLS,
+      PST_DISTRIBCELLS,
+      PST_CALCROOT,
+      PST_DISTRIBROOT,
+      PST_ONENODEREADINIT,
+      PST_SWAPALL,
+      PST_MASSCHECK,
+      PST_ACTIVEORDER,
+      PST_TREEACTIVEORDER,
+      PST_SETRUNG,
+      PST_ACTIVERUNG,
+      PST_TREEACTIVERUNG,
+      PST_CURRRUNG,
+      PST_DENSITYSTEP,
+      PST_RUNGSTATS,
+      PST_GETMAP,
+      PST_ACCELSTEP,
+      PST_COOLVELOCITY,
+      PST_ACTIVECOOL,
+      PST_TREEACTIVECOOL,
+      PST_RESMOOTH,
+      PST_INITACCEL,
+      PST_DTTORUNG,
+      PST_INITDT,
+      PST_ORDWEIGHT,
+      PST_SETWRITESTART,
+      PST_COLNPARTS,
+      PST_NEWORDER,
+      PST_SETNPARTS,
+      PST_GRAVEXTERNAL,
+      PST_ACTIVEGAS,
+      PST_TREEACTIVEGAS,
+      PST_ACTIVESTAR,
+      PST_TREEACTIVESTAR,
+      PST_ACTIVEDARK,
+      PST_TREEACTIVEDARK,
+      PST_GETGASPRESSURE,
+      PST_KICKVPRED,
+      PST_KICKVPREDRUNG,
+      PST_SPHCURRRUNG,
+      PST_RANDOMVELOCITIES,
+      PST_NUMREJECTS,
+      PST_READSS,
+      PST_WRITESS,
+      PST_CALCHILL,
+      PST_HILLSTEP,
+      PST_FINDENCOUNTER,
+      PST_MARKENCOUNTERS,
+      PST_FINDCOLLISION,
+      PST_DOCOLLISION,
+      PST_QQCALCBOUND,
+      PST_QQDOMAINDECOMP,
+      PST_QQBUILDTREE,
+      PST_QQSMOOTH,
+      PST_SPHSTEP,
+      PST_SPHVISCOSITYLIMITER,
+      PST_GROWMASS	
+      };
+
 void pstAddServices(PST,MDL);
 void pstInitialize(PST *,MDL,LCL *);
 void pstFinish(PST);
 
-#define PST_SETADD			2
+/* #define PST_SETADD			2 */
 struct inSetAdd {
 	int id;
 	};
 void pstSetAdd(PST,void *,int,void *,int *);
 
-#define PST_LEVELIZE		3
+/* #define PST_LEVELIZE		3 */
 struct inLevelize {
 	int iLvl;
 	};
 void pstLevelize(PST,void *,int,void *,int *);
 
-#define PST_READTIPSY		5
+/* #define PST_READTIPSY		5  */
 struct inReadTipsy {
 	int nFileStart;
 	int nFileEnd;
@@ -86,17 +176,18 @@ struct inReadTipsy {
 	};
 void pstReadTipsy(PST,void *,int,void *,int *);
 
-#define PST_DOMAINDECOMP	6
+/* #define PST_DOMAINDECOMP	6 */ 
 void pstDomainDecomp(PST,void *,int,void *,int *);
 
-#define PST_CALCBOUND		7
+/* #define PST_CALCBOUND		7 */ 
 struct outCalcBound {
 	BND bnd;
 	BND bndActive;
+	BND bndTreeActive;
 	};
 void pstCalcBound(PST,void *,int,void *,int *);
 
-#define PST_WEIGHT			8
+/* #define PST_WEIGHT		        8  */
 struct inWeight {
 	int iSplitDim;
 	FLOAT fSplit;
@@ -112,7 +203,7 @@ struct outWeight {
 	};
 void pstWeight(PST,void *,int,void *,int *);
 
-#define PST_FREESTORE		9
+/* #define PST_FREESTORE		9  */
 struct outFreeStore {
 	int nFreeStore;
 	};
@@ -128,7 +219,7 @@ typedef struct outReject {
 	int nLocal;
 	} OREJ;
 
-#define PST_COLREJECTS		10
+/* #define PST_COLREJECTS		10  */
 struct inColRejects {
 	int iSplitDim;
 	FLOAT fSplit;
@@ -137,36 +228,36 @@ struct inColRejects {
 	};
 void pstColRejects(PST,void *,int,void *,int *);
 
-#define PST_SWAPREJECTS		11
+/* #define PST_SWAPREJECTS		11  */
 void pstSwapRejects(PST,void *,int,void *,int *);
 
-#define PST_DOMAINCOLOR		12
+/* #define PST_DOMAINCOLOR		12  */
 void pstDomainColor(PST,void *,int,void *,int *);
 
-#define PST_COLORDREJECTS	13
+/* #define PST_COLORDREJECTS	13  */
 struct inColOrdRejects {
 	int iOrdSplit;
 	int iSplitSide;
 	};
 void pstColOrdRejects(PST,void *,int,void *,int *);
 
-#define PST_DOMAINORDER		14
+/* #define PST_DOMAINORDER		14  */
 struct inDomainOrder {
 	int iMaxOrder;
 	};
 void pstDomainOrder(PST,void *,int,void *,int *);
 
-#define PST_LOCALORDER		15
+/* #define PST_LOCALORDER		15 */
 void pstLocalOrder(PST,void *,int,void *,int *);
 
-#define PST_OUTARRAY		16
+/* #define PST_OUTARRAY		16 */
 struct inOutArray {
 	char achOutFile[PST_FILENAME_SIZE];
 	int iType;
 	};
 void pstOutArray(PST,void *,int,void *,int *);
 
-#define PST_OUTVECTOR		17
+/* #define PST_OUTVECTOR		17 */
 struct inOutVector {
 	char achOutFile[PST_FILENAME_SIZE];
 	int iDim;
@@ -174,7 +265,7 @@ struct inOutVector {
 	};
 void pstOutVector(PST,void *,int,void *,int *);
 
-#define PST_WRITETIPSY		18
+/* #define PST_WRITETIPSY		18 */
 struct inWriteTipsy {
 	int bStandard;
 	double dvFac;
@@ -183,7 +274,7 @@ struct inWriteTipsy {
 	};
 void pstWriteTipsy(PST,void *,int,void *,int *);
 
-#define PST_BUILDTREE		19
+/* #define PST_BUILDTREE		19 */
 struct inBuildTree {
 	int nBucket;
 	int iOpenType;
@@ -191,6 +282,7 @@ struct inBuildTree {
 	double dCrit;
 	int bBinary;
 	int bActiveOnly;
+        int bTreeActiveOnly;
 	int bGravity;
 	};
 struct outBuildTree {
@@ -198,7 +290,7 @@ struct outBuildTree {
 	};
 void pstBuildTree(PST,void *,int,void *,int *);
 
-#define PST_SMOOTH			20
+/* #define PST_SMOOTH			20 */
 struct inSmooth {
 	int nSmooth;
     int bPeriodic;
@@ -208,7 +300,7 @@ struct inSmooth {
 	};
 void pstSmooth(PST,void *,int,void *,int *);
 
-#define PST_GRAVITY			21
+/* #define PST_GRAVITY			21 */
 struct inGravity {
 	int nReps;
 	int bPeriodic;
@@ -220,6 +312,7 @@ struct inGravity {
 	};
 struct outGravity {
 	int nActive;
+        int nTreeActive;
     double aSun[3];
 	double dPartSum;
 	double dCellSum;
@@ -250,14 +343,15 @@ struct outGravity {
 	};
 void pstGravity(PST,void *,int,void *,int *);
 
-#define PST_CALCE			22
+/* #define PST_CALCE			22 */
 struct outCalcE {
 	double T;
 	double U;
+        double Eth;
 	};
 void pstCalcE(PST,void *,int,void *,int *);
 
-#define PST_DRIFT			23
+/* #define PST_DRIFT			23 */
 struct inDrift {
 	double dDelta;
 	FLOAT fCenter[3];
@@ -266,17 +360,20 @@ struct inDrift {
 	FLOAT fCentMass;
 	};
 void pstDrift(PST,void *,int,void *,int *);
+void pstDriftRung(PST,void *,int,void *,int *);
 
-#define PST_KICK			24
+/* #define PST_KICK			24 */
 struct inKick {
 	double dvFacOne;
 	double dvFacTwo;
 	double dvPredFacOne;
 	double dvPredFacTwo;
+        double duFac;
+        double duPredFac;
 	};
 void pstKick(PST,void *,int,void *,int *);
 
-#define PST_READCHECK		25
+/* #define PST_READCHECK		25 */
 struct inReadCheck {
 	int iVersion;
 	int iOffset;
@@ -292,26 +389,26 @@ struct inReadCheck {
 	};
 void pstReadCheck(PST,void *,int,void *,int *);
 
-#define PST_WRITECHECK		26
+/* #define PST_WRITECHECK		26 */
 struct inWriteCheck {
 	int iOffset;
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteCheck(PST,void *,int,void *,int *);
 
-#define PST_SETSOFT		27
+/* #define PST_SETSOFT		27 */
 struct inSetSoft {
 	double dSoft;
 	};
 void pstSetSoft(PST,void *,int,void *,int *);
 
-#define PST_SETTOTAL		28
+/* #define PST_SETTOTAL		28 */
 struct outSetTotal {
 	int nTotal;
 	};
 void pstSetTotal(PST,void *,int,void *,int *);
 
-#define PST_CALCCELL		30
+/* #define PST_CALCCELL		30 */
 struct inCalcCell {
 	int iOrder;
 	FLOAT rcm[3];
@@ -321,54 +418,60 @@ struct outCalcCell {
 	};
 void pstCalcCell(PST,void *,int,void *,int *);
 
-#define PST_COLCELLS		31
+/* #define PST_COLCELLS		31 */
 struct inColCells {
 	int iCell;
 	int nCell;
 	};
 void pstColCells(PST,void *,int,void *,int *);
 
-#define PST_DISTRIBCELLS	32
+/* #define PST_DISTRIBCELLS	32 */
 void pstDistribCells(PST,void *,int,void *,int *);
 
-#define PST_CALCROOT		33
+/* #define PST_CALCROOT		33 */
 struct ioCalcRoot {
 	struct ilCellNewt ilcn;
 	};
 void pstCalcRoot(PST,void *,int,void *,int *);
 
-#define PST_DISTRIBROOT		34
+/* #define PST_DISTRIBROOT		34 */
 void pstDistribRoot(PST,void *,int,void *,int *);
 
-#define PST_ONENODEREADINIT	35
+/* #define PST_ONENODEREADINIT	35 */
 void pstOneNodeReadInit(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
-#define PST_SWAPALL		36
+/* #define PST_SWAPALL		36 */
 void pstSwapAll(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
-#define PST_MASSCHECK		37
+/* #define PST_MASSCHECK		37 */
 struct outMassCheck {
 	double dMass;
 	};
 void pstMassCheck(PST,void *,int,void *,int *);
 
-#define PST_ACTIVEORDER		38
+/* #define PST_ACTIVEORDER		38 */
 void pstActiveOrder(PST,void *,int,void *,int *);
 
-#define PST_SETRUNG		39
+/* #define PST_TREEACTIVEORDER */
+void pstTreeActiveOrder(PST,void *,int,void *,int *);
+
+/* #define PST_SETRUNG		39 */
 struct inSetRung {
     int iRung;
     };
 void pstSetRung(PST,void *,int,void *,int *);
 
-#define PST_ACTIVERUNG		40
+/* #define PST_ACTIVERUNG		40 */
 struct inActiveRung {
     int iRung;
     int bGreater;
     };
 void pstActiveRung(PST,void *,int,void *,int *);
 
-#define PST_CURRRUNG		41
+/* #define PST_TREEACTIVERUNG */
+void pstTreeActiveRung(PST,void *,int,void *,int *);
+
+/* #define PST_CURRRUNG		41 */
 struct inCurrRung {
     int iRung;
     };
@@ -377,14 +480,14 @@ struct outCurrRung {
     };
 void pstCurrRung(PST,void *,int,void *,int *);
 
-#define PST_DENSITYSTEP		42
+/* #define PST_DENSITYSTEP		42 */
 struct inDensityStep {
     double dEta;
     double dRhoFac;
     };
 void pstDensityStep(PST,void *,int,void *,int *);
 
-#define PST_RUNGSTATS		43
+/* #define PST_RUNGSTATS		43 */
 struct inRungStats {
 	int iRung;
 	};
@@ -393,23 +496,24 @@ struct outRungStats {
 	};
 void pstRungStats(PST,void *,int,void *,int *);
 
-#define PST_GETMAP			44
+/* #define PST_GETMAP			44 */
 struct inGetMap {
 	int nStart;
 	};
 void pstGetMap(PST,void *,int,void *,int *);
 
-#define PST_ACCELSTEP		45
+/* #define PST_ACCELSTEP		45 */
 struct inAccelStep {
     double dEta;
     double dVelFac;
     double dAccFac;
+    int    bDoGravity;
     int bEpsVel;
     int bSqrtPhi;
     };
 void pstAccelStep(PST,void *,int,void *,int *);
 
-#define PST_COOLVELOCITY		46
+/* #define PST_COOLVELOCITY		46 */
 struct inCoolVelocity {
 	int nSuperCool;
 	double dCoolFac;
@@ -418,13 +522,16 @@ struct inCoolVelocity {
 	};
 void pstCoolVelocity(PST,void *,int,void *,int *);
 
-#define PST_ACTIVECOOL			47
+/* #define PST_ACTIVECOOL			47 */
 struct inActiveCool {
 	int nSuperCool;
 	};
 void pstActiveCool(PST,void *,int,void *,int *);
 
-#define PST_RESMOOTH			48
+/* #define PST_TREEACTIVECOOL */
+void pstTreeActiveCool(PST,void *,int,void *,int *);
+
+/* #define PST_RESMOOTH			48 */
 struct inReSmooth {
 	int nSmooth;
     int bPeriodic;
@@ -434,10 +541,10 @@ struct inReSmooth {
 	};
 void pstReSmooth(PST,void *,int,void *,int *);
 
-#define PST_INITACCEL			49
+/* #define PST_INITACCEL			49 */
 void pstInitAccel(PST,void *,int,void *,int *);
 
-#define PST_DTTORUNG			50
+/* #define PST_DTTORUNG			50 */
 struct inDtToRung {
     int iRung;
     double dDelta;
@@ -449,13 +556,13 @@ struct outDtToRung {
     };
 void pstDtToRung(PST,void *,int,void *,int *);
 
-#define PST_INITDT				51
+/* #define PST_INITDT				51 */
 struct inInitDt {
     double dDelta;
     };
 void pstInitDt(PST,void *,int,void *,int *);
 
-#define PST_ORDWEIGHT			52
+/* #define PST_ORDWEIGHT			52 */
 struct inOrdWeight {
 	int iOrdSplit;
 	int iSplitSide;
@@ -467,13 +574,13 @@ struct outOrdWeight {
 	};
 void pstOrdWeight(PST,void *,int,void *,int *);
 
-#define PST_SETWRITESTART		53
+/* #define PST_SETWRITESTART		53 */
 struct inSetWriteStart {
 	int nWriteStart;
 	};
 void pstSetWriteStart(PST,void *,int,void *,int *);
 
-#define PST_COLNPARTS			54
+/* #define PST_COLNPARTS			54 */
 struct outColNParts {
     int nNew;
     int nDeltaGas;
@@ -482,10 +589,10 @@ struct outColNParts {
     };
 void pstColNParts(PST, void *, int, void *, int *);
 
-#define PST_NEWORDER			55
+/* #define PST_NEWORDER			55 */
 void pstNewOrder(PST, void *, int, void *, int *);
 
-#define PST_SETNPARTS			56
+/* #define PST_SETNPARTS			56 */
 struct inSetNParts {
     int nGas;
     int nDark;
@@ -495,7 +602,7 @@ struct inSetNParts {
     };
 void pstSetNParts(PST, void *, int, void *, int *);
 
-#define PST_GRAVEXTERNAL			57
+/* #define PST_GRAVEXTERNAL			57 */
 struct inGravExternal {
     int bIndirect;
     int bDoSun;
@@ -510,22 +617,35 @@ struct inGravExternal {
 	};
 void pstGravExternal(PST,void *,int,void *,int *);
 
+void pstActiveStar(PST,void *,int,void *,int *);
+
+void pstTreeActiveStar(PST,void *,int,void *,int *);
+
+void pstActiveDark(PST,void *,int,void *,int *);
+
+void pstTreeActiveDark(PST,void *,int,void *,int *);
+
 #ifdef GASOLINE
 
-#define PST_ACTIVEGAS			58
+/* #define PST_ACTIVEGAS			58 */
 void pstActiveGas(PST,void *,int,void *,int *);
 
-#define PST_CALCETHDOT			59
-void pstCalcEthdot(PST,void *,int,void *,int *);
+/* #define PST_TREEACTIVEGAS */
+void pstTreeActiveGas(PST,void *,int,void *,int *);
 
-#define PST_KICKVPRED			60
+/* #define PST_GETGASPRESSURE */
+void pstGetGasPressure(PST, void *,int,void *,int *);
+
+/* #define PST_KICKVPRED			60 */
 struct inKickVpred {
 	double dvFacOne;
 	double dvFacTwo;
+        double duFac;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
+void pstKickVpredRung(PST,void *,int,void *,int *);
 
-#define PST_SPHCURRRUNG			61
+/* #define PST_SPHCURRRUNG			61 */
 struct inSphCurrRung {
     int iRung;
     };
@@ -536,15 +656,24 @@ void pstSphCurrRung(PST,void *,int,void *,int *);
 
 #endif
 
+#ifdef GLASS
+/* #define PST_RANDOMVELOCITIES */
+struct inRandomVelocities {
+    double dMaxVelocityL;
+    double dMaxVelocityR;
+    };
+void pstRandomVelocities(PST, void *,int,void *,int *);
+#endif
+
 #ifdef COLLISIONS
 
-#define PST_NUMREJECTS		62
+/* #define PST_NUMREJECTS		62 */
 struct outNumRejects {
 	int nRej;
 	};
 void pstNumRejects(PST,void *,int,void *,int *);
 
-#define PST_READSS			63
+/* #define PST_READSS			63 */
 struct inReadSS {
 	int nFileStart;
 	int nFileEnd;
@@ -558,44 +687,44 @@ struct inReadSS {
 	};
 void pstReadSS(PST,void *,int,void *,int *);
 
-#define PST_WRITESS			64
+/* #define PST_WRITESS			64 */
 struct inWriteSS {
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteSS(PST,void *,int,void *,int *);
 
-#define PST_CALCHILL		65
+/* #define PST_CALCHILL		65 */
 struct inCalcHill {
 	double dCentMass;
 	};
 void pstCalcHill(PST,void *,int,void *,int *);
 
-#define PST_HILLSTEP		66
+/* #define PST_HILLSTEP		66 */
 struct inHillStep {
 	double dEta;
 	};
 void pstHillStep(PST,void *,int,void *,int *);
 
-#define PST_FINDENCOUNTER	67
+/* #define PST_FINDENCOUNTER	67 */
 struct outFindEncounter {
 	double dNext;
 	};
 void pstFindEncounter(PST,void *,int,void *,int *);
 
-#define PST_MARKENCOUNTERS	68
+/* #define PST_MARKENCOUNTERS	68 */
 struct inMarkEncounters {
 	double dTMax;
 	};
 void pstMarkEncounters(PST,void *,int,void *,int *);
 
-#define PST_FINDCOLLISION  	69
+/* #define PST_FINDCOLLISION  	69 */
 struct outFindCollision {
 	double dImpactTime;
 	COLLIDER Collider1,Collider2;
 	};
 void pstFindCollision(PST,void *,int,void *,int *);
 
-#define PST_DOCOLLISION		70
+/* #define PST_DOCOLLISION		70 */
 struct inDoCollision {
 	int iPid1,iPid2,iOutcomes;
 	double dEpsN,dEpsT;
@@ -607,31 +736,36 @@ struct outDoCollision {
 	};
 void pstDoCollision(PST,void *,int,void *,int *);
 
-#define PST_QQCALCBOUND		71
+/* #define PST_QQCALCBOUND		71 */
 void pstQQCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
-#define PST_QQDOMAINDECOMP	72
+/* #define PST_QQDOMAINDECOMP	72 */
 void pstQQDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
-#define PST_QQBUILDTREE		73
-void pstQQBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut);
+/* #define PST_QQBUILDTREE		73 */
+void pstQQBuildTree(PST pst,void *vin,int nIn, void *vout,int *pnOut);
 
-#define PST_QQSMOOTH		74
+/* #define PST_QQSMOOTH		74 */
 void pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
 #endif /* COLLISIONS */
 
 #ifdef GASOLINE
 
-#define PST_SPHSTEP		75
+/* #define PST_SPHSTEP		75 */
 struct inSphStep {
     double dCosmoFac;
+    double dEtaCourant;
     };
 void pstSphStep(PST,void *,int,void *,int *);
 
+struct inSphViscosityLimiter {
+    int bOn;
+    };
+void pstSphViscosityLimiter(PST,void *,int,void *,int *);
 #endif
 
-#define PST_GROWMASS		76
+/* #define PST_GROWMASS		76 */
 struct inGrowMass 
 {
     int nGrowMass;

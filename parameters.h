@@ -1,7 +1,6 @@
 #ifndef PARAMETERS_HINCLUDED
 #define PARAMETERS_HINCLUDED
 
-
 struct parameters {
 	/*
 	 ** Parameters for PKDGRAV.
@@ -30,6 +29,7 @@ struct parameters {
 	int bDoDensity;
 	int bSymCool;
 	int bDoGravity;
+        int bDoGas;
 	int bFandG;
 	int bHeliocentric;
 	int bLogHalo;
@@ -49,6 +49,7 @@ struct parameters {
 	int nGrowMass;
         int iWallRunTime;
 	double dEta;
+	double dEtaCourant;
 	double dExtraStore;
 	double dSoft;
 	double dDelta;
@@ -81,6 +82,7 @@ struct parameters {
 	 ** Additional parameters for GASOLINE.
 	 */
 	int bGeometric;
+        int iGasModel;
 	double dConstAlpha;
 	double dConstBeta;
 	double dConstGamma;
@@ -88,6 +90,21 @@ struct parameters {
 	double dGasConst;
 	double dMsolUnit;
 	double dKpcUnit;
+        int    bViscosityLimiter;
+        int    bBulkViscosity;
+#ifdef GLASS
+	/*
+	 ** Additional parameters for GLASS.
+	 */
+        double dGlassDamper;
+        /* Hack for shock tube glasses */
+        double dGlassPoverRhoL;
+        double dGlassPoverRhoR;
+        double dGlassxL;
+        double dGlassxR;
+        double dGlassVL;
+        double dGlassVR;
+#endif
 #ifdef COLLISIONS
 	/*
 	 ** Additional parameters for collision code...

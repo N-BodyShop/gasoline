@@ -94,11 +94,13 @@ void msrDomainColor(MSR);
 void msrReorder(MSR);
 void msrOutArray(MSR,char *,int);
 void msrOutVector(MSR,char *,int);
+void msrGetGasPressure(MSR);
 void msrSmooth(MSR,double,int,int);
 void msrReSmooth(MSR,double,int,int);
 void msrGravity(MSR,double,int,int *,double *,double *,double *,int *);
-void msrCalcE(MSR,int,double,double *,double *,double *);
+void msrCalcE(MSR,int,double,double *,double *,double *,double *);
 void msrDrift(MSR,double,double);
+void msrDriftRung(MSR,double,double);
 void msrKick(MSR,double,double);
 double msrReadCheck(MSR,int *);
 void msrWriteCheck(MSR,double,int);
@@ -149,17 +151,23 @@ int msrDoSun(MSR);
 double msrSoft(MSR);
 int msrDoDensity(MSR);
 int msrDoGravity(MSR msr);
+int msrDoGas(MSR msr);
 void msrInitStep(MSR msr);
+void msrSetRung(MSR msr, int iRung);
 void msrInitAccel(MSR msr);
 void msrSwitchTheta(MSR msr,double);
 int msrMaxOrder(MSR msr);
 
 #ifdef GASOLINE
+void msrSphTreeActiveRung(MSR msr, int iRung, int bGreater);
 void msrInitSph(MSR,double);
-void msrStepSph(MSR msr,double dTime, double dDelta);
 int msrSphCurrRung(MSR msr, int iRung);
+void msrSphStep(MSR msr, double dTime);
+void msrSphViscosityLimiter(MSR msr, int bOn, double dTime, int bSymmetric);
 #endif
-
+#ifdef GLASS
+void msrInitGlass(MSR);
+#endif
 #ifdef COLLISIONS
 void msrFindRejects(MSR msr);
 double msrReadSS(MSR msr);
@@ -176,3 +184,7 @@ void msrDoCollisions(MSR msr, double dTime, double dDelta);
 #endif /* COLLISIONS */
 
 #endif
+
+
+
+

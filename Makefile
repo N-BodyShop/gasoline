@@ -2,18 +2,21 @@
 # Makefile for pkdgrav or gasoline (specify below)
 #
 CC = cc
-EXE = pkdgrav
-#EXE = gasoline
-CODEDEF = #-DCOLLISIONS -DFIX_COLLAPSE -DIN_A_BOX -DSAND_PILE
+#EXE = pkdgrav
+EXE = gasoline
+#CODEDEF = #-DCOLLISIONS -DFIX_COLLAPSE -DI32N_A_BOX -DSAND_PILE
 #CODEDEF = -DSUPERCOOL
 #CODEDEF = -DGROWMASS
 #CODEDEF = -DGASOLINE
+#CODEDEF = -DDEBUG -HSHRINK
+CODEDEF = -DGASOLINE
 
 #
 #       NULL defines
 #
 NULL_MDL		= ../mdl/null
-NULL_CFLAGS		= -O3 -g -I$(NULL_MDL) $(CODEDEF)
+NULL_CFLAGS		= -O2 -I$(NULL_MDL) $(CODEDEF)
+#NULL_CFLAGS		= -O3 -g -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -g -I$(NULL_MDL) $(CODEDEF)
 #NULL_LD_FLAGS	= -Wl,-s
 NULL_XOBJ		= erf.o v_sqrt1.o
@@ -23,11 +26,11 @@ NULL_LIBMDL		= $(NULL_MDL)/mdl.o -lm
 #       SGI defines
 #
 SGI_MDL			= ../mdl/mpi
-SGI_CFLAGS		= -O3 -I$(SGI_MDL) $(CODEDEF) -mips4 -64 -r10000
+SGI_CFLAGS		= -O2 -I$(SGI_MDL) $(CODEDEF) -mips4 -64 -r10000
 SGI_LD_FLAGS	= -mips4 -64 -r10000
 SGI_XOBJ		=
 SGI_LIBMDL		= $(SGI_MDL)/mdl.o -lmpi -lm
-SGI_MDL_CFLAGS	= -g -O3 -mips4 -64 -r10000
+SGI_MDL_CFLAGS	= -O2 -mips4 -64 -r10000
 
 #
 #       SP1/2 defines
@@ -61,6 +64,16 @@ PTHREAD_CFLAGS		= -O3 -malign-double -D_REENTRANT -I$(PTHREAD_MDL) $(CODEDEF)
 PTHREAD_LD_FLAGS 	=
 PTHREAD_XOBJ		= erf.o v_sqrt1.o
 PTHREAD_LIBMDL 		= $(PTHREAD_MDL)/mdl.o -lm -lpthread
+
+#
+#       PTHREAD_SGI defines
+#
+PTHREAD_SGI_MDL			= ../mdl/pthread
+PTHREAD_SGI_CFLAGS		= -O2 -D_REENTRANT -I$(PTHREAD_SGI_MDL) $(CODEDEF) -mips4 -64 -r10000
+PTHREAD_SGI_LD_FLAGS 	= -mips4 -64 -r10000
+PTHREAD_SGI_XOBJ		= 
+PTHREAD_SGI_LIBMDL 		= $(PTHREAD_SGI_MDL)/mdl.o -lm -lpthread
+PTHREAD_SGI_MDL_CFLAGS	= -O2 -mips4 -64 -r10000
 
 #
 #       T3D MPP defines
@@ -154,6 +167,11 @@ pthread:
 	cd $(PTHREAD_MDL); make
 	make $(EXE) "CFLAGS=$(PTHREAD_CFLAGS)" "LD_FLAGS=$(PTHREAD_LD_FLAGS)"\
 		"MDL=$(PTHREAD_MDL)" "XOBJ=$(PTHREAD_XOBJ)" "LIBMDL=$(PTHREAD_LIBMDL)"
+
+pthread_sgi:
+	cd $(PTHREAD_MDL); make CC=cc "CC_FLAGS=$(PTHREAD_SGI_MDL_CFLAGS)"
+	make $(EXE) "CFLAGS=$(PTHREAD_SGI_CFLAGS)" "LD_FLAGS=$(PTHREAD_SGI_LD_FLAGS)"\
+		"MDL=$(PTHREAD_SGI_MDL)" "XOBJ=$(PTHREAD_SGI_XOBJ)" "LIBMDL=$(PTHREAD_SGI_LIBMDL)"
 
 mpi: spx
 

@@ -32,8 +32,8 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	switch (iSmoothType) {
 	case SMX_DENSITY:
 		smx->fcnSmooth = bSymmetric?DensitySym:Density;
-		initParticle = initDensity;
-		init = initDensity;
+		initParticle = initDensity; /* Original Particle */
+		init = initDensity; /* Cached copies */
 		comb = combDensity;
 		smx->fcnPost = NULL;
 		break;
@@ -47,38 +47,28 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		break;
 #endif
 #ifdef GASOLINE
-	case SMX_HSMDIVV:
-		smx->fcnSmooth = bSymmetric?HsmDivvSym:HsmDivv;
-		initParticle = initHsmDivv;
-		init = initHsmDivv;
-		comb = combHsmDivv;
-		smx->fcnPost = postHsmDivv;
-		break;
-	case SMX_GEOMBV:
-		assert(bSymmetric != 0);
-		smx->fcnSmooth = GeomBVSym;
-		initParticle = initGeomBV;
-		init = initGeomBV;
-		comb = combGeomBV;
-		smx->fcnPost = postGeomBV;
-		break;
-	case SMX_ETHDOTBV:
-		assert(bSymmetric != 0);
-		smx->fcnSmooth = EthdotBVSym;
-		initParticle = initEthdotBV;
-		init = initEthdotBV;
-		comb = combEthdotBV;
-		smx->fcnPost = NULL;
-		break;		
-	case SMX_ACCSPHBV:
-		assert(bSymmetric != 0);
-		smx->fcnSmooth = AccsphBVSym;
-		initParticle = NULL;		/* Don't zero accelerations */
-		init = initAccsph;
-		comb = combAccsph;
+	case SMX_SPHPRESSURETERMS:
+		smx->fcnSmooth = bSymmetric?SphPressureTermsSym:SphPressureTerms;
+		initParticle = initSphPressureTermsParticle; /* Original Particle */
+		init = initSphPressureTerms; /* Cached copies */
+		comb = combSphPressureTerms;
 		smx->fcnPost = NULL;
 		break;
-#endif
+	case SMX_DIVVORT:
+		smx->fcnSmooth = bSymmetric?DivVortSym:DivVort;
+		initParticle = initDivVort;
+		init = initDivVort;
+		comb = combDivVort;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_HKPRESSURETERMS:
+		smx->fcnSmooth = bSymmetric?HKPressureTermsSym:HKPressureTerms;
+		initParticle = initHKPressureTermsParticle; /* Original Particle */
+		init = initHKPressureTerms; /* Cached copies */
+		comb = combHKPressureTerms;
+		smx->fcnPost = NULL;
+		break;
+#endif	       
 #ifdef COLLISIONS
 	case SMX_REJECTS:
 		assert(bSymmetric == 0);
@@ -118,7 +108,8 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		assert(0);
 		}
 	/*
-	 ** Initialize the particles in the tree.
+	 ** Initialize the ACTIVE particles in the tree.
+	 ** There are other particles in the tree -- just not active.
 	 */
 	nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
 	for (pi=0;pi<nTree;++pi) {
@@ -129,9 +120,10 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 				}
 			}
 		else {
-			assert(bSymmetric == 0);
 			if (bSmooth) {
-				if (pkd->pStore[pi].fBall2 < 0.0) 
+ 			        if (bSymmetric) 
+                                        pkd->pStore[pi].fBall2 = -1.0;
+				else if (pkd->pStore[pi].fBall2 < 0.0) 
 					pkd->pStore[pi].fBall2 = 0.0;
 				}
 			}
@@ -223,7 +215,7 @@ void smFinish(SMX smx,SMF *smf)
 	 ** "Gather-Scatter" kernel.
 	 */
 	if (smx->fcnPost != NULL) {
-		for (pi=0;pi<pkd->nActive;++pi) {
+		for (pi=0;pi<pkd->nTreeActive;++pi) {
 			if (pkd->pStore[pi].iActive) {
 				smx->fcnPost(&pkd->pStore[pi],smf);
 				}
@@ -885,7 +877,7 @@ void smReSmooth(SMX smx,SMF *smf)
 	    }
 	nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
 	for (pi=0;pi<nTree;++pi) {
-		if (p[pi].iActive == 0) continue;
+		if (p[pi].iTreeActive == 0) continue;
 		/*
 		 ** Do a Ball Gather at the radius of the most distant particle
 		 ** which is smSmooth sets in p[pi].fBall2.
@@ -961,3 +953,9 @@ void smReSmooth(SMX smx,SMF *smf)
 			}
 		}
 	}
+
+
+
+
+
+

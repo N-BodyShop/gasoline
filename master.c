@@ -9,7 +9,6 @@
 #include <math.h>
 
 #include <sys/param.h> /* for MAXHOSTNAMELEN, if available */
-
 #include <rpc/types.h>
 #include <rpc/xdr.h>
 
@@ -30,7 +29,7 @@
 #endif /* COLLISIONS */
 
 #define LOCKFILE ".lockfile"	/* for safety lock */
-#define STOPFILE "STOP"			/* for user interrupt */
+#define STOPFILE "STOP"		/* for user interrupt */
 
 void _msrLeader(void)
 {
@@ -184,6 +183,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dEta = 0.1;
 	prmAddParam(msr->prm,"dEta",2,&msr->param.dEta,sizeof(double),"eta",
 				"<time step criterion>");
+	msr->param.dEtaCourant = 0.4;
+	prmAddParam(msr->prm,"dEtaCourant",2,&msr->param.dEtaCourant,sizeof(double),"etaC",
+				"<Courant criterion>");
 	msr->param.bEpsVel = 1;
 	prmAddParam(msr->prm,"bEpsVel",0,&msr->param.bEpsVel,sizeof(int),
 				"ev", "<Epsilon on V (or sqrt(Eps/a)) timestepping>");
@@ -305,6 +307,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoGravity = 1;
 	prmAddParam(msr->prm,"bDoGravity",0,&msr->param.bDoGravity,sizeof(int),"g",
 				"calculate gravity/don't calculate gravity = +g");
+	msr->param.bDoGas = 1;
+	prmAddParam(msr->prm,"bDoGas",0,&msr->param.bDoGas,sizeof(int),"gas",
+				"calculate gas/don't calculate gas = +gas");
 	msr->param.bFandG = 0;
 	prmAddParam(msr->prm,"bFandG",0,&msr->param.bFandG,sizeof(int),"fg",
 				"use/don't use Kepler orbit drifts = -fg");
@@ -327,17 +332,21 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"iWallRunTime",1,&msr->param.iWallRunTime,
 		    sizeof(int),"wall","<Maximum Wallclock time (in minutes) to run> = 0 = infinite");
 #ifdef GASOLINE
-	msr->param.bGeometric = 1;
+	msr->param.bGeometric = 0;
 	prmAddParam(msr->prm,"bGeometric",0,&msr->param.bGeometric,sizeof(int),
 				"geo","geometric/arithmetic mean to calc Grad(P/rho) = +geo");
-	msr->param.dConstAlpha = 1.0;
+	msr->param.iGasModel = GASMODEL_ADIABATIC;
+	prmAddParam(msr->prm,"iGasModel",0,&msr->param.iGasModel,
+				sizeof(int),"GasModel",
+				"<Gas model employed> = 0 (Adiabatic)");
+	msr->param.dConstAlpha = 1.0; 	/* Default changed to 0.5 later if bBulkViscosity */
 	prmAddParam(msr->prm,"dConstAlpha",2,&msr->param.dConstAlpha,
 				sizeof(double),"alpha",
-				"<Alpha constant in viscosity> = 1.0");
-	msr->param.dConstBeta = 2.0;
+				"<Alpha constant in viscosity> = 1.0 or 0.5 (bBulkViscosity)");
+	msr->param.dConstBeta = 2.0; 	/* Default changed to 0.5 later if bBulkViscosity */
 	prmAddParam(msr->prm,"dConstBeta",2,&msr->param.dConstBeta,
 				sizeof(double),"beta",
-				"<Beta constant in viscosity> = 2.0");
+				"<Beta constant in viscosity> = 2.0 or 0.5 (bBulkViscosity)");
 	msr->param.dConstGamma = 5.0/3.0;
 	prmAddParam(msr->prm,"dConstGamma",2,&msr->param.dConstGamma,
 				sizeof(double),"gamma",
@@ -358,7 +367,43 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dKpcUnit",2,&msr->param.dKpcUnit,
 				sizeof(double),"kpcu",
 				"<Kiloparsec/system length unit>");
+	msr->param.dKpcUnit = 1000.0;
+	prmAddParam(msr->prm,"dKpcUnit",2,&msr->param.dKpcUnit,
+				sizeof(double),"kpcu",
+				"<Kiloparsec/system length unit>");
+	msr->param.bViscosityLimiter = 0;
+	prmAddParam(msr->prm,"bViscosityLimiter",0,&msr->param.bViscosityLimiter,sizeof(int),
+				"vlim","Balsara Viscosity Limiter");
+	msr->param.bBulkViscosity = 0;
+	prmAddParam(msr->prm,"bBulkViscosity",0,&msr->param.bBulkViscosity,sizeof(int),
+				"vlim","Bulk Viscosity");
+
+
 #endif
+#ifdef GLASS
+	msr->param.dGlassDamper = 0.0;
+	prmAddParam(msr->prm,"dGlassDamper",2,&msr->param.dGlassDamper,
+		    sizeof(double),"dGlassDamper",
+		    "Lose 0.0 dt velocity per step (no damping)");
+	msr->param.dGlassPoverRhoL = 1.0;
+	prmAddParam(msr->prm,"dGlassPoverRhoL",2,&msr->param.dGlassPoverRhoL,
+		    sizeof(double),"dGlassPoverRhoL","Left P on Rho = 1.0");
+	msr->param.dGlassPoverRhoL = 1.0;
+	prmAddParam(msr->prm,"dGlassPoverRhoR",2,&msr->param.dGlassPoverRhoR,
+		    sizeof(double),"dGlassPoverRhoR","Right P on Rho = 1.0");
+	msr->param.dGlassxL = 0.0;
+	prmAddParam(msr->prm,"dGlassxL",2,&msr->param.dGlassxL,sizeof(double),
+				"dGlassxL","Left smoothing range = 0.0");
+	msr->param.dGlassxR = 0.0;
+	prmAddParam(msr->prm,"dGlassxR",2,&msr->param.dGlassxR,sizeof(double),
+				"dGlassxR","Right smoothing range = 0.0");
+	msr->param.dGlassVL = 0.0;
+	prmAddParam(msr->prm,"dGlassVL",2,&msr->param.dGlassVL,sizeof(double),
+				"dGlassVL","Left Max Random Velocity = 0.0");
+	msr->param.dGlassVR = 0.0;
+	prmAddParam(msr->prm,"dGlassVR",2,&msr->param.dGlassVR,sizeof(double),
+				"dGlassVR","Right Max Random Velocity = 0.0");
+#endif	
 #ifdef COLLISIONS
 	msr->param.bFindRejects = 1;
 	prmAddParam(msr->prm,"bFindRejects",1,&msr->param.bFindRejects,
@@ -405,6 +450,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	if (msr->param.bPeriodic && !prmSpecified(msr->prm,"nReplicas")) {
 		msr->param.nReplicas = 1;
 		}
+	/*
+	 ** Warn that we have a setting for nReplicas if bPeriodic NOT set.
+	 */
+	if (!msr->param.bPeriodic && msr->param.nReplicas != 0) {
+		printf("WARNING: nReplicas set to non-zero value for non-periodic!\n");
+		}
+
 	if (!msr->param.achInFile[0] && !msr->param.bRestart) {
 		printf("ERROR: no input file specified\n");
 		_msrExit(msr);
@@ -416,6 +468,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		/*DEBUG why is this here? -- DCR*/
 		}
 	msr->nThreads = mdlThreads(mdl);
+
+	/*
+	 ** Always set bCannonical = 1 if bComove == 0
+	 */
+	if (!msr->param.bComove) {
+	        if (!msr->param.bCannonical)
+		        printf("WARNING: bCannonical reset to 1 for non-comoving (bComove == 0)\n");
+	        msr->param.bCannonical = 1;
+           	} 
 	/*
 	 ** Determine the period of the box that we are using.
 	 ** Set the new d[xyz]Period parameters which are now used instead
@@ -434,6 +495,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		!prmSpecified(msr->prm,"dzPeriod")) {
 		msr->param.dzPeriod = msr->param.dPeriod;
 		}
+#ifdef GASOLINE
+        if (msr->param.bBulkViscosity) {
+	        if (!prmSpecified(msr->prm,"dConstAlpha"))
+                        msr->param.dConstAlpha=0.5;
+	        if (!prmSpecified(msr->prm,"dConstBeta"))
+                        msr->param.dConstBeta=0.5;
+	        }
+#endif
 	/*
 	 ** Determine opening type.
 	 */
@@ -610,6 +679,18 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef GASOLINE
 	fprintf(fp," GASOLINE");
 #endif
+#ifdef GLASS
+	fprintf(fp," GLASS");
+#endif
+#ifdef HSHRINK
+	fprintf(fp," HSHRINK");
+#endif
+#ifdef DEBUG
+	fprintf(fp," DEBUG");
+#endif
+#ifdef ALTSPH
+	fprintf(fp," ALTSPH");
+#endif
 #ifdef SUPERCOOL
 	fprintf(fp," SUPERCOOL");
 #endif
@@ -640,19 +721,17 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef CRAY_T3D
 	fprintf(fp," CRAY_T3D");
 #endif
-	fprintf(fp,"\n");
 #ifdef MAXHOSTNAMELEN
 	{
 		char hostname[MAXHOSTNAMELEN];
-		fprintf(fp,"# Master host: ");
+		fprintf(fp,"\n# Master host: ");
 		if (gethostname(hostname,MAXHOSTNAMELEN))
 			fprintf(fp,"unknown");
 		else
 			fprintf(fp,"%s",hostname);
-		fprintf(fp,"\n");
 	}
 #endif
-	fprintf(fp,"# N: %d",msr->N);
+	fprintf(fp,"\n# N: %d",msr->N);
 	fprintf(fp," nThreads: %d",msr->param.nThreads);
 	fprintf(fp," Verbosity flags: (%d,%d,%d,%d,%d)",msr->param.bVWarnings,
 			msr->param.bVStart,msr->param.bVStep,msr->param.bVRungStat,
@@ -683,12 +762,14 @@ void msrLogParams(MSR msr,FILE *fp)
 		fprintf(fp," dSoft: input");
 	fprintf(fp,"\n# dDelta: %g",msr->param.dDelta);
 	fprintf(fp," dEta: %g",msr->param.dEta);
+	fprintf(fp," dEtaCourant: %g",msr->param.dEtaCourant);
 	fprintf(fp," iMaxRung: %d",msr->param.iMaxRung);
 	fprintf(fp," bEpsVel: %d",msr->param.bEpsVel);
 	fprintf(fp," bSqrtPhi: %d",msr->param.bSqrtPhi);
 	fprintf(fp," bISqrtRho: %d",msr->param.bISqrtRho);
 	fprintf(fp," bNonSymp: %d",msr->param.bNonSymp);
 	fprintf(fp,"\n# bDoGravity: %d",msr->param.bDoGravity);
+	fprintf(fp,"# bDoGas: %d",msr->param.bDoGas);
 	fprintf(fp," bFandG: %d",msr->param.bFandG);
 	fprintf(fp," bHeliocentric: %d",msr->param.bHeliocentric);
 	fprintf(fp," dCentMass: %g",msr->param.dCentMass);
@@ -700,6 +781,7 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef GASOLINE
 	fprintf(fp,"\n# SPH: bGeometric: %d",msr->param.bGeometric);
+	fprintf(fp," iGasModel: %g",msr->param.iGasModel);
 	fprintf(fp," dConstAlpha: %g",msr->param.dConstAlpha);
 	fprintf(fp," dConstBeta: %g",msr->param.dConstBeta);
 	fprintf(fp," dConstGamma: %g",msr->param.dConstGamma);
@@ -707,6 +789,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dGasConst: %g",msr->param.dGasConst);
 	fprintf(fp," dMsolUnit: %g",msr->param.dMsolUnit);
 	fprintf(fp," dKpcUnit: %g",msr->param.dKpcUnit);
+	fprintf(fp,"\n# SPH: bViscosityLimiter: %d",msr->param.bViscosityLimiter);
+	fprintf(fp," SPH: bBulkViscosity: %d",msr->param.bBulkViscosity);
 #endif
 #ifdef COLLISIONS
 	fprintf(fp,"\n# Collisions:");
@@ -1524,7 +1608,8 @@ void msrSetSoft(MSR msr,double dSoft)
 	}
 
 
-void msrBuildTree(MSR msr,int bActiveOnly,double dMass,int bSmooth)
+void msrBuildTree(MSR msr,int bActiveOnly,
+		  double dMass,int bSmooth)
 {
 	struct inBuildTree in;
 	struct outBuildTree out;
@@ -1575,6 +1660,7 @@ void msrBuildTree(MSR msr,int bActiveOnly,double dMass,int bSmooth)
 			}
 		}
 	in.bActiveOnly = bActiveOnly;
+	in.bTreeActiveOnly = bActiveOnly;
 	if (msr->param.bVDetails) {
 		int sec,dsec;
 		sec = time(0);
@@ -1802,6 +1888,43 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 		}
 	}
 
+#ifdef GASOLINE
+
+void msrGetGasPressure(MSR msr)
+{
+  GASPARAMETERS in;
+  
+  in.iGasModel = (enum GasModel) msr->param.iGasModel;
+
+  switch ( in.iGasModel ) {
+
+  case GASMODEL_ADIABATIC:
+    in.gamma = msr->param.dConstGamma;
+    in.gammam1 = in.gamma-1;
+    break;
+  case GASMODEL_ISOTHERMAL:
+  case GASMODEL_IONEQM:
+  case GASMODEL_IONEVOLVE:
+    assert(0);
+    break;
+  case GASMODEL_GLASS:
+#ifdef GLASS
+    in.dGlassPoverRhoL = msr->param.dGlassPoverRhoL;
+    in.dGlassPoverRhoR = msr->param.dGlassPoverRhoR;
+    in.dGlassxL = msr->param.dGlassxL;
+    in.dGlassxR = msr->param.dGlassxR;
+    in.dxBoundL = -0.5*msr->param.dxPeriod;
+    in.dxBoundR = +0.5*msr->param.dxPeriod;
+#else
+    assert(0);
+#endif
+    break;
+    }
+      
+  pstGetGasPressure(msr->pst,&in,sizeof(in),NULL,NULL);
+  }
+
+#endif
 
 void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 {
@@ -1815,14 +1938,21 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
-	in.smf.H = msrTime2Hub(msr,dTime);
-	in.smf.a = msrTime2Exp(msr,dTime);
+	if (msr->param.bComove) {
+  	        in.smf.H = msrTime2Hub(msr,dTime);
+	        in.smf.a = msrTime2Exp(msr,dTime);
+	        }
+        else {
+  	        in.smf.H = 0.0;
+	        in.smf.a = 1.0;
+	        }
 #ifdef GASOLINE
 	in.smf.alpha = msr->param.dConstAlpha;
 	in.smf.beta = msr->param.dConstBeta;
 	in.smf.gamma = msr->param.dConstGamma;
 	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
 	in.smf.bGeometric = msr->param.bGeometric;
+	in.smf.bCannonical = msr->param.bCannonical;
 #endif
 	if (msr->param.bVStep) {
 		int sec,dsec;
@@ -1850,8 +1980,14 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.bPeriodic = msr->param.bPeriodic;
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
-	in.smf.H = msrTime2Hub(msr,dTime);
-	in.smf.a = msrTime2Exp(msr,dTime);
+	if (msr->param.bComove) {
+  	        in.smf.H = msrTime2Hub(msr,dTime);
+	        in.smf.a = msrTime2Exp(msr,dTime);
+	        }
+        else {
+  	        in.smf.H = 0.0;
+	        in.smf.a = 1.0;
+	        }
 	in.smf.alpha = msr->param.dConstAlpha;
 	in.smf.beta = msr->param.dConstBeta;
 	in.smf.gamma = msr->param.dConstGamma;
@@ -1885,8 +2021,8 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	assert(msr->iTreeType == MSR_TREE_SPATIAL || 
 		   msr->iTreeType == MSR_TREE_DENSITY);
 	if (msr->param.bVStep) printf("Calculating Gravity, Step:%f\n",dStep);
-    in.nReps = msr->param.nReplicas;
-    in.bPeriodic = msr->param.bPeriodic;
+        in.nReps = msr->param.nReplicas;
+        in.bPeriodic = msr->param.bPeriodic;
 	in.iOrder = msr->param.iOrder;
 	in.iEwOrder = msr->param.iEwOrder;
 	/*
@@ -1991,7 +2127,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	}
 
 
-void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U)
+void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U,double *Eth)
 {
 	struct outCalcE out;
 	double a;
@@ -1999,6 +2135,7 @@ void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U)
 	pstCalcE(msr->pst,NULL,0,&out,NULL);
 	*T = out.T;
 	*U = out.U;
+	*Eth = out.Eth;
 	/*
 	 ** Do the comoving coordinates stuff.
 	 */
@@ -2019,7 +2156,7 @@ void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U)
 	msr->dTimeOld = dTime;
 	msr->dUOld = *U;
 	*U *= a;
-	*E = (*T) + (*U) - msr->dEcosmo;
+	*E = (*T) + (*U) - msr->dEcosmo + a*a*(*Eth);
 	}
 
 
@@ -2057,8 +2194,78 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	
 #ifdef GASOLINE
 	if (msr->param.bCannonical) {
+#ifdef GLASS	  
+	        invpr.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
+#else
 		invpr.dvFacOne = 1.0;	/* no hubble drag, man! */
+#endif
 		invpr.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+#ifdef GASOLINE
+		invpr.duFac    = dDelta;
+#endif
+	        }
+	else {
+		/*
+		 ** Careful! For non-cannonical we want H and a at the 
+		 ** HALF-STEP! This is a bit messy but has to be special
+		 ** cased in some way.
+		 */
+		dTime += dDelta/2.0;
+		a = msrTime2Exp(msr,dTime);
+		H = msrTime2Hub(msr,dTime);
+		invpr.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
+		invpr.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
+#ifdef GASOLINE
+		invpr.duFac    = dDelta;
+#endif
+		}
+	pstKickVpred(msr->pst,&invpr,sizeof(invpr),NULL,NULL);
+#endif
+	}
+
+void msrDriftRung(MSR msr,double dTime,double dDelta)
+{
+	struct inDrift in;
+	int j;
+#ifdef GASOLINE
+	double H,a;
+	struct inKickVpred invpr;
+#endif
+
+#ifdef COLLISIONS
+	msrDoCollisions(msr,dTime,dDelta);
+#endif /* COLLISIONS */
+
+	if (msr->param.bCannonical) {
+		in.dDelta = msrComoveDriftFac(msr,dTime,dDelta);
+		}
+	else {
+		in.dDelta = dDelta;
+		}
+	for (j=0;j<3;++j) {
+		in.fCenter[j] = msr->fCenter[j];
+		}
+	in.bPeriodic = msr->param.bPeriodic;
+	in.bFandG = msr->param.bFandG; /* for NOW! */
+	in.fCentMass = msr->param.dCentMass;
+	pstDriftRung(msr->pst,&in,sizeof(in),NULL,NULL);
+	/*
+	 ** Once we move the particles the tree should no longer be considered 
+	 ** valid.
+	 */
+	msr->iTreeType = MSR_TREE_NONE;
+	
+#ifdef GASOLINE
+	if (msr->param.bCannonical) {
+#ifdef GLASS	  
+	        invpr.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
+#else
+		invpr.dvFacOne = 1.0;	/* no hubble drag, man! */
+#endif
+		invpr.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+#ifdef GASOLINE
+		invpr.duFac    = dDelta;
+#endif
 		}
 	else {
 		/*
@@ -2071,12 +2278,15 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		H = msrTime2Hub(msr,dTime);
 		invpr.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		invpr.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
+#ifdef GASOLINE
+		invpr.duFac    = dDelta;
+#endif
 		}
-	pstKickVpred(msr->pst,&in,sizeof(in),NULL,NULL);
+	pstKickVpredRung(msr->pst,&invpr,sizeof(invpr),NULL,NULL);
 #endif
 	}
 
-
+/* Untested after TreeActive changes */
 void msrCoolVelocity(MSR msr,double dTime,double dMass)
 {
 #ifdef SUPERCOOL
@@ -2090,6 +2300,7 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 		if (msr->param.bSymCool) {
 			ina.nSuperCool = msr->param.nSuperCool;
 			pstActiveCool(msr->pst,&ina,sizeof(ina),NULL,NULL);
+			pstTreeActiveCool(msr->pst,&ina,sizeof(ina),NULL,NULL);
 			msrBuildTree(msr,1,dMass,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
 			msrReSmooth(msr,dTime,SMX_MEANVEL,1);
@@ -2101,6 +2312,7 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 			 ** calculated.
 			 */
 			msrActiveRung(msr,0,1); /* activate all */
+			msrTreeActiveRung(msr,0,1); /* activate all */
 			msrBuildTree(msr,0,SMX_DENSITY,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,0);
 			ina.nSuperCool = msr->param.nSuperCool;
@@ -2140,9 +2352,16 @@ void msrKick(MSR msr,double dTime,double dDelta)
 	double H,a;
 	struct inKick in;
 	
-	if (msr->param.bCannonical) {
+        if (msr->param.bCannonical) {
+#ifdef GLASS	  
+	        in.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
+#else
 		in.dvFacOne = 1.0;		/* no hubble drag, man! */
+#endif
 		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
+#ifdef GASOLINE
+		in.duFac    = dDelta;
+#endif
 		}
 	else {
 		/*
@@ -2155,6 +2374,9 @@ void msrKick(MSR msr,double dTime,double dDelta)
 		H = msrTime2Hub(msr,dTime);
 		in.dvFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
 		in.dvFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
+#ifdef GASOLINE
+		in.duFac    = dDelta;
+#endif
 		}
 	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
@@ -2168,11 +2390,21 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 	struct inKick in;
 	
 	if (msr->param.bCannonical) {
+#ifdef GLASS	  
+	        in.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
+#else
 		in.dvFacOne = 1.0;		/* no hubble drag, man! */
+#endif
 		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
 #ifdef GASOLINE
+#ifdef GLASS	  
+	        in.dvPredFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
+#else
 		in.dvPredFacOne = 1.0;
+#endif
 		in.dvPredFacTwo = msrComoveKickFac(msr,dTime,0.5*dDelta);
+		in.duFac     = dDelta;
+		in.duPredFac = 0.5*dDelta;
 #endif
 		}
 	else {
@@ -2190,8 +2422,11 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 		dTime -= dDelta/4.0;
 		a = msrTime2Exp(msr,dTime);
 		H = msrTime2Hub(msr,dTime);
-		in.dvPredFacOne = (1.0 - H*dDelta)/(1.0 + H*dDelta);
-		in.dvPredFacTwo = dDelta/pow(a,3.0)/(1.0 + H*dDelta);
+
+		in.dvPredFacOne = (1.0 - 0.5*H*dDelta)/(1.0 + 0.5*H*dDelta);
+		in.dvPredFacTwo = 0.5*dDelta/pow(a,3.0)/(1.0 + 0.5*H*dDelta);
+		in.duFac     = dDelta;
+		in.duPredFac = 0.5*dDelta;
 #endif
 		}
 	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
@@ -2206,11 +2441,21 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 	struct inKick in;
 	
 	if (msr->param.bCannonical) {
+#ifdef GLASS	  
+	        in.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
+#else
 		in.dvFacOne = 1.0;		/* no hubble drag, man! */
+#endif
 		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
 #ifdef GASOLINE
+#ifdef GLASS	  
+	        in.dvPredFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
+#else
 		in.dvPredFacOne = 1.0;
+#endif
 		in.dvPredFacTwo = 0.0;
+		in.duFac        = dDelta;
+		in.duPredFac    = 0.0;
 #endif
 		}
 	else {
@@ -2227,6 +2472,8 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 #ifdef GASOLINE
 		in.dvPredFacOne = 1.0;
 		in.dvPredFacTwo = 0.0;
+		in.duFac        = dDelta;
+		in.duPredFac    = 0.0;
 #endif
 		}
 	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
@@ -2241,11 +2488,21 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 	struct inKick in;
 	
 	if (msr->param.bCannonical) {
+#ifdef GLASS	  
+	        in.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
+#else
 		in.dvFacOne = 1.0;		/* no hubble drag, man! */
+#endif
 		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
 #ifdef GASOLINE
+#ifdef GLASS	  
+	        in.dvPredFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
+#else
 		in.dvPredFacOne = 1.0;
+#endif
 		in.dvPredFacTwo = in.dvFacTwo;
+		in.duFac        = dDelta;
+		in.duPredFac    = dDelta;
 #endif
 		}
 	else {
@@ -2262,6 +2519,8 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 #ifdef GASOLINE
 		in.dvPredFacOne = in.dvFacOne;
 		in.dvPredFacTwo = in.dvFacTwo;
+		in.duFac        = dDelta;
+		in.duPredFac    = dDelta;
 #endif
 		}
 	pstKick(msr->pst,&in,sizeof(in),NULL,NULL);
@@ -2448,6 +2707,8 @@ double msrReadCheck(MSR msr,int *piStep)
 		FDL_read(fdl,"dDelta",&msr->param.dDelta);
 	if (!prmSpecified(msr->prm,"dEta"))
 		FDL_read(fdl,"dEta",&msr->param.dEta);
+	if (!prmSpecified(msr->prm,"dEtaCourant"))
+		FDL_read(fdl,"dEtaCourant",&msr->param.dEtaCourant);
 	if (!prmSpecified(msr->prm,"bEpsVel"))
 		FDL_read(fdl,"bEpsVel",&msr->param.bEpsVel);
 	if (!prmSpecified(msr->prm,"bNonSymp"))
@@ -2708,6 +2969,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"dExtraStore",&msr->param.dExtraStore);
 	FDL_write(fdl,"dDelta",&msr->param.dDelta);
 	FDL_write(fdl,"dEta",&msr->param.dEta);
+	FDL_write(fdl,"dEtaCourant",&msr->param.dEta);
 	FDL_write(fdl,"bEpsVel",&msr->param.bEpsVel);
 	FDL_write(fdl,"bNonSymp",&msr->param.bNonSymp);
 	FDL_write(fdl,"iMaxRung",&msr->param.iMaxRung);
@@ -2947,6 +3209,17 @@ msrInitStep(MSR msr)
     }
 
 
+void
+msrSetRung(MSR msr, int iRung)
+{
+    struct inSetRung in;
+
+    in.iRung = iRung;
+    pstSetRung(msr->pst, &in, sizeof(in), NULL, NULL);
+    msr->iCurrMaxRung = in.iRung;
+    }
+
+
 int msrMaxRung(MSR msr)
 {
     return msr->param.iMaxRung;
@@ -2962,6 +3235,11 @@ int msrCurrMaxRung(MSR msr)
 double msrEta(MSR msr)
 {
     return msr->param.dEta;
+    }
+
+double msrEtaCourant(MSR msr)
+{
+    return msr->param.dEtaCourant;
     }
 
 
@@ -3017,6 +3295,7 @@ void msrAccelStep(MSR msr, double dTime)
 	in.dVelFac = 1.0;
 	}
     in.dAccFac = 1.0/(a*a*a);
+    in.bDoGravity = msrDoGravity(msr);
     in.bEpsVel = msr->param.bEpsVel;
     in.bSqrtPhi = msr->param.bSqrtPhi;
     pstAccelStep(msr->pst, &in, sizeof(in), NULL, NULL);
@@ -3044,6 +3323,7 @@ void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
     msr->iCurrMaxRung = out.iMaxRung;
     }
 
+/* Not fully tested: */
 void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta, 
 				   int iRung, double *pdActiveSum)
 {
@@ -3086,12 +3366,28 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
 #ifdef GASOLINE
 		if(msrSphCurrRung(msr, iRung)) {
 			if (msr->param.bVDetails) printf("SPH, iRung: %d\n", iRung);
-			msrStepSph(msr, dTime, dDelta);
+            	        msrSphTreeActiveRung(msr, iRung, 0);
+			msrBuildTree(msr,1,-1.0,1);
+			msrSmooth(msr,dTime,SMX_DENSITY,1);
+			if (msrDoGas(msr)) {
+			  if (msr->param.bBulkViscosity) {
+  			    msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+			    msrGetGasPressure(msr);
+			    msrActiveRung(msr, iRung, 0);
+			    msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
+			    }
+			  else {
+  			    msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime,1);
+			    msrGetGasPressure(msr);
+			    msrActiveRung(msr, iRung, 0);
+			    msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
+                            }
+			  }
 			}
 #endif
 		if(msrCurrRung(msr, iRung)) {
 		    if(msrDoGravity(msr)) {
-			if (msr->param.bVDetails) printf("Gravity, iRung: %d\n", iRung);
+   		        if (msr->param.bVDetails) printf("Gravity, iRung: %d\n", iRung);
 			msrBuildTree(msr,0,dMass,0);
 			msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
@@ -3173,8 +3469,24 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 #ifdef GASOLINE
 		if(msrSphCurrRung(msr, iRung)) {
 			if (msr->param.bVDetails) printf("SPH, iRung: %d\n", iRung);
-			msrStepSph(msr, dTime, dDelta);
-			}
+            	        msrSphTreeActiveRung(msr, iRung, 0);
+			msrBuildTree(msr,1,-1.0,1);
+			msrSmooth(msr,dTime,SMX_DENSITY,1);
+			if (msrDoGas(msr)) {
+ 			   if (msr->param.bBulkViscosity) {
+  			       msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+			       msrGetGasPressure(msr);
+			       msrActiveRung(msr, iRung, 0);
+			       msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
+			       } 
+			   else {
+			       msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime,1);
+			       msrGetGasPressure(msr);
+			       msrActiveRung(msr, iRung, 0); 
+			       msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
+			       }
+			   }
+		}
 #endif
 		if(msrCurrRung(msr, iRung)) {
 		    if(msrDoGravity(msr)) {
@@ -3205,6 +3517,7 @@ void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta,
 		msrTopStepNS(msr,dStep,dTime,dDelta,iRung,1,pdMultiEff);
 	else
 		msrTopStepSym(msr,dStep,dTime,dDelta,iRung,pdMultiEff);
+
 	if (msr->param.bVStep)
 		printf("Multistep Efficiency (average number of microsteps per step):%f\n",
 			   *pdMultiEff);
@@ -3271,17 +3584,33 @@ void msrTopStepKDK(MSR msr,
 		}
     else {
 		if (msr->param.bVDetails) printf("Drift, iRung: %d\n", iRung);
+		/* This Drifts everybody */
 		msrDrift(msr,dTime,dDelta);
-		dTime += 0.5*dDelta;
+		/* JW: Changed this to be consistent (was dTime += 0.5*dDelta) */
+		dTime += dDelta;
 		dStep += 1.0/(1 << iRung);
 		msrActiveRung(msr, iKickRung, 1);
 		msrInitAccel(msr);
 #ifdef GASOLINE
-		if(msrSphCurrRung(msr, iRung)) {
-			if (msr->param.bVDetails)
-				printf("SPH, iRung: %d to %d\n", iRung, iKickRung);
-			msrStepSph(msr, dTime, dDelta);
-			}
+		if (msr->param.bVDetails)
+			printf("SPH, iRung: %d to %d\n", iRung, iKickRung);
+		msrSphTreeActiveRung(msr, iKickRung, 1);
+		msrBuildTree(msr,1,-1.0,1);
+		msrSmooth(msr,dTime,SMX_DENSITY,1);
+		if (msrDoGas(msr)) {
+		    if (msr->param.bBulkViscosity) {
+  			msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+			msrGetGasPressure(msr);
+			msrActiveRung(msr, iKickRung, 1);
+			msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
+			} 
+		    else {
+		        msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime,1);
+			msrGetGasPressure(msr);
+			msrActiveRung(msr, iKickRung, 1); 
+			msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
+		        }
+		    }
 #endif
 		if(msrDoGravity(msr)) {
 			if (msr->param.bVDetails)
@@ -3362,6 +3691,11 @@ int msrDoGravity(MSR msr)
 	return(msr->param.bDoGravity);
 	}
 
+int msrDoGas(MSR msr)
+{
+	return(msr->param.bDoGas);
+	}
+
 void msrInitAccel(MSR msr)
 {
 	pstInitAccel(msr->pst,NULL,0,NULL,NULL);
@@ -3369,34 +3703,34 @@ void msrInitAccel(MSR msr)
 
 #ifdef GASOLINE
 
+void msrSphTreeActiveRung(MSR msr, int iRung, int bGreater)
+{ 
+        /* JW: Only active rungs really need forces calculated */
+        /* For now everything goes into the pot */
+	pstActiveGas(msr->pst, NULL,0,NULL,NULL);
+        /* For tree everything goes into the pot */
+	pstTreeActiveGas(msr->pst, NULL,0,NULL,NULL);
+        }
+
 void msrInitSph(MSR msr,double dTime)
 {
 	pstActiveGas(msr->pst,NULL,0,NULL,NULL);
+	pstTreeActiveGas(msr->pst,NULL,0,NULL,NULL);
 	msrBuildTree(msr,1,-1.0,1);
 	msrSmooth(msr,dTime,SMX_DENSITY,1);
-	msrReSmooth(msr,dTime,SMX_HSMDIVV,1);
-#if (1)
-	msrReSmooth(msr,dTime,SMX_GEOMBV,1);
-	pstCalcEthdot(msr->pst,NULL,0,NULL,NULL);
-#else
-	msrReSmooth(msr,dTime,SMX_ETHDOTBV,1);
-#endif
+	if (msrDoGas(msr)) {
+	   if (msr->param.bBulkViscosity) {
+	      msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+	      msrGetGasPressure(msr);
+	      msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
+	      } 
+	   else {
+	      msrSphViscosityLimiter(msr, msr->param.bViscosityLimiter,dTime,1);
+	      msrGetGasPressure(msr);
+	      msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
+	      }
+	   }
 	}
-
-
-void msrStepSph(MSR msr,double dTime, double dDelta)
-{
-	pstActiveGas(msr->pst,NULL,0,NULL,NULL);
-	msrBuildTree(msr,1,-1.0,1);
-	msrSmooth(msr,dTime,SMX_DENSITY,1);
-	msrReSmooth(msr,dTime,SMX_HSMDIVV,1);
-	msrReSmooth(msr,dTime,SMX_GEOMBV,1);
-	pstCalcEthdot(msr->pst,NULL,0,NULL,NULL);
-	/* pstPredictEth(); XXX not written yet */
-	pstCalcEthdot(msr->pst,NULL,0,NULL,NULL);
-	/* pstCorrectEth(); XXX not written yet */
-	/* pstAccelSph(); XXX not written yet */
-    }
 
 int msrSphCurrRung(MSR msr, int iRung)
 {
@@ -3408,16 +3742,37 @@ int msrSphCurrRung(MSR msr, int iRung)
     return out.iCurrent;
     }
 
-void
-msrSphStep(MSR msr, double dTime)
+void msrSphStep(MSR msr, double dTime)
 {
     struct inSphStep in;
     
-    in.dEta = msrEta(msr);
+    if (!msrDoGas(msr)) return;
+
     in.dCosmoFac = msrTime2Exp(msr, dTime);
+    in.dEtaCourant = msrEtaCourant(msr);
     pstSphStep(msr->pst, &in, sizeof(in), NULL, NULL);
     }
 
+void msrSphViscosityLimiter(MSR msr, int bOn, double dTime, int bSymmetric)
+{
+    struct inSphViscosityLimiter in;
+    
+    if (bOn)  msrReSmooth(msr, dTime, SMX_DIVVORT, bSymmetric);
+    in.bOn = bOn;
+    pstSphViscosityLimiter(msr->pst, &in, sizeof(in), NULL, NULL);
+    }
+
+#endif
+
+#ifdef GLASS
+void msrInitGlass(MSR msr)
+{
+    struct inRandomVelocities in;
+    
+    in.dMaxVelocityL = msr->param.dGlassVL; 
+    in.dMaxVelocityR = msr->param.dGlassVR; 
+    pstRandomVelocities(msr->pst, &in, sizeof(in) ,NULL,NULL);
+    }
 #endif
 
 #ifdef COLLISIONS
