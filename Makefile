@@ -23,7 +23,7 @@ PVM_LIBMDL	=	v_sqrt1.o $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) /local/
 #
 NULL_MDL = ../mdl/null
 
-NULL_CFLAGS = -O3 -DSUPERCOOL -I$(NULL_MDL) $(CODEDEF)
+NULL_CFLAGS = -O3 -I$(NULL_MDL) $(CODEDEF)
 NULL_LD_FLAGS = 
 NULL_LIBMDL = erf.o v_sqrt1.o $(NULL_MDL)/mdl.o -lm
 
