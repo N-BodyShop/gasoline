@@ -80,7 +80,6 @@ void v_sqrt1(int n,double *r2,double *a)
 	i = 0;
 	switch (n&7) {
 	loop:
-	case 0:
 		it = (((int *)r2)[i<<1])>>20;
 		x = r2[i]*u[it];
 		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
@@ -128,6 +127,7 @@ void v_sqrt1(int n,double *r2,double *a)
 		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
 		s *= 1.5 - 0.5*x*s*s;
 		a[i++] = s*t[it];
+	case 0:
 		if (i<n) goto loop;
 		}
 	}

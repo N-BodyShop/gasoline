@@ -528,6 +528,19 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 	float dx,dy,dz;	
 
 	/*
+	 ** Combine the bounds.
+	 */
+	for (j=0;j<3;++j) {
+		if (p2->bnd.fMin[j] < p1->bnd.fMin[j])
+			pOut->bnd.fMin[j] = p2->bnd.fMin[j];
+		else
+			pOut->bnd.fMin[j] = p1->bnd.fMin[j];
+		if (p2->bnd.fMax[j] > p1->bnd.fMax[j])
+			pOut->bnd.fMax[j] = p2->bnd.fMax[j];
+		else
+			pOut->bnd.fMax[j] = p1->bnd.fMax[j];
+		}
+	/*
 	 ** Find the center of mass and mass weighted softening.
 	 */
     pOut->fMass = p1->fMass + p2->fMass;
@@ -828,7 +841,7 @@ double pkdCalcOpen(KDN *pkdn,int iOpenType,double dCrit,int iOrder)
 		dy = pkdn->r[1] - rc[1];
 		dz = pkdn->r[2] - rc[2];
 		d2 = dx*dx + dy*dy + dz*dz;
-		dOpen = Bdel/dCrit + sqrt(d2);
+		dOpen = 2/sqrt(3.0)*pkdn->mom.Bmax/dCrit;
 		if (dOpen < pkdn->mom.Bmax) dOpen = pkdn->mom.Bmax;
 		}
 	else {
@@ -862,8 +875,18 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,int iOrder)
 	else {
 		c[iCell].fMass = 0.0;
 		c[iCell].fSoft = 0.0;
-		for (j=0;j<3;++j) c[iCell].r[j] = 0.0;
+		for (j=0;j<3;++j) {
+		    	c[iCell].bnd.fMin[j] = p[u].r[j];
+			c[iCell].bnd.fMax[j] = p[u].r[j];
+			c[iCell].r[j] = 0.0;
+			}
 		for (pj=l;pj<=u;++pj) {
+			for (j=0;j<3;++j) {
+				if (p[pj].r[j] < c[iCell].bnd.fMin[j])
+					c[iCell].bnd.fMin[j] = p[pj].r[j];
+				if (p[pj].r[j] > c[iCell].bnd.fMax[j])
+					c[iCell].bnd.fMax[j] = p[pj].r[j];
+				}
 			/*
 			 ** Find center of mass and total mass and mass weighted softening.
 			 */

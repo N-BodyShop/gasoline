@@ -20,6 +20,7 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 	double gam[6];
 	double hdotx,s;
 	
+	if(!iOrder) return;
 	mom = pkd->ilcnRoot;
 	pkdn = &pkd->kdNodes[iBucket];
 	n = pkdn->pUpper - pkdn->pLower + 1;
@@ -73,14 +74,16 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 					}
 				}
 			}
+/*
 		for (i=0;i<pkd->nEwhLoop;++i) {
 			hdotx = pkd->ewt[i].hx*dx + pkd->ewt[i].hy*dy + pkd->ewt[i].hz*dz;
 			s = sin(hdotx);
 			fPot -= pkd->ewt[i].hPot*cos(hdotx);
-			ax += pkd->ewt[i].hax*s;
-			ay += pkd->ewt[i].hay*s;
-			az += pkd->ewt[i].haz*s;
+			ax -= pkd->ewt[i].hax*s;
+			ay -= pkd->ewt[i].hay*s;
+			az -= pkd->ewt[i].haz*s;
 			}
+	    */
 		p[j].fPot += fPot;
 		p[j].a[0] += ax;
 		p[j].a[1] += ay;

@@ -907,6 +907,7 @@ void msrGravity(MSR msr,int *piSec,double *pdWMax,double *pdIMax,
     in.nReps = msr->param.nReplicas;
     in.bPeriodic = msr->param.bPeriodic;
 	in.iOrder = msr->param.iOrder;
+	in.iEwOrder = msr->param.iEwOrder;
     in.dEwCut = msr->param.dEwCut;
     in.dEwhCut = msr->param.dEwhCut;
 	pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
