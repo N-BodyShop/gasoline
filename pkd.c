@@ -673,7 +673,6 @@ int pkdWeightWrap(PKD pkd,int d,FLOAT fSplit,FLOAT fSplit2, int iSplitSide,int i
 	 ** iFrom to iTo!
 	 */
 	/* Not needed */
-	/*
 	fLower = 0.0;
 	for (i=iFrom;i<iPart;++i) {
 		fLower += pkd->pStore[i].fWeight;
@@ -690,7 +689,7 @@ int pkdWeightWrap(PKD pkd,int d,FLOAT fSplit,FLOAT fSplit2, int iSplitSide,int i
 		*pfLow = fUpper;
 		*pfHigh = fLower;
 		}
-	*/
+
 	return(iPart);
 	}
 

@@ -5,8 +5,8 @@
 #CC = gcc -Wall
 CC = pgcc
 CC = gcc
-#EXE = pkdgrav
-EXE = gasoline
+EXE = pkdgrav
+#EXE = gasoline
 #CODEDEF = -DCOLLISIONS -DSLIDING_PATCH
 #CODEDEF = -DSUPERCOOL
 #CODEDEF = -DGROWMAS
@@ -14,7 +14,7 @@ EXE = gasoline
 #CODEDEF = -DDEBUG -HSHRINK
 
 #ev6
-#CC = ccc
+CC = ccc
 #CODEDEF = -DGASOLINE -DCCC
 
 #CC = cc
@@ -29,8 +29,8 @@ NULL_MDL		= ../mdl/null
 
 #ev6 flags:
 #NULL_CFLAGS		= -O3 -g3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
-#NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
-NULL_CFLAGS            = -fast -I$(NULL_MDL) $(CODEDEF)
+NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
+#NULL_CFLAGS            = -fast -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -O2 -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -g -I$(NULL_MDL) $(CODEDEF)
 #NULL_LD_FLAGS	= -Wl,-s
