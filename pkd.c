@@ -1021,8 +1021,6 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,float fEwCut,float fEwhCut,
 		if (c[iCell].iDim >= 0) iCell = LOWER(iCell);
 		else {
 			n = c[iCell].pUpper - c[iCell].pLower + 1;
-			pkdClearTimer(pkd,4);
-			pkdStartTimer(pkd,4);
 			pkdStartTimer(pkd,1);
 			pkdBucketWalk(pkd,iCell,nReps);
 			pkdStopTimer(pkd,1);
@@ -1036,8 +1034,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,float fEwCut,float fEwhCut,
 				pkdBucketEwald(pkd,iCell,nReps,fEwCut);
 				pkdStopTimer(pkd,3);
 				}
-			pkdStopTimer(pkd,4);
-			fWeight = pkdGetTimer(pkd,4);
+			fWeight = 2.0*pkd->nCell + 1.0*(pkd->nPart +(n-1)/2.0);
 			pkdBucketWeight(pkd,iCell,fWeight);
 			SETNEXT(iCell);
 			if (iCell == ROOT) break;
