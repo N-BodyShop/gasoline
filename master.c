@@ -3169,7 +3169,8 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bIndirect = msr->param.bHeliocentric;
 		inExt.bDoSun = bDoSun;  /* Treat the Sun explicitly. */
 		inExt.dSunMass = msr->param.dCentMass;
-		for (j=0;j<3;++j) inExt.aSun[j] = out.aSun[j];
+		if(inExt.bIndirect)
+		    for (j=0;j<3;++j) inExt.aSun[j] = out.aSun[j];
 		inExt.bLogHalo = msr->param.bLogHalo;
 		inExt.bHernquistSpheroid = msr->param.bHernquistSpheroid;
 		inExt.bNFWSpheroid = msr->param.bNFWSpheroid;
