@@ -121,7 +121,11 @@ void clInitUV(CL *cl, UVSPECTRUM *UV, int nUV)
     cl->UV = (UVSPECTRUM *) malloc(nUV*sizeof(UVSPECTRUM));
     assert(cl->UV!=NULL);
     
-    for (i=0;i<nUV;i++) (cl->UV)[i] = UV[i];
+    for (i=0;i<nUV;i++) {
+		(cl->UV)[i] = UV[i];
+		if (i) assert ((UV[i-1].zTime > UV[i].zTime && !cl->bUVTableUsesTime) ||
+					   (UV[i-1].zTime < UV[i].zTime && cl->bUVTableUsesTime));
+		}
     }
    
 void clInitRatesTable( CL *cl, double TMin, double TMax, int nTable ) {
