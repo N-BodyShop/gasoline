@@ -1267,6 +1267,7 @@ struct inSimpleStarForm
 	double dInitStarMass;
 	double dESNPerStarMass;
 	double dtCoolingShutoff;
+    int bdivv;
     };
 
 struct outSimpleStarForm 

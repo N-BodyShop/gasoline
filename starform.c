@@ -243,7 +243,7 @@ void pkdFormStars(PKD pkd, STFM stfm, double dTime, int *nFormed,
 
 #ifdef SIMPLESF
 void pkdSimpleStarForm(PKD pkd, double dRateCoeff, double dTMax, double dDenMin, double dDelta, double dTime,
-					   double dInitStarMass, double dESNPerStarMass, double dtCoolingShutoff,
+					   double dInitStarMass, double dESNPerStarMass, double dtCoolingShutoff, int bdivv,
 					   int *nFormed, /* number of stars formed */
 					   double *dMassFormed,	/* mass of stars formed */
 					   int *nDeleted) /* gas particles deleted */
@@ -271,7 +271,7 @@ void pkdSimpleStarForm(PKD pkd, double dRateCoeff, double dTMax, double dDenMin,
 
 			/* Ref: stfmFormStars(stfm, pkd, p, dTime, nFormed, dMassFormed, nDeleted); */
 			/* Is particle in convergent part of flow?  */
-			if (p->divv >= 0.0 || p->fDensity < dDenMin) continue;
+			if (p->fDensity < dDenMin || (bdivv && p->divv >= 0.0)) continue;
 			
 			if ((T = CoolCodeEnergyToTemperature(pkd->Cool,&p->CoolParticle, p->u)) > dTMax) continue; 
 			

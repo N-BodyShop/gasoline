@@ -824,6 +824,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"SSF_dtCoolingShutoff", 2, &msr->param.SSF_dtCoolingShutoff,
 		    sizeof(double), "SSF_dtCoolingShutoff",
 		    "<SF Cooling Shutoff duration> = 30e6");
+	msr->param.SSF_bdivv = 1;
+	prmAddParam(msr->prm,"SSF_bdivv", 0, &msr->param.SSF_bdivv,
+		    sizeof(int), "SSF_bdivv",
+		    "<SF Use div v for star formation> = 1");
 #endif /* SIMPLESF */
 
 #ifdef STARFORM
@@ -1836,6 +1840,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," SSF_dESNPerStarMass: %g",msr->param.SSF_dESNPerStarMass);
 	fprintf(fp," SSF_dInitStarMass: %g",msr->param.SSF_dInitStarMass);
 	fprintf(fp," SSF_dtCoolingShutoff: %g",msr->param.SSF_dtCoolingShutoff);
+	fprintf(fp," SSF_bdivv: %d",msr->param.SSF_bdivv);
 #endif
 	fprintf(fp,"\n# bPatch: %d",msr->param.bPatch);
 	fprintf(fp," dOrbFreq: %g",msr->param.dOrbFreq);
@@ -6023,6 +6028,7 @@ void msrSimpleStarForm(MSR msr, double dTime, double dDelta)
 	in.dESNPerStarMass = msr->param.SSF_dESNPerStarMass/msr->param.dErgPerGmUnit;
 #define SECONDSPERYEAR   31557600.
 	in.dtCoolingShutoff = msr->param.SSF_dtCoolingShutoff*SECONDSPERYEAR/msr->param.dSecUnit;
+	in.bdivv = msr->param.SSF_bdivv;
     
     if (msr->param.bVDetails) printf("Simple Star Form ... ");
 

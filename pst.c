@@ -5144,7 +5144,7 @@ pstSimpleStarForm(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdSimpleStarForm(pst->plcl->pkd, in->dRateCoeff, in->dTMax, in->dDenMin, in->dDelta, in->dTime,
-						  in->dInitStarMass, in->dESNPerStarMass, in->dtCoolingShutoff,
+						  in->dInitStarMass, in->dESNPerStarMass, in->dtCoolingShutoff,in->bdivv,
 						  &out->nFormed, &out->dMassFormed, &out->nDeleted);
 		}
 

@@ -178,6 +178,7 @@ struct parameters {
     double SSF_dESNPerStarMass;
     double SSF_dInitStarMass;
 	double SSF_dtCoolingShutoff;
+    int SSF_bdivv;
 #endif
 #ifdef STARFORM
 	STFM   stfm;
