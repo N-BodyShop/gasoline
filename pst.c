@@ -5098,7 +5098,8 @@ pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		free( Image2 );
 		}
 	else {
-		dfRenderImage(pst->plcl->pkd, in, vout, pnOut );
+		dfClearImage( in, vout, pnOut );
+		dfRenderImage(pst->plcl->pkd, in, vout );
 		}
 	}
 

@@ -184,7 +184,8 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename );
 void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, struct inDumpFrame *in );
 
 void dfMergeImage( struct inDumpFrame *in, void *Image1, int *nImage1, void *Image2, int *nImage2 );
-void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *Image, int *nImage );
+void dfClearImage( struct inDumpFrame *in, void *Image, int *nImage );
+void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *Image );
 
 void dfFinishFrame( struct DumpFrameContext *df, double dTime, double dStep, struct inDumpFrame *in, void *Image );
 

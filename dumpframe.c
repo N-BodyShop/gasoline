@@ -7,9 +7,6 @@
 #include "pkd.h"
 #include "dumpframe.h"
 
-/* #define IORDER_BLUETOORANGE (32768+32768) */
-#define IORDER_BLUETOORANGE 2000000000
-
 void dfInitialize( struct DumpFrameContext **pdf, double dTime, 
 				  double dDumpFrameTime, double dStep, double dDumpFrameStep,
 				  double dDelta, int iMaxRung, int bVDetails, char* filename ) {
@@ -150,11 +147,11 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 	in->iRender = fs->iRender;
 	
 	DIFF( fs->eye, in->r, in->z );
-	fprintf(stderr,"eye2: %i  %lf %lf %lf,  %lf %lf %lf",fs->bEye2,fs->eye2[0],fs->eye2[1],fs->eye2[2], in->z[0],in->z[1],in->z[2] );
+/*	fprintf(stderr,"eye2: %i  %lf %lf %lf,  %lf %lf %lf",fs->bEye2,fs->eye2[0],fs->eye2[1],fs->eye2[2], in->z[0],in->z[1],in->z[2] ); */
 
 	if (fs->bzEye1) SIZE( in->z, fs->zEye1 );
 
-	fprintf(stderr,"eye2: %i  %lf %lf %lf,  %lf %lf %lf",fs->bEye2,fs->eye2[0],fs->eye2[1],fs->eye2[2], in->z[0],in->z[1],in->z[2] );
+/* 	fprintf(stderr,"eye2: %i  %lf %lf %lf,  %lf %lf %lf",fs->bEye2,fs->eye2[0],fs->eye2[1],fs->eye2[2], in->z[0],in->z[1],in->z[2] ); */
 
 
 	if (fs->bEye2) {
@@ -163,7 +160,7 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 		ADD ( in->z, vec );
 		}
 
-	fprintf(stderr,"eye2: %i  %lf %lf %lf,  %lf %lf %lf",fs->bEye2,fs->eye2[0],fs->eye2[1],fs->eye2[2], in->z[0],in->z[1],in->z[2] );
+/*	fprintf(stderr,"eye2: %i  %lf %lf %lf,  %lf %lf %lf",fs->bEye2,fs->eye2[0],fs->eye2[1],fs->eye2[2], in->z[0],in->z[1],in->z[2] ); */
 
 	if (fs->bzEye) {
 		in->zEye = fs->zEye;
@@ -731,7 +728,7 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
 			}
 		else {
 			ifs = 1;
-			while (ifs < df->nFrameSetup && dTime > df->fs[ifs].dTime ) ifs++;
+			while (ifs < df->nFrameSetup && dTime >= df->fs[ifs+1].dTime ) ifs++;
 			if (ifs >= df->nFrameSetup-1) { /* Outside Range */
 				if (dTime == df->fs[df->nFrameSetup-1].dTime && ifs > 1) ifs--;
 				else {
@@ -776,7 +773,21 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, stru
     }
 
 
-void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage, int *nImage ) {
+void dfClearImage( struct inDumpFrame *in, void *vImage, int *nImage ) {
+	DFIMAGE *Image = vImage;
+    int i;
+	DFIMAGE blank;
+
+	blank.r = 0;
+	blank.g = 0;
+    blank.b = 0;
+
+	*nImage = in->nxPix * in->nyPix * sizeof(DFIMAGE);
+
+	for (i=in->nxPix*in->nyPix-1;i>=0;i--) Image[i] = blank;
+	}
+
+void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 	PARTICLE *p;
 	DFIMAGE *Image = vImage;
 	DFIMAGE col; /* Colour */
@@ -785,14 +796,6 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage, int *nImage )
 	double xlim = (in->nxPix-1)*.5;
 	double ylim = (in->nyPix-1)*.5;
 	int xp,yp;
-	DFIMAGE blank;
-	blank.r = 0;
-	blank.g = 0;
-    blank.b = 0;
-
-	*nImage = in->nxPix * in->nyPix * sizeof(DFIMAGE);
-
-	for (i=in->nxPix*in->nyPix-1;i>=0;i--) Image[i] = blank;
 
 	p = pkd->pStore;
 	if (in->iRender == DF_RENDER_POINT) {
