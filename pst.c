@@ -905,7 +905,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 			    fl = fm;
 			    break;
 			  }
-			  if (fu > fl) fmm = 0.5*(fl+fu);
+			  if (fu == fl)
+			      break;
+			  else if (fu > fl) fmm = 0.5*(fl+fu);
 			  else {
 			    fmm = 0.5*(fl+fu+pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]);
 			    if (fmm > pst->bnd.fMax[dBnd]) fmm = 0.5*(fl+fu-(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
@@ -976,7 +978,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 			    fu = fm;
 			    break;
 			  }
-			  if (fu > fl) fmm = 0.5*(fl+fu);
+			  if (fu == fl)
+			      break;
+			  else if (fu > fl) fmm = 0.5*(fl+fu);
 			  else {
 			    fmm = 0.5*(fl+fu+pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]);
 			    if (fmm > pst->bnd.fMax[dBnd]) fmm = 0.5*(fl+fu-(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
@@ -1040,7 +1044,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 			    fl = fm;
 			    break;
 			  }
-			  if (fu > fl) fmm = 0.5*(fl+fu);
+			  if (fu == fl)
+			      break;
+			  else if (fu > fl) fmm = 0.5*(fl+fu);
 			  else {
 			    fmm = 0.5*(fl+fu+pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]);
 			    if (fmm > pst->bnd.fMax[dBnd]) fmm = 0.5*(fl+fu-(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
@@ -1103,7 +1109,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 			    fu = fm;
 			    break;
 			  }
-			  if (fu > fl) fmm = 0.5*(fl+fu);
+			  if (fu == fl)
+			      break;
+			  else if (fu > fl) fmm = 0.5*(fl+fu);
 			  else {
 			    fmm = 0.5*(fl+fu+pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]);
 			    if (fmm > pst->bnd.fMax[dBnd]) fmm = 0.5*(fl+fu-(pst->bnd.fMax[dBnd]-pst->bnd.fMin[dBnd]));
