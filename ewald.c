@@ -120,6 +120,10 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 				}
 			}
 		/*
+		 ** Try a cache check to improve responsiveness.
+		 */
+		mdlCacheCheck(pkd->mdl);
+		/*
 		 ** Scoring for the h-loop (+,*)
 		 ** 	Without trig = (10,14)
 		 **	    Trig est.	 = 2*(6,11)  same as 1/sqrt scoring.
@@ -140,6 +144,10 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 		p[j].a[1] += ay;
 		p[j].a[2] += az;
 		++nActive;
+		/*
+		 ** Try a cache check to improve responsiveness.
+		 */
+		mdlCacheCheck(pkd->mdl);
 	    }
 	nFlop = nLoop*(104 + nMultiFlop[iOrder]) + 
 		nActive*pkd->nEwhLoop*58;
