@@ -366,54 +366,6 @@ int main(int argc,char **argv)
 				msrWriteCheck(msr,dTime,iStep);
 				msrMassCheck(msr,dMass,"After msrWriteCheck");
 				}
-			else if (msrOutInterval(msr) > 0) {
-				if (iStep%msrOutInterval(msr) == 0) {
-				        if (msr->nGas && !msr->param.bKDK) {
-				                msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-		                                msrBuildTree(msr,1,-1.0,1);
-					        msrSmooth(msr,dTime,SMX_DENSITY,1);
-				        }
-					msrReorder(msr);
-					msrMassCheck(msr,dMass,"After msrReorder in OutInt");
-					sprintf(achFile,"%s.%05d",msrOutName(msr),iStep);
-#ifdef COLLISIONS
-					msrWriteSS(msr,achFile,dTime);
-#else /* COLLISIONS */
-					msrWriteTipsy(msr,achFile,dTime);
-					msrMassCheck(msr,dMass,"After msrWriteTipsy in OutInt");
-#endif /* !COLLISIONS */
-					if (msrDoDensity(msr)) {
- 					        msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-                                                msrDomainDecomp(msr);
- 					        msrActiveType(msr,TYPE_ALL, TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-						msrBuildTree(msr,0,dMass,1);
-						msrMassCheck(msr,dMass,"After msrBuildTree in OutInt");
-						msrSmooth(msr,dTime,SMX_DENSITY,1);
-						msrMassCheck(msr,dMass,"After msrSmooth in OutInt");
-						sprintf(achFile,"%s.%05d.den",msrOutName(msr),iStep);
-					        msrReorder(msr);
-						msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
-						msrMassCheck(msr,dMass,"After msrOutArray in OutInt");
-					        }
-				        if (msr->param.bDohOutput) {
-				                msrReorder(msr);
-				                sprintf(achFile,"%s.%05d.h",msrOutName(msr),iStep);
-				                msrReorder(msr);
-					        msrOutArray(msr,achFile,OUT_H_ARRAY);
-					        }
-#ifdef GASOLINE				
-				        if (msr->param.bDoIonOutput) {
-				                msrReorder(msr);
-						sprintf(achFile,"%s.%05d.HI",msrOutName(msr),iStep);
-						msrOutArray(msr,achFile,OUT_HI_ARRAY);
-						sprintf(achFile,"%s.%05d.HeI",msrOutName(msr),iStep);
-						msrOutArray(msr,achFile,OUT_HeI_ARRAY);
-						sprintf(achFile,"%s.%05d.HeII",msrOutName(msr),iStep);
-						msrOutArray(msr,achFile,OUT_HeII_ARRAY);
-					        }
-#endif
-					}
-				}
 			if (msr->param.iWallRunTime > 0) {
 			    if (msr->param.iWallRunTime*60 - (time(0)-lStart) < ((int) (lSec*1.5)) ) {
 					printf("RunTime limit exceeded.  Writing checkpoint and exiting.\n");
