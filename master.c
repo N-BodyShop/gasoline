@@ -894,6 +894,7 @@ double msrReadTipsy(MSR msr)
 	else {
 		printf("No input file specified\n");
 		_msrExit(msr);
+		return -1.0;
 		}
 	/*
 	 ** Assume tipsy format for now, and dark matter only.
@@ -1399,6 +1400,7 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 	else {
 		printf("No Array Output File specified\n");
 		_msrExit(msr);
+		return;
 		}
 	/*
 	 ** Write the Header information and close the file again.
@@ -1477,6 +1479,7 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	else {
 		printf("No Vector Output File specified\n");
 		_msrExit(msr);
+		return;
 		}
 	/*
 	 ** Write the Header information and close the file again.
@@ -2601,18 +2604,9 @@ void msrDensityStep(MSR msr, double dTime)
 {
     struct inDensityStep in;
     double expand;
-    struct inSmooth inden;
-    int sec,dsec;
 
-    inden.nSmooth = msr->param.nSmooth;
-    inden.bPeriodic = msr->param.bPeriodic;
-    inden.bSymmetric = 0;
-    inden.iSmoothType = SMX_DENSITY;
     if (msr->param.bVerbose) printf("Calculating Rung Densities...\n");
-    sec = time(0);
-    pstSmooth(msr->pst,&inden,sizeof(inden),NULL,NULL);
-    dsec = time(0) - sec;
-    printf("Rung Densities Calculated, Wallclock:%d secs\n\n",dsec);
+    msrSmooth(msr, dTime, SMX_DENSITY, 0);
     in.dEta = msrEta(msr);
     expand = msrTime2Exp(msr, dTime);
     in.dRhoFac = 1.0/(expand*expand*expand);
