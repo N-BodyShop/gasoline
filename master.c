@@ -2059,7 +2059,7 @@ void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung)
     double dWMax, dIMax, dEMax;
 
 	if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
-	    if(iRung < msrMaxRung(msr)-1 && msrCurrMaxRung(msr) > iRung) {
+	    if(iRung < msrMaxRung(msr)-1) {
 		if (msr->param.bVerbose) {
 		      printf("Adjust, iRung: %d\n", iRung);
 		      }

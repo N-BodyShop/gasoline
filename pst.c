@@ -212,6 +212,7 @@ void pstGetMap(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		for (i=0;i<pst->nUpper;++i) {
 			out[in->nStart+i] = tmp[in->nStart+i];
 			}
+		in->nStart -= pst->nLower;
 		free(tmp);
 		}
 	else {
