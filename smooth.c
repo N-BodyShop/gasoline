@@ -770,9 +770,7 @@ void smSmooth(SMX smx,SMF *smf)
 	int nLocal;
 	int nSmoothed = 0;
 	int idSelf;
-#ifdef SLIDING_PATCH
 	KDN dpkdn; /* dummy node */
-#endif
 
 	idSelf = smx->pkd->idSelf;
 	nSmooth = smx->nSmooth;
@@ -837,7 +835,6 @@ void smSmooth(SMX smx,SMF *smf)
 			pqi->ax = 0.0;
 			pqi->ay = 0.0;
 			pqi->az = 0.0;
-#ifdef SLIDING_PATCH
 			/*
 			 ** If nSmooth ~ N, may need to load the queue with ghosts...
 			 */
@@ -852,7 +849,6 @@ void smSmooth(SMX smx,SMF *smf)
 			pqi->ay = sy - y;
 			pqi->az = sz - z;
 		dumlabel1:
-#endif
 			pqi->fKey = dx*dx + dy*dy + dz*dz;
 			pqi->dx = dx;
 			pqi->dy = dy;
@@ -879,7 +875,6 @@ void smSmooth(SMX smx,SMF *smf)
 		pqi->ax = 0.0;
 		pqi->ay = 0.0;
 		pqi->az = 0.0;
-#ifdef SLIDING_PATCH
 		for (i=0;i<3;i++)
 			dpkdn.bnd.fMin[i] = dpkdn.bnd.fMax[i] = p[iLoad].r[i];
 		INTERSECT(&dpkdn,FLOAT_MAXVAL,lx,ly,lz,x,y,z,sx,sy,sz,iDum,dumlabel2);
@@ -890,7 +885,6 @@ void smSmooth(SMX smx,SMF *smf)
 		pqi->ay = sy - y;
 		pqi->az = sz - z;
 	dumlabel2:
-#endif
 		pqi->fKey = dx*dx + dy*dy + dz*dz;
 		pqi->dx = dx;
 		pqi->dy = dy;
