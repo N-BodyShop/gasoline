@@ -3096,6 +3096,9 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			msrSmooth(msr,dTime,SMX_TIMESTEP,0);
 #endif
 */
+#ifdef GASOLINE
+			msrSphStep(msr, dTime);
+#endif
 			msrDtToRung(msr, iRung, dDelta, 1);
 			}
 		/*
@@ -3171,6 +3174,10 @@ void msrTopStepKDK(MSR msr,
 #else
 		if(msr->param.bEpsVel)
 		    msrAccelStep(msr, dTime);
+		else {
+		    msrBuildTree(msr,0,dMass,1);
+		    msrDensityStep(msr, dTime);
+		    }
 #endif
 /*DEBUG out of date
 #ifdef SMOOTH_STEP
@@ -3178,6 +3185,9 @@ void msrTopStepKDK(MSR msr,
 		msrSmooth(msr,dTime,SMX_TIMESTEP,0);
 #endif
 */
+#ifdef GASOLINE
+		msrSphStep(msr, dTime);
+#endif
 		msrDtToRung(msr, iRung, dDelta, 1);
 		if (iRung == 0) msrRungStats(msr);
 		}
@@ -3334,6 +3344,16 @@ int msrSphCurrRung(MSR msr, int iRung)
     in.iRung = iRung;
     pstSphCurrRung(msr->pst, &in, sizeof(in), &out, NULL);
     return out.iCurrent;
+    }
+
+void
+msrSphStep(MSR msr, double dTime)
+{
+    struct inSphStep in;
+    
+    in.dEta = msrEta(msr);
+    in.dCosmoFac = msrTime2Exp(msr, dTime);
+    pstSphStep(msr->pst, &in, sizeof(in), NULL, NULL);
     }
 
 #endif

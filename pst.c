@@ -180,6 +180,9 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_KICKVPRED,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstKickVpred, 
 				  sizeof(struct inKickVpred),0);
+	mdlAddService(mdl,PST_SPHSTEP,pst,
+		      (void (*)(void *,void *,int,void *,int *)) pstSphStep, 
+		      sizeof(struct inSphStep),0);
 #endif
 	mdlAddService(mdl,PST_COLNPARTS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstColNParts,
@@ -2613,6 +2616,22 @@ pstSphCurrRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = sizeof(*out);
 	}
 
+void pstSphStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inSphStep *in = vin;
+
+	assert(nIn == sizeof(struct inSphStep));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_SPHSTEP,in,nIn);
+		pstSphStep(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdSphStep(plcl->pkd,in->dCosmoFac);
+		}
+	if (pnOut) *pnOut = 0;
+	}
 #endif
 
 void

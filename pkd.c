@@ -2836,6 +2836,19 @@ int pkdSphCurrRung(PKD pkd, int iRung)
     return iCurrent;
     }
 
+void
+pkdSphStep(PKD, pkd, double dCosmoFac)
+{
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+	if(pkdIsGas(pkd, &pkd->pStore[i]) 
+	   {
+	       /*
+		* Courant condition goes here.
+		*/
+	       }
+	}
+    }
+
 #endif
 
 #ifdef COLLISIONS

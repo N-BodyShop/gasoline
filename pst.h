@@ -619,4 +619,14 @@ void pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
 #endif /* COLLISIONS */
 
+#ifdef GASOLINE
+
+#define PST_SPHSTEP		75
+struct inSphStep {
+    double dCosmoFac;
+    };
+void pstSphStep(PST,void *,int,void *,int *);
+
+#endif
+
 #endif
