@@ -94,3 +94,17 @@ t3dmpi:
 
 pkdgrav: $(OBJS) $(EXTRA_OBJ)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -o pkdgrav $(OBJS) $(LIBMDL)
+
+###
+ewald.o: ewald.h pkd.h meval.h qeval.h
+grav.o: pkd.h grav.h meval.h qeval.h
+main.o: pst.h pkd.h master.h param.h parameters.h outtype.h
+master.o: master.h param.h pst.h pkd.h parameters.h \
+  tipsydefs.h opentype.h checkdefs.h
+outtype.o: pkd.h outtype.h
+param.o: param.c param.h
+pkd.o: pkd.h ewald.h grav.h walk.h opentype.h tipsydefs.h \
+  checkdefs.h parameters.h
+pst.o: pst.h pkd.h outtype.h smooth.h
+smooth.o: smooth.c smooth.h pkd.h
+walk.o: walk.h pkd.h

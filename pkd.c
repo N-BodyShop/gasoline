@@ -67,6 +67,7 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	pkd->idSelf = mdlSelf(mdl);
 	pkd->nThreads = mdlThreads(mdl);
 	pkd->nStore = nStore;
+	pkd->nLocal = 0;
 	pkd->nRejects = 0;
 	for (j=0;j<3;++j) {
 		pkd->fPeriod[j] = fPeriod[j];
@@ -338,6 +339,27 @@ int pkdSwapRejects(PKD pkd,int idSwap)
 	return(pkd->nRejects);
 	}
 
+void pkdSwapAll(PKD pkd, int idSwap)
+{
+    int nBuf;
+    int nOutBytes,nSndBytes,nRcvBytes;
+    int i;
+    int iBuf;
+    
+    /*
+     ** Move particles to High memory.
+     */
+    iBuf = pkd->nStore - pkd->nLocal;
+    for (i=pkd->nLocal-1;i>=0;--i)
+	pkd->pStore[iBuf+i] = pkd->pStore[i];
+
+    nBuf = pkd->nStore*sizeof(PARTICLE);
+    nOutBytes = pkd->nLocal*sizeof(PARTICLE);
+    mdlSwap(pkd->mdl,idSwap,nBuf,&pkd->pStore[0], nOutBytes,
+	    &nSndBytes, &nRcvBytes);
+    assert(nSndBytes/sizeof(PARTICLE) == pkd->nLocal);
+    pkd->nLocal = nRcvBytes/sizeof(PARTICLE);
+    }
 
 int pkdSwapSpace(PKD pkd)
 {

@@ -621,6 +621,64 @@ double msrComoveKickFac(MSR msr,double dTime,double dDelta)
 		}
 	}
 
+void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
+{
+    int id;
+    int *nParts;		/* number of particles for each processor */
+    int nStart;
+    PST pst0;
+    LCL *plcl;
+    char achInFile[PST_FILENAME_SIZE];
+    int nid;
+    int inswap;
+
+    nParts = malloc(msr->nThreads*sizeof(*nParts));
+    for (id=0;id<msr->nThreads;++id) {
+	nParts[id] = -1;
+	}
+
+    pstOneNodeReadInit(msr->pst, in, sizeof(*in), nParts, &nid);
+    assert(nid/sizeof(*nParts) == msr->nThreads);
+    for (id=0;id<msr->nThreads;++id) {
+	assert(nParts[id] > 0);
+	}
+
+    pst0 = msr->pst;
+    while(pst0->nLeaves > 1)
+	pst0 = pst0->pstLower;
+    plcl = pst0->plcl;
+    /*
+     ** Add the local Data Path to the provided filename.
+     */
+    achInFile[0] = 0;
+    if (plcl->pszDataPath) {
+	    strcat(achInFile,plcl->pszDataPath);
+	    strcat(achInFile,"/");
+	    }
+    strcat(achInFile,in->achInFile);
+
+    nStart = nParts[0];
+    for (id=1;id<msr->nThreads;++id) {
+	/* 
+	 * Read particles into the local storage.
+	 */
+	assert(plcl->pkd->nStore >= nParts[id]);
+	pkdReadTipsy(plcl->pkd,achInFile,nStart,nParts[id],in->dvFac);
+	nStart += nParts[id];
+	/* 
+	 * Now shove them over to the remote processor.
+	 */
+	inswap = 0;
+	mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+	pkdSwapAll(plcl->pkd, id);
+	mdlGetReply(pst0->mdl,id,NULL,NULL);
+    	}
+    assert(nStart == msr->N);
+    /* 
+     * Now read our own particles.
+     */
+    pkdReadTipsy(plcl->pkd,achInFile,0,nParts[0],in->dvFac);
+    }
 
 double msrReadTipsy(MSR msr)
 {
@@ -765,8 +823,10 @@ double msrReadTipsy(MSR msr)
 	for (j=0;j<3;++j) {
 		in.fPeriod[j] = msr->param.dPeriod;
 		}
-	in.bParaRead = msr->param.bParaRead;
-	pstReadTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
+	if(msr->param.bParaRead)
+	    pstReadTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
+	else
+	    msrOneNodeReadTipsy(msr, &in);
 	if (msr->param.bVerbose) puts("Input file has been successfully read.");
 	/*
 	 ** Now read in the output points, passing the initial time.
@@ -797,6 +857,60 @@ int xdrWriteHeader(XDR *pxdrs,struct dump *ph)
 	return 1;
 	}
 
+void msrOneNodeWriteTipsy(MSR msr, struct inWriteTipsy *in)
+{
+    int id;
+    int nStart;
+    PST pst0;
+    LCL *plcl;
+    char achOutFile[PST_FILENAME_SIZE];
+    int inswap;
+
+    pst0 = msr->pst;
+    while(pst0->nLeaves > 1)
+	pst0 = pst0->pstLower;
+    plcl = pst0->plcl;
+    /*
+     ** Add the local Data Path to the provided filename.
+     */
+    achOutFile[0] = 0;
+    if (plcl->pszDataPath) {
+	    strcat(achOutFile,plcl->pszDataPath);
+	    strcat(achOutFile,"/");
+	    }
+    strcat(achOutFile,in->achOutFile);
+
+    /* 
+     * First write our own particles.
+     */
+    pkdWriteTipsy(plcl->pkd,achOutFile,0,plcl->pkd->nLocal - 1,in->bStandard,
+		  in->dvFac); 
+    nStart = plcl->pkd->nLocal;
+    for (id=1;id<msr->nThreads;++id) {
+	/* 
+	 * Swap particles with the remote processor.
+	 */
+	inswap = 0;
+	mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+	pkdSwapAll(plcl->pkd, id);
+	mdlGetReply(pst0->mdl,id,NULL,NULL);
+	/* 
+	 * Write the swapped particles.
+	 */
+	pkdWriteTipsy(plcl->pkd,achOutFile,nStart,
+		      nStart + plcl->pkd->nLocal - 1,
+		      in->bStandard, in->dvFac); 
+	nStart += plcl->pkd->nLocal;
+	/* 
+	 * Swap them back again.
+	 */
+	inswap = 0;
+	mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+	pkdSwapAll(plcl->pkd, id);
+	mdlGetReply(pst0->mdl,id,NULL,NULL);
+    	}
+    assert(nStart == msr->N);
+    }
 
 void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 {
@@ -871,8 +985,10 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		fwrite(&h,sizeof(struct dump),1,fp);
 		}
 	fclose(fp);
-	in.bParaWrite = msr->param.bParaWrite;
-	pstWriteTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
+	if(msr->param.bParaWrite)
+	    pstWriteTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
+	else
+	    msrOneNodeWriteTipsy(msr, &in);
 	if (msr->param.bVerbose) {
 		puts("Output file has been successfully written.");
 		}
@@ -1226,6 +1342,75 @@ void msrKick(MSR msr,double dTime,double dDelta)
 	}
 
 
+void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
+{
+    int id;
+    int *nParts;		/* number of particles for each processor */
+    int nStart;
+    PST pst0;
+    LCL *plcl;
+    char achInFile[PST_FILENAME_SIZE];
+    int nid;
+    int inswap;
+    struct inReadTipsy tin;
+    int j;
+
+    nParts = malloc(msr->nThreads*sizeof(*nParts));
+    for (id=0;id<msr->nThreads;++id) {
+	nParts[id] = -1;
+	}
+
+    tin.nStart = in->nStart;
+    tin.nEnd = in->nEnd;
+    tin.iOrder = in->iOrder;
+    tin.fExtraStore = in->fExtraStore;
+    for(j = 0; j < 3; j++)
+	tin.fPeriod[j] = in->fPeriod[j];
+
+    pstOneNodeReadInit(msr->pst, &tin, sizeof(tin), nParts, &nid);
+    assert(nid == msr->nThreads);
+    for (id=0;id<msr->nThreads;++id) {
+	assert(nParts[id] > 0);
+	}
+
+    pst0 = msr->pst;
+    while(pst0->nLeaves > 1)
+	pst0 = pst0->pstLower;
+    plcl = pst0->plcl;
+    /*
+     ** Add the local Data Path to the provided filename.
+     */
+    achInFile[0] = 0;
+    if (plcl->pszDataPath) {
+	    strcat(achInFile,plcl->pszDataPath);
+	    strcat(achInFile,"/");
+	    }
+    strcat(achInFile,in->achInFile);
+
+    nStart = nParts[0];
+    for (id=1;id<msr->nThreads;++id) {
+	/* 
+	 * Read particles into the local storage.
+	 */
+	assert(plcl->pkd->nStore >= nParts[id]);
+	pkdReadCheck(plcl->pkd,achInFile,in->iVersion, in->iOffset,
+		     in->nStart, nParts[id]);
+	nStart += nParts[id];
+	/* 
+	 * Now shove them over to the remote processor.
+	 */
+	inswap = 0;
+	mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+	pkdSwapAll(plcl->pkd, id);
+	mdlGetReply(pst0->mdl,id,NULL,NULL);
+    	}
+    assert(nStart == msr->N);
+    /* 
+     * Now read our own particles.
+     */
+    pkdReadCheck(plcl->pkd,achInFile,in->iVersion, in->iOffset, 0, nParts[0]);
+    }
+
 double msrReadCheck(MSR msr,int *piStep)
 {
 	struct inReadCheck in;
@@ -1342,8 +1527,10 @@ double msrReadCheck(MSR msr,int *piStep)
 	in.iVersion = iVersion;
 	in.iOffset = FDL_offset(fdl,"particle_array");
 	FDL_finish(fdl);
-	in.bParaRead = msr->param.bParaRead;
-	pstReadCheck(msr->pst,&in,sizeof(in),NULL,NULL);
+	if(msr->param.bParaRead)
+	    pstReadCheck(msr->pst,&in,sizeof(in),NULL,NULL);
+	else
+	    msrOneNodeReadCheck(msr, &in);
 	if (msr->param.bVerbose) puts("Checkpoint file has been successfully read.");
 	/*
 	 ** Set up the output counter.
@@ -1354,6 +1541,57 @@ double msrReadCheck(MSR msr,int *piStep)
 	return(dTime);
 	}
 
+void msrOneNodeWriteCheck(MSR msr, struct inWriteCheck *in)
+{
+    int id;
+    int nStart;
+    PST pst0;
+    LCL *plcl;
+    char achOutFile[PST_FILENAME_SIZE];
+    int inswap;
+
+    pst0 = msr->pst;
+    while(pst0->nLeaves > 1)
+	pst0 = pst0->pstLower;
+    plcl = pst0->plcl;
+    /*
+     ** Add the local Data Path to the provided filename.
+     */
+    achOutFile[0] = 0;
+    if (plcl->pszDataPath) {
+	    strcat(achOutFile,plcl->pszDataPath);
+	    strcat(achOutFile,"/");
+	    }
+    strcat(achOutFile,in->achOutFile);
+
+    /* 
+     * First write our own particles.
+     */
+    pkdWriteCheck(plcl->pkd,achOutFile,in->iOffset, 0); 
+    nStart = plcl->pkd->nLocal;
+    for (id=1;id<msr->nThreads;++id) {
+	/* 
+	 * Swap particles with the remote processor.
+	 */
+	inswap = 0;
+	mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+	pkdSwapAll(plcl->pkd, id);
+	mdlGetReply(pst0->mdl,id,NULL,NULL);
+	/* 
+	 * Write the swapped particles.
+	 */
+	pkdWriteCheck(plcl->pkd,achOutFile,in->iOffset, nStart); 
+	nStart += plcl->pkd->nLocal;
+	/* 
+	 * Swap them back again.
+	 */
+	inswap = 0;
+	mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+	pkdSwapAll(plcl->pkd, id);
+	mdlGetReply(pst0->mdl,id,NULL,NULL);
+    	}
+    assert(nStart == msr->N);
+    }
 
 void msrWriteCheck(MSR msr,double dTime,int iStep)
 {
@@ -1440,8 +1678,10 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	pstSetTotal(msr->pst,NULL,0,&oute,&iDum);
 	in.iOffset = FDL_offset(fdl,"particle_array");
 	in.nStart = 0;
-	in.bParaWrite = msr->param.bParaWrite;
-	pstWriteCheck(msr->pst,&in,sizeof(in),NULL,NULL);
+	if(msr->param.bParaWrite)
+	    pstWriteCheck(msr->pst,&in,sizeof(in),NULL,NULL);
+	else
+	    msrOneNodeWriteCheck(msr, &in);
 	if (msr->param.bVerbose) {
 		puts("Checkpoint file has been successfully written.");
 		}

@@ -68,7 +68,6 @@ struct inReadTipsy {
 	int iOrder;
 	float fExtraStore;
 	float fPeriod[3];
-	int bParaRead;
 	double dvFac;
 	char achInFile[PST_FILENAME_SIZE];
 	};
@@ -159,7 +158,6 @@ void pstOutVector(PST,void *,int,void *,int *);
 #define PST_WRITETIPSY		18
 struct inWriteTipsy {
 	int bStandard;
-	int bParaWrite;
 	double dvFac;
 	char achOutFile[PST_FILENAME_SIZE];
 	};
@@ -254,7 +252,6 @@ struct inReadCheck {
 	int iOrder;
 	float fExtraStore;
 	float fPeriod[3];
-	int bParaRead;
 	char achInFile[PST_FILENAME_SIZE];
 	};
 void pstReadCheck(PST,void *,int,void *,int *);
@@ -263,7 +260,6 @@ void pstReadCheck(PST,void *,int,void *,int *);
 struct inWriteCheck {
 	int iOffset;
 	int nStart;
-	int bParaWrite;
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteCheck(PST,void *,int,void *,int *);
@@ -309,21 +305,16 @@ void pstCalcRoot(PST,void *,int,void *,int *);
 #define PST_DISTRIBROOT		34
 void pstDistribRoot(PST,void *,int,void *,int *);
 
-#define PST_MASSCHECK		35
+#define PST_ONENODEREADINIT	35
+void pstOneNodeReadInit(PST pst,void *vin,int nIn,void *vout,int *pnOut);
+
+#define PST_SWAPALL		36
+void pstSwapAll(PST pst,void *vin,int nIn,void *vout,int *pnOut);
+
+#define PST_MASSCHECK		37
 struct outMassCheck {
 	double dMass;
 	};
 void pstMassCheck(PST,void *,int,void *,int *);
 
 #endif
-
-
-
-
-
-
-
-
-
-
-

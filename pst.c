@@ -83,6 +83,10 @@ void pstAddServices(PST pst,MDL mdl)
 				  0,sizeof(struct ioCalcRoot));
 	mdlAddService(mdl,PST_DISTRIBROOT,pst,pstDistribRoot,
 				  sizeof(struct ioCalcRoot),0);
+	mdlAddService(mdl,PST_ONENODEREADINIT,pst,pstOneNodeReadInit,
+		      sizeof(struct inReadTipsy), nThreads*sizeof(int));
+	mdlAddService(mdl,PST_SWAPALL,pst,pstSwapAll,
+				  sizeof(int),0);
 	mdlAddService(mdl,PST_MASSCHECK,pst,pstMassCheck,
 				  0,sizeof(struct outMassCheck));
 	}
@@ -167,6 +171,51 @@ void pstLevelize(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
+void pstOneNodeReadInit(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inReadTipsy *in = vin;
+	int *pout = vout;
+	int nTotal,nStore;
+	int *ptmp;
+	int i;
+
+	assert(nIn == sizeof(struct inReadTipsy));
+	pst->nStart = in->nStart;
+	pst->nEnd = in->nEnd;
+	nTotal = pst->nEnd - pst->nStart + 1;
+	if (pst->nLeaves > 1) {
+		pst->nOrdSplit = pst->nStart + pst->nLower*nTotal/pst->nLeaves;
+		in->nStart = pst->nOrdSplit;
+		mdlReqService(pst->mdl,pst->idUpper,PST_ONENODEREADINIT,
+			      in, nIn);
+		in->nStart = pst->nStart;
+		in->nEnd = pst->nOrdSplit - 1;
+		pstOneNodeReadInit(pst->pstLower,in,nIn,vout,pnOut);
+		in->nEnd = pst->nEnd;
+		ptmp = malloc(pst->mdl->nThreads*sizeof(*ptmp));
+		assert(ptmp != NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,ptmp,pnOut);
+		for(i = 0; i < pst->mdl->nThreads; i++) {
+		    if(ptmp[i] != -1)
+			pout[i] = ptmp[i];
+		    }
+		free(ptmp);
+		}
+	else {
+		for(i = 0; i < pst->mdl->nThreads; i++)
+		    pout[i] = -1;
+		/*
+		 ** Determine the size of the local particle store.
+		 */
+		nStore = nTotal + (int)ceil(nTotal*in->fExtraStore);
+		
+		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,
+		    plcl->nPstLvl, in->fPeriod);
+		pout[pst->idSelf] = nTotal;
+		}
+	if (pnOut) *pnOut = pst->mdl->nThreads*sizeof(*pout);
+	}
 
 void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -181,24 +230,13 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	nTotal = pst->nEnd - pst->nStart + 1;
 	if (pst->nLeaves > 1) {
 		pst->nOrdSplit = pst->nStart + pst->nLower*nTotal/pst->nLeaves;
-		if (in->bParaRead) {
-			in->nStart = pst->nOrdSplit;
-			mdlReqService(pst->mdl,pst->idUpper,PST_READTIPSY,in,nIn);
-			in->nStart = pst->nStart;
-			in->nEnd = pst->nOrdSplit - 1;
-			pstReadTipsy(pst->pstLower,in,nIn,NULL,NULL);
-			in->nEnd = pst->nEnd;
-			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-			}
-		else {
-			in->nEnd = pst->nOrdSplit - 1;
-			pstReadTipsy(pst->pstLower,in,nIn,NULL,NULL);
-			in->nEnd = pst->nEnd;
-			in->nStart = pst->nOrdSplit;
-			mdlReqService(pst->mdl,pst->idUpper,PST_READTIPSY,in,nIn);
-			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-			in->nStart = pst->nStart;
-			}
+		in->nStart = pst->nOrdSplit;
+		mdlReqService(pst->mdl,pst->idUpper,PST_READTIPSY,in,nIn);
+		in->nStart = pst->nStart;
+		in->nEnd = pst->nOrdSplit - 1;
+		pstReadTipsy(pst->pstLower,in,nIn,NULL,NULL);
+		in->nEnd = pst->nEnd;
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
 		/*
@@ -330,7 +368,9 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	int *pidSwap,iRet;
 
 	struct outMassCheck outMass;
+#ifdef PARANOID_CHECK
 	int i,iLowSum,iHighSum;
+#endif
 
 	/*
 	 ** First find out how much free storage there is available for particles
@@ -791,6 +831,25 @@ void pstSwapRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	}
 
+/*
+ * Routine to swap all particles.  Note that this does not walk the
+ * but simply works with one other processor.
+ */
+void pstSwapAll(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl;
+	int *pidSwap = vin;
+	PST lpst;
+
+	assert(nIn == sizeof(*pidSwap));
+	lpst = pst;
+	while(lpst->nLeaves > 1)
+	    lpst = lpst->pstLower;
+
+	plcl = lpst->plcl;
+	pkdSwapAll(plcl->pkd, *pidSwap);
+	}
+
 
 void pstDomainColor(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -958,16 +1017,9 @@ void pstWriteTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 	assert(nIn == sizeof(struct inWriteTipsy));
 	if (pst->nLeaves > 1) {
-		if (in->bParaWrite) {
-			mdlReqService(pst->mdl,pst->idUpper,PST_WRITETIPSY,in,nIn);
-			pstWriteTipsy(pst->pstLower,in,nIn,NULL,NULL);
-			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-			}
-		else {
-			pstWriteTipsy(pst->pstLower,in,nIn,NULL,NULL);
-			mdlReqService(pst->mdl,pst->idUpper,PST_WRITETIPSY,in,nIn);
-			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-			}
+		mdlReqService(pst->mdl,pst->idUpper,PST_WRITETIPSY,in,nIn);
+		pstWriteTipsy(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
 		/*
@@ -1226,24 +1278,13 @@ void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	nTotal = pst->nEnd - pst->nStart + 1;
 	if (pst->nLeaves > 1) {
 		pst->nOrdSplit = pst->nStart + pst->nLower*nTotal/pst->nLeaves;
-		if (in->bParaRead) {
-			in->nStart = pst->nOrdSplit;
-			mdlReqService(pst->mdl,pst->idUpper,PST_READCHECK,in,nIn);
-			in->nStart = pst->nStart;
-			in->nEnd = pst->nOrdSplit - 1;
-			pstReadCheck(pst->pstLower,in,nIn,NULL,NULL);
-			in->nEnd = pst->nEnd;
-			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-			}
-		else {
-			in->nEnd = pst->nOrdSplit - 1;
-			pstReadCheck(pst->pstLower,in,nIn,NULL,NULL);
-			in->nEnd = pst->nEnd;
-			in->nStart = pst->nOrdSplit;
-			mdlReqService(pst->mdl,pst->idUpper,PST_READCHECK,in,nIn);
-			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-			in->nStart = pst->nStart;
-			}
+		in->nStart = pst->nOrdSplit;
+		mdlReqService(pst->mdl,pst->idUpper,PST_READCHECK,in,nIn);
+		in->nStart = pst->nStart;
+		in->nEnd = pst->nOrdSplit - 1;
+		pstReadCheck(pst->pstLower,in,nIn,NULL,NULL);
+		in->nEnd = pst->nEnd;
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
 		/*
@@ -1300,20 +1341,11 @@ void pstWriteCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	assert(nIn == sizeof(struct inWriteCheck));
 	if (pst->nLeaves > 1) {
 		nStart = in->nStart;
-		if (in->bParaWrite) {
-			in->nStart += pst->pstLower->nTotal;
-			mdlReqService(pst->mdl,pst->idUpper,PST_WRITECHECK,in,nIn);
-			in->nStart = nStart;
-			pstWriteCheck(pst->pstLower,in,nIn,NULL,NULL);
-			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-			}
-		else {
-			pstWriteCheck(pst->pstLower,in,nIn,NULL,NULL);
-			in->nStart += pst->pstLower->nTotal;
-			mdlReqService(pst->mdl,pst->idUpper,PST_WRITECHECK,in,nIn);
-			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-			in->nStart = nStart;
-			}
+		in->nStart += pst->pstLower->nTotal;
+		mdlReqService(pst->mdl,pst->idUpper,PST_WRITECHECK,in,nIn);
+		in->nStart = nStart;
+		pstWriteCheck(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
 		/*
