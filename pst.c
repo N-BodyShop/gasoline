@@ -166,7 +166,7 @@ void pstFinish(PST pst)
 
 	while (pst) {
 		pstKill = pst;
-		if(pst->nLeaves == 1)
+		if(pst->nLeaves == 1 && pst->plcl->pkd)
 		  pkdFinish(pst->plcl->pkd);
 		pst = pst->pstLower;
 		free(pstKill);

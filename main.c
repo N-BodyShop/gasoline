@@ -15,6 +15,7 @@ void main_ch(MDL mdl)
 	LCL lcl;
 
 	lcl.pszDataPath = (char *)getenv("PTOOLS_DATA_PATH");
+	lcl.pkd = NULL;
 	pstInitialize(&pst,mdl,&lcl);
 
 	pstAddServices(pst,mdl);
