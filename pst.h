@@ -12,11 +12,13 @@ typedef struct lclBlock {
 	int iWtFrom;
 	int iWtTo;
 	int iPart;
+	int iOrdSplit;
 	float fSplit;
 	float fWtLow;
 	float fWtHigh;
 	float fLow;
 	float fHigh;
+	int nWriteStart;
 	} LCL;
 
 typedef struct pstContext {
@@ -32,11 +34,9 @@ typedef struct pstContext {
 	BND	bnd;
 	BND bndActive;
 	int iSplitDim;
+	int iOrdSplit;
 	float fSplit;
 	float fSplitInactive;
-	int nStart;
-	int nEnd;
-	int nOrdSplit;
 	int nTotal;
 	/*
 	 ** The PST node is also a valid cell for the tree.
@@ -45,7 +45,7 @@ typedef struct pstContext {
 	} * PST;
 
 
-#define PST_SERVICES		54
+#define PST_SERVICES		100
 #define PST_FILENAME_SIZE	512
 
 void pstAddServices(PST,MDL);
@@ -66,8 +66,8 @@ void pstLevelize(PST,void *,int,void *,int *);
 
 #define PST_READTIPSY		5
 struct inReadTipsy {
-	int nStart;
-	int nEnd;
+	int nFileStart;
+	int nFileEnd;
 	int nDark;	
 	int nGas;
 	int nStar;
@@ -140,12 +140,15 @@ void pstDomainColor(PST,void *,int,void *,int *);
 
 #define PST_COLORDREJECTS	13
 struct inColOrdRejects {
-	int nOrdSplit;
+	int iOrdSplit;
 	int iSplitSide;
 	};
 void pstColOrdRejects(PST,void *,int,void *,int *);
 
 #define PST_DOMAINORDER		14
+struct inDomainOrder {
+	int iMaxOrder;
+	};
 void pstDomainOrder(PST,void *,int,void *,int *);
 
 #define PST_LOCALORDER		15
@@ -267,8 +270,8 @@ void pstKick(PST,void *,int,void *,int *);
 struct inReadCheck {
 	int iVersion;
 	int iOffset;
-	int nStart;
-	int nEnd;
+	int nFileStart;
+	int nFileEnd;
 	int nDark;
 	int nGas;
 	int nStar;
@@ -282,7 +285,6 @@ void pstReadCheck(PST,void *,int,void *,int *);
 #define PST_WRITECHECK		26
 struct inWriteCheck {
 	int iOffset;
-	int nStart;
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteCheck(PST,void *,int,void *,int *);
@@ -420,7 +422,10 @@ struct inReSmooth {
 	};
 void pstReSmooth(PST,void *,int,void *,int *);
 
-#define PST_DTTORUNG			49
+#define PST_INITACCEL			49
+void pstInitAccel(PST,void *,int,void *,int *);
+
+#define PST_DTTORUNG			50
 struct inDtToRung {
     int iRung;
     double dDelta;
@@ -432,28 +437,46 @@ struct outDtToRung {
     };
 void pstDtToRung(PST,void *,int,void *,int *);
 
-#define PST_INITDT			50
+#define PST_INITDT				51
 struct inInitDt {
     double dDelta;
     };
 void pstInitDt(PST,void *,int,void *,int *);
 
+#define PST_ORDWEIGHT			52
+struct inOrdWeight {
+	int iOrdSplit;
+	int iSplitSide;
+	int ittr;
+	};
+struct outOrdWeight {
+	int nLow;
+	int nHigh;
+	};
+void pstOrdWeight(PST,void *,int,void *,int *);
+
+#define PST_SETWRITESTART		53
+struct inSetWriteStart {
+	int nWriteStart;
+	};
+void pstSetWriteStart(PST,void *,int,void *,int *);
+
 #ifdef GASOLINE
 
-#define PST_ACTIVEGAS			51
+#define PST_ACTIVEGAS			54
 void pstActiveGas(PST,void *,int,void *,int *);
 
-#define PST_CALCETHDOT			52
+#define PST_CALCETHDOT			55
 void pstCalcEthdot(PST,void *,int,void *,int *);
 
-#define PST_KICKVPRED			53
+#define PST_KICKVPRED			56
 struct inKickVpred {
 	double dvFacOne;
 	double dvFacTwo;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
 
-#define PST_SPHCURRRUNG		54
+#define PST_SPHCURRRUNG			57
 struct inSphCurrRung {
     int iRung;
     };
@@ -465,4 +488,5 @@ void pstSphCurrRung(PST,void *,int,void *,int *);
 #endif
 
 #endif
+
 

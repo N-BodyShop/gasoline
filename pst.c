@@ -28,6 +28,8 @@ void pstAddServices(PST pst,MDL mdl)
 				  0,sizeof(struct outCalcBound));
 	mdlAddService(mdl,PST_WEIGHT,pst,pstWeight,
 				  sizeof(struct inWeight),sizeof(struct outWeight));
+	mdlAddService(mdl,PST_ORDWEIGHT,pst,pstOrdWeight,
+				  sizeof(struct inOrdWeight),sizeof(struct outOrdWeight));
 	mdlAddService(mdl,PST_FREESTORE,pst,pstFreeStore,
 				  0,sizeof(struct outFreeStore));
 	mdlAddService(mdl,PST_COLREJECTS,pst,pstColRejects,
@@ -39,7 +41,7 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_COLORDREJECTS,pst,pstColOrdRejects,
 				  sizeof(struct inColOrdRejects),nThreads*sizeof(OREJ));
 	mdlAddService(mdl,PST_DOMAINORDER,pst,pstDomainOrder,
-				  0,0);
+				  sizeof(struct inDomainOrder),0);
 	mdlAddService(mdl,PST_LOCALORDER,pst,pstLocalOrder,
 				  0,0);
 	mdlAddService(mdl,PST_OUTARRAY,pst,pstOutArray,
@@ -68,6 +70,8 @@ void pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inSetSoft),0);
 	mdlAddService(mdl,PST_SETTOTAL,pst,pstSetTotal,
 				  0,sizeof(struct outSetTotal));
+	mdlAddService(mdl,PST_SETWRITESTART,pst,pstSetWriteStart,
+				  sizeof(struct inSetWriteStart),0);
 	mdlAddService(mdl,PST_CALCCELL,pst,pstCalcCell,
 				  sizeof(struct inCalcCell),sizeof(struct outCalcCell));
 	/*
@@ -119,11 +123,12 @@ void pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inActiveCool),0);
 	mdlAddService(mdl,PST_RESMOOTH,pst,pstReSmooth,
 				  sizeof(struct inReSmooth),0);
+	mdlAddService(mdl,PST_INITACCEL,pst,pstInitAccel,0,0);
 	mdlAddService(mdl,PST_DTTORUNG,pst,pstDtToRung,
 		      sizeof(struct inDtToRung), sizeof(struct outDtToRung));
 	mdlAddService(mdl,PST_INITDT,pst,pstInitDt, sizeof(struct inInitDt),0);
 #ifdef GASOLINE
-	mdlAddService(mdl,PST_ACTIVECOOL,pst,pstActiveCool,0,0);
+	mdlAddService(mdl,PST_ACTIVEGAS,pst,pstActiveGas,0,0);
 	mdlAddService(mdl,PST_CALCETHDOT,pst,pstCalcEthdot,0,0);
 	mdlAddService(mdl,PST_KICKVPRED,pst,pstKickVpred, 
 		      sizeof(struct inKickVpred),0);
@@ -243,24 +248,23 @@ void pstOneNodeReadInit(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	LCL *plcl = pst->plcl;
 	struct inReadTipsy *in = vin;
 	int *pout = vout;
-	int nTotal,nStore;
+	int nFileStart,nFileEnd,nFileTotal,nFileSplit,nStore;
 	int *ptmp;
 	int i;
 
 	assert(nIn == sizeof(struct inReadTipsy));
-	pst->nStart = in->nStart;
-	pst->nEnd = in->nEnd;
-	nTotal = pst->nEnd - pst->nStart + 1;
+	nFileStart = in->nFileStart;
+	nFileEnd = in->nFileEnd;
+	nFileTotal = nFileEnd - nFileStart + 1;
 	if (pst->nLeaves > 1) {
-		pst->nOrdSplit = pst->nStart
-		    + pst->nLower*(nTotal/pst->nLeaves);
-		in->nStart = pst->nOrdSplit;
+		nFileSplit = nFileStart + pst->nLower*(nFileTotal/pst->nLeaves);
+		in->nFileStart = nFileSplit;
 		mdlReqService(pst->mdl,pst->idUpper,PST_ONENODEREADINIT,
 			      in, nIn);
-		in->nStart = pst->nStart;
-		in->nEnd = pst->nOrdSplit - 1;
+		in->nFileStart = nFileStart;
+		in->nFileEnd = nFileSplit - 1;
 		pstOneNodeReadInit(pst->pstLower,in,nIn,vout,pnOut);
-		in->nEnd = pst->nEnd;
+		in->nFileEnd = nFileEnd;
 		ptmp = malloc(pst->mdl->nThreads*sizeof(*ptmp));
 		assert(ptmp != NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,ptmp,pnOut);
@@ -276,11 +280,11 @@ void pstOneNodeReadInit(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		/*
 		 ** Determine the size of the local particle store.
 		 */
-		nStore = nTotal + (int)ceil(nTotal*in->fExtraStore);
+		nStore = nFileTotal + (int)ceil(nFileTotal*in->fExtraStore);
 		
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,
-		    plcl->nPstLvl, in->fPeriod,in->nDark,in->nGas,in->nStar);
-		pout[pst->idSelf] = nTotal;
+		    plcl->nPstLvl,in->fPeriod,in->nDark,in->nGas,in->nStar);
+		pout[pst->idSelf] = nFileTotal;
 		}
 	if (pnOut) *pnOut = pst->mdl->nThreads*sizeof(*pout);
 	}
@@ -289,22 +293,21 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	struct inReadTipsy *in = vin;
-	int nTotal,nStore;
+	int nFileStart,nFileEnd,nFileTotal,nFileSplit,nStore;
 	char achInFile[PST_FILENAME_SIZE];
 
 	assert(nIn == sizeof(struct inReadTipsy));
-	pst->nStart = in->nStart;
-	pst->nEnd = in->nEnd;
-	nTotal = pst->nEnd - pst->nStart + 1;
+	nFileStart = in->nFileStart;
+	nFileEnd = in->nFileEnd;
+	nFileTotal = nFileEnd - nFileStart + 1;
 	if (pst->nLeaves > 1) {
-		pst->nOrdSplit = pst->nStart
-		    + pst->nLower*(nTotal/pst->nLeaves);
-		in->nStart = pst->nOrdSplit;
+		nFileSplit = nFileStart + pst->nLower*(nFileTotal/pst->nLeaves);
+		in->nFileStart = nFileSplit;
 		mdlReqService(pst->mdl,pst->idUpper,PST_READTIPSY,in,nIn);
-		in->nStart = pst->nStart;
-		in->nEnd = pst->nOrdSplit - 1;
+		in->nFileStart = nFileStart;
+		in->nFileEnd = nFileSplit - 1;
 		pstReadTipsy(pst->pstLower,in,nIn,NULL,NULL);
-		in->nEnd = pst->nEnd;
+		in->nFileEnd = nFileEnd;
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
@@ -320,10 +323,10 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		/*
 		 ** Determine the size of the local particle store.
 		 */
-		nStore = nTotal + (int)ceil(nTotal*in->fExtraStore);
+		nStore = nFileTotal + (int)ceil(nFileTotal*in->fExtraStore);
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
 					  in->fPeriod,in->nDark,in->nGas,in->nStar);
-		pkdReadTipsy(plcl->pkd,achInFile,pst->nStart,nTotal,in->bStandard,
+		pkdReadTipsy(plcl->pkd,achInFile,nFileStart,nFileTotal,in->bStandard,
 					 in->dvFac,in->dTuFac);
 		}
 	if (pnOut) *pnOut = 0;
@@ -1104,6 +1107,55 @@ void pstWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+/*
+ ** Weight request for splitting into iOrder order.
+ */
+void pstOrdWeight(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inOrdWeight *in = vin;
+	struct outOrdWeight *out = vout;
+	struct outOrdWeight outWt;
+
+	assert(nIn == sizeof(struct inOrdWeight));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_ORDWEIGHT,in,nIn);
+		pstOrdWeight(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outWt,NULL);
+		out->nLow += outWt.nLow;
+		out->nHigh += outWt.nHigh;
+		}
+	else {
+		if (in->ittr == 0) {
+			/*
+			 ** Initialize.
+			 */
+			plcl->iOrdSplit = in->iOrdSplit;
+			plcl->iWtFrom = 0;
+			plcl->iWtTo = pkdLocal(plcl->pkd)-1;
+			}
+		else {
+			/*
+			 ** Update the Weight Sums and use smaller weight region.
+			 */
+			if (in->iOrdSplit < plcl->iOrdSplit) {
+				if (in->iSplitSide) plcl->iWtFrom = plcl->iPart;
+				else plcl->iWtTo = plcl->iPart-1;
+				}
+			else {
+				if (in->iSplitSide) plcl->iWtTo = plcl->iPart-1;
+				else plcl->iWtFrom = plcl->iPart;
+				}
+			plcl->iOrdSplit = in->iOrdSplit;
+			}
+		plcl->iPart = pkdOrdWeight(plcl->pkd,in->iOrdSplit,in->iSplitSide,
+								   plcl->iWtFrom,plcl->iWtTo,
+								   &out->nLow,&out->nHigh);
+		}
+	if (pnOut) *pnOut = sizeof(struct outOrdWeight); 
+	}
+
+
 void pstFreeStore(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -1170,7 +1222,7 @@ void pstColOrdRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (pnOut) *pnOut = nLower + nUpper;
 		}
 	else {
-	    pOutRej->nRejects = pkdColOrdRejects(plcl->pkd,in->nOrdSplit,
+	    pOutRej->nRejects = pkdColOrdRejects(plcl->pkd,in->iOrdSplit,
 											 in->iSplitSide);
 		pOutRej->nSpace = pkdSwapSpace(plcl->pkd);
 		pOutRej->id = pst->idSelf;
@@ -1239,15 +1291,69 @@ void pstDomainColor(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
-void _pstOrdSplit(PST pst)
+void _pstOrdSplit(PST pst,int iMaxOrder)
 {
+	struct outFreeStore outFree;
+	struct inOrdWeight inWt;
+	struct outOrdWeight outWtLow,outWtHigh;
+	int im,imm,il,iu;
+	int nLowerStore,nUpperStore,nLow,nHigh;
 	struct inColOrdRejects inCol;
 	OREJ *pLowerRej,*pUpperRej;
-	int *pidSwap,iRet,nOut;
+	int *pidSwap,iRet,nOut,ittr;
 
 	/*
-	 ** First Collect rejects.
-	 ** Again NON-SAFE use of MDL here!
+	 ** First find out how much free storage there is available for particles
+	 ** on the lower and upper subset of processors.
+	 */
+	mdlReqService(pst->mdl,pst->idUpper,PST_FREESTORE,NULL,0);
+	pstFreeStore(pst->pstLower,NULL,0,&outFree,NULL);
+	nLowerStore = outFree.nFreeStore;
+	mdlGetReply(pst->mdl,pst->idUpper,&outFree,NULL);
+	nUpperStore = outFree.nFreeStore;
+	/*
+	 ** Find the correct iOrdSplit, such that all processors will
+	 ** have close to the same number of particles in the end.
+	 ** Start the ROOT finder based on balancing number of particles.
+	 */
+	il = 0;
+	iu = iMaxOrder;
+	imm = (il + iu)/2;
+	ittr = 0;
+	while (il < imm && imm < iu && ittr < 32) {
+		im = imm;
+		inWt.iOrdSplit = im;
+		inWt.ittr = ittr;
+		inWt.iSplitSide = 1;
+		mdlReqService(pst->mdl,pst->idUpper,PST_ORDWEIGHT,&inWt,sizeof(inWt));
+		inWt.iSplitSide = 0;
+		pstOrdWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
+		/*
+		 ** Add lower and Upper subsets weights and numbers
+		 */
+		nLow = outWtLow.nLow + outWtHigh.nLow;
+		nHigh = outWtLow.nHigh + outWtHigh.nHigh;
+		/*
+		printf("ittr:%d l:%d u:%d\n",ittr,nLow,nHigh);
+		*/
+		if(nLow == 1 && nHigh == 1) /* break on trivial case */
+		    break;
+		else {		/* split on number */
+		    if (nLow/(float)pst->nLower >
+			nHigh/(float)pst->nUpper) iu = im;
+		    else if (nLow/(float)pst->nLower <
+			     nHigh/(float)pst->nUpper) il = im;
+		    else break;
+		    }
+		imm = (il + iu)/2;
+		++ittr;
+		}
+	assert(nLow <= nLowerStore-NUM_SAFETY*pst->nLower);
+	assert(nHigh <= nUpperStore-NUM_SAFETY*pst->nUpper);
+	pst->iOrdSplit = im;
+	/*
+	 ** Collect rejects.
 	 */
 	pLowerRej = malloc(pst->nLower*sizeof(OREJ));
 	assert(pLowerRej != NULL);
@@ -1255,7 +1361,7 @@ void _pstOrdSplit(PST pst)
 	assert(pUpperRej != NULL);
 	pidSwap = malloc(mdlThreads(pst->mdl)*sizeof(int));
 	assert(pidSwap != NULL);
-	inCol.nOrdSplit = pst->nOrdSplit;
+	inCol.iOrdSplit = pst->iOrdSplit;
 	inCol.iSplitSide = 1;
 	mdlReqService(pst->mdl,pst->idUpper,PST_COLORDREJECTS,&inCol,
 				  sizeof(inCol));
@@ -1284,9 +1390,11 @@ void _pstOrdSplit(PST pst)
 
 void pstDomainOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
-	assert(nIn == 0);
+	struct inDomainOrder *in = vin;
+
+	assert(nIn == sizeof(struct inDomainOrder));
 	if (pst->nLeaves > 1) {
-		_pstOrdSplit(pst);
+		_pstOrdSplit(pst,in->iMaxOrder);
 		/*
 		 ** Now go on to Domain Order of next levels.
 		 */
@@ -1312,7 +1420,7 @@ void pstLocalOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdLocalOrder(plcl->pkd,pst->nStart);
+		pkdLocalOrder(plcl->pkd);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -1419,7 +1527,7 @@ void pstWriteTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			strcat(achOutFile,"/");
 			}
 		strcat(achOutFile,in->achOutFile);
-		pkdWriteTipsy(plcl->pkd,achOutFile,pst->nStart,pst->nEnd,
+		pkdWriteTipsy(plcl->pkd,achOutFile,plcl->nWriteStart,
 					  in->bStandard,in->dvFac,in->duTFac);
 		}
 	if (pnOut) *pnOut = 0;
@@ -1678,21 +1786,20 @@ void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	LCL *plcl = pst->plcl;
 	struct inReadCheck *in = vin;
 	char achInFile[PST_FILENAME_SIZE];
-	int nTotal,nStore;
+	int nFileStart,nFileEnd,nFileTotal,nFileSplit,nStore;
 
 	assert(nIn == sizeof(struct inReadCheck));
-	pst->nStart = in->nStart;
-	pst->nEnd = in->nEnd;
-	nTotal = pst->nEnd - pst->nStart + 1;
+    nFileStart = in->nFileStart;
+	nFileEnd = in->nFileEnd;
+	nFileTotal = nFileEnd - nFileStart + 1;
 	if (pst->nLeaves > 1) {
-		pst->nOrdSplit = pst->nStart
-		    + pst->nLower*(nTotal/pst->nLeaves);
-		in->nStart = pst->nOrdSplit;
+		nFileSplit = nFileStart + pst->nLower*(nFileTotal/pst->nLeaves);
+		in->nFileStart = nFileSplit;
 		mdlReqService(pst->mdl,pst->idUpper,PST_READCHECK,in,nIn);
-		in->nStart = pst->nStart;
-		in->nEnd = pst->nOrdSplit - 1;
+		in->nFileStart = nFileStart;
+		in->nFileEnd = nFileSplit - 1;
 		pstReadCheck(pst->pstLower,in,nIn,NULL,NULL);
-		in->nEnd = pst->nEnd;
+		in->nFileEnd = nFileEnd;
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
@@ -1708,11 +1815,11 @@ void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		/*
 		 ** Determine the size of the local particle store.
 		 */
-		nStore = nTotal + (int)ceil(nTotal*in->fExtraStore);
+		nStore = nFileTotal + (int)ceil(nFileTotal*in->fExtraStore);
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
 					  in->fPeriod,in->nDark,in->nGas,in->nStar);
 		pkdReadCheck(plcl->pkd,achInFile,in->iVersion,in->iOffset,
-					 pst->nStart,nTotal);
+					 nFileStart,nFileTotal);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -1740,19 +1847,37 @@ void pstSetTotal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+void pstSetWriteStart(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{	
+	LCL *plcl = pst->plcl;
+	struct inSetWriteStart *in = vin;
+	int nWriteStart;
+
+	assert(nIn == sizeof(struct inSetWriteStart));
+	nWriteStart = in->nWriteStart;
+	if (pst->nLeaves > 1) {
+		in->nWriteStart = nWriteStart + pst->pstLower->nTotal;
+		mdlReqService(pst->mdl,pst->idUpper,PST_SETWRITESTART,in,nIn);
+		in->nWriteStart = nWriteStart;
+		pstSetWriteStart(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		plcl->nWriteStart = nWriteStart;
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
 void pstWriteCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	struct inWriteCheck *in = vin;
 	char achOutFile[PST_FILENAME_SIZE];
-	int nStart;
 
 	assert(nIn == sizeof(struct inWriteCheck));
 	if (pst->nLeaves > 1) {
-		nStart = in->nStart;
-		in->nStart += pst->pstLower->nTotal;
 		mdlReqService(pst->mdl,pst->idUpper,PST_WRITECHECK,in,nIn);
-		in->nStart = nStart;
 		pstWriteCheck(pst->pstLower,in,nIn,NULL,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
@@ -1766,7 +1891,7 @@ void pstWriteCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			strcat(achOutFile,"/");
 			}
 		strcat(achOutFile,in->achOutFile);
-		pkdWriteCheck(plcl->pkd,achOutFile,in->iOffset,in->nStart);
+		pkdWriteCheck(plcl->pkd,achOutFile,in->iOffset,plcl->nWriteStart);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2231,6 +2356,23 @@ void pstActiveCool(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdActiveCool(plcl->pkd,in->nSuperCool);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstInitAccel(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_INITACCEL,vin,nIn);
+		pstInitAccel(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdInitAccel(plcl->pkd);
 		}
 	if (pnOut) *pnOut = 0;
 	}
