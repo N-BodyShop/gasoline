@@ -1044,7 +1044,7 @@ void msrBuildTree(MSR msr,double dMass)
 	inc.nCell = nCell;
 	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
 	msrMassCheck(msr,dMass,"After pstColCells in msrBuildTree");
-#if (1)
+#if (0)
 	for (i=1;i<nCell;++i) {
 		struct pkdCalcCellStruct *m;
 
@@ -1603,6 +1603,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_CTX *fdl;
 	char *pszFdl;
 	int iVersion,iNotCorrupt;
+	static int first = 1;
 	
 	/*
 	 ** Add Data Subpath for local and non-local names.
@@ -1610,7 +1611,13 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	achOutFile[0] = 0;
 	strcat(achOutFile,msr->param.achDataSubPath);
 	strcat(achOutFile,"/");
-	sprintf(achOutFile,"%s.chk",msr->param.achOutName);
+	if(first) {
+	    sprintf(achOutFile,"%s.chk0",msr->param.achOutName);
+	    first = 0;
+	} else {
+	    sprintf(achOutFile,"%s.chk1",msr->param.achOutName);
+	    first = 1;
+	}
 	strcpy(in.achOutFile,achOutFile);
 	/*
 	 ** Add local Data Path.

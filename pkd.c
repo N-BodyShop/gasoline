@@ -1316,11 +1316,6 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	pkdClearTimer(pkd,1);
 	pkdClearTimer(pkd,2);
 	pkdClearTimer(pkd,3);
-	if (bPeriodic) {
-		pkdStartTimer(pkd,3);
-		pkdEwaldInit(pkd,fEwhCut,iEwOrder);
-		pkdStopTimer(pkd,3);
-		}
 	/*
 	 ** Start caching spaces.
 	 */
@@ -1350,11 +1345,6 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 		pkdStartTimer(pkd,2);
 		pkdBucketInteract(pkd,iCell,iOrder);
 		pkdStopTimer(pkd,2);
-		if (bPeriodic) {
-			pkdStartTimer(pkd,3);
-			pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
-			pkdStopTimer(pkd,3);
-			}
 		fWeight = 2.0*(pkd->nCellSoft + pkd->nCellNewt) + 
 			1.0*(pkd->nPart + (n-1)/2.0);
 		pkdBucketWeight(pkd,iCell,fWeight);
@@ -1376,6 +1366,26 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	 */
 	mdlFinishCache(pkd->mdl,CID_CELL);
 	mdlFinishCache(pkd->mdl,CID_PARTICLE);
+	/*
+	 * Now do Ewald part.
+	 */
+	if (bPeriodic) {
+	    pkdStartTimer(pkd,3);
+	    pkdEwaldInit(pkd,fEwhCut,iEwOrder);
+	    iCell = pkd->iRoot;
+	    while (iCell != -1) {
+		    if (c[iCell].iLower != -1) {
+			    iCell = c[iCell].iLower;
+			    continue;
+			    }
+		    /*
+		     ** Calculate Ewald on this bucket.
+		     */
+		    pkdBucketEwald(pkd,iCell,nReps,fEwCut,iEwOrder);
+		    iCell = c[iCell].iUpper;
+		    }
+	    pkdStopTimer(pkd,3);
+	    }
 	}
 
 
