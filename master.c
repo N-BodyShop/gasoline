@@ -707,7 +707,8 @@ void msrBuildTree(MSR msr)
 	if (msr->param.bVerbose) printf("Building local trees...\n");
 	in.nBucket = msr->param.nBucket;
 	in.iOpenType = msr->iOpenType;
-	in.iOrder = msr->param.iOrder;
+	in.iOrder = (msr->param.iOrder >= msr->param.iEwOrder)?
+		msr->param.iOrder:msr->param.iEwOrder;
 	in.dCrit = msr->dCrit;
 	sec = time(0);
 	pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);

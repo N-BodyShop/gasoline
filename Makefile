@@ -9,7 +9,7 @@ BDIR	=	$(HOME)/pvm3/bin
 XDIR	=	$(BDIR)/$(PVM_ARCH)
 
 PVM_MDL		=	../mdl/pvm
-PVM_CFLAGS	=	-mips4 -O2 -I$(PVMDIR)/include -I$(PVM_MDL)
+PVM_CFLAGS	=	-mips4 -O3 -I$(PVMDIR)/include -I$(PVM_MDL)
 PVM_LIBMDL	=	v_sqrt1.o $(PVM_MDL)/$(PVM_ARCH)/mdl-lru.o $(PVMLIB) $(ARCHLIB) /local/lib/libmalloc.a -lm
 
 #
@@ -44,7 +44,7 @@ T3D_LIBMDL = -O3 -L $(V_SQRT) -L $(V_SQRT1) $(MDL)/mdl.o -lv_sqrtc -lv_sqrtc1 -l
 T3D_LD_FLAGS = 
 
 OBJS	= 	main.o master.o param.o outtype.o pkd.o pst.o grav.o \
-		ewald.o walk.o eccanom.o hypanom.o fpex.o
+		ewald.o walk.o eccanom.o hypanom.o
 EXTRA_OBJ = 	erf.o v_sqrt1.o
 
 default:	

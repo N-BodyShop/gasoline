@@ -74,7 +74,6 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 					}
 				}
 			}
-/*
 		for (i=0;i<pkd->nEwhLoop;++i) {
 			hdotx = pkd->ewt[i].hx*dx + pkd->ewt[i].hy*dy + pkd->ewt[i].hz*dz;
 			s = sin(hdotx);
@@ -83,7 +82,6 @@ void pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 			ay -= pkd->ewt[i].hay*s;
 			az -= pkd->ewt[i].haz*s;
 			}
-	    */
 		p[j].fPot += fPot;
 		p[j].a[0] += ax;
 		p[j].a[1] += ay;
@@ -157,6 +155,7 @@ void pkdEwaldInit(PKD pkd,double fhCut,int iOrder)
 				gam[3] = -2*M_PI/L*gam[2];
 				gam[4] = 2*M_PI/L*gam[3];
 				gam[5] = -2*M_PI/L*gam[4];
+				mfac = 0.0;
 				QEVAL(iOrder,mom,gam,hx,hy,hz,ax,ay,az,mfac);
 				pkd->ewt[i].hx = 2*M_PI/L*hx;
 				pkd->ewt[i].hy = 2*M_PI/L*hy;
@@ -171,6 +170,13 @@ void pkdEwaldInit(PKD pkd,double fhCut,int iOrder)
 		}
 	pkd->nEwhLoop = i;
 	}
+
+
+
+
+
+
+
 
 
 
