@@ -514,7 +514,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				sizeof(double),"ctmax",
 				"<Maximum Temperature for Cooling> = 1e9K");
 	msr->param.nCoolingTable = 15001;
-	prmAddParam(msr->prm,"dMassFracHelium",0,&msr->param.nCoolingTable,
+	prmAddParam(msr->prm,"nCoolingTable",0,&msr->param.nCoolingTable,
 				sizeof(int),"nctable","<# Cooling table elements> = 15001");
 	msr->param.bDoGravity = 1;
 	prmAddParam(msr->prm,"bDoGravity",0,&msr->param.bDoGravity,sizeof(int),"g",

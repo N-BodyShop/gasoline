@@ -657,6 +657,9 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 
 					pPdV += rq*pPoverRho2*dvdotdr;
+#ifdef PDVDEBUG
+  					p->PdVpres += rq*(pPoverRho2)*dvdotdr;
+#endif
 					rq *= (pPoverRho2 + q->PoverRho2);
 					rq *= aFac; /* convert to comoving acceleration */
 
@@ -692,7 +695,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 					pPdV += rq*(pPoverRho2 + 0.5*visc)*dvdotdr;
 #ifdef PDVDEBUG			
-					p->PdVpres += rq*(pPoverRho2)*dvdotdr;
+  					p->PdVpres += rq*(pPoverRho2)*dvdotdr;
 					p->PdVvisc += rq*(0.5*visc)*dvdotdr;
 #endif
 					rq *= (pPoverRho2 + q->PoverRho2 + visc);
@@ -739,6 +742,10 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef PDVCHECK
 #endif
 				q->PdV += rp*q->PoverRho2*dvdotdr;
+#ifdef PDVDEBUG			
+				q->PdVpres += rp*(q->PoverRho2)*dvdotdr;
+#endif
+
 				rp *= (pPoverRho2 + q->PoverRho2);
 				rp *= aFac; /* convert to comoving acceleration */
 

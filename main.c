@@ -357,20 +357,29 @@ int main(int argc,char **argv)
 					msrOutArray(msr,achFile,OUT_H_ARRAY);
 					}
 #ifdef GASOLINE				
+ 				if (msr->param.bDoSphhOutput) {
+					msrReorder(msr);
+ 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+					strncat(achFile,".SPHH",256);
+					msrOutArray(msr,achFile,OUT_H_ARRAY);
+					}
 				if (msrDoDensity(msr) || msr->param.bDohOutput || msr->param.bDoSphhOutput) {
 					msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 					msrDomainDecomp(msr,0,1);
 					msrBuildTree(msr,1,-1.0,1);
 					msrSmooth(msr,dTime,SMX_DENSITY,1);
 					}
-				if (msr->param.bDoSphhOutput) {
-					msrReorder(msr);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".SPHH",256);
-					msrOutArray(msr,achFile,OUT_H_ARRAY);
-					}
+#ifdef PDVDEBUG
+				msrReorder(msr);
+				sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+				strncat(achFile,".PdVpres",256);
+ 				msrOutArray(msr,achFile,OUT_PDVPRES_ARRAY);
+				sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+				strncat(achFile,".PdVvisc",256);
+ 				msrOutArray(msr,achFile,OUT_PDVVISC_ARRAY);
+#endif
 				if (msr->param.bShockTracker) {
-					msrReorder(msr);
+ 					msrReorder(msr);
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
 					strncat(achFile,".ST",256);
 					msrOutArray(msr,achFile,OUT_SHOCKTRACKER_ARRAY);
@@ -540,7 +549,7 @@ int main(int argc,char **argv)
 			  msrOutVector(msr,achFile,OUT_ACCEL_VECTOR);
 			  sprintf(achFile,"%s.PdV",msrOutName(msr));
 			  msrOutArray(msr,achFile,OUT_PDV_ARRAY);
-			  sprintf(achFile,"%s.PdVpres",msrOutName(msr));
+ 			  sprintf(achFile,"%s.PdVpres",msrOutName(msr));
 			  msrOutArray(msr,achFile,OUT_PDVPRES_ARRAY);
 			  sprintf(achFile,"%s.PdVvisc",msrOutName(msr));
 			  msrOutArray(msr,achFile,OUT_PDVVISC_ARRAY);

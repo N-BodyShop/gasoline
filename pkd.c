@@ -1578,12 +1578,16 @@ void pkdPhysicalSoft(PKD pkd,double dSoftMax,double dFac,int bSoftMaxMul)
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	
+	assert(dFac > 0);
 	if (bSoftMaxMul) {
 	        for (i=0;i<n;++i) {
+		        assert(p[i].fSoft0 > 0);
 	                p[i].fSoft = p[i].fSoft0*dFac;
+			assert(p[i].fSoft > 0);
 		        }
 	        }
 	else {
+ 	        assert(dSoftMax > 0);
 	        for (i=0;i<n;++i) {
 	                p[i].fSoft = p[i].fSoft0*dFac;
 	                if (p[i].fSoft > dSoftMax) p[i].fSoft = dSoftMax;
@@ -3523,6 +3527,8 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,int bAll, int *pnMaxRun
 		if(pkd->pStore[i].iRung >= iRung) {
 			mdlassert(pkd->mdl,TYPEQueryACTIVE(&(pkd->pStore[i])));
 			if(bAll) {          /* Assign all rungs at iRung and above */
+			        assert(pkd->pStore[i].fSoft > 0);
+			        assert(pkd->pStore[i].dt > 0);
 				iSteps = dDelta/pkd->pStore[i].dt;
 				/* insure that integer boundary goes
 				   to the lower rung. */
