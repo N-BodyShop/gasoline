@@ -17,6 +17,7 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 	void (*init)(void *);
 	void (*comb)(void *,void *);
 	int pi;
+	int nTree;
 
 	smx = (SMX)malloc(sizeof(struct smContext));
 	assert(smx != NULL);
@@ -96,9 +97,10 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 		assert(0);
 		}
 	/*
-	 ** Initialize the active particles.
+	 ** Initialize the particles in the tree.
 	 */
-	for (pi=0;pi<pkd->nActive;++pi) {
+	nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
+	for (pi=0;pi<nTree;++pi) {
 		if (pkd->pStore[pi].iActive) {
 			if (bSmooth) pkd->pStore[pi].fBall2 = -1.0;
 			if (initParticle != NULL) {
@@ -118,11 +120,11 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bPeriodic,int bSymmetric,
 	 */
 	if (bSymmetric) {
 		mdlCOcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
-				   pkdActive(pkd),init,comb);
+				   nTree,init,comb);
 		}
 	else {
 		mdlROcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
-				   pkdActive(pkd));
+				   nTree);
 		}
 	/*
 	 ** Allocate mark array.
@@ -548,8 +550,10 @@ void smSmooth(SMX smx,SMF *smf)
 	float fBall2,fDist2,x,y,z,dx,dy,dz,lx,ly,lz,sx,sy,sz,h2;
 	PQ *pq,*pqi,*pqn;
 	int iDum;
+	int nTree;
 
 	nSmooth = smx->nSmooth;
+	nTree = c[pkd->iRoot].pUpper + 1;
 	if (smx->bPeriodic) {
 	    lx = smx->pkd->fPeriod[0];
 	    ly = smx->pkd->fPeriod[1];
@@ -588,7 +592,7 @@ void smSmooth(SMX smx,SMF *smf)
 	 ** Add local stuff to the prioq.
 	 */
 	pj = c[cell].pLower;
-	if (pj > pkd->nActive - nSmooth) pj = pkd->nActive - nSmooth;
+	if (pj > nTree - nSmooth) pj = nTree - nSmooth;
 	for (i=0,pqi=smx->pq;i<nSmooth;++i,++pj,++pqi) {
 		smx->piMark[pj] = 1;
 		dx = x - p[pj].r[0];
