@@ -349,6 +349,7 @@ void pkdInitDt(PKD pkd, double dDelta);
 int pkdRungParticles(PKD,int);
 void pkdCoolVelocity(PKD,int,double,double,double);
 void pkdActiveCool(PKD,int);
+void pkdGrowMass(PKD pkd,int nGrowMass, double dDeltaM);
 void pkdInitAccel(PKD);
 int pkdOrdWeight(PKD,int,int,int,int,int *,int *);
 void pkdDeleteParticle(PKD pkd, int i);

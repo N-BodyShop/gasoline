@@ -631,4 +631,13 @@ void pstSphStep(PST,void *,int,void *,int *);
 
 #endif
 
+#define PST_GROWMASS		76
+struct inGrowMass 
+{
+    int nGrowMass;
+    double dDeltaM;
+    };
+
+void pstGrowMass(PST,void *,int,void *,int *);
+
 #endif

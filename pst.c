@@ -158,6 +158,9 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_ACTIVECOOL,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstActiveCool,
 				  sizeof(struct inActiveCool),0);
+	mdlAddService(mdl,PST_GROWMASS,pst,
+		      (void (*)(void *,void *,int,void *,int *)) pstGrowMass,
+		      sizeof(struct inGrowMass),0);
 	mdlAddService(mdl,PST_RESMOOTH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstReSmooth,
 				  sizeof(struct inReSmooth),0);
@@ -2495,6 +2498,22 @@ void pstActiveCool(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
+void pstGrowMass(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inGrowMass *in = vin;
+
+	assert(nIn == sizeof(struct inGrowMass));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_GROWMASS,in,nIn);
+		pstGrowMass(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdGrowMass(plcl->pkd,in->nGrowMass,in->dDeltaM);
+		}
+	if (pnOut) *pnOut = 0;
+	}
 
 void pstInitAccel(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {

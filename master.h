@@ -126,6 +126,7 @@ void msrActiveRung(MSR msr, int iRung, int bGreater);
 void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime,
 		     int bAll);
 void msrCoolVelocity(MSR,double,double);
+void msrGrowMass(MSR msr, double dTime, double dDelta);
 void msrCalcWriteStart(MSR);
 void msrAddDelParticles(MSR msr);
 void msrAccelStep(MSR msr, double dTime);

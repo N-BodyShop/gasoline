@@ -287,6 +287,21 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bSymCool = 0;
 	prmAddParam(msr->prm,"bSymCool",0,&msr->param.bSymCool,sizeof(int),NULL,
 				NULL);
+	msr->param.nGrowMass = 0;
+	prmAddParam(msr->prm,"nGrowMass",1,&msr->param.nGrowMass,sizeof(int),
+		    "gmn","<number of particles to increase mass> = 0");
+	msr->param.dGrowDeltaM = 0.0;
+	prmAddParam(msr->prm,"dGrowDeltaM",2,&msr->param.dGrowDeltaM,
+		    sizeof(double),
+		    "gmdm","<Total growth in mass/particle> = 0.0");
+	msr->param.dGrowStartT = 0.0;
+	prmAddParam(msr->prm,"dGrowStartT",2,&msr->param.dGrowStartT,
+		    sizeof(double),
+		    "gmst","<Start time for growing mass> = 0.0");
+	msr->param.dGrowEndT = 1.0;
+	prmAddParam(msr->prm,"dGrowEndT",2,&msr->param.dGrowEndT,
+		    sizeof(double),
+		    "gmet","<End time for growing mass> = 1.0");
 	msr->param.bDoGravity = 1;
 	prmAddParam(msr->prm,"bDoGravity",0,&msr->param.bDoGravity,sizeof(int),"g",
 				"calculate gravity/don't calculate gravity = +g");
@@ -598,6 +613,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef SUPERCOOL
 	fprintf(fp," SUPERCOOL");
 #endif
+#ifdef GROWMASS
+	fprintf(fp," GROWMASS");
+#endif
 #ifdef COLLISIONS
 	fprintf(fp," COLLISIONS");
 #endif
@@ -622,6 +640,7 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef CRAY_T3D
 	fprintf(fp," CRAY_T3D");
 #endif
+	fprintf(fp,"\n");
 #ifdef MAXHOSTNAMELEN
 	{
 		char hostname[MAXHOSTNAMELEN];
@@ -633,7 +652,6 @@ void msrLogParams(MSR msr,FILE *fp)
 		fprintf(fp,"\n");
 	}
 #endif
-	fprintf(fp,"\n");
 	fprintf(fp,"# N: %d",msr->N);
 	fprintf(fp," nThreads: %d",msr->param.nThreads);
 	fprintf(fp," Verbosity flags: (%d,%d,%d,%d,%d)",msr->param.bVWarnings,
@@ -674,6 +692,12 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bFandG: %d",msr->param.bFandG);
 	fprintf(fp," bHeliocentric: %d",msr->param.bHeliocentric);
 	fprintf(fp," dCentMass: %g",msr->param.dCentMass);
+#ifdef GROWMASS
+	fprintf(fp,"\n# GROWMASS: nGrowMass: %d",msr->param.nGrowMass);
+	fprintf(fp," dGrowDeltaM: %g",msr->param.dGrowDeltaM);
+	fprintf(fp," dGrowStartT: %g",msr->param.dGrowStartT);
+	fprintf(fp," dGrowEndT: %g",msr->param.dGrowEndT);
+#endif
 #ifdef GASOLINE
 	fprintf(fp,"\n# SPH: bGeometric: %d",msr->param.bGeometric);
 	fprintf(fp," dConstAlpha: %g",msr->param.dConstAlpha);
@@ -2055,11 +2079,11 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 
 void msrCoolVelocity(MSR msr,double dTime,double dMass)
 {
+#ifdef SUPERCOOL
 	struct inActiveCool ina;
 	struct inCoolVelocity in;
 	
 	if (msr->param.nSuperCool > 0) {
-#ifdef SUPERCOOL
 		/*
 		 ** Activate all for densities if bSymCool == 0
 		 */
@@ -2083,15 +2107,6 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 			pstActiveCool(msr->pst,&ina,sizeof(ina),NULL,NULL);
 			msrReSmooth(msr,dTime,SMX_MEANVEL,0);
 			}
-#else
-		/*
-		 ** First calculate densities for the supercool particles.
-		 */
-		ina.nSuperCool = msr->param.nSuperCool;
-		pstActiveCool(msr->pst,&ina,sizeof(ina),NULL,NULL);
-		msrBuildTree(msr,msr->param.bSymCool,dMass,1);
-		msrSmooth(msr,dTime,SMX_DENSITY,msr->param.bSymCool);
-#endif
 		/*
 		 ** Now cool them.
 		 */
@@ -2101,8 +2116,24 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 		in.dCoolMaxDens = msr->param.dCoolMaxDens;
 		pstCoolVelocity(msr->pst,&in,sizeof(in),NULL,NULL);
 		}
+#endif
 	}
 
+void msrGrowMass(MSR msr, double dTime, double dDelta)
+{
+#ifdef GROWMASS
+    struct inGrowMass in;
+    
+    if(msr->param.nGrowMass > 0 && dTime > msr->param.dGrowStartT
+       && dTime <= msr->param.dGrowEndT) {
+		
+	in.nGrowMass = msr->param.nGrowMass;
+	in.dDeltaM = msr->param.dGrowDeltaM*dDelta
+	    /(msr->param.dGrowEndT - msr->param.dGrowStartT);
+	pstGrowMass(msr->pst, &in, sizeof(in), NULL, NULL);
+	}
+#endif
+    }
 
 void msrKick(MSR msr,double dTime,double dDelta)
 {
@@ -2891,24 +2922,18 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 {
 	struct outMassCheck out;
 	
+#ifdef GROWMASS
+	out.dMass = 0.0;
+#else
 	if (msr->param.bVDetails) puts("doing mass check...");
 	pstMassCheck(msr->pst,NULL,0,&out,NULL);
 	if (dMass < 0.0) return(out.dMass);
-#if 0
-else if (dMass != out.dMass) {
-#else
 	else if (fabs(dMass - out.dMass) > 1e-12*dMass) {
-#endif
 		printf("ERROR: Mass not conserved (%s): %.15f != %.15f!\n",
 			   pszWhere,dMass,out.dMass);
-#if 0
-		_msrExit(msr);
-		return(0.0);
-#else
-		return(out.dMass);
-#endif
 		}
-	else return(out.dMass);
+#endif
+	return(out.dMass);
 	}
 
 void

@@ -2735,6 +2735,19 @@ void pkdActiveCool(PKD pkd,int nSuperCool)
 		}
     }
 
+void pkdGrowMass(PKD pkd,int nGrowMass, double dDeltaM)
+{
+    int i;
+    
+#ifdef GROWMASS
+    for(i=0;i<pkdLocal(pkd);++i) {
+		if (pkd->pStore[i].iOrder < nGrowMass) {
+			pkd->pStore[i].fMass += dDeltaM;
+			}
+		}
+#endif
+    }
+
 void pkdInitAccel(PKD pkd)
 {
     int i,j;

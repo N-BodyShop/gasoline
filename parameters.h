@@ -46,6 +46,7 @@ struct parameters {
 	int nSmooth;
 	int iMaxRung;
 	int nSuperCool;
+	int nGrowMass;
         int iWallRunTime;
 	double dEta;
 	double dExtraStore;
@@ -73,6 +74,9 @@ struct parameters {
 	double dCoolFac;
 	double dCoolDens;
 	double dCoolMaxDens;
+	double dGrowDeltaM;
+	double dGrowStartT;
+	double dGrowEndT;
 	/*
 	 ** Additional parameters for GASOLINE.
 	 */
