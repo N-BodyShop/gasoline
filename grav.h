@@ -15,9 +15,9 @@
  */
 #define SPLINEQ(invr,r2,twoh,a,b,c,d)\
 {\
-	double SPLINE_u,SPLINE_dih,SPLINE_dir=invr;\
-	if (r2 < twoh*twoh) {\
-		SPLINE_dih = 2.0/twoh;\
+	double SPLINE_u,SPLINE_dih,SPLINE_dir=(invr);\
+	if ((r2) < (twoh)*(twoh)) {\
+		SPLINE_dih = 2.0/(twoh);\
 		SPLINE_u = SPLINE_dih/SPLINE_dir;\
 		if (SPLINE_u < 1.0) {\
 			a = SPLINE_dih*(7.0/5.0 - 2.0/3.0*SPLINE_u*SPLINE_u + 3.0/10.0*SPLINE_u*SPLINE_u*SPLINE_u*SPLINE_u\
@@ -48,9 +48,9 @@
 
 #define SPLINEM(invr,r2,twoh,a,b)\
 {\
-	double SPLINE_u,SPLINE_dih,SPLINE_dir=invr;\
-	if (r2 < twoh*twoh) {\
-		SPLINE_dih = 2.0/twoh;\
+	double SPLINE_u,SPLINE_dih,SPLINE_dir=(invr);\
+	if ((r2) < (twoh)*(twoh)) {\
+		SPLINE_dih = 2.0/(twoh);\
 		SPLINE_u = SPLINE_dih/SPLINE_dir;\
 		if (SPLINE_u < 1.0) {\
 			a = SPLINE_dih*(7.0/5.0 - 2.0/3.0*SPLINE_u*SPLINE_u + 3.0/10.0*SPLINE_u*SPLINE_u*SPLINE_u*SPLINE_u\
@@ -74,8 +74,8 @@
 {\
 	double SPLINE_r,SPLINE_u,SPLINE_dih,SPLINE_dir;\
 	SPLINE_r = sqrt(r2);\
-	if (SPLINE_r < twoh) {\
-		SPLINE_dih = 2.0/twoh;\
+	if (SPLINE_r < (twoh)) {\
+		SPLINE_dih = 2.0/(twoh);\
 		SPLINE_u = SPLINE_r*SPLINE_dih;\
 		if (SPLINE_u < 1.0) {\
 			a = SPLINE_dih*(7.0/5.0 - 2.0/3.0*SPLINE_u*SPLINE_u + 3.0/10.0*SPLINE_u*SPLINE_u*SPLINE_u*SPLINE_u\
