@@ -356,6 +356,7 @@ struct inDensityRung {
     double dDelta;
     double dEta;
     double dRhoFac;
+    int bAll;
     };
 struct outDensityRung {
     int iMaxRung;
@@ -377,5 +378,16 @@ struct inGetMap {
 	};
 void pstGetMap(PST,void *,int,void *,int *);
 
+#define PST_VELOCITYRUNG		45
+struct inVelocityRung {
+    int iRung;
+    double dDelta;
+    double dEta;
+    int bAll;
+    };
+struct outVelocityRung {
+    int iMaxRung;
+    };
+void pstVelocityRung(PST,void *,int,void *,int *);
 #endif
 

@@ -1845,21 +1845,82 @@ pkdCurrRung(PKD pkd, int iRung)
     }
 
 int
-pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta, double dRhoFac)
+pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta,
+	       double dRhoFac, int bAll)
 {
     int i;
     int iMaxRung;
+    int iTempRung;
+    int iSteps;
     
     iMaxRung = 0;
     for(i = 0; i < pkdLocal(pkd); ++i) {
 	if(pkd->pStore[i].iRung >= iRung) {
 	    assert(pkd->pStore[i].iActive == 1);
-	    if(dDelta*sqrt(pkd->pStore[i].fDensity*dRhoFac) < dEta) {
-		pkd->pStore[i].iRung = iRung;
+	    if(bAll) {          /* Assign all rungs at iRung and above */
+		iSteps =
+		    dDelta*sqrt(pkd->pStore[i].fDensity*dRhoFac)/dEta;
+		iTempRung = iRung;
+		while(iSteps) {
+		    ++iTempRung;
+		    iSteps >>= 1;
+		    }
+		pkd->pStore[i].iRung = iTempRung; /* XXX need MaxRung */
+						  /* limit */
+                }
+            else {
+		if(dDelta*sqrt(pkd->pStore[i].fDensity*dRhoFac) < dEta) {
+		    pkd->pStore[i].iRung = iRung;
+		    }
+		else {
+		    pkd->pStore[i].iRung = iRung+1;
+		    }
+		}
+	    }
+	if(pkd->pStore[i].iRung > iMaxRung)
+	    iMaxRung = pkd->pStore[i].iRung;
+	}
+    return iMaxRung;
+    }
+
+int
+pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta,
+		int bAll)
+{
+    int i;
+    int iMaxRung;
+    int iTempRung;
+    int iSteps;
+    double vel;
+    int j;
+    
+    iMaxRung = 0;
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+	if(pkd->pStore[i].iRung >= iRung) {
+	    assert(pkd->pStore[i].iActive == 1);
+	    vel = 0;
+	    for(j = 0; j < 3; j++)
+		vel += pkd->pStore[i].v[j];
+	    vel = sqrt(vel);
+	    if(bAll) {          /* Assign all rungs at iRung and above */
+		iSteps =
+		    dDelta*vel/dEta*pkd->pStore[i].fSoft;
+		iTempRung = iRung;
+		while(iSteps) {
+		    ++iTempRung;
+		    iSteps >>= 1;
+		    }
+		pkd->pStore[i].iRung = iTempRung; /* XXX need MaxRung */
+                                                /* limit */
 		}
 	    else {
-		pkd->pStore[i].iRung = iRung+1;
-		}
+		if(dDelta*vel < dEta*pkd->pStore[i].fSoft) {
+		    pkd->pStore[i].iRung = iRung;
+		    }
+		else {
+		    pkd->pStore[i].iRung = iRung+1;
+		    }
+                }
 	    }
 	if(pkd->pStore[i].iRung > iMaxRung)
 	    iMaxRung = pkd->pStore[i].iRung;

@@ -2019,7 +2019,8 @@ int msrCurrRung(MSR msr, int iRung)
     }
 
 
-void msrDensityRung(MSR msr, int iRung, double dDelta, double dTime)
+void msrDensityRung(MSR msr, int iRung, double dDelta, double dTime,
+		    int bAll)
 {
     struct inDensityRung in;
     struct outDensityRung out;
@@ -2040,10 +2041,24 @@ void msrDensityRung(MSR msr, int iRung, double dDelta, double dTime)
     in.dEta = msrEta(msr);
     expand = msrTime2Exp(msr, dTime);
     in.dRhoFac = 1.0/(expand*expand*expand);
+    in.bAll = bAll;
     pstDensityRung(msr->pst, &in, sizeof(in), &out, NULL);
     msr->iCurrMaxRung = out.iMaxRung;
     }
 
+void
+msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime, int bAll)
+{
+    struct inVelocityRung in;
+    struct outVelocityRung out;
+
+    in.iRung = iRung;
+    in.dDelta = dDelta;
+    in.dEta = msrEta(msr);
+    in.bAll = bAll;
+    pstVelocityRung(msr->pst, &in, sizeof(in), &out, NULL);
+    msr->iCurrMaxRung = out.iMaxRung;
+    }
 
 void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung)
 {
@@ -2060,7 +2075,7 @@ void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung)
 		msrActiveRung(msr, iRung, 1);
 		msrBuildTree(msr,0,dMass);
 		printf("Adjust, iRung: %d\n", iRung);
-		msrDensityRung(msr,iRung, dDelta, dTime+0.5*dDelta);
+		msrDensityRung(msr,iRung, dDelta, dTime+0.5*dDelta, 0);
 		msrDrift(msr,dTime,-0.5*dDelta);
 		}
 		/*
@@ -2105,6 +2120,82 @@ void msrRungStats(MSR msr)
 	printf(")\n");
 	};
 
+msrTopStepNS(MSR msr, double dTime, double dDelta, int iRung)
+{
+    double dMass = -1.0;
+    int iSec;
+    double dWMax, dIMax, dEMax;
+
+      if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
+          if(iRung < msrMaxRung(msr)-1) {
+              if (msr->param.bVerbose) {
+                    printf("Adjust, iRung: %d\n", iRung);
+                    }
+
+              msrActiveRung(msr, iRung, 1);
+              msrBuildTree(msr,1,dMass);
+              msrDensityRung(msr,iRung, dDelta, dTime+0.5*dDelta, 1);
+              }
+              /*
+               ** Actual Stepping.
+               */
+              msrTopStepNS(msr, dTime, 0.5*dDelta,iRung+1);
+              if(msrCurrRung(msr, iRung)) {
+                      if (msr->param.bVerbose) {
+                          printf("Kick, iRung: %d\n", iRung);
+                          }
+                      msrActiveRung(msr, iRung, 0);
+                      msrBuildTree(msr,1,dMass);
+                      msrGravity(msr,dTime,&iSec,&dWMax,&dIMax,&dEMax);
+                      msrKick(msr, dTime, dDelta);
+                      }
+              msrTopStepNS(msr, dTime+0.5*dDelta, 0.5*dDelta,iRung+1);
+              }
+      else {    
+              if (msr->param.bVerbose) {
+                  printf("Drift, iRung: %d\n", iRung);
+                  }
+              msrDrift(msr,dTime,dDelta);
+              }
+      }
+
+msrTopStepVel(MSR msr, double dTime, double dDelta, int iRung)
+{
+    double dMass = -1.0;
+    int iSec;
+    double dWMax, dIMax, dEMax;
+
+      if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
+          if(iRung < msrMaxRung(msr)-1) {
+              if (msr->param.bVerbose) {
+                    printf("Adjust, iRung: %d\n", iRung);
+                    }
+
+              msrActiveRung(msr, iRung, 1);
+              msrVelocityRung(msr,iRung, dDelta, dTime+0.5*dDelta, 1);
+              }
+              /*
+               ** Actual Stepping.
+               */
+              msrTopStepVel(msr, dTime, 0.5*dDelta,iRung+1);
+              if(msrCurrRung(msr, iRung)) {
+                      if (msr->param.bVerbose) {
+                          printf("Kick, iRung: %d\n", iRung);
+                          }
+                      msrActiveRung(msr, iRung, 0);
+                      msrBuildTree(msr,1,dMass);
+                      msrGravity(msr,dTime,&iSec,&dWMax,&dIMax,&dEMax);
+                      msrKick(msr, dTime, dDelta);
+                      }
+              msrTopStepVel(msr, dTime+0.5*dDelta, 0.5*dDelta,iRung+1);
+              }
+      else {    
+              if (msr->param.bVerbose) {
+                  printf("Drift, iRung: %d\n", iRung);
+                  }
+              msrDrift(msr,dTime,dDelta);
+              }
+      }
 
 
 

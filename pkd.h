@@ -276,7 +276,7 @@ double pkdMassCheck(PKD pkd);
 void pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
 int pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta,
-				   double dRhoFac);
+				   double dRhoFac, int bAll);
 int pkdRungParticles(PKD,int);
 
 #endif
