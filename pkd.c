@@ -154,7 +154,10 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,double dvFac)
 		pkd->pStore[i].fSoft = dp.eps;
 		pkd->pStore[i].iOrder = nStart + i;
 		pkd->pStore[i].iActive = 1;
+		pkd->pStore[i].iRung = 0;
 		pkd->pStore[i].fWeight = 1.0;
+		pkd->pStore[i].fDensity = 0.0;
+		pkd->pStore[i].fBall2 = 0.0;
 		}
 	fclose(fp);
 	}
@@ -381,12 +384,17 @@ int pkdColRejects(PKD pkd,int d,float fSplit,float fSplitInactive,
 		nSplitInactive = pkdUpperPart(pkd,d,fSplitInactive,
 					      pkdActive(pkd),pkdLocal(pkd)-1);
 		}
+	for(i = 0; i < nSplit; ++i)
+	    assert(pkd->pStore[i].iActive == 1);
+	for(i = pkdActive(pkd); i < nSplitInactive; ++i)
+	    assert(pkd->pStore[i].iActive == 0);
+
 	nSplitInactive -= pkdActive(pkd);
 	/*
 	 ** Now do some fancy rearrangement.
 	 */
-	i = nSplit - 1;
-	j = pkdActive(pkd) - 1;
+	i = nSplit;
+	j = pkdActive(pkd);
 	while (j < pkdActive(pkd) + nSplitInactive) {
 		pTemp = pkd->pStore[i];
 		pkd->pStore[i] = pkd->pStore[j];

@@ -130,7 +130,7 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bCombiner)
 			pkd->pStore[pi].fDensity = 0.0;
 			pkd->pStore[pi].fBall2 = -1.0;
 			}
-		else if (pkd->pStore[pi].fBall2 < 0.0) {
+		else if (pkd->pStore[pi].fBall2 <= 0.0) {
 			pkd->pStore[pi].fBall2 = 0.0;
 			pkd->pStore[pi].fDensity = 0.0;
 			}
@@ -161,6 +161,7 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bCombiner)
 	/*
 	 ** Start caching spaces.
 	 */
+	mdlDiag(pkd->mdl, "Before Particle cache\n");
 	if (bCombiner) {
 		mdlCOcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
 				   pkdLocal(pkd),initDen,combDen);
@@ -169,7 +170,9 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bCombiner)
 		mdlROcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
 				   pkdLocal(pkd));
 		}
+	mdlDiag(pkd->mdl, "Before Cell cache\n");
 	mdlROcache(pkd->mdl,CID_CELL,pkd->kdNodes,sizeof(KDN),pkdNodes(pkd));
+	mdlDiag(pkd->mdl, "After Cell cache\n");
 	*psmx = smx;	
 	return(1);
 	}
@@ -177,6 +180,36 @@ int smInitialize(SMX *psmx,PKD pkd,int nSmooth,int bCombiner)
 
 void smFinish(SMX smx)
 {
+    char achOut[128];
+
+	/*
+	 * Output statistics.
+	 */
+	sprintf(achOut, "Cell Accesses: %g\n",
+		mdlNumAccess(smx->pkd->mdl,CID_CELL));
+	mdlDiag(smx->pkd->mdl, achOut);
+	sprintf(achOut, "    Miss ratio: %g\n",
+		mdlMissRatio(smx->pkd->mdl,CID_CELL));
+	mdlDiag(smx->pkd->mdl, achOut);
+	sprintf(achOut, "    Min ratio: %g\n",
+		mdlMinRatio(smx->pkd->mdl,CID_CELL));
+	mdlDiag(smx->pkd->mdl, achOut);
+	sprintf(achOut, "    Coll ratio: %g\n",
+		mdlCollRatio(smx->pkd->mdl,CID_CELL));
+	mdlDiag(smx->pkd->mdl, achOut);
+
+	sprintf(achOut, "Particle Accesses: %g\n",
+		mdlNumAccess(smx->pkd->mdl,CID_PARTICLE));
+	mdlDiag(smx->pkd->mdl, achOut);
+	sprintf(achOut, "    Miss ratio: %g\n",
+		mdlMissRatio(smx->pkd->mdl,CID_PARTICLE));
+	mdlDiag(smx->pkd->mdl, achOut);
+	sprintf(achOut, "    Min ratio: %g\n",
+		mdlMinRatio(smx->pkd->mdl,CID_PARTICLE));
+	mdlDiag(smx->pkd->mdl, achOut);
+	sprintf(achOut, "    Coll ratio: %g\n",
+		mdlCollRatio(smx->pkd->mdl,CID_PARTICLE));
+	mdlDiag(smx->pkd->mdl, achOut);
 	/*
 	 ** Stop caching spaces.
 	 */

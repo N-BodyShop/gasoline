@@ -53,7 +53,8 @@ void pkdOutArray(PKD pkd,char *pszFileName,int iArrType)
 		fOut = ArrType(&pkd->pStore[i],iArrType);
 		fprintf(fp,"%.8g\n",fOut);
 		}
-	fclose(fp);
+	i = fclose(fp);
+	assert(i == 0);
 	}
 
 
@@ -72,7 +73,8 @@ void pkdOutVector(PKD pkd,char *pszFileName,int iDim,int iVecType)
 		fOut = VecType(&pkd->pStore[i],iDim,iVecType);
 		fprintf(fp,"%.8g\n",fOut);
 		}
-	fclose(fp);
+	i = fclose(fp);
+	assert(i == 0);
 	}
 
 

@@ -1127,9 +1127,16 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 {
 	struct inOutArray in;
 	char achOutFile[PST_FILENAME_SIZE];
-	LCL *plcl = msr->pst->plcl;
+	LCL *plcl;
+	PST pst0;
 	FILE *fp;
+	int id;
+	int inswap;
 
+	pst0 = msr->pst;
+	while(pst0->nLeaves > 1)
+	    pst0 = pst0->pstLower;
+	plcl = pst0->plcl;
 	if (pszFile) {
 		/*
 		 ** Add Data Subpath for local and non-local names.
@@ -1164,8 +1171,30 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 	 */
 	fprintf(fp,"%d\n",msr->N);
 	fclose(fp);
-	in.iType = iType;
-	pstOutArray(msr->pst,&in,sizeof(in),NULL,NULL);
+	/* 
+	 * First write our own particles.
+	 */
+	pkdOutArray(plcl->pkd,achOutFile,iType); 
+	for (id=1;id<msr->nThreads;++id) {
+	    /* 
+	     * Swap particles with the remote processor.
+	     */
+	    inswap = 0;
+	    mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+	    pkdSwapAll(plcl->pkd, id);
+	    mdlGetReply(pst0->mdl,id,NULL,NULL);
+	    /* 
+	     * Write the swapped particles.
+	     */
+	    pkdOutArray(plcl->pkd,achOutFile,iType); 
+	    /* 
+	     * Swap them back again.
+	     */
+	    inswap = 0;
+	    mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+	    pkdSwapAll(plcl->pkd, id);
+	    mdlGetReply(pst0->mdl,id,NULL,NULL);
+	    }
 	}
 
 
@@ -1173,9 +1202,16 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 {
 	struct inOutVector in;
 	char achOutFile[PST_FILENAME_SIZE];
-	LCL *plcl = msr->pst->plcl;
+	LCL *plcl;
+	PST pst0;
 	FILE *fp;
+	int id;
+	int inswap;
 
+	pst0 = msr->pst;
+	while(pst0->nLeaves > 1)
+	    pst0 = pst0->pstLower;
+	plcl = pst0->plcl;
 	if (pszFile) {
 		/*
 		 ** Add Data Subpath for local and non-local names.
@@ -1210,13 +1246,34 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	 */
 	fprintf(fp,"%d\n",msr->N);
 	fclose(fp);
-	in.iType = iType;
-	in.iDim = 0;
-	pstOutVector(msr->pst,&in,sizeof(in),NULL,NULL);
-	in.iDim = 1;
-	pstOutVector(msr->pst,&in,sizeof(in),NULL,NULL);
-	in.iDim = 2;
-	pstOutVector(msr->pst,&in,sizeof(in),NULL,NULL);
+	/* 
+	 * First write our own particles.
+	 */
+	pkdOutVector(plcl->pkd,achOutFile,0, iType); 
+	pkdOutVector(plcl->pkd,achOutFile,1, iType); 
+	pkdOutVector(plcl->pkd,achOutFile,2, iType); 
+	for (id=1;id<msr->nThreads;++id) {
+	    /* 
+	     * Swap particles with the remote processor.
+	     */
+	    inswap = 0;
+	    mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+	    pkdSwapAll(plcl->pkd, id);
+	    mdlGetReply(pst0->mdl,id,NULL,NULL);
+	    /* 
+	     * Write the swapped particles.
+	     */
+	    pkdOutVector(plcl->pkd,achOutFile,0, iType); 
+	    pkdOutVector(plcl->pkd,achOutFile,1, iType); 
+	    pkdOutVector(plcl->pkd,achOutFile,2, iType); 
+	    /* 
+	     * Swap them back again.
+	     */
+	    inswap = 0;
+	    mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+	    pkdSwapAll(plcl->pkd, id);
+	    mdlGetReply(pst0->mdl,id,NULL,NULL);
+	    }
 	}
 
 
@@ -1987,7 +2044,7 @@ void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung)
 
 		msrDrift(msr,dTime,0.5*dDelta);
 		msrActiveRung(msr, iRung, 1);
-		msrBuildTree(msr,1,dMass);
+		msrBuildTree(msr,0,dMass);
 		msrDensityRung(msr,iRung, dDelta, dTime+0.5*dDelta);
 		msrDrift(msr,dTime,-0.5*dDelta);
 		}
@@ -2000,7 +2057,7 @@ void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, int iRung)
 			    printf("Kick, iRung: %d\n", iRung);
 			    }
 			msrActiveRung(msr, iRung, 0);
-			msrBuildTree(msr,1,dMass);
+			msrBuildTree(msr,0,dMass);
 			msrGravity(msr,dStep + 1.0/(iRung+1), &iSec,&dWMax,&dIMax,&dEMax);
 			msrKick(msr, dTime, dDelta);
 			}
