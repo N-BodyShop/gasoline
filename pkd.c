@@ -2240,6 +2240,8 @@ pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll)
 			if(bAll) {          /* Assign all rungs at iRung and above */
 				iSteps = dDelta/pkd->pStore[i].dt - STEP_EPS;
 				iTempRung = iRung;
+				if(iSteps < 0)
+				    iSteps = 0;
 				while(iSteps) {
 					++iTempRung;
 					iSteps >>= 1;
