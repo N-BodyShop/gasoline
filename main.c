@@ -33,9 +33,11 @@ int main(int argc,char **argv)
 	MSR msr;
 	FILE *fpLog = NULL;
 	char achFile[256]; /*DEBUG use MAXPATHLEN here (& elsewhere)? -- DCR*/
-	double dTime,E,T,U,Eth,L[3],dWMax,dIMax,dEMax,dMass,dMultiEff;
-	long lSec,lStart;
-	int i,iStep,iSec,nActive,iStop = 0;
+	double dTime;
+	double E=0,T=0,U=0,Eth=0,L[3]={0,0,0};
+	double dWMax=0,dIMax=0,dEMax=0,dMass=0,dMultiEff=0;
+	long lSec=0,lStart;
+	int i,iStep,iSec=0,iStop=0,nActive;
 
 	char achBaseMask[256];
 
@@ -184,13 +186,13 @@ int main(int argc,char **argv)
 	msrMassCheck(msr,dMass,"After initial msrDrift");
 
 	if (msrSteps(msr) > 0) {
+		if (msrComove(msr)) {
+			msrSwitchTheta(msr,dTime);
+			}
 		/*
 		 ** Now we have all the parameters for the simulation we can make a 
 		 ** log file entry.
 		 */
-		if (msrComove(msr)) {
-			msrSwitchTheta(msr,dTime);
-			}
 		if (msrLogInterval(msr)) {
 			sprintf(achFile,"%s.log",msrOutName(msr));
 			fpLog = fopen(achFile,"w");
@@ -256,13 +258,13 @@ int main(int argc,char **argv)
 				msrGrowMass(msr,dTime,msrDelta(msr)); /* Grow Masses if specified */
 				dTime += msrDelta(msr);
 				/*
-				 ** Output a log file line at each step.
+				 ** Output a log file line if requested.
 				 ** Note: no extra gravity calculation required.
 				 */
-				msrCalcEandL(msr,MSR_STEP_E,dTime,&E,&T,&U,&Eth,L);
-				msrMassCheck(msr,dMass,"After msrCalcEandL in KDK");
-				lSec = time(0) - lSec;
 				if (msrLogInterval(msr) && iStep%msrLogInterval(msr) == 0) {
+					msrCalcEandL(msr,MSR_STEP_E,dTime,&E,&T,&U,&Eth,L);
+					msrMassCheck(msr,dMass,"After msrCalcEandL in KDK");
+					lSec = time(0) - lSec;
 					(void) fprintf(fpLog,"%e %e %.16e %e %e %e %.16e %.16e "
 								   "%.16e %li %e %e %e %e\n",dTime,
 								   1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
@@ -280,11 +282,11 @@ int main(int argc,char **argv)
 				msrGrowMass(msr,dTime,msrDelta(msr)); /* Grow Masses if specified */
 				dTime += msrDelta(msr);
 				if (msrLogInterval(msr) && iStep%msrLogInterval(msr) == 0) {
+					/*
+					 ** Output a log file line.
+					 ** Reactivate all particles.
+					 */
 					if (msrDoGravity(msr)) {
-						/*
-						 ** Output a log file line.
-						 ** Reactivate all particles.
-						 */
 						msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
 						msrDomainDecomp(msr,0,1);
 						msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
@@ -427,11 +429,7 @@ int main(int argc,char **argv)
 				 */
 				while (msrOutTime(msr,dTime));
 				}
-			if (iStep == msrSteps(msr) || iStop) {
-				msrWriteCheck(msr,dTime,iStep);
-				msrMassCheck(msr,dMass,"After msrWriteCheck");
-				}
-			if (msr->param.iWallRunTime > 0) {
+			if (!iStop && msr->param.iWallRunTime > 0) {
 			    if (msr->param.iWallRunTime*60 - (time(0)-lStart) < ((int) (lSec*1.5)) ) {
 					printf("RunTime limit exceeded.  Writing checkpoint and exiting.\n");
 					printf("    iWallRunTime(sec): %d   Time running: %ld   Last step: %ld\n",

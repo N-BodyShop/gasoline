@@ -8,7 +8,7 @@ endif
 #
 set template = Makefile.tmpl
 #
-set OBJ = ({collision,cooling,cosmo,eccanom,ewald,fdl,grav,htable,hypanom,main,master,outtype,param,pkd,pst,qqsmooth,romberg,smooth,smoothfcn,walk}.o)
+set OBJ = ({collision,cooling,cosmo,eccanom,ewald,fdl,grav,htable,hypanom,main,master,millerscalo,outtype,param,pkd,pst,qqsmooth,romberg,smooth,smoothfcn,starform,walk}.o)
 #
 set mdl = ../mdl
 #
@@ -237,6 +237,9 @@ foreach mode ($modes)
 	case Linux-i686:
 	#	set CC = (/usr/local/bin/gcc -Wall)
 	#	if ($mode != mpi) set CFLAGS = ($CFLAGS -malign-double -mstack-align-double -mpentium)
+		breaksw
+	case SunOS:
+		set LDFLAGS = ($LDFLAGS -lnsl)
 		breaksw
 	endsw
 	#

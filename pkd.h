@@ -4,7 +4,10 @@
 #include <sys/resource.h>
 #include "mdl.h"
 #include "floattype.h"
+
+#ifdef GASOLINE
 #include "cooling.h"
+#endif
 
 /*
  ** The following sort of definition should really be in a global
@@ -307,10 +310,12 @@ typedef struct pkdContext {
 		double wallclock_stamp;
 		int iActive;
 		} ti[MAX_TIMERS];
+#ifdef GASOLINE
 	/* 
 	 ** Cooling 
 	 */
 	CL cl;
+#endif
 #ifdef SLIDING_PATCH
 	/*
 	 ** Rotating frame info...

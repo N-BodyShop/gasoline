@@ -1843,8 +1843,8 @@ double msrReadTipsy(MSR msr)
 	    pstReadTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
 	    msrOneNodeReadTipsy(msr, &in);
-        intype.nSuperCool = msr->param.nSuperCool;
-        pstSetParticleTypes(msr->pst, &intype, sizeof(intype), NULL, NULL);
+	intype.nSuperCool = msr->param.nSuperCool;
+	pstSetParticleTypes(msr->pst, &intype, sizeof(intype), NULL, NULL);
 	if (msr->param.bVDetails) puts("Input file has been successfully read.");
 	/*
 	 ** Now read in the output points, passing the initial time.
@@ -2833,7 +2833,6 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	int j;
 #ifdef NEED_VPRED
 	struct inKickVpred invpr;
-	struct outKick out;
 	double a;
 #endif
 
@@ -5107,6 +5106,63 @@ msrFindRejects(MSR msr)
 	}
 
 void
+msrOneNodeReadSS(MSR msr,struct inReadSS *in)
+{
+    int i,id;
+    int *nParts;
+    int nStart;
+    PST pst0;
+    LCL *plcl;
+    char achInFile[PST_FILENAME_SIZE];
+    int nid;
+    int inswap;
+
+    nParts = malloc(msr->nThreads*sizeof(*nParts));
+    for (id=0;id<msr->nThreads;++id) {
+		nParts[id] = -1;
+		}
+
+    pstOneNodeReadInit(msr->pst,in,sizeof(*in),nParts,&nid);
+    assert(nid == msr->nThreads*sizeof(*nParts));
+    for (id=0;id<msr->nThreads;++id) {
+		assert(nParts[id] > 0);
+		}
+
+    pst0 = msr->pst;
+    while(pst0->nLeaves > 1)
+		pst0 = pst0->pstLower;
+    plcl = pst0->plcl;
+    /*
+     ** Add the local Data Path to the provided filename.
+     */
+	_msrMakePath(plcl->pszDataPath,in->achInFile,achInFile);
+
+    nStart = nParts[0];
+	assert(msr->pMap[0] == 0);
+    for (i=1;i<msr->nThreads;++i) {
+		id = msr->pMap[i];
+		/* 
+		 * Read particles into the local storage.
+		 */
+		assert(plcl->pkd->nStore >= nParts[id]);
+		pkdReadSS(plcl->pkd,achInFile,nStart,nParts[id]);
+		nStart += nParts[id];
+		/* 
+		 * Now shove them over to the remote processor.
+		 */
+		inswap = 0;
+		mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+		pkdSwapAll(plcl->pkd, id);
+		mdlGetReply(pst0->mdl,id,NULL,NULL);
+    	}
+    assert(nStart == msr->N);
+    /* 
+     * Now read our own particles.
+     */
+    pkdReadSS(plcl->pkd,achInFile,0,nParts[0]);
+    }
+
+void
 xdrSSHeader(XDR *pxdrs,SSHEAD *ph)
 {
 	xdr_double(pxdrs,&ph->time);
@@ -5188,10 +5244,8 @@ msrReadSS(MSR msr)
 
 	if (msr->param.bParaRead)
 	    pstReadSS(msr->pst,&in,sizeof(in),NULL,NULL);
-	else {
-		printf("Only parallel read supported for collision code\n");
-		_msrExit(msr,1);
-		}
+	else
+	    msrOneNodeReadSS(msr,&in);
 	if (msr->param.bVDetails) puts("Input file successfully read.");
 	/*
 	 ** Set particle ACTIVE flags to correspond to appropriate type.
@@ -5212,6 +5266,56 @@ msrReadSS(MSR msr)
 		}
 	return(dTime);
 	}
+
+void
+msrOneNodeWriteSS(MSR msr,struct inWriteSS *in)
+{
+    int i,id;
+    int nStart;
+    PST pst0;
+    LCL *plcl;
+    char achOutFile[PST_FILENAME_SIZE];
+    int inswap;
+
+    pst0 = msr->pst;
+    while(pst0->nLeaves > 1)
+		pst0 = pst0->pstLower;
+    plcl = pst0->plcl;
+    /*
+     ** Add the local Data Path to the provided filename.
+     */
+	_msrMakePath(plcl->pszDataPath,in->achOutFile,achOutFile);
+
+    /* 
+     * First write our own particles.
+     */
+    pkdWriteSS(plcl->pkd,achOutFile,plcl->nWriteStart);
+    nStart = plcl->pkd->nLocal;
+	assert(msr->pMap[0] == 0);
+    for (i=1;i<msr->nThreads;++i) {
+		id = msr->pMap[i];
+		/* 
+		 * Swap particles with the remote processor.
+		 */
+		inswap = 0;
+		mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+		pkdSwapAll(plcl->pkd,id);
+		mdlGetReply(pst0->mdl,id,NULL,NULL);
+		/* 
+		 * Write the swapped particles.
+		 */
+		pkdWriteSS(plcl->pkd,achOutFile,nStart);
+		nStart += plcl->pkd->nLocal;
+		/* 
+		 * Swap them back again.
+		 */
+		inswap = 0;
+		mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+		pkdSwapAll(plcl->pkd, id);
+		mdlGetReply(pst0->mdl,id,NULL,NULL);
+    	}
+    assert(nStart == msr->N);
+    }
 
 void
 msrWriteSS(MSR msr,char *pszFileName,double dTime)
@@ -5256,10 +5360,8 @@ msrWriteSS(MSR msr,char *pszFileName,double dTime)
 
 	if(msr->param.bParaWrite)
 	    pstWriteSS(msr->pst,&in,sizeof(in),NULL,NULL);
-	else {
-		printf("Only parallel write supported for collision code\n");
-		_msrExit(msr,1);
-		}
+	else
+		msrOneNodeWriteSS(msr,&in);
 
 	if (msr->param.bVDetails) puts("Output file successfully written.");
 	}
@@ -5789,7 +5891,8 @@ int msrReadASCII(MSR msr, char *extension, int nDataPerLine, double *dDataOut)
 			ret = sscanf(achIn,"%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
 						 dData,dData+1,dData+2,dData+3,dData+4,dData+5,dData+6,dData+7,dData+8,dData+9); 
 			break;
-			default:
+		default:
+			ret = EOF;
 			assert(0);
 			}
 		if (ret != nDataPerLine) goto Done;

@@ -115,17 +115,17 @@ int prmParseParam(PRM prm,char *pszFile)
 	while (p) {
 		if (*p == 0) goto new_line;
 		if (*p == '#') goto new_line;
-		while (isspace(*p)) {
+		while (isspace((int) *p)) {
 			++p;
 			if (*p == 0) goto new_line;
 			}
-		if (isalpha(*p)) {
+		if (isalpha((int) *p)) {
 			pszCmd = p;
 			++p;
 			if (*p == 0) goto lookup_cmd;
 			}
 		else goto syntax_error;
-		while (isalnum(*p)||strchr("_$",*p)) {
+		while (isalnum((int) *p)||strchr("_$",*p)) {
 			++p;
 			if (*p == 0) goto lookup_cmd;
 			}
@@ -140,14 +140,14 @@ int prmParseParam(PRM prm,char *pszFile)
 		if (!pn) goto cmd_error;
 		*p = t;
 		if (*p == 0) goto syntax_error;
-		while (isspace(*p)) {
+		while (isspace((int) *p)) {
 			++p;
 			if (*p == 0) goto syntax_error;
 			}
 		if (*p != '=') goto syntax_error;
 		++p;
 		if (*p == 0) goto syntax_error;
-		while (isspace(*p)) {
+		while (isspace((int) *p)) {
 			++p;
 			if (*p == 0) goto syntax_error;
 			}
@@ -180,7 +180,7 @@ int prmParseParam(PRM prm,char *pszFile)
 			 */
 			p = pn->pValue;
 			q = &p[strlen(p)];
-			while (--q >= p) if (!isspace(*q)) break;
+			while (--q >= p) if (!isspace((int) *q)) break;
 			++q;
 			*q = 0;
 			break;

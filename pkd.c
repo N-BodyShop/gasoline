@@ -1890,7 +1890,7 @@ double dRootBracket(KDN *pkdn,double dErrBnd,double (*fcn)(KDN *,double))
 
 double pkdCalcOpen(KDN *pkdn,int iOpenType,double dCrit,int iOrder)
 {
-	double dOpen;
+	double dOpen=0;
 
 	if (iOpenType == OPEN_ABSPAR) {
 		switch (iOrder) {

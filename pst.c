@@ -461,13 +461,21 @@ void pstGetMap(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 void pstOneNodeReadInit(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
+#ifdef COLLISIONS
+	struct inReadSS *in = vin;
+#else
 	struct inReadTipsy *in = vin;
+#endif
 	int *pout = vout;
 	int nFileStart,nFileEnd,nFileTotal,nFileSplit,nStore;
 	int *ptmp;
 	int i;
 
+#ifdef COLLISIONS
+	mdlassert(pst->mdl,nIn == sizeof(struct inReadSS));
+#else
 	mdlassert(pst->mdl,nIn == sizeof(struct inReadTipsy));
+#endif
 	nFileStart = in->nFileStart;
 	nFileEnd = in->nFileEnd;
 	nFileTotal = nFileEnd - nFileStart + 1;
