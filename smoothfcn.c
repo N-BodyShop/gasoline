@@ -1921,6 +1921,14 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             KERNEL(rs,r2);
             rstot += rs;
         }
+	if(rstot <= 0.0) {
+	    if(p->fMass == 0.0) /* the particle to be deleted has NOTHING */
+		return;
+	    /* we have a particle to delete and nowhere to put its mass
+	     * => we will keep it around */
+	    pkdUnDeleteParticle(smf->pkd, p);
+	    return;
+	    }
 	assert(rstot > 0.0);
 	fNorm = 1./rstot;
 	assert(p->fMass >= 0);
