@@ -3998,18 +3998,19 @@ pkdGetNParts(PKD pkd, struct outGetNParts *out )
     out->nGas = nGas;
     out->nDark = nDark;
     out->nStar = nStar;
-	out->iMaxOrderDark = iMaxOrderGas;
+	out->iMaxOrderGas = iMaxOrderGas;
 	out->iMaxOrderDark = iMaxOrderDark;
 	out->iMaxOrderStar = iMaxOrderStar;
     }
 
 void
-pkdSetNParts(PKD pkd,int nGas,int nDark,int nStar,int nMaxOrderGas,
+pkdSetNParts(PKD pkd,int nGas,int nDark,int nStar,int nMaxOrder, int nMaxOrderGas,
 	     int nMaxOrderDark)
 {
     pkd->nGas = nGas;
     pkd->nDark = nDark;
     pkd->nStar = nStar;
+/*  pkd->nMaxOrder = nMaxOrder; */
     pkd->nMaxOrderGas = nMaxOrderGas;
     pkd->nMaxOrderDark = nMaxOrderDark;
 }

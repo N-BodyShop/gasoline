@@ -538,7 +538,7 @@ struct outGetNParts {
     };
 
 void pkdGetNParts(PKD pkd, struct outGetNParts *out );
-void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int nMaxOrderGas,
+void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int, int nMaxOrderGas,
 				  int nMaxOrderDark);
 void pkdSunIndirect(PKD,double *,int,double);
 void pkdLogHalo(PKD);

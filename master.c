@@ -2022,8 +2022,9 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
 		inset.nGas = outget.nGas;
 		inset.nDark = outget.nDark;
 		inset.nStar = outget.nStar;
-		inset.nMaxOrderGas = outget.iMaxOrderGas;
-		inset.nMaxOrderDark = outget.iMaxOrderStar;
+		msr->nMaxOrderGas = inset.nMaxOrderGas = outget.iMaxOrderGas;
+		msr->nMaxOrderDark = inset.nMaxOrderDark = outget.iMaxOrderDark;
+        msr->nMaxOrder = inset.nMaxOrder     = outget.iMaxOrderStar;
 		pstSetNParts(msr->pst,&inset,sizeof(inset),NULL,NULL);
 		}
 
@@ -2251,8 +2252,9 @@ double msrReadTipsy(MSR msr)
 		inset.nGas = outget.nGas;
 		inset.nDark = outget.nDark;
 		inset.nStar = outget.nStar;
-		inset.nMaxOrderGas = outget.iMaxOrderGas;
-		inset.nMaxOrderDark = outget.iMaxOrderStar;
+		msr->nMaxOrderGas = inset.nMaxOrderGas = outget.iMaxOrderGas;
+		msr->nMaxOrderDark = inset.nMaxOrderDark = outget.iMaxOrderDark;
+        msr->nMaxOrder = inset.nMaxOrder     = outget.iMaxOrderStar;
 		pstSetNParts(msr->pst,&inset,sizeof(inset),NULL,NULL);
 		if (msr->param.bVDetails) puts("IOrder file has been successfully read.");
 		}
@@ -4018,6 +4020,7 @@ double msrReadCheck(MSR msr,int *piStep)
 	inset.nStar = msr->nStar;
 	inset.nMaxOrderGas = msr->nMaxOrderGas;
 	inset.nMaxOrderDark = msr->nMaxOrderDark;
+	inset.nMaxOrder = msr->nMaxOrder;
 	pstSetNParts(msr->pst,&inset,sizeof(inset),NULL,NULL);
 	intype.nSuperCool = msr->param.nSuperCool;
 	pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL);
@@ -5197,6 +5200,7 @@ msrAddDelParticles(MSR msr)
     in.nStar = msr->nStar;
     in.nMaxOrderGas = msr->nMaxOrderGas;
     in.nMaxOrderDark = msr->nMaxOrderDark;
+    in.nMaxOrder = msr->nMaxOrder;
     pstSetNParts(msr->pst,&in,sizeof(in),NULL,NULL);
     intype.nSuperCool = msr->param.nSuperCool;
 	/* This shouldn't really be necessary -- it is undesirable to do a fix-up like this */

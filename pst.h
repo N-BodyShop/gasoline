@@ -833,6 +833,7 @@ struct inSetNParts {
     int nGas;
     int nDark;
     int nStar;
+	int nMaxOrder;
     int nMaxOrderGas;
     int nMaxOrderDark;
     };

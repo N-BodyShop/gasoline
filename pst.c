@@ -4242,7 +4242,7 @@ pstSetNParts(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
     else {
 		pkdSetNParts(pst->plcl->pkd, in->nGas, in->nDark, in->nStar,
-					 in->nMaxOrderGas, in->nMaxOrderDark);
+					 in->nMaxOrder, in->nMaxOrderGas, in->nMaxOrderDark);
 		}
     if(pnOut) *pnOut = 0;
     }
