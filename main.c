@@ -51,7 +51,7 @@ void main(int argc,char **argv)
 		sprintf(achFile,"%s.log",msrOutName(msr));
 		fpLog = fopen(achFile,"a");
 		assert(fpLog != NULL);
-		if(msrKDK(msr)) {
+		if(msrKDK(msr) || msr->param.bEpsVel) {
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree");
 			msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);

@@ -14,6 +14,15 @@ PVM_CFLAGS	=	-mips4 -O3 -I$(PVMDIR)/include -I$(PVM_MDL)
 PVM_LIBMDL	=	v_sqrt1.o $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) /local/lib/libmalloc.a -lm
 
 #
+#       NULL MDL defines
+#
+NULL_MDL = ../mdl/null
+
+NULL_CFLAGS = -O2 -I$(NULL_MDL)
+NULL_LD_FLAGS = 
+NULL_LIBMDL = erf.o v_sqrt1.o $(NULL_MDL)/mdl.o -lm
+
+#
 #       KSR1 defines
 #
 KSR_MDL = ../mdl/ksr
@@ -76,6 +85,10 @@ pvm:
 	make pkdgrav "CFLAGS=$(PVM_CFLAGS)" "LD_FLAGS=$(PVM_LD_FLAGS)" "MDL=$(PVM_MDL)" "LIBMDL=$(PVM_LIBMDL)"
 	mv -f pkdgrav $(XDIR)
 
+
+null:
+	cd $(NULL_MDL); make
+	make pkdgrav "CFLAGS=$(NULL_CFLAGS)" "LD_FLAGS=$(NULL_LD_FLAGS)" "MDL=$(NULL_MDL)" "LIBMDL=$(NULL_LIBMDL)"
 
 ksr:
 	cd $(KSR_MDL); make
