@@ -1828,7 +1828,7 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			pst->kdn.pUpper = -1;
 			}
 		else {
-			pst->kdn.pUpper = 0;
+			pst->kdn.pUpper = 1;
 			}			
 		if(in->bGravity) {
 		    /*
@@ -1857,6 +1857,12 @@ void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 				      in->bGravity, &pst->kdn);
 			}
 		pst->kdn.pLower = pst->idSelf;
+		if (pst->kdn.pUpper < 0) {
+			pst->kdn.pUpper = -1;
+			}
+		else {
+			pst->kdn.pUpper = 1;
+			}	
 		}
 	/*
 	 ** Calculated all cell properties, now pass up this cell info.
