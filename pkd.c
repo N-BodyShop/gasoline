@@ -2239,7 +2239,11 @@ pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 	    else
 		--ndStar;
 	    }
+	else {
+	    ++pj;
+	    }
 	}
+
     *pnNew = nNew;
     *nDeltaGas = ndGas;
     *nDeltaDark = ndDark;
@@ -2369,6 +2373,8 @@ void pkdPredictEth(PKD pkd,double dDelta)
 {
  	PARTICLE *p;
     int i;
+    double a, b, c, x;
+    double C = 0;
     
     for(i=0;i<pkdLocal(pkd);++i) {
 		p = &pkd->pStore[i];
@@ -2377,15 +2383,9 @@ void pkdPredictEth(PKD pkd,double dDelta)
 			a = 1 - 0.5*dDelta*C;
 			b = 0.5*dDelta*p->A;
 			c = (p->uOld + 0.5*dDelta*(p->B + p->du)); 
-			if (b*b + 4*a*c < 0) {
-				sprintf(ach,"Negative descriminant\n");
-				mdlDiag(pkd->mdl,ach);
-				}
-			else {
-				x = 0.5*(b + sqrt(b*b + 4*a*c))/a;	
-				if (x < 0) {
-					}
-				}
+			assert(b*b + 4*a*c >= 0);
+			x = 0.5*(b + sqrt(b*b + 4*a*c))/a;	
+			assert (x >= 0);
 			p->u = x*x;
 			}
 		}
@@ -2396,6 +2396,8 @@ void pkdCorrectEth(PKD pkd,double dDelta)
 {
  	PARTICLE *p;
     int i;
+    double a, b, c, x;
+    double C = 0;
     
     for(i=0;i<pkdLocal(pkd);++i) {
 		p = &pkd->pStore[i];
@@ -2403,7 +2405,9 @@ void pkdCorrectEth(PKD pkd,double dDelta)
 			a = 1 - 0.5*dDelta*C;
 			b = 0.5*dDelta*p->A;
 			c = (p->uOld + 0.5*dDelta*(p->B + p->du)); 
+			assert(b*b + 4*a*c >= 0);
 			x = 0.5*(b + sqrt(b*b + 4*a*c))/a;
+			assert (x >= 0);
 			p->u = x*x;
 			}
 		}
