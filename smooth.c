@@ -668,6 +668,10 @@ void smSmooth(SMX smx,SMF *smf)
 			}
 		}
 	smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
+	/*
+	 ** Try a cache check to improve responsiveness.
+	 */
+        mdlCacheCheck(mdl);
 	if (!pqn) {
 		/*
 		 ** Clean up piMark array, pqHash, and release all aquired
