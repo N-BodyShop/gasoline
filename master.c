@@ -316,6 +316,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	else
 		fprintf(fp," dSoft: input");
 	fprintf(fp,"\n# dDelta: %g",msr->param.dDelta);
+	fprintf(fp," dEta: %g",msr->param.dEta);
+	fprintf(fp," iMaxRung: %d",msr->param.iMaxRung);
 	fprintf(fp," dEwCut: %f",msr->param.dEwCut);
 	fprintf(fp," dEwhCut: %f",msr->param.dEwhCut);
 	switch (msr->iOpenType) {
