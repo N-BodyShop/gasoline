@@ -243,7 +243,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dMeanMolWeight",2,&msr->param.dMeanMolWeight,
 				sizeof(double),"mmw",
 		    		"<Mean molecular weight in amu> = 1.0");
-	msr->param.dGasConst = 8.31451e7 * 1e5 / 4.3e4 / 6.94e16;
+	msr->param.dGasConst = 1.0;
 	prmAddParam(msr->prm,"dGasConst",2,&msr->param.dGasConst,
 				sizeof(double),"gcnst",
 		    		"<Gas Constant>");
