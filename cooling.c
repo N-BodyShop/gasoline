@@ -820,7 +820,7 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
   BRENT a,b,c;
   PERBARYON Yin = *Y, YY;
   RATE Rate,Ratein;
-  double Ein = *E, dE, Tin;
+  double Ein = *E, dE, Tin, Ttmp;
   int sign = 1;
   int i;
   /* brent */
@@ -837,12 +837,13 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
   Tin = clTemperature( Yin.Total, Ein ); 
   clRates( cl, &Ratein, Tin );
   clAbunds( cl, &YY, &Ratein, rho );
-  Tin = clTemperature( YY.Total, Ein ); 
-  clRates( cl, &Ratein, Tin );
-  clAbunds( cl, &YY, &Ratein, rho );
+  Ttmp = clTemperature( YY.Total, Ein ); 
+  clRates( cl, &Rate, Ttmp );
+  clAbunds( cl, &YY, &Rate, rho );
 
-  dE  = dt * clEdotHarmonic( cl, &Ratein, &Ratein, &Yin, &YY, rho, PdV, dt );
+  dE  = dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &YY, rho, PdV, dt );
   if (dE < -0.2*Ein) dE = -0.2*Ein;
+
   /*
     printf("T: %e E %e dE: %e dt %e   %e %e %e\n",Tin,Ein,dE,dt,
 	 -clCoolTotal( cl, &YY, &Ratein, rho ),clHeatTotal( cl, &YY ),PdV);
@@ -853,7 +854,7 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
   a.F = - dE;
   
   /* Bracket the root */
-  b.Y = Yin;
+  b.Y = YY;
 
   for ( i = 1; i <= MAXBRACKET; i++) {
     b.E = Ein + dE;
@@ -886,13 +887,14 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
 
     b.F = b.E - Ein - dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt );
     if ( b.F * a.F < 0 ) break;
-    if (i<5) dE *= 2;
+    if (i<5 && Ein+2*dE > 0) dE *= 2;
     else {
       if (dE < 0) dE -= Ein*0.2;
       else dE = dE*2 + Ein*0.2;
     }
   }
-  
+
+#if (0) 
   if (i>MAXBRACKET) {
     /* Try going the other direction */
     dE = a.F;
@@ -932,8 +934,10 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
 	else dE = dE*2 + Ein*0.2;
       }
     }
-    assert(i<=MAXBRACKET);
   }
+#endif
+
+  assert(i<=MAXBRACKET);
   /*
     printf("Bracket Iterations %i\n",i);
   */
@@ -1094,7 +1098,7 @@ void clIntegrateEnergyDEBUG(CL *cl, PERBARYON *Y, double *E,
   
   if (i>MAXBRACKET) {
     /* Try going the other direction */
-    dE = a.F;
+    dE = a.F; /* -dE original */
     b.Y = Yin;
     
     for ( i = 1; i <= MAXBRACKET; i++) {

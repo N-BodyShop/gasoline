@@ -74,6 +74,12 @@ void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	}
 
+void initParticleMarkDensity(void *p)
+{
+	((PARTICLE *)p)->fDensity = 0.0;
+	TYPESet((PARTICLE *) p, TYPE_DensZeroed);
+	}
+
 void initMarkDensity(void *p)
 {
 	((PARTICLE *)p)->fDensity = 0.0;
@@ -81,7 +87,11 @@ void initMarkDensity(void *p)
 
 void combMarkDensity(void *p1,void *p2)
 {
-	((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
+        if (TYPETest((PARTICLE *) p1, TYPE_DensZeroed)) 
+  	        ((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
+        else if (TYPETest((PARTICLE *) p2, TYPE_DensZeroed)) {
+  	        ((PARTICLE *)p1)->fDensity = ((PARTICLE *)p2)->fDensity;
+	        }
 	((PARTICLE *)p1)->iActive |= ((PARTICLE *)p2)->iActive;
 	}
 
@@ -99,8 +109,8 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	ih2 = 4.0/(BALL2(p));
 	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
-        if (TYPETest(p, TYPE_DensACTIVE)) {
-	        TYPESet( p, TYPE_NbrOfDensACTIVE );
+        if (TYPETest(p, TYPE_ACTIVE)) {
+	        TYPESet( p, TYPE_NbrOfACTIVE );
   	        for (i=0;i<nSmooth;++i) {
 		       r2 = nnList[i].fDist2*ih2;
 		       rs = 2.0 - sqrt(r2);
@@ -114,8 +124,13 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		       rs *= fNorm;
 		       q = nnList[i].pPart;
 	               p->fDensity += rs*q->fMass;
-	               q->fDensity += rs*p->fMass;
-		       TYPESet( q, TYPE_NbrOfDensACTIVE );
+     	               if (TYPETest(q, TYPE_DensZeroed)) 
+   	                        q->fDensity += rs*p->fMass;
+		       else {
+   	                        q->fDensity = rs*p->fMass;
+           	                TYPESet(q, TYPE_DensZeroed);
+		                }
+		       TYPESet( q, TYPE_NbrOfACTIVE );
 		       }
                 } 
         else {
@@ -132,13 +147,147 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
                        rs *= fNorm;
 		       q = nnList[i].pPart;
-		       p->fDensity += rs*q->fMass;
-		       q->fDensity += rs*p->fMass;
+     	               if (TYPETest(p, TYPE_DensZeroed)) 
+   	                        p->fDensity += rs*q->fMass;
+		       else {
+   	                        p->fDensity = rs*q->fMass;
+           	                TYPESet(p, TYPE_DensZeroed);
+		                }
+     	               if (TYPETest(q, TYPE_DensZeroed)) 
+   	                        q->fDensity += rs*p->fMass;
+		       else {
+   	                        q->fDensity = rs*p->fMass;
+           	                TYPESet(q, TYPE_DensZeroed);
+		                }
 		       qiActive |= q->iActive;
 		       }
-		if (qiActive & TYPE_DensACTIVE) TYPESet( p, TYPE_NbrOfDensACTIVE );
+		if (qiActive & TYPE_ACTIVE) TYPESet( p, TYPE_NbrOfACTIVE );
 	        }
         }
+
+void initParticleMarkIIDensity(void *p)
+{
+	if (TYPEFilter((PARTICLE *) p, TYPE_DensACTIVE|TYPE_DensZeroed, TYPE_DensACTIVE)) {
+                ((PARTICLE *)p)->fDensity = 0.0;
+        	TYPESet((PARTICLE *)p, TYPE_DensZeroed);
+	        }
+	}
+
+void initMarkIIDensity(void *p)
+{
+        ((PARTICLE *) p)->fDensity = 0.0;
+	}
+
+void combMarkIIDensity(void *p1,void *p2)
+{
+	if (TYPETest((PARTICLE *) p1, TYPE_DensACTIVE)) {
+                if (TYPETest((PARTICLE *) p1, TYPE_DensZeroed)) 
+  	                ((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
+                else if (TYPETest((PARTICLE *) p2, TYPE_DensZeroed)) {
+  	                ((PARTICLE *)p1)->fDensity = ((PARTICLE *)p2)->fDensity;
+	                }
+	        }
+	((PARTICLE *)p1)->iActive |= ((PARTICLE *)p2)->iActive;
+	}
+
+void MarkIIDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	assert(0);
+}
+
+void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	PARTICLE *q;
+	FLOAT fNorm,ih2,r2,rs;
+	int i;
+	unsigned int qiActive;
+
+	ih2 = 4.0/(BALL2(p));
+	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
+        if (TYPETest(p, TYPE_DensACTIVE)) {
+	        qiActive = 0;
+  	        for (i=0;i<nSmooth;++i) {
+		       q = nnList[i].pPart;
+		       qiActive |= q->iActive;
+		       r2 = nnList[i].fDist2*ih2;
+		       rs = 2.0 - sqrt(r2);
+		       if (r2 < 1.0) rs = (1.0 - 0.75*rs*r2);
+#ifdef HSHRINK
+		       else if (r2 < 4.0) rs = 0.25*rs*rs*rs;
+		       else rs = 0.0;
+#else
+		       else rs = 0.25*rs*rs*rs;
+#endif
+		       rs *= fNorm;
+	               p->fDensity += rs*q->fMass;
+	               if (TYPETest(q, TYPE_DensACTIVE)) {
+     	                        if (TYPETest(q, TYPE_DensZeroed)) 
+   	                                q->fDensity += rs*p->fMass;
+		                else {
+   	                                q->fDensity = rs*p->fMass;
+           	                        TYPESet(q, TYPE_DensZeroed);
+				        }
+		                }
+		       if (TYPETest(p, TYPE_ACTIVE)) TYPESet( q, TYPE_NbrOfACTIVE );
+		       }
+		if (qiActive & TYPE_ACTIVE) TYPESet( p, TYPE_NbrOfACTIVE );
+                } 
+        else if (TYPETest(p, TYPE_ACTIVE)) {
+	        TYPESet( p, TYPE_NbrOfACTIVE );
+                for (i=0;i<nSmooth;++i) {
+		       q = nnList[i].pPart;
+		       TYPESet( q, TYPE_NbrOfACTIVE );
+                       if (!TYPETest(q, TYPE_DensACTIVE)) continue;
+		       r2 = nnList[i].fDist2*ih2;
+		       rs = 2.0 - sqrt(r2);
+		       if (r2 < 1.0) rs = (1.0 - 0.75*rs*r2);
+#ifdef HSHRINK
+		       else if (r2 < 4.0) rs = 0.25*rs*rs*rs;
+		       else rs = 0.0;
+#else
+    		       else rs = 0.25*rs*rs*rs;
+#endif
+                       rs *= fNorm;
+     	               if (TYPETest(q, TYPE_DensZeroed)) 
+   	                        q->fDensity += rs*p->fMass;
+		       else {
+   	                        q->fDensity = rs*p->fMass;
+           	                TYPESet(q, TYPE_DensZeroed);
+		                }
+		       }
+	        }
+        else {
+	        qiActive = 0;
+                for (i=0;i<nSmooth;++i) {
+		       q = nnList[i].pPart;
+		       qiActive |= q->iActive;
+		       if (!TYPETest(q, TYPE_DensACTIVE)) continue;
+		       r2 = nnList[i].fDist2*ih2;
+		       rs = 2.0 - sqrt(r2);
+		       if (r2 < 1.0) rs = (1.0 - 0.75*rs*r2);
+#ifdef HSHRINK
+		       else if (r2 < 4.0) rs = 0.25*rs*rs*rs;
+		       else rs = 0.0;
+#else
+    		       else rs = 0.25*rs*rs*rs;
+#endif
+                       rs *= fNorm;
+     	               if (TYPETest(q, TYPE_DensZeroed)) 
+   	                        q->fDensity += rs*p->fMass;
+		       else {
+   	                        q->fDensity = rs*p->fMass;
+           	                TYPESet(q, TYPE_DensZeroed);
+		                }
+		       }
+		if (qiActive & TYPE_ACTIVE) TYPESet( p, TYPE_NbrOfACTIVE );
+	        }
+        }
+
+void combMark(void *p1,void *p2)
+{
+	((PARTICLE *)p1)->iActive |= ((PARTICLE *)p2)->iActive;
+	}
+
 
 #ifdef SUPERCOOL
 void initMeanVel(void *p)
@@ -412,6 +561,11 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		  /* q active */
 		  rp = rs1 * pMass;
 		  if (dvdotdr>0.0) {
+#ifdef PDVCHECK
+		        if (fabs(rq * pPoverRho2 * dvdotdr * 1e-5) > p->u || fabs(rp * q->PoverRho2 * dvdotdr *1e-5) > q->u)
+			  printf("PDV-ERR-1 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g \n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax);
+#endif
+
 		        pPdV += rq * pPoverRho2 * dvdotdr;
 			q->PdV += rp * q->PoverRho2 * dvdotdr;
 			rq *= (pPoverRho2 + q->PoverRho2);
@@ -443,6 +597,12 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		        visc = 0.5*(p->BalsaraSwitch+q->BalsaraSwitch)*(smf->alpha * (pc + q->c) 
 			    +   smf->beta  * 2 * absmu ) 
 			    * absmu / (pDensity + q->fDensity);
+
+#ifdef PDVCHECK
+			if (fabs(rq * (pPoverRho2 + 0.5*visc) * dvdotdr * 1e-5) > p->u || fabs(rp * (q->PoverRho2 + 0.5*visc) * dvdotdr *1e-5) > q->u)
+			  printf("PDV-ERR-2 %d - %d: Den %g - %g u %g - %g PdV+ %g %g %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * (pPoverRho2 + 0.5*visc) * dvdotdr,rq * (pPoverRho2) * dvdotdr,rq * (0.5*visc) * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax);
+#endif
+
 		        pPdV += rq * (pPoverRho2 + 0.5*visc) * dvdotdr;
 			q->PdV += rp * (q->PoverRho2 + 0.5*visc) * dvdotdr;
 			rq *= (pPoverRho2 + q->PoverRho2 + visc);
@@ -467,6 +627,11 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		else {
 		  /* q not active */
 		  if (dvdotdr>0.0) {
+#ifdef PDVCHECK
+		        if (fabs(rq * pPoverRho2 * dvdotdr * 1e-5) > p->u || fabs(rp * q->PoverRho2 * dvdotdr *1e-5) > q->u)
+			  printf("PDV-ERR-3 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g \n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax);
+#endif
+
 		        pPdV += rq * pPoverRho2 * dvdotdr;
 			rq *= (pPoverRho2 + q->PoverRho2);
 			rq *= aFac; /* convert to comoving acceleration */
@@ -488,6 +653,12 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		        visc = 0.5*(p->BalsaraSwitch+q->BalsaraSwitch)*(smf->alpha * (pc + q->c) 
 			    +   smf->beta  * 2 * absmu ) 
 			    * absmu / (pDensity + q->fDensity);
+
+#ifdef PDVCHECK
+			if (fabs(rq * (pPoverRho2 + 0.5*visc) * dvdotdr * 1e-5) > p->u || fabs(rp * (q->PoverRho2 + 0.5*visc) * dvdotdr *1e-5) > q->u)
+			  printf("PDV-ERR-4 %d - %d: Den %g - %g u %g - %g PdV+ %g %g %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g \n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * (pPoverRho2 + 0.5*visc) * dvdotdr,rq * (pPoverRho2) * dvdotdr,rq * (0.5*visc) * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax);
+#endif
+
 		        pPdV += rq * (pPoverRho2 + 0.5*visc) * dvdotdr;
 			rq *= (pPoverRho2 + q->PoverRho2 + visc);
 #ifdef DEBUG			

@@ -268,10 +268,62 @@ typedef struct smContext {
 	}
 
 
+#define INTERSECTSCATTERNP(pkdn,x,y,z,label)\
+{\
+        if ( x<(pkdn)->bndBall.fMin[0] || x>(pkdn)->bndBall.fMax[0] ||\
+             y<(pkdn)->bndBall.fMin[1] || y>(pkdn)->bndBall.fMax[1] ||\
+             z<(pkdn)->bndBall.fMin[2] || z>(pkdn)->bndBall.fMax[2] ) goto label; \
+	}
+
+
+#define INTERSECTSCATTER(pkdn,lx,ly,lz,x,y,z,sx,sy,sz,bPeriodic,label)\
+{\
+        if (x < (pkdn)->bndBall.fMin[0]) { \
+                sx=x+lx; \
+                if (sx > (pkdn)->bndBall.fMax[0]) goto label; \
+                bPeriodic = 1; \
+                } \
+        else if (x > (pkdn)->bndBall.fMax[0]) { \
+                sx=x-lx; \
+                if (sx < (pkdn)->bndBall.fMin[0]) goto label; \
+                bPeriodic = 1; \
+                } \
+        else { \
+                sx=x; \
+	        } \
+        if (y < (pkdn)->bndBall.fMin[1]) { \
+                sy=y+ly; \
+                if (sy > (pkdn)->bndBall.fMax[1]) goto label; \
+                bPeriodic = 1; \
+                } \
+        else if (y > (pkdn)->bndBall.fMax[1]) { \
+                sy=y-ly; \
+                if (sy < (pkdn)->bndBall.fMin[1]) goto label; \
+                bPeriodic = 1; \
+                } \
+        else { \
+                sy=y; \
+	        } \
+        if (z < (pkdn)->bndBall.fMin[2]) { \
+                sz=z+lz; \
+                if (sz > (pkdn)->bndBall.fMax[2]) goto label; \
+                bPeriodic = 1; \
+                } \
+        else if (z > (pkdn)->bndBall.fMax[2]) { \
+                sz=z-lz; \
+                if (sz < (pkdn)->bndBall.fMin[2]) goto label; \
+                bPeriodic = 1; \
+                } \
+        else { \
+                sz=z; \
+	        } \
+	}
+
+
 int smInitialize(SMX *,PKD,SMF *,int,int,int,int,int);
 void smFinish(SMX,SMF *);
 void smSmooth(SMX,SMF *);
-void smMarkSmooth(SMX,SMF *);
+void smMarkSmooth(SMX,SMF *, int);
 void smReSmooth(SMX,SMF *);
 void smGrowList(SMX smx);
 

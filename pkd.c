@@ -268,6 +268,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		p->fWeight = 1.0;
 		p->fDensity = 0.0;
 		p->fBall2 = 0.0;
+		p->fBallMax = 0.0;
 #ifdef GASOLINE
 		for (j=0;j<3;++j) {
 			p->vPred[j] = 0.0;
@@ -443,9 +444,10 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	}
 
 
-void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive)
+void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pbndBall)
 {
 	int i,j;
+	FLOAT fBall;
 
 	/*
 	 ** Initialize the bounds to 0 at the beginning
@@ -495,7 +497,21 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive)
 				}
 			}
 		}
-	}
+	/*
+	 ** Calculate fBall Bounds on TreeActive Particles
+	 */
+	for (i=0;i<pkd->nLocal;++i) {
+		if (TYPEQueryTREEACTIVE(&(pkd->pStore[i]))) {
+		        fBall = pkd->pStore[i].fBallMax;
+			for (j=0;j<3;++j) {
+				if (pkd->pStore[i].r[j]-fBall < pbndBall->fMin[j]) 
+					pbndBall->fMin[j] = pkd->pStore[i].r[j]-fBall;
+				if (pkd->pStore[i].r[j]+fBall > pbndBall->fMax[j])
+					pbndBall->fMax[j] = pkd->pStore[i].r[j]+fBall;
+				}
+			}
+		}
+        }
 
 
 void pkdGasWeight(PKD pkd)
@@ -780,9 +796,9 @@ int pkdSwapRejects(PKD pkd,int idSwap)
 	if (idSwap != -1) {
 	        char ach[256];
 
-		sprintf(ach, "id %d: swap %d parts with %d\n",
+		/*		sprintf(ach, "id %d: swap %d parts with %d\n",
 			pkd->mdl->idSelf, pkd->nRejects, idSwap);
-		mdlDiag(pkd->mdl, ach);
+			mdlDiag(pkd->mdl, ach);*/
 		nBuf = (pkdSwapSpace(pkd))*sizeof(PARTICLE);
 		nOutBytes = pkd->nRejects*sizeof(PARTICLE);
 		assert(pkdLocal(pkd) + pkd->nRejects <= pkdFreeStore(pkd));
@@ -1125,11 +1141,20 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 			pOut->bnd.fMax[j] = p2->bnd.fMax[j];
 		else
 			pOut->bnd.fMax[j] = p1->bnd.fMax[j];
+
+		if (p2->bndBall.fMin[j] < p1->bndBall.fMin[j])
+			pOut->bndBall.fMin[j] = p2->bndBall.fMin[j];
+		else
+			pOut->bndBall.fMin[j] = p1->bndBall.fMin[j];
+		if (p2->bndBall.fMax[j] > p1->bndBall.fMax[j])
+			pOut->bndBall.fMax[j] = p2->bndBall.fMax[j];
+		else
+			pOut->bndBall.fMax[j] = p1->bndBall.fMax[j];
 		}
 	/*
 	 ** Find the center of mass and mass weighted softening.
 	 */
-    pOut->fMass = p1->fMass + p2->fMass;
+        pOut->fMass = p1->fMass + p2->fMass;
 	pOut->fSoft = p1->fMass*p1->fSoft + p2->fMass*p2->fSoft;
 	for (j=0;j<3;++j) {
 		pOut->r[j] = p1->fMass*p1->r[j] + p2->fMass*p2->r[j];
@@ -1421,6 +1446,8 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 			 */
 			c[iCell].bnd.fMin[j] = FLOAT_MAXVAL;
 			c[iCell].bnd.fMax[j] = -FLOAT_MAXVAL;
+			c[iCell].bndBall.fMin[j] = FLOAT_MAXVAL;
+			c[iCell].bndBall.fMax[j] = -FLOAT_MAXVAL;
 			c[iCell].r[j] = 0.0;
 			}
 		for (pj=l;pj<=u;++pj) {
@@ -1429,6 +1456,11 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 					c[iCell].bnd.fMin[j] = p[pj].r[j];
 				if (p[pj].r[j] > c[iCell].bnd.fMax[j])
 					c[iCell].bnd.fMax[j] = p[pj].r[j];
+
+				if (p[pj].r[j]-p[pj].fBallMax < c[iCell].bndBall.fMin[j])
+					c[iCell].bndBall.fMin[j] = p[pj].r[j]-p[pj].fBallMax;
+				if (p[pj].r[j]+p[pj].fBallMax > c[iCell].bndBall.fMax[j])
+					c[iCell].bndBall.fMax[j] = p[pj].r[j]+p[pj].fBallMax;
 				}
 			/*
 			 ** Find center of mass and total mass and mass weighted softening.
@@ -1579,6 +1611,8 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 		for (j=0;j<3;++j) {
 			pkdn->bnd.fMin[j] = pkd->pStore[pLower].r[j];
 			pkdn->bnd.fMax[j] = pkd->pStore[pLower].r[j];
+			pkdn->bndBall.fMin[j] = pkd->pStore[pLower].r[j]-pkd->pStore[pLower].fBallMax;
+			pkdn->bndBall.fMax[j] = pkd->pStore[pLower].r[j]+pkd->pStore[pLower].fBallMax;
 			}
 		for (i=pLower+1;i<=pUpper;++i) {
 			for (j=0;j<3;++j) {
@@ -1586,6 +1620,10 @@ int BuildBinary(PKD pkd,int nBucket,int pLower,int pUpper,int iOpenType,
 					pkdn->bnd.fMin[j] = pkd->pStore[i].r[j];
 				else if (pkd->pStore[i].r[j] > pkdn->bnd.fMax[j])
 					pkdn->bnd.fMax[j] = pkd->pStore[i].r[j];
+				if (pkd->pStore[i].r[j]-pkd->pStore[i].fBallMax < pkdn->bndBall.fMin[j]) 
+					pkdn->bndBall.fMin[j] = pkd->pStore[i].r[j]-pkd->pStore[i].fBallMax;
+				if (pkd->pStore[i].r[j]+pkd->pStore[i].fBallMax > pkdn->bndBall.fMax[j])
+					pkdn->bndBall.fMax[j] = pkd->pStore[i].r[j]+pkd->pStore[i].fBallMax;
 				}
 			}	
 		bGoodBounds = 0;
@@ -1849,10 +1887,10 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	 ** determine the local bound of the particles.
 	 */
 	if (bTreeActiveOnly) {
-		pkdCalcBound(pkd,&bndDum,&bndDum,&c[pkd->iRoot].bnd);
+		pkdCalcBound(pkd,&bndDum,&bndDum,&c[pkd->iRoot].bnd,&bndDum);
 		}
 	else {
-		pkdCalcBound(pkd,&c[pkd->iRoot].bnd,&bndDum,&bndDum);
+		pkdCalcBound(pkd,&c[pkd->iRoot].bnd,&bndDum,&bndDum,&bndDum);
 		}
 	i = pkd->iRoot;
 	while (1) {
@@ -1875,10 +1913,12 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 			c[i].iUpper = UPPER(i);
 			c[LOWER(i)].bnd = c[i].bnd;
 			c[LOWER(i)].bnd.fMax[d] = c[i].fSplit;
+			c[LOWER(i)].bndBall = c[i].bndBall; /* too big: fixed in pkdUpPass */
 			c[LOWER(i)].pLower = c[i].pLower;
 			c[LOWER(i)].pUpper = m;
 			c[UPPER(i)].bnd = c[i].bnd;
 			c[UPPER(i)].bnd.fMin[d] = c[i].fSplit;
+			c[UPPER(i)].bndBall = c[i].bndBall; /* too big: fixed in pkdUpPass */
 			c[UPPER(i)].pLower = m+1;
 			c[UPPER(i)].pUpper = c[i].pUpper;
 			diff = (m-c[i].pLower+1)-(c[i].pUpper-m);
@@ -1893,7 +1933,7 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 			if (i == pkd->iRoot) break;
 			}
 		}
-	pkdUpPass(pkd,pkd->iRoot,iOpenType,dCrit,iOrder, bGravity);
+	pkdUpPass(pkd,pkd->iRoot,iOpenType,dCrit,iOrder, bGravity); 
 	/*
 	 ** Thread the tree.
 	 */
@@ -2354,6 +2394,7 @@ void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 	PARTICLE *p;
 	int i,j,n;
 
+	mdlDiag(pkd->mdl, "Into pkddrift\n");
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
@@ -2364,6 +2405,9 @@ void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 #endif /* !COLLISIONS */
 			fg(pkd->mdl,fCentMass + p[i].fMass,p[i].r,p[i].v,dDelta);
 		else {
+		  /*
+		        printf("%d: %i %g %g %g %g %g %g %g\n",p[i].iOrder,p[i].iActive,p[i].uDot,p[i].PdV,p[i].fDensity,p[i].fBall2,p[i].v[0],p[i].v[1],p[i].v[2]);
+		  */
 			for (j=0;j<3;++j) {
 				p[i].r[j] += dDelta*p[i].v[j];
 				if (bPeriodic) {
@@ -2371,6 +2415,10 @@ void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 						p[i].r[j] -= pkd->fPeriod[j];
 					if (p[i].r[j] < fCenter[j]-0.5*pkd->fPeriod[j])
 						p[i].r[j] += pkd->fPeriod[j];
+					/*					if (p[i].r[j] <
+					       fCenter[j]-0.5*pkd->fPeriod[j] || p[i].r[j] >=
+					       fCenter[j]+0.5*pkd->fPeriod[j])
+					       printf("%d: %i %g %g %g %g %g %g %g %g %g\n",p[i].iOrder,p[i].iActive,dDelta,p[i].u,p[i].uDot,p[i].PdV,p[i].fDensity,p[i].fBall2,p[i].v[0],p[i].v[1],p[i].v[2]);*/
 					assert(p[i].r[j] >=
 					       fCenter[j]-0.5*pkd->fPeriod[j]);
 					assert(p[i].r[j] <
@@ -2379,9 +2427,122 @@ void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 				}
 			}
 		}
+	mdlDiag(pkd->mdl, "Out of pkddrift\n");
 	}
 
+
+void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdateY )
+{
+	PARTICLE *p;
+	int i,j,n;
+	int bCool = 0;
+	CL *cl;
+	PERBARYON Y;
+	double E,dt;
+
+        char ach[256];
+
+	/*
+        mdlDiag(pkd->mdl, "Into Update uDot\n");
+	sprintf(ach,"duDelta: %g\n",duDelta);
+        mdlDiag(pkd->mdl, ach);*/
+
+	pkdClearTimer(pkd,1);
+	pkdStartTimer(pkd,1);
+
+#ifdef GASOLINE
+	switch (iGasModel) {
+	case GASMODEL_COOLING:
+	case GASMODEL_COOLING_NONEQM:
+	         bCool = 1;
+	         cl = &(pkd->cl);
+                 clRatesRedshift( cl, z );
+		 dt = duDelta * cl->dSecUnit;
+		 break;
+		 }
+
+#ifdef DEBUG
+	printf("pkdUpdateUdot: %f %f %f %f %f %f\n",dvFacOne,dvFacTwo,
+	       dvPredFacOne,dvPredFacTwo,duDelta,duPredDelta );
+#endif
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i,++p) {
+                 if(TYPEFilter(p, TYPE_GAS|TYPE_ACTIVE, TYPE_GAS|TYPE_ACTIVE)) {
+	                  if (bCool) {
+			    /*
+			    	sprintf(ach,"%d: Den %g  u %g  PdV %g  Y %g %g %g\n",p->iOrder,p->fDensity,p->u,p->PdV,p->Y_HI,p->Y_HeI,p->Y_HeII);
+				mdlDiag(pkd->mdl, ach);*/
+			            pkdPARTICLE2PERBARYON(&Y, p, cl->Y_H, cl->Y_He);
+				    E = p->u * cl->dErgPerGmUnit;
+				    /*        mdlDiag(pkd->mdl, "Into Integrate\n");*/
+				    clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
+						      p->fDensity*cl->dComovingGmPerCcUnit, dt);
+				    /*        mdlDiag(pkd->mdl, "Done Integrate\n");*/
+				    p->uDot = (E * cl->diErgPerGmUnit - p->u)/duDelta;
+				    /*
+				    if (abs(p->uDot*duDelta)/p->u > 0.25) 
+				      printf("UDOT-ERR %d: Den %g  u %g -> %g  PdV %g  Y %g %g %g -> %g %g %g udot %g dt %g\n",p->iOrder,p->fDensity,p->u,E * cl->diErgPerGmUnit,p->PdV,p->Y_HI,p->Y_HeI,p->Y_HeII,Y.HI,Y.HeI,Y.HeII,p->uDot,duDelta);
+				    */
+				    if (bUpdateY) pkdPERBARYON2PARTICLE(&Y, p);
+		                    }
+			  else { 
+		                    p->uDot = p->PdV;
+			            }
+		          }
+	         }
+			  
+#endif
+	pkdStopTimer(pkd,1);
+	/*	        mdlDiag(pkd->mdl, "Done Update uDot\n");*/
+	}
+
+
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
+	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
+	     double z, double duDotLimit )
+{
+	PARTICLE *p;
+	int i,j,n;
+
+	mdlDiag(pkd->mdl, "Into pkdkick\n");
+	pkdClearTimer(pkd,1);
+	pkdStartTimer(pkd,1);
+
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i,++p) {
+
+	       if(TYPEQueryACTIVE(p)) {
+#ifdef GASOLINE
+                       if(pkdIsGas(pkd, p)) {
+				for (j=0;j<3;++j) {
+					p->vPred[j] = p->v[j]*dvPredFacOne + 
+						p->a[j]*dvPredFacTwo;
+					}
+				p->uPred = p->u + p->uDot*duPredDelta;
+				p->u = p->u + p->uDot*duDelta;
+				}
+			
+#endif
+		       for (j=0;j<3;++j) {
+				p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
+#ifdef SAND_PILE
+				if (p->r[2] > 2*p->fSoft)
+					p->v[2] -= 0.25*dvFacTwo; /* uniform 0.25 -z accel. */
+				if (p->r[2] > 10)
+					p->v[2] = -1; /* uniform velocity above z = 10 */
+#endif /* SAND_PILE */
+				}
+		       }
+	    }
+
+	pkdStopTimer(pkd,1);
+	mdlDiag(pkd->mdl, "Done pkdkick\n");
+	}
+
+
+void pkdKickOld(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
 	     double z, double duDotLimit )
 {
@@ -2744,6 +2905,75 @@ pkdSetRung(PKD pkd, int iRung)
 	}
     }
 
+void pkdDensCheck(PKD pkd, int iRung, int bGreater, int iMeasure, void *data) {
+    int i;
+    struct {     
+      double dMaxDensError;
+      double dAvgDensError;
+      int nError;
+      int nTotal;
+    } *tmp=data;
+    double error;
+
+    char ach[256];
+
+#if (0)
+    tmp->dMaxDensError=0;
+    tmp->dAvgDensError=0;
+    tmp->nError=0;
+    tmp->nTotal=0;
+
+    if (!iMeasure) {
+        for(i = 0; i < pkdLocal(pkd); ++i) {
+	    if(TYPETest(&(pkd->pStore[i]), TYPE_GAS ) && (pkd->pStore[i].iRung == iRung
+		  || (bGreater && pkd->pStore[i].iRung > iRung)) ) {
+		 if (pkd->pStore[i].fDensity == 0) {
+	               sprintf(ach, "dens zero i: %d dens %g iAct %d\n",
+			       pkd->pStore[i].iOrder,pkd->pStore[i].fDensity,pkd->pStore[i].iActive);
+		       mdlDiag(pkd->mdl, ach);
+		       }
+	         pkd->pStore[i].fDensSave = pkd->pStore[i].fDensity;
+	         }
+	    }
+	return;
+        }
+
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+	if(TYPETest(&(pkd->pStore[i]), TYPE_GAS ) && (pkd->pStore[i].iRung == iRung
+	   || (bGreater && pkd->pStore[i].iRung > iRung)) ) {
+	       error = abs((pkd->pStore[i].fDensSave - pkd->pStore[i].fDensity)/pkd->pStore[i].fDensity);
+               tmp->dAvgDensError += error;
+               tmp->nTotal++;
+	       if (error>tmp->dMaxDensError) tmp->dMaxDensError=error;
+               if (error>1e-5) { tmp->nError++;
+	               sprintf(ach, "dens error i: %d save %g dens %g  iAct %d\n",
+			       pkd->pStore[i].iOrder,pkd->pStore[i].fDensSave,pkd->pStore[i].fDensity,pkd->pStore[i].iActive);
+		       mdlDiag(pkd->mdl, ach);
+	               }
+	       }
+	}
+
+    tmp->dAvgDensError/=tmp->nTotal; 
+#else
+    assert(0);
+#endif
+    return;
+}
+
+void
+pkdBallMax(PKD pkd, int iRung, int bGreater, double dhFac)
+{
+    int i;
+    
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+	if(TYPETest(&(pkd->pStore[i]), TYPE_GAS ) && (pkd->pStore[i].iRung == iRung
+	   || (bGreater && pkd->pStore[i].iRung > iRung)) ) {
+	       pkd->pStore[i].fBallMax = sqrt(pkd->pStore[i].fBall2)*dhFac;
+	    }
+	}
+    return;
+    }
+
 int
 pkdActiveRung(PKD pkd, int iRung, int bGreater)
 {
@@ -2819,19 +3049,19 @@ pkdAccelStep(PKD pkd, double dEta, double dVelFac, double dAccFac, int bDoGravit
 				}
 			assert(vel >= 0);
 			vel = sqrt(vel)*dVelFac;
-			assert(acc > 0);
 			acc = sqrt(acc)*dAccFac;
 			dT = FLOAT_MAXVAL;
-			if(bEpsVel)
+			if(bEpsVel && acc>0) {
 #ifdef GASOLINE
 				if (pkdIsGas(pkd, &(pkd->pStore[i])) &&
 					pkd->pStore[i].fBall2*0.25 < pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
 					dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
-                else
+                                else
 					dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
 #else
-			dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
+			        dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
 #endif
+			        }
 #ifdef DEBUG
 			if ((pkd->pStore[i].iOrder % 300)==0 || dT<1e-6) {
 				printf("dt_a %i: %i %i %f %g %g %g  %f %f %f %f   dt_a %g\n",
@@ -3407,6 +3637,34 @@ void pkdGlassGasPressure(PKD pkd, void *vin)
 #endif
 
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int iGasModel,
+		  double z, double duDotLimit)
+{
+	PARTICLE *p;
+	int i,j,n;
+
+	mdlDiag(pkd->mdl, "Into Vpred\n");
+
+	pkdClearTimer(pkd,1);
+	pkdStartTimer(pkd,1);
+
+        p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i,++p) {
+#ifdef GASOLINE
+ 	        if (pkdIsGas(pkd, p)) {
+			for (j=0;j<3;++j) {
+				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;
+				}
+			p->uPred = p->uPred + p->uDot*duDelta;
+		        }
+#endif
+	        }
+
+        pkdStopTimer(pkd,1);
+	mdlDiag(pkd->mdl, "Done Vpred\n");
+	}
+
+void pkdKickVpredOld(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int iGasModel,
 		  double z, double duDotLimit)
 {
 	PARTICLE *p;

@@ -101,9 +101,11 @@ void msrOutVector(MSR,char *,int);
 void msrGetGasPressure(MSR);
 void msrSmooth(MSR,double,int,int);
 void msrReSmooth(MSR,double,int,int);
+void msrMarkSmooth(MSR,double,int,int);
 void msrGravity(MSR,double,int,int *,double *,double *,double *,int *);
 void msrCalcE(MSR,int,double,double *,double *,double *,double *);
 void msrDrift(MSR,double,double);
+void msrUpdateuDot(MSR,double,double,int);
 void msrKick(MSR,double,double);
 double msrReadCheck(MSR,int *);
 void msrWriteCheck(MSR,double,int);
@@ -128,6 +130,7 @@ void msrTopStepKDK(MSR msr,
 
 void msrRungStats(MSR);
 
+void msrBallMax(MSR msr, int iRung, int bGreater);
 /*------------------*/
 /* Active Functions */
 /*------------------*/

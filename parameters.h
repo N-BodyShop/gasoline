@@ -81,6 +81,7 @@ struct parameters {
 	double dGrowStartT;
 	double dGrowEndT;
         double dFracNoDomainDecomp;
+        double dFracFastGas;
 	/*
 	 ** Additional parameters for GASOLINE.
 	 */
@@ -96,6 +97,7 @@ struct parameters {
 	double dGasConst;
 	double dMsolUnit;
 	double dKpcUnit;
+        double ddHonHLimit;
 	double dGmPerCcUnit;
 	double dComovingGmPerCcUnit;
 	double dErgPerGmUnit;
@@ -107,6 +109,7 @@ struct parameters {
         int    bViscosityLimiter;
         int    bBulkViscosity;
         int    bGasDomainDecomp;
+        int    bFastGas;
         int    bDoGas;
         int    bUV;
 #ifdef GLASS

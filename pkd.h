@@ -46,7 +46,7 @@ typedef struct particle {
 	FLOAT fColor;
 #endif
 #ifdef GASOLINE
-        FLOAT h;                /* SPH h */
+        FLOAT fBallMax;         /* SPH 2h Max value */
 	FLOAT vPred[3];		/* predicted velocity (time centered) */
 	FLOAT uPred;		/* predicted thermal energy */
 	FLOAT PoverRho2;	/* P/rho^2 */
@@ -62,7 +62,8 @@ typedef struct particle {
         FLOAT curlv[3];         
         FLOAT BalsaraSwitch;
   
-        FLOAT udot;             /* Rate of change of u -- for predicting */
+  /*        FLOAT fDensSave;       */ /* Used by diagnostic DensCheck funcs */
+        FLOAT uDot;             /* Rate of change of u -- for predicting */
         FLOAT Y_HI, Y_HeI, Y_HeII;  /* Abundance of ions */
 
 	FLOAT fMetals;
@@ -96,13 +97,12 @@ typedef struct particle {
 /* Types used for Fast Density only (so far) */
 /* Sum Fast Density on this particle */
 #define TYPE_DensACTIVE        16
-/* Neighbour of active particle: */
-/* Neighbour of DENSACTIVE (incl. DENSACTIVE): */
-#define TYPE_NbrOfDensACTIVE           32
-/* Neighbour of Neighbour of DENSACTIVE (incl. DENSACTIVE & NACTIVE): */
-#define TYPE_NbrOfNbrOfDensACTIVE          64
-/* Neighbour of NOT-DENSACTIVE: */
-#define TYPE_NbrOfNonDensACTIVE        128
+/* Neighbour of ACTIVE (incl. ACTIVE): */
+#define TYPE_NbrOfACTIVE       32
+/* Potential Scatter Neighbour */
+#define TYPE_Scatter           64
+/* Density set to zero already */
+#define TYPE_DensZeroed        128
 
 /* Particle Type Masks */
 
@@ -177,6 +177,7 @@ typedef struct kdNode {
 	int iDim;
 	double fSplit;
 	BND bnd;
+        BND bndBall;            /* Bound including fBall*(1+changemax) */
 	int pLower;		/* also doubles as thread id for the LTT */
 	int pUpper;		/* pUpper < 0 indicates no particles in tree! */
 	int iLower;
@@ -398,7 +399,7 @@ void pkdInitialize(PKD *,MDL,int,int,int,FLOAT *,int,int,int);
 void pkdFinish(PKD);
 void pkdReadTipsy(PKD,char *,int,int,int,double,double);
 void pkdSetSoft(PKD pkd,double dSoft);
-void pkdCalcBound(PKD,BND *,BND *,BND *);
+void pkdCalcBound(PKD,BND *,BND *,BND *,BND *);
 void pkdGasWeight(PKD);
 int pkdWeight(PKD,int,FLOAT,int,int,int,int *,int *,FLOAT *,FLOAT *);
 int pkdLowerPart(PKD,int,FLOAT,int,int);
@@ -431,6 +432,7 @@ void pkdGravAll(PKD,int,int,int,int,double,double,int,double *,int *,
 				double *,double *,double *,CASTAT *,double *); 
 void pkdCalcE(PKD,double *,double *,double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,FLOAT);
+void pkdUpdateUdot(PKD pkd,double,double,int,int);
 void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double);
 void pkdReadCheck(PKD,char *,int,int,int,int);
 void pkdWriteCheck(PKD,char *,int,int);
@@ -440,6 +442,8 @@ void pkdDistribRoot(PKD,struct ilCellNewt *);
 void pkdSwapAll(PKD pkd, int idSwap);
 double pkdMassCheck(PKD pkd);
 void pkdSetRung(PKD pkd, int iRung);
+void pkdDensCheck(PKD pkd, int iRung, int bGreater, int iMeasure, void *data);
+void pkdBallMax(PKD pkd, int iRung, int bGreater, double ddHonHLimit);
 int pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
 void pkdDensityStep(PKD pkd, double dEta, double

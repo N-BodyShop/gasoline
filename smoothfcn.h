@@ -42,10 +42,21 @@ void Density(PARTICLE *,int,NN *,SMF *);
 void DensitySym(PARTICLE *,int,NN *,SMF *);
 
 #define SMX_MARKDENSITY		6
+void initParticleMarkDensity(void *);
 void initMarkDensity(void *);
 void combMarkDensity(void *,void *);
 void MarkDensity(PARTICLE *,int,NN *,SMF *);
 void MarkDensitySym(PARTICLE *,int,NN *,SMF *);
+
+#define SMX_MARKIIDENSITY		16
+void initParticleMarkIIDensity(void *);
+void initMarkIIDensity(void *);
+void combMarkIIDensity(void *,void *);
+void MarkIIDensity(PARTICLE *,int,NN *,SMF *);
+void MarkIIDensitySym(PARTICLE *,int,NN *,SMF *);
+
+#define SMX_MARK 	        17
+void combMark(void *,void *);
 
 #define SMX_MEANVEL		2
 void initMeanVel(void *);
@@ -74,33 +85,6 @@ void initHKPressureTerms(void *);
 void combHKPressureTerms(void *,void *);
 void HKPressureTerms(PARTICLE *,int,NN *,SMF *);
 void HKPressureTermsSym(PARTICLE *,int,NN *,SMF *);
-
-#endif
-
-#ifdef OLDGASOLINE
-#define SMX_HSMDIVV		3
-void initHsmDivv(void *);
-void combHsmDivv(void *,void *);
-void postHsmDivv(PARTICLE *,SMF *);
-void HsmDivv(PARTICLE *,int,NN *,SMF *);
-void HsmDivvSym(PARTICLE *,int,NN *,SMF *);
-
-#define SMX_GEOMBV		4
-void initGeomBV(void *);
-void combGeomBV(void *,void *);
-void postGeomBV(PARTICLE *,SMF *);
-void GeomBVSym(PARTICLE *,int,NN *,SMF *);
-
-#define SMX_ETHDOTBV	5
-void initEthdotBV(void *);
-void combEthdotBV(void *,void *);
-void EthdotBVSym(PARTICLE *,int,NN *,SMF *);
-
-void initAccsph(void *);
-void combAccsph(void *,void *);
-
-#define SMX_ACCSPHBV	6
-void AccsphBVSym(PARTICLE *,int,NN *,SMF *);
 
 #endif
 

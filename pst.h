@@ -78,6 +78,7 @@ enum pst_service {
       PST_GRAVITY,
       PST_CALCE,
       PST_DRIFT,
+      PST_UPDATEUDOT,
       PST_KICK,
       PST_READCHECK,
       PST_WRITECHECK,
@@ -145,7 +146,9 @@ enum pst_service {
       PST_INITCOOLING,
       PST_INITUV,
       PST_GROWMASS,
-      PST_CLEARTIMER
+      PST_CLEARTIMER,
+      PST_BALLMAX,
+      PST_DENSCHECK
       };
 
 void pstAddServices(PST,MDL);
@@ -193,6 +196,7 @@ struct outCalcBound {
 	BND bnd;
 	BND bndActive;
 	BND bndTreeActive;
+	BND bndBall;
 	};
 void pstCalcBound(PST,void *,int,void *,int *);
 
@@ -374,6 +378,20 @@ struct inDrift {
 	};
 void pstDrift(PST,void *,int,void *,int *);
 
+struct inUpdateuDot {
+        double duDelta;
+        double z;
+        int iGasModel;
+        int bUpdateY;
+	};
+struct outUpdateuDot {
+        double Time;
+        double MaxTime;
+        double SumTime;
+        int nSum;
+        };
+
+void pstUpdateuDot(PST,void *,int,void *,int *);
 
 /* #define PST_KICK			24 */
 struct inKick {
@@ -395,6 +413,7 @@ struct outKick {
         };
 
 void pstKick(PST,void *,int,void *,int *);
+
 
 /* #define PST_READCHECK		25 */
 struct inReadCheck {
@@ -486,6 +505,28 @@ struct inSetRung {
     int iRung;
     };
 void pstSetRung(PST,void *,int,void *,int *);
+
+struct inDensCheck {
+    int iRung;
+    int bGreater;
+    int iMeasure;
+    };
+struct outDensCheck {
+    double dMaxDensError;
+    double dAvgDensError;
+    int nError;
+    int nTotal;
+    };
+
+void pstDensCheck(PST,void *,int,void *,int *);
+
+struct inBallMax {
+    int iRung;
+    int bGreater;
+    double dhFac;
+    };
+
+void pstBallMax(PST,void *,int,void *,int *);
 
 /* #define PST_ACTIVERUNG		40 */
 struct inActiveRung {
@@ -580,6 +621,7 @@ struct inMarkSmooth {
         int bPeriodic;
 	int bSymmetric;
 	int iSmoothType;
+        int iMarkType;
 	SMF smf;
 	};
 void pstMarkSmooth(PST,void *,int,void *,int *);

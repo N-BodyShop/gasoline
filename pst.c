@@ -84,6 +84,9 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_DRIFT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstDrift,
 				  sizeof(struct inDrift),0);
+	mdlAddService(mdl,PST_UPDATEUDOT,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstUpdateuDot,
+				  sizeof(struct inUpdateuDot),sizeof(struct outUpdateuDot));
 	mdlAddService(mdl,PST_KICK,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstKick,
 				  sizeof(struct inKick),sizeof(struct outKick));
@@ -140,6 +143,12 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_SETRUNG,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetRung,
 				  sizeof(struct inSetRung),0);
+	mdlAddService(mdl,PST_DENSCHECK,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDensCheck,
+				  sizeof(struct inDensCheck),sizeof(struct outDensCheck));
+	mdlAddService(mdl,PST_BALLMAX,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstBallMax,
+				  sizeof(struct inBallMax),0);
 	mdlAddService(mdl,PST_ACTIVERUNG,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstActiveRung,
 				  sizeof(struct inActiveRung),sizeof(int));
@@ -1277,10 +1286,16 @@ void pstCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			if (outBnd.bndTreeActive.fMax[j] > out->bndTreeActive.fMax[j]) {
 				out->bndTreeActive.fMax[j] = outBnd.bndTreeActive.fMax[j];
 				}
+			if (outBnd.bndBall.fMin[j] < out->bndBall.fMin[j]) {
+				out->bndBall.fMin[j] = outBnd.bndBall.fMin[j];
+				}
+			if (outBnd.bndBall.fMax[j] > out->bndBall.fMax[j]) {
+				out->bndBall.fMax[j] = outBnd.bndBall.fMax[j];
+				}
 			}
 		}
 	else {
-		pkdCalcBound(plcl->pkd,&out->bnd,&out->bndActive,&out->bndTreeActive);
+		pkdCalcBound(plcl->pkd,&out->bnd,&out->bndActive,&out->bndTreeActive,&out->bndBall);
 		}
 	if (pnOut) *pnOut = sizeof(struct outCalcBound); 
 	}
@@ -1992,7 +2007,7 @@ void pstMarkSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
 					 in->bSymmetric,in->iSmoothType,0);
-		smMarkSmooth(smx,&in->smf);
+		smMarkSmooth(smx,&in->smf,in->iMarkType);
 		smFinish(smx,&in->smf);
 		}
 	if (pnOut) *pnOut = 0;
@@ -2136,6 +2151,7 @@ void pstDrift(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	LCL *plcl = pst->plcl;
 	struct inDrift *in = vin;
 
+	mdlDiag(pst->mdl,"into pstDrift\n");
 	assert(nIn == sizeof(struct inDrift));
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_DRIFT,in,nIn);
@@ -2147,6 +2163,36 @@ void pstDrift(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 				 in->fCentMass);
 		}
 	if (pnOut) *pnOut = 0;
+	mdlDiag(pst->mdl,"out of pstDrift\n");
+	}
+
+
+void pstUpdateuDot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inUpdateuDot *in = vin;
+	struct outUpdateuDot *out = vout;
+	struct outUpdateuDot outUp;
+
+	assert(nIn == sizeof(struct inUpdateuDot));
+
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_UPDATEUDOT,in,nIn);
+		pstUpdateuDot(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+
+		out->SumTime += outUp.SumTime;
+		out->nSum += outUp.nSum;
+		if (outUp.MaxTime > out->MaxTime) out->MaxTime = outUp.MaxTime;
+		}
+	else {
+		pkdUpdateuDot(plcl->pkd, in->duDelta, in->z, in->iGasModel, in->bUpdateY );
+		out->Time = pkdGetTimer(plcl->pkd,1);
+		out->MaxTime = out->Time;
+		out->SumTime = out->Time;
+		out->nSum = 1;
+		}
+	if (pnOut) *pnOut = sizeof(struct outUpdateuDot);
 	}
 
 
@@ -2157,6 +2203,7 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct outKick *out = vout;
 	struct outKick outUp;
 
+	mdlDiag(pst->mdl,"into pstkick\n");
 	assert(nIn == sizeof(struct inKick));
 
 	if (pst->nLeaves > 1) {
@@ -2178,6 +2225,7 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->nSum = 1;
 		}
 	if (pnOut) *pnOut = sizeof(struct outKick);
+	mdlDiag(pst->mdl,"out of pstkick\n");
 	}
 
 
@@ -2582,6 +2630,48 @@ pstSetRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdSetRung(plcl->pkd, in->iRung);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void
+pstDensCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inDensCheck *in = vin;
+        struct outDensCheck *out = vout, tmp;
+	
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DENSCHECK,vin,nIn);
+		pstDensCheck(pst->pstLower,vin,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,&tmp,pnOut);
+                if (tmp.dMaxDensError > out->dMaxDensError) out->dMaxDensError = tmp.dMaxDensError;
+		out->dAvgDensError = (tmp.dAvgDensError*tmp.nTotal + out->dAvgDensError*out->nTotal)/(tmp.nTotal+out->nTotal);
+                out->nTotal += tmp.nTotal;
+		out->nError += tmp.nError;
+		}
+	else {
+		pkdDensCheck(plcl->pkd, in->iRung, in->bGreater, in->iMeasure, out);
+		}
+	if (pnOut) *pnOut = sizeof(struct outDensCheck);
+	}
+
+void
+pstBallMax(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inBallMax *in = vin;
+	
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+	        int nActiveLeaf;
+		mdlReqService(pst->mdl,pst->idUpper,PST_BALLMAX,vin,nIn);
+		pstBallMax(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdBallMax(plcl->pkd, in->iRung, in->bGreater, in->dhFac);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -3060,6 +3150,7 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct outKick *out = vout;
 	struct outKick outUp;
 
+	mdlDiag(pst->mdl,"into pstkickvpred\n");
 	assert(nIn == sizeof(struct inKickVpred));
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_KICKVPRED,in,nIn);
@@ -3075,6 +3166,7 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->nSum = 1;
 		}
 	if (pnOut) *pnOut = sizeof(struct outKick);
+	mdlDiag(pst->mdl,"out of pstkickvpred\n");
 	}
 
 void pstKickRhopred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
