@@ -1736,9 +1736,8 @@ void pkdSetSoft(PKD pkd,double dSoft)
 	for (i=0;i<n;++i) {
 #ifdef CHANGESOFT
 		p[i].fSoft0 = dSoft;
-#else
-		p[i].fSoft = dSoft;
 #endif
+		p[i].fSoft = dSoft;
 		}
 	}
 
@@ -3480,9 +3479,8 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		assert(p->fMass >= 0);
 #ifdef CHANGESOFT
 		p->fSoft0 = cp.fSoft;
-#else
-		p->fSoft = cp.fSoft;
 #endif
+		p->fSoft = cp.fSoft;
 		for (j=0;j<3;++j) {
 			p->r[j] = cp.r[j];
 			p->v[j] = cp.v[j];
