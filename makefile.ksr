@@ -12,10 +12,10 @@ default: mdl pkdgrav
 mdl:
 	cd $(MDL); make
 
-pkdgrav : main.o master.o param.o pst.o pkd.o outtype.o smooth.o \
+pkdgrav : main.o master.o param.o pst.o pkd.o outtype.o \
 	grav.o ewald.o erf.o walk.o $(LD_MDL)
 	cc $(LD_FLAGS) -o pkdgrav main.o master.o param.o pst.o pkd.o \
-    	outtype.o smooth.o grav.o ewald.o erf.o walk.o $(LD_LIBS)
+    	outtype.o grav.o ewald.o erf.o walk.o $(LD_LIBS)
 
 main.o: main.c
 	cc $(CC_FLAGS) -c main.c
@@ -34,9 +34,6 @@ pkd.o: pkd.c
 
 outtype.o: outtype.c
 	cc $(CC_FLAGS) -c outtype.c
-
-smooth.o: smooth.c
-	cc $(CC_FLAGS) -c smooth.c
 
 grav.o: grav.c
 	cc $(CC_FLAGS) -c grav.c
@@ -98,15 +95,11 @@ pst.o: /usr/include/assert.h pst.h pkd.h /usr/include/sys/resource.h
 pst.o: /usr/include/sys/time.h /usr/include/sys/types.h
 pst.o: /usr/include/machine/types.h /usr/include/sys/time.h outtype.h
 pst.o: smooth.h
-smooth.o: /usr/include/stdio.h /usr/include/standards.h /usr/include/stdlib.h
-smooth.o: /usr/include/stddef.h /usr/include/malloc.h /usr/include/math.h
-smooth.o: /usr/include/machine/math.h /usr/include/assert.h smooth.h pkd.h
-smooth.o: /usr/include/sys/resource.h /usr/include/sys/time.h
-smooth.o: /usr/include/sys/types.h /usr/include/machine/types.h
-smooth.o: /usr/include/sys/time.h
 walk.o: /usr/include/math.h /usr/include/standards.h
 walk.o: /usr/include/machine/math.h /usr/include/stdlib.h
 walk.o: /usr/include/stddef.h /usr/include/malloc.h walk.h pkd.h
 walk.o: /usr/include/sys/resource.h /usr/include/sys/time.h
 walk.o: /usr/include/sys/types.h /usr/include/machine/types.h
 walk.o: /usr/include/sys/time.h
+
+

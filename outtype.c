@@ -7,18 +7,14 @@
 float ArrType(PARTICLE *p,int iType)
 {
 	switch (iType) {
-	case OUT_COLOR_ARRAY:
-		return(p->fColor);
+#ifdef SMOOTH_CODE
 	case OUT_DENSITY_ARRAY:
 		return(p->fDensity);
+#endif
 	case OUT_POT_ARRAY:
 		return(p->fPot);
 	case OUT_AMAG_ARRAY:
 		return(sqrt(p->a[0]*p->a[0] + p->a[1]*p->a[1] + p->a[2]*p->a[2]));
-#if 0
-	case OUT_IMASS_ARRAY:
-		return(p->fIMass);
-#endif
 	default:
 		return(0.0);
 		}

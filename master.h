@@ -11,6 +11,9 @@
 
 #define MAX_REDSHIFTS	1000
 
+#define NEW_CHECK		1
+#define OLD_CHECK		0
+
 typedef struct msrContext {
 	PRM prm;
 	PST pst;
@@ -55,8 +58,8 @@ void msrGravity(MSR,int *,double *,double *,double *);
 void msrCalcE(MSR,int,double,double *,double *,double *);
 void msrDrift(MSR,double);
 void msrKick(MSR,double);
-double msrReadCheck(MSR,int *);
-void msrWriteCheck(MSR,double,int);
+double msrReadCheck(MSR,int *,int);
+void msrWriteCheck(MSR,double,int,int);
 void msrStepCosmo(MSR,double);
 double msrRedOut(MSR,int);
 void msrReadRed(MSR);

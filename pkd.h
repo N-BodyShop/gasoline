@@ -31,10 +31,19 @@ typedef struct particle {
 	float v[3];
 	float a[3];
 	float fPot;
+#ifdef SMOOTH_CODE
 	float fBall2;
 	float fDensity;
-	float fColor;
+#endif
 	} PARTICLE;
+
+typedef struct chkParticle {
+	int iOrder;
+	float fMass;
+	float fSoft;
+	float r[3];
+	float v[3];
+	} CHKPART;
 
 typedef struct bndBound {
 	float fMin[3];
@@ -196,6 +205,8 @@ void pkdDrift(PKD,double,float *);
 void pkdKick(PKD pkd,double,double);
 void pkdReadCheck(PKD,char *,int,int);
 void pkdWriteCheck(PKD,char *,int);
+void pkdReadCheckNew(PKD,char *,int,int);
+void pkdWriteCheckNew(PKD,char *,int);
 
 #endif
 

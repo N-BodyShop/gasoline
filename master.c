@@ -795,7 +795,7 @@ void msrKick(MSR msr,double dDelta)
 	}
 
 
-double msrReadCheck(MSR msr,int *piStep)
+double msrReadCheck(MSR msr,int *piStep,int bNewCheck)
 {
 	FILE *fp;
 	struct msrCheckPointHeader h;
@@ -879,13 +879,14 @@ double msrReadCheck(MSR msr,int *piStep)
 	 ** some systems, or if there are multiple identical physical files. 
 	 ** Start child threads reading!
 	 */
+	DATA(in,inReadCheck)->bNewCheck = bNewCheck;
 	pstReadCheck(msr->pst,in,SIZE(inReadCheck),NULL,NULL);
 	if (msr->param.bVerbose) puts("Checkpoint file has been successfully read.");
 	return(dTime);
 	}
 
 
-void msrWriteCheck(MSR msr,double dTime,int iStep)
+void msrWriteCheck(MSR msr,double dTime,int iStep,int bNewCheck)
 {
 	FILE *fp;
 	struct msrCheckPointHeader h;
@@ -959,6 +960,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	 */
 	pstSetTotal(msr->pst,NULL,0,oute,&iDum);
 	DATA(in,inWriteCheck)->nStart = 0;
+	DATA(in,inWriteCheck)->bNewCheck = bNewCheck;
 	pstWriteCheck(msr->pst,in,SIZE(inWriteCheck),NULL,NULL);
 	if (msr->param.bVerbose) {
 		puts("Checkpoint file has been successfully written.");

@@ -336,13 +336,17 @@ int pkdNodes(PKD pkd)
 	return(pkd->nNodes);
 	}
 
+
 void pkdDomainColor(PKD pkd)
 {
+	assert(0);
+	/*
 	int i;
 	
 	for (i=0;i<pkd->nLocal;++i) {
 		pkd->pStore[i].fColor = (float)pkd->idSelf;
 		}
+		*/
 	}
 
 
@@ -1147,6 +1151,74 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int nStart)
 	fwrite(pkd->pStore,sizeof(PARTICLE),pkdLocal(pkd),fp);
 	fclose(fp);
 	}
+
+
+void pkdReadCheckNew(PKD pkd,char *pszFileName,int nStart,int nLocal)
+{
+	FILE *fp;
+	CHKPART cp;
+	long lStart;
+	int i,j;
+
+	pkd->nLocal = nLocal;
+	/*
+	 ** Seek past the header and up to nStart.
+	 */
+	fp = fopen(pszFileName,"r");
+	assert(fp != NULL);
+	lStart = sizeof(struct msrCheckPointHeader)+nStart*sizeof(CHKPART);
+	fseek(fp,lStart,0);
+	/*
+	 ** Read Stuff!
+	 */
+	for (i=0;i<nLocal;++i) {
+		fread(&cp,sizeof(CHKPART),1,fp);
+		pkd->pStore[i].iOrder = cp.iOrder;
+		pkd->pStore[i].fMass = cp.fMass;
+		pkd->pStore[i].fSoft = cp.fSoft;
+		for (j=0;j<3;++j) {
+			pkd->pStore[i].r[j] = cp.r[j];
+			pkd->pStore[i].v[j] = cp.v[j];
+			}
+		pkd->pStore[i].fWeight = 1.0;	/* set the initial weight to 1.0 */
+		}
+	fclose(fp);	
+	}
+
+
+void pkdWriteCheckNew(PKD pkd,char *pszFileName,int nStart)
+{
+	FILE *fp;
+	CHKPART cp;
+	long lStart;
+	int i,j,nLocal;
+
+	/*
+	 ** Seek past the header and up to nStart.
+	 */
+	fp = fopen(pszFileName,"r+");
+	assert(fp != NULL);
+	lStart = sizeof(struct msrCheckPointHeader)+nStart*sizeof(CHKPART);
+	fseek(fp,lStart,0);
+	/* 
+	 ** Write Stuff!
+	 */
+	nLocal = pkdLocal(pkd);
+	for (i=0;i<nLocal;++i) {
+		cp.iOrder = pkd->pStore[i].iOrder;
+		cp.fMass = pkd->pStore[i].fMass;
+		cp.fSoft = pkd->pStore[i].fSoft;
+		for (j=0;j<3;++j) {
+			cp.r[j] = pkd->pStore[i].r[j];
+			cp.v[j] = pkd->pStore[i].v[j];
+			}
+		fwrite(&cp,sizeof(CHKPART),1,fp);
+		}
+	fclose(fp);
+	}
+
+
+
 
 
 

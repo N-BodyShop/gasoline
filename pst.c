@@ -889,6 +889,7 @@ void pstDensity(PST pst,char *in,int nIn,char *out,int *pnOut)
 	else {
 		nSmooth = DATA(in,inDensity)->nSmooth;
 		bGatherScatter = DATA(in,inDensity)->bGatherScatter;
+#ifdef SMOOTH_CODE
 		smInitialize(&smx,plcl->pkd,nSmooth,bGatherScatter);
 		if (bGatherScatter) {
 			smSmooth(smx,smDensitySym);
@@ -897,6 +898,7 @@ void pstDensity(PST pst,char *in,int nIn,char *out,int *pnOut)
 			smSmooth(smx,smDensity);
 			}
 		smFinish(smx);
+#endif
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -1041,7 +1043,12 @@ void pstReadCheck(PST pst,char *in,int nIn,char *out,int *pnOut)
 		nStore = nTotal + (int)ceil(nTotal*DATA(in,inReadCheck)->fExtraStore);
 		pkdInitialize(&plcl->pkd,pst->mdl,DATA(in,inReadCheck)->iOrder,
 					  nStore,plcl->nPstLvl,DATA(in,inReadCheck)->fPeriod);
-		pkdReadCheck(plcl->pkd,achInFile,pst->nStart,nTotal);
+		if (DATA(in,inReadCheck)->bNewCheck) {
+			pkdReadCheckNew(plcl->pkd,achInFile,pst->nStart,nTotal);
+			}	
+		else {
+			pkdReadCheck(plcl->pkd,achInFile,pst->nStart,nTotal);
+			}
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -1092,10 +1099,20 @@ void pstWriteCheck(PST pst,char *in,int nIn,char *out,int *pnOut)
 			strcat(achOutFile,"/");
 			}
 		strcat(achOutFile,DATA(in,inWriteCheck)->achOutFile);
-		pkdWriteCheck(plcl->pkd,achOutFile,DATA(in,inWriteCheck)->nStart);
+		if (DATA(in,inWriteCheck)->bNewCheck) {
+			pkdWriteCheckNew(plcl->pkd,achOutFile,
+							 DATA(in,inWriteCheck)->nStart);
+			}
+		else {
+			pkdWriteCheck(plcl->pkd,achOutFile,
+						  DATA(in,inWriteCheck)->nStart);
+			}
 		}
 	if (pnOut) *pnOut = 0;
 	}
+
+
+
 
 
 

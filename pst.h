@@ -224,6 +224,7 @@ void pstKick(PST,char *,int,char *,int *);
 
 #define PST_READCHECK		25
 struct inReadCheck {
+	int bNewCheck;
 	int nStart;
 	int nEnd;
 	int iOrder;
@@ -235,6 +236,7 @@ void pstReadCheck(PST,char *,int,char *,int *);
 
 #define PST_WRITECHECK		26
 struct inWriteCheck {
+	int bNewCheck;
 	int nStart;
 	char achOutFile[PST_FILENAME_SIZE];
 	};

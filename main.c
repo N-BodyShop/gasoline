@@ -65,7 +65,7 @@ void main(int argc,char **argv)
 	 ** Or if it might be required.
 	 */
 	if (msrRestart(msr)) {
-		dTime = msrReadCheck(msr,&iStep);
+		dTime = msrReadCheck(msr,&iStep,NEW_CHECK);
 		printf("Restart Time:%g Redshift:%g Step:%d\n",dTime,msrRedshift(msr),
 			   iStep);
 		sprintf(achFile,"%s.log",msrOutName(msr));
@@ -135,7 +135,7 @@ void main(int argc,char **argv)
 				/*
 				 ** Write a checkpoint.
 				 */
-				msrWriteCheck(msr,dTime,iStep);
+				msrWriteCheck(msr,dTime,iStep,NEW_CHECK);
 			Restart:
 				;
 				}
