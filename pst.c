@@ -445,7 +445,7 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 	}
 
 
-#define NUM_SAFETY	2
+#define NUM_SAFETY	3
 #define EPS_BOUND	0.01
 #define MASS_EPS	1e-11
 
