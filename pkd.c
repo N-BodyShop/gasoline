@@ -4449,6 +4449,12 @@ int pkdSetTypeFromFile(PKD pkd, int iSetMask, char *file, int *pniOrder, int *pn
 		TYPESet(p,iSetMask);
 		nSet++;
 	  }
+#if defined(STARFORM) || defined(SIMPLESF)
+	  if ( TYPETest(&pkd->pStore[i], TYPE_STAR) && p->iGasOrder == iOrder) {
+		TYPESet(p,iSetMask);
+		nSet++;
+	  }
+#endif
 	}
   }
 
