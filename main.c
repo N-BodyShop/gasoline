@@ -72,6 +72,9 @@ int main(int argc,char **argv)
 	mdlInitialize(&mdl,argv,main_ch);
 	for(argc = 0; argv[argc]; argc++); /* some MDLs can trash argv */
 	msrInitialize(&msr,mdl,argc,argv);
+
+	(void) strncpy(achBaseMask,msr->param.achDigitMask,256);
+
 	/*
 	 ** Check if a restart has been requested.
 	 ** Or if it might be required.
@@ -176,8 +179,6 @@ int main(int argc,char **argv)
 	 */
 	msrDrift(msr,dTime,0.0); /* also finds initial overlaps for COLLISIONS */
 	msrMassCheck(msr,dMass,"After initial msrDrift");
-
-	(void) strncpy(achBaseMask,msr->param.achDigitMask,256);
 
 	if (msrSteps(msr) > 0) {
 		/*
