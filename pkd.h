@@ -67,7 +67,7 @@ typedef struct particle {
 	} PARTICLE;
 
 
-#define CHECKPOINT_VERSION 4
+#define CHECKPOINT_VERSION 5
 
 typedef struct chkParticle {
 	int iOrder;
@@ -185,6 +185,7 @@ typedef struct pkdContext {
 	int nLevels;
 	int nSplit;
 	int nNodes;
+	int iExtraBucket;
 	int iOrder;
 	int iFreeCell;
 	int iRoot;
@@ -325,10 +326,10 @@ void pkdCalcCell(PKD,KDN *,FLOAT *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);
 void pkdBuildLocal(PKD,int,int,double,int,int,KDN *);
 void pkdBuildBinary(PKD,int,int,double,int,int,KDN *);
-void pkdGravAll(PKD,int,int,int,int,double,double,int *,
+void pkdGravAll(PKD,int,int,int,int,double,double,int,double *,int *,
 				double *,double *,CASTAT *,double *); 
 void pkdCalcE(PKD,double *,double *);
-void pkdDrift(PKD,double,FLOAT *,int);
+void pkdDrift(PKD,double,FLOAT *,int,int,FLOAT);
 void pkdKick(PKD pkd,double,double, double, double);
 void pkdReadCheck(PKD,char *,int,int,int,int);
 void pkdWriteCheck(PKD,char *,int,int);
@@ -364,6 +365,14 @@ void pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 void pkdNewOrder(PKD pkd, int nStart);
 void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int nMaxOrderGas,
 		  int nMaxOrderDark);
+void pkdSunIndirect(PKD,double *,int,double);
+
+#ifdef PLANETS
+
+int pkdIsPlanet(PKD,PARTICLE *);
+void pkdActiveNotPlanet(PKD);
+
+#endif
 
 #ifdef GASOLINE
 void pkdActiveGas(PKD);

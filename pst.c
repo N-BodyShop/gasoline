@@ -140,6 +140,8 @@ void pstAddServices(PST pst,MDL mdl)
 		      sizeof(struct inSetNParts), 0);
 	mdlAddService(mdl,PST_ADOTSTEP,pst,pstAdotStep,
 		      sizeof(struct inAdotStep), 0);
+	mdlAddService(mdl,PST_GRAVEXTERNAL,pst,pstGravExternal,
+				  sizeof(struct inGravExternal),0);
 #ifdef PLANETS
 	mdlAddService(mdl,PST_READSS,pst,pstReadSS,sizeof(struct inReadSS),0);
 	mdlAddService(mdl,PST_WRITESS,pst,pstWriteSS,sizeof(struct inWriteSS),0);
@@ -1679,12 +1681,30 @@ void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct inGravity *in = vin;
 	struct outGravity *out = vout;
 	struct outGravity outUp;
+	int j,bSunLower,bSunUpper;
 
 	assert(nIn == sizeof(struct inGravity));
 	if (pst->nLeaves > 1) {
+		/*
+		 ** Here we need to determine which domain is closest, or containing,
+		 ** coordinate (0,0,0), the location of the Sun!
+		 */
+		if (pst->fSplit < 0) { 
+			bSunLower = 0;
+			bSunUpper = in->bDoSun;
+			}
+		else {
+			bSunLower = in->bDoSun;
+			bSunUpper = 0;
+			}
+		in->bDoSun = bSunUpper;
 		mdlReqService(pst->mdl,pst->idUpper,PST_GRAVITY,in,nIn);
+		in->bDoSun = bSunLower;
 		pstGravity(pst->pstLower,in,nIn,out,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+		if (bSunUpper) {
+			for (j=0;j<3;++j) out->aSun[j] = outUp.aSun[j];
+			}
 		out->dPartSum += outUp.dPartSum;
 		out->dCellSum += outUp.dCellSum;
 		out->dFlop += outUp.dFlop;
@@ -1712,7 +1732,7 @@ void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdGravAll(plcl->pkd,in->nReps,in->bPeriodic,in->iOrder,in->iEwOrder,
-				   in->dEwCut,in->dEwhCut,&out->nActive,
+				   in->dEwCut,in->dEwhCut,in->bDoSun,out->aSun,&out->nActive,
 				   &out->dPartSum,&out->dCellSum,&cs,&out->dFlop);
 		out->dWSum = pkdGetTimer(plcl->pkd,1);
 		out->dISum = pkdGetTimer(plcl->pkd,2);
@@ -1744,7 +1764,7 @@ void pstCalcE(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	LCL *plcl = pst->plcl;
 	struct outCalcE *out = vout;
 	struct outCalcE outE;
-
+	
 	assert(nIn == 0);
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_CALCE,NULL,0);
@@ -1772,7 +1792,8 @@ void pstDrift(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdDrift(plcl->pkd,in->dDelta,in->fCenter,in->bPeriodic);
+		pkdDrift(plcl->pkd,in->dDelta,in->fCenter,in->bPeriodic,in->bFandG,
+				 in->fCentMass);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2407,6 +2428,26 @@ void pstInitAccel(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		pkdInitAccel(plcl->pkd);
 		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inGravExternal *in = vin;
+
+	assert(nIn == sizeof(struct inGravExternal));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_GRAVEXTERNAL,in,nIn);
+		pstGravExternal(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+	  if (in->bIndirect) {
+		pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass);
+	  }
+	}
 	if (pnOut) *pnOut = 0;
 	}
 

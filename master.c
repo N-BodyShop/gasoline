@@ -146,16 +146,16 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"<time step criterion>");
 	msr->param.bEpsVel = 1;
 	prmAddParam(msr->prm,"bEpsVel",0,&msr->param.bEpsVel,sizeof(int),
-		    "ev", "<Epsilon on V timestepping>");
+				"ev", "<Epsilon on V timestepping>");
 	msr->param.bAAdot = 0;
 	prmAddParam(msr->prm,"bAAdot",0,&msr->param.bAAdot,sizeof(int),
-		    "aad", "<A on Adot timestepping>");
+				"aad", "<A on Adot timestepping>");
 	msr->param.bNonSymp = 0;
 	prmAddParam(msr->prm,"bNonSymp",0,&msr->param.bNonSymp,sizeof(int),
-		    "ns", "<Non-symplectic density stepping>");
+				"ns", "<Non-symplectic density stepping>");
 	msr->param.iMaxRung = 1;
 	prmAddParam(msr->prm,"iMaxRung",1,&msr->param.iMaxRung,sizeof(int),
-		    "mrung", "<maximum timestep rung>");
+				"mrung", "<maximum timestep rung>");
 	msr->param.dEwCut = 2.6;
 	prmAddParam(msr->prm,"dEwCut",2,&msr->param.dEwCut,sizeof(double),"ew",
 				"<dEwCut> = 2.6");
@@ -247,6 +247,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoGravity = 1;
 	prmAddParam(msr->prm,"bDoGravity",0,&msr->param.bDoGravity,sizeof(int),"g",
 				"calculate gravity/don't calculate gravity = +g");
+	msr->param.bFandG = 0;
+	prmAddParam(msr->prm,"bFandG",0,&msr->param.bFandG,sizeof(int),"fg",
+				"use/don't use Kepler orbit drifts = -fg");
+	msr->param.bHeliocentric = 0;
+	prmAddParam(msr->prm,"bHeliocentric",0,&msr->param.bHeliocentric,
+				sizeof(int),"hc","use/don't use Heliocentric coordinates = -hc");
+	msr->param.dCentMass = 1.0;
+	prmAddParam(msr->prm,"dCentMass",2,&msr->param.dCentMass,sizeof(double),
+				"fgm","specifies the central mass for Keplerian orbits");
 #ifdef GASOLINE
 	msr->param.bGeometric = 1;
 	prmAddParam(msr->prm,"bGeometric",0,&msr->param.bGeometric,sizeof(int),
@@ -254,31 +263,31 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dConstAlpha = 1.0;
 	prmAddParam(msr->prm,"dConstAlpha",2,&msr->param.dConstAlpha,
 				sizeof(double),"alpha",
-		    		"<Alpha constant in viscosity> = 1.0");
+				"<Alpha constant in viscosity> = 1.0");
 	msr->param.dConstBeta = 2.0;
 	prmAddParam(msr->prm,"dConstBeta",2,&msr->param.dConstBeta,
 				sizeof(double),"beta",
-		    		"<Beta constant in viscosity> = 2.0");
+				"<Beta constant in viscosity> = 2.0");
 	msr->param.dConstGamma = 5.0/3.0;
 	prmAddParam(msr->prm,"dConstGamma",2,&msr->param.dConstGamma,
 				sizeof(double),"gamma",
-		    		"<Ratio of specific heats> = 5/3");
+				"<Ratio of specific heats> = 5/3");
 	msr->param.dMeanMolWeight = 1.0;
 	prmAddParam(msr->prm,"dMeanMolWeight",2,&msr->param.dMeanMolWeight,
 				sizeof(double),"mmw",
-		    		"<Mean molecular weight in amu> = 1.0");
+				"<Mean molecular weight in amu> = 1.0");
 	msr->param.dGasConst = 1.0;
 	prmAddParam(msr->prm,"dGasConst",2,&msr->param.dGasConst,
 				sizeof(double),"gcnst",
-		    		"<Gas Constant>");
+				"<Gas Constant>");
 	msr->param.dMsolUnit = 1.0;
 	prmAddParam(msr->prm,"dMsolUnit",2,&msr->param.dMsolUnit,
 				sizeof(double),"msu",
-		    		"<Solar mass/system mass unit>");
+				"<Solar mass/system mass unit>");
 	msr->param.dKpcUnit = 1000.0;
 	prmAddParam(msr->prm,"dKpcUnit",2,&msr->param.dKpcUnit,
 				sizeof(double),"kpcu",
-		    		"<Kiloparsec/system length unit>");
+				"<Kiloparsec/system length unit>");
 #endif
 #ifdef PLANETS
 	msr->param.iOutcomes = 0;
@@ -309,6 +318,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	if (!ret) {
 		_msrExit(msr);
 		}
+	/*
+	 ** Don't allow periodic BC's for Kepler orbital problems.
+	 ** It just doesn't make sense, does it?
+	 */
+	if (msr->param.bFandG) msr->param.bPeriodic = 0;
+	/*
+	 ** Make sure that we have some setting for nReplicas if bPeriodic is set.
+	 */
 	if (msr->param.bPeriodic && !prmSpecified(msr->prm,"nReplicas")) {
 		msr->param.nReplicas = 1;
 		}
@@ -390,15 +407,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->nOuts = 0;
 
 #ifdef GASOLINE
-/* bolzman constant in cgs */
+	/* bolzman constant in cgs */
 #define KBOLTZ	1.38e-16
-/* mass of hydrogen atom in grams */
+	/* mass of hydrogen atom in grams */
 #define MHYDR 1.67e-24
-/* solar mass in grams */
+	/* solar mass in grams */
 #define MSOLG 1.99e33
-/* G in cgs */
+	/* G in cgs */
 #define GCGS 6.67e-8
-/* kiloparsec in centimeters */
+	/* kiloparsec in centimeters */
 #define KPCCM 3.085678e21
 	/*
 	 * Convert kboltz/mhydrogen to system units, assuming that
@@ -406,9 +423,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	 */
 	if(prmSpecified(msr->prm, "dMsolUnit")
 	   && prmSpecified(msr->prm, "dKpcUnit")) {
-	      msr->param.dGasConst = msr->param.dKpcUnit*KPCCM*KBOLTZ
-		/MHYDR/GCGS/msr->param.dMsolUnit/MSOLG;
-	      }
+		msr->param.dGasConst = msr->param.dKpcUnit*KPCCM*KBOLTZ
+			/MHYDR/GCGS/msr->param.dMsolUnit/MSOLG;
+		}
 #endif
 
 #ifdef PLANETS
@@ -837,7 +854,7 @@ double msrComoveKickFac(MSR msr,double dTime,double dDelta)
 void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
 {
     int i,id;
-    int *nParts;		/* number of particles for each processor */
+    int *nParts;				/* number of particles for each processor */
     int nStart;
     PST pst0;
     LCL *plcl;
@@ -1017,7 +1034,7 @@ double msrReadTipsy(MSR msr)
 				    msr->param.dDelta = 0.0;
 				}
 			else if (!prmSpecified(msr->prm,"nSteps") &&
-				prmFileSpecified(msr->prm,"dDelta")) {
+					 prmFileSpecified(msr->prm,"dDelta")) {
 				aTo = 1.0/(msr->param.dRedTo + 1.0);
 				tTo = msrExp2Time(msr,aTo);
 				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
@@ -1634,13 +1651,14 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	}
 
 
-void msrGravity(MSR msr,double dStep,
+void msrGravity(MSR msr,double dStep,int bDoSun,
 				int *piSec,double *pdWMax,double *pdIMax,double *pdEMax,
 				int *pnActive)
 {
 	struct inGravity in;
 	struct outGravity out;
-	int iDum;
+	struct inGravExternal inExt;
+	int iDum,j;
 	int sec,dsec;
 	double dPartAvg,dCellAvg;
 	double dMFlops;
@@ -1658,11 +1676,36 @@ void msrGravity(MSR msr,double dStep,
     in.bPeriodic = msr->param.bPeriodic;
 	in.iOrder = msr->param.iOrder;
 	in.iEwOrder = msr->param.iEwOrder;
+	/*
+	 ** The meaning of 'bDoSun' here is that we want the accel on (0,0,0) to
+	 ** use in creating the indirect acceleration on each particle. This is
+	 ** why it looks inconsistent with the call to pstGravExternal below.
+	 */
+	in.bDoSun = msr->param.bHeliocentric;
     in.dEwCut = msr->param.dEwCut;
     in.dEwhCut = msr->param.dEwhCut;
 	sec = time(0);
 	pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
 	dsec = time(0) - sec;
+	/*
+	 ** Calculate any external potential stuff.
+	 ** This may contain a huge list of flags in the future, so we may want to 
+	 ** replace this test with something like bAnyExternal.
+	 */
+	if (msr->param.bHeliocentric) {
+		/*
+		 ** Only allow inclusion of solar terms if we are in Heliocentric 
+		 ** coordinates.
+		 */
+		inExt.bIndirect = msr->param.bHeliocentric;
+		inExt.bDoSun = bDoSun;  /* Treat the Sun explicitly. */
+		inExt.dSunMass = msr->param.dCentMass;
+		for (j=0;j<3;++j) inExt.aSun[j] = out.aSun[j];
+		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
+		}
+	/*
+	 ** Output some info...
+	 */
 #ifndef VERY_QUIET
  	if(dsec > 0.0) {
  	    dMFlops = out.dFlop/dsec*1e-6;
@@ -1671,7 +1714,7 @@ void msrGravity(MSR msr,double dStep,
  	    }
  	else {
  	    printf("Gravity Calculated, Wallclock:%d secs, MFlops:unknown, Flop:%.3g\n",
- 		   dsec,out.dFlop);
+			   dsec,out.dFlop);
  	    }
 #endif /* VERY_QUIET */
 	*piSec = dsec;
@@ -1746,7 +1789,7 @@ void msrCalcE(MSR msr,int bFirst,double dTime,double *E,double *T,double *U)
 	 */
 	if (msr->param.bComove && !bFirst) {
 		msr->dEcosmo += 0.5*(a - msrTime2Exp(msr,msr->dTimeOld))
-				     *((*U) + msr->dUOld);
+			*((*U) + msr->dUOld);
 		}
 	else {
 		msr->dEcosmo = 0.0;
@@ -1781,6 +1824,8 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		in.fCenter[j] = msr->fCenter[j];
 		}
 	in.bPeriodic = msr->param.bPeriodic;
+	in.bFandG = msr->param.bFandG; /* for NOW! */
+	in.fCentMass = msr->param.dCentMass;
 	pstDrift(msr->pst,&in,sizeof(in),NULL,NULL);
 	/*
 	 ** Once we move the particles the tree should no longer be considered 
@@ -1790,7 +1835,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	
 #ifdef GASOLINE
 	if (msr->param.bCannonical) {
-		invpr.dvFacOne = 1.0; /* no hubble drag, man! */
+		invpr.dvFacOne = 1.0;	/* no hubble drag, man! */
 		invpr.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
 		}
 	else {
@@ -1867,7 +1912,7 @@ void msrKick(MSR msr,double dTime,double dDelta)
 	struct inKick in;
 	
 	if (msr->param.bCannonical) {
-		in.dvFacOne = 1.0; /* no hubble drag, man! */
+		in.dvFacOne = 1.0;		/* no hubble drag, man! */
 		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
 		}
 	else {
@@ -1894,7 +1939,7 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 	struct inKick in;
 	
 	if (msr->param.bCannonical) {
-		in.dvFacOne = 1.0; /* no hubble drag, man! */
+		in.dvFacOne = 1.0;		/* no hubble drag, man! */
 		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
 #ifdef GASOLINE
 		in.dvPredFacOne = 1.0;
@@ -1932,7 +1977,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 	struct inKick in;
 	
 	if (msr->param.bCannonical) {
-		in.dvFacOne = 1.0; /* no hubble drag, man! */
+		in.dvFacOne = 1.0;		/* no hubble drag, man! */
 		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
 #ifdef GASOLINE
 		in.dvPredFacOne = 1.0;
@@ -1967,7 +2012,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 	struct inKick in;
 	
 	if (msr->param.bCannonical) {
-		in.dvFacOne = 1.0; /* no hubble drag, man! */
+		in.dvFacOne = 1.0;		/* no hubble drag, man! */
 		in.dvFacTwo = msrComoveKickFac(msr,dTime,dDelta);
 #ifdef GASOLINE
 		in.dvPredFacOne = 1.0;
@@ -2047,7 +2092,7 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
 		 */
 		assert(plcl->pkd->nStore >= nParts[id]);
 		pkdReadCheck(plcl->pkd,achInFile,in->iVersion,
-				 in->iOffset, nStart, nParts[id]);
+					 in->iOffset, nStart, nParts[id]);
 		nStart += nParts[id];
 		/* 
 		 * Now shove them over to the remote processor.
@@ -2093,7 +2138,7 @@ double msrReadCheck(MSR msr,int *piStep)
 		printf("Reading Version-%d Checkpoint file.\n",iVersion);
 	FDL_read(fdl,"not_corrupt_flag",&iNotCorrupt);
 	if (iNotCorrupt != 1) {
-	printf("Sorry the checkpoint file is corrupted.\n");
+		printf("Sorry the checkpoint file is corrupted.\n");
 		_msrExit(msr);
 		}
 	FDL_read(fdl,"number_of_particles",&msr->N);
@@ -2147,6 +2192,14 @@ double msrReadCheck(MSR msr,int *piStep)
 	if (!prmSpecified(msr->prm,"bStandard"))
 		FDL_read(fdl,"bStandard",&msr->param.bStandard);
 	FDL_read(fdl,"bKDK",&msr->param.bKDK);
+	/*
+	 ** bBinary somehow got left out of the previous versions of the
+	 ** checkpoint file. We fix this as of checkpoint version 5.
+	 */
+	if (iVersion > 4) {
+		if (!prmSpecified(msr->prm,"bBinary")) 
+			FDL_read(fdl,"bBinary",&msr->param.bBinary);
+		}
 	if (!prmSpecified(msr->prm,"nBucket"))
 		FDL_read(fdl,"nBucket",&msr->param.nBucket);
 	if (!prmSpecified(msr->prm,"iOutInterval"))
@@ -2214,6 +2267,16 @@ double msrReadCheck(MSR msr,int *piStep)
 	    msr->nMaxOrderGas = -1;
 	    msr->nMaxOrderDark = msr->nMaxOrder;
 	    }
+	if (iVersion > 4) {
+		FDL_read(fdl,"bFandG",&msr->param.bFandG);
+		FDL_read(fdl,"bHeliocentric",&msr->param.bHeliocentric);
+		FDL_read(fdl,"dCentMass",&msr->param.dCentMass);
+		}
+	else {
+		msr->param.bFandG = 0;
+		msr->param.bHeliocentric = 0;
+		msr->param.dCentMass = 0.0;
+		}
 	
 	if (msr->param.bVerbose) {
 		printf("Reading checkpoint file...\nN:%d Time:%g\n",msr->N,dTime);
@@ -2334,10 +2397,10 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	if(first) {
 	    sprintf(achTmp,"%s.chk0",msr->param.achOutName);
 	    first = 0;
-	} else {
-	    sprintf(achTmp,"%s.chk1",msr->param.achOutName);
-	    first = 1;
-	}
+		} else {
+			sprintf(achTmp,"%s.chk1",msr->param.achOutName);
+			first = 1;
+			}
 	strcat(achOutFile,achTmp);
 	strcpy(in.achOutFile,achOutFile);
 	/*
@@ -2388,6 +2451,9 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"bCannonical",&msr->param.bCannonical);
 	FDL_write(fdl,"bStandard",&msr->param.bStandard);
 	FDL_write(fdl,"bKDK",&msr->param.bKDK);
+	FDL_write(fdl,"bBinary",&msr->param.bBinary);
+	FDL_write(fdl,"bFandG",&msr->param.bFandG);
+	FDL_write(fdl,"bHeliocentric",&msr->param.bHeliocentric);
 	FDL_write(fdl,"nBucket",&msr->param.nBucket);
 	FDL_write(fdl,"iOutInterval",&msr->param.iOutInterval);
 	FDL_write(fdl,"iLogInterval",&msr->param.iLogInterval);
@@ -2412,6 +2478,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"dOmega0",&msr->param.dOmega0);
 	FDL_write(fdl,"dTheta",&msr->param.dTheta);
 	FDL_write(fdl,"dTheta2",&msr->param.dTheta2);
+	FDL_write(fdl,"dCentMass",&msr->param.dTheta2);
 	if (msr->param.bVerbose) {
 		printf("Writing checkpoint file...\nTime:%g\n",dTime);
 		}
@@ -2587,6 +2654,13 @@ int msrKDK(MSR msr)
 	}
 
 
+int msrDoSun(MSR msr)
+{
+	if (msr->param.bFandG) return(0);
+	else return(1);
+	}
+
+
 double msrSoft(MSR msr)
 {
 	return(msr->param.dSoft);
@@ -2605,12 +2679,12 @@ void msrSwitchTheta(MSR msr,double dTime)
 double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 {
 	struct outMassCheck out;
-
+	
 	if (msr->param.bVerbose) puts("doing mass check...");
 	pstMassCheck(msr->pst,NULL,0,&out,NULL);
 	if (dMass < 0.0) return(out.dMass);
 #if 0
-	else if (dMass != out.dMass) {
+else if (dMass != out.dMass) {
 #else
 	else if (fabs(dMass - out.dMass) > 1e-12*dMass) {
 #endif
@@ -2796,7 +2870,7 @@ void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta,
 				printf("Gravity, iRung: %d\n", iRung);
 				}
 			msrBuildTree(msr,0,dMass,0);
-			msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+			msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
 			}
 		    }
@@ -2889,7 +2963,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 				printf("Gravity, iRung: %d\n", iRung);
 				}
 			msrBuildTree(msr,0,dMass,0);
-			msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+			msrGravity(msr,dStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
 			}
 		    }
@@ -2997,7 +3071,7 @@ void msrTopStepKDK(MSR msr,
 				printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
 				}
 			msrBuildTree(msr,0,dMass,0);
-			msrGravity(msr,dStep,piSec,pdWMax,pdIMax,pdEMax,&nActive);
+			msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nActive);
 			*pdActiveSum += (double)nActive/msr->N;
 			}
 		}
@@ -3334,7 +3408,9 @@ void msrDoCollisions(MSR msr,double dTime,double dDelta)
 				if (dTime == 0) fp = fopen(msr->param.achCollLog,"w");
 				else fp = fopen(msr->param.achCollLog,"a");
 				assert(fp);
+/*  DCR, what was supposed to be here?
 				p1->id.iOrder,p2->id.iOrder);
+*/
 				fprintf(fp,"COLLISION:T=%e\n",dTime + find.dImpactTime);
 				fprintf(fp,"***1:pid=%i,idx=%i,ord=%i,M=%e,R=%e,dt=%e,"
 						"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",

@@ -1,4 +1,4 @@
-FDL checkpoint_4 (
+FDL checkpoint_5 (
 	ELEMENT version (
 		TYPE int
 		)
@@ -83,6 +83,12 @@ FDL checkpoint_4 (
 			ELEMENT bBinary (
 				TYPE int
 				)	
+			ELEMENT bFandG (
+				TYPE int
+				)	
+			ELEMENT bHeliocentric (
+				TYPE int
+				)	
 			ELEMENT nBucket (
 				TYPE int
 				)
@@ -153,6 +159,9 @@ FDL checkpoint_4 (
 				TYPE double
 				)
 			ELEMENT dTheta2 (
+				TYPE double
+				)
+			ELEMENT dCentMass (
 				TYPE double
 				)
 			)

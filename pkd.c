@@ -84,8 +84,14 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	 ** Allocate the main particle store.
 	 ** Need to use mdlMalloc() since the particles will need to be
 	 ** visible to all other processors thru mdlAquire() later on.
+	 **
+	 ** We need one EXTRA storage location at the very end to use for 
+	 ** calculating acceleration on arbitrary positions in space, for example
+	 ** determining the force on the sun. The easiest way to do this is to
+	 ** allocate one hidden particle, which won't interfere with the rest of
+	 ** the code (hopefully). pkd->pStore[pkd->nStore] is this particle.
 	 */
-	pkd->pStore = mdlMalloc(pkd->mdl,nStore*sizeof(PARTICLE));
+	pkd->pStore = mdlMalloc(pkd->mdl,(nStore+1)*sizeof(PARTICLE));
 	assert(pkd->pStore != NULL);
 	pkd->kdNodes = NULL;
 	pkd->piLeaf = NULL;
@@ -1552,7 +1558,11 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	 */
 	assert(pkd->nNodes > 0);
 
-	pkd->kdNodes = mdlMalloc(pkd->mdl,pkd->nNodes*sizeof(KDN));
+	/*
+	 ** Need to allocate a special extra cell that we will use to calculate
+	 ** the acceleration on an arbitrary point in space.
+	 */
+	pkd->kdNodes = mdlMalloc(pkd->mdl,(pkd->nNodes + 1)*sizeof(KDN));
 	assert(pkd->kdNodes != NULL);
 	/*
 	 ** Now we really build the tree.
@@ -1614,8 +1624,13 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	    pkd->kdNodes = NULL;
 	    return;
 	    }
-	pkd->kdNodes = mdlMalloc(pkd->mdl,pkd->nNodes*sizeof(KDN));
+	/*
+	 ** Need to allocate a special extra cell that we will use to calculate
+	 ** the acceleration on an arbitrary point in space.
+	 */
+	pkd->kdNodes = mdlMalloc(pkd->mdl,(pkd->nNodes + 1)*sizeof(KDN));
 	assert(pkd->kdNodes != NULL);
+	pkd->iFreeCell = pkd->nNodes;
 	sprintf(ach,"nNodes:%d nSplit:%d nLevels:%d nBucket:%d\n",
 			pkd->nNodes,pkd->nSplit,pkd->nLevels,nBucket);
 	mdlDiag(pkd->mdl,ach);
@@ -1714,8 +1729,10 @@ void pkdColorCell(PKD pkd,int iCell,FLOAT fColor)
 #endif	
 	}
 
+
 void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
-				double fEwCut,double fEwhCut,int *nActive,
+				double fEwCut,double fEwhCut,int bDoSun,
+				double *aSun,int *nActive,
 				double *pdPartSum,double *pdCellSum,CASTAT *pcs,
 				double *pdFlop)
 {
@@ -1723,7 +1740,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	int iCell,n;
 	FLOAT fWeight;
 	double dFlopI, dFlopE;
-	int i;
+	int i,j;
 
 	*pdFlop = 0.0;
 	pkdClearTimer(pkd,1);
@@ -1733,7 +1750,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	 ** Set up Ewald tables and stuff.
 	 */
 	if (bPeriodic) {
-	    pkdEwaldInit(pkd,fEwhCut,iEwOrder);		/* ignored in Flop count! */
+	    pkdEwaldInit(pkd,fEwhCut,iEwOrder);	/* ignored in Flop count! */
 		}
 	/*
 	 ** Start particle caching space (cell cache already active).
@@ -1761,7 +1778,7 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			 ** Calculate gravity on this bucket.
 			 */
 			pkdStartTimer(pkd,1);
-			pkdBucketWalk(pkd,iCell,nReps,iOrder);		/* ignored in Flop count! */
+			pkdBucketWalk(pkd,iCell,nReps,iOrder); /* ignored in Flop count! */
 			pkdStopTimer(pkd,1);
 			*nActive += n;
 			*pdPartSum += n*pkd->nPart + 
@@ -1794,6 +1811,43 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 			}
 		iCell = c[iCell].iUpper;
 		}
+	if (bDoSun) {
+		const double dTinyBox = 1e-14;
+		int iDummy = pkd->nStore;
+		/*
+		 ** Calculate the indirect interaction for solar system problems.
+		 ** we need a "dummy" particle that is pointed to by the cell,
+		 ** pkd->iFreeCell which also needs its bounds set correctly for 
+		 ** this to work.
+		 ** Don't allow periodic BCs at the moment.
+		 */
+		assert(nReps == 0);
+		assert(bPeriodic == 0);
+		for (j=0;j<3;++j) {
+			pkd->pStore[iDummy].r[j] = 0.0;
+			pkd->pStore[iDummy].a[j] = 0.0;
+			c[pkd->iFreeCell].bnd.fMin[j] = -dTinyBox;
+			c[pkd->iFreeCell].bnd.fMax[j] = dTinyBox;
+			}
+		pkd->pStore[iDummy].iActive = 1;
+		pkd->pStore[iDummy].fPot = 0;
+		c[pkd->iFreeCell].pLower = iDummy;
+		c[pkd->iFreeCell].pUpper = iDummy;
+		c[pkd->iFreeCell].iDim = -1;	/* It is really a bucket! */
+
+		pkdBucketWalk(pkd,pkd->iFreeCell,nReps,iOrder);
+		pkdBucketInteract(pkd,pkd->iFreeCell,iOrder);
+
+		/*
+		 ** Now we should have the indirect acceleration contained in the 
+		 ** particle pointed to by iDummy. Now we have to bring this acceleration
+		 ** back up to the master level. We can then take care of it with an
+		 ** external potential call.
+		 */
+		for (j=0;j<3;++j) {
+			aSun[j] = pkd->pStore[iDummy].a[j];
+			}
+		}
 	/*
 	 ** Get caching statistics.
 	 */
@@ -1809,6 +1863,41 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int iEwOrder,
 	 ** Stop particle caching space.
 	 */
 	mdlFinishCache(pkd->mdl,CID_PARTICLE);
+	}
+
+
+void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass)
+{
+	PARTICLE *p;
+	double t;
+	int i,j,n;
+
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i) {
+		if (p[i].iActive) {
+			t = 0;
+			for (j=0;j<3;++j) t += p[i].r[j]*p[i].r[j];
+			t = 1.0/sqrt(t);
+			t = t*t*t;
+			/*
+			 ** The way that aSun[j] gets added in here is confusing, but this
+			 ** is the correct way!
+			 */
+			if (bDoSun) {
+				t *= dSunMass;
+				for (j=0;j<3;++j) {					
+					p[i].a[j] -= aSun[j] + p[i].r[j]*t;
+					}				
+				}
+			else {
+				t *= p[i].fMass;
+				for (j=0;j<3;++j) {
+					p[i].a[j] -= aSun[j] - p[i].r[j]*t;
+					}
+				}
+			}
+		}
 	}
 
 
@@ -1832,7 +1921,112 @@ void pkdCalcE(PKD pkd,double *T,double *U)
 	}
 
 
-void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic)
+/* 
+ * Use the f and g functions to advance an unperturbed orbit.
+ */
+void fg(MDL mdl,double mu,double *x,double *v,double dt) {
+	double f,g,fd,gd;			/* Gauss's f, g, fdot and gdot */
+	double r,vsq;
+	double u;					/* r v cos(phi) */
+	double a;					/* semi-major axis */
+	double e;					/* eccentricity */
+	double ec,es;				/* e cos(E), e sin(E) */
+	double en;					/* mean motion */
+	double nf;					/* orbital frequency */
+	double dec;					/* delta E */
+	double dm;					/* delta mean anomoly */
+	double lo = -2*M_PI;
+	double up = 2*M_PI;
+	double w;					/* function to zero */
+	double wp;					/* first derivative */
+	double wpp;					/* second derivative */
+	double wppp;				/* third derivative */
+	double dx,s,c,sh;
+	double next;
+	double converge;			/* converge criterion */
+	int iter,i,j;
+	const double DOUBLE_EPS = 1.2e-16;
+
+	/* 
+	 * Evaluate some orbital quantites.
+	 */
+	r = sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2]);
+	vsq = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+	u = x[0]*v[0] + x[1]*v[1] + x[2]*v[2];
+	a = 1/(2/r-vsq/mu);
+	en = sqrt(mu/(a*a*a));
+	ec = 1-r/a;
+	es = u/(en*a*a);
+	e = sqrt(ec*ec + es*es);
+#if (0)
+	/*
+	 ** Only for GR!
+	 */
+	dt *= 1 - 1.5*mu/(csq*a);
+#endif
+	nf = en/(2*M_PI);
+	j = (int)(nf*dt);
+	dt -= j/nf;					/* reduce to single orbit */
+	dm = en*dt - es;
+	if ((es*cos(dm)+ec*sin(dm)) > 0) dec = dm + 0.85*e;
+	else dec = dm - 0.85*e;
+	dm = en*dt;					/* reset mean anomoly */
+	converge = fabs(dm*DOUBLE_EPS);
+	/*
+	 * First double precision iterations for dec solution.
+	 * This solves Kepler's equation in difference form:
+	 * dM = dE - e cos(E_0) sin(dE) + e sin(E_0)(1 - cos(dE))
+	 * Note that (1 - cos(dE)) == 2*sin(dE/2)*sin(dE/2).  The latter is
+	 * probably more accurate for small dE.
+	 */
+	for(iter=1;iter<=32;iter++) {
+		s = sin(dec);
+		c = cos(dec);
+		sh = sin(0.5*dec);
+		w = dec - ec*s + es*2*sh*sh - dm;
+		if (w > 0) up = dec;
+		else lo = dec;
+		wp = 1 - ec*c + es*s;
+		wpp = ec*s + es*c;
+		wppp = ec*c - es*s;
+		dx = -w/wp;
+		dx = -w/(wp + 0.5*dx*wpp);
+		dx = -w/(wp + 0.5*dx*wpp + dx*dx*wppp/6);
+		next = dec + dx;
+		if (fabs(dx) <= converge) break;
+		if (next > lo && next < up) dec = next;
+		else dec = 0.5*(lo + up);
+		if (dec==lo || dec==up) break;
+		}
+	if (iter>32) {
+		char ach[256];
+
+		sprintf(ach,"dec soln failed, dconverge: %g dx: %g dec: %g\n",
+				converge, dx, dec);
+		mdlDiag(mdl,ach);
+		exit(1);
+		}
+	/*
+	 * Update the orbit.
+	 * See Danby, eq. 6.8.11 and 6.8.12, for expressions for f, g, fdot,
+	 * and gdot.
+	 * JS: changed f and gd expressions to take advantage of the half angle 
+	 * formula given above.
+	 */
+	f = 1 - (a/r)*2*sh*sh;
+	g = dt + (s-dec)/en;
+	fd = -(a/(r*wp))*en*s;
+	gd = 1 - 2*sh*sh/wp;
+	for (i=0;i<3;i++) {
+		s = f*x[i]+g*v[i];
+		v[i] = fd*x[i]+gd*v[i];
+		x[i] = s;
+		}
+	}
+
+
+void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
+			  FLOAT fCentMass)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -1840,13 +2034,18 @@ void pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic)
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
-		for (j=0;j<3;++j) {
-			p[i].r[j] += dDelta*p[i].v[j];
-			if (bPeriodic) {
-				if (p[i].r[j] >= fCenter[j]+0.5*pkd->fPeriod[j])
-					p[i].r[j] -= pkd->fPeriod[j];
-				if (p[i].r[j] < fCenter[j]-0.5*pkd->fPeriod[j])
-					p[i].r[j] += pkd->fPeriod[j];
+		if (bFandG) {
+			fg(pkd->mdl,fCentMass + p[i].fMass,p[i].r,p[i].v,dDelta);
+			}
+		else {
+			for (j=0;j<3;++j) {
+				p[i].r[j] += dDelta*p[i].v[j];
+				if (bPeriodic) {
+					if (p[i].r[j] >= fCenter[j]+0.5*pkd->fPeriod[j])
+						p[i].r[j] -= pkd->fPeriod[j];
+					if (p[i].r[j] < fCenter[j]-0.5*pkd->fPeriod[j])
+						p[i].r[j] += pkd->fPeriod[j];
+					}
 				}
 			}
 		}
@@ -1863,6 +2062,8 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo, double dvPredFacOne,
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
 	    if(p[i].iActive) {
+/* DEBUG	printf("%d a:%.15g %.15g %.15g\n",p[i].iOrder,
+				   p[i].a[0],p[i].a[1],p[i].a[2]); */
 #ifdef GASOLINE
 	        if(pkdIsGas(pkd, &p[i])) {
 				for (j=0;j<3;++j) {

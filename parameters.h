@@ -24,6 +24,8 @@ struct parameters {
 	int bDoDensity;
 	int bSymCool;
 	int bDoGravity;
+	int bFandG;
+	int bHeliocentric;
 	int nBucket;
 	int iOutInterval;
 	int iLogInterval;
@@ -54,6 +56,7 @@ struct parameters {
 	double dHubble0;
 	double dOmega0;
 	double dRedTo;
+	double dCentMass;
 	char achInFile[256];
 	char achOutName[256];
 	char achDataSubPath[256];
@@ -85,6 +88,7 @@ struct parameters {
 
 
 #endif
+
 
 
 

@@ -213,11 +213,13 @@ struct inGravity {
 	int bPeriodic;
 	int iOrder;
 	int iEwOrder;
+    int bDoSun;
 	double dEwCut;
 	double dEwhCut;
 	};
 struct outGravity {
 	int nActive;
+    double aSun[3];
 	double dPartSum;
 	double dCellSum;
 	double dFlop;
@@ -259,6 +261,8 @@ struct inDrift {
 	double dDelta;
 	FLOAT fCenter[3];
 	int bPeriodic;
+	int bFandG;
+	FLOAT fCentMass;
 	};
 void pstDrift(PST,void *,int,void *,int *);
 
@@ -488,22 +492,31 @@ struct inSetNParts {
     };
 void pstSetNParts(PST, void *, int, void *, int *);
 
+#define PST_GRAVEXTERNAL			57
+struct inGravExternal {
+    int bIndirect;
+    int bDoSun;
+    double dSunMass;
+    double aSun[3];
+	};
+void pstGravExternal(PST,void *,int,void *,int *);
+
 #ifdef GASOLINE
 
-#define PST_ACTIVEGAS			57
+#define PST_ACTIVEGAS			58
 void pstActiveGas(PST,void *,int,void *,int *);
 
-#define PST_CALCETHDOT			58
+#define PST_CALCETHDOT			59
 void pstCalcEthdot(PST,void *,int,void *,int *);
 
-#define PST_KICKVPRED			59
+#define PST_KICKVPRED			60
 struct inKickVpred {
 	double dvFacOne;
 	double dvFacTwo;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
 
-#define PST_SPHCURRRUNG			60
+#define PST_SPHCURRRUNG			61
 struct inSphCurrRung {
     int iRung;
     };
@@ -514,7 +527,7 @@ void pstSphCurrRung(PST,void *,int,void *,int *);
 
 #endif
 
-#define PST_ADOTSTEP			61
+#define PST_ADOTSTEP			62
 struct inAdotStep {
     double dEta;
     double dVelFac;
@@ -523,7 +536,7 @@ void pstAdotStep(PST,void *,int,void *,int *);
 
 #ifdef PLANETS
 
-#define PST_READSS			62
+#define PST_READSS			63
 struct inReadSS {
 	int nFileStart;
 	int nFileEnd;
@@ -537,20 +550,20 @@ struct inReadSS {
 	};
 void pstReadSS(PST,void *,int,void *,int *);
 
-#define PST_WRITESS			63
+#define PST_WRITESS			64
 struct inWriteSS {
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteSS(PST,void *,int,void *,int *);
 
-#define PST_FINDCOLLISION  	64
+#define PST_FINDCOLLISION  	65
 struct outFindCollision {
 	double dImpactTime;
 	COLLIDER Collider1,Collider2;
 	};
 void pstFindCollision(PST,void *,int,void *,int *);
 
-#define PST_DOCOLLISION		65
+#define PST_DOCOLLISION		66
 struct inDoCollision {
 	int iPid1,iPid2,iOutcomes;
 	double dEpsN,dEpsT;

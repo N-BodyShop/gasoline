@@ -105,7 +105,7 @@ int main(int argc,char **argv)
 			msrMassCheck(msr,dMass,"After msrBuildTree");
 			msrInitAccel(msr);
 			if (msrDoGravity(msr)) {
-				msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+				msrGravity(msr,iStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 				}
 			}
 		goto Restart;
@@ -170,7 +170,7 @@ int main(int argc,char **argv)
 
 		msrInitAccel(msr);
 		if (msrDoGravity(msr)) {
-			msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+			msrGravity(msr,0.0,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			msrMassCheck(msr,dMass,"After msrGravity");
 			msrCalcE(msr,MSR_INIT_ECOSMO,dTime,&E,&T,&U);
 			msrMassCheck(msr,dMass,"After msrCalcE");
@@ -227,7 +227,7 @@ int main(int argc,char **argv)
 					msrMassCheck(msr,dMass,"After msrBuildTree in DKD-log");
 					msrInitAccel(msr);
 					if (msrDoGravity(msr)) {
-						msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+						msrGravity(msr,iStep,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 						msrMassCheck(msr,dMass,"After msrGravity in DKD-log");
 						msrCalcE(msr,MSR_STEP_ECOSMO,dTime,&E,&T,&U);
 						msrMassCheck(msr,dMass,"After msrCalcE in DKD-log");
@@ -376,7 +376,7 @@ int main(int argc,char **argv)
 			msrBuildTree(msr,0,dMass,0);
 			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Gravity");
 			msrInitAccel(msr);
-			msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+			msrGravity(msr,0.0,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
 			msrMassCheck(msr,dMass,"After msrGravity in OutSingle Gravity");
 			msrReorder(msr);
 			msrMassCheck(msr,dMass,"After msrReorder in OutSingle Gravity");
