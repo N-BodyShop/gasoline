@@ -127,6 +127,32 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		comb = combHKViscosity;
 		smx->fcnPost = NULL;
 		break;
+#ifdef STARFORM
+	case SMX_DELETE_GAS:
+                assert(bSymmetric == 0);
+	        smx->fcnSmooth = DeleteGas;
+		initParticle = NULL;
+		init = NULL;
+		comb = NULL;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_DIST_DELETED_GAS:
+                assert(bSymmetric != 0);
+	        smx->fcnSmooth = DistDeletedGas;
+		initParticle = NULL;
+		init = initDistDeletedGas;
+		comb = combDistDeletedGas;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_DIST_SN_ENERGY:
+                assert(bSymmetric != 0);
+	        smx->fcnSmooth = DistSNEnergy;
+		initParticle = NULL;
+		init = initDistSNEnergy;
+		comb = combDistSNEnergy;
+		smx->fcnPost = NULL;
+		break;
+#endif
 #endif	       
 #ifdef COLLISIONS
 	case SMX_REJECTS:
@@ -177,6 +203,8 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	 ** Start particle caching space (cell cache is already active).
 	 */
 	if (bSymmetric) {
+		assert(init);
+		assert(comb);
 		mdlCOcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
 				   nTree,init,comb);
 		}
@@ -726,6 +754,7 @@ void smSmooth(SMX smx,SMF *smf)
 	PQ *pq,*pqi,*pqn;
 	int iDum;
 	int nTree,nQueue,iLoad;
+	int nLocal;
 	int nSmoothed = 0;
 	int idSelf;
 #ifdef SLIDING_PATCH
@@ -735,6 +764,7 @@ void smSmooth(SMX smx,SMF *smf)
 	idSelf = smx->pkd->idSelf;
 	nSmooth = smx->nSmooth;
 	nTree = c[pkd->iRoot].pUpper + 1;
+	nLocal = pkd->nLocal;
 	if (smx->bPeriodic) {
 	    lx = smx->pkd->fPeriod[0];
 	    ly = smx->pkd->fPeriod[1];
@@ -755,7 +785,7 @@ void smSmooth(SMX smx,SMF *smf)
 	/*
 	 ** Check if we are finished!
 	 */
-	if (pNext == nTree) {
+	if (pNext == nLocal) {
 		goto DoneSmooth;
 		}
 
@@ -1074,7 +1104,7 @@ void smSmooth(SMX smx,SMF *smf)
 	goto PrioqBuilt;
 
  DoneSmooth:
-	for (pi=0;pi<nTree;++pi) {
+	for (pi=0;pi<nLocal;++pi) {
 	        if (!TYPETest(&(p[pi]),TYPE_SMOOTHACTIVE) || p[pi].fBall2 > 0) continue;
 		/*
 		 ** Do a Ball Gather at r^2 = fBall2
