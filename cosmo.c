@@ -25,6 +25,7 @@ void csmInitialize(CSM *pcsm)
     csm->dOmega0 = 0.0;
     csm->dLambda = 0.0;
     csm->dOmegaRad = 0.0;
+    csm->dOmegab = 0.0;
     csm->bComove = 0;
     
     *pcsm = csm;

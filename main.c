@@ -161,6 +161,9 @@ int main(int argc,char **argv)
 	dTime = msrReadTipsy(msr);
 #endif
 #ifdef GASOLINE
+#ifdef SUPERNOVA
+        if (msr->param.bSN) msrInitSupernova(msr);
+#endif
 	if (msr->param.iGasModel == GASMODEL_COOLING || msr->param.iGasModel == GASMODEL_COOLING_NONEQM) 
 	        msrInitCooling(msr);
 #endif

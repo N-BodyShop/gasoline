@@ -19,7 +19,7 @@
 */
 /* 
  * Work around for Dec ev6 flawed
- * treatement of sub-normal numbers 
+ * treatment of sub-normal numbers 
  */
 #define CL_MAX_NEG_EXP_ARG  -500.
 

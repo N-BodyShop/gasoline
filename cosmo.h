@@ -7,6 +7,7 @@ typedef struct csmContext {
     double dOmega0;
     double dLambda;
     double dOmegaRad;
+    double dOmegab;
     } * CSM;
 
 void csmInitialize(CSM *pcsm);

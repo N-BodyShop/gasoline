@@ -377,6 +377,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.csm->dOmegaRad = 0.0;
 	prmAddParam(msr->prm,"dOmegaRad",2,&msr->param.csm->dOmegaRad,
 				sizeof(double),"Omrad", "<dOmegaRad> = 0.0");
+	msr->param.csm->dOmegab = 0.0;
+	prmAddParam(msr->prm,"dOmegab",2,&msr->param.csm->dOmegab,
+				sizeof(double),"Omb", "<dOmegab> = 0.0");
 	strcpy(msr->param.achDataSubPath,".");
 	prmAddParam(msr->prm,"achDataSubPath",3,&msr->param.achDataSubPath,256,
 				NULL,NULL);
@@ -1213,6 +1216,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dOmega0: %g",msr->param.csm->dOmega0);
 	fprintf(fp," dLambda: %g",msr->param.csm->dLambda);
 	fprintf(fp," dOmegaRad: %g",msr->param.csm->dOmegaRad);
+	fprintf(fp," dOmegab: %g",msr->param.csm->dOmegab);
 	fprintf(fp,"\n# achInFile: %s",msr->param.achInFile);
 	fprintf(fp,"\n# achOutName: %s",msr->param.achOutName); 
 	fprintf(fp,"\n# achDataSubPath: %s",msr->param.achDataSubPath);
@@ -4398,7 +4402,10 @@ void msrSphViscosityLimiter(MSR msr, int bOn, double dTime)
 /* Fabulous SN heating */
 void msrInitSupernova(MSR msr) 
 {
-    struct { double z; double t; double dt; double Ecl; double EVol; double EclVol; } *data;
+  /* Old structure */
+  /*    struct { double z; double t; double dt; double Ecl; double EVol; double EclVol; } *data; */
+  /* New Menci files structure */
+    struct { double z; double t; double junk; double Msun_yr_Vol_Total; double Msun_yr_Vol_Ext; double Msun_yr_Vol_Int; } *data;
     struct inCountSupernova in;
     struct outCountSupernova out;
     int i;
@@ -4420,8 +4427,9 @@ void msrInitSupernova(MSR msr)
 		out.dMassNonMetalTotal* msr->param.dMsolUnit,
 		out.dMassTotal* msr->param.dMsolUnit);
 
-	 /* Msun (baryons) per Mpc^3 (hardwired for omb=0.05) */
-	 fac = 0.05 * 2.77536627e11 * pow(msr->param.csm->dHubble0,2.0);
+	 /* Msun (baryons) per Mpc^3 comoving */
+	 assert(msr->param.csm->dOmegab>0.0);
+	 fac = msr->param.csm->dOmegab * 2.77536627e11 * pow(msr->param.csm->dHubble0,2.0);
 
          data = malloc(sizeof(*data)*msr->nSN);
   	 msr->nSN = msrReadASCII(msr, "SN", 6, (double *) data);
@@ -4430,20 +4438,24 @@ void msrInitSupernova(MSR msr)
 	 for (i=0;i<msr->nSN;i++) {
                 msr->SNdata[i].z = data[i].z;
 
-		/* 10^51 Ergs per year (into baryons inside clusters) */
-		msr->SNdata[i].ECl = data[i].Ecl 
-		  /* -> Ergs per second (into baryons inside clusters) */
-		  * 1e51/31536000.0 
+		/* SFR M_sun per year per Mpc^3 comoving */
+		msr->SNdata[i].ECl = data[i].Msun_yr_Vol_Int
+		  /* -> Ergs per second per Mpc^3 (comoving) */
+		  * 1e51/31536000.0
+		  /* -> Ergs per second per Msun (baryons) */
+		  / fac
+		  /* -> Ergs per second (into baryons external to clusters) */
+		  * out.dMassNonMetalTotal * msr->param.dMsolUnit
 		  /* -> code units */
 		  / (msr->param.dErgPerGmUnit*(msr->param.dMsolUnit*MSOLG)/(msr->param.dSecUnit));
 
-		/* 10^51 Ergs per year per Mpc^3 (physical) (outside clusters) */
-		msr->SNdata[i].ENonCl = data[i].EVol 
+		/* SFR M_sun per year per Mpc^3 comoving */
+		msr->SNdata[i].ENonCl = data[i].Msun_yr_Vol_Ext
 		  /* -> Ergs per second per Mpc^3 (comoving) */
-		  * 1e51/31536000.0*pow(1./(1+data[i].z),3.0)
+		  * 1e51/31536000.0
 		  /* -> Ergs per second per Msun (baryons) */
 		  / fac
-		  /* -> Ergs per second (into baryons outside clusters) */
+		  /* -> Ergs per second (into baryons external to clusters) */
 		  * out.dMassNonMetalTotal * msr->param.dMsolUnit
 		  /* -> code units */
 		  / (msr->param.dErgPerGmUnit*(msr->param.dMsolUnit*MSOLG)/(msr->param.dSecUnit));
