@@ -25,7 +25,7 @@ void main_ch(MDL mdl)
 	}
 
 
-void main(int argc,char **argv)
+int main(int argc,char **argv)
 {
 	MDL mdl;
 	MSR msr;
@@ -287,5 +287,6 @@ void main(int argc,char **argv)
 		}
 	msrFinish(msr);
 	mdlFinish(mdl);
+	return 0;
 	}
 
