@@ -25,6 +25,7 @@ pkdNextCollision(PKD pkd,double *dt,int *iOrder1,int *iOrder2)
 
 	for (i=0;i<pkdLocal(pkd);i++) {
 		p = &pkd->pStore[i];
+		if (!TYPEQueryACTIVE(p)) continue; /* skip over inactive particles */
 		if (p->iOrder < 0) continue; /* skip over deleted particles */
 		if (p->dtCol < *dt) {
 			*dt = p->dtCol;
@@ -363,10 +364,22 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 	FLOAT fShear = 0;
 #endif
 
-/*DEBUG
+#ifdef AGGS /*DEBUG!*/
+	extern void pkdAggsDoCollision(PKD pkd,double dt,const COLLIDER *pc1,
+								   const COLLIDER *pc2,int bPeriodic,
+								   const COLLISION_PARAMS *CP,
+								   int *piOutcome,double *dT,
+								   COLLIDER *cOut,int *pnOut);
+#endif
+
 	(void) printf("COLLISION %i & %i (dt = %.16e)\n",
 				  pc1->id.iOrder,pc2->id.iOrder,dt);
-*/
+
+#ifdef AGGS /*DEBUG!*/
+	pkdAggsDoCollision(pkd,dt,pc1,pc2,bPeriodic,CP,
+					   piOutcome,dT,cOut,pnOut);	
+	return;
+#endif
 
 	/* Get local copies of collider info */
 
@@ -622,8 +635,6 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 
 	dImpactEnergy = 0.5*c1.fMass*c2.fMass/(c1.fMass + c2.fMass)*v2;
 
-	/* Determine collision outcome */
-
 	iOutcome = MISS;
 
 	if (CP->iOutcomes == MERGE || ((CP->iOutcomes & MERGE) && v2 <= ve2)) {
@@ -829,7 +840,10 @@ pkdResetColliders(PKD pkd,int iOrder1,int iOrder2)
 	/*
 	 ** Set SMOOTHACTIVE flag for those particles that were involved
 	 ** in the collision or that were about to collide with one of the
-	 ** particles involved in the collision. Reset otherwise.
+	 ** particles involved in the collision. Reset otherwise. This
+	 ** means new collision circumstances will only be determined for
+	 ** these particles, while the remaining (active) particles will
+	 ** rely on previously detected potential collisions.
 	 */
 
 	PARTICLE *p;

@@ -9,7 +9,11 @@
 
 #ifdef COLLISIONS
 #include "collision.h"
-#endif /* COLLISIONS */
+#endif
+ 
+#ifdef AGGS
+#include "aggs.h"
+#endif
 
 #ifdef STARFORM
 #include "starform.h"
@@ -162,6 +166,20 @@ enum pst_service {
       PST_QQDOMAINDECOMP,
       PST_QQBUILDTREE,
       PST_QQSMOOTH,
+#endif
+#ifdef AGGS
+	  PST_AGGSFIND,
+	  PST_AGGSCONFIRM,
+	  PST_AGGSMERGE,
+	  PST_AGGSGETCOM,
+	  PST_AGGSGETAXES,
+	  PST_AGGSTOBODYAXES,
+	  PST_AGGSSETSPACEPOS,
+	  PST_AGGSSETSPACEVEL,
+	  PST_AGGSACCEL,
+	  PST_AGGSTORQUE,
+	  PST_AGGSACTIVATE,
+	  PST_AGGSDEACTIVATE,
 #endif
       PST_SPHSTEP,
       PST_SPHVISCOSITYLIMITER,
@@ -1083,6 +1101,101 @@ void pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 #endif
 
 #endif /* COLLISIONS */
+
+#ifdef AGGS
+
+/* PST_AGGSFIND */
+struct outAggsFind {
+	int iMaxIdx;
+	};
+void pstAggsFind(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+/* PST_AGGSCONFIRM */
+struct inAggsConfirm {
+	int iAggIdx;
+	};
+struct outAggsConfirm {
+	int bAssigned;
+	};
+void pstAggsConfirm(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+/* PST_AGGSMERGE */
+struct inAggsMerge {
+	int iOldID,iNewID;
+	};
+void pstAggsMerge(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+/* PST_AGGSGETCOM */
+struct inAggsGetCOM {
+	int iAggIdx;
+	};
+struct outAggsGetCOM {
+	Scalar m;
+	Vector mr,mv; /* position & velocity moments */
+	};
+void pstAggsGetCOM(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+ 
+/* PST_AGGSGETAXES */
+struct inAggsGetAxes {
+	int iAggIdx;
+	Vector r_com,v_com;
+	};
+struct outAggsGetAxes {
+	Matrix I;
+	Vector L;
+	};
+void pstAggsGetAxes(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+ 
+/* PST_AGGSTOBODYAXES */
+struct inAggsToBodyAxes {
+	int iAggIdx;
+	Matrix spaceToBody; /* transpose of lambda */
+	};
+void pstAggsToBodyAxes(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+/* PST_AGGSSETSPACEPOS */
+struct inAggsSetSpacePos {
+	int iAggIdx;
+	Vector r_com;
+	Matrix lambda;
+	};
+void pstAggsSetSpacePos(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+/* PST_AGGSSETSPACEVEL */
+struct inAggsSetSpaceVel {
+	int iAggIdx;
+	Vector v_com,omega;
+	Matrix lambda;
+	};
+void pstAggsSetSpaceVel(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+/* PST_AGGSACCEL */
+struct inAggsAccel {
+	int iAggIdx;
+	};
+struct outAggsAccel {
+	Scalar m;
+	Vector ma; /* acceleration moment */
+	};
+void pstAggsAccel(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+/* PST_AGGSTORQUE */
+struct inAggsTorque {
+	int iAggIdx;
+	Vector r_com,a_com;
+	};
+struct outAggsTorque {
+	Vector torque;
+	};
+void pstAggsTorque(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+/* PST_AGGSACTIVATE */
+void pstAggsActivate(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+ 
+/* PST_AGGSDEACTIVATE */
+void pstAggsDeactivate(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+ 
+#endif /* AGGS */
 
 #ifdef GASOLINE
 

@@ -1,6 +1,11 @@
 #ifndef PARAMETERS_HINCLUDED
 #define PARAMETERS_HINCLUDED
 
+#include <sys/param.h> /* for MAXPATHLEN */
+#ifndef MAXPATHLEN
+#define MAXPATHLEN 256
+#endif
+
 #include "cosmo.h"
 
 struct parameters {
@@ -99,10 +104,10 @@ struct parameters {
 	CSM csm;
 	double dRedTo;
 	double dCentMass;
-	char achDigitMask[256];
-	char achInFile[256];
-	char achOutName[256];
-	char achDataSubPath[256];
+	char achDigitMask[MAXPATHLEN];
+	char achInFile[MAXPATHLEN];
+	char achOutName[MAXPATHLEN];
+	char achDataSubPath[MAXPATHLEN];
 	double dCoolFac;
 	double dCoolDens;
 	double dCoolMaxDens;
@@ -188,8 +193,8 @@ struct parameters {
 	 ** Additional parameters for collision code...
 	 */
 	int bFindRejects;
-	int bDoCollLog;
-	char achCollLog[256];
+	int iCollLogOption;
+	char achCollLog[MAXPATHLEN];
 	double dSmallStep;
 	double dxUnifGrav;
 	double dyUnifGrav;

@@ -89,23 +89,30 @@ int main(int argc,char **argv)
 	if (msrRestart(msr)) {
 		dTime = msrReadCheck(msr,&iStep);
 #ifdef COLLISIONS
-	if (msr->param.nSmooth > msr->N) {
-		msr->param.nSmooth = msr->N;
-		if (msr->param.bVWarnings)
-			printf("WARNING: nSmooth reduced to %i\n",msr->N);
-		}
+		if (msr->param.nSmooth > msr->N) {
+			msr->param.nSmooth = msr->N;
+			if (msr->param.bVWarnings)
+				printf("WARNING: nSmooth reduced to %i\n",msr->N);
+			}
+#endif
+#ifdef AGGS
+		/*
+		 ** Aggregate info not currently stored in checkpoints, so
+		 ** reconstruct now.
+		 */
+		msrAggsFind(msr);
 #endif
 #ifdef GASOLINE
 #ifdef SUPERNOVA
-	        if (msr->param.bSN) msrInitSupernova(msr);
+		if (msr->param.bSN) msrInitSupernova(msr);
 #endif
 		if (msr->param.iGasModel == GASMODEL_COOLING
 		    || msr->param.iGasModel == GASMODEL_COOLING_NONEQM
 			|| msr->param.bStarForm) 
 		    msrInitCooling(msr);
 #ifdef STARFORM
-		if(msr->param.bStarForm) /* dDelta is now determined */
-		    msr->param.stfm->dDeltaT = msr->param.dDelta;
+		if (msr->param.bStarForm) /* dDelta is now determined */
+			msr->param.stfm->dDeltaT = msr->param.dDelta;
 #endif
 #endif
 		msrInitStep(msr);
@@ -122,7 +129,7 @@ int main(int argc,char **argv)
 			msrLogParams(msr,fpLog);
 			}
 #ifdef COLLISIONS
-		if (msr->param.bDoCollLog) {
+		if (msr->param.iCollLogOption == COLL_LOG_VERBOSE) {
 			FILE *fp = fopen(msr->param.achCollLog,"r");
 			if (fp) { /* add RESTART tag only if file already exists */
 				fclose(fp);
@@ -162,7 +169,7 @@ int main(int argc,char **argv)
 	    return 1;
 	    }
 #ifdef COLLISIONS
-	if (msr->param.bDoCollLog) { /* erase any old log */
+	if (msr->param.iCollLogOption != COLL_LOG_NONE) { /* erase any old log */
 		FILE *fp = fopen(msr->param.achCollLog,"w");
 		assert(fp);
 		fclose(fp);
@@ -172,26 +179,26 @@ int main(int argc,char **argv)
 	 ** Read in the binary file, this may set the number of timesteps or
 	 ** the size of the timestep when the zto parameter is used.
 	 */
-#ifdef COLLISIONS /* must use "Solar System" (SS) I/O format... */
-	dTime = msrReadSS(msr);
+#ifndef COLLISIONS
+	dTime = msrReadTipsy(msr);
+#else
+	dTime = msrReadSS(msr); /* must use "Solar System" (SS) I/O format... */
 	if (msr->param.nSmooth > msr->N) {
 		msr->param.nSmooth = msr->N;
 		if (msr->param.bVWarnings)
 			printf("WARNING: nSmooth reduced to %i\n",msr->N);
 		}
-#else
-	dTime = msrReadTipsy(msr);
 #endif
 #ifdef GASOLINE
 #ifdef SUPERNOVA
-        if (msr->param.bSN) msrInitSupernova(msr);
+	if (msr->param.bSN) msrInitSupernova(msr);
 #endif
 	if (msr->param.iGasModel == GASMODEL_COOLING ||
 	    msr->param.iGasModel == GASMODEL_COOLING_NONEQM ||
 		msr->param.bStarForm)
-	        msrInitCooling(msr);
+		msrInitCooling(msr);
 #ifdef STARFORM
-	if(msr->param.bStarForm) /* dDelta is now determined */
+	if (msr->param.bStarForm) /* dDelta is now determined */
 	    msr->param.stfm->dDeltaT = msr->param.dDelta;
 #endif
 #endif
@@ -204,6 +211,11 @@ int main(int argc,char **argv)
 	msrMassCheck(msr,dMass,"After msrSetSoft");
 #ifdef COLLISIONS
 	if (msr->param.bFindRejects) msrFindRejects(msr);
+#endif
+#ifdef AGGS
+	/* find and initialize any aggregates */
+	msrAggsFind(msr);
+	msrMassCheck(msr,dMass,"After msrAggsFind");
 #endif
 	/*
 	 ** If the simulation is periodic make sure to wrap all particles into
@@ -356,7 +368,7 @@ int main(int argc,char **argv)
 			**           3) we're at an output interval
 			*/
 			if (msrOutTime(msr,dTime) || iStep == msrSteps(msr) || iStop ||
-			    (msrOutInterval(msr) > 0 &&	iStep%msrOutInterval(msr) == 0)) {
+				(msrOutInterval(msr) > 0 && iStep%msrOutInterval(msr) == 0)) {
 				if (msr->nGas && !msr->param.bKDK) {
 					msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 					msrBuildTree(msr,1,-1.0,1);
@@ -365,10 +377,10 @@ int main(int argc,char **argv)
 				msrReorder(msr);
 				msrMassCheck(msr,dMass,"After msrReorder in OutTime");
 				sprintf(achFile,msr->param.achDigitMask,msrOutName(msr),iStep);
-#ifdef COLLISIONS
-				msrWriteSS(msr,achFile,dTime);
-#else
+#ifndef COLLISIONS
 				msrWriteTipsy(msr,achFile,dTime);
+#else
+				msrWriteSS(msr,achFile,dTime);
 #endif
 				if(msr->param.bDoIOrderOutput) {
 				    sprintf(achFile,achBaseMask,
@@ -522,7 +534,6 @@ int main(int argc,char **argv)
 			}
 		if (msrLogInterval(msr)) (void) fclose(fpLog);
 		}
-	
 	else {
 		struct inInitDt in;
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
@@ -728,8 +739,3 @@ int main(int argc,char **argv)
 	mdlFinish(mdl);
 	return 0;
 	}
-
-
-
-
-

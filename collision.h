@@ -5,6 +5,10 @@
 
 #include "pkd.h"
 
+#ifdef AGGS
+#include "linalg.h"
+#endif
+
 #define SPECIAL_PARTICLES
 
 #ifdef SPECIAL_PARTICLES
@@ -25,6 +29,10 @@
 #define COLLISION(t) ((t) < DBL_MAX)
 
 #define BIT(n) (1 << (n))
+
+#define COLL_LOG_NONE		0
+#define COLL_LOG_VERBOSE	1
+#define COLL_LOG_TERSE		2
 
 #define MISS	0
 #define MERGE	BIT(0)
@@ -83,6 +91,9 @@ typedef struct {
 #ifdef SAND_PILE
 	WALLS walls;
 #endif
+#ifdef AGGS
+	int iAggNewID; /*DEBUG temporary cheat*/
+#endif
 	} COLLISION_PARAMS;
 
 typedef struct {
@@ -103,6 +114,12 @@ typedef struct {
 	FLOAT dt;
 	int iRung;
 	int bTinyStep;
+#ifdef AGGS
+	struct {
+		Vector r_com,v_com,omega,moments;
+		Matrix lambda;
+		} agg;
+#endif
 	} COLLIDER;
 
 void pkdNextCollision(PKD pkd, double *dtCol, int *iOrder1, int *iOrder2);

@@ -352,6 +352,42 @@ pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inSmooth),0);
 #endif
 #endif /* COLLISIONS */
+#ifdef AGGS
+	mdlAddService(mdl,PST_AGGSFIND,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsFind,
+				  0,sizeof(struct outAggsFind));
+	mdlAddService(mdl,PST_AGGSCONFIRM,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsConfirm,
+				  sizeof(struct inAggsConfirm),sizeof(struct outAggsConfirm));
+	mdlAddService(mdl,PST_AGGSMERGE,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsMerge,
+				  sizeof(struct inAggsMerge),0);
+	mdlAddService(mdl,PST_AGGSGETCOM,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsGetCOM,
+				  sizeof(struct inAggsGetCOM),sizeof(struct outAggsGetCOM));
+	mdlAddService(mdl,PST_AGGSGETAXES,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsGetAxes,
+				  sizeof(struct inAggsGetAxes),sizeof(struct outAggsGetAxes));
+	mdlAddService(mdl,PST_AGGSTOBODYAXES,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsToBodyAxes,
+				  sizeof(struct inAggsToBodyAxes),0);
+	mdlAddService(mdl,PST_AGGSSETSPACEPOS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsSetSpacePos,
+				  sizeof(struct inAggsSetSpacePos),0);
+	mdlAddService(mdl,PST_AGGSSETSPACEVEL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsSetSpaceVel,
+				  sizeof(struct inAggsSetSpaceVel),0);
+	mdlAddService(mdl,PST_AGGSACCEL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsAccel,
+				  sizeof(struct inAggsAccel),sizeof(struct outAggsAccel));
+	mdlAddService(mdl,PST_AGGSTORQUE,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsTorque,
+				  sizeof(struct inAggsTorque),sizeof(struct outAggsTorque));
+	mdlAddService(mdl,PST_AGGSACTIVATE,pst,
+				  (void (*)(void*,void*,int,void*,int*)) pstAggsActivate,0,0);
+	mdlAddService(mdl,PST_AGGSDEACTIVATE,pst,
+				  (void (*)(void*,void*,int,void*,int*)) pstAggsDeactivate,0,0);
+#endif /* AGGS */
 #ifdef STARFORM
 	mdlAddService(mdl,PST_FORMSTARS,pst,
 		      (void (*)(void *,void *,int,void *,int *)) pstFormStars,
@@ -4460,8 +4496,8 @@ pstNextCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct outNextCollision local,*out = vout;
 
 	mdlassert(pst->mdl,nIn == 0);
-	local.dt = out->dt = DBL_MAX; /* trust me */
-	local.iOrder1 = local.iOrder2 = out->iOrder1 = out->iOrder2 = -1;
+	out->dt = DBL_MAX;
+	out->iOrder1 = out->iOrder2 = -1;
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_NEXTCOLLISION,NULL,0);
 		pstNextCollision(pst->pstLower,NULL,0,vout,NULL);
@@ -4699,6 +4735,228 @@ pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 #endif /* COLLISIONS */
 
+#ifdef AGGS
+
+void pstAggsFind(PST pst,void *vIn,int nIn,void *vOut,int *pnOut)
+{
+	struct outAggsFind local,*out = vOut;
+
+	mdlassert(pst->mdl,nIn == 0);
+	out->iMaxIdx = -1;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSFIND,NULL,0);
+		pstAggsFind(pst->pstLower,NULL,0,vOut,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		if (local.iMaxIdx > out->iMaxIdx) *out = local;
+		}
+	else
+		pkdAggsFind(pst->plcl->pkd,&out->iMaxIdx);
+	}
+
+void pstAggsConfirm(PST pst,void *vIn,int nIn,void *vOut,int *pnOut)
+{
+	/* called by msrAggsFind() */
+
+	struct inAggsConfirm *in = vIn;
+	struct outAggsConfirm local,*out = vOut;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	out->bAssigned = 0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSCONFIRM,vIn,nIn);
+		pstAggsConfirm(pst->pstLower,vIn,nIn,vOut,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		if (local.bAssigned) *out = local;
+		}
+	else
+		pkdAggsConfirm(pst->plcl->pkd,in->iAggIdx,&out->bAssigned);
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+void pstAggsMerge(PST pst,void *vIn,int nIn,void *vOut,int *pnOut)
+{
+	/* called by msrAggsCollisionUpdate() */
+
+	struct inAggsMerge *in = vIn;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	mdlassert(pst->mdl,vOut == NULL && pnOut == NULL);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSMERGE,vIn,nIn);
+		pstAggsMerge(pst->pstLower,vIn,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else
+		pkdAggsMerge(pst->plcl->pkd,in->iOldID,in->iNewID);
+	}
+
+void pstAggsGetCOM(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inAggsGetCOM *in = vIn;
+	struct outAggsGetCOM local,*out = vOut;
+	int k;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	out->m = 0.0;
+	for (k=0;k<3;k++) out->mr[k] = out->mv[k] = 0.0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSGETCOM,vIn,nIn);
+		pstAggsGetCOM(pst->pstLower,vIn,nIn,vOut,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		out->m += local.m;
+		for (k=0;k<3;k++) {
+			out->mr[k] += local.mr[k];
+			out->mv[k] += local.mv[k];
+			}
+		}
+	else
+		pkdAggsGetCOM(pst->plcl->pkd,in->iAggIdx,&out->m,out->mr,out->mv);
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+void pstAggsGetAxes(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inAggsGetAxes *in = vIn;
+	struct outAggsGetAxes local,*out = vOut;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	out->I[0][0] = out->I[0][1] = out->I[0][2] = out->I[1][1] =
+	out->I[1][2] = out->I[2][2] = out->L[0] = out->L[1] = out->L[2] = 0.0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSGETAXES,vIn,nIn);
+		pstAggsGetAxes(pst->pstLower,vIn,nIn,vOut,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		out->I[0][0] += local.I[0][0];
+		out->I[0][1] += local.I[0][1];
+		out->I[0][2] += local.I[0][2];
+		out->I[1][1] += local.I[1][1];
+		out->I[1][2] += local.I[1][2];
+		out->I[2][2] += local.I[2][2];
+		out->L[0] += local.L[0];
+		out->L[1] += local.L[1];
+		out->L[2] += local.L[2];
+		}
+	else
+		pkdAggsGetAxes(pst->plcl->pkd,in->iAggIdx,in->r_com,in->v_com,
+					   out->I,out->L);
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+void pstAggsToBodyAxes(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inAggsToBodyAxes *in = vIn;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSTOBODYAXES,vIn,nIn);
+		pstAggsToBodyAxes(pst->pstLower,vIn,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else
+		pkdAggsToBodyAxes(pst->plcl->pkd,in->iAggIdx,in->spaceToBody);
+	}
+
+void pstAggsSetSpacePos(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inAggsSetSpacePos *in = vIn;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSSETSPACEPOS,vIn,nIn);
+		pstAggsSetSpacePos(pst->pstLower,vIn,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else
+		pkdAggsSetSpacePos(pst->plcl->pkd,in->iAggIdx,in->r_com,in->lambda);
+	}
+
+void pstAggsSetSpaceVel(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inAggsSetSpaceVel *in = vIn;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSSETSPACEVEL,vIn,nIn);
+		pstAggsSetSpaceVel(pst->pstLower,vIn,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else
+		pkdAggsSetSpaceVel(pst->plcl->pkd,in->iAggIdx,in->v_com,in->omega,
+						   in->lambda);
+	}
+
+void pstAggsAccel(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inAggsAccel *in = vIn;
+	struct outAggsAccel local,*out = vOut;
+	int k;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	out->m = 0.0;
+	for (k=0;k<3;k++) out->ma[k] = 0.0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSACCEL,vIn,nIn);
+		pstAggsAccel(pst->pstLower,vIn,nIn,vOut,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		out->m += local.m;
+		for (k=0;k<3;k++) out->ma[k] += local.ma[k];
+		}
+	else
+		pkdAggsAccel(pst->plcl->pkd,in->iAggIdx,&out->m,out->ma);
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+void pstAggsTorque(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inAggsTorque *in = vIn;
+	struct outAggsTorque local,*out = vOut;
+	int k;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	for (k=0;k<3;k++) out->torque[k] = 0.0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSTORQUE,vIn,nIn);
+		pstAggsTorque(pst->pstLower,vIn,nIn,vOut,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		for (k=0;k<3;k++) out->torque[k] += local.torque[k];
+		}
+	else
+		pkdAggsTorque(pst->plcl->pkd,in->iAggIdx,in->r_com,in->a_com,
+					  out->torque);
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+void pstAggsActivate(PST pst,void* vin,int nIn,void* vOut,int* pnOut)
+{
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSACTIVATE,0,0);
+		pstAggsActivate(pst->pstLower,NULL,0,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else
+		pkdAggsActivate(pst->plcl->pkd);
+	}
+
+void pstAggsDeactivate(PST pst,void* vin,int nIn,void* vOut,int* pnOut)
+{
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSDEACTIVATE,0,0);
+		pstAggsDeactivate(pst->pstLower,NULL,0,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else
+		pkdAggsDeactivate(pst->plcl->pkd);
+}
+
+#endif /* AGGS */
+
+
 void 
 pstClearTimer(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -4859,4 +5117,3 @@ pstDumpVoxel(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		dfRenderVoxel(pst->plcl->pkd, in );
 		}
 	}
-

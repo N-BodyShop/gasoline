@@ -322,19 +322,18 @@ $(OBJ) $(EXTRA_OBJ): Makefile
 
 # DO NOT DELETE
 
-cooling.o: pkd.h floattype.h cooling.h
-cosmo.o: cosmo.h
+cosmo.o: runge.h cosmo.h
 ewald.o: ewald.h pkd.h floattype.h cooling.h meval.h qeval.h
 fdl.o: htable.h fdl.h
-feedback.o: pkd.h floattype.h cooling.h feedback.h supernova.h startime.h
-feedback.o: millerscalo.h
 grav.o: pkd.h floattype.h cooling.h grav.h meval.h qeval.h
 htable.o: htable.h
+integration.o: linalg.h floattype.h integration.h
+linalg.o: linalg.h floattype.h
 main.o: master.h param.h pst.h pkd.h floattype.h cooling.h smoothfcn.h
-main.o: starform.h feedback.h parameters.h cosmo.h outtype.h
+main.o: parameters.h cosmo.h outtype.h
 master.o: master.h param.h pst.h pkd.h floattype.h cooling.h smoothfcn.h
-master.o: starform.h feedback.h parameters.h cosmo.h tipsydefs.h opentype.h
-master.o: fdl.h htable.h outtype.h
+master.o: parameters.h cosmo.h tipsydefs.h opentype.h fdl.h htable.h
+master.o: outtype.h
 millerscalo.o: millerscalo.h
 outtype.o: pkd.h floattype.h cooling.h outtype.h
 param.o: param.h
@@ -345,7 +344,6 @@ pst.o: outtype.h smooth.h dumpframe.h
 romberg.o: floattype.h
 smooth.o: smooth.h pkd.h floattype.h cooling.h smoothfcn.h
 smoothfcn.o: smoothfcn.h pkd.h floattype.h cooling.h
-starform.o: pkd.h floattype.h cooling.h starform.h millerscalo.h
 startime.o: floattype.h startime.h
 supernova.o: pkd.h floattype.h cooling.h feedback.h supernova.h startime.h
 supernova.o: millerscalo.h supernovaia.h

@@ -58,6 +58,12 @@ typedef struct msrContext {
 #ifdef COLLISIONS
 	double dTcoll;
 #endif
+#ifdef AGGS
+	/* Aggregates info currently stored only on master */
+	int nAggs;
+	int iAggNewID;
+	Aggregate *pAggs;
+#endif
 	/*
 	 ** Redshift output points.
 	 */
@@ -253,6 +259,18 @@ void msrMarkEncounters(MSR msr, double dTmax);
 void msrLinearKDK(MSR msr, double dStep, double dTime, double dDelta);
 void msrDoCollisions(MSR msr, double dTime, double dDelta);
 #endif /* COLLISIONS */
+#ifdef AGGS
+void msrAggsFind(MSR msr);
+void msrAggsKick(MSR msr,double dt);
+void msrAggsAdvanceOpen(MSR msr);
+void msrAggsAdvanceClose(MSR msr,double dt);
+void msrAggsAdvanceCollider(MSR msr,COLLIDER *c,double dt);
+void msrAggsCollisionUpdate(MSR msr,COLLIDER *c1,COLLIDER *c2,
+							int iOutcome,COLLIDER c[],int nOut);
+void msrAggsGravity(MSR msr);
+void msrAggsActivate(MSR msr);
+void msrAggsDeactivate(MSR msr);
+#endif
 void msrFormStars(MSR msr, double dTime);
 
 #endif

@@ -21,6 +21,10 @@
 #include "collision.h"
 #endif
 
+#ifdef AGGS
+#include "aggs.h" /*DEBUG include this from collision.h?...*/
+#endif
+
 #ifdef _LARGE_FILES
 #define fseek fseeko
 #endif
@@ -945,7 +949,7 @@ int pkdUpperPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 	i--;
 	j++;
 	while (++i<j && pkd->pStore[i].r[d] < fSplit);
-        while (i<--j && pkd->pStore[j].r[d] >= fSplit);
+	while (i<--j && pkd->pStore[j].r[d] >= fSplit);
 	if (i>=j) goto done1;
 	pTemp = pkd->pStore[i];
 	pkd->pStore[i] = pkd->pStore[j];
@@ -3255,50 +3259,54 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 #endif
 
 	mdlDiag(pkd->mdl, "Into pkddrift\n");
-	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
+		p = &pkd->pStore[i];
+#ifdef AGGS
+		if (IS_AGG(p))
+			continue;
+#endif
 #ifdef OLD_KEPLER
-		if (p[i].iDriftType == KEPLER) /*DEBUG a bit ugly...*/
+		if (p->iDriftType == KEPLER) /*DEBUG a bit ugly...*/
 #else
 		if (bFandG)
 #endif
-			fg(pkd->mdl,fCentMass + p[i].fMass,p[i].r,p[i].v,dDelta);
+			fg(pkd->mdl,fCentMass + p->fMass,p->r,p->v,dDelta);
 		else {
 #ifdef SLIDING_PATCH
 			fShear = 0;
 #endif
 			for (j=0;j<3;++j) {
-				p[i].r[j] += dDelta*p[i].v[j];
+				p->r[j] += dDelta*p->v[j];
 				if (bPeriodic) {
-					if (p[i].r[j] >= fCenter[j] + 0.5*pkd->fPeriod[j]) {
-						p[i].r[j] -= pkd->fPeriod[j];
+					if (p->r[j] >= fCenter[j] + 0.5*pkd->fPeriod[j]) {
+						p->r[j] -= pkd->fPeriod[j];
 #ifdef SLIDING_PATCH
 						if (j == 0) {
 							fShear = 1.5*pkd->dOrbFreq*pkd->fPeriod[0];
-							p[i].r[1] += SHEAR(-1,pkd->fPeriod[0],
+							p->r[1] += SHEAR(-1,pkd->fPeriod[0],
 											   pkd->fPeriod[1],pkd->dOrbFreq,
 											   pkd->dTime + dDelta);
 							}
 #endif
 						}
-					if (p[i].r[j] < fCenter[j] - 0.5*pkd->fPeriod[j]) {
-						p[i].r[j] += pkd->fPeriod[j];
+					if (p->r[j] < fCenter[j] - 0.5*pkd->fPeriod[j]) {
+						p->r[j] += pkd->fPeriod[j];
 #ifdef SLIDING_PATCH
 						if (j == 0) {
 							fShear = - 1.5*pkd->dOrbFreq*pkd->fPeriod[0];
-							p[i].r[1] += SHEAR(1,pkd->fPeriod[0],
+							p->r[1] += SHEAR(1,pkd->fPeriod[0],
 											   pkd->fPeriod[1],pkd->dOrbFreq,
 											   pkd->dTime + dDelta);
 							}
 #endif
 						}
-					mdlassert(pkd->mdl,p[i].r[j] >= fCenter[j]-0.5*pkd->fPeriod[j]);
-					mdlassert(pkd->mdl,p[i].r[j] <  fCenter[j]+0.5*pkd->fPeriod[j]);
+					mdlassert(pkd->mdl,p->r[j] >= fCenter[j]-0.5*pkd->fPeriod[j]);
+					mdlassert(pkd->mdl,p->r[j] <  fCenter[j]+0.5*pkd->fPeriod[j]);
 					}
 				}
 #ifdef SLIDING_PATCH
-			p[i].v[1] += fShear;
+			p->v[1] += fShear;
 #endif
 			}
 		}
@@ -5062,7 +5070,6 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 		if (ssioData(&ssio,&data))
 			mdlassert(pkd->mdl,0); /* error during read in ss file */
 		p->iOrgIdx = data.org_idx;
-		assert(p->iOrgIdx > -1); /* only new format supported */
 		p->fMass = data.mass;
 		p->fSoft = 0.5*data.radius;
 #ifdef CHANGESOFT 

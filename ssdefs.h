@@ -25,8 +25,9 @@
 
 #define REJECTS_FILE "rejects.out"
 
-/* Filename for collision log */
+/* Filenames for collision logs */
 
-#define COLLISION_LOG "ss.collisions"
+#define COLL_LOG_TXT "ss.coll.txt"
+#define COLL_LOG_BIN "ss.coll.bin"
 
 #endif

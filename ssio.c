@@ -6,7 +6,7 @@
  ** Solar System data I/O routines.
  */
 
-#include "ssio.h"
+#include "ssio.h" /* also defines MAXPATHLEN */
 #include <string.h>
 #include <assert.h>
 

@@ -6,6 +6,11 @@
 #include "ssdefs.h"
 #include "collision.h"
 #endif /* COLLISIONS */
+
+#ifdef AGGS
+#include "aggs.h"
+#endif
+
 /*
  Change the way the Balsara Switch is applied:
 */
@@ -2181,6 +2186,9 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		 ** iPrevCol must essentially be reset after each KICK.
 		 */
 		if (pn == p || pn->iOrder < 0 || pn->iOrder == p->iPrevCol) continue;
+#ifdef AGGS
+		if (IS_AGG(p) && IS_AGG(pn) && AGG_ID(p) == AGG_ID(pn)) continue;
+#endif
 		vx = p->v[0] - pn->v[0];
 		vy = p->v[1] - pn->v[1];
 		vz = p->v[2] - pn->v[2];

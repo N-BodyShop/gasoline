@@ -102,7 +102,7 @@ typedef struct particle {
 #endif
 #endif
 #ifdef COLLISIONS
-	int iOrgIdx;		/* for keeping track of mergers etc. */
+	int iOrgIdx;		/* for tracking of mergers, aggregates etc. */
 	FLOAT w[3];			/* spin vector */
 	int iColor;			/* handy color tag */
 	int iDriftType;		/* either NORMAL or KEPLER */
@@ -117,6 +117,12 @@ typedef struct particle {
 #endif
 #ifdef NEED_VPRED
 	FLOAT vPred[3];		/* predicted velocity (time centered) */
+#endif
+#ifdef AGGS
+	/* Position in principal frame of the aggregate (normally).  We
+	 *  temporarily store the COM frame position here during the
+	 *  process of computing the aggregate parameters. */
+	FLOAT r_agg[3];
 #endif
 	} PARTICLE;
 
