@@ -326,5 +326,39 @@ void pstMassCheck(PST,void *,int,void *,int *);
 #define PST_ACTIVEORDER		38
 void pstActiveOrder(PST,void *,int,void *,int *);
 
+#define PST_SETRUNG		40
+struct inSetRung {
+    int iRung;
+    };
+void pstSetRung(PST,void *,int,void *,int *);
+
+#define PST_ACTIVERUNG		41
+struct inActiveRung {
+    int iRung;
+    int bGreater;
+    };
+void pstActiveRung(PST,void *,int,void *,int *);
+
+#define PST_CURRRUNG		42
+struct inCurrRung {
+    int iRung;
+    };
+struct outCurrRung {
+    int iCurrent;
+    };
+void pstCurrRung(PST,void *,int,void *,int *);
+
+#define PST_DENSITYRUNG		43
+struct inDensityRung {
+    int iRung;
+    double dDelta;
+    double dEta;
+    double dRhoFac;
+    };
+struct outDensityRung {
+    int iMaxRung;
+    };
+void pstDensityRung(PST,void *,int,void *,int *);
+
 #endif
 

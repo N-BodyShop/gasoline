@@ -25,6 +25,8 @@ struct parameters {
 	int nReplicas;
 	int nSteps;
 	int nSmooth;
+        int iMaxRung;
+        double dEta;
 	double dExtraStore;
 	double dSoft;
 	double dDelta;

@@ -88,9 +88,7 @@ void main(int argc,char **argv)
 
 	msrBuildTree(msr,0,dMass);
 	msrMassCheck(msr,dMass,"After msrBuildTree");
-/* Stick msrDensity in here */
-	msrDensity(msr);
-/*	msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax); */
+	msrGravity(msr,0.0,&iSec,&dWMax,&dIMax,&dEMax);
 	msrMassCheck(msr,dMass,"After msrGravity");
 	msrCalcE(msr,MSR_INIT_ECOSMO,dTime,&E,&T,&U);
 	msrMassCheck(msr,dMass,"After msrCalcE");
@@ -100,6 +98,7 @@ void main(int argc,char **argv)
 	fflush(fpLog);
 
 	if (msrSteps(msr) > 0) {
+	        msrInitStep(msr);
 		for (iStep=1;iStep<=msrSteps(msr);++iStep) {
 			if (msrKDK(msr)) {
 				msrKick(msr,dTime,0.5*msrDelta(msr));
@@ -124,16 +123,8 @@ void main(int argc,char **argv)
 				fflush(fpLog);			
 				}
 			else {
-				msrDrift(msr,dTime,0.5*msrDelta(msr));
-				msrMassCheck(msr,dMass,"After msrDrift-1 in DKD");
-				msrBuildTree(msr,0,dMass);
-				msrMassCheck(msr,dMass,"After msrBuildTree in DKD");
-				msrGravity(msr,iStep-0.5,&iSec,&dWMax,&dIMax,&dEMax);
-				msrMassCheck(msr,dMass,"After msrGravity in DKD");
-				msrKick(msr,dTime,msrDelta(msr));
-				msrMassCheck(msr,dMass,"After msrKick in DKD");
-				msrDrift(msr,dTime+0.5*msrDelta(msr),0.5*msrDelta(msr));
-				msrMassCheck(msr,dMass,"After msrDrift-2 in DKD");
+			        msrTopStep(msr, dTime, msrDelta(msr), 0);
+
 				dTime += msrDelta(msr);
 				if (iStep%msrLogInterval(msr) == 0) {
 					/*

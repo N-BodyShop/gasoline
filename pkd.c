@@ -1559,10 +1559,12 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo)
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
+	    if(p[i].iActive) {
 		for (j=0;j<3;++j) {
 			p[i].v[j] = p[i].v[j]*dvFacOne + p[i].a[j]*dvFacTwo;
 			}
 		}
+	    }
 	}
 
 
@@ -1775,5 +1777,65 @@ double pkdMassCheck(PKD pkd)
 	return(dMass);
 	}
 
+void
+pkdSetRung(PKD pkd, int iRung)
+{
+    int i;
+    
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+	pkd->pStore[i].iRung = iRung;
+	}
+    }
 
+void
+pkdActiveRung(PKD pkd, int iRung, int bGreater)
+{
+    int i;
+    
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+	if(pkd->pStore[i].iRung == iRung
+	   || (bGreater && pkd->pStore[i].iRung > iRung))
+	    pkd->pStore[i].iActive = 1;
+	else
+	    pkd->pStore[i].iActive = 0;
+	}
+    }
 
+int
+pkdCurrRung(PKD pkd, int iRung)
+{
+    int i;
+    int iCurrent;
+    
+    iCurrent = 0;
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+	if(pkd->pStore[i].iRung == iRung) {
+	    iCurrent = 1;
+	    break;
+	    }
+	}
+    return iCurrent;
+    }
+
+int
+pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta, double dRhoFac)
+{
+    int i;
+    int iMaxRung;
+    
+    iMaxRung = 0;
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+	if(pkd->pStore[i].iRung >= iRung) {
+	    assert(pkd->pStore[i].iActive == 1);
+	    if(dDelta*sqrt(pkd->pStore[i].fDensity*dRhoFac) < dEta) {
+		pkd->pStore[i].iRung = iRung;
+		}
+	    else {
+		pkd->pStore[i].iRung = iRung+1;
+		}
+	    }
+	if(pkd->pStore[i].iRung > iMaxRung)
+	    iMaxRung = pkd->pStore[i].iRung;
+	}
+    return iMaxRung;
+    }

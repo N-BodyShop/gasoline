@@ -25,6 +25,7 @@
 typedef struct particle {
 	int iOrder;
 	int iActive;
+        int iRung;
 	float fWeight;
 	float fMass;
 	float fSoft;
@@ -276,4 +277,8 @@ void pkdCalcRoot(PKD,struct ilCellNewt *);
 void pkdDistribRoot(PKD,struct ilCellNewt *);
 void pkdSwapAll(PKD pkd, int idSwap);
 double pkdMassCheck(PKD pkd);
+void pkdActiveRung(PKD pkd, int iRung, int bGreater);
+int pkdCurrRung(PKD pkd, int iRung);
+int pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta,
+		  double dRhoFac);
 #endif

@@ -24,6 +24,7 @@ typedef struct msrContext {
 	 */
 	int nThreads;
 	int N;
+        int iCurrMaxRung;
 	int bOpenSpec;	/* was an opening parameter specified (used by +restart) */
 	int iOpenType;
 	double dCrit;

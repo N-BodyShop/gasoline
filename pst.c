@@ -1785,4 +1785,87 @@ void pstMassCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = sizeof(struct outMassCheck);
 	}
 
+void
+pstSetRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inSetRung *in = vin;
+	
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_SETRUNG,vin,nIn);
+		pstSetRung(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdSetRung(plcl->pkd, in->iRung);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void
+pstActiveRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inActiveRung *in = vin;
+	
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_ACTIVERUNG,vin,nIn);
+		pstActiveRung(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdActiveRung(plcl->pkd, in->iRung, in->bGreater);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void
+pstCurrRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inCurrRung *in = vin;
+	struct outCurrRung *out = vout;
+	int iCurrent;
+	
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_CURRRUNG,vin,nIn);
+		pstCurrRung(pst->pstLower,vin,nIn,vout,pnOut);
+		iCurrent = out->iCurrent;
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		if(iCurrent)
+		    out->iCurrent = iCurrent;
+		}
+	else {
+		out->iCurrent = pkdCurrRung(plcl->pkd, in->iRung);
+		}
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+void
+pstDensityRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inDensityRung *in = vin;
+	struct outDensityRung *out = vout;
+	int iMaxRung;
+	
+	assert(nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DENSITYRUNG,vin,nIn);
+		pstDensityRung(pst->pstLower,vin,nIn,vout,pnOut);
+		iMaxRung = out->iMaxRung;
+		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+		if(iMaxRung > out->iMaxRung)
+		    out->iMaxRung = iMaxRung;
+		}
+	else {
+		out->iMaxRung = pkdDensityRung(plcl->pkd, in->iRung,
+					       in->dDelta, in->dEta,
+					       in->dRhoFac);
+		}
+	if (pnOut) *pnOut = sizeof(*out);
+	}
 

@@ -126,6 +126,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv,char *pszDefaultName)
 	msr->param.dDelta = 0.0;
 	prmAddParam(msr->prm,"dDelta",2,&msr->param.dDelta,sizeof(double),"dt",
 				"<time step>");
+	msr->param.dEta = 0.1;
+	prmAddParam(msr->prm,"dEta",2,&msr->param.dEta,sizeof(double),"eta",
+				"<time step criterion>");
+	msr->param.iMaxRung = 1;
+	prmAddParam(msr->prm,"iMaxRung",1,&msr->param.iMaxRung,sizeof(int),
+		    "mrung", "<maximum timestep rung>");
 	msr->param.dEwCut = 2.6;
 	prmAddParam(msr->prm,"dEwCut",2,&msr->param.dEwCut,sizeof(double),"ew",
 				"<dEwCut> = 2.6");
@@ -1881,12 +1887,108 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 	else return(out.dMass);
 	}
 
+void
+msrInitStep(MSR msr)
+{
+    struct inSetRung in;
 
+    in.iRung = msr->param.iMaxRung - 1;
+    pstSetRung(msr->pst, &in, sizeof(in), NULL, NULL);
+    msr->iCurrMaxRung = in.iRung;
+    }
 
+int
+msrMaxRung(MSR msr)
+{
+    return msr->param.iMaxRung;
+    }
 
+int msrCurrMaxRung(MSR msr)
+{
+    return msr->iCurrMaxRung;
+    }
 
+double
+msrEta(MSR msr)
+{
+    return msr->param.dEta;
+    }
 
+void
+msrActiveRung(MSR msr, int iRung, int bGreater)
+{
+    struct inActiveRung in;
 
+    in.iRung = iRung;
+    in.bGreater = bGreater;
+    pstActiveRung(msr->pst, &in, sizeof(in), NULL, NULL);
+    }
 
+int
+msrCurrRung(MSR msr, int iRung)
+{
+    struct inCurrRung in;
+    struct outCurrRung out;
 
+    in.iRung = iRung;
+    pstCurrRung(msr->pst, &in, sizeof(in), &out, NULL);
+    return out.iCurrent;
+    }
 
+void
+msrDensityRung(MSR msr, int iRung, double dDelta, double dTime)
+{
+    struct inDensityRung in;
+    struct outDensityRung out;
+    double expand;
+
+    msrDensity(msr);
+    in.iRung = iRung;
+    in.dDelta = dDelta;
+    in.dEta = msrEta(msr);
+    expand = msrTime2Exp(msr, dTime);
+    in.dRhoFac = 1.0/(expand*expand*expand);
+    pstDensityRung(msr->pst, &in, sizeof(in), &out, NULL);
+    msr->iCurrMaxRung = out.iMaxRung;
+    }
+
+msrTopStep(MSR msr, double dTime, double dDelta, int iRung)
+{
+    double dMass = -1.0;
+    int iSec;
+    double dWMax, dIMax, dEMax;
+
+	if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
+	    if(iRung < msrMaxRung(msr)-1 && msrCurrMaxRung(msr) > iRung) {
+		if (msr->param.bVerbose) {
+		      printf("Adjust, iRung: %d\n", iRung);
+		      }
+
+		msrDrift(msr,dTime,0.5*dDelta);
+		msrActiveRung(msr, iRung, 1);
+		msrBuildTree(msr,1,dMass);
+		msrDensityRung(msr,iRung, dDelta, dTime+0.5*dDelta);
+		msrDrift(msr,dTime,-0.5*dDelta);
+		}
+		/*
+		 ** Actual Stepping.
+		 */
+		msrTopStep(msr, dTime, 0.5*dDelta,iRung+1);
+		if(msrCurrRung(msr, iRung)) {
+			if (msr->param.bVerbose) {
+			    printf("Kick, iRung: %d\n", iRung);
+			    }
+			msrActiveRung(msr, iRung, 0);
+			msrBuildTree(msr,1,dMass);
+			msrGravity(msr,dTime,&iSec,&dWMax,&dIMax,&dEMax);
+			msrKick(msr, dTime, dDelta);
+			}
+		msrTopStep(msr, dTime+0.5*dDelta, 0.5*dDelta,iRung+1);
+		}
+	else {    
+		if (msr->param.bVerbose) {
+		    printf("Drift, iRung: %d\n", iRung);
+		    }
+		msrDrift(msr,dTime,dDelta);
+		}
+	}
