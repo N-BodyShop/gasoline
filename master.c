@@ -271,12 +271,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoDensity = 1;
 	prmAddParam(msr->prm,"bDoDensity",0,&msr->param.bDoDensity,sizeof(int),
 				"den","enable/disable density outputs = +den");
+	msr->param.bDoIOrderOutput = 0;
+	prmAddParam(msr->prm,"bDoIOrderOutput",0,&msr->param.bDoIOrderOutput,
+		    sizeof(int), "iordout","enable/disable iOrder outputs = -iorderout");
 	msr->param.bDohOutput = 0;
 	prmAddParam(msr->prm,"bDohOutput",0,&msr->param.bDohOutput,sizeof(int),
-				"hout","enable/disable h outputs = +hout");
+				"hout","enable/disable h outputs = -hout");
 	msr->param.bDoSphhOutput = 0;
 	prmAddParam(msr->prm,"bDoSphhOutput",0,&msr->param.bDoSphhOutput,sizeof(int),
-				"sphhout","enable/disable Sph h outputs = +sphhout");
+				"sphhout","enable/disable Sph h outputs = -sphhout");
 	msr->param.bDodtOutput = 0;
 	prmAddParam(msr->prm,"bDodtOutput",0,&msr->param.bDodtOutput,sizeof(int),
 				"dtout","enable/disable dt outputs = -dtout");
@@ -5867,7 +5870,7 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 	smooth.bPeriodic = msr->param.bPeriodic;
 	smooth.bSymmetric = 0;
 	smooth.iSmoothType = SMX_COLLISION;
-	smooth.dfBall2OverSoft2 = 0; /*DEBUG what is this for???*/
+	smooth.dfBall2OverSoft2 = 0; /* No softening limit */
 	smooth.smf.dTime = dTime;
 	smooth.smf.dStart = 0;
 	smooth.smf.dEnd = dDelta;

@@ -31,6 +31,7 @@ struct parameters {
 	int nTruncateRung;
 	int bNonSymp;
 	int bDoDensity;
+ 	int bDoIOrderOutput;
  	int bDohOutput;
  	int bDoSphhOutput;
 	int bDodtOutput;

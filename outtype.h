@@ -32,6 +32,7 @@
 #define OUT_USN_ARRAY           31
 #endif
 #define OUT_SOFT_ARRAY          32
+#define OUT_IORDER_ARRAY	33
 
 #define OUT_H_ARRAY			19
 

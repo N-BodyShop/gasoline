@@ -13,6 +13,8 @@
 FLOAT ArrType(PARTICLE *p,int iType)
 {
 	switch (iType) {
+	case OUT_IORDER_ARRAY:
+	    return((FLOAT) p->iOrder);
 	case OUT_DENSITY_ARRAY:
 		return(p->fDensity);
 	case OUT_COLOR_ARRAY:

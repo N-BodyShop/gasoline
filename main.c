@@ -353,6 +353,12 @@ int main(int argc,char **argv)
 #else
 				msrWriteTipsy(msr,achFile,dTime);
 #endif
+				if(msr->param.bDoIOrderOutput) {
+				    sprintf(achFile,achBaseMask,
+					    msrOutName(msr),iStep);
+				    strncat(achFile,".iord",256);
+				    msrOutArray(msr,achFile,OUT_IORDER_ARRAY);
+				    }
 				if (msrDoDensity(msr) || msr->param.bDohOutput) {
 					msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 					msrDomainDecomp(msr,0,1);
