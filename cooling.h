@@ -1,5 +1,9 @@
 /* Global consts */
+#if defined(COOLDEBUG) || defined(STARFORM)
 #include "mdl.h"
+#else
+#define mdlDiag
+#endif
 
 #define CL_B_gm         (6.022e23*(938.7830/931.494))
 #define CL_k_Boltzmann  1.38066e-16
@@ -82,7 +86,7 @@ typedef struct {
 
 /* Heating Cooling Context */
 
-typedef struct { 
+typedef struct CoolingContextStruct { 
    double     z; /* Redshift */
  /* Rates independent of Temperature */ 
    RATES_NO_T  R;
@@ -107,9 +111,12 @@ typedef struct {
    double     Y_H;
    double     Y_He;
    double     Y_eMAX;
+   void       *DerivsData;
 
+#if defined(COOLDEBUG) || defined(STARFORM)
    MDL        mdl; /* For diag/debug outputs */
    struct particle *p; /* particle pointer needed for SN feedback */
+#endif
    
 } CL;
 
@@ -143,7 +150,22 @@ typedef struct {
 } COOL_ERGPERSPERGM;
 
 
-void clInitConstants(CL *cl, double dGMPerCcunit, double dComovingGmPerCcUnit,
+typedef struct clDerivsDataStruct {
+  void *IntegratorContext;
+  CL *cl;
+  double rho,PdV,E;
+  RATE Rate;
+  PERBARYON Y;
+  double     Y_Total0, Y_Total1;
+  double     dlnE;
+  int        its;  /* Debug */
+} clDerivsData;
+
+
+CL *clInit( );
+void clFinalize( CL *cl );
+
+void clInitConstants( CL *cl, double dGMPerCcunit, double dComovingGmPerCcUnit,
 		     double dErgPerGmUnit, double dSecUnit, double dMassFracHelium);
 void clInitUV( CL *cl, UVSPECTRUM *UV, int nUV);
 void clInitRatesTable( CL *cl, double TMin, double TMax, int nTable );
@@ -173,6 +195,7 @@ double clCoolRadrHeIII( double T );
 double clCoolLineHI( double T );
 double clCoolLineHeI( double T );
 double clCoolLineHeII( double T );
+double clEdotInstant ( CL *cl, PERBARYON *Y, RATE *Rate, double rho );
 double clEdot( CL *cl, PERBARYON *Y, RATE *Rate, double rho, 
 	       PERBARYON *Y1, PERBARYON *Y2, double dt);
 double clEdot_new( CL *cl, RATE *R1, RATE *R2, double rho, 
@@ -185,6 +208,9 @@ void clIntegrateEnergyDEBUG(CL *cl, PERBARYON *Y, double *E,
 		       double PdV, double rho, double dt );
 
 
+void clDerivs(void *Data, double x, double *y, double *dydx) ;
+
+void clJacobn(void *Data, double x, double y[], double dfdx[], double **dfdy) ;
   
 
 

@@ -73,7 +73,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     PERBARYON Y;
     RATE Rate;
     double T;
-    CL *cl = &(pkd->cl);
+    CL *cl = pkd->cl;
     double dExp = 1.0/(1.0 + cl->z);
     double dCosmoFac = dExp*dExp*dExp;
     PARTICLE starp;

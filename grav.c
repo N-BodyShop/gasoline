@@ -182,7 +182,7 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			idt2 = (p[i].fMass + ilcn[j].m)*gam[1];
 			if (idt2 > p[i].dtGrav) p[i].dtGrav = idt2;
 			}
-		p[i].fPot = fPot;
+		p[i].fPot += fPot;
 		p[i].a[0] += ax;
 		p[i].a[1] += ay;
 		p[i].a[2] += az;

@@ -22,7 +22,8 @@ EXE = gasoline
 
 #CC = cc
 # -DSUPERNOVA
-CODEDEF = -DGASOLINE  -DSTARFORM
+CODEDEF = -DGASOLINE -DSTARFORM
+#CODEDEF = -DGASOLINE  -DSTARFORM -DPRES_HK
 
 #
 #       NULL defines
@@ -34,8 +35,8 @@ NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -O3 -g3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(CODEDEF)
 #NULL_CFLAGS            = -fast -I$(NULL_MDL) $(CODEDEF)
-NULL_CFLAGS		= -O2 -I$(NULL_MDL) $(CODEDEF)
-#NULL_CFLAGS		= -g -I$(NULL_MDL) $(CODEDEF)
+#NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(CODEDEF)
+NULL_CFLAGS		= -g -I$(NULL_MDL) $(CODEDEF)
 #NULL_LD_FLAGS	= -Wl,-s
 NULL_XOBJ		= erf.o v_sqrt1.o
 NULL_LIBMDL		= $(NULL_MDL)/mdl.o -lm
@@ -157,7 +158,7 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
 	  smoothfcn.o collision.o qqsmooth.o cooling.o cosmo.o romberg.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
-	  startime.o
+	  startime.o stiff.o
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 

@@ -326,7 +326,7 @@ typedef struct pkdContext {
 	/* 
 	 ** Cooling 
 	 */
-	CL cl;
+	CL *cl;
 #endif
 #ifdef SLIDING_PATCH
 	/*
@@ -517,6 +517,7 @@ void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int nMaxOrderGas,
 void pkdSunIndirect(PKD,double *,int,double);
 void pkdLogHalo(PKD);
 void pkdHernquistSpheroid(PKD pkd);
+void pkdHomogSpheroid(PKD pkd);
 void pkdMiyamotoDisk(PKD pkd);
 #ifdef ROT_FRAME
 void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);

@@ -540,6 +540,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bHernquistSpheroid = 0;
 	prmAddParam(msr->prm,"bHernquistSpheroid",0,&msr->param.bHernquistSpheroid,
 				sizeof(int),"hspher","use/don't use galaxy Hernquist Spheroid = -hspher");
+	msr->param.bHomogSpheroid = 0;
+	prmAddParam(msr->prm,"bHomogSpheroid",0,&msr->param.bHomogSpheroid,
+				sizeof(int),"hspher","use/don't use galaxy Homog Spheroid = -homogspher");
 	msr->param.bMiyamotoDisk = 0;
 	prmAddParam(msr->prm,"bMiyamotoDisk",0,&msr->param.bMiyamotoDisk,
 				sizeof(int),"mdisk","use/don't use galaxy Miyamoto Disk = -mdisk");
@@ -1359,6 +1362,12 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef CRAY_T3D
 	fprintf(fp," CRAY_T3D");
 #endif
+#ifdef PRES_MONAGHAN
+	fprintf(fp," PRES_MONAGHAN");
+#endif 
+#ifdef PRES_HK
+	fprintf(fp," PRES_HK");
+#endif 
 #ifdef MAXHOSTNAMELEN
 	{
 	char hostname[MAXHOSTNAMELEN];
@@ -1797,7 +1806,6 @@ double msrReadTipsy(MSR msr)
 	assert(msr->N == msr->nDark+msr->nGas+msr->nStar);
 #ifndef GASOLINE
 	if (msr->nGas != 0) fprintf(stderr,"GASOLINE compile flag not set:  Treating %d Gas particles as Dark\n",msr->nGas);
-	assert(msr->nStar == 0);
 #endif
 	if (msrComove(msr)) {
 		if(msr->param.csm->dHubble0 == 0.0) {
@@ -2730,7 +2738,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	 ** replace this test with something like bAnyExternal.
 	 */
 	if (msr->param.bHeliocentric || msr->param.bLogHalo || 
-		msr->param.bHernquistSpheroid || msr->param.bMiyamotoDisk) {
+		msr->param.bHernquistSpheroid || msr->param.bHomogSpheroid || msr->param.bMiyamotoDisk) {
 		/*
 		 ** Only allow inclusion of solar terms if we are in Heliocentric 
 		 ** coordinates.
@@ -2741,6 +2749,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		for (j=0;j<3;++j) inExt.aSun[j] = out.aSun[j];
 		inExt.bLogHalo = msr->param.bLogHalo;
 		inExt.bHernquistSpheroid = msr->param.bHernquistSpheroid;
+		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
 		}
@@ -4594,6 +4603,7 @@ void msrTopStepKDK(MSR msr,
 		msrDomainDecomp(msr,iKickRung,1);
 		msrInitAccel(msr);
 
+		if (msr->param.bVStep) printf("Forces, Step:%f\n",dStep);
 		if(msrDoGravity(msr)) {
 			msrActiveRung(msr,iKickRung,1);
 			msrUpdateSoft(msr,dTime);

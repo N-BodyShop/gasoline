@@ -41,6 +41,7 @@ struct parameters {
 	int bHeliocentric;
 	int bLogHalo;
 	int bHernquistSpheroid;
+	int bHomogSpheroid;
 	int bMiyamotoDisk;
 	int bRotFrame;
 	double dOmega;

@@ -2997,6 +2997,9 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (in->bHernquistSpheroid) {
 			pkdHernquistSpheroid(plcl->pkd);
 			}
+		if (in->bHomogSpheroid) {
+			pkdHomogSpheroid(plcl->pkd);
+			}
 		if (in->bMiyamotoDisk) {
 			pkdMiyamotoDisk(plcl->pkd);
 			}
@@ -4173,11 +4176,13 @@ void pstInitCooling(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		(plcl->pkd->cl).mdl = plcl->pkd->mdl;
-		clInitConstants(&(plcl->pkd->cl),in->dGmPerCcUnit,in->dComovingGmPerCcUnit,
+#if defined(STARFORM) || defined(COOLDEBUG)
+		(plcl->pkd->cl)->mdl = plcl->pkd->mdl;
+#endif
+		clInitConstants((plcl->pkd->cl),in->dGmPerCcUnit,in->dComovingGmPerCcUnit,
 						in->dErgPerGmUnit,in->dSecUnit,in->dMassFracHelium);
-		clInitRatesTable(&(plcl->pkd->cl),in->Tmin,in->Tmax,in->nTable);
-		clRatesRedshift(&(plcl->pkd->cl),in->z);
+		clInitRatesTable((plcl->pkd->cl),in->Tmin,in->Tmax,in->nTable);
+		clRatesRedshift((plcl->pkd->cl),in->z);
 		}
 #endif
 	if (pnOut) *pnOut = 0;
@@ -4194,7 +4199,7 @@ void pstInitUV(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		clInitUV(&(plcl->pkd->cl),vin,nIn/sizeof(UVSPECTRUM));
+		clInitUV((plcl->pkd->cl),vin,nIn/sizeof(UVSPECTRUM));
 		}
 #endif
 	if (pnOut) *pnOut = 0;

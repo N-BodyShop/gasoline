@@ -8,6 +8,25 @@
 #include "collision.h" /* for definition of WALLS */
 #endif
 
+
+/* Benz Method (Default) */
+#if !defined(PRES_MONAGHAN) && !defined(PRES_HK)
+#define PRES_PDV(a,b) (a)
+#define PRES_ACC(a,b) (a+b)
+#endif
+
+/* Monaghan Method */
+#ifdef PRES_MONAGHAN
+#define PRES_PDV(a,b) ((a+b)*0.5)
+#define PRES_ACC(a,b) (a+b)
+#endif
+
+/* HK */
+#ifdef PRES_HK
+#define PRES_PDV(a,b) sqrt(a*b)
+#define PRES_ACC(a,b) (sqrt(a*b)*2)
+#endif
+
 typedef struct smfParameters {
 	double H;
 	double a;

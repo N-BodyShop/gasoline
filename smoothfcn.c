@@ -486,8 +486,8 @@ void SphPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dvz = p->vPred[2] - q->vPred[2];
 		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
 		if (dvdotdr>0.0) {
-			pPdV += rs1 * pPoverRho2 * dvdotdr;
-			rs1 *= (pPoverRho2 + q->PoverRho2);
+			pPdV += rs1 * PRES_PDV(pPoverRho2,q->PoverRho2) * dvdotdr;
+			rs1 *= PRES_ACC(pPoverRho2,q->PoverRho2);
 			pa[0] -= rs1 * dx;
 			pa[1] -= rs1 * dy;
 			pa[2] -= rs1 * dz;
@@ -505,8 +505,8 @@ void SphPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			visc = SWITCHCOMBINE(p,q)*
 				(smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
 					*absmu/(pDensity + q->fDensity);
-		        pPdV += rs1 * (pPoverRho2 + 0.5*visc)*dvdotdr;
-			rs1 *= (pPoverRho2 + q->PoverRho2 + visc);
+		        pPdV += rs1 * (PRES_PDV(pPoverRho2,q->PoverRho2) + 0.5*visc)*dvdotdr;
+			rs1 *= PRES_ACC(pPoverRho2,q->PoverRho2) + visc;
 			pa[0] -= rs1 * dx;
 			pa[1] -= rs1 * dy;
 			pa[2] -= rs1 * dz;
@@ -577,14 +577,14 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 						mdlDiag(smf->pkd->mdl,ach);
 						}
 #endif
-					pPdV += rq*pPoverRho2*dvdotdr;
-					q->PdV += rp*q->PoverRho2*dvdotdr;
+					pPdV += rq*PRES_PDV(pPoverRho2,q->PoverRho2)*dvdotdr;
+					q->PdV += rp*PRES_PDV(q->PoverRho2,pPoverRho2)*dvdotdr;
 #ifdef PDVDEBUG
-					p->PdVpres += rq*(pPoverRho2)*dvdotdr;
-					q->PdVpres += rp*(q->PoverRho2)*dvdotdr;
+					p->PdVpres += rq*PRES_PDV(pPoverRho2,q->PoverRho2)*dvdotdr;
+					q->PdVpres += rp*PRES_PDV(q->PoverRho2,pPoverRho2)*dvdotdr;
 #endif
-					rq *= (pPoverRho2 + q->PoverRho2);
-					rp *= (pPoverRho2 + q->PoverRho2);
+					rq *= (PRES_ACC(pPoverRho2,q->PoverRho2));
+					rp *= (PRES_ACC(pPoverRho2,q->PoverRho2));
 					rp *= aFac; /* convert to comoving acceleration */
 					rq *= aFac;
 					pa[0] -= rq * dx;
@@ -622,16 +622,16 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 						mdlDiag(smf->pkd->mdl,ach);
 						}
 #endif
-					pPdV += rq*(pPoverRho2 + 0.5*visc)*dvdotdr;
-					q->PdV += rp*(q->PoverRho2 + 0.5*visc)*dvdotdr;
+					pPdV += rq*(PRES_PDV(pPoverRho2,q->PoverRho2) + 0.5*visc)*dvdotdr;
+					q->PdV += rp*(PRES_PDV(q->PoverRho2,pPoverRho2) + 0.5*visc)*dvdotdr;
 #ifdef PDVDEBUG			
-					p->PdVpres += rq*(pPoverRho2)*dvdotdr;
-					q->PdVpres += rp*(q->PoverRho2)*dvdotdr;
+					p->PdVpres += rq*(PRES_PDV(pPoverRho2,q->PoverRho2))*dvdotdr;
+					q->PdVpres += rp*(PRES_PDV(q->PoverRho2,pPoverRho2))*dvdotdr;
 					p->PdVvisc += rq*(0.5*visc)*dvdotdr;
 					q->PdVvisc += rp*(0.5*visc)*dvdotdr;
 #endif
-					rq *= (pPoverRho2 + q->PoverRho2 + visc);
-					rp *= (pPoverRho2 + q->PoverRho2 + visc);
+					rq *= (PRES_ACC(pPoverRho2,q->PoverRho2) + visc);
+					rp *= (PRES_ACC(pPoverRho2,q->PoverRho2) + visc);
 					rp *= aFac; /* convert to comoving acceleration */
 					rq *= aFac;
 
@@ -659,11 +659,11 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 						}
 #endif
 
-					pPdV += rq*pPoverRho2*dvdotdr;
+					pPdV += rq*PRES_PDV(pPoverRho2,q->PoverRho2)*dvdotdr;
 #ifdef PDVDEBUG
-  					p->PdVpres += rq*(pPoverRho2)*dvdotdr;
+  					p->PdVpres += rq*(PRES_PDV(pPoverRho2,q->PoverRho2))*dvdotdr;
 #endif
-					rq *= (pPoverRho2 + q->PoverRho2);
+					rq *= (PRES_ACC(pPoverRho2,q->PoverRho2));
 					rq *= aFac; /* convert to comoving acceleration */
 
 					pa[0] -= rq*dx;
@@ -696,12 +696,12 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 						}
 #endif
 
-					pPdV += rq*(pPoverRho2 + 0.5*visc)*dvdotdr;
+					pPdV += rq*(PRES_PDV(pPoverRho2,q->PoverRho2) + 0.5*visc)*dvdotdr;
 #ifdef PDVDEBUG			
-  					p->PdVpres += rq*(pPoverRho2)*dvdotdr;
+  					p->PdVpres += rq*(PRES_PDV(pPoverRho2,q->PoverRho2))*dvdotdr;
 					p->PdVvisc += rq*(0.5*visc)*dvdotdr;
 #endif
-					rq *= (pPoverRho2 + q->PoverRho2 + visc);
+					rq *= (PRES_ACC(pPoverRho2,q->PoverRho2) + visc);
 					rq *= aFac; /* convert to comoving acceleration */
 
 					pa[0] -= rq*dx;
@@ -744,12 +744,12 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			if (dvdotdr>0.0) {
 #ifdef PDVCHECK
 #endif
-				q->PdV += rp*q->PoverRho2*dvdotdr;
+				q->PdV += rp*PRES_PDV(q->PoverRho2,pPoverRho2)*dvdotdr;
 #ifdef PDVDEBUG			
-				q->PdVpres += rp*(q->PoverRho2)*dvdotdr;
+				q->PdVpres += rp*(PRES_PDV(q->PoverRho2,pPoverRho2))*dvdotdr;
 #endif
 
-				rp *= (pPoverRho2 + q->PoverRho2);
+				rp *= (PRES_ACC(pPoverRho2,q->PoverRho2));
 				rp *= aFac; /* convert to comoving acceleration */
 
 		        ACCEL(q,0) += rp*dx;
@@ -777,12 +777,12 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				  *absmu/(pDensity + q->fDensity);
 #ifdef PDVCHECK
 #endif
-				q->PdV += rp*(q->PoverRho2 + 0.5*visc)*dvdotdr;
+				q->PdV += rp*(PRES_PDV(q->PoverRho2,pPoverRho2) + 0.5*visc)*dvdotdr;
 #ifdef PDVDEBUG			
-				q->PdVpres += rp*(q->PoverRho2)*dvdotdr;
+				q->PdVpres += rp*(PRES_PDV(q->PoverRho2,pPoverRho2))*dvdotdr;
 				q->PdVvisc += rp*(0.5*visc)*dvdotdr;
 #endif
-				rp *= (pPoverRho2 + q->PoverRho2 + visc);
+				rp *= (PRES_ACC(pPoverRho2,q->PoverRho2) + visc);
 				rp *= aFac; /* convert to comoving acceleration */
 
 		        ACCEL(q,0) += rp*dx;
@@ -901,11 +901,11 @@ void SphPressure(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dvz = p->vPred[2] - q->vPred[2];
 		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
 		if (dvdotdr>0.0) {
-			pPdV += rs1 * pPoverRho2 * dvdotdr;
+			pPdV += rs1 * PRES_PDV(pPoverRho2,q->PoverRho2) * dvdotdr;
 #ifdef PDVDEBUG
-			p->PdVpres += fNorm1*rs1 * (pPoverRho2)*dvdotdr;
+			p->PdVpres += fNorm1*rs1 * (PRES_PDV(pPoverRho2,q->PoverRho2))*dvdotdr;
 #endif
-			rs1 *= (pPoverRho2 + q->PoverRho2);
+			rs1 *= (PRES_ACC(pPoverRho2,q->PoverRho2));
 			pa[0] -= rs1 * dx;
 			pa[1] -= rs1 * dy;
 			pa[2] -= rs1 * dz;
@@ -923,11 +923,11 @@ void SphPressure(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			visc = SWITCHCOMBINE(p,q)*
 			  (smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
 			  *absmu/(pDensity + q->fDensity);
-		        pPdV += rs1 * (pPoverRho2 + 0.5*visc)*dvdotdr;
+		        pPdV += rs1 * (PRES_PDV(pPoverRho2,q->PoverRho2) + 0.5*visc)*dvdotdr;
 #ifdef PDVDEBUG
-			p->PdVpres += fNorm1*rs1 * (pPoverRho2 + 0.5*visc)*dvdotdr;
+			p->PdVpres += fNorm1*rs1 * (PRES_PDV(pPoverRho2,q->PoverRho2) + 0.5*visc)*dvdotdr;
 #endif
-			rs1 *= (pPoverRho2 + q->PoverRho2 + visc);
+			rs1 *= (PRES_ACC(pPoverRho2,q->PoverRho2) + visc);
 			pa[0] -= rs1 * dx;
 			pa[1] -= rs1 * dy;
 			pa[2] -= rs1 * dz;
@@ -987,14 +987,14 @@ void SphPressureSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			if (TYPEQueryACTIVE(q)) {
 				/* q active */
 			        rp = rs1 * pMass;
-				pPdV += rq*pPoverRho2*dvdotdr;
-				q->PdV += rp*q->PoverRho2*dvdotdr;
+				pPdV += rq*PRES_PDV(pPoverRho2,q->PoverRho2)*dvdotdr;
+				q->PdV += rp*PRES_PDV(q->PoverRho2,pPoverRho2)*dvdotdr;
 #ifdef PDVDEBUG
-				p->PdVpres += rq*pPoverRho2*dvdotdr;
-				q->PdVpres += rp*q->PoverRho2*dvdotdr;
+				p->PdVpres += rq*PRES_PDV(pPoverRho2,q->PoverRho2)*dvdotdr;
+				q->PdVpres += rp*PRES_PDV(q->PoverRho2,pPoverRho2)*dvdotdr;
 #endif
-				rq *= (pPoverRho2 + q->PoverRho2);
-				rp *= (pPoverRho2 + q->PoverRho2);
+				rq *= (PRES_ACC(pPoverRho2,q->PoverRho2));
+				rp *= (PRES_ACC(pPoverRho2,q->PoverRho2));
 				rp *= aFac; /* convert to comoving acceleration */
 				rq *= aFac;
 				pa[0] -= rq * dx;
@@ -1006,11 +1006,11 @@ void SphPressureSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
               		        }
 			else {
 				/* q not active */
-			        pPdV += rq*pPoverRho2*dvdotdr;
+			        pPdV += rq*PRES_PDV(pPoverRho2,q->PoverRho2)*dvdotdr;
 #ifdef PDVDEBUG
-			        p->PdVpres += rq*pPoverRho2*dvdotdr;
+			        p->PdVpres += rq*PRES_PDV(pPoverRho2,q->PoverRho2)*dvdotdr;
 #endif
-				rq *= (pPoverRho2 + q->PoverRho2);
+				rq *= (PRES_ACC(pPoverRho2,q->PoverRho2));
 				rq *= aFac; /* convert to comoving acceleration */
 
 				pa[0] -= rq*dx;
@@ -1043,11 +1043,11 @@ void SphPressureSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			dvz = p->vPred[2] - q->vPred[2];
 			dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) +
 				nnList[i].fDist2*smf->H;
-			q->PdV += rp*q->PoverRho2*dvdotdr;
+			q->PdV += rp*PRES_PDV(q->PoverRho2,pPoverRho2)*dvdotdr;
 #ifdef PDVDEBUG
-			q->PdVpres += rp*q->PoverRho2*dvdotdr;
+			q->PdVpres += rp*PRES_PDV(q->PoverRho2,pPoverRho2)*dvdotdr;
 #endif
-			rp *= (pPoverRho2 + q->PoverRho2);
+			rp *= (PRES_ACC(pPoverRho2,q->PoverRho2));
 			rp *= aFac; /* convert to comoving acceleration */
 
 		        ACCEL_PRES(q,0) += rp*dx;
@@ -1629,8 +1629,8 @@ void HKPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
 
 		if (dvdotdr>0.0) {
-			p->PdV += rs1*pPoverRho2*dvdotdr;
-			rs1 *= (pPoverRho2 + q->PoverRho2);
+			p->PdV += rs1*PRES_PDV(pPoverRho2,q->PoverRho2)*dvdotdr;
+			rs1 *= (PRES_ACC(pPoverRho2,q->PoverRho2));
 			rs1 *= aFac;
 			ACCEL(p,0) -= rs1*dx;
 			ACCEL(p,1) -= rs1*dy;
@@ -1647,8 +1647,8 @@ void HKPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			absmu = -hav*dvdotdr*smf->a
 				/(nnList[i].fDist2+0.01*hav*hav);
 			if (absmu>p->mumax) p->mumax=absmu;
-			p->PdV += rs1 * (pPoverRho2 + 0.5*visc) * dvdotdr;
-			rs1 *= (pPoverRho2 + q->PoverRho2 + visc);
+			p->PdV += rs1 * (PRES_PDV(pPoverRho2,q->PoverRho2) + 0.5*visc) * dvdotdr;
+			rs1 *= (PRES_ACC(pPoverRho2,q->PoverRho2) + visc);
 			rs1 *= aFac; /* convert to comoving acceleration */
 			ACCEL(p,0) -= rs1*dx;
 			ACCEL(p,1) -= rs1*dy;
@@ -1700,20 +1700,20 @@ void HKPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 		if (dvdotdr>0.0) {
 			if (TYPEQueryACTIVE(p)) {
-		        p->PdV += rq*pPoverRho2*dvdotdr;
-			rq *= (pPoverRho2 + q->PoverRho2);
-			rq *= aFac;
-		        ACCEL(p,0) -= rq*dx;
-		        ACCEL(p,1) -= rq*dy;
-		        ACCEL(p,2) -= rq*dz;
+		                p->PdV += rq*PRES_PDV(pPoverRho2,q->PoverRho2)*dvdotdr;
+				rq *= (PRES_ACC(pPoverRho2,q->PoverRho2));
+				rq *= aFac;
+				ACCEL(p,0) -= rq*dx;
+				ACCEL(p,1) -= rq*dy;
+				ACCEL(p,2) -= rq*dz;
 		        }
 			if (TYPEQueryACTIVE(q)) {
-				q->PdV += rp*q->PoverRho2*dvdotdr;
-				rp *= (pPoverRho2 + q->PoverRho2);
+				q->PdV += rp*PRES_PDV(q->PoverRho2,pPoverRho2)*dvdotdr;
+				rp *= (PRES_ACC(pPoverRho2,q->PoverRho2));
 				rp *= aFac; /* convert to comoving acceleration */
 				ACCEL(q,0) += rp*dx;
-		        ACCEL(q,1) += rp*dy;
-		        ACCEL(q,2) += rp*dz;
+				ACCEL(q,1) += rp*dy;
+				ACCEL(q,2) += rp*dz;
 				}
 			}
 		else {
@@ -1727,21 +1727,21 @@ void HKPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			absmu = -hav*dvdotdr*smf->a/(nnList[i].fDist2+0.01*hav*hav);
 			if (TYPEQueryACTIVE(p)) {
 				if (absmu>p->mumax) p->mumax=absmu;
-		        p->PdV += rq*(pPoverRho2 + 0.5*visc)*dvdotdr;
-				rq *= (pPoverRho2 + q->PoverRho2 + visc);
+				p->PdV += rq*(PRES_PDV(pPoverRho2,q->PoverRho2) + 0.5*visc)*dvdotdr;
+				rq *= (PRES_ACC(pPoverRho2,q->PoverRho2) + visc);
 				rq *= aFac; /* convert to comoving acceleration */
-		        ACCEL(p,0) -= rq*dx;
-		        ACCEL(p,1) -= rq*dy;
-		        ACCEL(p,2) -= rq*dz;
+				ACCEL(p,0) -= rq*dx;
+				ACCEL(p,1) -= rq*dy;
+				ACCEL(p,2) -= rq*dz;
 		        }
 			if (TYPEQueryACTIVE(q)) {
 				if (absmu>q->mumax) q->mumax=absmu;
-				q->PdV += rp*(q->PoverRho2 + 0.5*visc)*dvdotdr;
-				rp *= (pPoverRho2 + q->PoverRho2 + visc);
+				q->PdV += rp*(PRES_PDV(q->PoverRho2,pPoverRho2) + 0.5*visc)*dvdotdr;
+				rp *= (PRES_ACC(pPoverRho2,q->PoverRho2) + visc);
 				rp *= aFac; /* convert to comoving acceleration */
-		        ACCEL(q,0) += rp*dx;
-		        ACCEL(q,1) += rp*dy;
-		        ACCEL(q,2) += rp*dz;
+				ACCEL(q,0) += rp*dx;
+				ACCEL(q,1) += rp*dy;
+				ACCEL(q,2) += rp*dz;
 				}
 			}
 		}

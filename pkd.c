@@ -189,7 +189,18 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	pkd->nMaxEwhLoop = 100;
 	pkd->ewt = malloc(pkd->nMaxEwhLoop*sizeof(EWT));
 	mdlassert(pkd->mdl,pkd->ewt != NULL);
+	/*
+	 * Cooling
+	 */
+#if defined(GASOLINE) && !defined(NOCOOLING)
+	pkd->cl = clInit();
+#else
+	pkd->cl = NULL;
+#endif	
+
 	*ppkd = pkd;
+
+
 	}
 
 
@@ -210,6 +221,9 @@ void pkdFinish(PKD pkd)
 	free(pkd->sqrttmp);
 	free(pkd->d2a);
 	free(pkd->ewt);
+#ifndef NOCOOLING
+	clFinalize(pkd->cl);
+#endif
 	mdlFree(pkd->mdl,pkd->pStore);
 	free(pkd);
 	}
@@ -1406,9 +1420,9 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 				case GASMODEL_COOLING:
 				case GASMODEL_COOLING_NONEQM:
 #ifndef NOCOOLING
-					vTemp = clTemperature(2*(pkd->cl).Y_H - p->Y_HI + 
-										  3*(pkd->cl).Y_He - 2*p->Y_HeI - p->Y_HeII,
-										  p->u*(pkd->cl).dErgPerGmUnit);
+					vTemp = clTemperature(2*(pkd->cl)->Y_H - p->Y_HI + 
+										  3*(pkd->cl)->Y_He - 2*p->Y_HeI - p->Y_HeII,
+										  p->u*(pkd->cl)->dErgPerGmUnit);
 #else
 					mdlassert(pkd->mdl,0);
 #endif
@@ -2756,6 +2770,37 @@ void pkdHernquistSpheroid(PKD pkd)
 	}
 
 
+void pkdHomogSpheroid(PKD pkd)
+{
+	PARTICLE *p;
+	int i,n;
+
+	const double M_s = 5;	
+	const double r_s = 10;
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i) {
+		if (TYPEQueryACTIVE(&(p[i]))) {
+			double x = p[i].r[0];
+			double y = p[i].r[1];
+			double z = p[i].r[2];
+			/*
+			 **	Do the spheroid potential
+			 */
+			double r = sqrt(x*x + y*y + z*z);
+			double Mr,A;
+			Mr = (r < r_s ? pow(r/r_s,3.)*M_s : M_s);
+			A = Mr/(r*r*r);
+			//			fprintf(stderr,"%i: %f %f %f  %f %f %f\n",p[i].iOrder,x,y,z,r,Mr,A);
+			p[i].a[0] -= A*x;
+			p[i].a[1] -= A*y;
+			p[i].a[2] -= A*z;
+			p[i].fPot += 2*( r < r_s ? 0.5*(Mr/r-3*M_s/r_s) : -M_s/r );
+			}
+		}
+	}
+
+
 void pkdMiyamotoDisk(PKD pkd)
 {
 	PARTICLE *p;
@@ -3084,6 +3129,10 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #else
 				p->uPred = p->u + p->PdV*duPredDelta;
 				p->u = p->u + p->PdV*duDelta;
+#endif
+#if defined(PRES_HK) || defined(PRES_MONAGHAN) 
+				if (p->uPred < 0) p->uPred = 0;
+				if (p->u < 0) p->u = 0;
 #endif
 #ifdef SUPERNOVA
                                 p->uSN += p->PdVSN*duDelta;	  
@@ -3921,6 +3970,7 @@ void pkdInitAccel(PKD pkd)
     
     for(i=0;i<pkdLocal(pkd);++i) {
 		if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
+  		        pkd->pStore[i].fPot = 0;
 			for (j=0;j<3;++j) {
 				pkd->pStore[i].a[j] = 0;
 #if defined(GASOLINE) && defined(SHOCKTRACK)
@@ -3975,9 +4025,9 @@ struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCu
 	  case GASMODEL_COOLING:
 	  case GASMODEL_COOLING_NONEQM:
 #ifndef NOCOOLING
-	    Temp = clTemperature(2*(pkd->cl).Y_H - p->Y_HI + 
-			    3*(pkd->cl).Y_He - 2*p->Y_HeI - p->Y_HeII,
-			    p->u*(pkd->cl).dErgPerGmUnit);
+	    Temp = clTemperature(2*(pkd->cl)->Y_H - p->Y_HI + 
+			    3*(pkd->cl)->Y_He - 2*p->Y_HeI - p->Y_HeII,
+			    p->u*(pkd->cl)->dErgPerGmUnit);
 #endif
 	    break;
 	  default:
@@ -4032,9 +4082,9 @@ void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, doubl
 	  case GASMODEL_COOLING:
 	  case GASMODEL_COOLING_NONEQM:
 #ifndef NOCOOLING
-	    Temp = clTemperature(2*(pkd->cl).Y_H - p->Y_HI + 
-			    3*(pkd->cl).Y_He - 2*p->Y_HeI - p->Y_HeII,
-			    p->u*(pkd->cl).dErgPerGmUnit);
+	    Temp = clTemperature(2*(pkd->cl)->Y_H - p->Y_HI + 
+			    3*(pkd->cl)->Y_He - 2*p->Y_HeI - p->Y_HeII,
+			    p->u*(pkd->cl)->dErgPerGmUnit);
 #endif
 	    break;
 	  default:
@@ -4099,7 +4149,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdate
 	case GASMODEL_COOLING:
 	case GASMODEL_COOLING_NONEQM:
 		bCool = 1;
-		cl = &(pkd->cl);
+		cl = pkd->cl;
 		clRatesRedshift( cl, z );
 		dt = duDelta * cl->dSecUnit;
 		break;
@@ -4112,7 +4162,9 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double z, int iGasModel, int bUpdate
 			if (bCool) {
 				pkdPARTICLE2PERBARYON(&Y,p,cl->Y_H,cl->Y_He);
 				E = p->u*cl->dErgPerGmUnit;
+#ifdef STARFORM
 				cl->p = p;
+#endif
 				clIntegrateEnergy(cl, &Y, &E, p->PdV*cl->dErgPerGmPerSecUnit, 
 								  p->fDensity*cl->dComovingGmPerCcUnit, dt);
 				p->uDot = (E*cl->diErgPerGmUnit - p->u)/duDelta;
@@ -4259,7 +4311,7 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z)
     double T;
 
 #ifndef NOCOOLING
-    cl = &(pkd->cl);
+    cl = pkd->cl;
     clRatesRedshift( cl, z );
 #endif
 
@@ -4268,8 +4320,8 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z)
 		if (TYPEQueryTREEACTIVE(p) && pkdIsGas(pkd,p)) {
 #ifndef NOCOOLING
 			T = p->u / dTuFac;
-			p->Y_HI = (pkd->cl).Y_H;
-			p->Y_HeI = (pkd->cl).Y_He;
+			p->Y_HI = cl->Y_H;
+			p->Y_HeI = cl->Y_He;
 			p->Y_HeII = 0.0;
 			pkdPARTICLE2PERBARYON(&Y,p,cl->Y_H,cl->Y_He);
 			clRates(cl,&r,T);
@@ -4371,6 +4423,9 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int 
 			p->uPred = p->uPred + p->uDot*duDelta;
 #else
 			p->uPred = p->uPred + p->PdV*duDelta;
+#endif
+#if defined(PRES_HK) || defined(PRES_MONAGHAN) 
+                        if (p->uPred < 0) p->uPred = 0;
 #endif
 			mdlassert(pkd->mdl,p->uPred > 0);
 			}
@@ -4866,7 +4921,10 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int 
 #else
 			p->uPred = p->uPred + p->PdV*duDelta;
 #endif
-			mdlassert(pkd->mdl,p->uPred > 0);
+#if defined(PRES_HK) || defined(PRES_MONAGHAN) 
+			if (p->uPred < 0) p->uPred = 0;
+#endif
+			mdlassert(pkd->mdl,p->uPred >= 0);
 			}
 		}
 
