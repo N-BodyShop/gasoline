@@ -1114,45 +1114,6 @@ void pkdKick(PKD pkd,double dvFacOne,double dvFacTwo)
 	}
 
 
-void pkdReadCheck(PKD pkd,char *pszFileName,int nStart,int nLocal)
-{
-	FILE *fp;
-	long lStart;
-
-	pkd->nLocal = nLocal;
-	/*
-	 ** Seek past the header and up to nStart.
-	 */
-	fp = fopen(pszFileName,"r");
-	assert(fp != NULL);
-	lStart = sizeof(struct msrCheckPointHeader)+nStart*sizeof(PARTICLE);
-	fseek(fp,lStart,0);
-	/*
-	 ** Read Stuff!
-	 */
-	fread(pkd->pStore,sizeof(PARTICLE),nLocal,fp);
-	fclose(fp);	
-	}
-
-
-void pkdWriteCheck(PKD pkd,char *pszFileName,int nStart)
-{
-	FILE *fp;
-
-	/*
-	 ** Seek past the header and up to nStart.
-	 */
-	fp = fopen(pszFileName,"r+");
-	assert(fp != NULL);
-	fseek(fp,sizeof(struct msrCheckPointHeader)+nStart*sizeof(PARTICLE),0);
-	/* 
-	 ** Write Stuff!
-	 */
-	fwrite(pkd->pStore,sizeof(PARTICLE),pkdLocal(pkd),fp);
-	fclose(fp);
-	}
-
-
 void pkdReadCheckNew(PKD pkd,char *pszFileName,int nStart,int nLocal)
 {
 	FILE *fp;
@@ -1216,6 +1177,41 @@ void pkdWriteCheckNew(PKD pkd,char *pszFileName,int nStart)
 		}
 	fclose(fp);
 	}
+
+
+void pkdReadCheckOld(PKD pkd,char *pszFileName,int nStart,int nLocal)
+{
+	FILE *fp;
+	OCHKPART cp;
+	long lStart;
+	int i,j;
+
+	pkd->nLocal = nLocal;
+	/*
+	 ** Seek past the header and up to nStart.
+	 */
+	fp = fopen(pszFileName,"r");
+	assert(fp != NULL);
+	lStart = sizeof(struct msrCheckPointHeader)+nStart*sizeof(OCHKPART);
+	fseek(fp,lStart,0);
+	/*
+	 ** Read Stuff!
+	 */
+	for (i=0;i<nLocal;++i) {
+		fread(&cp,sizeof(OCHKPART),1,fp);
+		pkd->pStore[i].iOrder = cp.iOrder;
+		pkd->pStore[i].fMass = cp.fMass;
+		pkd->pStore[i].fSoft = cp.fSoft;
+		for (j=0;j<3;++j) {
+			pkd->pStore[i].r[j] = cp.r[j];
+			pkd->pStore[i].v[j] = cp.v[j];
+			}
+		pkd->pStore[i].fWeight = 1.0;	/* set the initial weight to 1.0 */
+		}
+	fclose(fp);	
+	}
+
+
 
 
 

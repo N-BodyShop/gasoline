@@ -1047,7 +1047,7 @@ void pstReadCheck(PST pst,char *in,int nIn,char *out,int *pnOut)
 			pkdReadCheckNew(plcl->pkd,achInFile,pst->nStart,nTotal);
 			}	
 		else {
-			pkdReadCheck(plcl->pkd,achInFile,pst->nStart,nTotal);
+			pkdReadCheckOld(plcl->pkd,achInFile,pst->nStart,nTotal);
 			}
 		}
 	if (pnOut) *pnOut = 0;
@@ -1099,14 +1099,8 @@ void pstWriteCheck(PST pst,char *in,int nIn,char *out,int *pnOut)
 			strcat(achOutFile,"/");
 			}
 		strcat(achOutFile,DATA(in,inWriteCheck)->achOutFile);
-		if (DATA(in,inWriteCheck)->bNewCheck) {
-			pkdWriteCheckNew(plcl->pkd,achOutFile,
-							 DATA(in,inWriteCheck)->nStart);
-			}
-		else {
-			pkdWriteCheck(plcl->pkd,achOutFile,
-						  DATA(in,inWriteCheck)->nStart);
-			}
+		pkdWriteCheckNew(plcl->pkd,achOutFile,
+						 DATA(in,inWriteCheck)->nStart);
 		}
 	if (pnOut) *pnOut = 0;
 	}

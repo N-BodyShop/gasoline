@@ -45,6 +45,22 @@ typedef struct chkParticle {
 	float v[3];
 	} CHKPART;
 
+
+typedef struct ochkParticle {
+	int iOrder;
+	float fWeight;
+	float fMass;
+	float fSoft;
+	float r[3];
+	float v[3];
+	float a[3];
+	float fPot;
+	float fBall2;
+	float fDensity;
+	float fColor;
+	} OCHKPART;
+
+
 typedef struct bndBound {
 	float fMin[3];
 	float fMax[3];
@@ -203,8 +219,7 @@ void pkdGravAll(PKD,int,int,float,float,double *,double *);
 void pkdCalcE(PKD,double *,double *);
 void pkdDrift(PKD,double,float *);
 void pkdKick(PKD pkd,double,double);
-void pkdReadCheck(PKD,char *,int,int);
-void pkdWriteCheck(PKD,char *,int);
+void pkdReadCheckOld(PKD,char *,int,int);
 void pkdReadCheckNew(PKD,char *,int,int);
 void pkdWriteCheckNew(PKD,char *,int);
 

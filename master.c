@@ -795,40 +795,57 @@ void msrKick(MSR msr,double dDelta)
 	}
 
 
-double msrReadCheck(MSR msr,int *piStep,int bNewCheck)
+double msrReadCheck(MSR msr,int *piStep)
 {
 	FILE *fp;
 	struct msrCheckPointHeader h;
 	char in[SIZE(inReadCheck)];
 	char achInFile[PST_FILENAME_SIZE];
-	int i,j;
+	int i,j,bNewCheck;
 	LCL *plcl = msr->pst->plcl;
 	double dTime;
 	
 	/*
 	 ** Add Data Subpath for local and non-local names.
 	 */
-	achInFile[0] = 0;
-	strcat(achInFile,msr->param.achDataSubPath);
-	strcat(achInFile,"/");
-	sprintf(achInFile,"%s.chk",msr->param.achOutName);
+	sprintf(achInFile,"%s/%s.chk",msr->param.achDataSubPath,
+			msr->param.achOutName);
 	strcpy(DATA(in,inReadCheck)->achInFile,achInFile);
 	/*
 	 ** Add local Data Path.
 	 */
-	achInFile[0] = 0;
 	if (plcl->pszDataPath) {
-		strcat(achInFile,plcl->pszDataPath);
-		strcat(achInFile,"/");
+		sprintf(achInFile,"%s/%s",plcl->pszDataPath,
+				DATA(in,inReadCheck)->achInFile);
 		}
-	strcat(achInFile,DATA(in,inReadCheck)->achInFile);
-	
 	fp = fopen(achInFile,"r");
 	if (!fp) {
-		printf("Could not open InFile:%s\n",achInFile);
-		msrFinish(msr);
-		mdlFinish(msr->mdl);
-		exit(1);
+		printf("Could not open checkpoint file:%s\n",achInFile);
+		/*
+		 ** Try opening a .ochk
+		 ** Add Data Subpath for local and non-local names.
+		 */
+		sprintf(achInFile,"%s/%s.ochk",msr->param.achDataSubPath,
+				msr->param.achOutName);
+		strcpy(DATA(in,inReadCheck)->achInFile,achInFile);
+		/*
+		 ** Add local Data Path.
+		 */
+		if (plcl->pszDataPath) {
+			sprintf(achInFile,"%s/%s",plcl->pszDataPath,
+					DATA(in,inReadCheck)->achInFile);
+			}
+		fp = fopen(achInFile,"r");
+		if (!fp) {
+			printf("Could not open checkpoint file:%s\n",achInFile);
+			msrFinish(msr);
+			mdlFinish(msr->mdl);
+			exit(1);
+			}
+		bNewCheck = 0;
+		}
+	else {
+		bNewCheck = 1;
 		}
 	fread(&h,sizeof(struct msrCheckPointHeader),1,fp);
 	fclose(fp);
@@ -886,7 +903,7 @@ double msrReadCheck(MSR msr,int *piStep,int bNewCheck)
 	}
 
 
-void msrWriteCheck(MSR msr,double dTime,int iStep,int bNewCheck)
+void msrWriteCheck(MSR msr,double dTime,int iStep)
 {
 	FILE *fp;
 	struct msrCheckPointHeader h;
@@ -960,7 +977,6 @@ void msrWriteCheck(MSR msr,double dTime,int iStep,int bNewCheck)
 	 */
 	pstSetTotal(msr->pst,NULL,0,oute,&iDum);
 	DATA(in,inWriteCheck)->nStart = 0;
-	DATA(in,inWriteCheck)->bNewCheck = bNewCheck;
 	pstWriteCheck(msr->pst,in,SIZE(inWriteCheck),NULL,NULL);
 	if (msr->param.bVerbose) {
 		puts("Checkpoint file has been successfully written.");
