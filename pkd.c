@@ -3993,12 +3993,12 @@ struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCu
 	if (pkdIsGas(pkd,p)) {
 	  if (p->fMetals > dMetal) {
 	    ret.dMassMetalTotal += p->fMass;
-	    if (p->fDensity > dRhoCut && Temp > dTMin && Temp <= dTMax)
+	    if (p->fDensity > dRhoCut)
 	      ret.dMassMetalRhoCut += p->fMass;
 	  }
 	  else {
 	    ret.dMassNonMetalTotal += p->fMass;
-	    if (p->fDensity > dRhoCut && Temp > dTMin && Temp <= dTMax)
+	    if (p->fDensity > dRhoCut)
 	      ret.dMassNonMetalRhoCut += p->fMass;
 	  }
 	}
