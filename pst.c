@@ -102,25 +102,26 @@ void pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_CURRRUNG,pst,
 		      (void (*)(void *,void *,int,void *,int *))pstCurrRung,
 		      sizeof(struct inCurrRung), sizeof(struct outCurrRung));
-	mdlAddService(mdl,PST_DENSITYRUNG,pst,
-		      (void (*)(void *,void *,int,void *,int *))pstDensityRung,
-		      sizeof(struct inDensityRung),
-		      sizeof(struct outDensityRung));
+	mdlAddService(mdl,PST_DENSITYSTEP,pst,
+		      (void (*)(void *,void *,int,void *,int *))pstDensityStep,
+		      sizeof(struct inDensityStep), 0);
 	mdlAddService(mdl,PST_RUNGSTATS,pst,pstRungStats,
 				  sizeof(struct inRungStats),
 				  sizeof(struct outRungStats));
 	mdlAddService(mdl,PST_GETMAP,pst,pstGetMap,
 				  sizeof(struct inGetMap),nThreads*sizeof(int));
-	mdlAddService(mdl,PST_VELOCITYRUNG,pst,
-		      (void (*)(void *,void *,int,void *,int *))pstVelocityRung,
-		      sizeof(struct inVelocityRung),
-		      sizeof(struct outVelocityRung));
+	mdlAddService(mdl,PST_VELOCITYSTEP,pst,
+		      (void (*)(void *,void *,int,void *,int *))pstVelocityStep,
+		      sizeof(struct inVelocityStep), 0);
 	mdlAddService(mdl,PST_COOLVELOCITY,pst,pstCoolVelocity,
 				  sizeof(struct inCoolVelocity),0);
 	mdlAddService(mdl,PST_ACTIVECOOL,pst,pstActiveCool,
 				  sizeof(struct inActiveCool),0);
 	mdlAddService(mdl,PST_RESMOOTH,pst,pstReSmooth,
 				  sizeof(struct inReSmooth),0);
+	mdlAddService(mdl,PST_DTTORUNG,pst,pstDtToRung,
+		      sizeof(struct inDtToRung), sizeof(struct outDtToRung));
+	mdlAddService(mdl,PST_INITDT,pst,pstInitDt, sizeof(struct inInitDt),0);
 #ifdef GASOLINE
 	mdlAddService(mdl,PST_ACTIVECOOL,pst,pstActiveCool,0,0);
 	mdlAddService(mdl,PST_CALCETHDOT,pst,pstCalcEthdot,0,0);
@@ -2102,55 +2103,80 @@ pstCurrRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
-void pstDensityRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+void pstDensityStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
-	struct inDensityRung *in = vin;
-	struct outDensityRung *out = vout;
-	int iMaxRung;
+	struct inDensityStep *in = vin;
 	
 	assert(nIn == sizeof(*in));
 	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_DENSITYRUNG,vin,nIn);
-		pstDensityRung(pst->pstLower,vin,nIn,vout,pnOut);
-		iMaxRung = out->iMaxRung;
+		mdlReqService(pst->mdl,pst->idUpper,PST_DENSITYSTEP,vin,nIn);
+		pstDensityStep(pst->pstLower,vin,nIn,vout,pnOut);
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
-		if(iMaxRung > out->iMaxRung) out->iMaxRung = iMaxRung;
 		}
 	else {
-		out->iMaxRung = pkdDensityRung(plcl->pkd, in->iRung,
-									   in->dDelta, in->dEta,
-									   in->dRhoFac, in->bAll);
+		pkdDensityStep(plcl->pkd, in->dEta, in->dRhoFac);
 		}
-	if (pnOut) *pnOut = sizeof(*out);
+	if (pnOut) *pnOut = 0;
 	}
 
 
-void pstVelocityRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+void pstVelocityStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
       LCL *plcl = pst->plcl;
-      struct inVelocityRung *in = vin;
-      struct outVelocityRung *out = vout;
+      struct inVelocityStep *in = vin;
+
+      assert(nIn == sizeof(*in));
+      if (pst->nLeaves > 1) {
+              mdlReqService(pst->mdl,pst->idUpper,PST_VELOCITYSTEP,vin,nIn);
+              pstVelocityStep(pst->pstLower,vin,nIn,vout,pnOut);
+              mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+              }
+      else {
+              pkdVelocityStep(plcl->pkd, in->dEta, in->dVelFac, in->dAccFac);
+              }
+      if (pnOut) *pnOut = 0;
+      }
+
+void pstDtToRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+      LCL *plcl = pst->plcl;
+      struct inDtToRung *in = vin;
+      struct outDtToRung *out = vout;
       int iMaxRung;
 
       assert(nIn == sizeof(*in));
       if (pst->nLeaves > 1) {
-              mdlReqService(pst->mdl,pst->idUpper,PST_VELOCITYRUNG,vin,nIn);
-              pstVelocityRung(pst->pstLower,vin,nIn,vout,pnOut);
+              mdlReqService(pst->mdl,pst->idUpper,PST_DTTORUNG,vin,nIn);
+              pstDtToRung(pst->pstLower,vin,nIn,vout,pnOut);
               iMaxRung = out->iMaxRung;
               mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
               if(iMaxRung > out->iMaxRung)
                   out->iMaxRung = iMaxRung;
               }
       else {
-              out->iMaxRung = pkdVelocityRung(plcl->pkd, in->iRung,
-                                             in->dDelta, in->dEta,
-                                             in->iMaxRung, in->dVelFac,
-					      in->dAccFac, in->bAll);
+              out->iMaxRung = pkdDtToRung(plcl->pkd, in->iRung,
+					  in->dDelta, in->iMaxRung, in->bAll);
               }
       if (pnOut) *pnOut = sizeof(*out);
       }
 
+void pstInitDt(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+      LCL *plcl = pst->plcl;
+      struct inInitDt *in = vin;
+
+      assert(nIn == sizeof(*in));
+      if (pst->nLeaves > 1) {
+              mdlReqService(pst->mdl,pst->idUpper,PST_INITDT,vin,nIn);
+              pstInitDt(pst->pstLower,vin,nIn,vout,pnOut);
+              mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+              }
+      else {
+              pkdInitDt(plcl->pkd, in->dDelta);
+              }
+      if (pnOut) *pnOut = 0;
+      }
 
 void pstRungStats(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {

@@ -2079,63 +2079,32 @@ pkdCurrRung(PKD pkd, int iRung)
     return iCurrent;
     }
 
-int
-pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta,
-	       double dRhoFac, int bAll)
+void
+pkdDensityStep(PKD pkd, double dEta, double dRhoFac)
 {
     int i;
-    int iMaxRung;
-    int iTempRung;
-    int iSteps;
+    double dT;
     
-    iMaxRung = 0;
     for(i = 0; i < pkdLocal(pkd); ++i) {
-	if(pkd->pStore[i].iRung >= iRung) {
-	    assert(pkd->pStore[i].iActive == 1);
-	    if(bAll) {          /* Assign all rungs at iRung and above */
-		iSteps =
-		    dDelta*sqrt(pkd->pStore[i].fDensity*dRhoFac)/dEta;
-		iTempRung = iRung;
-		while(iSteps) {
-		    ++iTempRung;
-		    iSteps >>= 1;
-		    }
-		pkd->pStore[i].iRung = iTempRung; /* XXX need MaxRung */
-						  /* limit */
-                }
-            else {
-		if(dDelta*sqrt(pkd->pStore[i].fDensity*dRhoFac) < dEta) {
-		    pkd->pStore[i].iRung = iRung;
-		    }
-		else {
-		    pkd->pStore[i].iRung = iRung+1;
-		    }
-		}
+	if(pkd->pStore[i].iActive) {
+	    dT = dEta/sqrt(pkd->pStore[i].fDensity*dRhoFac);
+	    if(dT < pkd->pStore[i].dt)
+		pkd->pStore[i].dt = dT;
 	    }
-	if(pkd->pStore[i].iRung > iMaxRung)
-	    iMaxRung = pkd->pStore[i].iRung;
 	}
-    return iMaxRung;
     }
 
-int
-pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta, int iMaxRung,
-		double dVelFac, double dAccFac, int bAll)
+void
+pkdVelocityStep(PKD pkd, double dEta, double dVelFac, double dAccFac)
 {
     int i;
-    int iMaxRungOut;
-    int iTempRung;
-    int iSteps;
-    int iStepsv;
-    int iStepsa;
     double vel;
     double acc;
     int j;
+    double dT;
     
-    iMaxRungOut = 0;
     for(i = 0; i < pkdLocal(pkd); ++i) {
-	if(pkd->pStore[i].iRung >= iRung) {
-	    assert(pkd->pStore[i].iActive == 1);
+	if(pkd->pStore[i].iActive) {
 	    vel = 0;
             acc = 0;
 	    for(j = 0; j < 3; j++) {
@@ -2144,11 +2113,27 @@ pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta, int iMaxRung,
 		}
 	    vel = sqrt(vel)*dVelFac;
 	    acc = sqrt(acc)*dAccFac;
+	    dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
+	    if(dT < pkd->pStore[i].dt)
+		pkd->pStore[i].dt = dT;
+	    }
+	}
+    }
+
+int
+pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll)
+{
+    int i;
+    int iMaxRungOut;
+    int iTempRung;
+    int iSteps;
+    
+    iMaxRungOut = 0;
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+	if(pkd->pStore[i].iRung >= iRung) {
+	    assert(pkd->pStore[i].iActive == 1);
 	    if(bAll) {          /* Assign all rungs at iRung and above */
-		iStepsv = dDelta*vel/(dEta*pkd->pStore[i].fSoft);
-		iStepsa = dDelta*sqrt(acc/pkd->pStore[i].fSoft)/dEta;
-		/* iSteps = iStepsv > iStepsa ? iStepsv : iStepsa; */
-		iSteps = iStepsa;	/* Just use a --trq */
+		iSteps = dDelta/pkd->pStore[i].dt;
 		iTempRung = iRung;
 		while(iSteps) {
 		    ++iTempRung;
@@ -2159,7 +2144,7 @@ pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta, int iMaxRung,
 		pkd->pStore[i].iRung = iTempRung;
 		}
 	    else {
-		if(dDelta*vel < dEta*pkd->pStore[i].fSoft) {
+		if(dDelta <= pkd->pStore[i].dt) {
 		    pkd->pStore[i].iRung = iRung;
 		    }
 		else {
@@ -2173,6 +2158,18 @@ pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta, int iMaxRung,
     return iMaxRungOut;
     }
 
+void
+pkdInitDt(PKD pkd, double dDelta)
+{
+    int i;
+    
+    for(i = 0; i < pkdLocal(pkd); ++i) {
+	if(pkd->pStore[i].iActive)
+	    pkd->pStore[i].dt = dDelta;
+	}
+    }
+
+    
 int pkdRungParticles(PKD pkd,int iRung)
 {
 	int i,n;

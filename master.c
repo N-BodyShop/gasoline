@@ -2480,59 +2480,67 @@ int msrCurrRung(MSR msr, int iRung)
     }
 
 
-void msrDensityRung(MSR msr, int iRung, double dDelta, double dTime,
-		    int bAll)
+void msrDensityStep(MSR msr, double dTime)
 {
-    struct inDensityRung in;
-    struct outDensityRung out;
+    struct inDensityStep in;
     double expand;
     struct inSmooth inden;
     int sec,dsec;
 
     inden.nSmooth = msr->param.nSmooth;
     inden.bPeriodic = msr->param.bPeriodic;
-	inden.bSymmetric = 0;
-	inden.iSmoothType = SMX_DENSITY;
+    inden.bSymmetric = 0;
+    inden.iSmoothType = SMX_DENSITY;
     if (msr->param.bVerbose) printf("Calculating Rung Densities...\n");
     sec = time(0);
     pstSmooth(msr->pst,&inden,sizeof(inden),NULL,NULL);
     dsec = time(0) - sec;
     printf("Rung Densities Calculated, Wallclock:%d secs\n\n",dsec);
-    in.iRung = iRung;
-    in.dDelta = dDelta;
     in.dEta = msrEta(msr);
     expand = msrTime2Exp(msr, dTime);
     in.dRhoFac = 1.0/(expand*expand*expand);
-    in.bAll = bAll;
-    pstDensityRung(msr->pst, &in, sizeof(in), &out, NULL);
-    msr->iCurrMaxRung = out.iMaxRung;
+    pstDensityStep(msr->pst, &in, sizeof(in), NULL, NULL);
     }
 
 
-void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime, int bAll)
+void msrVelocityStep(MSR msr, double dTime)
 {
-    struct inVelocityRung in;
-    struct outVelocityRung out;
+    struct inVelocityStep in;
     double a;
 
-    in.iRung = iRung;
-    in.dDelta = dDelta;
     in.dEta = msrEta(msr);
-    in.iMaxRung = msrMaxRung(msr);
     a = msrTime2Exp(msr,dTime);
     if(msr->param.bCannonical) {
 	in.dVelFac = 1.0/(a*a);
-	in.dAccFac = 1.0/a;
 	}
     else {
 	in.dVelFac = 1.0;
-	in.dAccFac = 1.0/(a*a*a);
 	}
-    in.bAll = bAll;
-    pstVelocityRung(msr->pst, &in, sizeof(in), &out, NULL);
-    msr->iCurrMaxRung = out.iMaxRung;
+    in.dAccFac = 1.0/(a*a*a);
+    pstVelocityStep(msr->pst, &in, sizeof(in), NULL, NULL);
     }
 
+void
+msrInitDt(MSR msr)
+{
+    struct inInitDt in;
+    
+    in.dDelta = msrDelta(msr);
+    pstInitDt(msr->pst, &in, sizeof(in), NULL, NULL);
+    }
+
+void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
+{
+    struct inDtToRung in;
+    struct outDtToRung out;
+
+    in.iRung = iRung;
+    in.dDelta = dDelta;
+    in.iMaxRung = msrMaxRung(msr);
+    in.bAll = bAll;
+    pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
+    msr->iCurrMaxRung = out.iMaxRung;
+    }
 
 void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta, 
 				   int iRung, double *pdActiveSum)
@@ -2551,7 +2559,12 @@ void msrTopStepDen(MSR msr, double dStep, double dTime, double dDelta,
 			msrActiveRung(msr, iRung, 1);
 			msrBuildTree(msr,0,dMass,1);
 			dTime += 0.5*dDelta;
-			msrDensityRung(msr,iRung, dDelta, dTime, 0);
+			msrInitDt(msr);
+			msrDensityStep(msr, dTime);
+#ifdef PLANETS
+			msrSmooth(msr,dTime,SMX_TIMESTEP,0);
+#endif
+			msrDtToRung(msr, iRung, dDelta, 0);
 			msrDrift(msr,dTime,-0.5*dDelta);
 			dTime -= 0.5*dDelta;
 			}
@@ -2624,8 +2637,21 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 				}
 
 			msrActiveRung(msr, iRung, 1);
-			msrBuildTree(msr,1,dMass,1);
-			msrDensityRung(msr,iRung, dDelta, dTime, 1);
+			msrInitDt(msr);
+			if(msr->param.bEpsVel) {
+			    msrVelocityStep(msr, dTime);
+			    }
+			else {
+			    msrBuildTree(msr,0,dMass,1);
+			    msrDensityStep(msr, dTime);
+			    }
+#ifdef PLANETS
+			if(msr->param.bEpsVel) {
+			    msrBuildTree(msr,0,dMass,1);
+			    }
+			msrSmooth(msr,dTime,SMX_TIMESTEP,0);
+#endif
+			msrDtToRung(msr, iRung, dDelta, 1);
 			}
 		/*
 		 ** Actual Stepping.
@@ -2662,74 +2688,16 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 		}
 	}
 
-
-void msrTopStepVel(MSR msr, double dStep, double dTime, double dDelta, int
-				   iRung, int iAdjust, double *pdActiveSum)
-{
-    double dMass = -1.0;
-    int iSec;
-    double dWMax, dIMax, dEMax;
-	int nActive;
-
-	if(msrCurrMaxRung(msr) >= iRung) { /* particles to be kicked? */
-		if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
-			if (msr->param.bVerbose) {
-				printf("Adjust, iRung: %d\n", iRung);
-				}
-
-			msrActiveRung(msr, iRung, 1);
-			msrVelocityRung(msr,iRung, dDelta, dTime, 1);
-			}
-		/*
-		 ** Actual Stepping.
-		 */
-		msrTopStepVel(msr, dStep, dTime, 0.5*dDelta,iRung+1, 0, pdActiveSum);
-		dStep += 1.0/(2 << iRung);
-		msrActiveRung(msr, iRung, 0);
-		msrInitAccel(msr);
-#ifdef GASOLINE
-		if(msrSphCurrRung(msr, iRung)) {
-			if (msr->param.bVerbose) {
-			    printf("SPH, iRung: %d\n", iRung);
-			    }
-			msrStepSph(msr, dTime, dDelta);
-			}
-#endif
-		if(msrCurrRung(msr, iRung)) {
-			if (msr->param.bVerbose) {
-				printf("Kick, iRung: %d\n", iRung);
-				}
-			msrBuildTree(msr,0,dMass,0);
-			msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
-			*pdActiveSum += (double)nActive/msr->N;
-			}
-		msrKickDKD(msr, dTime, dDelta);
-		msrTopStepVel(msr, dStep, dTime+0.5*dDelta, 0.5*dDelta,
-					  iRung+1, 1, pdActiveSum);
-		}
-	else {    
-		if (msr->param.bVerbose) {
-			printf("Drift, iRung: %d\n", iRung-1);
-			}
-		msrDrift(msr,dTime,dDelta);
-		}
-	}
-
-
 void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta, 
 				double *pdMultiEff)
 {
 	int iRung = 0;
 
 	*pdMultiEff = 0.0;
-    if(msr->param.bEpsVel)
-		msrTopStepVel(msr,dStep,dTime,dDelta,iRung,1,pdMultiEff);
-    else {
-		if(msr->param.bNonSymp)
-			msrTopStepNS(msr,dStep,dTime,dDelta,iRung,1,pdMultiEff);
-		else
-			msrTopStepDen(msr,dStep,dTime,dDelta,iRung,pdMultiEff);
-		}
+	if(msr->param.bNonSymp)
+		msrTopStepNS(msr,dStep,dTime,dDelta,iRung,1,pdMultiEff);
+	else
+		msrTopStepDen(msr,dStep,dTime,dDelta,iRung,pdMultiEff);
 	printf("Multistep Efficiency (average number of microsteps per step):%f\n",
 		   *pdMultiEff);
 	}
@@ -2757,7 +2725,13 @@ void msrTopStepKDK(MSR msr,
 	    }
 
 	msrActiveRung(msr, iRung, 1);
-	msrVelocityRung(msr,iRung, dDelta, dTime, 1);
+	msrInitDt(msr);
+	msrVelocityStep(msr, dTime);
+#ifdef PLANETS
+	msrBuildTree(msr,0,dMass,1);
+	msrSmooth(msr,dTime,SMX_TIMESTEP,0);
+#endif
+	msrDtToRung(msr, iRung, dDelta, 1);
 	}
     if (msr->param.bVerbose) {
 	printf("Kick, iRung: %d\n", iRung);

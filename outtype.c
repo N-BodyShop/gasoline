@@ -19,6 +19,8 @@ float ArrType(PARTICLE *p,int iType)
 		return(sqrt(p->a[0]*p->a[0] + p->a[1]*p->a[1] + p->a[2]*p->a[2]));
 	case OUT_RUNG_ARRAY:
 		return(p->iRung);
+	case OUT_DT_ARRAY:
+		return(p->dt);
 #ifdef GASOLINE
 	case OUT_U_ARRAY:
 		return(p->u);
@@ -28,8 +30,6 @@ float ArrType(PARTICLE *p,int iType)
 		return(p->fHsmDivv);
 #endif
 #ifdef PLANETS
-	case OUT_DT_ARRAY:
-		return(p->dt);
 	case OUT_CT_ARRAY:
 		return(p->dCollTime);
 #endif /* PLANETS */

@@ -18,9 +18,10 @@
 
 #endif
 
+#define OUT_DT_ARRAY		10
+
 #ifdef PLANETS
 
-#define OUT_DT_ARRAY		10
 #define OUT_CT_ARRAY		11
 
 #endif /* PLANETS */

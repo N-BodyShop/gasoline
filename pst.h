@@ -45,7 +45,7 @@ typedef struct pstContext {
 	} * PST;
 
 
-#define PST_SERVICES		51
+#define PST_SERVICES		54
 #define PST_FILENAME_SIZE	512
 
 void pstAddServices(PST,MDL);
@@ -365,18 +365,12 @@ struct outCurrRung {
     };
 void pstCurrRung(PST,void *,int,void *,int *);
 
-#define PST_DENSITYRUNG		42
-struct inDensityRung {
-    int iRung;
-    double dDelta;
+#define PST_DENSITYSTEP		42
+struct inDensityStep {
     double dEta;
     double dRhoFac;
-    int bAll;
     };
-struct outDensityRung {
-    int iMaxRung;
-    };
-void pstDensityRung(PST,void *,int,void *,int *);
+void pstDensityStep(PST,void *,int,void *,int *);
 
 #define PST_RUNGSTATS		43
 struct inRungStats {
@@ -393,20 +387,13 @@ struct inGetMap {
 	};
 void pstGetMap(PST,void *,int,void *,int *);
 
-#define PST_VELOCITYRUNG		45
-struct inVelocityRung {
-    int iRung;
-    double dDelta;
+#define PST_VELOCITYSTEP		45
+struct inVelocityStep {
     double dEta;
-    int iMaxRung;
     double dVelFac;
     double dAccFac;
-    int bAll;
     };
-struct outVelocityRung {
-    int iMaxRung;
-    };
-void pstVelocityRung(PST,void *,int,void *,int *);
+void pstVelocityStep(PST,void *,int,void *,int *);
 
 #define PST_COOLVELOCITY		46
 struct inCoolVelocity {
@@ -433,22 +420,40 @@ struct inReSmooth {
 	};
 void pstReSmooth(PST,void *,int,void *,int *);
 
+#define PST_DTTORUNG			49
+struct inDtToRung {
+    int iRung;
+    double dDelta;
+    int iMaxRung;
+    int bAll;
+    };
+struct outDtToRung {
+    int iMaxRung;
+    };
+void pstDtToRung(PST,void *,int,void *,int *);
+
+#define PST_INITDT			50
+struct inInitDt {
+    double dDelta;
+    };
+void pstInitDt(PST,void *,int,void *,int *);
+
 #ifdef GASOLINE
 
-#define PST_ACTIVEGAS			49
+#define PST_ACTIVEGAS			51
 void pstActiveGas(PST,void *,int,void *,int *);
 
-#define PST_CALCETHDOT			50
+#define PST_CALCETHDOT			52
 void pstCalcEthdot(PST,void *,int,void *,int *);
 
-#define PST_KICKVPRED			51
+#define PST_KICKVPRED			53
 struct inKickVpred {
 	double dvFacOne;
 	double dvFacTwo;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
 
-#define PST_SPHCURRRUNG		52
+#define PST_SPHCURRRUNG		54
 struct inSphCurrRung {
     int iRung;
     };

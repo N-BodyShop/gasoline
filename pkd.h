@@ -35,6 +35,7 @@ typedef struct particle {
 	float fPot;
 	float fBall2;
 	float fDensity;
+	float dt;			/* time-step */
 #ifdef SUPERCOOL
 	float vMean[3];
 #endif
@@ -55,7 +56,6 @@ typedef struct particle {
 	float fTimeForm;
 #endif
 #ifdef PLANETS
-	float dt;			/* time-step */
 	float dCollTime;	/* time to next collision */
 	int	iCollider;		/* iOrder of collider */
 #endif /* PLANETS */
@@ -301,10 +301,14 @@ double pkdMassCheck(PKD pkd);
 void pkdSetRung(PKD pkd, int iRung);
 void pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
-int pkdDensityRung(PKD pkd, int iRung, double dDelta, double dEta,
-				   double dRhoFac, int bAll);
-int pkdVelocityRung(PKD pkd, int iRung, double dDelta, double dEta,
-		    int iMaxRung, double dVelFac, double dAccFac, int bAll);
+void pkdDensityStep(PKD pkd, double dEta, double
+		    dRhoFac);
+void pkdVelocityStep(PKD pkd, double dEta, double dVelFac, double
+		     dAccFac);
+int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int
+		bAll);
+void pkdInitDt(PKD pkd, double dDelta);
+
 int pkdRungParticles(PKD,int);
 void pkdCoolVelocity(PKD,int,double,double,double);
 void pkdActiveCool(PKD,int);
