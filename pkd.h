@@ -326,6 +326,7 @@ void pkdCalcCell(PKD,KDN *,FLOAT *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);
 void pkdBuildLocal(PKD,int,int,double,int,int,KDN *);
 void pkdBuildBinary(PKD,int,int,double,int,int,KDN *);
+void pkdThreadTree(PKD pkd,int iCell,int iNext);
 void pkdGravAll(PKD,int,int,int,int,double,double,int,double *,int *,
 				double *,double *,CASTAT *,double *); 
 void pkdCalcE(PKD,double *,double *);
@@ -384,6 +385,10 @@ int pkdSphCurrRung(PKD pkd, int iRung);
 #ifdef PLANETS
 void pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal);
 void pkdWriteSS(PKD,char *pszFileName,int nStart);
+int pkdLowerQQPart(PKD pkd,int d,FLOAT fSplit,int i,int j);
+int pkdUpperQQPart(PKD pkd,int d,FLOAT fSplit,int i,int j);
+void pkdQQCalcBound(PKD pkd,BND *pbnd,BND *pbndActive);
+void pkdQQBuild(PKD pkd,int nBucket, int bActiveOnly,KDN *pRoot);
 #endif /* PLANETS */
 
 #endif

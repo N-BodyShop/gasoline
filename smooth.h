@@ -274,6 +274,9 @@ void smFinish(SMX,SMF *);
 void smSmooth(SMX,SMF *);
 void smReSmooth(SMX,SMF *);
 
+#ifdef PLANETS
+void smQQSmooth(SMX smx,SMF *smf);
+#endif
 #endif
 
 

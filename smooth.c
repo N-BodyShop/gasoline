@@ -96,6 +96,14 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		comb = NULL;
 		smx->fcnPost = NULL;
 		break;
+	case SMX_ENCOUNTER:
+		assert(bSymmetric == 0);
+		smx->fcnSmooth = CheckForEncounter;
+		initParticle = NULL;
+		init = NULL;
+		comb = NULL;
+		smx->fcnPost = NULL;
+		break;
 #endif /* PLANETS */
 	default:
 		assert(0);

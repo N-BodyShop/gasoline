@@ -78,6 +78,9 @@ void SetTimeStep(PARTICLE *,int,NN *,SMF *); /*DEBUG only used if SMOOTH_STEP*/
 #define SMX_COLLISION	8
 void CheckForCollision(PARTICLE *,int,NN *,SMF *);
 
+#define SMX_ENCOUNTER	9
+void CheckForEncounter(PARTICLE *,int,NN *,SMF *);
+
 #endif /* PLANETS */
 
 #endif

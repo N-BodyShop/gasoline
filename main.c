@@ -370,6 +370,23 @@ int main(int argc,char **argv)
 			sprintf(achFile,"%s.den",msrOutName(msr));
 			msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
 			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Density");
+#ifdef PLANETS
+			{
+			    struct inSmooth smooth;
+			    
+			    msrBuildQQTree(msr, 0, dMass);
+			    smooth.nSmooth = 32;
+			    smooth.bPeriodic = 0;
+			    smooth.bSymmetric = 0;
+			    smooth.iSmoothType = SMX_ENCOUNTER;
+			    smooth.smf.pkd = NULL;
+			    pstQQSmooth(msr->pst, &smooth,
+					sizeof(smooth), NULL, NULL);
+			    msrReorder(msr);
+			    sprintf(achFile,"%s.enc",msrOutName(msr));
+			    msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
+			    }
+#endif
 			}
 		else if (msrDoGravity(msr)) {
 			msrActiveRung(msr,0,1);

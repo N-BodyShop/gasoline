@@ -10,7 +10,6 @@
 #include "outtype.h"
 #include "smooth.h"
 
-
 void pstAddServices(PST pst,MDL mdl)
 {
 	int nThreads,nCell;
@@ -149,6 +148,13 @@ void pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct outFindCollision));
 	mdlAddService(mdl,PST_DOCOLLISION,pst,pstDoCollision,
 				  sizeof(struct inDoCollision),sizeof(struct outDoCollision));
+	mdlAddService(mdl,PST_QQCALCBOUND,pst,pstQQCalcBound,0,
+				  sizeof(struct outCalcBound));
+	mdlAddService(mdl,PST_QQDOMAINDECOMP,pst,pstQQDomainDecomp,0,0);
+	mdlAddService(mdl,PST_QQBUILDTREE,pst,pstQQBuildTree,
+				  sizeof(struct inBuildTree),sizeof(struct outBuildTree));
+	mdlAddService(mdl,PST_QQSMOOTH,pst,pstQQSmooth,
+				  sizeof(struct inSmooth),0);
 #endif /* PLANETS */
 	}
 
@@ -465,7 +471,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	int i,iLowSum,iHighSum;
 #endif
 	int pFlag, nTotalActive;
-
+	int dBnd;
+	
 	/*
 	 ** First find out how much free storage there is available for particles
 	 ** on the lower and upper subset of processors.
@@ -482,9 +489,15 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	pstActiveOrder(pst->pstLower,NULL,0,NULL,NULL);
 	mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 
-	d = iSplitDim;
-	fl = pst->bnd.fMin[d];
-	fu = pst->bnd.fMax[d];
+	d = dBnd = iSplitDim;
+#ifdef PLANETS
+	if(d > 2)
+	    dBnd -= 3;
+#else
+	assert(d < 3);
+#endif
+	fl = pst->bnd.fMin[dBnd];
+	fu = pst->bnd.fMax[dBnd];
 	fmm = (fl + fu)/2;
 	/*
 	 * First find total number of active particles.
@@ -554,7 +567,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	 ** max out the number of particles in the subset which had too many.
 	 */
 	if (nLow > nLowerStore-NUM_SAFETY*pst->nLower) {
-		fl = pst->bnd.fMin[d];
+		fl = pst->bnd.fMin[dBnd];
 		fu = fm;
 		fmm = (fl + fu)/2;
 		ittr = 0;
@@ -593,7 +606,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		}
 	else if (nHigh > nUpperStore-NUM_SAFETY*pst->nUpper) {
 		fl = fm;
-		fu = pst->bnd.fMax[d];
+		fu = pst->bnd.fMax[dBnd];
 		fmm = (fl + fu)/2;
 		ittr = 0;
 	    while (fl < fmm && fmm < fu && ittr < 32) {
@@ -654,7 +667,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 	    nHighTot = nHigh + outWtLow.nHigh + outWtHigh.nHigh;
 
 	    if (nLowTot > nLowerStore-NUM_SAFETY*pst->nLower) {
-		    fl = pst->bnd.fMin[d];
+		    fl = pst->bnd.fMin[dBnd];
 		    fu = fm;
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
@@ -693,7 +706,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		    }
 	    else if (nHighTot > nUpperStore-NUM_SAFETY*pst->nUpper) {
 		    fl = fm;
-		    fu = pst->bnd.fMax[d];
+		    fu = pst->bnd.fMax[dBnd];
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
 		while (fl < fmm && fmm < fu && ittr < 32) {
@@ -737,8 +750,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
  	    if (nLowTot < NUM_SAFETY*pst->nLower) {
 		    fl = fm;
 				/* Try to catch highest particle if needed. */
-		    fu = pst->bnd.fMax[d]
-			+ EPS_BOUND*(pst->bnd.fMax[d] - pst->bnd.fMin[d]);
+		    fu = pst->bnd.fMax[dBnd]
+			+ EPS_BOUND*(pst->bnd.fMax[dBnd] - pst->bnd.fMin[dBnd]);
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
 		while (fl < fmm && fmm < fu && ittr < 32) {
@@ -772,8 +785,8 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass)
 		    }
 	    else if (nHighTot < NUM_SAFETY*pst->nUpper) {
 				/* Try to catch lowest particle if needed. */
-		    fl = pst->bnd.fMin[d]
-			- EPS_BOUND*(pst->bnd.fMax[d] - pst->bnd.fMin[d]);
+		    fl = pst->bnd.fMin[dBnd]
+			- EPS_BOUND*(pst->bnd.fMax[dBnd] - pst->bnd.fMin[dBnd]);
 		    fu = fm;
 		    fmm = (fl + fu)/2;
 		    ittr = 1;
@@ -2731,6 +2744,154 @@ void pstDoCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 						   out->Out,&out->nOut);
 		}
 	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+void
+pstQQCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct outCalcBound *out = vout;
+	struct outCalcBound outBnd;
+	int j;
+	
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_QQCALCBOUND,NULL,0);
+		pstQQCalcBound(pst->pstLower,NULL,0,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outBnd,NULL);
+		for (j=0;j<2;++j) { /* 2D tree */
+			if (outBnd.bnd.fMin[j] < out->bnd.fMin[j]) {
+				out->bnd.fMin[j] = outBnd.bnd.fMin[j];
+				}
+			if (outBnd.bnd.fMax[j] > out->bnd.fMax[j]) {
+				out->bnd.fMax[j] = outBnd.bnd.fMax[j];
+				}
+			if (outBnd.bndActive.fMin[j] < out->bndActive.fMin[j]) {
+				out->bndActive.fMin[j] = outBnd.bndActive.fMin[j];
+				}
+			if (outBnd.bndActive.fMax[j] > out->bndActive.fMax[j]) {
+				out->bndActive.fMax[j] = outBnd.bndActive.fMax[j];
+				}
+			}
+		}
+	else {
+		pkdQQCalcBound(plcl->pkd,&out->bnd,&out->bndActive);
+		}
+	if (pnOut) *pnOut = sizeof(struct outCalcBound); 
+	}
+
+void
+pstQQDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	int nOut,d,j;
+	struct outCalcBound outBnd;
+	struct outMassCheck outMass;
+	double dMass;
+
+	assert(nIn == 0);
+	if (pst->nLeaves > 1) {
+		/*
+		 ** First calculate the Bounds for the set.
+		 */
+		pstQQCalcBound(pst,NULL,0,&outBnd,&nOut);
+		pst->bndActive = outBnd.bndActive;
+		pst->bnd = outBnd.bnd;
+		/*
+		 ** Next determine the longest axis based on the active bounds.
+		 */
+		d = 0;
+		if(pst->bndActive.fMax[0] > pst->bndActive.fMin[0]) {
+		    for (j=1;j<2;++j) {	/* 2D tree */
+			if (pst->bndActive.fMax[j]-pst->bndActive.fMin[j] > 
+				pst->bndActive.fMax[d]-pst->bndActive.fMin[d]) d = j;
+			    }
+		    	}
+		else {		/* no active particles */
+		    for (j=1;j<2;++j) {	/* 2D tree */
+			if (pst->bnd.fMax[j]-pst->bnd.fMin[j] > 
+				pst->bnd.fMax[d]-pst->bnd.fMin[d]) d = j;
+			    }
+		    	}
+
+		pst->iSplitDim = d+3; /* Scary! */
+		
+		pstMassCheck(pst,NULL,0,&outMass,NULL);
+		dMass = outMass.dMass;
+		_pstRootSplit(pst,d+3,dMass); /* Scary! */
+		pstMassCheck(pst,NULL,0,&outMass,NULL);
+		if (fabs(dMass - outMass.dMass) > MASS_EPS*dMass) {
+			printf("ERROR id:%d lvl:%d:_pstQQRootSplit mass not cons.\n",
+				   pst->idSelf,pst->iLvl);
+			}
+		/*
+		 ** Now go on to DD of next levels.
+		 */
+		if (pst->nUpper > 1) 
+			mdlReqService(pst->mdl,pst->idUpper,PST_QQDOMAINDECOMP,NULL,0);
+		if (pst->nLower > 1) 
+			pstQQDomainDecomp(pst->pstLower,NULL,0,NULL,NULL);
+		if (pst->nUpper > 1) 
+			mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void
+pstQQBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inBuildTree *in = vin;
+	struct outBuildTree *out = vout;
+	struct outBuildTree out1,out2;
+	
+	assert(nIn == sizeof(struct inBuildTree));
+	if (pst->nLeaves > 1) {
+		pst->kdn.iDim = pst->iSplitDim;
+		pst->kdn.fSplit = pst->fSplit;
+		pst->kdn.pLower = -1;
+		pst->kdn.pUpper = 1;
+		mdlReqService(pst->mdl,pst->idUpper,PST_QQBUILDTREE,in,nIn);
+		pstQQBuildTree(pst->pstLower,in,nIn,&out1,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&out2,NULL);
+		/*
+		 ** Combine to find cell mass, cm, softening.
+		 ** This also combine the bounds to set pst->kdn.bnd!
+		 */
+		pkdCombine(&out1.kdn,&out2.kdn,&pst->kdn);
+		}
+	else {
+		pkdQQBuild(plcl->pkd,in->nBucket,in->bActiveOnly,&pst->kdn);
+		pst->kdn.pLower = pst->idSelf;
+		pst->kdn.pUpper = 1;
+		}
+	/*
+	 ** Calculated all cell properties, now pass up this cell info.
+	 */
+	out->kdn = pst->kdn;
+	if (pnOut) *pnOut = sizeof(struct outBuildTree);
+	}
+
+void
+pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inSmooth *in = vin;
+
+	assert(nIn == sizeof(struct inSmooth));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_QQSMOOTH,in,nIn);
+		pstQQSmooth(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		LCL *plcl = pst->plcl;
+		SMX smx;
+
+		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
+					 in->bSymmetric,in->iSmoothType,0);
+		smQQSmooth(smx,&in->smf);
+		smFinish(smx,&in->smf);
+		}
+	if (pnOut) *pnOut = 0;
 	}
 
 #endif /* PLANETS */

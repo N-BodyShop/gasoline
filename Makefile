@@ -91,7 +91,7 @@ T3DMPI_LD_FLAGS =
 
 OBJS	= 	main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 		ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
-		smoothfcn.o collision.o
+		smoothfcn.o collision.o qqsmooth.o
 
 EXTRA_OBJ = 	erf.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o hyperlib.o
 

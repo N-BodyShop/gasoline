@@ -575,6 +575,19 @@ struct outDoCollision {
 	};
 void pstDoCollision(PST,void *,int,void *,int *);
 
+#define PST_QQCALCBOUND		67
+void pstQQCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut);
+
+#define PST_QQDOMAINDECOMP	68
+void pstQQDomainDecomp(PST pst,void *vin,int nIn,void *vout,int
+		       *pnOut);
+
+#define PST_QQBUILDTREE		69
+void pstQQBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut);
+
+#define PST_QQSMOOTH		70
+void pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut);
+
 #endif /* PLANETS */
 
 #endif

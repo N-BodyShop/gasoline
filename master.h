@@ -15,10 +15,12 @@
  ** MSR_TREE_NONE: undefined tree type
  ** MSR_TREE_SPATIAL: spatial binary tree
  ** MSR_TREE_DENSITY: density binary tree (the old style KD-tree!)
+ ** MSR_TREE_QQ: perihelion-aphelion tree for planets.
  */
 #define MSR_TREE_NONE		0
 #define MSR_TREE_SPATIAL	1
 #define MSR_TREE_DENSITY	2
+#define MSR_TREE_QQ		3
 
 typedef struct msrContext {
 	PRM prm;

@@ -488,6 +488,13 @@ int pkdLowerPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 {
 	PARTICLE pTemp;
 
+#ifdef PLANETS
+	assert(d < 5);
+	if(d > 2)
+	    return pkdLowerQQPart(pkd, d, fSplit, i, j);
+#else
+	assert(d < 3);
+#endif
 	if (i > j) goto done;
     while (1) {
         while (pkd->pStore[i].r[d] >= fSplit)
@@ -507,6 +514,13 @@ int pkdUpperPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
 {
 	PARTICLE pTemp;
 
+#ifdef PLANETS
+	assert(d < 5);
+	if(d > 2)
+	    return pkdUpperQQPart(pkd, d, fSplit, i, j);
+#else
+	assert(d < 3);
+#endif
 	if (i > j) goto done;
     while (1) {
         while (pkd->pStore[i].r[d] < fSplit)

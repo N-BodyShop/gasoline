@@ -3451,4 +3451,47 @@ void msrDoCollisions(MSR msr,double dTime,double dDelta)
 #endif /* VERY_QUIET */
 	}
 
+void msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
+{
+	struct inBuildTree in;
+	struct outBuildTree out;
+	struct inColCells inc;
+	KDN *pkdn;
+	int sec,dsec;
+	int iDum,nCell;
+
+	if (msr->param.bVerbose) printf("Domain Decomposition...\n");
+	sec = time(0);
+	pstQQDomainDecomp(msr->pst,NULL,0,NULL,NULL);
+	msrMassCheck(msr,dMass,"After pstDomainDecomp in msrBuildTree");
+	dsec = time(0) - sec;
+	if (msr->param.bVerbose) {
+		printf("Domain Decomposition complete, Wallclock: %d secs\n\n",dsec);
+		}
+	if (msr->param.bVerbose) printf("Building local trees...\n");
+	/*
+	 ** First make sure the particles are in Active/Inactive order.
+	 */
+	pstActiveOrder(msr->pst,NULL,0,NULL,NULL);
+	in.nBucket = msr->param.nBucket;
+	msr->iTreeType = MSR_TREE_QQ;
+	in.bActiveOnly = bActiveOnly;
+	sec = time(0);
+	pstQQBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
+	msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildQQ");
+	dsec = time(0) - sec;
+	if (msr->param.bVerbose) {
+		printf("Tree built, Wallclock: %d secs\n\n",dsec);
+		}
+	nCell = 1<<(1+(int)ceil(log((double)msr->nThreads)/log(2.0)));
+	pkdn = malloc(nCell*sizeof(KDN));
+	assert(pkdn != NULL);
+	inc.iCell = ROOT;
+	inc.nCell = nCell;
+	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
+	pstDistribCells(msr->pst,pkdn,nCell*sizeof(KDN),NULL,NULL);
+	free(pkdn);
+	msrMassCheck(msr,dMass,"After pstDistribCells in msrBuildQQ");
+	}
+
 #endif /* PLANETS */
