@@ -11,28 +11,44 @@ void v_sqrt1(int n,double *r2,double *a)
     switch (n&7) {
     loop:
 	s = _fsqrta(r2[i]);
-	a[i++] = s*(1.5 - 0.5*r2[i]*s*s);
+        s *= 1.5 - 0.5*r2[i]*s*s;
+        s *= 1.5 - 0.5*r2[i]*s*s;
+	a[i++] = s;
     case 7:
 	s = _fsqrta(r2[i]);
-	a[i++] = s*(1.5 - 0.5*r2[i]*s*s);
+        s *= 1.5 - 0.5*r2[i]*s*s;
+        s *= 1.5 - 0.5*r2[i]*s*s;
+	a[i++] = s;
     case 6:
 	s = _fsqrta(r2[i]);
-	a[i++] = s*(1.5 - 0.5*r2[i]*s*s);
+        s *= 1.5 - 0.5*r2[i]*s*s;
+        s *= 1.5 - 0.5*r2[i]*s*s;
+	a[i++] = s;
     case 5:
 	s = _fsqrta(r2[i]);
-	a[i++] = s*(1.5 - 0.5*r2[i]*s*s);
+        s *= 1.5 - 0.5*r2[i]*s*s;
+        s *= 1.5 - 0.5*r2[i]*s*s;
+	a[i++] = s;
     case 4:
 	s = _fsqrta(r2[i]);
-	a[i++] = s*(1.5 - 0.5*r2[i]*s*s);
+        s *= 1.5 - 0.5*r2[i]*s*s;
+        s *= 1.5 - 0.5*r2[i]*s*s;
+	a[i++] = s;
     case 3:
 	s = _fsqrta(r2[i]);
-	a[i++] = s*(1.5 - 0.5*r2[i]*s*s);
+        s *= 1.5 - 0.5*r2[i]*s*s;
+        s *= 1.5 - 0.5*r2[i]*s*s;
+	a[i++] = s;
     case 2:
 	s = _fsqrta(r2[i]);
-	a[i++] = s*(1.5 - 0.5*r2[i]*s*s);
+        s *= 1.5 - 0.5*r2[i]*s*s;
+        s *= 1.5 - 0.5*r2[i]*s*s;
+	a[i++] = s;
     case 1:
 	s = _fsqrta(r2[i]);
-	a[i++] = s*(1.5 - 0.5*r2[i]*s*s);
+        s *= 1.5 - 0.5*r2[i]*s*s;
+        s *= 1.5 - 0.5*r2[i]*s*s;
+	a[i++] = s;
     case 0:
 	if (i<n) goto loop;
 	}

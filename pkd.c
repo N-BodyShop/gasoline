@@ -1290,8 +1290,10 @@ void pkdDistribCells(PKD pkd,int nCell,KDN *pkdn)
 	pkd->piLeaf = malloc(pkd->nThreads*sizeof(int));
 	assert(pkd->piLeaf != NULL);
 	for (i=1;i<nCell;++i) {
-		pkd->kdTop[i] = pkdn[i];
-		if (pkdn[i].pLower >= 0) pkd->piLeaf[pkdn[i].pLower] = i;
+		if (pkdn[i].pUpper) {
+			pkd->kdTop[i] = pkdn[i];
+			if (pkdn[i].pLower >= 0) pkd->piLeaf[pkdn[i].pLower] = i;
+			}
 		}
 	}
 
@@ -1386,7 +1388,7 @@ void pkdDistribRoot(PKD pkd,struct ilCellNewt *pcc)
 	/*
 	 ** Must set the quadrupole, mass and cm.
 	 */
-	pkdn = &pkd->kdNodes[ROOT];
+	pkdn = &pkd->kdTop[ROOT];
 #ifdef REDUCED_EWALD
 	tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;
 #else
