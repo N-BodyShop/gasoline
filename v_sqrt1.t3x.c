@@ -16,7 +16,7 @@ void v_sqrt1(int n,double *r2,double *a)
 	static double u[2048],t[2048];
 	static double g0,g1,g2,g3,g4,g5;
 	int i,it;
-	float x,s;
+	double x,s;
 
 	if (!bInit) {
 		double xi,pi,zero,factor,sum;		
