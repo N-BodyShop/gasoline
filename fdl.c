@@ -565,11 +565,13 @@ FDL_CTX *FDL_openwith(char *filename,char *fdlname)
     
     fdlp = fopen(fdlname,"r");
     if (!fdlp) {
+	perror("FDL_openwith(fdlname)");
         printf("Could not open file %s.\n",fdlname);
         exit(1);
         }
     fp = fopen(filename,"r");
     if (!fp) {
+	perror("FDL_openwith(filename)");
         printf("Could not open file %s.\n",filename);
         exit(1);
         }
