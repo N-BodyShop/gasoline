@@ -12,7 +12,7 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 	ILC *ilc;
 	int n,i,j;
 	double fPot,ax,ay,az;
-	double x,y,z,dx,dy,dz,d2,h,twoh,dir,dir3,dir4,dir5;
+	double x,y,z,dx,dy,dz,d2,h,twoh,a,b,c,d;
 	double qirx,qiry,qirz,qir,tr,qir3;
 #if 0
         double fIMass;
@@ -44,15 +44,15 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 			dz = z - ilp[j].z;
 			d2 = dx*dx + dy*dy + dz*dz;
 			twoh = h + ilp[j].h;
-			SPLINE(d2,twoh,dir,dir3);
-			dir *= ilp[j].m;
-			dir3 *= ilp[j].m;
-			fPot -= dir;
-			ax -= dx*dir3;
-			ay -= dy*dir3;
-			az -= dz*dir3;
+			SPLINE(d2,twoh,a,b,c,d);
+			a *= ilp[j].m;
+			b *= ilp[j].m;
+			fPot -= a;
+			ax -= dx*b;
+			ay -= dy*b;
+			az -= dz*b;
 #if 0
-                        fIMass += ilp[j].m;
+			fIMass += ilp[j].m;
 #endif
 			}
 		for (j=0;j<pkd->nCell;++j) {
@@ -61,37 +61,23 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 			dz = z - ilc[j].z;
 			d2 = dx*dx + dy*dy + dz*dz;
 			twoh = h + ilc[j].h;
-			SPLINE(d2,twoh,dir,dir3);
-			/*
-			 ** Monopole interaction.
-			 */
-			fPot -= dir*ilc[j].m;
-			ax -= dx*dir3*ilc[j].m;
-			ay -= dy*dir3*ilc[j].m;
-			az -= dz*dir3*ilc[j].m;
+			SPLINE(d2,twoh,a,b,c,d);
 #if 0
-                        fIMass += ilc[j].m;
+			fIMass += ilc[j].m;
 #endif
 			/*
-			 ** Normalize dx,dy and dz for the higher order moments.
-			 */
-			dx *= dir;
-			dy *= dir;
-			dz *= dir;
-			/*
-			 ** Quadrupole interaction.
+			 ** Monopole and Quadrupole interaction.
 			 */
 			qirx = ilc[j].xx*dx + ilc[j].xy*dy + ilc[j].xz*dz;
 			qiry = ilc[j].xy*dx + ilc[j].yy*dy + ilc[j].yz*dz;
 			qirz = ilc[j].xz*dx + ilc[j].yz*dy + ilc[j].zz*dz;
-			qir = qirx*dx + qiry*dy + qirz*dz;
-			tr = ilc[j].xx + ilc[j].yy + ilc[j].zz;
-			qir3 = 15*qir - 3*tr;
-			dir4 = dir3*dir;
-			fPot -= 0.5*dir*dir*dir*(3*qir - tr);
-			ax -= 0.5*dir4*(qir3*dx - 6*qirx);
-			ay -= 0.5*dir4*(qir3*dy - 6*qiry);
-			az -= 0.5*dir4*(qir3*dz - 6*qirz);
+			qir = 0.5*(qirx*dx + qiry*dy + qirz*dz);
+			tr = 0.5*(ilc[j].xx + ilc[j].yy + ilc[j].zz);
+			qir3 = b*ilc[j].m + d*qir - c*tr;
+			fPot -= a*ilc[j].m + c*qir - b*tr;
+			ax -= qir3*dx - c*qirx;
+			ay -= qir3*dy - c*qiry;
+			az -= qir3*dz - c*qirz;
 			}
 		p[i].fPot = fPot;
 		p[i].a[0] = ax;
@@ -111,24 +97,29 @@ void pkdBucketInteract(PKD pkd,int iBucket)
 			dz = p[j].r[2] - p[i].r[2];
 			d2 = dx*dx + dy*dy + dz*dz;
 			twoh = p[i].fSoft + p[j].fSoft;
-			SPLINE(d2,twoh,dir,dir3);
-			p[j].fPot -= dir*p[i].fMass;
-			p[j].a[0] -= dx*dir3*p[i].fMass;
-			p[j].a[1] -= dy*dir3*p[i].fMass;
-			p[j].a[2] -= dz*dir3*p[i].fMass;
+			SPLINE(d2,twoh,a,b,c,d);
+			p[j].fPot -= a*p[i].fMass;
+			p[j].a[0] -= dx*b*p[i].fMass;
+			p[j].a[1] -= dy*b*p[i].fMass;
+			p[j].a[2] -= dz*b*p[i].fMass;
 #if 0
-                        p[j].fIMass += p[i].fMass;
+			p[j].fIMass += p[i].fMass;
 #endif
-			p[i].fPot -= dir*p[j].fMass;
-			p[i].a[0] += dx*dir3*p[j].fMass;
-			p[i].a[1] += dy*dir3*p[j].fMass;
-			p[i].a[2] += dz*dir3*p[j].fMass;
+			p[i].fPot -= a*p[j].fMass;
+			p[i].a[0] += dx*b*p[j].fMass;
+			p[i].a[1] += dy*b*p[j].fMass;
+			p[i].a[2] += dz*b*p[j].fMass;
 #if 0
-                        p[i].fIMass += p[j].fMass;
+			p[i].fIMass += p[j].fMass;
 #endif
 			}
 		}
 	}
+
+
+
+
+
 
 
 

@@ -6,39 +6,44 @@
  ** see (A1) and (A2) of TREESPH: A UNIFICATION OF SPH WITH THE 
  ** HIERARCHICAL TREE METHOD by Lars Hernquist and Neal Katz.
  ** APJ Supplemant Series 70:416-446, 1989
+ ** 
+ ** Higher derivative terms c and d for use with quadrupole spline
+ ** softening (Joachim Stadel, Dec. 94).
  */
-#define SPLINE(r2,twoh,dir,dir3)\
+#define SPLINE(r2,twoh,a,b,c,d)\
 {\
-	double r,u,dih;\
+	double r,u,dih,dir;\
 	r = sqrt(r2);\
 	if (r < twoh) {\
 		dih = 2.0/twoh;\
 		u = r*dih;\
 		if (u < 1.0) {\
-			dir = -2.0*dih*u*u*(1.0/3.0 - u*u*(3.0/20.0 - 1.0/20.0*u)) + 7.0/5.0*dih;\
-			dir3 = dih*dih*dih*(4.0/3.0 - u*u*(6.0/5.0 - 1.0/2.0*u));\
+			a = dih*(7.0/5.0 - 2.0/3.0*u*u + 3.0/10.0*u*u*u*u\
+					 - 1.0/10.0*u*u*u*u*u);\
+			b = dih*dih*dih*(4.0/3.0 - 6.0/5.0*u*u + 1.0/2.0*u*u*u);\
+		    c = dih*dih*dih*dih*dih*(12.0/5.0 - 3.0/2.0*u);\
+			if (r > 0.0) d = 3.0/2.0*dih*dih*dih*dih*dih*dih/r;\
+			else d = 0.0;\
 			}\
 		else {\
 			dir = 1.0/r;\
-			dir3 = dir*dir*dir;\
-			dir = -1.0/15.0*dir - dih*u*u*(4.0/3.0 - u*(1.0 - u*(3.0/10.0 - 1.0/30.0*u))) + 8.0/5.0*dih;\
-			dir3 *= (-1.0/15.0 + u*u*u*(8.0/3.0 - u*(3.0 - u*(6.0/5.0 - 1.0/6.0*u))));\
+			a = -1.0/15.0*dir + dih*(8.0/5.0 - 4.0/3.0*u*u + u*u*u\
+			              - 3.0/10.0*u*u*u*u + 1.0/30.0*u*u*u*u*u);\
+			b = -1.0/15.0*dir*dir*dir + dih*dih*dih*(8.0/3.0 - 3.0*u + 6.0/5.0*u*u - 1.0/6.0*u*u*u);\
+			c = -1.0/5.0*dir*dir*dir*dir*dir + 3.0*dih*dih*dih*dih*dir\
+				+ dih*dih*dih*dih*dih*(-12.0/5.0 + 1.0/2.0*u);\
+			d = -dir*dir*dir*dir*dir*dir*dir\
+				+ 3.0*dih*dih*dih*dih*dir*dir*dir\
+					- 1.0/2.0*dih*dih*dih*dih*dih*dih*dir;\
 			}\
 		}\
 	else {\
-		dir = 1.0/r;\
-		dir3 = dir*dir*dir;\
+		a = 1.0/r;\
+		b = a*a*a;\
+		c = 3.0*b*a*a;\
+		d = 5.0*c*a*a;\
 		}\
 	}
-
-
-#if (0)
-#define SPLINE(d2,twoh,dir,dir3)\
-{\
-	dir = 1.0/sqrt(d2);\
-	dir3 = dir*dir*dir;\
-	}
-#endif
 
 
 void pkdBucketInteract(PKD,int);
