@@ -19,7 +19,7 @@ SDIR	=	..
 BDIR	=	$(HOME)/pvm3/bin
 XDIR	=	$(BDIR)/$(PVM_ARCH)
 
-MDL		=	$(HOME)/bulk/ptools/mdl/mdl-0.2/pvm
+MDL		=	$(SDIR)/../mdl/pvm
 CFLAGS	=	-32 -O2 -fullwarn -I$(PVMDIR)/include -I$(MDL)
 LIBS	=	$(MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
 
