@@ -73,9 +73,16 @@ HTBL *HTBL_init(int tbl_size,int isprime,int (*key_compare)(void *,void *),
     }
 
 
-void HTBL_finish(HTBL *T)
+void HTBL_finish(HTBL *T,void (*free_entry)(void *))
 {
+	int i;
+
 	if (!T) return;
+	if (free_entry != NULL) {
+		for (i=0;i<T->tbl_size;++i) {
+			if (T->tbl[i] != NULL) free_entry(T->tbl[i]);
+			}
+		}
 	if (T->tbl) free(T->tbl);
 	free(T);
 	}

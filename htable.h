@@ -9,7 +9,7 @@ typedef struct hash_table {
     } HTBL;
 
 HTBL *HTBL_init(int, int, int (*)(void *, void *),unsigned int (*)(void *));
-void HTBL_finish(HTBL *);
+void HTBL_finish(HTBL *,void (*)(void *));
 int HTBL_insert(HTBL *, void *);
 void *HTBL_lookup(HTBL *, void *);
 

@@ -124,6 +124,12 @@ void *e;
     return(i);
     }
 
+void free_entry(e)
+void *e;
+{
+	if (e != NULL) free(e);
+	}
+
 
 FDL_CTX *FDL_initialize(FILE *fp,FILE *fdlp,int bCopyFdl)
 {
@@ -158,7 +164,13 @@ void FDL_finish(FDL_CTX *CTX)
     for (i=0;i<NUM_COMMANDS;++i) free(CTX->command[i]);
     FDL_killtree(CTX->ast);
     FDL_killtree(CTX->trailer);
-    HTBL_finish(CTX->T);
+	/*
+	 ** Note that HTBL_finish *only* removes the hash table and
+	 ** None of the entries that were inserted into it. This is 
+	 ** really poor design but we can make sure by forcing it giving 
+	 ** a free_entry function.
+	 */
+    HTBL_finish(CTX->T,free_entry);
     free(CTX);
     }
 
