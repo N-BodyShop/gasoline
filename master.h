@@ -96,8 +96,17 @@ void msrWriteCheck(MSR,double,int);
 int msrOutTime(MSR,double);
 void msrReadOuts(MSR,double);
 double msrMassCheck(MSR,double,char *);
-void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, 
+void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta, 
 				double *pdMultiEff);
+void msrTopStepKDK(MSR msr,
+		   double dStep, /* Current step */
+		   double dTime, /* Current time */
+		   double dDelta, /* Time step */
+		   int iRung,	/* Rung level */
+		   int iKickRung, /* Gravity on all rungs from iRung
+				     to iKickRung */
+		   int iAdjust,	/* Do an adjust? */
+		   double *pdActiveSum);
 void msrRungStats(MSR);
 void msrActiveRung(MSR msr, int iRung, int bGreater);
 void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime,
@@ -117,6 +126,7 @@ int msrComove(MSR);
 int msrKDK(MSR);
 double msrSoft(MSR);
 int msrDoDensity(MSR);
+void msrInitStep(MSR msr);
 
 #endif
 

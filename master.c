@@ -1098,7 +1098,6 @@ void msrBuildTree(MSR msr,int bActiveOnly,double dMass,int bSmooth)
 	KDN *pkdn;
 	int sec,dsec;
 	int iDum,nCell;
-	int i;
 
 	if (msr->param.bVerbose) printf("Domain Decomposition...\n");
 	sec = time(0);
@@ -1147,6 +1146,7 @@ void msrBuildTree(MSR msr,int bActiveOnly,double dMass,int bSmooth)
 	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
 	msrMassCheck(msr,dMass,"After pstColCells in msrBuildTree");
 #if (0)
+	{ int i;
 	for (i=1;i<nCell;++i) {
 		struct pkdCalcCellStruct *m;
 
@@ -1170,6 +1170,7 @@ void msrBuildTree(MSR msr,int bActiveOnly,double dMass,int bSmooth)
 		printf("    yyyz:%g xxyy:%g xxyz:%g xyyz:%g\n",
 			   m->Hyyyz,m->Hxxyy,m->Hxxyz,m->Hxyyz);
 		}
+	}
 #endif
 	pstDistribCells(msr->pst,pkdn,nCell*sizeof(KDN),NULL,NULL);
 	msrMassCheck(msr,dMass,"After pstDistribCells in msrBuildTree");
@@ -2192,6 +2193,9 @@ double msrEta(MSR msr)
     }
 
 
+/*
+ * bGreater = 1 => activate all particles at this rung and greater.
+ */
 void msrActiveRung(MSR msr, int iRung, int bGreater)
 {
     struct inActiveRung in;
@@ -2253,11 +2257,14 @@ void msrVelocityRung(MSR msr, int iRung, double dDelta, double dTime, int bAll)
     in.dEta = msrEta(msr);
     in.iMaxRung = msrMaxRung(msr);
     a = msrTime2Exp(msr,dTime);
-    if(msr->param.bCannonical)
+    if(msr->param.bCannonical) {
 	in.dVelFac = 1.0/(a*a);
-    else
+	in.dAccFac = 1.0/a;
+	}
+    else {
 	in.dVelFac = 1.0;
-    in.dAccFac = 1.0/(a*a*a);
+	in.dAccFac = 1.0/(a*a*a);
+	}
     in.bAll = bAll;
     pstVelocityRung(msr->pst, &in, sizeof(in), &out, NULL);
     msr->iCurrMaxRung = out.iMaxRung;
@@ -2419,7 +2426,7 @@ void msrTopStepVel(MSR msr, double dStep, double dTime, double dDelta, int
 	}
 
 
-void msrTopStep(MSR msr, double dStep, double dTime, double dDelta, 
+void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta, 
 				double *pdMultiEff)
 {
 	int iRung = 0;
@@ -2437,6 +2444,66 @@ void msrTopStep(MSR msr, double dStep, double dTime, double dDelta,
 		   *pdMultiEff);
 	}
 
+void msrTopStepKDK(MSR msr,
+		   double dStep, /* Current step */
+		   double dTime, /* Current time */
+		   double dDelta, /* Time step */
+		   int iRung,	/* Rung level */
+		   int iKickRung, /* Gravity on all rungs from iRung
+				     to iKickRung */
+		   int iAdjust,	/* Do an adjust? */
+		   double *pdActiveSum)
+{
+    double dMass = -1.0;
+    int iSec;
+    double dWMax, dIMax, dEMax;
+    int nActive;
+
+    if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
+	if(msr->param.bVerbose) {
+	    printf("Adjust, iRung: %d\n", iRung);
+	    }
+
+	msrActiveRung(msr, iRung, 1);
+	msrVelocityRung(msr,iRung, dDelta, dTime, 1);
+	}
+    if (msr->param.bVerbose) {
+	printf("Kick, iRung: %d\n", iRung);
+	}
+    msrActiveRung(msr, iRung, 0);
+    msrKick(msr,dTime,0.5*dDelta);
+    if (msrCurrMaxRung(msr) > iRung) {
+	/*
+	** Recurse.
+	*/
+	msrTopStepKDK(msr, dStep, dTime, 0.5*dDelta, iRung+1,
+		      iRung+1, 0, pdActiveSum);
+	dStep += 1.0/(2 << iRung);
+	dTime += 0.5*dDelta;
+	msrTopStepKDK(msr, dStep, dTime, 0.5*dDelta, iRung+1,
+		      iKickRung, 1, pdActiveSum);
+	}
+    else {
+	if (msr->param.bVerbose) {
+	    printf("Drift, iRung: %d\n", iRung);
+	    }
+	msrDrift(msr,dTime,dDelta);
+	dTime += 0.5*dDelta;
+	dStep += 1.0/(1 << iRung);
+	if (msr->param.bVerbose) {
+	    printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
+	    }
+	msrActiveRung(msr, iKickRung, 1);
+	msrBuildTree(msr,0,dMass,0);
+	msrGravity(msr,dStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+	*pdActiveSum += (double)nActive/msr->N;
+	}
+    if (msr->param.bVerbose) {
+	printf("Kick, iRung: %d\n", iRung);
+	}
+    msrActiveRung(msr, iRung, 0);
+    msrKick(msr, dTime, 0.5*dDelta);
+}
 
 int msrDoDensity(MSR msr)
 {

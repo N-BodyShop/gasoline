@@ -113,18 +113,11 @@ void main(int argc,char **argv)
 
 		for (iStep=1;iStep<=msrSteps(msr);++iStep) {
 			if (msrKDK(msr)) {
-				dMultiEff = 1.0;
-				msrKick(msr,dTime,0.5*msrDelta(msr));
-				msrMassCheck(msr,dMass,"After msrKick-1 in KDK");
-				msrDrift(msr,dTime,msrDelta(msr));
-				msrMassCheck(msr,dMass,"After msrDrift in KDK");
-				msrActiveRung(msr,0,1);
-				msrBuildTree(msr,0,dMass,0);
-				msrMassCheck(msr,dMass,"After msrBuildTree in KDK");
-				msrGravity(msr,iStep,&iSec,&dWMax,&dIMax,&dEMax,&nActive);
-				msrMassCheck(msr,dMass,"After msrGravity in KDK");
-				msrKick(msr,dTime+0.5*msrDelta(msr),0.5*msrDelta(msr));
-				msrMassCheck(msr,dMass,"After msrKick-2 in KDK");
+				dMultiEff = 0.0;
+				msrTopStepKDK(msr, iStep-1, dTime,
+					      msrDelta(msr), 0, 0, 1,
+					      &dMultiEff);
+				msrRungStats(msr);
 				msrCoolVelocity(msr,dTime,dMass);	/* Supercooling if specified */
 				msrMassCheck(msr,dMass,"After CoolVelocity in KDK");
 				dTime += msrDelta(msr);
@@ -140,7 +133,8 @@ void main(int argc,char **argv)
 				fflush(fpLog);			
 				}
 			else {
-				msrTopStep(msr,iStep-1,dTime,msrDelta(msr),&dMultiEff);
+				msrTopStepDKD(msr, iStep-1, dTime,
+					      msrDelta(msr), &dMultiEff);
 				msrRungStats(msr);
 				msrCoolVelocity(msr,dTime,dMass);	/* Supercooling if specified */
 				msrMassCheck(msr,dMass,"After CoolVelocity in DKD");
