@@ -17,7 +17,7 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 	double L,alpha,alpha2,alphan,k1,ka;
 	double fEwCut2;
 	double fPot,ax,ay,az;
-	double dx,dy,dz,dxo,dyo,dzo,rx2,rxy2,r2,r,dir,dir2,a;
+	double dx,dy,dz,dxo,dyo,dzo,r2,r,dir,dir2,a;
 	double gam[6];
 	double hdotx,s,c;
 	int nFlop;
@@ -54,13 +54,9 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 		for (ix=-nEwReps;ix<=nEwReps;++ix) {
 			bInHolex = (ix >= -nReps && ix <= nReps);
 			dxo = dx + ix*L;
-			rx2 = dxo*dxo;
-			if (rx2 > fEwCut2 && !bInHolex) continue;
 			for(iy=-nEwReps;iy<=nEwReps;++iy) {
 				bInHolexy = (bInHolex && iy >= -nReps && iy <= nReps);
 				dyo = dy + iy*L;
-				rxy2 = rx2 + dyo*dyo;
-				if (rxy2 > fEwCut2 && !bInHolexy) continue;
 				for(iz=-nEwReps;iz<=nEwReps;++iz) {
 					bInHole = (bInHolexy && iz >= -nReps && iz <= nReps);
 					/*
@@ -73,7 +69,7 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 					 **		Total				= 104 + nMultiFlop[iOrder]
 					 */
 					dzo = dz + iz*L;
-					r2 = rxy2 + dzo*dzo;
+					r2 = dxo*dxo + dyo*dyo + dzo*dzo;
 					if (r2 > fEwCut2 && !bInHole) continue;
 					if (r2 == 0.0) continue;
 					r = sqrt(r2);
