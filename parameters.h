@@ -33,6 +33,7 @@ struct parameters {
     int iBinaryOutput;
     int bPackedVector;
 	int bDoDensity;
+ 	int iReadIOrder;
  	int bDoIOrderOutput;
  	int bDohOutput;
  	int bDoSphhOutput;

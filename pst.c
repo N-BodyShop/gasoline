@@ -291,6 +291,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_NEWORDER,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstNewOrder,
 				  nThreads*sizeof(int),0);
+	mdlAddService(mdl,PST_GETNPARTS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstGetNParts,
+				  0,sizeof(struct outGetNParts));
 	mdlAddService(mdl,PST_SETNPARTS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetNParts,
 				  sizeof(struct inSetNParts),0);
@@ -574,7 +577,7 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		nStore = nFileTotal + (int)ceil(nFileTotal*in->fExtraStore);
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
 					  in->fPeriod,in->nDark,in->nGas,in->nStar);
-		pkdReadTipsy(plcl->pkd,achInFile,nFileStart,nFileTotal,in->bStandard,
+		pkdReadTipsy(plcl->pkd,achInFile,nFileStart,nFileTotal,in->bStandard,in->iReadIOrder,
 					 in->dvFac,in->dTuFac);
 		}
 	if (pnOut) *pnOut = 0;
@@ -4198,6 +4201,33 @@ pstNewOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pkdNewOrder(plcl->pkd, in[pst->idSelf]);
 		}
     if(pnOut) *pnOut = 0;
+    }
+
+void
+pstGetNParts(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+    LCL *plcl = pst->plcl;
+    struct outGetNParts *out = vout;
+    int i;
+    
+    if(pst->nLeaves > 1) {
+		struct outGetNParts outtmp;
+		mdlReqService(pst->mdl,pst->idUpper,PST_GETNPARTS,vin,nIn);
+		pstGetNParts(pst->pstLower,vin,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,(void *) &outtmp,pnOut);
+
+		out->n += outtmp.n;
+		out->nGas += outtmp.nGas;
+		out->nDark += outtmp.nDark;
+		out->nStar += outtmp.nStar;
+		if (outtmp.iMaxOrderGas > out->iMaxOrderGas) out->iMaxOrderGas = outtmp.iMaxOrderGas;
+		if (outtmp.iMaxOrderDark > out->iMaxOrderDark) out->iMaxOrderDark = outtmp.iMaxOrderDark;
+		if (outtmp.iMaxOrderStar > out->iMaxOrderStar) out->iMaxOrderStar = outtmp.iMaxOrderStar;
+		}
+    else {
+		pkdGetNParts(pst->plcl->pkd, out);
+		}
+    if(pnOut) *pnOut = sizeof(struct outGetNParts);
     }
 
 void

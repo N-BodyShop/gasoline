@@ -133,6 +133,7 @@ enum pst_service {
       PST_SETWRITESTART,
       PST_COLNPARTS,
       PST_NEWORDER,
+      PST_GETNPARTS,
       PST_SETNPARTS,
       PST_UPDATEUDOT,
       PST_UPDATESHOCKTRACKER,
@@ -204,6 +205,7 @@ struct inReadTipsy {
 	float fExtraStore;
 	FLOAT fPeriod[3];
 	int bStandard;
+	int iReadIOrder;
 	double dvFac;
 	double dTuFac;
 	char achInFile[PST_FILENAME_SIZE];
@@ -811,6 +813,20 @@ void pstColNParts(PST, void *, int, void *, int *);
 
 /* PST_NEWORDER */
 void pstNewOrder(PST, void *, int, void *, int *);
+
+/* PST_GETNPARTS */
+/* see pkd.h
+ struct outGetNParts { 
+	int n;
+    int nGas;
+    int nDark;
+    int nStar;
+    int iMaxOrderGas;
+    int iMaxOrderDark;
+    int iMaxOrderStar;
+    };
+*/
+void pstGetNParts(PST, void *, int, void *, int *);
 
 /* PST_SETNPARTS */
 struct inSetNParts {

@@ -442,7 +442,7 @@ void pkdStartTimer(PKD,int);
 void pkdStopTimer(PKD,int);
 void pkdInitialize(PKD *,MDL,int,int,int,FLOAT *,int,int,int);
 void pkdFinish(PKD);
-void pkdReadTipsy(PKD,char *,int,int,int,double,double);
+void pkdReadTipsy(PKD,char *,int,int,int,int,double,double);
 void pkdSetSoft(PKD pkd,double dSoft);
 #ifdef CHANGESOFT
 void pkdPhysicalSoft(PKD pkd,double, double, int);
@@ -526,6 +526,18 @@ void pkdSetParticleTypes(PKD pkd, int nSuperCool);
 void pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 				  int *nDeltaStar);
 void pkdNewOrder(PKD pkd, int nStart);
+
+struct outGetNParts { 
+	int n;
+    int nGas;
+    int nDark;
+    int nStar;
+    int iMaxOrderGas;
+    int iMaxOrderDark;
+    int iMaxOrderStar;
+    };
+
+void pkdGetNParts(PKD pkd, struct outGetNParts *out );
 void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int nMaxOrderGas,
 				  int nMaxOrderDark);
 void pkdSunIndirect(PKD,double *,int,double);

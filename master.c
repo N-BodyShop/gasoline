@@ -384,9 +384,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoDensity = 1;
 	prmAddParam(msr->prm,"bDoDensity",0,&msr->param.bDoDensity,sizeof(int),
 				"den","enable/disable density outputs = +den");
+	msr->param.iReadIOrder = 0;
+	prmAddParam(msr->prm,"iReadIOrder",1,&msr->param.iReadIOrder,sizeof(int),
+				"iordin","<array outputs 0 NO, 1 int, 2 long, 3 int (internal)> = 0");
 	msr->param.bDoIOrderOutput = 0;
 	prmAddParam(msr->prm,"bDoIOrderOutput",0,&msr->param.bDoIOrderOutput,
-		    sizeof(int), "iordout","enable/disable iOrder outputs = -iorderout");
+		    sizeof(int), "iordout","enable/disable iOrder outputs = -iordout");
 	msr->param.bDohOutput = 0;
 	prmAddParam(msr->prm,"bDohOutput",0,&msr->param.bDohOutput,sizeof(int),
 				"hout","enable/disable h outputs = -hout");
@@ -1985,7 +1988,7 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
 		 */
 		assert(plcl->pkd->nStore >= nParts[id]);
 		pkdReadTipsy(plcl->pkd,achInFile,nStart,nParts[id],
-					 in->bStandard,in->dvFac,in->dTuFac);
+					 in->bStandard,in->iReadIOrder,in->dvFac,in->dTuFac);
 		nStart += nParts[id];
 		/* 
 		 * Now shove them over to the remote processor.
@@ -1999,10 +2002,30 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
     /* 
      * Now read our own particles.
      */
-    pkdReadTipsy(plcl->pkd,achInFile,0,nParts[0],in->bStandard,in->dvFac,
+    pkdReadTipsy(plcl->pkd,achInFile,0,nParts[0],in->bStandard,in->iReadIOrder,in->dvFac,
 				 in->dTuFac);
+
+/* I think this code can be removed -- this is done later  JW Sept 2002 */
+/*
+	if (msr->param.iReadIOrder) {
+		struct outGetNParts outget;
+		struct inSetNParts inset;
+		
+		pstGetNParts(msr->pst,NULL,0,&outget,NULL);
+		assert(outget.nGas == msr->nGas);
+		assert(outget.nDark == msr->nDark);
+		assert(outget.nStar == msr->nStar);
+		inset.nGas = outget.nGas;
+		inset.nDark = outget.nDark;
+		inset.nStar = outget.nStar;
+		inset.nMaxOrderGas = outget.iMaxOrderGas;
+		inset.nMaxOrderDark = outget.iMaxOrderStar;
+		pstSetNParts(msr->pst,&inset,sizeof(inset),NULL,NULL);
+		}
+
     intype.nSuperCool = msr->param.nSuperCool;
     pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL);
+*/
     }
 
 int xdrHeader(XDR *pxdrs,struct dump *ph)
@@ -2028,7 +2051,7 @@ double msrReadTipsy(MSR msr)
 	char achInFile[PST_FILENAME_SIZE];
 	LCL *plcl = msr->pst->plcl;
 	double dTime,aTo,tTo,z;
-        struct inSetParticleTypes intype;
+	struct inSetParticleTypes intype;
 	
 	if (msr->param.achInFile[0]) {
 		/*
@@ -2065,6 +2088,7 @@ double msrReadTipsy(MSR msr)
 		fread(&h,sizeof(struct dump),1,fp);
 		}
 	fclose(fp);
+
 	msr->N = h.nbodies;
 	msr->nDark = h.ndark;
 	msr->nGas = h.nsph;
@@ -2186,6 +2210,7 @@ double msrReadTipsy(MSR msr)
 	in.nStar = msr->nStar;
 	in.iOrder = msr->param.iOrder;
 	in.bStandard = msr->param.bStandard;
+	in.iReadIOrder = msr->param.iReadIOrder;
 #ifdef GASOLINE
 	in.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
 		msr->param.dMeanMolWeight;
@@ -2210,6 +2235,24 @@ double msrReadTipsy(MSR msr)
 	    pstReadTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
 	    msrOneNodeReadTipsy(msr, &in);
+
+	if (msr->param.iReadIOrder) {
+		struct outGetNParts outget;
+		struct inSetNParts inset;
+		
+		pstGetNParts(msr->pst,NULL,0,&outget,NULL);
+		assert(outget.nGas == msr->nGas);
+		assert(outget.nDark == msr->nDark);
+		assert(outget.nStar == msr->nStar);
+		inset.nGas = outget.nGas;
+		inset.nDark = outget.nDark;
+		inset.nStar = outget.nStar;
+		inset.nMaxOrderGas = outget.iMaxOrderGas;
+		inset.nMaxOrderDark = outget.iMaxOrderStar;
+		pstSetNParts(msr->pst,&inset,sizeof(inset),NULL,NULL);
+		if (msr->param.bVDetails) puts("IOrder file has been successfully read.");
+		}
+
 	intype.nSuperCool = msr->param.nSuperCool;
 	pstSetParticleTypes(msr->pst, &intype, sizeof(intype), NULL, NULL);
 	if (msr->param.bVDetails) puts("Input file has been successfully read.");
@@ -2325,6 +2368,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		_msrExit(msr,1);
 		}
 	in.bStandard = msr->param.bStandard;
+	in.bStandard = msr->param.iReadIOrder;
 #ifdef GASOLINE
 	in.duTFac = (msr->param.dConstGamma - 1)*msr->param.dMeanMolWeight/
 		msr->param.dGasConst;
@@ -3665,6 +3709,7 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
     tin.nGas = in->nGas;
     tin.nStar = in->nStar;
     tin.bStandard = 0;
+	tin.iReadIOrder = 0;
     tin.dvFac = 1;
     tin.dTuFac = 1;
 

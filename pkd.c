@@ -264,11 +264,20 @@ void pkdSeek(PKD pkd,FILE *fp,int nStart,int bStandard)
 	}
 
 
-void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
-				  int bStandard,double dvFac,double dTuFac)
+void pkdGenericSeek(PKD pkd,FILE *fp,int nStart,int iHeader,int iElement)
 {
-	FILE *fp;
-	int i,j;
+	long lStart;
+
+	lStart = iHeader + nStart*iElement;
+	fseek(fp,lStart,0);
+	}
+
+
+void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
+				  int bStandard,int iReadIOrder,double dvFac,double dTuFac)
+{
+	FILE *fp,*fp2 = NULL;
+	int i,j, iSetMask;
 	PARTICLE *p;
 	struct dark_particle dp;
 	struct gas_particle gp;
@@ -326,17 +335,46 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	 ** Seek to right place in file.
 	 */
 	pkdSeek(pkd,fp,nStart,bStandard);
+
+	/* Open iOrder file if requested */
+	if (iReadIOrder) {
+		char atmp[160];
+		sprintf(atmp,"%s.iord",pszFileName);
+		fp2 = fopen(atmp,"r");
+		mdlassert(pkd->mdl,fp2 != NULL);
+		/*
+		 ** Seek to right place in file, assumes 4 byte iOrders
+		 */
+		switch(iReadIOrder) {
+		case 1:
+			pkdGenericSeek(pkd,fp2,nStart,sizeof(int),sizeof(int));
+			break;
+		case 2:
+			pkdGenericSeek(pkd,fp2,nStart,sizeof(int),sizeof(long long));
+			break;
+		case 3:
+			pkdGenericSeek(pkd,fp2,nStart,sizeof(int),sizeof(pkd->pStore[0].iOrder));
+			break;
+		default:
+			fprintf(stderr,"Don't understand iOrder format: %d\n",iReadIOrder);
+			mdlassert(pkd->mdl,0);
+			}
+		}
+
 	/*
 	 ** Read Stuff!
 	 */
 	if (bStandard) {
 		FLOAT vTemp;
+		long long LongTmp;
+		int IntTmp;
 		XDR xdrs;
 		xdrstdio_create(&xdrs,fp,XDR_DECODE);
 		for (i=0;i<nLocal;++i) {
 			p = &pkd->pStore[i];
-			p->iOrder = nStart + i;
+			p->iOrder = nStart + i; /* temporary */
 			if (pkdIsDarkByOrder(pkd,p)) {
+				iSetMask = TYPE_DARK;
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
 				assert(p->fMass >= 0);
@@ -358,6 +396,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->fPot = fTmp;
 				}
 			else if (pkdIsGasByOrder(pkd,p)) {
+				iSetMask = TYPE_GAS;
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
 				assert(p->fMass > 0);
@@ -409,6 +448,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->fPot = fTmp;
 				}
 			else if (pkdIsStarByOrder(pkd,p)) {
+				iSetMask = TYPE_STAR;
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
 				assert(p->fMass >= 0);
@@ -439,14 +479,35 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->fPot = fTmp;
 				}
 			else mdlassert(pkd->mdl,0);
+
+			TYPESet(p,iSetMask);
+			switch (iReadIOrder) {
+			case 0:
+				break;
+			case 1:
+				fread(&IntTmp,sizeof(IntTmp),1,fp2);
+				p->iOrder = IntTmp;
+				break;
+			case 2:
+				fread(&LongTmp,sizeof(LongTmp),1,fp2);
+				p->iOrder = LongTmp;
+				break;
+			case 3:
+				fread(&p->iOrder,sizeof(p->iOrder),1,fp2);
+				break;
+				}
 			}
 		xdr_destroy(&xdrs);
 		}
 	else {
+		long long LongTmp;
+		int IntTmp;
 		for (i=0;i<nLocal;++i) {
 			p = &pkd->pStore[i];
 			p->iOrder = nStart + i;
+
 			if (pkdIsDarkByOrder(pkd,p)) {
+				iSetMask = TYPE_DARK;
 				fread(&dp,sizeof(struct dark_particle),1,fp);
 				for (j=0;j<3;++j) {
 					p->r[j] = dp.pos[j];
@@ -461,6 +522,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->fPot = dp.phi;
 				}
 			else if (pkdIsGasByOrder(pkd,p)) {
+				iSetMask = TYPE_GAS;
 				fread(&gp,sizeof(struct gas_particle),1,fp);
 				for (j=0;j<3;++j) {
 					p->r[j] = gp.pos[j];
@@ -489,6 +551,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
 				}
 			else if (pkdIsStarByOrder(pkd,p)) {
+				iSetMask = TYPE_STAR;
 				fread(&sp,sizeof(struct star_particle),1,fp);
 				for (j=0;j<3;++j) {
 					p->r[j] = sp.pos[j];
@@ -507,8 +570,27 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
 				}
 			else mdlassert(pkd->mdl,0);
+
+			TYPESet(p,iSetMask); /* needed to get max order info */
+			switch (iReadIOrder) {
+			case 0:
+				p->iOrder = nStart + i;
+				break;
+			case 1:
+				fread(&IntTmp,sizeof(IntTmp),1,fp2);
+				p->iOrder = IntTmp;
+				break;
+			case 2:
+				fread(&LongTmp,sizeof(LongTmp),1,fp2);
+				p->iOrder = LongTmp;
+				break;
+			case 3:
+				fread(&p->iOrder,sizeof(p->iOrder),1,fp2);
+				break;
+				}
 			}
 		}
+	if (fp2!=NULL) fclose(fp2);
 	fclose(fp);
 	}
 
@@ -3873,6 +3955,52 @@ pkdNewOrder(PKD pkd,int nStart)
 			pkd->pStore[pi].iOrder = nStart++;
 			}
 		}
+    }
+
+void
+pkdGetNParts(PKD pkd, struct outGetNParts *out )
+{
+    int pi;
+    int n;
+    int nGas;
+    int nDark;
+    int nStar;
+	int iMaxOrderGas;
+	int iMaxOrderDark;
+	int iMaxOrderStar;
+    PARTICLE *p;
+    
+    n = 0;
+    nGas = 0;
+    nDark = 0;
+    nStar = 0;
+	iMaxOrderGas = -1;
+	iMaxOrderDark = -1;
+	iMaxOrderStar = -1;
+    for(pi = 0; pi < pkdLocal(pkd); pi++) {
+		p = &pkd->pStore[pi];
+		n++;
+	    if(pkdIsGas(pkd, p)) {
+			++nGas;
+			if (p->iOrder > iMaxOrderGas) iMaxOrderGas = p->iOrder;
+			}
+	    else if(pkdIsDark(pkd, p)) {
+			++nDark;
+			if (p->iOrder > iMaxOrderDark) iMaxOrderDark = p->iOrder;
+			}
+	    else if(pkdIsStar(pkd, p)) {
+			++nStar;
+			if (p->iOrder > iMaxOrderStar) iMaxOrderStar = p->iOrder;
+			}
+		}
+
+	out->n  = n;
+    out->nGas = nGas;
+    out->nDark = nDark;
+    out->nStar = nStar;
+	out->iMaxOrderDark = iMaxOrderGas;
+	out->iMaxOrderDark = iMaxOrderDark;
+	out->iMaxOrderStar = iMaxOrderStar;
     }
 
 void
