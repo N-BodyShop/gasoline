@@ -1289,7 +1289,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.stfm->dGmUnit = msr->param.dMsolUnit*MSOLG;
 	    msr->param.stfm->dErgUnit =
 		GCGS*pow(msr->param.dMsolUnit*MSOLG, 2.0)
-		/msr->param.dKpcUnit*KPCCM;
+		/(msr->param.dKpcUnit*KPCCM);
 	    msr->param.stfm->dDeltaT = msr->param.dDelta;
 	    /* convert to system units */
 	    msr->param.stfm->dPhysDenMin *= MHYDR/msr->param.stfm->dGmPerCcUnit;
@@ -4102,6 +4102,14 @@ double msrReadCheck(MSR msr,int *piStep)
 	pstSetNParts(msr->pst,&inset,sizeof(inset),NULL,NULL);
 	intype.nSuperCool = msr->param.nSuperCool;
 	pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL);
+	
+	i = msrCountType(msr, TYPE_GAS, TYPE_GAS);
+	assert(i == msr->nGas);
+	i = msrCountType(msr, TYPE_DARK, TYPE_DARK);
+	assert(i == msr->nDark);
+	i = msrCountType(msr, TYPE_STAR, TYPE_STAR);
+	assert(i == msr->nStar);
+	
 	/*
 	 ** Set up the output counter.
 	 */
@@ -5288,6 +5296,13 @@ msrAddDelParticles(MSR msr)
     intype.nSuperCool = msr->param.nSuperCool;
 	/* This shouldn't really be necessary -- it is undesirable to do a fix-up like this */
     pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL); 
+
+    i = msrCountType(msr, TYPE_GAS, TYPE_GAS);
+    assert(i == msr->nGas);
+    i = msrCountType(msr, TYPE_DARK, TYPE_DARK);
+    assert(i == msr->nDark);
+    i = msrCountType(msr, TYPE_STAR, TYPE_STAR);
+    assert(i == msr->nStar);
 
     free(pNewOrder);
     free(pColNParts);
