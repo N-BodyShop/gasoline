@@ -8,7 +8,7 @@
 #include "qeval.h"
 
 #define NATIVE_SQRT (defined(_MIPS_ISA) && (_MIPS_ISA == _MIPS_ISA_MIPS4) \
-	     || defined(__i486__) || defined(CCC) ) 
+	     || defined(__i486__) || defined(CCC) || defined(__ia64__)) 
 
 #if !(NATIVE_SQRT)
 void v_sqrt1(int,double *,double *);
