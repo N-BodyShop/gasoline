@@ -602,13 +602,6 @@ struct outCountSupernova pkdCountSupernova(PKD pkd, double dMetal, double dRhoCu
 void pkdAddSupernova(PKD pkd, double dMetal, double dRhoCut, double dTMin, double dTMax,
 		     double duTFac,int iGasModel, double dPdVMetal, double dPdVNonMetal );
 #endif
-#ifdef SIMPLESF
-void pkdSimpleStarForm(PKD pkd, double dRateCoeff, double dTMax, double dDenMin, double dDelta, double dTime,
-					   double dInitStarMass, double dESNPerStarMass, double dtCoolingShutoff,
-					   int *nFormed, /* number of stars formed */
-					   double *dMassFormed,	/* mass of stars formed */
-					   int *nDeleted); /* gas particles deleted */
-#endif
 
 void pkdUpdateuDot(PKD,double,double,double,int,int);
 void pkdUpdateShockTracker(PKD,double, double, double);
