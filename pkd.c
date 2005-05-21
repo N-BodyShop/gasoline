@@ -312,7 +312,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		p->uPred = 0.0;
 #ifdef STARFORM
 		p->fESNrate = 0.0;
-		p->fMSNII = 0.0;
+		p->fNSN = 0.0;
 		p->fMOxygenOut = 0.0;
 		p->fMIronOut = 0.0;
 		p->fMFracOxygen = 0.0;
@@ -3637,7 +3637,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		p->fDensity = cp.fDenForm;
 		p->iGasOrder = cp.iGasOrder;
                 p->fTimeCoolIsOffUntil = cp.fTimeCoolIsOffUntil;
-                p->fMSNII = 0.0;
+                p->fNSN = 0.0;
                 p->fMFracOxygen = cp.fMFracOxygen;
                 p->fMFracIron = cp.fMFracIron;
 #endif

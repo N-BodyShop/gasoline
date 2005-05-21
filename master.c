@@ -766,6 +766,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dGasConst",2,&msr->param.dGasConst,
 				sizeof(double),"gcnst",
 				"<Gas Constant>");
+	msr->param.dKBoltzUnit = 1.0;
+	prmAddParam(msr->prm,"dKBoltzUnit",2,&msr->param.dKBoltzUnit,
+				sizeof(double),"gcnst",
+				"<Boltzmann Constant in System Units>");
 	msr->param.dMsolUnit = 1.0;
 	prmAddParam(msr->prm,"dMsolUnit",2,&msr->param.dMsolUnit,
 				sizeof(double),"msu",
@@ -870,7 +874,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dMaxStarMass", 2, &msr->param.stfm->dMaxStarMass,
 		    sizeof(double), "stMaxStarMass",
 		    "<Maximum amount of star mass a hybrid particle can contain = 0.0");
-	msr->param.stfm->dCStar = 0.1;
+	msr->param.stfm->dCStar = 0.05;
 	prmAddParam(msr->prm,"dCStar", 2, &msr->param.stfm->dCStar,
 		    sizeof(double), "stCStar",
 		    "<Star formation coefficient> = 0.1");
@@ -882,18 +886,18 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dSoftMin", 2, &msr->param.stfm->dSoftMin,
 		    sizeof(double), "stSoftMin",
 		    "<Minimum softening for star formation> = 0.0");
-	msr->param.dtCoolingShutoff = 0.0;
-	prmAddParam(msr->prm,"dtCoolingShutoff", 2, &msr->param.dtCoolingShutoff,
-		    sizeof(double), "stTimeCoolIsOff",
-		    "<The time in years that cooling is shutoff because SN have ionized everything> = 30e6");
-	msr->param.dSNFBMassFactor = 0.0;
-	prmAddParam(msr->prm,"dSNFBMassFactor", 2, &msr->param.dSNFBMassFactor,
-		    sizeof(double), "dSNFBMassFactor",
-		    "<The factor by which SNII mass is multiplied to find out how many gas particles have their cooling shutoff> = 0.0");
 	msr->param.dDeltaStarForm = msr->param.dDelta;
 	prmAddParam(msr->prm,"dDeltaStarForm", 2, &msr->param.dDeltaStarForm,
 		    sizeof(double), "dDeltaStarForm",
 		    "<Minimum SF timestep in years> = dDelta");
+	msr->param.bShortCoolShutoff = 0;
+	prmAddParam(msr->prm,"bShortCoolShutoff", 0, &msr->param.bShortCoolShutoff,
+		    sizeof(int), "bShortCoolShutoff",
+		    "<Which cooling shutoff time to use> = long one");
+	msr->param.bSmallSNSmooth = 1;
+	prmAddParam(msr->prm,"bSmallSNSmooth", 0, &msr->param.bSmallSNSmooth,
+		    sizeof(int), "bSmallSNSmooth",
+		    "<smooth SN ejecta over blast or smoothing radius> = blast radius");
 	msr->param.iStarFormRung = 0;
 	prmAddParam(msr->prm,"iStarFormRung", 2, &msr->param.iStarFormRung,
 		    sizeof(double), "iStarFormRung",
@@ -1326,10 +1330,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.stfm->dErgUnit =
 		GCGS*pow(msr->param.dMsolUnit*MSOLG, 2.0)
 		/(msr->param.dKpcUnit*KPCCM);
+            msr->param.dKBoltzUnit = msr->param.dKpcUnit*KPCCM*KBOLTZ
+			/GCGS/msr->param.dMsolUnit/MSOLG/msr->param.dMsolUnit/MSOLG;
 	    /* convert to system units */
 	    msr->param.stfm->dPhysDenMin *= MHYDR/msr->param.stfm->dGmPerCcUnit;
 #define SECONDSPERYEAR   31557600.
-            msr->param.dtCoolingShutoff *= SECONDSPERYEAR/msr->param.dSecUnit;
             if( prmSpecified(msr->prm, "dDeltaStarForm") ){
                 msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
                 msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm;
@@ -1794,6 +1799,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# dConstGamma: %g",msr->param.dConstGamma);
 	fprintf(fp," dMeanMolWeight: %g",msr->param.dMeanMolWeight);
 	fprintf(fp," dGasConst: %g",msr->param.dGasConst);
+	fprintf(fp," dKBoltzUnit: %g",msr->param.dKBoltzUnit);
 	fprintf(fp," dMsolUnit: %g",msr->param.dMsolUnit);
 	fprintf(fp," dKpcUnit: %g",msr->param.dKpcUnit);
 	fprintf(fp," ddHonHLimit: %g",msr->param.ddHonHLimit);
@@ -1824,10 +1830,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dMinGasMass: %g",msr->param.stfm->dMinGasMass);
 	fprintf(fp," dMaxStarMass: %g",msr->param.stfm->dMaxStarMass);
 	fprintf(fp," dESN: %g",msr->param.sn->dESN);
-	fprintf(fp," dSNFBMassFactor: %g",msr->param.dSNFBMassFactor);
-	fprintf(fp," dtCoolingShutoff: %g = %g yrs",
-                msr->param.dtCoolingShutoff,
-                msr->param.dSecUnit*msr->param.dtCoolingShutoff/SECONDSPERYEAR);
+	fprintf(fp," bShortCoolShutoff: %i",msr->param.bShortCoolShutoff);
+	fprintf(fp," bSmallSNSmooth: %i",msr->param.bSmallSNSmooth);
         for ( testDelta = msr->param.dDelta; 
             testDelta >= msr->param.dDeltaStarForm && 
             msr->param.dDeltaStarForm != 0.0; testDelta *= 0.5 ){
@@ -1839,7 +1843,7 @@ void msrLogParams(MSR msr,FILE *fp)
                     msr->param.dDeltaStarForm, testDelta,
                     testDelta*msr->param.dSecUnit/SECONDSPERYEAR,
                     msr->param.iStarFormRung );
-            msr->param.dDeltaStarForm = testDelta;
+            msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm = testDelta;
             }
         else if ( msr->param.dDeltaStarForm == 0.0 ) {
             fprintf(fp," dDeltaStarForm (set): %g, effectively: 0.0 = 0.0 yrs, iStarFormRung: maxRung",
@@ -3017,10 +3021,23 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 #endif
 #ifdef STARFORM
         in.smf.dMinMassFrac = msr->param.stfm->dMinMassFrac;
-        in.smf.dSNFBMassFactor = msr->param.dSNFBMassFactor;
-        in.smf.dtCoolingShutoff = msr->param.dtCoolingShutoff;
 	in.smf.dTime = dTime;
-#endif
+	in.smf.bSmallSNSmooth = msr->param.bSmallSNSmooth;
+	in.smf.bShortCoolShutoff = msr->param.bShortCoolShutoff;
+        /* from McKee and Ostriker (1977) ApJ 218 148 */
+        in.smf.dRadPreFactor = pow(10,1.74)/(msr->param.dKpcUnit*1000.0)*
+    pow(MSOLG*msr->param.dMsolUnit/(msr->param.dMeanMolWeight*MHYDR*pow(KPCCM*msr->param.dKpcUnit,3)),-0.16)*
+    pow(0.0001*GCGS*pow(MSOLG*msr->param.dMsolUnit,2)/(pow(KPCCM*msr->param.dKpcUnit,4)*KBOLTZ),-0.2);
+	if (msr->param.bShortCoolShutoff){        /* end of snowplow */
+        	in.smf.dTimePreFactor = SECONDSPERYEAR*pow(10,5.92)/(msr->param.dSecUnit)*
+    pow(MSOLG*msr->param.dMsolUnit/(msr->param.dMeanMolWeight*MHYDR*pow(KPCCM*msr->param.dKpcUnit,3)),0.27)*
+    pow(0.0001*GCGS*pow(MSOLG*msr->param.dMsolUnit,2)/(pow(KPCCM*msr->param.dKpcUnit,4)*KBOLTZ),-0.64);
+		} else {       /* t_{max}*/
+        	in.smf.dTimePreFactor = SECONDSPERYEAR*pow(10,6.85)/(msr->param.dSecUnit)*
+    pow(MSOLG*msr->param.dMsolUnit/(msr->param.dMeanMolWeight*MHYDR*pow(KPCCM*msr->param.dKpcUnit,3)),0.32)*
+    pow(0.0001*GCGS*pow(MSOLG*msr->param.dMsolUnit,2)/(pow(KPCCM*msr->param.dKpcUnit,4)*KBOLTZ),-0.70);
+		}
+#endif /*STARFORM*/
 #ifdef COLLISIONS
 	in.smf.dCentMass = msr->param.dCentMass; /* for Hill sphere checks */
 #endif

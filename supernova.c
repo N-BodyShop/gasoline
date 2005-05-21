@@ -79,14 +79,10 @@ void snInitConstants(SN sn)
        Raiteri, Villata and Navarro, A&A 315, 105, 1996 */
     sn->dMEjexp = 1.056;    
     sn->dMEjconst = 0.7682; 
-    sn->dMFeexp = 2.864;    
-    sn->dMFeconst = 9.783e-5; 
-    sn->dMOxexp = 3.721;    
-    sn->dMOxconst = 1.2325e-4; 
-/*    sn->dMFeexp = 1.864;    
-    sn->dMFeconst = 2.802e-4;       The values from the article, but
-    sn->dMOxexp = 2.721;            we want to integrate the functions
-    sn->dMOxconst = 4.586e-4; */
+    sn->dMFeexp = 1.864;
+    sn->dMFeconst = 2.802e-4;
+    sn->dMOxexp = 2.721;
+    sn->dMOxconst = 4.586e-4; 
     sn->dSNIaMetals = 0.76;  /* 0.63 Msol Fe + 0.13 Msol Ox (Theilemann 1986)*/
     
     MSInitialize(&tempMS);
@@ -147,14 +143,15 @@ void snCalcSNIIFeedback(SN sn, SFEvent sfEvent,
 			dCumMMax = dMSCumMass (&sn->MSparam, dMStarMaxII);
 
 			dMSNTypeII = dCumMMin - dCumMMax; /* total mass of stars that go SN II
-												 in this timestep in solar masses */
+                                            in this timestep in solar masses. FAKE MASS 
+                                            (normalized to IMF stuff, REAL MASS is below).*/
 			/* cumulative number of stars with mass greater than dMStarMinII and
 			   dMstarMaxII in solar masses */
 			dCumNMinII = dMSCumNumber (&sn->MSparam, dMStarMinII); 
 			dCumNMaxII = dMSCumNumber (&sn->MSparam, dMStarMaxII);
 
 			dMSNTypeII /= dMtot; /* convert to mass fraction of stars */
-			dMSNTypeII *= sfEvent.dMass; /* convert to mass of stars that go SNIa */
+			dMSNTypeII *= sfEvent.dMass; /* REAL MASS convert to mass of stars that go SNII */
 
 			dNSNTypeII = dCumNMinII - dCumNMaxII;
 			dNSNTypeII /= dMtot; /* convert to number per solar mass of stars */
@@ -180,12 +177,12 @@ void snCalcSNIIFeedback(SN sn, SFEvent sfEvent,
 	 * 315, 105, 1996  are used to calculate SNII yields
          * Integrate over power law from lowest mass progenitor to highest mass.
 	 */
-    fbEffects->dMIron = 
-        sn->dMFeconst * (pow(dMStarMax, sn->dMFeexp) - pow(dMStarMin, sn->dMFeexp));
-    fbEffects->dMOxygen = 
-        sn->dMOxconst * (pow(dMStarMax, sn->dMOxexp) - pow(dMStarMin, sn->dMOxexp));
-    fbEffects->dMetals = ( fbEffects->dMIron + fbEffects->dMOxygen )/ fbEffects->dMassLoss;
-/*		/ (sn->dMEjconst * pow(dMeanMStar, sn->dMEjexp));*/
+    fbEffects->dMIron = sn->dMFeconst * pow(dMeanMStar, sn->dMFeexp)
+                    / (sn->dMEjconst * pow(dMeanMStar, sn->dMEjexp));
+    fbEffects->dMOxygen = sn->dMOxconst*pow(dMeanMStar, sn->dMOxexp)
+                    / (sn->dMEjconst * pow(dMeanMStar, sn->dMEjexp));
+        
+    fbEffects->dMetals = ( fbEffects->dMIron + fbEffects->dMOxygen );
     
 	}
 
@@ -247,9 +244,8 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
 			}
     
     /* decrement mass of star particle by mass of stars that go SN
-       plus mass of SN remnants */
-    dDeltaMSNrem = dNSNTypeIa*sn->dMSNrem; /* mass in SN remnants */
-    fbEffects->dMassLoss = dMSNTypeIa - dDeltaMSNrem;
+       and SN Ia have no remnants. */
+    fbEffects->dMassLoss = dMSNTypeIa;
 
     /* SN specific energy rate to be re-distributed among neighbouring gas
        particles */
@@ -260,8 +256,8 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
      * every single explosion.  A comparable amount of Silicon is ejected
      * to the amount of Oxygen that is ejected.
      */
-    fbEffects->dMIron = dNSNTypeIa*0.63;
-    fbEffects->dMOxygen = dNSNTypeIa*0.13;
+    fbEffects->dMIron = dNSNTypeIa*0.63/fbEffects->dMassLoss;
+    fbEffects->dMOxygen = dNSNTypeIa*0.13/fbEffects->dMassLoss;
 	/* Fraction of mass in metals to be re-distributed among neighbouring
 	 * gas particles: assumes fixed amount of metals per supernovea independent of
 	 * mass. See Raiteri, Villata and Navarro, page 108.

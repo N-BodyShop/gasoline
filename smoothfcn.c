@@ -2,6 +2,7 @@
 #include <assert.h>
 #include "smoothfcn.h"
 #define max(A,B) ((A) > (B) ? (A) : (B))
+#define min(A,B) ((A) > (B) ? (B) : (A))
 
 #ifdef COLLISIONS
 #include "ssdefs.h"
@@ -27,6 +28,7 @@
 */
 
 #define ACCEL(p,j) (((PARTICLE *)(p))->a[j])
+#define KPCCM 3.085678e21
 
 #ifdef SHOCKTRACK
 /* Shock Tracking on: p->ShockTracker and p->aPres are defined */
@@ -2130,89 +2132,120 @@ void combDistSNEnergy(void *p1,void *p2)
 
 void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
+        if ( (p->fMSN == 0.0) && (p->fESNrate == 0.0)){return;}
 	PARTICLE *q;
-	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fAveDens,fNewBall,f2h2,delta_m,m_new,f1,f2,fPartEncMass;
-	int i,counter;
+	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fNorm_Pres,fAveDens,fNewBall,f2h2;
+        FLOAT delta_m,m_new,f1,f2,fBlastRadius,fShutoffTime,fmind;
+	int i,counter,imind;
 
 	assert(TYPETest(p, TYPE_STAR));
 	ih2 = 4.0/BALL2(p);
+        f2h2=BALL2(p);
         rstot = 0.0;  
-        fNorm_u = 0.0;      
+        fNorm_u = 0.0;
+        fNorm_Pres = 0.0;
 	
+	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
 	for (i=0;i<nSmooth;++i) {
             r2 = nnList[i].fDist2*ih2;            
             KERNEL(rs,r2);
-            rstot += rs;
             q = nnList[i].pPart;
             fNorm_u += q->fMass*rs;
+            rs *= fNorm;
+            fAveDens += q->fMass*rs;
+            fNorm_Pres += q->fMass*q->uPred*rs;
 	    assert(TYPETest(q, TYPE_GAS));
             }
-        fAveDens = fNorm_u;
-#ifdef SMALLSNSMOOTH
-        if ( p->fESNrate != 0.0 && p->fMSNII != 0.0 ) {
-            fNewBall = pow(3.0*p->fMSNII*smf->dSNFBMassFactor/(4.0*M_PI*fAveDens),0.3333);
-/*            fNewBall = 10*pow(p->ESNII,0.5)*pow(fAveDens,0.2);*/
-            /* fNewBall in units of smoothing lengths (normalized
-                to BALL size), so multiply by BALL to get new h.
-            */
-            f2h2 = fNewBall*fNewBall*BALL2(p);
+        fNorm_Pres *= (smf->gamma-1.0);
+        /* from McKee and Ostriker (1977) ApJ 218 148 */
+        fBlastRadius = smf->dRadPreFactor*pow(p->fNSN,0.32)*pow(fAveDens,-0.16)*pow(fNorm_Pres,-0.2);
+	if (smf->bShortCoolShutoff){
+        /* End of snowplow phase */
+            fShutoffTime = smf->dTimePreFactor*pow(p->fNSN,0.31)*pow(fAveDens,0.27)*pow(fNorm_Pres,-0.64);
+	} else{        /* McKee + Ostriker 1977 t_{max} */
+            fShutoffTime = smf->dTimePreFactor*pow(p->fNSN,0.32)*pow(fAveDens,0.34)*pow(fNorm_Pres,-0.70);
+	}
+	
+   if (smf->bSmallSNSmooth) {
+        fmind = BALL2(p);
+        imind = 0;
+        if ( p->fESNrate != 0.0 ) {
+            /* Change smoothing radius to blast radius 
+             * so that we only distribute mass, metals, and energy
+             * over that range. 
+             */
+            f2h2 = fBlastRadius*fBlastRadius;
             ih2 = 4.0/f2h2;
+            rstot = 0.0;  
+            fNorm_u = 0.0;
             for (i=0;i<nSmooth;++i) {
-                r2 = nnList[i].fDist2*ih2;            
-                KERNEL(rs,r2);
-                rstot += rs;
-                q = nnList[i].pPart;
-                fNorm_u += q->fMass*rs;
-                assert(TYPETest(q, TYPE_GAS));
+                if ( nnList[i].fDist2 < fmind ){imind = i; fmind = nnList[i].fDist2;}
+                if ( nnList[i].fDist2 < f2h2 ) {
+                    r2 = nnList[i].fDist2*ih2;            
+                    KERNEL(rs,r2);
+                    q = nnList[i].pPart;
+                    fNorm_u += q->fMass*rs;
+                    assert(TYPETest(q, TYPE_GAS));
+                    }
                 }
             }
-#endif /*SMALLSNSMOOTH*/      
-    
-        fNorm = 1./rstot;
+        
+        /* If there's no gas particle within blast radius,
+           give mass and energy to nearest gas particle. */
+        if (fNorm_u ==0.0){
+            r2 = nnList[imind].fDist2*ih2;            
+            KERNEL(rs,r2);
+            fNorm_u = nnList[imind].pPart->fMass*rs;
+            }
+	 }
         fNorm_u = 1./fNorm_u;
-  counter=0;
+counter=0;
 	for (i=0;i<nSmooth;++i) {
             q = nnList[i].pPart;
-#ifdef SMALLSNSMOOTH
-            if ( p->fESNrate != 0.0 && nnList[i].fDist2 < f2h2 ) {
-                q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
-                    smf->dTime + smf->dtCoolingShutoff);
-counter++;
-#endif /*SMALLSNSMOOTH*/          
-            r2 = nnList[i].fDist2*ih2;  
-            KERNEL(rs,r2);
-            /* Remember: We are dealing with total energy rate and total metal
-             * mass, not energy/gram or metals per gram.  
-             * q->fMass is in product to make units work for fNorm_u.
-             */
-            q->fESNrate += rs*fNorm_u*q->fMass*p->fESNrate;
-            q->fMetals += rs*fNorm_u*q->fMass*p->fSNMetals;
-            q->fMFracOxygen += rs*fNorm_u*q->fMass*p->fMOxygenOut;
-            q->fMFracIron += rs*fNorm_u*q->fMass*p->fMIronOut;
-            
-#ifndef SMALLSNSMOOTH
-            /*	Mass Factor Stuff:
-                r2 (normalized radius to particle) is 
-                the right thing to use to calculate the mass
-                because average density is also based on smoothing
-                normalized units.
-            */
-            fPartEncMass = 4*M_PI*sqrt(r2)*r2*fAveDens/3;
-            if ( p->fESNrate != 0.0 && 
-                 (p->fMSNII*smf->dSNFBMassFactor > fPartEncMass)){
-                q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
-                    smf->dTime + smf->dtCoolingShutoff);
-counter++;
-                }
-#endif /*not SMALLSNSMOOTH */
-            /*	update mass after everything else so that distribution
-                is based entirely upon initial mass of gas particle */
-            q->fMass += rs*fNorm_u*q->fMass*p->fMSN;
-#ifdef SMALLSNSMOOTH
+            if (smf->bSmallSNSmooth) {
+                if ( (nnList[i].fDist2 <= f2h2) || (i == imind) ) {
+                    if( p->fNSN != 0.0 && (nnList[i].fDist2 <= f2h2)) {
+                        q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
+                            smf->dTime + fShutoffTime);}
+counter++;  
+                    r2 = nnList[i].fDist2*ih2;  
+                    KERNEL(rs,r2);
+                    /* Remember: We are dealing with total energy rate and total metal
+                     * mass, not energy/gram or metals per gram.  
+                     * q->fMass is in product to make units work for fNorm_u.
+                     */
+                    q->fESNrate += rs*fNorm_u*q->fMass*p->fESNrate;
+                    q->fMetals += rs*fNorm_u*q->fMass*p->fSNMetals;
+                    q->fMFracOxygen += rs*fNorm_u*q->fMass*p->fMOxygenOut;
+                    q->fMFracIron += rs*fNorm_u*q->fMass*p->fMIronOut;
+                    q->fMass += rs*fNorm_u*q->fMass*p->fMSN;
+                    }
+            } else {
+                r2 = nnList[i].fDist2*ih2;  
+                KERNEL(rs,r2);
+                /* Remember: We are dealing with total energy rate and total metal
+                 * mass, not energy/gram or metals per gram.  
+                 * q->fMass is in product to make units work for fNorm_u.
+                 */
+                q->fESNrate += rs*fNorm_u*q->fMass*p->fESNrate;
+                q->fMetals += rs*fNorm_u*q->fMass*p->fSNMetals;
+                q->fMFracOxygen += rs*fNorm_u*q->fMass*p->fMOxygenOut;
+                q->fMFracIron += rs*fNorm_u*q->fMass*p->fMIronOut;
+                
+                if ( p->fESNrate != 0.0 && 
+                     (fBlastRadius*fBlastRadius >= nnList[i].fDist2)){
+                    q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
+                        smf->dTime + fShutoffTime);
+    counter++;
+                    }
+                /*	update mass after everything else so that distribution
+                    is based entirely upon initial mass of gas particle */
+                q->fMass += rs*fNorm_u*q->fMass*p->fMSN;
+                } 
             }
-#endif /*SMALLSNSMOOTH*/          
-            }
-if (counter >0) printf("%i ",counter);
+/*if(counter>0) printf("%i ",counter);
+if (p->fNSN >0) printf("%i E51:  %g  Dens:  %g  P:  %g  R:  %g shutoff time: %g   \n",counter,p->fNSN,fAveDens,fNorm_Pres,fBlastRadius,fShutoffTime);
+if(p->fNSN!= 0.0)printf("E51:  %g  Dens:  %g  P:  %g  R:  %g shutoff time: %g  \n",p->fNSN,fAveDens,fNorm_Pres,fBlastRadius,fShutoffTime);*/
 }
 
 void postDistSNEnergy(PARTICLE *p1, SMF *smf)

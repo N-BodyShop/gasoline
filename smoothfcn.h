@@ -41,9 +41,11 @@ typedef struct smfParameters {
 #endif
 #ifdef STARFORM
         double dMinMassFrac;
-        double dtCoolingShutoff;
-        double dSNFBMassFactor;
+        double dRadPreFactor;
+        double dTimePreFactor;
 	double dTime;
+	int bShortCoolShutoff;
+	int bSmallSNSmooth;
 #endif    
 #ifdef COLLISIONS
 	double dTime;

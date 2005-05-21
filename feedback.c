@@ -68,6 +68,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
             dTotMOxygen = 0.0;
             dTotMIron = 0.0;
             p->fESNrate = 0.0;
+            p->fNSN = 0.0;
 
             if(fb->dInitStarMass > 0.0)
                 sfEvent.dMass = fb->dInitStarMass*fb->dGmUnit/MSOLG;
@@ -88,7 +89,6 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                 case FB_SNII:
                     snCalcSNIIFeedback(sn, sfEvent, dTime,
                                         dDeltaYr, &fbEffects);
-                    p->fMSNII = fbEffects.dMassLoss * MSOLG/fb->dGmUnit;
                     break;
                 case FB_SNIA:
                     snCalcSNIaFeedback(sn, sfEvent, dTime,
@@ -111,6 +111,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                     assert(0);
                     }
 
+                    p->fNSN += fbEffects.dEnergy * MSOLG*fbEffects.dMassLoss/sn->dESN;
                 fbEffects.dMassLoss *= MSOLG/fb->dGmUnit;
                 fbEffects.dEnergy /= fb->dErgPerGmUnit;
 
@@ -121,8 +122,8 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                 fbTotals[j].dMassLoss += fbEffects.dMassLoss;
                 fbTotals[j].dEnergy += fbEffects.dEnergy*fbEffects.dMassLoss;
                 fbTotals[j].dMetals += fbEffects.dMetals*fbEffects.dMassLoss;
-                dTotMOxygen += fbEffects.dMOxygen*MSOLG/fb->dGmUnit;
-                dTotMIron += fbEffects.dMIron*MSOLG/fb->dGmUnit;
+                dTotMOxygen += fbEffects.dMOxygen*fbEffects.dMassLoss;
+                dTotMIron += fbEffects.dMIron*fbEffects.dMassLoss;
                 }
 
             /*

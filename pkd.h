@@ -99,7 +99,7 @@ typedef struct particle {
 #ifdef STARFORM
 	FLOAT fESNrate;
 	FLOAT fMSN;
-	FLOAT fMSNII;
+	FLOAT fNSN;           
 	FLOAT fMOxygenOut;
 	FLOAT fMIronOut;
 	FLOAT fMFracOxygen;
@@ -221,7 +221,7 @@ typedef struct chkParticle {
 	FLOAT vForm[3];
 	FLOAT fMassForm;	/* record original mass of star */
 	FLOAT fDenForm;
-	FLOAT fMSNII;
+	FLOAT fNSN;
 	FLOAT fMFracOxygen;
 	FLOAT fMFracIron;
         int iGasOrder;

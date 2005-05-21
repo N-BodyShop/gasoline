@@ -187,9 +187,10 @@ struct parameters {
 	STFM   stfm;
 	FB     fb;
         SN sn;
-        double dSNFBMassFactor;
-        double dtCoolingShutoff;
         double dDeltaStarForm;
+	int bShortCoolShutoff;
+	int bSmallSNSmooth;
+	double dKBoltzUnit;
         int iStarFormRung;
 #endif
 #ifdef GLASS
