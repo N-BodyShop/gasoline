@@ -272,6 +272,7 @@ void dfParseOptions( struct DumpFrameContext *df, char * filename ) {
 	df->nFrame = 0;
 	df->bGetCentreOfMass = 0;
 	df->bGetOldestStar = 0;
+	df->bGetPhotogenic = 0;
 
 	fp = fopen( filename, "r" );
 	if (fp==NULL) return;
