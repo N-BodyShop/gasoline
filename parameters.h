@@ -33,6 +33,8 @@ struct parameters {
 	int bSqrtPhiStep;
 	int bAccelStep; /* true if bEpsAccStep or bSqrtPhiStep */
 	int bDensityStep;
+    int bDeltaAccelStep;
+    int bDeltaAccelStepGasTree;
 	int nTruncateRung;
 	int bNonSymp;
     int iBinaryOutput;
@@ -88,7 +90,11 @@ struct parameters {
 	int nSoftNbr;
 	int bSoftByType;
 	int bDoSoftOutput;
+    int bDoSinks;
+    int bSinkThermal;
+    int iSinkRung;
 	double dEta;
+    double dEtaDeltaAccel;
 	double dExtraStore;
 	double dSoft;
 	double dSoftMax;
@@ -109,6 +115,9 @@ struct parameters {
 	CSM csm;
 	double dRedTo;
 	double dCentMass;
+    double dSinkRadius;
+    double dSinkBoundOrbitRadius;
+    double dDeltaSink;
 	char achDigitMask[MAXPATHLEN];
 	char achInFile[MAXPATHLEN];
 	char achOutName[MAXPATHLEN];
@@ -190,9 +199,9 @@ struct parameters {
         double dDeltaStarForm;
 	int bShortCoolShutoff;
 	int bSmallSNSmooth;
-	double dKBoltzUnit;
         int iStarFormRung;
 #endif
+	double dKBoltzUnit;
 #ifdef GLASS
 	/*
 	 ** Additional parameters for GLASS.

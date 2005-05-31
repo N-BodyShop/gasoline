@@ -30,6 +30,9 @@
 typedef struct smfParameters {
 	double H;
 	double a;
+    double dDeltaAccelFac;
+    double dSinkRadius;
+    double dSinkBoundOrbitRadius;
 #ifdef GASOLINE
 	double alpha;
 	double beta;
@@ -39,6 +42,7 @@ typedef struct smfParameters {
 	int bCannonical;
 	int bGrowSmoothList;
 #endif
+    int bSinkThermal;
 #ifdef STARFORM
         double dMinMassFrac;
         double dRadPreFactor;
@@ -84,6 +88,8 @@ enum smx_smoothtype {
   SMX_MARKIIDENSITY,
   SMX_MARK,
   SMX_MEANVEL,
+  SMX_DELTAACCEL,
+  SMX_SINKACCRETE,
 #ifdef GASOLINE
   SMX_SPHPRESSURETERMS,
   SMX_DIVVORT,
@@ -143,6 +149,16 @@ void initMeanVel(void *);
 void combMeanVel(void *,void *);
 void MeanVel(PARTICLE *,int,NN *,SMF *);
 void MeanVelSym(PARTICLE *,int,NN *,SMF *);
+
+/* SMX_DELTAACCEL */
+void DeltaAccel(PARTICLE *,int,NN *,SMF *);
+void initDeltaAccel(void *);
+void combDeltaAccel(void *,void *);
+
+/* SMX_SINKACCRETE */
+void SinkAccrete(PARTICLE *,int,NN *,SMF *);
+void initSinkAccrete(void *);
+void combSinkAccrete(void *,void *);
 
 #ifdef GASOLINE
 

@@ -73,6 +73,22 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		comb = combMark;
 		smx->fcnPost = NULL;
 		break;
+	case SMX_DELTAACCEL:
+		smx->fcnSmooth = DeltaAccel;
+		initParticle = NULL; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
+		init = NULL; /* Cached copies */
+		comb = combDeltaAccel;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_SINKACCRETE:
+		smx->fcnSmooth = SinkAccrete;
+		initParticle = NULL; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
+		init = initSinkAccrete; /* Cached copies */
+		comb = combSinkAccrete;
+		smx->fcnPost = NULL;
+		break;
 #ifdef SUPERCOOL
 	case SMX_MEANVEL:
 		smx->fcnSmooth = bSymmetric?MeanVelSym:MeanVel;

@@ -407,6 +407,122 @@ void combMark(void *p1,void *p2)
 	}
 
 
+void initDeltaAccel(void *p)
+{
+	}
+
+void combDeltaAccel(void *p1,void *p2)
+{
+    if (TYPEQueryACTIVE((PARTICLE *) p1) && ((PARTICLE *)p2)->dt < ((PARTICLE *)p1)->dt) 
+	    ((PARTICLE *)p1)->dt = ((PARTICLE *)p2)->dt; 
+    }
+
+void DeltaAccel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	int i;
+    FLOAT dax,da2,r2,dt,dtFac;
+	PARTICLE *q;
+
+#ifdef DELTACCELCAP
+	FLOAT pSoft2,qSoft2;
+	pSoft2 = p->fSoft*p->fSoft;
+#endif
+	/*	assert(TYPEQueryACTIVE((PARTICLE *) p)); */
+
+	for (i=0;i<nSmooth;++i) {
+		r2 = nnList[i].fDist2;
+	    if (r2 > 0) {
+		  q = nnList[i].pPart;
+#ifdef DELTAACCELACTIVE
+		  if (!TYPEQueryACTIVE((PARTICLE *) q)) continue;
+#endif
+		  dax = p->a[0]-q->a[0];
+		  da2 = dax*dax;
+		  dax = p->a[1]-q->a[1];
+		  da2 += dax*dax;
+		  dax = p->a[2]-q->a[2];
+		  da2 += dax*dax;
+		  if (da2 > 0) {
+#ifdef DELTACCELCAP
+			if (r2 < pSoft2) r2 = pSoft2;
+			qSoft2 = q->fSoft*q->fSoft;
+			if (r2 < qSoft2) r2 = qSoft2;
+#endif
+
+   		    dt = smf->dDeltaAccelFac*sqrt(sqrt(r2/da2));  /* Timestep dt = Eta sqrt(deltar/deltaa) */
+		    if (dt < p->dt) p->dt = dt;
+		    if (
+#ifndef DELTAACCELACTIVE
+				TYPEQueryACTIVE((PARTICLE *) q) && 
+#endif
+				(dt < q->dt)) q->dt = dt;
+		    }
+		  }
+	    }
+    }
+
+void initSinkAccrete(void *p)
+{
+	}
+
+void combSinkAccrete(void *p1,void *p2)
+{
+    if (!(TYPETest( ((PARTICLE *) p1), TYPE_DELETED )) &&
+        TYPETest( ((PARTICLE *) p2), TYPE_DELETED ) ) {
+		((PARTICLE *) p1)-> fMass = ((PARTICLE *) p2)-> fMass;
+	    pkdDeleteParticle( NULL, p1 );
+	    }
+    }
+
+void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	int i;
+	double dSinkRadius2 = smf->dSinkRadius*smf->dSinkRadius, 
+	       EBO,Eq,r2,dvx,dv2,ifMass;
+	PARTICLE *q;
+
+	/* G = 1 
+	 p is star/sink particle
+	 q is gas particle */
+	EBO = -0.5*p->fMass/smf->dSinkBoundOrbitRadius;
+	
+	for (i=0;i<nSmooth;++i) {
+		r2 = nnList[i].fDist2;
+	    if (r2 > 0 && r2 < dSinkRadius2) {
+		  q = nnList[i].pPart;
+		  if (TYPETest( q, TYPE_GAS )) {
+			dvx = p->v[0]-q->v[0];
+			dv2 = dvx*dvx;
+			dvx = p->v[1]-q->v[1];
+			dv2 += dvx*dvx;
+			dvx = p->v[2]-q->v[2];
+			dv2 += dvx*dvx;
+			Eq = -p->fMass/sqrt(r2) + 0.5*dv2;
+#ifdef GASOLINE
+			if (smf->bSinkThermal) Eq+= q->u;
+#endif
+			if (Eq < EBO) {
+			   ifMass = 1./(p->fMass + q->fMass);
+			   p->r[0] = ifMass*(p->fMass*p->r[0]+q->fMass*q->r[0]);
+			   p->r[1] = ifMass*(p->fMass*p->r[1]+q->fMass*q->r[1]);
+			   p->r[2] = ifMass*(p->fMass*p->r[2]+q->fMass*q->r[2]);
+			   p->v[0] = ifMass*(p->fMass*p->v[0]+q->fMass*q->v[0]);
+			   p->v[1] = ifMass*(p->fMass*p->v[1]+q->fMass*q->v[1]);
+			   p->v[2] = ifMass*(p->fMass*p->v[2]+q->fMass*q->v[2]);
+			   p->a[0] = ifMass*(p->fMass*p->a[0]+q->fMass*q->a[0]);
+			   p->a[1] = ifMass*(p->fMass*p->a[1]+q->fMass*q->a[1]);
+			   p->a[2] = ifMass*(p->fMass*p->a[2]+q->fMass*q->a[2]);
+			   p->fMass += q->fMass;
+			   assert(q->fMass != 0);
+			   q->fMass = 0;
+			   pkdDeleteParticle(smf->pkd, q);
+			   }
+		    }
+          }   
+	    }
+    }
+
+
 #ifdef SUPERCOOL
 void initMeanVel(void *p)
 {

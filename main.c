@@ -778,6 +778,22 @@ int main(int argc,char **argv)
 		    msrDensityStep(msr,dTime);
 		        }
 
+		if (msr->param.bDeltaAccelStep) {
+ 		    fprintf(stderr,"Adding DeltaAccelStep dt\n");
+			if (!msr->param.bDeltaAccelStepGasTree) {
+			    msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
+			    msrBuildTree(msr,0,-1.0,1);
+			    }
+			else {
+			    msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
+			    msrBuildTree(msr,0,-1.0,1);
+			}
+			msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+			msrBuildTree(msr,0,-1.0,1);
+		     msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+			/* This smooth sets dt directly -- hardwired coefficient */
+			msrSmooth(msr,dTime,SMX_DELTAACCEL,0);
+		    }
 		/*
 		msrDtToRung(msr,0,msrDelta(msr),1);
 		msrRungStats(msr);

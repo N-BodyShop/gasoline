@@ -13,7 +13,7 @@
 
 #define NATIVE_SQRT (defined(_MIPS_ISA) && (_MIPS_ISA == _MIPS_ISA_MIPS4) \
 	     || defined(__i486__) || defined(CCC) || defined(__ia64__) \
-	     || defined(__crayx1))
+	     || defined(__crayx1) || defined(OPTERON))
 
 #if !(NATIVE_SQRT)
 void v_sqrt1(int,double *,double *);

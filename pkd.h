@@ -199,7 +199,6 @@ int TYPEClear( PARTICLE *a );
 #define TYPEClearACTIVE(a)       ((a)->iActive &= (TYPE_ALL|TYPE_SUPERCOOL))
 #define TYPEClear(a)             ((a)->iActive = 0)
 
-
 #define CHECKPOINT_VERSION 7
 
 typedef struct chkParticle {
