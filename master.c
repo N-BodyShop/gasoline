@@ -1367,7 +1367,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			/GCGS/msr->param.dMsolUnit/MSOLG/msr->param.dMsolUnit/MSOLG;
 	    /* convert to system units */
 	    msr->param.stfm->dPhysDenMin *= MHYDR/msr->param.stfm->dGmPerCcUnit;
-            msr->param.dtCoolingShutoff *= SECONDSPERYEAR/msr->param.dSecUnit;
             if( prmSpecified(msr->prm, "dDeltaStarForm") ){
                 msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
                 msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm;
