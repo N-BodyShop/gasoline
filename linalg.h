@@ -30,7 +30,7 @@
 
 typedef FLOAT Scalar;
 typedef Scalar Vector[3];
-typedef Vector Matrix[3];
+typedef Vector Matrix[3]; /* can't declare const Matrix with this defn (why?) */
 
 /** Copy a vector.
  *
@@ -40,7 +40,7 @@ typedef Vector Matrix[3];
  *  Parameters (out):
  *   v - The destination vector
  */
-void vectorCopy(Vector u,Vector v);
+void vectorCopy(const Vector u,Vector v);
 
 /** Multiply the specified vector times a scalar and store the result in
  *   destination.  
@@ -52,7 +52,7 @@ void vectorCopy(Vector u,Vector v);
  *  Parameters (out):
  *   v - Destination vector for the result.  May be same as u if desired
  */
-void vectorScale(Vector u,FLOAT scalar,Vector v);
+void vectorScale(const Vector u,FLOAT scalar,Vector v);
 
 /** Add two vectors together and store the result in the specified location.
  *
@@ -63,7 +63,7 @@ void vectorScale(Vector u,FLOAT scalar,Vector v);
  *  Parameters (out):
  *   v - Destination for sum, may be same as either v1 or v2 if desired
  */
-void vectorAdd(Vector v1,Vector v2,Vector v);
+void vectorAdd(const Vector v1,const Vector v2,Vector v);
 
 /** Subtract one vector from a second and store the result in the specified location.
  *
@@ -74,7 +74,7 @@ void vectorAdd(Vector v1,Vector v2,Vector v);
  *  Parameters (out):
  *   v - Destination for difference, may be same as either v1 or v2 if desired
  */
-void vectorSub(Vector v1,Vector v2,Vector v);
+void vectorSub(const Vector v1,const Vector v2,Vector v);
 
 /** Returns dot product of two vectors.
  *
@@ -85,7 +85,12 @@ void vectorSub(Vector v1,Vector v2,Vector v);
  *  Returns:
  *   The dot product
  */
-FLOAT vectorDot(Vector v1,Vector v2);
+FLOAT vectorDot(const Vector v1,const Vector v2);
+
+/*DEBUG add comments*/
+FLOAT vectorMagSq(const Vector v);
+FLOAT vectorMag(const Vector v);
+void vectorNorm(Vector v);
 
 /** Computes cross product of two vectors.
  *
@@ -96,7 +101,10 @@ FLOAT vectorDot(Vector v1,Vector v2);
  *  Parameters (out):
  *   v - Destination for the cross product
  */
-void vectorCross(Vector v1,Vector v2,Vector v);
+void vectorCross(const Vector v1,const Vector v2,Vector v);
+
+/*DEBUG add comment*/
+void vectorSet(Vector v,double x,double y,double z);
 
 /** Sets the specified vector's components to zero.
  *
@@ -104,6 +112,9 @@ void vectorCross(Vector v1,Vector v2,Vector v);
  *   v - Zero vector
  */
 void vectorZero(Vector v);
+
+/*DEBUG add comment*/
+void vectorGetBasis(Vector a,Vector b,Vector c);
 
 /** Copy the specified matrix into the second matrix.
  *
@@ -126,7 +137,7 @@ void matrixCopy(Matrix a,Matrix b);
  *   v - Place to store the results, which must be different from u
  *        in order to generate correct results
  */
-void matrixTransform(Matrix m,Vector u,Vector v);
+void matrixTransform(Matrix m,const Vector u,Vector v);
 
 /** Take the transpose of a matrix.
  *
@@ -165,7 +176,7 @@ void matrixIdentity(Matrix m);
  *  Parameters (out):
  *   m - Diagonal matrix fill with the specified values
  */
-void matrixDiagonal(Vector v,Matrix m);
+void matrixDiagonal(const Vector v,Matrix m);
 
 /** Sum the off diagonal elements of the specified matrix.
  *
@@ -227,7 +238,7 @@ void matrixInverse(Matrix mat_in,Matrix mat_out);
  *   using the Jacobi method.
  * 
  *  Parameters (in):
- *   a - A real symmetric matrix
+ *   m - A real symmetric matrix
  *
  *  Parameters (out):
  *   eig_vals - The 3 eigenvalues of the system

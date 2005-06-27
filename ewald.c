@@ -211,7 +211,7 @@ void pkdEwaldInit(PKD pkd,double fhCut,int iOrder)
 				if (h2 > fhCut*fhCut) continue;
 				if (i == pkd->nMaxEwhLoop) {
 					pkd->nMaxEwhLoop *= 2;
-					pkd->ewt = realloc(pkd->ewt,pkd->nMaxEwhLoop*sizeof(EWT));
+					pkd->ewt = (EWT *) realloc(pkd->ewt,pkd->nMaxEwhLoop*sizeof(EWT));
 					assert(pkd->ewt != NULL);
 					}
 				gam[0] = exp(-k4*h2)/(M_PI*h2*L);

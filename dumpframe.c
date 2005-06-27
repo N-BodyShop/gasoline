@@ -18,7 +18,7 @@
 void dfInitialize( struct DumpFrameContext **pdf, double dTime, 
 				  double dDumpFrameTime, double dStep, double dDumpFrameStep,
 				  double dDelta, int iMaxRung, int bVDetails, char* filename ) {
-	double tock;
+	double tock=0.0;/*initialized to suppress warning: DCR 12/19/02*/
 	struct DumpFrameContext *df;
 
 	if (*pdf!=NULL) (*pdf)->fs = NULL;
@@ -132,7 +132,7 @@ void dfFreeImage( void *Image ) {
 void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 	double width,height;
 	double vec[3];
-	double norm[3];
+	/*double norm[3]; -- not used: DCR 12/19/02*/
 
 	in->r[0] = fs->target[0];
 	in->r[1] = fs->target[1];
@@ -189,7 +189,7 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 	if (fs->bExpansion) in->zEye/= in->dExp; /* Use physical units for sizing? */
 	/* zEye is used to scale viewport */
 
-	assert( in->zEye > 0 );
+	assert( in->zEye > 0.0 );
 	if (fs->bzClipFrac) {
 		in->zClipNear = in->zEye*fs->zClipNear;
 		in->zClipFar = in->zEye*fs->zClipFar;
@@ -1328,7 +1328,7 @@ void dfRenderImageOld( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 			}
 		}
 	else if (in->iRender == DF_RENDER_TSC) {
-		double hmul = 4*sqrt(in->x[0]*in->x[0] + in->x[1]*in->x[1] + in->x[2]*in->x[2]),h;
+		double hmul = 4*sqrt(in->x[0]*in->x[0] + in->x[1]*in->x[1] + in->x[2]*in->x[2]),h=0.0/*initialized to suppress warning: DCR 12/19/02*/;
 		int hint;
 		
 		for (i=0;i<pkd->nLocal;i++) {
@@ -1421,7 +1421,7 @@ void dfRenderImageOld( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 			}
 		}
 	else if (in->iRender == DF_RENDER_SOLID) {
-		double hmul = 4*sqrt(in->x[0]*in->x[0] + in->x[1]*in->x[1] + in->x[2]*in->x[2]),h;
+		double hmul = 4*sqrt(in->x[0]*in->x[0] + in->x[1]*in->x[1] + in->x[2]*in->x[2]),h=0.0/*initialized to suppress warning: DCR 12/19/02*/;
 		int hint;
 		
 		br0=1;
@@ -1575,7 +1575,7 @@ void dfFinishFrame( struct DumpFrameContext *df, double dTime, double dStep, str
 	int i;
 	int iMax;
 	unsigned char *gray,*g;
-	char number[40];
+	/*char number[40]; -- not used: DCR 12/19/02*/
 
 	switch( df->iNumbering ) {
 	case DF_NUMBERING_FRAME:

@@ -58,6 +58,7 @@ typedef struct smfParameters {
 	double dStart; /* collision search time interval */
 	double dEnd;
 	double dCollapseLimit; /* limit for inelastic collapse checks */
+	int bFixCollapse;
 #endif
 #ifdef SLIDING_PATCH
 	double dOrbFreq;

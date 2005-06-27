@@ -21,7 +21,7 @@
 #endif
 
 #ifdef AGGS
-#include "aggs.h" /*DEBUG include this from collision.h?...*/
+#include "aggs.h"
 #endif
 
 #ifdef _LARGE_FILES
@@ -419,7 +419,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				iSetMask = TYPE_DARK;
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
-				assert(p->fMass >= 0);
+				assert(p->fMass >= 0.0);
 				for (j=0;j<3;++j) {
 					xdr_float(&xdrs,&fTmp);
 					p->r[j] = fTmp;
@@ -441,7 +441,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				iSetMask = TYPE_GAS;
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
-				assert(p->fMass > 0);
+				assert(p->fMass > 0.0);
 				for (j=0;j<3;++j) {
 					xdr_float(&xdrs,&fTmp);
 					p->r[j] = fTmp;
@@ -466,8 +466,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->uPred = dTuFac*vTemp;
 #ifdef COOLDEBUG
 				if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
-				assert(p->u >= 0);
-				assert(p->uPred >= 0);
+				assert(p->u >= 0.0);
+				assert(p->uPred >= 0.0);
 #endif
 				xdr_float(&xdrs,&fTmp);
 				p->fSoft = fTmp;
@@ -496,7 +496,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef STARFORM
 				p->fMassForm = fTmp;
 #endif
-				assert(p->fMass >= 0);
+				assert(p->fMass >= 0.0);
 				for (j=0;j<3;++j) {
 					xdr_float(&xdrs,&fTmp);
 					p->r[j] = fTmp;
@@ -569,7 +569,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					p->v[j] = dvFac*dp.vel[j];
 					}
 				p->fMass = dp.mass;
-				assert(p->fMass >= 0);
+				assert(p->fMass >= 0.0);
 				p->fSoft = dp.eps;
 #ifdef CHANGESOFT
 				p->fSoft0 = dp.eps;
@@ -587,7 +587,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
 					}
 				p->fMass = gp.mass;
-				assert(p->fMass >= 0);
+				assert(p->fMass >= 0.0);
 				p->fSoft = gp.hsmooth;
 #ifdef CHANGESOFT
 				p->fSoft0 = gp.hsmooth;
@@ -599,8 +599,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->uPred = dTuFac*gp.temp;
 #ifdef COOLDEBUG
 				if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
-				assert(p->u >= 0);
-				assert(p->uPred >= 0);
+				assert(p->u >= 0.0);
+				assert(p->uPred >= 0.0);
 #endif
 				p->fMetals = gp.metals;
 #endif
@@ -616,7 +616,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef STARFORM
 				p->fMassForm = sp.mass;
 #endif
-				assert(p->fMass >= 0);
+				assert(p->fMass >= 0.0);
 				p->fSoft = sp.eps;
 #ifdef CHANGESOFT
 				p->fSoft0 = sp.eps;
@@ -1758,19 +1758,19 @@ void pkdPhysicalSoft(PKD pkd,double dSoftMax,double dFac,int bSoftMaxMul)
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	
-	assert(dFac > 0.);
+	assert(dFac > 0.0);
 	if (bSoftMaxMul) {
 	        for (i=0;i<n;++i) { 
 		  /*		  assert(p[i].fSoft0 > 0.);
 				  printf("Compton:  %f\n",p[i].fSoft0);*/
                   
-		        assert(p[i].fSoft0 > 0.);
+		        assert(p[i].fSoft0 > 0.0);
 	                p[i].fSoft = p[i].fSoft0*dFac;
-			assert(p[i].fSoft > 0.);
+			assert(p[i].fSoft > 0.0);
 		        }
 	        }
 	else {
- 	        assert(dSoftMax > 0.);
+ 	        assert(dSoftMax > 0.0);
 	        for (i=0;i<n;++i) {
 	                p[i].fSoft = p[i].fSoft0*dFac;
 	                if (p[i].fSoft > dSoftMax) p[i].fSoft = dSoftMax;
@@ -3510,6 +3510,7 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 				}
 #ifdef SLIDING_PATCH
 			p->v[1] += fShear;
+			p->vPred[1] += fShear;
 #endif
 			}
 		}
@@ -3607,7 +3608,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		fread(&cp,sizeof(CHKPART),1,fp);
 		p->iOrder = cp.iOrder;
 		p->fMass = cp.fMass;
-		assert(p->fMass >= 0);
+		assert(p->fMass >= 0.0);
 #ifdef CHANGESOFT
 		p->fSoft0 = cp.fSoft;
 #endif
@@ -3988,7 +3989,7 @@ pkdGravStep(PKD pkd,double dEta)
 
     for (i=0;i<pkdLocal(pkd);i++) {
 		if (TYPEQueryACTIVE(&(pkd->pStore[i]))) {
-			mdlassert(pkd->mdl,pkd->pStore[i].dtGrav > 0);
+			mdlassert(pkd->mdl,pkd->pStore[i].dtGrav > 0.0);
 			dt = dEta/sqrt(pkd->pStore[i].dtGrav);
 			if (dt < pkd->pStore[i].dt)
 				pkd->pStore[i].dt = dt;
@@ -4014,7 +4015,7 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 				vel += pkd->pStore[i].v[j]*pkd->pStore[i].v[j];
 				acc += pkd->pStore[i].a[j]*pkd->pStore[i].a[j];
 				}
-			mdlassert(pkd->mdl,vel >= 0);
+			mdlassert(pkd->mdl,vel >= 0.0);
 			vel = sqrt(vel)*dVelFac;
 			acc = sqrt(acc)*dAccFac;
 			dT = FLOAT_MAXVAL;
@@ -4083,8 +4084,8 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
 		if(pkd->pStore[i].iRung >= iRung) {
 			mdlassert(pkd->mdl,TYPEQueryACTIVE(&(pkd->pStore[i])));
 			if(bAll) {          /* Assign all rungs at iRung and above */
-			        assert(pkd->pStore[i].fSoft > 0);
-			        assert(pkd->pStore[i].dt > 0);
+			        assert(pkd->pStore[i].fSoft > 0.0);
+			        assert(pkd->pStore[i].dt > 0.0);
 				iSteps = floor(dDelta/pkd->pStore[i].dt);
 				/* insure that integer boundary goes
 				   to the lower rung. */
@@ -4358,8 +4359,8 @@ int pkdSetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
 		p = &pkd->pStore[i];
 #ifdef COOLDEBUG
 		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
-		assert(p->u >= 0);
-		assert(p->uPred >= 0);
+		assert(p->u >= 0.0);
+		assert(p->uPred >= 0.0);
 #endif
 		/* DEBUG: Paranoia check */
 		mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
@@ -5001,7 +5002,7 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int 
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) 
                           if (p->uPred < 0) p->uPred = 0;
 #endif
-			  mdlassert(pkd->mdl,p->uPred > 0);
+			  mdlassert(pkd->mdl,p->uPred > 0.0);
                           }
 			}
 		}
@@ -5087,7 +5088,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 #ifdef SSFDEBUG
 			    if (p->iOrder==5514) printf("dT1 %i: %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,dT);
 #endif
-			    assert(p->u > 0);
+			    assert(p->u > 0.0);
 				dTu = dEtauDot*p->u/fabs(p->PdV);
 				if (dTu < dT) 
 					dT = dTu;
@@ -5337,7 +5338,7 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 			mdlassert(pkd->mdl,0); /* error during read in ss file */
 		p->iOrgIdx = data.org_idx;
 		p->fMass = data.mass;
-		p->fSoft = 0.5*data.radius;
+		p->fSoft = SOFT_FROM_SSDATA(&data); /* half physical radius */
 #ifdef CHANGESOFT 
  		p->fSoft0 = p->fSoft;
 #endif
@@ -5378,11 +5379,7 @@ pkdWriteSS(PKD pkd,char *pszFileName,int nStart)
 			mdlassert(pkd->mdl,0); /* only dark particles allowed in ss file */
 		data.org_idx = p->iOrgIdx;
 		data.mass = p->fMass;
-#ifdef CHANGESOFT
-		data.radius = 2*p->fSoft0;
-#else
-		data.radius = 2*p->fSoft;
-#endif
+		data.radius = RADIUS(p); /*DEBUG note CHANGESOFT not supported (what is it, anyway?)*/
 		for (j=0;j<3;++j) data.pos[j]  = p->r[j];
 		for (j=0;j<3;++j) data.vel[j]  = p->v[j];
 		for (j=0;j<3;++j) data.spin[j] = p->w[j];
@@ -5438,7 +5435,7 @@ pkdMarkEncounters(PKD pkd,double dt)
 			TYPESet(p,TYPE_ACTIVE);/*DEBUG redundant?*/
 			p->iDriftType = KEPLER;
 			p->dtCol = DBL_MAX;
-/*DEBUG			p->idNbr.iPid = p->idNbr.iIndex =
+/*DEBUG old neighbour stuff		p->idNbr.iPid = p->idNbr.iIndex =
 				p->idNbr.iOrder = -1; */
 			}
 		}
@@ -5483,7 +5480,7 @@ pkdPatch(PKD pkd,double dOrbFreqZ2)
 
 #ifdef SIMPLE_GAS_DRAG
 void
-_pkdSimpleGasVel(double r[],int iFlowOpt,double u[])
+_pkdSimpleGasVel(double r[],int iFlowOpt,double dTime,double u[])
 {
 	/* From Paolo Tanga's e-mail Feb 19, 2001: M, f_1 and f_2 are
 	   parameters (double precision) that can be considered internal
@@ -5516,23 +5513,24 @@ _pkdSimpleGasVel(double r[],int iFlowOpt,double u[])
 
 void
 pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
-				 double dOmegaZ)
+				 double dOmegaZ,double dTime)
 {
-	PARTICLE *p = pkd->pStore;
+	PARTICLE *p;
 	double u[3],dCoef;
 	int i;
 
 	for (i=0;i<pkd->nLocal;i++) {
-		if (!TYPEQueryACTIVE(&p[i])) continue;
-		_pkdSimpleGasVel(p[i].r,iFlowOpt,u); /* get gas velocity */
+		p = &pkd->pStore[i];
+		if (!TYPEQueryACTIVE(p)) continue;
+		_pkdSimpleGasVel(p->r,iFlowOpt,dTime,u); /* get gas velocity */
 		if (bEpstein)
-			dCoef = -dGamma/(2*p[i].fSoft); /* i.e. -gamma/R */
+			dCoef = -dGamma/RADIUS(p); /* i.e. -gamma/R */
 		else
-			dCoef = -dGamma/(4*p[i].fSoft*p[i].fSoft); /* i.e. -gamma/R^2 */
+			dCoef = -dGamma/(RADIUS(p)*RADIUS(p)); /* i.e. -gamma/R^2 */
 		/* note: following assumes dust density << gas density */
-		p[i].a[0] += dCoef*(p[i].vPred[0] - u[0]);
-		p[i].a[1] += dCoef*(p[i].vPred[1] - u[1]);
-		p[i].a[2] += dCoef*(p[i].vPred[2] - u[2]);
+		p->a[0] += dCoef*(p->vPred[0] - u[0]);
+		p->a[1] += dCoef*(p->vPred[1] - u[1]);
+		p->a[2] += dCoef*(p->vPred[2] - u[2]);
 		}
 	}
 #endif /* SIMPLE_GAS_DRAG */
@@ -5574,7 +5572,7 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) || defined(SIMPLESF)
 			  if (p->uPred < 0) p->uPred = 0;
 #endif
-			  mdlassert(pkd->mdl,p->uPred >= 0);
+			  mdlassert(pkd->mdl,p->uPred >= 0.0);
 			  }
 			}
 		}

@@ -5,7 +5,6 @@
 #include <math.h>
 #include <assert.h>
 
-#include "pkd.h"
 #include "collision.h"
 
 #define BOUNCE_OK 0
@@ -53,7 +52,7 @@ pkdGetColliderInfo(PKD pkd,int iOrder,COLLIDER *c)
 			c->id.iIndex = i;
 			c->id.iOrgIdx = p->iOrgIdx;
 			c->fMass = p->fMass;
-			c->fRadius = 2*p->fSoft;
+			c->fRadius = RADIUS(p); /* twice softening radius */
 			for (j=0;j<3;j++) {
 				c->r[j] = p->r[j];
 				c->v[j] = p->v[j];
@@ -68,8 +67,7 @@ pkdGetColliderInfo(PKD pkd,int iOrder,COLLIDER *c)
 		}
 	}
 
-void
-PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt)
+void PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt)
 {
 	/*
 	 ** Stores collider info in particle structure (except id & color).
@@ -86,7 +84,7 @@ PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt)
 	double r;
 
 	p->fMass = c->fMass;
-	p->fSoft = 0.5*c->fRadius;
+	p->fSoft = SOFT(c); /* half particle radius */
 	r = fabs(c->r[0] - p->r[0]) +
 		fabs(c->r[1] - p->r[1]) +
 		fabs(c->r[2] - p->r[2]);
@@ -130,7 +128,7 @@ pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,double dDensity,
 	if (dDensity)
 		r = pow(m/(dDenFac*dDensity),1.0/3);
 	else
-		r = (m2 > m1 ? r2*pow(m/m2,1.0/3) : r1*pow(m/m1,1.0/3));
+		r = pow(r1*r1*r1 + r2*r2*r2,1.0/3); /* conserves volume *//*DEBUG used to be r = (m2 > m1 ? r2*pow(m/m2,1.0/3) : r1*pow(m/m1,1.0/3));*/
 	i1 = 0.4*m1*r1*r1;
 	i2 = 0.4*m2*r2*r2;
 	i = 0.4*m*r*r;
@@ -153,7 +151,7 @@ pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,double dDensity,
 
 	*pnOut = 1;
 	*cOut = (COLLIDER *) malloc(*pnOut*sizeof(COLLIDER));
-	assert(*cOut);
+	assert(*cOut != NULL);
 
 	c = &(*cOut)[0];
 
@@ -176,7 +174,8 @@ pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,double dDensity,
 
 int
 pkdBounce(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
-		  double dEpsN,double dEpsT,COLLIDER **cOut,int *pnOut)
+		  double dEpsN,double dEpsT,int bFixCollapse,
+		  COLLIDER **cOut,int *pnOut)
 {
 	/* Bounces colliders, preserving particle order */
 
@@ -186,13 +185,13 @@ pkdBounce(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
 	FLOAT a,b,c,d;
 	int i;
 
-/*DEBUG
+/*DEBUG verbose EpsN, EpsT output
 	(void) printf("e_n = %g e_t = %g\n",dEpsN,dEpsT);
 */
 
 	*pnOut = 2;
 	*cOut = (COLLIDER *) malloc(*pnOut*sizeof(COLLIDER));
-	assert(*cOut);
+	assert(*cOut != NULL);
 
 	(*cOut)[0] = *c1;
 	(*cOut)[1] = *c2;
@@ -235,19 +234,21 @@ pkdBounce(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
 
 	a = u[0]*n[0] + u[1]*n[1] + u[2]*n[2];
 	if (a >= 0) {
-		char ach[256];
-		(void) sprintf(ach,"WARNING: %i & %i -- near miss?\n",
-					   c1->id.iOrder,c2->id.iOrder);
-#ifdef MDL_DIAG
-		mdlDiag(pkd->mdl,ach);
-#else
-		(void) printf("%i: %s",pkd->idSelf,ach);
+#if (INTERNAL_WARNINGS)
+		static int bGiveWarning = 1;
+		if (bGiveWarning) {
+			(void) fprintf(stderr,"WARNING: %i & %i -- near miss? (a = %g)\n",
+						   c1->id.iOrder,c2->id.iOrder,a);
+#if (INTERNAL_WARNINGS_ONCE)
+			bGiveWarning = 0;
 #endif
-#ifdef FIX_COLLAPSE
-		return NEAR_MISS; /* particles remain unchanged */
-#else
-		assert(0);
-#endif
+			}
+#endif /* INTERNAL WARNINGS */
+
+		if (bFixCollapse)
+			return NEAR_MISS; /* particles remain unchanged */
+		else
+			assert(0); /* near miss not allowed */
 		}
 	for (i=0;i<3;i++) {
 		un[i] = a*n[i];
@@ -359,31 +360,19 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 	COLLIDER c1,c2,*c;
 	FLOAT fOffset[3] = {0,0,0};
 	double v2,ve2,dImpactEnergy;
-	int bDiagInfo,iOutcome,i,j,n;
+	int bDiagInfo,iOutcome,i,j,n; /*DEBUG would bReportInfo be better?*/
 #ifdef SLIDING_PATCH
 	FLOAT fShear = 0;
 #endif
 
-#ifdef AGGS /*DEBUG!*/
-	extern void pkdAggsDoCollision(PKD pkd,double dt,const COLLIDER *pc1,
-								   const COLLIDER *pc2,int bPeriodic,
-								   const COLLISION_PARAMS *CP,
-								   int *piOutcome,double *dT,
-								   COLLIDER *cOut,int *pnOut);
-#endif
-
+/*DEBUG verbose collision output
 	(void) printf("COLLISION %i & %i (dt = %.16e)\n",
 				  pc1->id.iOrder,pc2->id.iOrder,dt);
-
-#ifdef AGGS /*DEBUG!*/
-	pkdAggsDoCollision(pkd,dt,pc1,pc2,bPeriodic,CP,
-					   piOutcome,dT,cOut,pnOut);	
-	return;
-#endif
+*/
 
 	/* Get local copies of collider info */
 
-	c1 = *pc1;
+	c1 = *pc1; /* struct copy */
 	c2 = *pc2;
 
 	bDiagInfo = (c1.id.iPid == pkd->idSelf);
@@ -455,7 +444,7 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 				u[i] = v2[i] - c1.v[i] + s2[i] - s1[i];
 				udotn += u[i] * n[i];
 				}
-			assert(udotn < 0);
+			assert(udotn < 0.0);
 			for (i=0;i<3;i++) {
 				un[i] = udotn * n[i];
 				ut[i] = u[i] - un[i];
@@ -548,7 +537,7 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 			ux = -c1.v[0] - s1x;
 			uz = -c1.v[2] - s1z;
 			a = ux*nx + uz*nz;
-			assert(a < 0);
+			assert(a < 0.0);
 			unx = a*nx;
 			unz = a*nz;
 			utx = ux - unx;
@@ -637,7 +626,9 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 
 	iOutcome = MISS;
 
-	if (CP->iOutcomes == MERGE || ((CP->iOutcomes & MERGE) && v2 <= ve2)) {
+	if (CP->iOutcomes == MERGE ||
+		((CP->iOutcomes & MERGE) &&
+		 v2 <= CP->dBounceLimit*CP->dBounceLimit*ve2)) {
 		iOutcome = MERGE;
 		pkdMerge(pkd,&c1,&c2,CP->dDensity,&c,&n);
 		assert(n == 1);
@@ -650,7 +641,7 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 				int rv;
 				free((void *) c);
 				iOutcome = BOUNCE;
-				rv = pkdBounce(pkd,&c1,&c2,CP->dEpsN,CP->dEpsT,&c,&n);
+				rv = pkdBounce(pkd,&c1,&c2,CP->dEpsN,CP->dEpsT,CP->bFixCollapse,&c,&n);
 				assert(rv == BOUNCE_OK);
 				assert(n == 2);
 				}
@@ -710,7 +701,7 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 				dEpsT = CP->dEpsT;
 				}
 			}
-		if (pkdBounce(pkd,&c1,&c2,dEpsN,dEpsT,&c,&n) == NEAR_MISS)
+		if (pkdBounce(pkd,&c1,&c2,dEpsN,dEpsT,CP->bFixCollapse,&c,&n) == NEAR_MISS)
 			iOutcome = MISS;
 		assert(n == 2);
 		}
@@ -720,9 +711,8 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 		assert(n <= MAX_NUM_FRAG);
 		}
 
-#ifndef FIX_COLLAPSE
-	assert(iOutcome != MISS); /* SOMETHING has to happen... */
-#endif
+	if (!CP->bFixCollapse)
+		assert(iOutcome != MISS); /* SOMETHING has to happen... */
 
 	if (bDiagInfo) *piOutcome = iOutcome;
 
@@ -807,7 +797,7 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 			}
 		if (pDel) {
 			pkdDeleteParticle(pkd,&pkd->pStore[pDel->iIndex]);
-			if (bDiagInfo) cOut[0].id = *pOth; /* may need merger info */
+			if (bDiagInfo && !pMrg) cOut[0].id = *pOth; /* may need merger info */
 			}
 		}
 	else if (n == 2) { /* bounce or mass transfer */
@@ -939,7 +929,7 @@ dInteract(double dTime,double dDelta,double dCentMass,
 	hx = y*vz - z*vy;
 	hy = z*vx - x*vz;
 	hz = x*vy - y*vx;
-	assert(hx || hy || hz); /* rectilinear orbits not supported */
+	assert(hx > 0.0 || hy > 0.0 || hz > 0.0); /* rectilinear orbits not supported */
 	/*
 	** Calculate the Runga-Lenz Vector.
 	** The Runga-Lenz vector was actually first discovered by Laplace 1792!
@@ -992,7 +982,7 @@ dInteract(double dTime,double dDelta,double dCentMass,
 	 ** now get the other orbital quantities for particle i.
 	 */
 	ia = 2*ir - v2*imui;
-	assert(ia > 0);
+	assert(ia > 0.0);
 	ai = 1/ia;
 	ini = sqrt(ai*ai*ai*imui);
 	ec = 1 - r*ia;
@@ -1023,7 +1013,7 @@ dInteract(double dTime,double dDelta,double dCentMass,
 	hx = y*vz - z*vy;
 	hy = z*vx - x*vz;
 	hz = x*vy - y*vx;
-	assert(hx || hy || hz);
+	assert(hx > 0.0 || hy > 0.0 || hz > 0.0);
 	lan = atan2(hx,-hy);
 	i = atan2(sqrt(hx*hx + hy*hy),hz);
 	/*
@@ -1039,7 +1029,7 @@ dInteract(double dTime,double dDelta,double dCentMass,
 	 */
 	ej = sqrt(ex*ex + ey*ey + ez*ez);
 	ia = 2*ir - v2*imuj;
-	assert(ia > 0);
+	assert(ia > 0.0);
 	aj = 1/ia;
 	inj = sqrt(aj*aj*aj*imuj);
 	ec = 1 - r*ia;
@@ -1109,7 +1099,7 @@ dInteract(double dTime,double dDelta,double dCentMass,
 	 */
 	amax = ai + h;
 	amin = ai - h;
-	assert(amin > 0);
+	assert(amin > 0.0);
 	/*
 	** Compute direction cosines for particle j's orbit in 
 	** the coordinate system of particle i.

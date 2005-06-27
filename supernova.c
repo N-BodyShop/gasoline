@@ -135,7 +135,7 @@ void snCalcSNIIFeedback(SN sn, SFEvent sfEvent,
 			dMStarMinII = max (sn->dMSNIImin, dMStarMin); 
 			dMStarMaxII = min (sn->dMSNIImax, dMStarMax); 
 
-			assert (dMStarMinII < dMStarMaxII && dMStarMinII >0 && dMStarMaxII > 0);
+			assert (dMStarMinII < dMStarMaxII && dMStarMinII >0.0 && dMStarMaxII > 0.0);
 
 			/* cumulative mass of stars with mass greater than dMStarMinII and dMStarMaxII
 			   in solar masses */
@@ -218,7 +218,7 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
         dMStarMinIa = max (sn->dMBmin, dMStarMin); 
         dMStarMaxIa = min (sn->dMBmax/2., dMStarMax); 
 
-        assert (dMStarMinIa < dMStarMaxIa && dMStarMinIa >0 && dMStarMaxIa > 0);
+        assert (dMStarMinIa < dMStarMaxIa && dMStarMinIa >0.0 && dMStarMaxIa > 0.0);
         
         /* mass of stars that go SNIa */
         dMSNTypeIa = dMSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 

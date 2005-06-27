@@ -256,8 +256,8 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	 ** Start particle caching space (cell cache is already active).
 	 */
 	if (bSymmetric) {
-		assert(init);
-		assert(comb);
+		assert(init != NULL);
+		assert(comb != NULL);
 		mdlCOcache(pkd->mdl,CID_PARTICLE,pkd->pStore,sizeof(PARTICLE),
 				   nTree,init,comb);
 		}
@@ -1067,16 +1067,43 @@ void smSmooth(SMX smx,SMF *smf)
 				}
 			}
 
+#if (defined(SLIDING_PATCH) && INTERNAL_WARNINGS)
+
 		/*
-	     ** For periodic boundary conditions, make sure search ball has not
-	     ** exceeded half the spatial period. If it has, this probably means
-	     ** nSmooth is too large.
-	     */
+		 ** For periodic boundary conditions, make sure search ball has not
+		 ** exceeded half the spatial period. If it has, this probably means
+		 ** nSmooth is too large. HOWEVER, in the case, e.g., of a periodic
+		 ** patch with no z boundary, a particle could legitimately get far
+		 ** enough from the plane to generate an error. In this case only a
+		 ** warning is issued (once per processor, if warnings are enabled).
+		 **
+		 ** DCR 3/15/05: now want to relax the x boundary condition too!
+		 ** (to look at thin rings)...  so let's just make it general.
+		 */
+ 
+		if ((lx < FLOAT_MAXVAL && p[pi].fBall2 >= 0.25*lx*lx) ||
+			(ly < FLOAT_MAXVAL && p[pi].fBall2 >= 0.25*ly*ly) ||
+			(lz < FLOAT_MAXVAL && p[pi].fBall2 >= 0.25*lz*lz)) {
+			static int bGiveWarning = 1;
+			if (bGiveWarning) {
+				(void) fprintf(stderr,"WARNING: Large search ball (iOrder = %i)..."
+							   "lx = %g ly = %g lz = %g fBall = %g x = %g y = %g z = %g\n",
+							   p[pi].iOrder,lx,ly,lz,sqrt(p[pi].fBall2),p[pi].r[0],p[pi].r[1],p[pi].r[2]);
+#if (INTERNAL_WARNINGS_ONCE)
+				bGiveWarning = 0;
+#endif
+				}
+			}
+
+#else /* SLIDING_PATCH && INTERNAL_WARNINGS */
+
 #ifndef LARGEFBALL
 		assert(!smx->bPeriodic ||
 			   ((lx == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lx*lx) &&
 				(ly == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*ly*ly) &&
 				(lz == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lz*lz)));
+#endif
+
 #endif
 
 		nSmoothed++;
@@ -1413,27 +1440,3 @@ void smMarkSmooth(SMX smx,SMF *smf,int iMarkType)
 			}
 		}
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

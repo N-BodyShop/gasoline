@@ -15,9 +15,16 @@
  ** configuration header file -- someday...
  */
 
-#if defined(GASOLINE) || defined(ROT_FRAME) || defined(SLIDING_PATCH)
+#if defined(GASOLINE) || defined(ROT_FRAME) || defined(SLIDING_PATCH) || defined(SIMPLE_GAS_DRAG) || defined(GR_DRAG)
 #define NEED_VPRED
 #endif
+
+/* this too... */
+
+/* (note bVWarnings still applies) */
+
+#define INTERNAL_WARNINGS 1 /* 0=none,1=once,2=always */
+#define INTERNAL_WARNINGS_ONCE (INTERNAL_WARNINGS == 1)
 
 #define CID_TOP			0
 #define CID_PARTICLE	0
@@ -633,7 +640,7 @@ void pkdNextEncounter(PKD pkd, double *dt);
 void pkdMarkEncounters(PKD pkd, double dt);
 #ifdef SIMPLE_GAS_DRAG
 void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
-					  double dOmegaZ);
+					  double dOmegaZ,double dTime);
 #endif
 #ifdef OLD_KEPLER/*DEBUG*/
 int pkdLowerQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);

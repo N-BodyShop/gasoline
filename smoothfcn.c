@@ -7,7 +7,7 @@
 #ifdef COLLISIONS
 #include "ssdefs.h"
 #include "collision.h"
-#endif /* COLLISIONS */
+#endif
 
 #ifdef AGGS
 #include "aggs.h"
@@ -2086,7 +2086,7 @@ void combDistDeletedGas(void *vp1,void *vp2)
 			p1->u = f1*p1->u + f2*p2->u;
 			p1->uPred = f1*p1->uPred + f2*p2->uPred;
 #ifdef COOLDEBUG
-			assert(p1->u >= 0);
+			assert(p1->u >= 0.0);
 #endif
 			p1->v[0] = f1*p1->v[0] + f2*p2->v[0];            
 			p1->v[1] = f1*p1->v[1] + f2*p2->v[1];            
@@ -2125,7 +2125,7 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    }
 	assert(rstot > 0.0);
 	fNorm = 1./rstot;
-	assert(p->fMass >= 0);
+	assert(p->fMass >= 0.0);
 	for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
 		if(TYPETest(q, TYPE_DELETED)) continue;
@@ -2155,7 +2155,7 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q->u = f1*q->u+f2*p->u;
 		q->uPred = f1*q->uPred+f2*p->uPred;
 #ifdef COOLDEBUG
-		assert(q->u >= 0);
+		assert(q->u >= 0.0);
 #endif
 		q->v[0] = f1*q->v[0]+f2*p->v[0];            
 		q->v[1] = f1*q->v[1]+f2*p->v[1];            
@@ -2176,7 +2176,7 @@ void DeleteGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	assert(TYPETest(p, TYPE_GAS));
 	fMasstot = 0;
 #ifdef COOLDEBUG
-	assert(p->fMass >= 0);
+	assert(p->fMass >= 0.0);
 #endif
 
 	for (i=0;i<nSmooth;++i) {
@@ -2191,7 +2191,7 @@ void DeleteGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		pkdDeleteParticle(smf->pkd, p);
         }
 	else {
-		assert (p->fMass > 0);
+		assert (p->fMass > 0.0);
 		}
         
 }
@@ -2415,10 +2415,10 @@ void SimpleSF_Feedback(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	
 	fNorm = 1./rstot;
 	fNorm_u = fNorm*p->fMass*p->fESN;
-	assert(fNorm_u > 0);
+	assert(fNorm_u > 0.0);
 
 	fNorm_t = fNorm*p->PdV; /* p->PdV store the cooling delay dtCoolingShutoff */
-	assert(fNorm_t > 0);
+	assert(fNorm_t > 0.0);
 
 	for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
@@ -2468,27 +2468,27 @@ FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	if (p->dtCol < 0) return;
 
-	r = 2*p->fSoft; /* radius = 2 * softening */
+	r = RADIUS(p); /* radius = 2 * softening */
 
 	if (smf->dCentMass > 0) {
 		r2 = p->r[0]*p->r[0] + p->r[1]*p->r[1] + p->r[2]*p->r[2];
 		v2 = p->v[0]*p->v[0] + p->v[1]*p->v[1] + p->v[2]*p->v[2];
-		assert(r2 > 0); /* particle must not be at origin */
+		assert(r2 > 0.0); /* particle must not be at origin */
 		a = 2/sqrt(r2) - v2/(smf->dCentMass + p->fMass);
-		assert(a != 0); /* can't handle parabolic orbits */
+		assert(a != 0.0); /* can't handle parabolic orbits */
 		a = 1/a;
 		}
 
 	for (i=0;i<nSmooth;i++) {
 		pn = nnList[i].pPart;
 		if (pn->iOrder == p->iOrder || pn->dtCol < 0) continue;
-		rn = 2*pn->fSoft;
+		rn = RADIUS(pn);
 		if (smf->dCentMass > 0) {
 			r2 = pn->r[0]*pn->r[0] + pn->r[1]*pn->r[1] + pn->r[2]*pn->r[2];
 			v2 = pn->v[0]*pn->v[0] + pn->v[1]*pn->v[1] + pn->v[2]*pn->v[2];
-			assert(r2 > 0);
+			assert(r2 > 0.0);
 			an = 2/sqrt(r2) - v2/(smf->dCentMass + pn->fMass);
-			assert(an != 0);
+			assert(an != 0.0);
 			an = 1/an;
 			rh = pow((p->fMass + pn->fMass)/(3*smf->dCentMass),1.0/3)*(a+an)/2;
 			if (rh > r) r = rh;
@@ -2499,8 +2499,6 @@ FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		if (nnList[i].fDist2 <= sr*sr) pn->dtCol = -1; /* cf REJECT macro */
 		}
 	}
-
-/*#define VERBOSE_COLLAPSE*/
 
 void
 _CheckForCollapse(PARTICLE *p,double dt,double rdotv,double r2,SMF *smf)
@@ -2516,26 +2514,23 @@ _CheckForCollapse(PARTICLE *p,double dt,double rdotv,double r2,SMF *smf)
 	double dRatio;
 
 	dRatio = rdotv*(p->dtPrevCol - dt)/r2;
-#ifndef FIX_COLLAPSE
-	assert(dRatio > 0);
-#endif
+	if (!smf->bFixCollapse)
+		assert(dRatio > 0.0);
 	if (dRatio < smf->dCollapseLimit) {
-#ifdef VERBOSE_COLLAPSE
-		char ach[256];
-		(void) sprintf(ach,"WARNING [T=%e]: Tiny step %i & %i "
-					   "(dt=%.16e, dRatio=%.16e)\n",smf->dTime,
-					   p->iOrder,p->iOrderCol,dt,dRatio);
-#ifdef MDL_DIAG
-		mdlDiag(smf->pkd->mdl,ach);
-#else
-		(void) printf("%i: %s",smf->pkd->idSelf,ach);
+#if (INTERNAL_WARNINGS)
+		static int bGiveWarning = 1;
+		if (bGiveWarning) {
+			(void) fprintf(stderr,"WARNING [T=%e]: Tiny step %i & %i "
+						   "(dt=%.16e, dRatio=%.16e)\n",smf->dTime,
+						   p->iOrder,p->iOrderCol,dt,dRatio);
+#if (INTERNAL_WARNINGS_ONCE)
+			bGiveWarning = 0;
 #endif
-#endif
+			}
+#endif /* INTERNAL_WARNINGS */
 		p->bTinyStep = 1;
 		}
 	}
-
-#undef VERBOSE_COLLAPSE
 
 void
 CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
@@ -2575,7 +2570,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		 */
 		if (pn == p || pn->iOrder < 0 || pn->iOrder == p->iPrevCol) continue;
 #ifdef AGGS
-		if (IS_AGG(p) && IS_AGG(pn) && AGG_ID(p) == AGG_ID(pn)) continue;
+		if (IS_AGG(p) && IS_AGG(pn) && AGG_IDX(p) == AGG_IDX(pn)) continue;
 #endif
 		vx = p->v[0] - pn->v[0];
 		vy = p->v[1] - pn->v[1];
@@ -2589,59 +2584,57 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		rdotv = nnList[i].dx*vx + nnList[i].dy*vy + nnList[i].dz*vz;
 		if (rdotv >= 0)	continue; /* skip if particle not approaching */
 		v2 = vx*vx + vy*vy + vz*vz;
-		sr = 2*(p->fSoft + pn->fSoft); /* softening = 0.5 * particle radius */
+		sr = RADIUS(p) + RADIUS(pn); /* radius = twice softening */
 		D = 1 - v2*(nnList[i].fDist2 - sr*sr)/(rdotv*rdotv);
 		if (D < 0) continue; /* no real solutions ==> no collision */
 		D = sqrt(D);
 		dt = rdotv*(D - 1)/v2; /* minimum time to surface contact */
 		/*
-		 ** There should be no touching or overlapping particles
-		 ** at the start of the step...
+		 ** Normally there should be no touching or overlapping particles
+		 ** at the start of the step. But inelastic collapse and other
+		 ** numerical problems may make it necessary to relax this...
 		 */
 		if (smf->dStart == 0 && dt <= 0) {
-			char ach[512];
-#ifdef FIX_COLLAPSE
-			if (dt < p->dtCol) { /* take most negative */
-				FLOAT fOverlap = sqrt(nnList[i].fDist2)/sr - 1;
-				(void) sprintf(ach,"WARNING [T=%e]: "
-							   "POSITION FIX %i & %i D=%e dt=%e\n",
-							   smf->dTime,p->iOrder,pn->iOrder,D,dt);
-#ifdef MDL_DIAG
-				mdlDiag(smf->pkd->mdl,ach);
-#else
-				(void) printf("%i: %s",smf->pkd->idSelf,ach);
-#endif
-				if (fOverlap > 0.01) {
-					(void) sprintf(ach,"WARNING [T=%e]: LARGE OVERLAP (%g%%)",
-								   smf->dTime,100*fOverlap);
-#ifdef MDL_DIAG
-					mdlDiag(smf->pkd->mdl,ach);
-#else
-					(void) printf("%i: %s",smf->pkd->idSelf,ach);
+			if (smf->bFixCollapse) {
+#if (INTERNAL_WARNINGS)
+				static int bGiveWarning1 = 1,bGiveWarning2 = 1;
+				FLOAT fOverlap = 1 - sqrt(nnList[i].fDist2)/sr;
+				if (bGiveWarning1) {
+					(void) fprintf(stderr,"WARNING [T=%e]: "
+								   "POSITION FIX %i & %i D=%e dt=%e\n",
+								   smf->dTime,p->iOrder,pn->iOrder,D,dt);
+#if (INTERNAL_WARNINGS_ONCE)
+					bGiveWarning1 = 0;
 #endif
 					}
-				p->dtCol = dt;
-				p->iOrderCol = pn->iOrder;
-				continue;
+				if (bGiveWarning2 && fOverlap > 0.01) {
+					(void) fprintf(stderr,"WARNING [T=%e]: "
+								   "LARGE OVERLAP %i & %i (%g%%)\n",
+								   smf->dTime,p->iOrder,pn->iOrder,100*fOverlap);
+#if (INTERNAL_WARNINGS_ONCE)
+					bGiveWarning2 = 0;
+#endif
+					}
+#endif /* INTERNAL_WARNINGS */
+				if (dt < p->dtCol) { /* take most negative */
+					p->dtCol = dt;
+					p->iOrderCol = pn->iOrder;
+					continue;
+					}
 				}
-#else /* FIX_COLLAPSE */
-			(void) sprintf(ach,"OVERLAP [T=%e]:\n"
-						   "%i (r=%g,%g,%g,iRung=%i) &\n"
-						   "%i (rn=%g,%g,%g,iRung=%i)\n"
-						   "fDist=%g v=%g,%g,%g v_mag=%g\n"
-						   "rv=%g sr=%g sep'n=%g D=%g dt=%g\n",
-						   smf->dTime,
-						   p->iOrder,p->r[0],p->r[1],p->r[2],p->iRung,
-						   pn->iOrder,pn->r[0],pn->r[1],pn->r[2],pn->iRung,
-						   sqrt(nnList[i].fDist2),vx,vy,vz,sqrt(vx*vx+vy*vy+vz*vz),
-						   rdotv,sr,sqrt(nnList[i].fDist2) - sr,D,dt);
-#ifdef MDL_DIAG
-			mdlDiag(smf->pkd->mdl,ach);
-#else
-			(void) printf("%i: %s",smf->pkd->idSelf,ach);
-#endif
-			assert(0); /* particles must not touch or overlap initially */
-#endif
+			else {
+				(void) fprintf(stderr,"OVERLAP [T=%e]:\n"
+							   "%i (r=%g,%g,%g,iRung=%i) &\n"
+							   "%i (rn=%g,%g,%g,iRung=%i)\n"
+							   "fDist=%g v=%g,%g,%g v_mag=%g\n"
+							   "rv=%g sr=%g sep'n=%g D=%g dt=%g\n",
+							   smf->dTime,
+							   p->iOrder,p->r[0],p->r[1],p->r[2],p->iRung,
+							   pn->iOrder,pn->r[0],pn->r[1],pn->r[2],pn->iRung,
+							   sqrt(nnList[i].fDist2),vx,vy,vz,sqrt(vx*vx+vy*vy+vz*vz),
+							   rdotv,sr,sqrt(nnList[i].fDist2) - sr,D,dt);
+				assert(0); /* particle not allowed to touch or overlap initially */
+				}
 			}
 		if (dt > smf->dStart && dt <= smf->dEnd) {
 			if (dt > p->dtCol) continue; /* skip if this one happens later */
@@ -2659,7 +2652,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	WALLS *w = &smf->walls;
 	double R,ndotr,ndotv,target,dt,r2;
 	int j;
-	R = 2*p->fSoft; /* this is the particle radius (twice the softening) */
+	R = RADIUS(p); /* this is the particle radius (twice the softening) */
 
 	rdotv = r2 = 0; /* to keep compiler happy */
 	for (i=0;i<w->nWalls;i++) {
@@ -2723,7 +2716,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				r2 = distance*distance; 
 				}
 			}
-		assert(smf->dStart > 0 || dt > 0);
+		assert(smf->dStart > 0.0 || dt > 0.0);
 		if (dt > smf->dStart && dt <= smf->dEnd && dt < p->dtCol) {
 			p->dtCol = dt;
 			p->iOrderCol = -i -1;
@@ -2738,7 +2731,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	double R,lx,lz,r2=0,x0,z0,d,m,b,dp,ldotv,l2,st,nx,nz,l;
 	int approaching;
 
-	R = 2*p->fSoft;
+	R = RADIUS(p);
 	v2 = p->v[0]*p->v[0] + p->v[2]*p->v[2]; /* velocity relative to frame */
 	for (i=0;i<w->nWalls;i++) {
 		/* check endpoints first */
@@ -2753,7 +2746,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			D = 1 - v2*(r2 - R*R)/(rdotv*rdotv);
 			if (D >= 0) {
 				dt = rdotv*(sqrt(D) - 1)/v2;
-				assert(smf->dStart > 0 || dt > 0);
+				assert(smf->dStart > 0.0 || dt > 0.0);
 				if (dt > smf->dStart && dt <= smf->dEnd && dt < p->dtCol) {
 					p->dtCol = dt;
 					p->iOrderCol = -w->nWalls - i*2 - 1; /* endpt 1 encoding */
@@ -2772,7 +2765,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			D = 1 - v2*(r2 - R*R)/(rdotv*rdotv);
 			if (D >= 0) {
 				dt = rdotv*(sqrt(D) - 1)/v2;
-				assert(smf->dStart > 0 || dt > 0);
+				assert(smf->dStart > 0.0 || dt > 0.0);
 				if (dt > smf->dStart && dt <= smf->dEnd && dt < p->dtCol) {
 					p->dtCol = dt;
 					p->iOrderCol = -w->nWalls - i*2 - 2; /* endpt 2 encoding */

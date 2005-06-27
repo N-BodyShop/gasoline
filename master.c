@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdlib.h> /* includes malloc() macros */
 #include <unistd.h> /* for unlink() */
 #include <stddef.h>
 #include <string.h>
@@ -11,7 +11,7 @@
 
 #define max(A,B) ((A) > (B) ? (A) : (B))
 
-#include <sys/param.h> /* for MAXPATHLEN and MAXHOSTNAMELEN, if available */
+#include <sys/param.h> /* for MAXPATHLEN, if available */
 #ifndef MAXPATHLEN
 #define MAXPATHLEN 256
 #endif
@@ -45,14 +45,14 @@
 
 #define NEWTIME
 #ifdef NEWTIME 
-double msrTime() {
+double msrTime(void) {
 	struct timeval tv;
 
 	gettimeofday(&tv,NULL);
 	return tv.tv_sec + tv.tv_usec*1e-6;
 	}
 #else
-double msrTime() {
+double msrTime(void) {
 	return time(NULL);
 	}
 #endif
@@ -103,7 +103,11 @@ _msrMakePath(const char *dir,const char *base,char *path)
 	 */
 
 	if (!path) return;
-	path[0] = 0;
+	if (base && base[0] == '/') { /* ignore dir if already in base */
+		strcpy(path,base);
+		return;
+	}
+	path[0] = '\0';
 	if (dir) {
 		strcat(path,dir);
 		strcat(path,"/");
@@ -117,7 +121,7 @@ _msrStripQuotes(const char achIn[],char achOut[])
 {
 	/* Removes leading and trailing double quotes from string */
 
-	assert(achIn && achOut);
+	assert(achIn != NULL && achOut != NULL);
 	if (strlen(achIn) > 0 && achIn[0] == '"')
 		(void) strcpy(achOut,achIn + 1);
 	else
@@ -137,7 +141,7 @@ _msrGetWallData(MSR msr,const char achFilenameWithQuotes[])
 	double dd;
 	int i,di;
 
-	assert(msr && achFilenameWithQuotes);
+	assert(msr != NULL && achFilenameWithQuotes != NULL);
 	_msrStripQuotes(achFilenameWithQuotes,achFilename);
 	if (!strlen(achFilename)) {
 		w->nWalls = 0;
@@ -229,7 +233,7 @@ _msrGetSpecialData(MSR msr,const char achFilenameWithQuotes[])
 	char achFilename[MAXPATHLEN],achTmp[MAXPATHLEN];
 	int i,n=0;
 
-	assert(msr && achFilenameWithQuotes);
+	assert(msr != NULL && achFilenameWithQuotes != NULL);
 	p = &msr->param;
 	_msrStripQuotes(achFilenameWithQuotes,achFilename);
 	if (!strlen(achFilename)) {
@@ -277,14 +281,16 @@ _msrGetSpecialData(MSR msr,const char achFilenameWithQuotes[])
 				goto abort;
 				}
 			}
-		if (!((s[i].iType & SPECIAL_OBLATE) || (s[i].iType & SPECIAL_GR))) {
+		if (!((s[i].iType & SPECIAL_OBLATE) || (s[i].iType & SPECIAL_GR) ||
+			  (s[i].iType & SPECIAL_FORCE))) {
 			(void) fprintf(stderr,"Invalid data type (%i) in \"%s\", entry %i\n",
 						   s[i].iType,achFilename,i);
 			goto abort;
 			}
 		if (s[i].iType & SPECIAL_OBLATE) {
-			if (fscanf(fp,"%lf%lf%lf",&s[i].oblate.dRadEq,&s[i].oblate.J2,
-					   &s[i].oblate.J4) != 3) {
+			if (fscanf(fp,"%lf%lf%lf%lf%lf%lf",&s[i].oblate.dRadEq,&s[i].oblate.J2,
+					   &s[i].oblate.J4,&s[i].oblate.p[0],&s[i].oblate.p[1],
+					   &s[i].oblate.p[2]) != 6) {
 				(void) fprintf(stderr,"Invalid/missing data in \"%s\" (entry %i)\n",
 							   achFilename,i);
 				goto abort;
@@ -293,6 +299,13 @@ _msrGetSpecialData(MSR msr,const char achFilenameWithQuotes[])
 		if (s[i].iType & SPECIAL_GR) {
 			(void) fprintf(stderr,"GR not supported yet.\n");
 			goto abort;
+			}
+		if (s[i].iType & SPECIAL_FORCE) {
+			if (fscanf(fp,"%lf",&s[i].force.dMag) != 1) {
+				(void) fprintf(stderr,"Invalid/missing data in \"%s\" (entry %i)\n",
+							   achFilename,i);
+				goto abort;
+				}
 			}
 		}
 	(void) fclose(fp);
@@ -580,7 +593,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dzPeriod = 1.0;
 	prmAddParam(msr->prm,"dzPeriod",2,&msr->param.dzPeriod,sizeof(double),"Lz",
 				"<periodic box length in z-dimension> = 1.0");
-	msr->param.achInFile[0] = 0;
+	msr->param.achInFile[0] = '\0';
 	prmAddParam(msr->prm,"achInFile",3,msr->param.achInFile,256,"I",
 				"<input file name> (file in TIPSY binary format)");
 #ifdef GASOLINE
@@ -1008,6 +1021,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.CP.dDensity = 0.0;
 	prmAddParam(msr->prm,"dDensity",2,&msr->param.CP.dDensity,
 				sizeof(double),"density","<Merged particle density> = 0");
+	msr->param.CP.dBounceLimit = 1.0;
+	prmAddParam(msr->prm,"dBounceLimit",2,&msr->param.CP.dBounceLimit,
+				sizeof(double),"blim","<Bounce limit> = 1.0");
 	msr->param.CP.iBounceOption = ConstEps;
 	prmAddParam(msr->prm,"iBounceOption",1,&msr->param.CP.iBounceOption,
 				sizeof(int),"bopt","<Bounce option> = 0");
@@ -1047,6 +1063,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.CP.dCrushEpsT = 1.0;
 	prmAddParam(msr->prm,"dCrushEpsT",2,&msr->param.CP.dCrushEpsT,
 				sizeof(double),"cepst","<epst if speed greater than maximum> = 1");
+	msr->param.CP.bFixCollapse = 0;
+	prmAddParam(msr->prm,"bFixCollapse",0,&msr->param.CP.bFixCollapse,
+				sizeof(int),"overlap","enable/disable overlap fix = -overlap");
 	/*
 	 ** The following parameters are only relevant to SAND_PILE and SPECIAL_PARTICLES,
 	 ** but the parser is picky about unrecognized commands in parameter files, so
@@ -1079,8 +1098,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	assert(msr->param.bKDK); /*DEBUG DKD broken at the moment...*/
 #endif
 
-	if (nDigits < 1 || nDigits > 9) {
-		(void) fprintf(stderr,"Unreasonable number of filename digits.\n");
+	if (nDigits < 1 || nDigits > MAXPATHLEN/2) {
+		(void) fprintf(stderr,"Invalid number of filename digits.\n");
 		_msrExit(msr,1);
 		}
 
@@ -1184,7 +1203,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	if (msr->param.dyPeriod == 0) msr->param.dyPeriod = FLOAT_MAXVAL;
 	if (msr->param.dzPeriod == 0) msr->param.dzPeriod = FLOAT_MAXVAL;
 #ifdef GASOLINE
-	assert(msr->param.duDotLimit <= 0);
+	assert(msr->param.duDotLimit <= 0.0);
 	if (msr->param.bBulkViscosity) {
 		if (!prmSpecified(msr->prm,"dConstAlpha"))
 			msr->param.dConstAlpha=0.5;
@@ -1344,18 +1363,18 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			}
 
 #ifdef STARFORM
-	    assert((msr->param.stfm->dStarEff > 0 && 
-                msr->param.stfm->dStarEff < 1) ||
-			   msr->param.stfm->dInitStarMass > 0);
-	    assert(msr->param.stfm->dMinMassFrac > 0 && 
-                msr->param.stfm->dMinMassFrac < 1);
+	    assert((msr->param.stfm->dStarEff > 0.0 && 
+                msr->param.stfm->dStarEff < 1.0) ||
+			   msr->param.stfm->dInitStarMass > 0.0);
+	    assert(msr->param.stfm->dMinMassFrac > 0.0 && 
+                msr->param.stfm->dMinMassFrac < 1.0);
 		if (msr->param.stfm->dInitStarMass > 0) {
 /*			if (msr->param.stfm->dMinGasMass <= 0) */
  			  /* Only allow 10% underweight star particles */
 				msr->param.stfm->dMinGasMass = 0.9*msr->param.stfm->dInitStarMass;
 			}
 		else
-			assert(msr->param.stfm->dMinGasMass > 0);
+			assert(msr->param.stfm->dMinGasMass > 0.0);
 
 	    msr->param.stfm->dSecUnit = msr->param.dSecUnit;
 	    msr->param.stfm->dGmPerCcUnit = msr->param.dGmPerCcUnit;
@@ -1378,7 +1397,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.fb->dInitStarMass = msr->param.stfm->dInitStarMass;
 #endif /* STARFORM */
 #ifdef SIMPLESF		
-		assert(msr->param.SSF_dInitStarMass > 0);
+		assert(msr->param.SSF_dInitStarMass > 0.0);
 #endif
 	    }
 	
@@ -1420,7 +1439,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		puts("WARNING: collision detection disabled (nSmooth < 2)");
 #endif
 	if (!msr->param.bHeliocentric) msr->param.dCentMass = 0; /* just in case */
-	assert(msr->param.dCentMass >= 0);
+	assert(msr->param.dCentMass >= 0.0);
 	if (msr->param.bFandG) {
 #ifdef SLIDING_PATCH
 		assert(0);
@@ -1459,9 +1478,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			puts("ERROR: must use periodic BCs for patch model");
 			_msrExit(msr,1);
 			}
-		assert(msr->param.dxPeriod > 0);
-		assert(msr->param.dyPeriod > 0);
-		assert(msr->param.dzPeriod > 0);
+		assert(msr->param.dxPeriod > 0.0);
+		assert(msr->param.dyPeriod > 0.0);
+		assert(msr->param.dzPeriod > 0.0);
 		if (msr->param.dyPeriod == FLOAT_MAXVAL) {
 			puts("ERROR: must specify positive y period");
 			_msrExit(msr,1);
@@ -1481,10 +1500,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #ifdef SLIDING_PATCH
 	if (!msr->param.bPatch) {
 		puts("WARNING: SLIDING_PATCH set without bPatch");
-		}
-	if (msr->param.bPatch && msr->param.dxPeriod == FLOAT_MAXVAL) {
-		puts("ERROR: must specify positive x period");
-		_msrExit(msr,1);
 		}
 	if (msr->param.bPatch && msr->param.bHeliocentric) {
 		puts("ERROR: Patch and Helocentric are incompatible");
@@ -1532,6 +1547,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			CP->dCollapseLimit = 0;
 			}
 		if (CP->iOutcomes & BOUNCE) {
+			if ((CP->iOutcomes & MERGE) && CP->dBounceLimit < 0) {
+				puts("ERROR: bounce limit must be non-negative");
+				_msrExit(msr,1);
+				}
 			if (CP->iBounceOption < ConstEps ||
 				CP->iBounceOption > Glancing) {
 				puts("ERROR: invalid bounce option");
@@ -1544,7 +1563,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				}
 			if (CP->dCrushLimit == 0)
 				CP->dCrushLimit = DBL_MAX;
-			if (CP->dEpsN <= 0 || CP->dEpsN > 1 ||
+			if (((CP->dEpsN <= 0 || CP->dEpsN > 1) &&
+				 (CP->iBounceOption == ConstEps)) ||
 				(CP->dSlideLimit > 0 &&
 				 (CP->dSlideEpsN <= 0 ||
 				  CP->dSlideEpsN > 1)) ||
@@ -1569,6 +1589,27 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			!msr->param.bDoSelfGravity) {
 			puts("ERROR: Need interparticle gravity for conditional merging");
 			_msrExit(msr,1);
+			}
+		if (CP->bFixCollapse) {
+			puts("WARNING: The fix collapse option has been selected.");
+			puts("This option, among other things, uses negative timesteps");
+			puts("to push back particles that have overlapped slightly.");
+			puts("Often an overlap is an indication of a problem, but");
+			puts("with the fix collapse option turned on you will only");
+			puts("receive a warning (if INTERNAL_WARNINGS has been");
+			puts("compiled with a non-zero value).  Sometimes, usually");
+			puts("when there are many bouncing particles confined to a");
+			puts("small space, a \"real\" collapse will occur that can");
+			puts("only be avoided be tweaking dDelta, nSmooth, dEpsN,");
+			puts("dSlideLimit, or dCollapseLimit, or by turning on the");
+			puts("fix collapse option.  However, in extreme circumstances,");
+			puts("this option may not be able to prevent large-scale");
+			puts("unphysical anomalies.  Also, when particle mergers");
+			puts("happen close to other particles, an unavoidable overlap");
+			puts("may occur that can only be fixed with the fix collapse");
+			puts("option.  Finally, note that with fix collapse turned on,");
+			puts("near misses are also tolerated.  Simultaneous collisions,");
+			puts("however, are still not allowed under any circumstances.");
 			}
 		}
 	msr->param.CP.dDensity *= DEN_CGS_SYS; /* convert: cgs to system units */
@@ -1642,7 +1683,7 @@ void msrLogParams(MSR msr,FILE *fp)
 
 #ifdef __DATE__
 #ifdef __TIME__
-	fprintf(fp,"# Compiled: %s %s\n",__DATE__,__TIME__);
+	fprintf(fp,"# Code compiled: %s %s\n",__DATE__,__TIME__);
 #endif
 #endif
 	fprintf(fp,"# Preprocessor macros:");
@@ -1697,11 +1738,11 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef COLLISIONS
 	fprintf(fp," COLLISIONS");
 #endif
+#ifdef AGGS
+	fprintf(fp," AGGS");
+#endif
 #ifdef SPECIAL_PARTICLES
 	fprintf(fp," SPECIAL_PARTICLES");
-#endif
-#ifdef FIX_COLLAPSE
-	fprintf(fp," FIX_COLLAPSE");
 #endif
 #ifdef SLIDING_PATCH
 	fprintf(fp," SLIDING_PATCH");
@@ -1727,16 +1768,20 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef PRES_HK
 	fprintf(fp," PRES_HK");
 #endif 
-#ifdef MAXHOSTNAMELEN
 	{
-	char hostname[MAXHOSTNAMELEN];
-	fprintf(fp,"\n# Master host: ");
-	if (gethostname(hostname,MAXHOSTNAMELEN))
+	time_t timep;
+
+	(void) time(&timep);
+	fprintf(fp,"\n# Run started: %s",ctime(&timep));
+	}
+	{
+	char hostname[MAXPATHLEN];
+	fprintf(fp,"# Master host: ");
+	if (gethostname(hostname,MAXPATHLEN))
 		fprintf(fp,"unknown");
 	else
 		fprintf(fp,"%s",hostname);
 	}
-#endif
 	fprintf(fp,"\n# N: %d",msr->N);
 	fprintf(fp," nThreads: %d",msr->param.nThreads);
 	fprintf(fp," bDiag: %d",msr->param.bDiag);
@@ -1945,6 +1990,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dzUnifGrav: %g",msr->param.dzUnifGrav);
     fprintf(fp,"\n# iOutcomes: %d",msr->param.CP.iOutcomes);
 	fprintf(fp," dDensity: %g",msr->param.CP.dDensity/DEN_CGS_SYS);
+	fprintf(fp," dBounceLimit: %g",msr->param.CP.dBounceLimit);
 	fprintf(fp," iBounceOption: %d",msr->param.CP.iBounceOption);
     fprintf(fp," dEpsN: %g",msr->param.CP.dEpsN);
     fprintf(fp," dEpsT: %g",msr->param.CP.dEpsT);
@@ -1958,6 +2004,7 @@ void msrLogParams(MSR msr,FILE *fp)
     fprintf(fp,"\n# dCrushLimit: %g",msr->param.CP.dCrushLimit);
     fprintf(fp," dCrushEpsN: %g",msr->param.CP.dCrushEpsN);
     fprintf(fp," dCrushEpsT: %g",msr->param.CP.dCrushEpsT);
+	fprintf(fp,"\n# bFixCollapse: %d",msr->param.CP.bFixCollapse);
 #endif
 #ifdef SPECIAL_PARTICLES
 	{
@@ -1969,10 +2016,13 @@ void msrLogParams(MSR msr,FILE *fp)
 		fprintf(fp,"\n# Special %i: org_idx: %i type: %i ",i,
 				msr->param.iSpecialId[i],s->iType);
 		if (s->iType & SPECIAL_OBLATE)
-			fprintf(fp,"dRadEq: %g J2: %g J4: %g",s->oblate.dRadEq,
-					s->oblate.J2,s->oblate.J4);
+			fprintf(fp,"dRadEq: %g J2: %g J4: %g p[0]: %g p[1]: %g p[2]: %g",
+					s->oblate.dRadEq,s->oblate.J2,s->oblate.J4,
+					s->oblate.p[0],s->oblate.p[1],s->oblate.p[2]);
 		if (s->iType & SPECIAL_GR)
 			fprintf(fp,"UNSUPPORTED");
+		if (s->iType & SPECIAL_FORCE)
+			fprintf(fp,"dMag: %g",s->force.dMag);
 		}
 	}
 #endif
@@ -2153,7 +2203,7 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
     char achInFile[PST_FILENAME_SIZE];
     int nid;
     int inswap;
-    struct inSetParticleTypes intype;
+    /*struct inSetParticleTypes intype; -- not used: see JW's comment below -- DCR 12/19/02*/
 
     nParts = malloc(msr->nThreads*sizeof(*nParts));
     for (id=0;id<msr->nThreads;++id) {
@@ -3054,7 +3104,6 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 {
 	struct inSmooth in;
-	struct outSmooth out;
 
 	/*
 	 ** Make sure that the type of tree is a density binary tree!
@@ -3118,7 +3167,9 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.dCentMass = 0; /* to disable Hill sphere checks */
 #endif
 	if (msr->param.bVStep) {
+		struct outSmooth out;
 		double sec,dsec;
+
 		printf("Smoothing...\n");
 		sec = msrTime();
 		pstSmooth(msr->pst,&in,sizeof(in),&out,NULL);
@@ -3140,7 +3191,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 		    }
 		}
 	else {
-		pstSmooth(msr->pst,&in,sizeof(in),&out,NULL);
+		pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
 		}
 	}
 
@@ -3183,8 +3234,8 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.bGrowSmoothList = 0;
 #endif
 	if (msr->param.bVStep) {
-		double sec,dsec;
 		struct outSmooth out;
+		double sec,dsec;
 
 		printf("ReSmoothing...\n");
 		sec = msrTime();
@@ -3353,7 +3404,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 			inGetSpec.nSpecial = msr->param.nSpecial;
 			for (j=0;j<msr->param.nSpecial;j++)
 				inGetSpec.iId[j] = msr->param.iSpecialId[j]; /* orig indices */
-			inGetSpec.dCentMass = msr->param.dCentMass; /* if special frame */
+			inGetSpec.dCentMass = msr->param.dCentMass; /* ignored unless special frame */
 			pstGetSpecialParticles(msr->pst,&inGetSpec,sizeof(inGetSpec),
 								   &outGetSpec,NULL);
 			inDoSpec.nSpecial = msr->param.nSpecial;
@@ -3362,10 +3413,14 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 				inDoSpec.sInfo[j] = outGetSpec.sInfo[j]; /* ditto */
 				}
 			inDoSpec.bNonInertial = msr->param.bHeliocentric;
+			if (inDoSpec.bNonInertial)
+				for (j=0;j<3;j++)
+					outDoSpec.aFrame[j] = 0.0; /* initialize */
 			pstDoSpecialParticles(msr->pst,&inDoSpec,sizeof(inDoSpec),
 								  &outDoSpec,NULL);
-			for (j=0;j<3;j++)
-				out.aSun[j] += outDoSpec.aFrame[j]; /* add non-inertial term */
+			if (inDoSpec.bNonInertial)
+				for (j=0;j<3;j++)
+					out.aSun[j] += outDoSpec.aFrame[j]; /* add non-inertial term */
 			}
 #endif
 		}
@@ -3378,6 +3433,17 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		= out.dcASum = out.dcMSum = out.dcCSum = out.dcTSum = 0;
 		}
 	/* enforced initialization */
+	inExt.bIndirect = 0;
+	inExt.bDoSun = 0;
+	inExt.bLogHalo = 0;
+	inExt.bHernquistSpheroid = 0;
+	inExt.bNFWSpheroid = 0;
+	inExt.bElliptical= 0;
+	inExt.bEllipticalDarkNFW = 0;
+	inExt.bHomogSpheroid = 0;
+	inExt.bBodyForce = 0;
+	inExt.bMiyamotoDisk = 0;
+	inExt.bTimeVarying = 0;
 #ifdef ROT_FRAME
 	inExt.bRotFrame = 0;
 #endif
@@ -3424,9 +3490,6 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		}
 #ifdef ROT_FRAME
 	if (msr->param.bRotFrame) { /* general rotating frame */
-		inExt.bIndirect = inExt.bDoSun = inExt.bLogHalo =
-			inExt.bNFWSpheroid = inExt.bHernquistSpheroid =
-				inExt.bMiyamotoDisk = 0;
 		inExt.bRotFrame = msr->param.bRotFrame;
 		inExt.dOmega = msr->param.dOmega +
 			dStep*msr->param.dDelta*msr->param.dOmegaDot;
@@ -3436,10 +3499,6 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 #endif
 #if defined(SLIDING_PATCH) || defined(SIMPLE_GAS_DRAG)
 	if (msr->param.bPatch || msr->param.bSimpleGasDrag) {
-		inExt.bIndirect = inExt.bDoSun = inExt.bLogHalo =
-			inExt.bNFWSpheroid = inExt.bHernquistSpheroid =
-				inExt.bBodyForce =
-				inExt.bMiyamotoDisk = 0;
 #ifdef SLIDING_PATCH
 		if (msr->param.bPatch) {
 			static int bFirstCall = 1;
@@ -3447,14 +3506,24 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 			inExt.bPatch = msr->param.bPatch;
 			inExt.dOrbFreq = msr->param.dOrbFreq;
 			if (bFirstCall) {
-				dOrbFreqZ2 = msr->param.dOrbFreq*msr->param.dOrbFreq;
-				if (msr->param.bDoSelfGravity)
-					dOrbFreqZ2 += 2*M_PI*msrMassCheck(msr,-1.0,"")/msr->param.nReplicas/
-						pow(msr->param.dxPeriod*msr->param.dyPeriod,1.5);
 				bFirstCall = 0;
-				if (msr->param.bVStart)
-					(void) printf("Vert. freq. enhancement factor = %g\n",
-								  sqrt(dOrbFreqZ2)/msr->param.dOrbFreq);
+				dOrbFreqZ2 = msr->param.dOrbFreq*msr->param.dOrbFreq;
+				if (msr->param.bDoSelfGravity) {
+					if (msr->param.dxPeriod == FLOAT_MAXVAL ||
+						msr->param.dyPeriod == FLOAT_MAXVAL) {
+						(void) printf("WARNING: Vert. freq. enhancement disabled\n"
+									  "(no boundary condition in either x or y, or both!)");
+						}
+					else {
+						double m_total = msrMassCheck(msr,-1.0,"");
+
+						dOrbFreqZ2 += 2*M_PI*m_total/msr->param.nReplicas/
+							pow(msr->param.dxPeriod*msr->param.dyPeriod,1.5);
+						}
+					if (msr->param.bVStart)
+						(void) printf("Vert. freq. enhancement factor = %e\n",
+									  sqrt(dOrbFreqZ2)/msr->param.dOrbFreq);
+					}
 				}
 			inExt.dOrbFreqZ2 = dOrbFreqZ2;
 			}
@@ -3466,13 +3535,14 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 			inExt.bEpstein	= msr->param.bEpstein;
 			inExt.dGamma	= msr->param.dGamma;
 			inExt.dOmegaZ	= msr->param.dOrbFreq;
+			inExt.dTime		= dStep*msr->param.dDelta;
 			}
 #endif
 		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
 		}
 #endif /* if (SLIDING_PATCH || SIMPLE_GAS_DRAG) */
 #ifdef AGGS
-	msrAggsGravity(msr);
+	msrAggsGetAccelAndTorque(msr);
 #endif
 	/*
 	 ** Output.
@@ -3575,7 +3645,7 @@ void msrCalcEandL(MSR msr,int bFirst,double dTime,double *E,double *T,
 		inExt.bHeliocentric = msr->param.bHeliocentric;
 		pstCalcEandLExt(msr->pst,&inExt,sizeof(inExt),&outExt,NULL);
 		dTotMass = outExt.dMass + msr->param.dCentMass;
-		assert(dTotMass > 0);
+		assert(dTotMass > 0.0);
 		dSunVel2 = 0;
 		for (k=0;k<3;k++) {
 			dSunPos[k] = - outExt.dSumMR[k]/dTotMass;
@@ -3639,7 +3709,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 #endif
 
 #ifdef COLLISIONS
-	msrDoCollisions(msr,dTime,dDelta);
+	msrDoCollision(msr,dTime,dDelta);
 #endif
 
 	if (msr->param.bCannonical) {
@@ -3792,7 +3862,12 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 	double H,a;
 	struct inKick in;
 	struct outKick out;
-	
+
+#ifndef NEED_VPRED
+	in.dvPredFacOne = in.dvPredFacTwo = in.duDelta = in.duPredDelta = in.duDotLimit =
+		in.iGasModel = in.z = 0; /* to prevent FPE from uninitialized values */
+#endif
+
 	if (msr->param.bCannonical) {
 #ifdef GLASS	  
 		in.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper; /* Damp velocities */
@@ -3854,7 +3929,12 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 	double H,a;
 	struct inKick in;
 	struct outKick out;
-	
+
+#ifndef NEED_VPRED
+	in.dvPredFacOne = in.dvPredFacTwo = in.duDelta = in.duPredDelta = in.duDotLimit =
+		in.iGasModel = in.z = 0; /* to prevent FPE from uninitialized values */
+#endif
+
 	if (msr->param.bCannonical) {
 #ifdef GLASS	  
 		in.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
@@ -3938,6 +4018,11 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 	double H,a;
 	struct inKick in;
 	struct outKick out;
+
+#ifndef NEED_VPRED
+	in.dvPredFacOne = in.dvPredFacTwo = in.duDelta = in.duPredDelta = in.duDotLimit =
+		in.iGasModel = in.z = 0; /* to prevent FPE from uninitialized values */
+#endif
 	
 	if (msr->param.bCannonical) {
 #ifdef GLASS	  
@@ -4189,7 +4274,7 @@ double msrReadCheck(MSR msr,int *piStep)
 	FDL_read(fdl,"old_time",&msr->dTimeOld);
 	FDL_read(fdl,"old_potentiale",&msr->dUOld);
 #ifdef COLLISIONS
-	msr->dTcoll = 0; /*DEBUG*/
+	msr->dTcoll = 0; /*DEBUG collisional energy loss not currently stored in checkpoint file*/
 #endif
 	if (!msr->bOpenSpec) {
 		FDL_read(fdl,"opening_type",&msr->iOpenType);
@@ -4634,7 +4719,7 @@ void msrReadOuts(MSR msr,double dTime)
 	/*
 	 ** Add Data Subpath for local and non-local names.
 	 */
-	achFile[0] = 0;
+	achFile[0] = '\0';
 	sprintf(achFile,"%s/%s.red",msr->param.achDataSubPath,
 			msr->param.achOutName);
 	/*
@@ -4784,6 +4869,7 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 	
 #ifdef GROWMASS
 	out.dMass = 0.0;
+#else
 #ifndef SUPPRESSMASSCHECKREPORT      
 	if (msr->param.bVDetails) puts("doing mass check...");
 #endif
@@ -5493,6 +5579,7 @@ void msrTopStepKDK(MSR msr,
 		 */
                 msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 		msrActiveMaskRung(msr,TYPE_ACTIVE,iKickRung,1);
+
 		if (msr->nActive) {
 			msrDomainDecomp(msr,iKickRung,1);
 			msrInitAccel(msr);
@@ -5983,7 +6070,7 @@ void msrSphViscosityLimiter(MSR msr, double dTime)
 #endif /* GASOLINE */
 
 int msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart) {
-	LCL *plcl = &msr->lcl;
+	/*LCL *plcl = &msr->lcl; -- not used: DCR 12/19/02*/
 	char achFile[160];
 	
 	if (msr->param.dDumpFrameStep > 0 || msr->param.dDumpFrameTime > 0) {
@@ -5991,7 +6078,7 @@ int msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart) {
 		/*
 		 ** Add Data Subpath for local and non-local names.
 		 */
-		achFile[0] = 0;
+		achFile[0] = '\0';
 		sprintf(achFile,"%s/%s.director",msr->param.achDataSubPath,
 				msr->param.achOutName);
 		
@@ -6730,7 +6817,7 @@ msrLinearKDK(MSR msr,double dStep,double dTime,double dDelta)
 static char *
 _msrParticleLabel(MSR msr,int iColor)
 {
-	/* For use with msrDoCollisions() only */
+	/* For use with msrDoCollision() only */
 
 #ifdef SAND_PILE
 	if (iColor < 0) {
@@ -6752,6 +6839,10 @@ _msrParticleLabel(MSR msr,int iColor)
 		}
 #endif
 
+#ifdef AGGS
+	return "BODY";/*DEBUG this entire function needs to be reworked*/
+#endif
+
 	switch (iColor) {
 	case SUN:
 		return "SUN";
@@ -6771,7 +6862,7 @@ _msrParticleLabel(MSR msr,int iColor)
 	}
 
 void
-msrDoCollisions(MSR msr,double dTime,double dDelta)
+msrDoCollision(MSR msr,double dTime,double dDelta)
 {
 	/*
 	 ** Performs smooth operation to determine if a collision occurs
@@ -6812,6 +6903,7 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 	smooth.smf.dStart = 0.0;
 	smooth.smf.dEnd = dDelta;
 	smooth.smf.dCollapseLimit = msr->param.CP.dCollapseLimit;
+	smooth.smf.bFixCollapse = msr->param.CP.bFixCollapse;
 #ifdef SLIDING_PATCH
 	smooth.smf.fLx = msr->param.dxPeriod;
 	smooth.smf.dOrbFreq = msr->param.dOrbFreq;
@@ -6835,7 +6927,7 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 			assert(msr->iTreeType == MSR_TREE_DENSITY);
 			/* following assumes inSmooth and inReSmooth are identical... */
 			/*DEBUG pstReSmooth() has caused problems in parallel (MDL_CACHE_LINE):
-			  see DCR's e-mails in pkd folder around end of Oct '01.*/
+			  see DCR's e-mails in pkd folder around end of Oct '01 & Jul '03.*/
 			pstReSmooth(msr->pst,&smooth,sizeof(smooth),NULL,NULL);
 			}
 		pstNextCollision(msr->pst,NULL,0,&next,NULL);
@@ -6850,9 +6942,8 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 		 ** this is expensive. Consequently, a simultaneous collision may
 		 ** be missed, resulting in an overlap during the next step!
 		 */
-#ifndef FIX_COLLAPSE
-		assert(next.dt > smooth.smf.dStart);
-#endif
+		if (!msr->param.CP.bFixCollapse) assert(next.dt > smooth.smf.dStart);
+		assert(next.dt != smooth.smf.dStart); /* simultaneous collisions still not allowed */
 		/* process the collision */
 		if (COLLISION(next.dt)) {
 			assert(next.iOrder1 >= 0);
@@ -6890,22 +6981,33 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 #endif
 			inDo.CP = msr->param.CP;
 #ifdef AGGS
-			if (COLLIDER_IS_AGG(c1))
-				msrAggsAdvanceCollider(msr,c1,next.dt);
-			if (COLLIDER_IS_AGG(c2))
-				msrAggsAdvanceCollider(msr,c2,next.dt);
-			inDo.CP.iAggNewID = msr->iAggNewID; /*DEBUG temporary cheat*/
+			c1->agg.bAssigned = c2->agg.bAssigned = 0;
+			if (COLLIDER_IS_AGG(c1)) {
+				int iAggIdx;
+				Aggregate *agg;
+				iAggIdx = COLLIDER_AGG_IDX(c1);
+				agg = &msr->pAggs[iAggIdx];
+				msrAggsAdvance(msr,iAggIdx,agg,next.dt);
+				c1->agg = *agg; /* struct copy */
+			}
+			if (COLLIDER_IS_AGG(c2)) {
+				int iAggIdx;
+				Aggregate *agg;
+				iAggIdx = COLLIDER_AGG_IDX(c2);
+				agg = &msr->pAggs[iAggIdx];
+				msrAggsAdvance(msr,iAggIdx,agg,next.dt);
+				c2->agg = *agg; /* struct copy */
+			}
+			inDo.iAggNewIdx = msr->iAggNewIdx;
 #endif
 			pstDoCollision(msr->pst,&inDo,sizeof(inDo),&outDo,NULL);
 			msr->dTcoll += outDo.dT; /* account for kinetic energy loss */
 			++nCol;
 			switch (outDo.iOutcome) {
-#ifdef FIX_COLLAPSE
 			case MISS:
 				++nMis;
 				--nCol;
 				break;
-#endif
 			case MERGE:
 				++nMrg;
 				break;
@@ -6923,22 +7025,33 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 			 ** to zero, so we can still use the old tree and ReSmooth().
 			 ** Deleted particles are cleaned up outside this loop.
 			 */
+#ifdef AGGS
+			switch (outDo.iOutcome) {
+			case MERGE:
+				assert(outDo.nOut == 1);
+				/* merge and store result in outDo for logging */
+				msrAggsMerge(msr,c1,c2,next.dt,(&outDo.Out[0]));
+				break;
+			case BOUNCE:
+				assert(outDo.nOut == 2);
+				/* copy any output agg structs to master storage and update */
+				msrAggsBounce(msr,&(outDo.Out[0]),&(outDo.Out[1]),next.dt);
+				break;
+			case FRAG:
+				assert(0);
+			default:
+				assert(0);
+				}
+#endif
 #ifdef IGNORE_FOR_NOW/*DEBUG*/
 			if (outDo.iOutcome & FRAG) {
-				/* note this sets msr->iTreeType to MSR_TREE_NONE */
-				msrAddDelParticles(msr);
-				/* have to rebuild tree here and do new smooth... */
-				/* also would have to reactivate all particles */
+				/* see Zoe's version */
 				}
 #endif
 			reset.iOrder1 = c1->id.iOrder;
 			reset.iOrder2 = c2->id.iOrder;
 			pstResetColliders(msr->pst,&reset,sizeof(reset),NULL,NULL);
 			smooth.smf.dStart = next.dt;
-#ifdef AGGS
-			/* do this AFTER reset because update may set SMOOTHACTIVE on other particles */
-			msrAggsCollisionUpdate(msr,c1,c2,outDo.iOutcome,outDo.Out,outDo.nOut);
-#endif
 			switch (msr->param.iCollLogOption) { /* log collision if requested */
 			case COLL_LOG_NONE:
 				break;
@@ -6948,44 +7061,84 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 				int i;
 
 				fp = fopen(msr->param.achCollLog,"a");
-				assert(fp);
+				assert(fp != NULL);
+#ifdef AGGS
+				for (i=0;i<3;i++) {
+					if (!COLLIDER_IS_AGG(c1))
+						c1->r[i] += c1->v[i]*next.dt;
+					if (!COLLIDER_IS_AGG(c2))
+						c2->r[i] += c2->v[i]*next.dt;
+					}
+#else
 				for (i=0;i<3;i++) {
 					c1->r[i] += c1->v[i]*next.dt;
 					c2->r[i] += c2->v[i]*next.dt;
 					}
+#endif
 				fprintf(fp,"%s-%s COLLISION:T=%e\n",
 						_msrParticleLabel(msr,c1->iColor),
 						_msrParticleLabel(msr,c2->iColor),dTime + next.dt);
-				fprintf(fp,"***1:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,dt=%e,rung=%i,"
-						"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
-						c1->id.iPid,c1->id.iOrder,c1->id.iIndex,c1->id.iOrgIdx,
-						c1->fMass,c1->fRadius,c1->dt,c1->iRung,
-						c1->r[0],c1->r[1],c1->r[2],
-						c1->v[0],c1->v[1],c1->v[2],
-						c1->w[0],c1->w[1],c1->w[2]);
-				fprintf(fp,"***2:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,dt=%e,rung=%i,"
-						"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
-						c2->id.iPid,c2->id.iOrder,c2->id.iIndex,c2->id.iOrgIdx,
-						c2->fMass,c2->fRadius,c2->dt,c2->iRung,
-						c2->r[0],c2->r[1],c2->r[2],
-						c2->v[0],c2->v[1],c2->v[2],
-						c2->w[0],c2->w[1],c2->w[2]);
-				fprintf(fp,"***OUTCOME=%s dT=%e\n",
-#ifdef FIX_COLLAPSE
-						outDo.iOutcome == MISS ? "MISS" :
+#ifdef AGGS
+				if (COLLIDER_IS_AGG(c1))
+					fprintf(fp,"***1:p=%i,o=%i,i=%i,oi=%i,M=%e,R=*%e*,dt=%e,rung=%i,"
+							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
+							c1->id.iPid,c1->id.iOrder,c1->id.iIndex,c1->id.iOrgIdx,
+							c1->agg.mass,c1->fRadius/*DEBUG*/,c1->dt,c1->iRung,
+							c1->agg.r_com[0],c1->agg.r_com[1],c1->agg.r_com[2],
+							c1->agg.v_com[0],c1->agg.v_com[1],c1->agg.v_com[2],
+							c1->agg.omega[0],c1->agg.omega[1],c1->agg.omega[2]);
+				else
 #endif
+					fprintf(fp,"***1:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,dt=%e,rung=%i,"
+							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
+							c1->id.iPid,c1->id.iOrder,c1->id.iIndex,c1->id.iOrgIdx,
+							c1->fMass,c1->fRadius,c1->dt,c1->iRung,
+							c1->r[0],c1->r[1],c1->r[2],
+							c1->v[0],c1->v[1],c1->v[2],
+							c1->w[0],c1->w[1],c1->w[2]);
+#ifdef AGGS
+				if (COLLIDER_IS_AGG(c2))
+					fprintf(fp,"***2:p=%i,o=%i,i=%i,oi=%i,M=%e,R=*%e*,dt=%e,rung=%i,"
+							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
+							c2->id.iPid,c2->id.iOrder,c2->id.iIndex,c2->id.iOrgIdx,
+							c2->agg.mass,c2->fRadius/*DEBUG*/,c2->dt,c2->iRung,
+							c2->agg.r_com[0],c2->agg.r_com[1],c2->agg.r_com[2],
+							c2->agg.v_com[0],c2->agg.v_com[1],c2->agg.v_com[2],
+							c2->agg.omega[0],c2->agg.omega[1],c2->agg.omega[2]);
+				else
+#endif
+					fprintf(fp,"***2:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,dt=%e,rung=%i,"
+							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
+							c2->id.iPid,c2->id.iOrder,c2->id.iIndex,c2->id.iOrgIdx,
+							c2->fMass,c2->fRadius,c2->dt,c2->iRung,
+							c2->r[0],c2->r[1],c2->r[2],
+							c2->v[0],c2->v[1],c2->v[2],
+							c2->w[0],c2->w[1],c2->w[2]);
+				fprintf(fp,"***OUTCOME=%s dT=%e\n",
+						outDo.iOutcome == MISS ? "MISS" :
 						outDo.iOutcome == MERGE ? "MERGE" :
 						outDo.iOutcome == BOUNCE ? "BOUNCE" :
 						outDo.iOutcome == FRAG ? "FRAG" : "UNKNOWN",outDo.dT);
-				for (i=0;i<outDo.nOut;++i) {
+				for (i=0;i<(outDo.nOut < MAX_NUM_FRAG ? outDo.nOut : MAX_NUM_FRAG);i++) {
 					c = &outDo.Out[i];
-					fprintf(fp,"***out%i:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,rung=%i,"
-							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",i,
-							c->id.iPid,c->id.iOrder,c->id.iIndex,c->id.iOrgIdx,
-							c->fMass,c->fRadius,c->iRung,
-							c->r[0],c->r[1],c->r[2],
-							c->v[0],c->v[1],c->v[2],
-							c->w[0],c->w[1],c->w[2]);
+#ifdef AGGS
+					if (COLLIDER_IS_AGG(c))
+						fprintf(fp,"***out%i:p=%i,o=%i,i=%i,oi=%i,M=%e,R=*%e*,rung=%i,"
+								"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",i,
+								c->id.iPid,c->id.iOrder,c->id.iIndex,c->id.iOrgIdx,
+								c->agg.mass,c->fRadius/*DEBUG*/,c->iRung,
+								c->agg.r_com[0],c->agg.r_com[1],c->agg.r_com[2],
+								c->agg.v_com[0],c->agg.v_com[1],c->agg.v_com[2],
+								c->agg.omega[0],c->agg.omega[1],c->agg.omega[2]);
+					else
+#endif
+						fprintf(fp,"***out%i:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,rung=%i,"
+								"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",i,
+								c->id.iPid,c->id.iOrder,c->id.iIndex,c->id.iOrgIdx,
+								c->fMass,c->fRadius,c->iRung,
+								c->r[0],c->r[1],c->r[2],
+								c->v[0],c->v[1],c->v[2],
+								c->w[0],c->w[1],c->w[2]);
 					}
 				fclose(fp);
 				break;
@@ -6993,9 +7146,9 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 			case COLL_LOG_TERSE:
 				{
 				/*
-				 ** FORMAT: For each event, time (double), collider 1 iOrder
-				 ** (int), collider 2 iOrder (int), number of post-collision
-				 ** particles (int), iOrder for each of these (n * int).
+				 ** FORMAT: For each event, time (double), collider 1 iOrgIdx
+				 ** (int), collider 2 iOrgIdx (int), number of post-collision
+				 ** particles (int), iOrgIdx for each of these (n * int).
 				 */
 
 				FILE *fp;
@@ -7006,21 +7159,21 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 				if (outDo.iOutcome != MERGE && outDo.iOutcome != FRAG)
 					break; /* only care when particle indices change */
 				fp = fopen(msr->param.achCollLog,"a");
-				assert(fp);
+				assert(fp != NULL);
 				xdrstdio_create(&xdrs,fp,XDR_ENCODE);
 				dDum = dTime + next.dt;
 				(void) xdr_double(&xdrs,&dDum);
-				(void) xdr_int(&xdrs,&c1->id.iOrgIdx); /*DEBUG not iOrder!*/
+				(void) xdr_int(&xdrs,&c1->id.iOrgIdx);
 				(void) xdr_int(&xdrs,&c2->id.iOrgIdx);
 				(void) xdr_int(&xdrs,&outDo.nOut);
-				for (i=0;i<outDo.nOut;i++)
+				for (i=0;i<(outDo.nOut < MAX_NUM_FRAG ? outDo.nOut : MAX_NUM_FRAG);i++)
 					(void) xdr_int(&xdrs,&outDo.Out[i].id.iOrgIdx);
 				xdr_destroy(&xdrs);
 				(void) fclose(fp);
 				break;
 				}
 			default:
-				assert(1); /* invalid collision log option */
+				assert(0); /* invalid collision log option */
 				} /* logging */
 			} /* if collision */
 		} while (COLLISION(next.dt) && smooth.smf.dStart < smooth.smf.dEnd);
@@ -7028,7 +7181,7 @@ msrDoCollisions(MSR msr,double dTime,double dDelta)
 	if (msr->param.nSmooth > msr->N) {
 		msr->param.nSmooth = msr->N;
 		if (msr->param.bVWarnings)
-			printf("WARNING: nSmooth reduced to %i\n",msr->N);
+			printf("WARNING: nSmooth reduced to %i\n",msr->param.nSmooth);
 		}
 	if (msr->param.bVStep) {
 		double dsec = msrTime() - sec;
@@ -7092,7 +7245,8 @@ msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 
 void msrAggsToBodyAxes(MSR msr,int iAggIdx,Aggregate *agg)
 {
-	/* requires call to msrAggsGetAxes() first */
+	/* to be called ONLY by msrAggsUpdate() */
+	/* requires call to msrAggsGetAxesAndSpin() first */
 
 	struct inAggsToBodyAxes in;
 
@@ -7101,8 +7255,9 @@ void msrAggsToBodyAxes(MSR msr,int iAggIdx,Aggregate *agg)
 	pstAggsToBodyAxes(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
-void msrAggsGetAxes(MSR msr,int iAggIdx,Aggregate *agg)
+void msrAggsGetAxesAndSpin(MSR msr,int iAggIdx,Aggregate *agg)
 {
+	/* to be called ONLY by msrAggsUpdate() */
 	/* requires call to msrAggsGetCOM() first */
 
 	struct inAggsGetAxes in;
@@ -7133,43 +7288,110 @@ void msrAggsGetAxes(MSR msr,int iAggIdx,Aggregate *agg)
 	matrixTransform(spaceToBody,out.L,h);
 
 	/* compute spin vector omega = I^{-1} h */
-	for (k=0;k<3;k++) /* shortcut for diagonal matrix in body frame */
+	for (k=0;k<3;k++) {/* shortcut for diagonal matrix in body frame */
+		assert(agg->moments[k] > 0.0);
 		agg->omega[k] = h[k]/agg->moments[k];
+		}
 	}
 
 void msrAggsGetCOM(MSR msr,int iAggIdx,Aggregate *agg)
 {
+	/* to be called ONLY by msrAggsUpdate() */
+
 	struct inAggsGetCOM in;
 	struct outAggsGetCOM out;
-	int k;
 
 	in.iAggIdx = iAggIdx;
 	pstAggsGetCOM(msr->pst,&in,sizeof(in),&out,NULL);
 	assert(out.m > 0.0);
 
-	for (k=0;k<3;k++) {
-		agg->r_com[k] = out.mr[k]/out.m;
-		agg->v_com[k] = out.mv[k]/out.m;
-		}
+	agg->mass = out.m;
+	vectorScale(out.mr,1.0/out.m,agg->r_com);
+	vectorScale(out.mv,1.0/out.m,agg->v_com);
 	}
 
-void msrAggsUpdate(MSR msr,int iAggID)
+void msrAggsGetAccel(MSR msr,int iAggIdx,Aggregate *agg)
 {
-	Aggregate *agg;
+	/* particle accelerations must be up to date */
 
-	assert(iAggID >= 0 && iAggID < msr->nAggs);
-	agg = &msr->pAggs[iAggID];
+	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+	assert(agg == &msr->pAggs[iAggIdx]);
+	assert(agg->bAssigned);
+	vectorZero(agg->a_com);
+	if (msr->param.bDoGravity) {
+		struct inAggsGetAccel in;
+		struct outAggsGetAccel out;
+		/* get acceleration of center of mass */
+		in.iAggIdx = iAggIdx;
+		pstAggsGetAccel(msr->pst,&in,sizeof(in),&out,NULL);
+		assert(out.m > 0.0);
+		if (fabs(out.m - agg->mass) > 1.0e-12*agg->mass) {
+			(void) printf("WARNING: Aggregate mass not conserved: %.16e != %.16e!\n",out.m,agg->mass);
+			}
+		vectorScale(out.ma,1.0/out.m,agg->a_com);
+	}
+}
+
+void msrAggsGetTorque(MSR msr,int iAggIdx,Aggregate *agg)
+{
+	/* aggregate c-o-m pos, acceleration, & body orientation assumed up to date */
+
+	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+	assert(agg == &msr->pAggs[iAggIdx]);
+	assert(agg->bAssigned);
+	vectorZero(agg->torque);
+	if (msr->param.bDoSelfGravity) {
+		Matrix spaceToBody;
+		struct inAggsGetTorque in;
+		struct outAggsGetTorque out;
+		/* get torque around center of mass */
+		in.iAggIdx = iAggIdx;
+		vectorCopy(agg->r_com,in.r_com);
+		vectorCopy(agg->a_com,in.a_com);
+		pstAggsGetTorque(msr->pst,&in,sizeof(in),&out,NULL);
+		/* transform torque vector to body frame */
+		matrixTranspose(agg->lambda,spaceToBody);
+		matrixTransform(spaceToBody,out.torque,agg->torque);
+	}
+}
+
+void msrAggsGetAccelAndTorque(MSR msr)
+{
+	/* to be called after particle accelerations have been computed */
+
+	Aggregate *agg;
+	int i;
+
+	for (i=0;i<msr->nAggs;i++) {
+		agg = &msr->pAggs[i];
+		if (agg->bAssigned) {
+			msrAggsGetAccel(msr,i,agg);
+			msrAggsGetTorque(msr,i,agg);
+		}
+	}
+}
+
+void msrAggsUpdate(MSR msr,int iAggIdx,Aggregate *agg)
+{
+	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+	assert(agg == &msr->pAggs[iAggIdx]);
 	assert(agg->bAssigned);
 
 	/* get center of mass info, needed before axes */
-	msrAggsGetCOM(msr,iAggID,agg);
+	msrAggsGetCOM(msr,iAggIdx,agg);
 	/* get moments, principal axes, and spin vector */
-	msrAggsGetAxes(msr,iAggID,agg);
+	msrAggsGetAxesAndSpin(msr,iAggIdx,agg);
 	/* get particle positions in body frame */
-	msrAggsToBodyAxes(msr,iAggID,agg);
+	msrAggsToBodyAxes(msr,iAggIdx,agg);
+	/*
+	 ** NOTE: particle spins are not updated at this point since
+	 ** they're currently only needed just before a collision,
+	 ** or at the end of the step (for output purposes). Hence
+	 ** the spins are updated in msrAggsAdvance().
+	 */
 	}
 
-void msrAggsGetNewID(MSR msr)
+void msrAggsGetNewIdx(MSR msr)
 {
 	int i;
 
@@ -7177,17 +7399,17 @@ void msrAggsGetNewID(MSR msr)
 
 	for (i=0;i<msr->nAggs;i++)
 		if (!msr->pAggs[i].bAssigned) {
-			msr->iAggNewID = i;
+			msr->iAggNewIdx = i;
 			return;
 			}
 
-	msr->iAggNewID = msr->nAggs;
+	msr->iAggNewIdx = msr->nAggs;
 	msr->nAggs <<= 1; /* double buffer size */
 	if (msr->param.bVDetails)
-		(void) printf("Doubling aggregate buffer to %i.\n",msr->nAggs);
+		(void) printf("msrAggsGetNewIdx(): Doubled aggregate buffer to %i.\n",msr->nAggs);
 	msr->pAggs = (Aggregate *) realloc(msr->pAggs,msr->nAggs*sizeof(Aggregate));
-	assert(msr->pAggs);
-	for (i=msr->iAggNewID;i<msr->nAggs;i++)
+	assert(msr->pAggs != NULL);
+	for (i=msr->iAggNewIdx;i<msr->nAggs;i++)
 		msr->pAggs[i].bAssigned = 0;
 	}
 
@@ -7205,7 +7427,7 @@ void msrAggsFind(MSR msr)
 	int i,nAssigned = 0;
 
 	if (msr->param.bVDetails)
-		(void) printf("Allocating space for aggregates...\n");
+		(void) printf("msrAggsFind(): Allocating space for aggregates...\n");
 
 	/*
 	 ** We don't know in advance how many aggregates there will be.
@@ -7230,43 +7452,87 @@ void msrAggsFind(MSR msr)
 	assert(msr->nAggs > 1);
 
 	msr->pAggs = (Aggregate *) malloc(msr->nAggs*sizeof(Aggregate));
-	assert(msr->pAggs);
+	assert(msr->pAggs != NULL);
 
 	if (msr->param.bVDetails)
-		(void) printf("Space for %i aggregates allocated.\n",msr->nAggs);
+		(void) printf("msrAggsFind(): Space for %i aggregates allocated.\n",msr->nAggs);
 
 	for (i=0;i<msr->nAggs;i++) {
 		agg = &msr->pAggs[i];
 		agg->bAssigned = 0;
-		/* make sure at least one particle belongs to each aggregate */
+		/* determine which aggregates are actually occupied */
 		if (i <= outFind.iMaxIdx) {
+			/*DEBUG following could be separate msr routine...*/
 			inConfirm.iAggIdx = i;
 			pstAggsConfirm(msr->pst,&inConfirm,sizeof(inConfirm),&outConfirm,NULL);
 			agg->bAssigned = outConfirm.bAssigned;
 			}
 		if (agg->bAssigned) {
 			++nAssigned;
-			msrAggsUpdate(msr,i);
+			msrAggsUpdate(msr,i,agg);
 			}
 		}
 
-	msrAggsGetNewID(msr);
+	msrAggsGetNewIdx(msr);
 
 	if (msr->param.bVDetails)
-		(void) printf("%i aggregate%s initialized.\n",nAssigned,
+		(void) printf("msrAggsFind(): %i aggregate%s initialized.\n",nAssigned,
 					  nAssigned == 1 ? "" : "s");
 
 	if (msr->param.bVWarnings && msr->nAggs > AGGS_INIT_BUFF_SIZE &&
 		nAssigned < (msr->nAggs >> 2))
-		(void) fprintf(stderr,
-					   "WARNING: Inefficient use of aggregate buffer\n");
+		(void) fprintf(stderr,"WARNING: Inefficient use of aggregate buffer\n");
+	}
+
+void msrAggsSetSpacePos(MSR msr,int iAggIdx,Aggregate *agg)
+{
+	/* aggregate c-o-m pos and body orientation must be up to date */
+
+	struct inAggsSetSpacePos in;
+
+	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+	assert(agg == &msr->pAggs[iAggIdx]);
+	assert(agg->bAssigned);
+	in.iAggIdx = iAggIdx;
+	vectorCopy(agg->r_com,in.r_com);
+	matrixCopy(agg->lambda,in.lambda);
+	pstAggsSetSpacePos(msr->pst,&in,sizeof(in),NULL,NULL);
+}
+
+void msrAggsSetSpaceVel(MSR msr,int iAggIdx,Aggregate *agg)
+{
+	/* aggregate c-o-m vel, spin, & body orientation must be up to date */
+
+	struct inAggsSetSpaceVel in;
+
+	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+	assert(agg == &msr->pAggs[iAggIdx]);
+	assert(agg->bAssigned);
+	in.iAggIdx = iAggIdx;
+	vectorCopy(agg->v_com,in.v_com);
+	vectorCopy(agg->omega,in.omega);
+	matrixCopy(agg->lambda,in.lambda);
+	pstAggsSetSpaceVel(msr->pst,&in,sizeof(in),NULL,NULL);
+}
+
+void msrAggsSetSpaceSpins(MSR msr,int iAggIdx,Aggregate *agg)
+{
+	/* aggregate spin and body orientation must be up to date */
+
+	struct inAggsSetSpaceSpins in;
+
+	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+	assert(agg == &msr->pAggs[iAggIdx]);
+	assert(agg->bAssigned);
+	in.iAggIdx = iAggIdx;
+	matrixTransform(agg->lambda,agg->omega,in.omega); /* space frame */
+	pstAggsSetSpaceSpins(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
 void msrAggsKick(MSR msr,double dt)
 {
-	/* dt should be 0.5*dDelta */
+	/* dt is one half current drift interval */
 
-	struct inAggsSetSpaceVel in;
 	Aggregate *agg;
 	int i,k;
 
@@ -7275,33 +7541,44 @@ void msrAggsKick(MSR msr,double dt)
 		if (agg->bAssigned) {
 			for (k=0;k<3;k++)
 				agg->v_com[k] += agg->a_com[k]*dt;
-			in.iAggIdx = i;
-			vectorCopy(agg->v_com,in.v_com);
-			vectorCopy(agg->omega,in.omega);
-			matrixCopy(agg->lambda,in.lambda);
-			pstAggsSetSpaceVel(msr->pst,&in,sizeof(in),NULL,NULL);
-			}
+			msrAggsSetSpaceVel(msr,i,agg);
+		}
+	}
+}
+
+void msrAggsAdvanceOpen(MSR msr)
+{
+	Aggregate *agg;
+	int i;
+
+	for (i=0;i<msr->nAggs;i++) {
+		agg = &msr->pAggs[i];
+		if (agg->bAssigned)
+			agg->dLastUpdate = 0.0;
 		}
 	}
 
-void msrAggsAdvance(MSR msr,Aggregate *agg,double dToTime)
+void msrAggsAdvance(MSR msr,int iAggIdx,Aggregate *agg,double dToTime)
 {
 	/* Integrate to get new lambda, omega, and COM position */
+	/* dToTime is no larger than current drift interval */
 
 	FLOAT vars[12];
-	FLOAT time = 0.0;			/* irrelevant time */
+	FLOAT time = 0.0; /* dummy time */
 	double dt;
 	int k;
 
+	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+	assert(agg == &msr->pAggs[iAggIdx]);
+	assert(agg->bAssigned);
+
 	dt = dToTime - agg->dLastUpdate;
+
+	if (!msr->param.CP.bFixCollapse) assert(dt >= 0.0);
 
 	if (dt == 0.0) return; /* nothing to be done */
 
 	/* Make sure time step is reasonable */
-
-/*DEBUG!! fix collapse uses negative step...
-	assert(dt > 0.0);
-*/
 
 /*DEBUG ???
 	assert(dt < 0.01*2*M_PI/sqrt(agg->omega[0]*agg->omega[0] +
@@ -7321,11 +7598,9 @@ void msrAggsAdvance(MSR msr,Aggregate *agg,double dToTime)
 		}
 
 	/*
-	 ** Take an rk4 step.  Note that the integration time is
-	 ** largely irrevelant, hence we pass 0.  The actual time
-	 ** in general terms does not matter, due to the structure
-	 ** of the Euler equations.
-	 **DEBUG note agg passed for moments, right?
+	 ** Take an rk4 step.  Note that the current time is not used,
+	 ** hence we pass 0 (the Euler equations have no explicit time
+	 ** dependence).  The agg structure provides torque and moments.
 	 */
 	aggsRungeStep(dt,time,vars,12,agg,aggsEulerDerivs,&time,vars);
 
@@ -7340,131 +7615,132 @@ void msrAggsAdvance(MSR msr,Aggregate *agg,double dToTime)
 	/* COM "drift" */
 	for (k=0;k<3;k++)
 		agg->r_com[k] += agg->v_com[k]*dt;
+
+	agg->dLastUpdate = dToTime;
+
+	/*
+	 ** Get new particle positions in space frame.
+	 ** NOTE: space velocities not required since these can be
+	 ** computed from the aggregate velocity plus omega x r.
+	 */
+
+	msrAggsSetSpacePos(msr,iAggIdx,agg);
+
+	/*
+	 ** Get new particle spins in space frame.  These are
+	 ** simply set to the new spin vector of the aggregate
+	 ** itself.  This update is needed in order to compute
+	 ** angular momentum correctly, both for outputs and
+	 ** for msrAggsGetAxesAndSpin(), which uses the total
+	 ** angular momentum to determine the spin vector of a
+	 ** new aggregate formed by merger, etc.
+	 */
+
+	msrAggsSetSpaceSpins(msr,iAggIdx,agg);
 	}
 
-void msrAggsAdvanceOpen(MSR msr)
+void msrAggsAdvanceClose(MSR msr,double dt)
 {
+	/* dt is current drift interval */
+
 	Aggregate *agg;
 	int i;
 
 	for (i=0;i<msr->nAggs;i++) {
 		agg = &msr->pAggs[i];
 		if (agg->bAssigned)
-			agg->dLastUpdate = 0.0;
+			msrAggsAdvance(msr,i,agg,dt);
 		}
 	}
 
-void msrAggsAdvanceClose(MSR msr,double dt)
+void msrAggsBackDrift(MSR msr,int iAggIdx,Aggregate *agg,double dt)
 {
-	/* dt should be dDelta */
+	/* particle space velocities must be up to date (apart from kick) */
 
-	struct inAggsSetSpacePos in;
-	Aggregate *agg;
-	int i;
+	struct inAggsBackDrift in;
 
-	for (i=0;i<msr->nAggs;i++) {
-		agg = &msr->pAggs[i];
-		if (agg->bAssigned) {
-			msrAggsAdvance(msr,agg,dt);
-			/*DEBUG following could be separate msr routine...*/
-			in.iAggIdx = i;
-			vectorCopy(agg->r_com,in.r_com);
-			matrixCopy(agg->lambda,in.lambda);
-			pstAggsSetSpacePos(msr->pst,&in,sizeof(in),NULL,NULL);
-			}
-		}
-	}
+	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+	assert(agg == &msr->pAggs[iAggIdx]);
+	assert(agg->bAssigned);
+	in.iAggIdx = iAggIdx;
+	in.dt = dt;
+	pstAggsBackDrift(msr->pst,&in,sizeof(in),NULL,NULL);
+}
 
-void msrAggsAdvanceCollider(MSR msr,COLLIDER *c,double dToTime)
-{
-	Aggregate *agg = &msr->pAggs[COLLIDER_AGG_ID(c)];
-
-	msrAggsAdvance(msr,agg,dToTime);
-
-	vectorCopy(agg->r_com,c->agg.r_com);
-	vectorCopy(agg->v_com,c->agg.v_com);
-	vectorCopy(agg->omega,c->agg.omega);
-	vectorCopy(agg->moments,c->agg.moments);
-	matrixCopy(agg->lambda,c->agg.lambda);
-	}
-
-void msrAggsCollisionUpdate(MSR msr,COLLIDER *c1,COLLIDER *c2,
-							int iOutcome,COLLIDER c[],int nOut)
+void msrAggsMerge(MSR msr,COLLIDER *c1,COLLIDER *c2,double dImpactTime,COLLIDER *cOut)
 {
 	struct inAggsMerge inMerge;
-	int iAggID;
-
-	assert(iOutcome == MERGE && nOut == 1); /* for now */
-
-	/* currently output not used */
-
-	if (iOutcome == MERGE) {
-		if (COLLIDER_IS_AGG(c1) && COLLIDER_IS_AGG(c2)) {
-			assert(COLLIDER_AGG_ID(c1) != COLLIDER_AGG_ID(c2));
-			if (COLLIDER_AGG_ID(c1) < COLLIDER_AGG_ID(c2)) {
-				inMerge.iOldID = COLLIDER_AGG_ID(c2);
-				inMerge.iNewID = COLLIDER_AGG_ID(c1);
-				}
-			else { /* (COLLIDER_AGG_ID(c2) < COLLIDER_AGG_ID(c1)) */
-				inMerge.iOldID = COLLIDER_AGG_ID(c1);
-				inMerge.iNewID = COLLIDER_AGG_ID(c2);
-				}
-			pstAggsMerge(msr->pst,&inMerge,sizeof(inMerge),NULL,NULL);
-			msr->pAggs[inMerge.iOldID].bAssigned = 0;
-			iAggID = inMerge.iNewID;
-			}
-		else if (COLLIDER_IS_AGG(c1) && !COLLIDER_IS_AGG(c2)) {
-			iAggID = COLLIDER_AGG_ID(c1);
-			}
-		else if (COLLIDER_IS_AGG(c2) && !COLLIDER_IS_AGG(c1)) {
-			iAggID = COLLIDER_AGG_ID(c2);
-			}
-		else { /* (!COLLIDER_IS_AGG(c1) && !COLLIDER_IS_AGG(c2)) */
-			iAggID = msr->iAggNewID;
-			msr->pAggs[iAggID].bAssigned = 1;
-			msrAggsGetNewID(msr);
-			}
-		msrAggsUpdate(msr,iAggID);
-		}
-	}
-
-void msrAggsGravity(MSR msr)
-{
-	struct inAggsAccel inAccel;
-	struct outAggsAccel outAccel;
-	struct inAggsTorque inTorque;
-	struct outAggsTorque outTorque;
-	Matrix spaceToBody;
 	Aggregate *agg;
-	int i,k;
+	int iAggIdx;
 
-	for (i=0;i<msr->nAggs;i++) {
-		agg = &msr->pAggs[i];
-		if (agg->bAssigned) {
-			vectorZero(agg->a_com);
-			vectorZero(agg->torque);
-			if (msr->param.bDoGravity) {
-				/* get acceleration of center of mass */
-				inAccel.iAggIdx = i;
-				pstAggsAccel(msr->pst,&inAccel,sizeof(inAccel),&outAccel,NULL);
-				assert(outAccel.m > 0.0);
-				for (k=0;k<3;k++) agg->a_com[k] = outAccel.ma[k]/outAccel.m;
-				if (msr->param.bDoSelfGravity) {
-					/* get torque around center of mass */
-					inTorque.iAggIdx = i;
-					for (k=0;k<3;k++) {
-						inTorque.r_com[k] = agg->r_com[k];
-						inTorque.a_com[k] = agg->a_com[k];
-						}
-					pstAggsTorque(msr->pst,&inTorque,sizeof(inTorque),&outTorque,NULL);
-					/* transform torque vector to body frame */
-					matrixTranspose(agg->lambda,spaceToBody);
-					matrixTransform(spaceToBody,outTorque.torque,agg->torque);
-					}
-				}
+	if (COLLIDER_IS_AGG(c1) && COLLIDER_IS_AGG(c2)) {
+		assert(COLLIDER_AGG_IDX(c1) != COLLIDER_AGG_IDX(c2));
+		if (COLLIDER_AGG_IDX(c1) < COLLIDER_AGG_IDX(c2)) {
+			inMerge.iOldIdx = COLLIDER_AGG_IDX(c2);
+			inMerge.iNewIdx = COLLIDER_AGG_IDX(c1);
+			*cOut = *c1;
 			}
+		else { /* i.e., COLLIDER_AGG_IDX(c2) < COLLIDER_AGG_IDX(c1) */
+			inMerge.iOldIdx = COLLIDER_AGG_IDX(c1);
+			inMerge.iNewIdx = COLLIDER_AGG_IDX(c2);
+			*cOut = *c2;
+			}
+		pstAggsMerge(msr->pst,&inMerge,sizeof(inMerge),NULL,NULL);
+		msr->pAggs[inMerge.iOldIdx].bAssigned = 0;
+		iAggIdx = inMerge.iNewIdx;
 		}
+	else if (COLLIDER_IS_AGG(c1) && !COLLIDER_IS_AGG(c2)) {
+		iAggIdx = COLLIDER_AGG_IDX(c1);
+		*cOut = *c1;
+		}
+	else if (COLLIDER_IS_AGG(c2) && !COLLIDER_IS_AGG(c1)) {
+		iAggIdx = COLLIDER_AGG_IDX(c2);
+		*cOut = *c2;
+		}
+	else { /* i.e., !COLLIDER_IS_AGG(c1) && !COLLIDER_IS_AGG(c2) */
+		iAggIdx = msr->iAggNewIdx; /* note order of these statements is important! */
+		msr->pAggs[iAggIdx].bAssigned = 1;
+		msrAggsGetNewIdx(msr);
+		*cOut = *c1; /* doesn't really matter which */
+		cOut->id.iOrgIdx = -1 - iAggIdx; /* so output log knows this is an agg */
+		}
+
+	agg = &msr->pAggs[iAggIdx];
+	assert(agg->bAssigned);
+	msrAggsUpdate(msr,iAggIdx,agg);
+	agg->dLastUpdate = dImpactTime;
+	msrAggsGetAccel(msr,iAggIdx,agg); /* needed because c_o_m pos & body axes have changed; uses start-of-step accelerations */
+	msrAggsGetTorque(msr,iAggIdx,agg); /* ditto */
+	msrAggsSetSpaceVel(msr,iAggIdx,agg); /*DEBUG put this call in msrAggsBackDrift()?*/
+	msrAggsBackDrift(msr,iAggIdx,agg,dImpactTime);
+	cOut->agg = *agg; /* struct copy for output log */
 	}
+
+void msrAggsBounce(MSR msr,COLLIDER *c1,COLLIDER *c2,double dImpactTime)
+{
+	Aggregate *agg;
+	int iAggIdx;
+
+	if (COLLIDER_IS_AGG(c1)) {
+		iAggIdx = COLLIDER_AGG_IDX(c1);
+		assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+		agg = &msr->pAggs[iAggIdx];
+		assert(agg->bAssigned);
+		*agg = c1->agg; /* struct copy */
+		msrAggsSetSpaceVel(msr,iAggIdx,agg);
+		msrAggsBackDrift(msr,iAggIdx,agg,dImpactTime);
+		}
+
+	if (COLLIDER_IS_AGG(c2)) {
+		iAggIdx = COLLIDER_AGG_IDX(c2);
+		assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+		agg = &msr->pAggs[iAggIdx];
+		assert(agg->bAssigned);
+		*agg = c2->agg; /* struct copy */
+		msrAggsSetSpaceVel(msr,iAggIdx,agg);
+		msrAggsBackDrift(msr,iAggIdx,agg,dImpactTime);
+		}
+}
 
 void msrAggsActivate(MSR msr)
 {
@@ -7499,7 +7775,7 @@ int msrReadASCII(MSR msr, char *extension, int nDataPerLine, double *dDataOut)
 	/*
 	 ** Add Data Subpath for local and non-local names.
 	 */
-	achFile[0] = 0;
+	achFile[0] = '\0';
 	sprintf(achFile,"%s/%s.%s",msr->param.achDataSubPath,
 			msr->param.achOutName, extension);
 	/*

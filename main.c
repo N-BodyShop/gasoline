@@ -10,6 +10,14 @@
 #include "outtype.h"
 #include "smoothfcn.h"
 
+#ifdef COLLISIONS
+#include <rpc/xdr.h> /* needed for time stamping terse collision log on restart */
+#endif
+
+/*DEBUG! for FPE trapping... (not defined on most systems)
+#include <fpu_control.h>
+*/
+
 void main_ch(MDL mdl)
 {
 	PST pst;
@@ -80,6 +88,17 @@ int main(int argc,char **argv)
 	setbuf(stdout,(char *) NULL);
 #endif
 
+#ifdef __FAST_MATH__
+	assert(0); /* too dangerous! (gcc compile option) */
+#endif
+
+/*DEBUG following may work to explicitly trap FPEs -- also uncomment #include above
+	{
+	fpu_control_t cw = 0x1372;
+	_FPU_SETCW(cw);
+	}
+*/
+
 	lStart=time(0);
 	mdlInitialize(&mdl,argv,main_ch);
 	for(argc = 0; argv[argc]; argc++); /* some MDLs can trash argv */
@@ -130,13 +149,31 @@ int main(int argc,char **argv)
 			msrLogParams(msr,fpLog);
 			}
 #ifdef COLLISIONS
-		if (msr->param.iCollLogOption == COLL_LOG_VERBOSE) {
+		if (msr->param.iCollLogOption != COLL_LOG_NONE) {
 			FILE *fp = fopen(msr->param.achCollLog,"r");
 			if (fp) { /* add RESTART tag only if file already exists */
 				fclose(fp);
 				fp = fopen(msr->param.achCollLog,"a");
-				assert(fp);
-				fprintf(fp,"RESTART:T=%e\n",dTime);
+				assert(fp != NULL);
+				switch (msr->param.iCollLogOption) {
+				case COLL_LOG_VERBOSE:
+					fprintf(fp,"RESTART:T=%e\n",dTime);
+					break;
+				case COLL_LOG_TERSE:
+					{
+					XDR xdrs;
+					int dum = -1;
+					xdrstdio_create(&xdrs,fp,XDR_ENCODE);
+					(void) xdr_double(&xdrs,&dTime);
+					(void) xdr_int(&xdrs,&dum);
+					(void) xdr_int(&xdrs,&dum);
+					(void) xdr_int(&xdrs,&dum);
+					xdr_destroy(&xdrs);
+					break;
+					}
+				default:
+					assert(0); /* should never happen */
+					}
 				fclose(fp);
 				}
 			}
@@ -201,12 +238,12 @@ int main(int argc,char **argv)
 		FILE *fp;
 		if (msr->param.iStartStep > 0) { /* append if non-zero start step */
 			fp = fopen(msr->param.achCollLog,"a");
-			assert(fp);
+			assert(fp != NULL);
 			fprintf(fp,"START:T=%e\n",dTime);
 			}
 		else { /* otherwise erase any old log */
 			fp = fopen(msr->param.achCollLog,"w");
-			assert(fp);
+			assert(fp != NULL);
 			}
 		fclose(fp);
 		}
@@ -576,6 +613,7 @@ int main(int argc,char **argv)
 			if (iStop) break;
 			}
 		if (msrLogInterval(msr)) (void) fclose(fpLog);
+		if (msr->param.bVStart) printf("Integration complete\n");
 		}
 	else {
 		/* Do DiagnosticOutput */
@@ -585,6 +623,7 @@ int main(int argc,char **argv)
 		in.dDelta = 1e37; /* large number */
 		pstInitDt(msr->pst,&in,sizeof(in),NULL,NULL);
 	        msrInitAccel(msr);
+		puts("Initialized Accel and dt\n");
     
 		if (msrRestart(msr)) {
 			msrReorder(msr);
@@ -596,7 +635,6 @@ int main(int argc,char **argv)
 #endif
 			}
 
-		fprintf(stderr,"Initialized Accel and dt\n");
 		if (msrDoGravity(msr)) {
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 			msrDomainDecomp(msr,0,1);
@@ -801,7 +839,7 @@ int main(int argc,char **argv)
 		msrReorder(msr);
 		sprintf(achFile,"%s.dt",msrOutName(msr));
 		msrOutArray(msr,achFile,OUT_DT_ARRAY);
-		if(msr->param.bDensityStep || msrDoGravity(msr)) {
+		if(msr->param.iMaxRung > 1 && (msr->param.bDensityStep || msrDoGravity(msr))) {
 			msrDtToRung(msr,0,msrDelta(msr),1);
 			msrRungStats(msr);
 			}

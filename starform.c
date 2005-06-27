@@ -159,7 +159,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	return;
 
     p->fMass -= dDeltaM;
-	assert(p->fMass >= 0);
+	assert(p->fMass >= 0.0);
 
     /* 
      * Note on number of stars formed:

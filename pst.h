@@ -153,6 +153,7 @@ enum pst_service {
       PST_DENSCHECK,
 	  PST_GETSPECIALPARTICLES,
 	  PST_DOSPECIALPARTICLES,
+	  /* following for COLLISIONS */
       PST_NUMREJECTS,
       PST_READSS,
       PST_WRITESS,
@@ -163,26 +164,29 @@ enum pst_service {
 	  PST_GETCOLLIDERINFO,
       PST_DOCOLLISION,
 	  PST_RESETCOLLIDERS,
+	  /* following for OLD_KEPLER */
 #ifdef OLD_KEPLER
       PST_QQCALCBOUND,
       PST_QQDOMAINDECOMP,
       PST_QQBUILDTREE,
       PST_QQSMOOTH,
 #endif
-#ifdef AGGS
+	  /* following for AGGS */
 	  PST_AGGSFIND,
 	  PST_AGGSCONFIRM,
 	  PST_AGGSMERGE,
+	  PST_AGGSBACKDRIFT,
 	  PST_AGGSGETCOM,
 	  PST_AGGSGETAXES,
 	  PST_AGGSTOBODYAXES,
 	  PST_AGGSSETSPACEPOS,
 	  PST_AGGSSETSPACEVEL,
-	  PST_AGGSACCEL,
-	  PST_AGGSTORQUE,
+	  PST_AGGSSETSPACESPINS,
+	  PST_AGGSGETACCEL,
+	  PST_AGGSGETTORQUE,
 	  PST_AGGSACTIVATE,
 	  PST_AGGSDEACTIVATE,
-#endif
+	  /* following for SPH, etc. */
       PST_SPHSTEP,
       PST_SPHVISCOSITYLIMITER,
       PST_INITCOOLING,
@@ -486,6 +490,7 @@ struct inGravExternal {
 	int bEpstein;
 	double dGamma;
 	double dOmegaZ;
+	double dTime;
 #endif
 	};
 void pstGravExternal(PST,void *,int,void *,int *);
@@ -1093,6 +1098,9 @@ struct inDoCollision {
 	double dOrbFreq;
 	double dTime;
 #endif
+#ifdef AGGS
+	int iAggNewIdx;
+#endif
 	};
 struct outDoCollision {
 	COLLIDER Out[MAX_NUM_FRAG];
@@ -1142,9 +1150,16 @@ void pstAggsConfirm(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
 
 /* PST_AGGSMERGE */
 struct inAggsMerge {
-	int iOldID,iNewID;
+	int iOldIdx,iNewIdx;
 	};
 void pstAggsMerge(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+/* PST_AGGSBACKDRIFT */
+struct inAggsBackDrift {
+	int iAggIdx;
+	double dt;
+	};
+void pstAggsBackDrift(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
 
 /* PST_AGGSGETCOM */
 struct inAggsGetCOM {
@@ -1190,25 +1205,32 @@ struct inAggsSetSpaceVel {
 	};
 void pstAggsSetSpaceVel(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
 
-/* PST_AGGSACCEL */
-struct inAggsAccel {
+/* PST_AGGSSETSPACESPINS */
+struct inAggsSetSpaceSpins {
+	int iAggIdx;
+	Vector omega;
+	};
+void pstAggsSetSpaceSpins(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+/* PST_AGGSGETACCEL */
+struct inAggsGetAccel {
 	int iAggIdx;
 	};
-struct outAggsAccel {
+struct outAggsGetAccel {
 	Scalar m;
 	Vector ma; /* acceleration moment */
 	};
-void pstAggsAccel(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+void pstAggsGetAccel(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
 
-/* PST_AGGSTORQUE */
-struct inAggsTorque {
+/* PST_AGGSGETTORQUE */
+struct inAggsGetTorque {
 	int iAggIdx;
 	Vector r_com,a_com;
 	};
-struct outAggsTorque {
+struct outAggsGetTorque {
 	Vector torque;
 	};
-void pstAggsTorque(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+void pstAggsGetTorque(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
 
 /* PST_AGGSACTIVATE */
 void pstAggsActivate(PST pst,void *vIn,int nIn,void *vout,int *pnOut);

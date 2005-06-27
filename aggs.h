@@ -7,7 +7,7 @@
  * Mods:   Derek C. Richardson
  *         dcr@astro.umd.edu
  *
- * Modified: 01/28/01, DCR: 07/10/02
+ * Modified: 01/28/01; DCR: 07/10/02, 05/29/03
  * 
  * Aggregate expansion to PKDGRAV.
  *
@@ -23,7 +23,7 @@
  * Aggregates make few changes to the original PKD code.  During the initial
  *  setup, the aggregrate structures defined below need to be filled out.
  *  Calculation of gravity is unaffected, we merely make aggregrate particles
- *  "inactive" during a kick, making use of pre-exisiting functionality.
+ *  "inactive" during a kick, making use of pre-existing functionality.
  *  During drift, we update particle positions in the aggregate "by hand"
  *  under the influence of their rotation, computed via the Euler equations.
  *  Collisions are computed by .... *DEBUG* update!
@@ -34,43 +34,37 @@
 
 #ifdef AGGS
 
-#include "pkd.h"
 #include "linalg.h"
-#include "collision.h"
+#include "pkd.h" /* for PARTICLE struct */
 
 #define AGGS_INIT_BUFF_SIZE 16 /* allocate this many aggs minimum */
 
+/* Constant in I = 2/5 mr^2 (for spheres).  Change for other bodies. */
+#define AGGS_PARTICLE_INERTIA_PREFACTOR 0.4
+
 /* Aggregate macro prototypes */
 int IS_AGG(PARTICLE *p);
-int AGG_ID(PARTICLE *p);
-int AGG_SET_ID(PARTICLE *p,int ID);
-int COLLIDER_IS_AGG(COLLIDER *c);
-int COLLIDER_AGG_ID(COLLIDER *c);
-int COLLIDER_AGG_SET_ID(COLLIDER *c,int ID);
+int AGG_IDX(PARTICLE *p);
+int AGG_SET_IDX(PARTICLE *p,int IDX);
 
 /* Particle is an aggregate if its original index is negative */
 #define IS_AGG(p) ((p)->iOrgIdx < 0)
 
 /* Aggregate index = -1 - (particle original index) */
-#define AGG_ID(p) (-1 - (p)->iOrgIdx)
+#define AGG_IDX(p) (-1 - (p)->iOrgIdx)
 
-#define AGG_SET_ID(p,ID) {(p)->iOrgIdx = -1 - (ID);}
-
-/* Same thing for colliders */
-#define COLLIDER_IS_AGG(c) ((c)->id.iOrgIdx < 0)
-#define COLLIDER_AGG_ID(c) (-1 - (c)->id.iOrgIdx)
-#define COLLIDER_AGG_SET_ID(c,ID) {(c)->id.iOrgIdx = -1 - (ID);}
-
-/* Constant in I = 2/5 mr^2 (for spheres).  Change for other bodies. */
-#define GAMMA 0.4
+#define AGG_SET_IDX(p,IDX) {(p)->iOrgIdx = -1 - (IDX);}
 
 /***************************** Structures *****************************/
 
 /* Main structure that defines the aggregate. */
-typedef struct 
+typedef struct
 {
 	/* Flag showing whether any particles are assigned to this agg. */
 	int bAssigned;
+
+	/* Mass of the aggregate. */
+	FLOAT mass;
 
 	/* COM position of the aggregate. */
 	Vector r_com;
@@ -81,10 +75,10 @@ typedef struct
 	/* COM acceleration of the aggregate. */
 	Vector a_com;
 
-	/* Torques acting on the aggregate. */
+	/* Torques acting on the aggregate in the body frame. */
 	Vector torque;
  
-	/* Angular velocity of the aggregate. */
+	/* Angular velocity of the aggregate in the body frame. */
 	Vector omega;
  
 	/*
@@ -113,24 +107,28 @@ void pkdAggsFind(PKD pkd,int *iMaxIdx);
 
 void pkdAggsConfirm(PKD pkd,int iAggIdx,int *bAssigned);
 
-void pkdAggsMerge(PKD pkd,int iOldID,int iNewID);
+void pkdAggsMerge(PKD pkd,int iOldIdx,int iNewIdx);
+
+void pkdAggsBackDrift(PKD pkd,int iAggIdx,double dt);
 
 void pkdAggsGetCOM(PKD pkd,int iAggIdx,Scalar *m,Vector mr,Vector mv);
 
-void pkdAggsGetAxes(PKD pkd,int iAggIdx,Vector r_com,Vector v_com,
+void pkdAggsGetAxes(PKD pkd,int iAggIdx,const Vector r_com,const Vector v_com,
 					Matrix I,Vector L);
 
 void pkdAggsToBodyAxes(PKD pkd,int iAggIdx,Matrix spaceToBody);
 
-void pkdAggsSetSpacePos(PKD pkd,int iAggIdx,Vector r_com,Matrix lambda);
+void pkdAggsSetSpacePos(PKD pkd,int iAggIdx,const Vector r_com,Matrix lambda);
 
-void pkdAggsSetSpaceVel(PKD pkd,int iAggIdx,Vector v_com,Vector omega,
+void pkdAggsSetSpaceVel(PKD pkd,int iAggIdx,const Vector v_com,const Vector omega,
 						Matrix lambda);
 
-void pkdAggsAccel(PKD pkd,int iAggIdx,Scalar *m,Vector ma);
+void pkdAggsSetSpaceSpins(PKD pkd,int iAggIdx,const Vector omega);
 
-void pkdAggsTorque(PKD pkd,int iAggIdx,Vector r_com,Vector a_com,
-				   Vector torque);
+void pkdAggsGetAccel(PKD pkd,int iAggIdx,Scalar *m,Vector ma);
+
+void pkdAggsGetTorque(PKD pkd,int iAggIdx,const Vector r_com,const Vector a_com,
+					  Vector torque);
 
 void pkdAggsActivate(PKD pkd);
 

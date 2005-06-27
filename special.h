@@ -9,20 +9,27 @@
 
 #define SPECIAL_OBLATE	(1<<0)
 #define SPECIAL_GR		(1<<1) /* not implemented */
+#define SPECIAL_FORCE	(1<<2)
 
 struct oblate_s {
 	double dRadEq;	/* equatorial radius (system units) */
 	double J2,J4;	/* J2, J4 oblateness coefficients */
+	double p[3];	/* pole of the oblate object */
+	};
+
+struct force_s {
+	double dMag;	/* magnitude of force in system units */
 	};
 
 typedef struct {
 	int iType;
 	struct oblate_s oblate;
+	struct force_s force;
 	} SPECIAL_PARTICLE_DATA;
 
 typedef struct {
 	int iOrder;
-	FLOAT fMass;
+	FLOAT fMass,fRadius;
 	FLOAT r[3];
 	} SPECIAL_PARTICLE_INFO;
 

@@ -15,7 +15,7 @@ ssioBasename(const char *path)
 {
 	char *p;
 
-	assert(path);
+	assert(path != NULL);
 	p = strrchr(path,'/');
 	if (p) return p + 1;
 	else return path;
@@ -29,7 +29,7 @@ ssioNewExt(const char *infile,const char *inext,
 	char *c;
 	size_t n;
 
-	assert(infile && inext && outfile && outext);
+	assert(infile != NULL && inext != NULL && outfile != NULL && outext != NULL);
 	basename = ssioBasename(infile);
 	if ((c = strrchr(basename,'.')) && strstr(c,inext))
 		n = c - basename;
@@ -48,7 +48,7 @@ ssioOpen(const char *filename,SSIO *ssio,const u_int mode)
 	const char type[][3] = {"r","w","r+"};
 	const enum xdr_op op[] = {XDR_DECODE,XDR_ENCODE,XDR_ENCODE};
 
-	assert(filename && ssio);
+	assert(filename != NULL && ssio != NULL);
 	assert(mode == SSIO_READ || mode == SSIO_WRITE || mode == SSIO_UPDATE);
 	if (!(ssio->fp = fopen(filename,type[mode])))
 		return 1;
@@ -59,7 +59,7 @@ ssioOpen(const char *filename,SSIO *ssio,const u_int mode)
 int
 ssioHead(SSIO *ssio,SSHEAD *head)
 {
-	assert(ssio && head);
+	assert(ssio != NULL && head != NULL);
 	if (!xdr_double(&ssio->xdrs,&head->time)) return 1;
 	if (!xdr_int(&ssio->xdrs,&head->n_data)) return 1;
 	if (!xdr_int(&ssio->xdrs,&head->pad)) return 1;
@@ -71,7 +71,7 @@ ssioData(SSIO *ssio,SSDATA *data)
 {
 	int i;
 
-	assert(ssio && data);
+	assert(ssio != NULL && data != NULL);
 	if (!xdr_double(&ssio->xdrs,&data->mass)) return 1;
 	if (!xdr_double(&ssio->xdrs,&data->radius)) return 1;
 	for (i=0;i<N_DIM;i++)
@@ -88,7 +88,7 @@ ssioData(SSIO *ssio,SSDATA *data)
 int
 ssioClose(SSIO *ssio)
 {
-	assert(ssio);
+	assert(ssio != NULL);
 	xdr_destroy(&ssio->xdrs);
 	if (fclose(ssio->fp)) return 1;
 	return 0;
@@ -97,7 +97,7 @@ ssioClose(SSIO *ssio)
 int
 ssioSetPos(SSIO *ssio,const u_int pos)
 {
-	assert(ssio);
+	assert(ssio != NULL);
 	if (!xdr_setpos(&ssio->xdrs,pos)) return 1;
 	return 0;
 	}
@@ -105,7 +105,7 @@ ssioSetPos(SSIO *ssio,const u_int pos)
 void
 ssioRewind(SSIO *ssio)
 {
-	assert(ssio);
+	assert(ssio != NULL);
 	rewind(ssio->fp);
 	}
 

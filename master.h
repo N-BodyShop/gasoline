@@ -61,7 +61,7 @@ typedef struct msrContext {
 #ifdef AGGS
 	/* Aggregates info currently stored only on master */
 	int nAggs;
-	int iAggNewID;
+	int iAggNewIdx;
 	Aggregate *pAggs;
 #endif
 	/*
@@ -259,17 +259,17 @@ void msrPlanetsDrift(MSR msr, double dStep, double dTime, double dDelta);
 void msrNextEncounter(MSR msr, double dStart, double dEnd, double *dNext);
 void msrMarkEncounters(MSR msr, double dTmax);
 void msrLinearKDK(MSR msr, double dStep, double dTime, double dDelta);
-void msrDoCollisions(MSR msr, double dTime, double dDelta);
+void msrDoCollision(MSR msr, double dTime, double dDelta);
 #endif /* COLLISIONS */
 #ifdef AGGS
 void msrAggsFind(MSR msr);
 void msrAggsKick(MSR msr,double dt);
 void msrAggsAdvanceOpen(MSR msr);
+void msrAggsAdvance(MSR msr,int iAggIdx,Aggregate *agg,double dToTime);
 void msrAggsAdvanceClose(MSR msr,double dt);
-void msrAggsAdvanceCollider(MSR msr,COLLIDER *c,double dt);
-void msrAggsCollisionUpdate(MSR msr,COLLIDER *c1,COLLIDER *c2,
-							int iOutcome,COLLIDER c[],int nOut);
-void msrAggsGravity(MSR msr);
+void msrAggsMerge(MSR msr,COLLIDER *c1,COLLIDER *c2,double dImpactTime,COLLIDER *cOut);
+void msrAggsBounce(MSR msr,COLLIDER *c1,COLLIDER *c2,double dImpactTime);
+void msrAggsGetAccelAndTorque(MSR msr);
 void msrAggsActivate(MSR msr);
 void msrAggsDeactivate(MSR msr);
 #endif

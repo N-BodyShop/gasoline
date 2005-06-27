@@ -15,49 +15,129 @@
 #include <assert.h>
 #include "linalg.h"
 
-void vectorCopy(Vector u,Vector v)
+void vectorCopy(const Vector u,Vector v)
 {
 	v[0] = u[0];
 	v[1] = u[1];
 	v[2] = u[2];
 	}
 
-void vectorScale(Vector u,FLOAT scalar,Vector v)
+void vectorScale(const Vector u,FLOAT scalar,Vector v)
 {
 	v[0] = u[0]*scalar;
 	v[1] = u[1]*scalar;
 	v[2] = u[2]*scalar;
 	}
 
-void vectorAdd(Vector v1,Vector v2,Vector v)
+void vectorAdd(const Vector v1,const Vector v2,Vector v)
 {
 	v[0] = v1[0] + v2[0];
 	v[1] = v1[1] + v2[1];
 	v[2] = v1[2] + v2[2];
 	}
 
-void vectorSub(Vector v1,Vector v2,Vector v)
+void vectorSub(const Vector v1,const Vector v2,Vector v)
 {
 	v[0] = v1[0] - v2[0];
 	v[1] = v1[1] - v2[1];
 	v[2] = v1[2] - v2[2];
 	}
 
-FLOAT vectorDot(Vector v1,Vector v2)
+FLOAT vectorDot(const Vector v1,const Vector v2)
 {
 	return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
 	}
 
-void vectorCross(Vector v1,Vector v2,Vector v)
+FLOAT vectorMagSq(const Vector v)
+{
+	return vectorDot(v,v);
+	}
+
+FLOAT vectorMag(const Vector v)
+{
+	return sqrt(vectorMagSq(v));
+	}
+
+void vectorNorm(Vector v)
+{
+	double mag = vectorMag(v);
+	assert(mag > 0.0);
+	vectorScale(v,1.0/mag,v);
+	}
+
+void vectorCross(const Vector v1,const Vector v2,Vector v)
 {
 	v[0] = v1[1]*v2[2] - v1[2]*v2[1];
 	v[1] = v1[2]*v2[0] - v1[0]*v2[2];
 	v[2] = v1[0]*v2[1] - v1[1]*v2[0];
 	}
 
+void vectorSet(Vector v,double x,double y,double z)
+{
+	v[0] = x;
+	v[1] = y;
+	v[2] = z;
+	}
+
 void vectorZero(Vector v)
 {
-	v[0] = v[1] = v[2] = 0.0;
+	vectorSet(v,0.0,0.0,0.0);
+	}
+
+void vectorGetBasis(Vector a,Vector b,Vector c)
+{
+	/* Given vector "a", this routine returns orthonormal basis (a,b,c) */
+
+	Vector v,ctmp;
+	Matrix I;
+	double proj;
+
+	matrixIdentity(I); /* unit matrix */
+
+	/* Get spanning set...first guess: choose I[1] (y-hat) and I[2] (z_hat) as 2nd & 3rd vecs */
+
+	vectorCopy(I[1],b);
+	vectorCopy(I[2],c);
+
+	/* If "a" is actually null, set it to I[0] (x-hat) and return */
+
+	if (a[0] == 0.0 && a[1] == 0.0 && a[2] == 0.0) {
+		vectorCopy(I[0],a);
+		return;
+	}
+
+	/*
+	** If "a" does not have an x component, make 2nd vector I[0] (x-hat). If in
+	** addition "a" does not have a y component, make 3rd vector I[1] (y-hat).
+	** Now a, b, and c span 3-space.
+	*/
+
+	if (a[0] == 0.0) {
+		vectorCopy(I[0],b);
+		if (a[1] == 0.0)
+			vectorCopy(I[1],c);
+	}
+
+	/* Construct orthonormal basis using the Gram-Schmidt orthonormalization process */
+
+	vectorNorm(a); /* first basis vector */
+
+	/* Construct second basis vector */
+
+	proj = vectorDot(a,b);
+	vectorScale(a,proj,v);
+	vectorSub(b,v,b);
+	vectorNorm(b);
+
+	/* Construct third basis vector */
+
+	proj = vectorDot(a,c);
+	vectorScale(a,proj,v);
+	vectorSub(c,v,ctmp);
+	proj = vectorDot(b,c);
+	vectorScale(b,proj,v);
+	vectorSub(ctmp,v,c);
+	vectorNorm(c);
 	}
 
 void matrixCopy(Matrix a,Matrix b)
@@ -67,7 +147,7 @@ void matrixCopy(Matrix a,Matrix b)
 	vectorCopy(a[2],b[2]);
 	}
 
-void matrixTransform(Matrix m,Vector u,Vector v)
+void matrixTransform(Matrix m,const Vector u,Vector v)
 {
 	v[0] = vectorDot(m[0],u);
 	v[1] = vectorDot(m[1],u);
@@ -109,7 +189,7 @@ void matrixIdentity(Matrix m)
 	m[2][2] = 1.0;
 	}
 
-void matrixDiagonal(Vector v,Matrix m)
+void matrixDiagonal(const Vector v,Matrix m)
 {
 	m[0][0] = v[0];
 	m[0][1] = 0.0;
@@ -226,7 +306,7 @@ void matrixInverse(Matrix mat_in,Matrix mat_out)
 void jacobi(Matrix m,Vector eig_vals,Matrix eig_vecs)
 {
 	int y,x;                  /* Row, column of matrix for element to be 
-                               eliminated. */
+							   *  eliminated. */
 	int j;                    /* Column of matrix. */
 	int sweep_count;          /* Current number of sweeps made */
 	FLOAT off_diag_sum;       /* Sum of off diagonal elements. */
@@ -276,12 +356,12 @@ void jacobi(Matrix m,Vector eig_vals,Matrix eig_vecs)
     
 				/* Now, we check to see if we should bother with the rotation.  If the
 				 *  element being "eliminated" is too small, then we don't bother.  Too
-				 *  small, in this case is when the element * 100 is small enough that
+				 *  small in this case is when the element * 100 is small enough that
 				 *  adding it to either the diagonal element in its row or the diagonal
 				 *  element in its column is not enough to change the diagonal element
 				 *  within machine precision.  We only do this check if we are on the
 				 *  fourth or higher sweep.  If we "don't bother" we set the element to
-				 *  0 (eliminating it) and then moving on. */
+				 *  0 (eliminating it) and then move on. */
 				if (sweep_count > 3)
 					if (((100.0 * a[y][x] + fabs(a[x][x])) == fabs(a[x][x])) &&
 						((100.0 * a[y][x] + fabs(a[y][y])) == fabs(a[y][y])))
