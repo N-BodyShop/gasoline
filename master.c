@@ -16,8 +16,13 @@
 #define MAXPATHLEN 256
 #endif
 
+#ifdef CRAY_XT3
+#include "../xdr/types.h"
+#include "../xdr/xdr.h"
+#else
 #include <rpc/types.h>
 #include <rpc/xdr.h>
+#endif
 
 #ifdef CRAY_T3D
 #include "hyperlib.h"
@@ -2299,6 +2304,7 @@ double msrReadTipsy(MSR msr)
 	LCL *plcl = msr->pst->plcl;
 	double dTime,aTo,tTo,z;
 	struct inSetParticleTypes intype;
+	double sec,dsec;
 	
 	if (msr->param.achInFile[0]) {
 		/*
@@ -2478,10 +2484,21 @@ double msrReadTipsy(MSR msr)
 	in.fPeriod[1] = msr->param.dyPeriod;
 	in.fPeriod[2] = msr->param.dzPeriod;
 
+	/* Read Timings --JPG */
+	if (msr->param.bVDetails) {
+	     printf("Reading input file data...\n");
+	     sec = msrTime();
+	}
+
 	if(msr->param.bParaRead)
 	    pstReadTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
 	    msrOneNodeReadTipsy(msr, &in);
+
+	if (msr->param.bVDetails) {
+	     dsec = msrTime() - sec;
+	     printf("Data read complete, Wallclock: %f secs\n",dsec);
+	}
 
 	if (msr->param.iReadIOrder) {
 		struct outGetNParts outget;
@@ -2595,6 +2612,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	struct inWriteTipsy in;
 	char achOutFile[PST_FILENAME_SIZE];
 	LCL *plcl = msr->pst->plcl;
+	double sec,dsec;
 
 	/*
 	 ** Calculate where to start writing.
@@ -2664,12 +2682,21 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 		fwrite(&h,sizeof(struct dump),1,fp);
 		}
 	fclose(fp);
+
+	/* Write Timings --JPG */
+	if (msr->param.bVDetails) {
+	     puts("Writing output file data...");
+	     sec = msrTime();
+	     }
 	if(msr->param.bParaWrite)
 	    pstWriteTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
 	    msrOneNodeWriteTipsy(msr, &in);
-	if (msr->param.bVDetails)
-		puts("Output file has been successfully written.");
+	if (msr->param.bVDetails) {
+	     dsec = msrTime() - sec;
+	     printf("Data write complete, Wallclock: %f secs\n",dsec);
+	     puts("Output file has been successfully written, Wallclock");
+	     }
 	}
 
 
@@ -4230,6 +4257,7 @@ double msrReadCheck(MSR msr,int *piStep)
 	FDL_CTX *fdl;
 	int nMaxOutsTmp,nOutsTmp;
 	double *pdOutTimeTmp;
+	double sec,dsec;
 
 	/*
 	 ** Add Data Subpath for local and non-local names.
@@ -4444,8 +4472,10 @@ double msrReadCheck(MSR msr,int *piStep)
 	    msr->nOuts = nOutsTmp;
 	}
 
-	if (msr->param.bVDetails)
+	if (msr->param.bVDetails) {
 		printf("Reading checkpoint file...\nN:%d Time:%g\n",msr->N,dTime);
+		sec = msrTime();
+	        }
 	in.nFileStart = 0;
 	in.nFileEnd = msr->N - 1;
 	in.nDark = msr->nDark;
@@ -4472,8 +4502,11 @@ double msrReadCheck(MSR msr,int *piStep)
 	    pstReadCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
 	    msrOneNodeReadCheck(msr,&in);
-	if (msr->param.bVDetails)
+	if (msr->param.bVDetails) {
 		puts("Checkpoint file has been successfully read.");
+		dsec = msrTime() - sec;
+		printf("Data read complete, Wallclock: %f secs\n",dsec);
+	        }
 	inset.nGas = msr->nGas;
 	inset.nDark = msr->nDark;
 	inset.nStar = msr->nStar;
@@ -4559,6 +4592,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	char *pszFdl;
 	int iVersion,iNotCorrupt;
 	static int first = 1;
+	double sec,dsec;
 	
 	/*
 	 ** Add Data Subpath for local and non-local names.
@@ -4664,8 +4698,10 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	}
 #endif
 	FDL_write(fdl,"dFracNoDomainDecomp",&msr->param.dFracNoDomainDecomp);
-	if (msr->param.bVDetails)
+	if (msr->param.bVDetails) {
 		printf("Writing checkpoint file...\nTime:%g\n",dTime);
+		sec = msrTime();
+	        }
 	/*
 	 ** Do a parallel or serial write to the output file.
 	 */
@@ -4675,8 +4711,11 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	    pstWriteCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
 	    msrOneNodeWriteCheck(msr, &in);
-	if (msr->param.bVDetails)
+	if (msr->param.bVDetails) {
 		puts("Checkpoint file has been successfully written.");
+		dsec = msrTime() - sec;
+		printf("Data write complete, Wallclock: %f secs\n",dsec);
+	        }
 	iNotCorrupt = 1;
 	FDL_write(fdl,"not_corrupt_flag",&iNotCorrupt);
 	FDL_finish(fdl);

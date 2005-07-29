@@ -4,7 +4,7 @@
 # Then type make <platform>
 # <platform> should be one of:
 # null, sgi, pvm, pthread, pthread_dec, pthread_sgi, ampi, lam_mpi, qmpi, mpi,
-# spx, t3d, t3dmpi, t3empi, ksr, charm
+# spx, t3d, t3dmpi, t3empi, ksr, charm, xt3
 #
 PNG_INCL =
 PNG_LIB = 
@@ -121,6 +121,19 @@ QMPI_XOBJ                = erf.o
 QMPI_LIBMDL              = $(QMPI_MDL)/mdl.o -lmpi -lelan -lelan3 -lm
 QMPI_MDL_CFLAGS  = -O5 -arch ev6 -fast -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX 
 #QMPI_MDL_CFLAGS  = -g -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX 
+
+#
+#         Cray XT3 defines
+#  (XT3 needs homebrewed XDR in directory XT3_XDR)
+#  
+XT3_MDL            = ../mdl/mpi
+XT3_LIBMDL         = $(XT3_MDL)/mdl.o -lm
+XT3_MDL_CFLAGS     = -g -O2
+XT3_XDR            = ../xdr
+XT3_XDR_CFLAGS     = -g -O2
+XT3_CFLAGS         = -g -O3 -I$(XT3_MDL) -I/usr/include -I$(XT3_XDR) $(BASE_DEF)  $(CC_DEF) -DCRAY_XT3
+XT3_LD_FLAGS       = $(BASE_LD_FLAGS)
+XT3_XOBJ           = erf.o v_sqrt1.o $(XT3_XDR)/xdr.o $(XT3_XDR)/xdr_stdio.o $(XT3_XDR)/xdr_float.o $(XT3_XDR)/htonl.o
 
 
 #       SP1/2 defines
@@ -298,6 +311,11 @@ qmpi:
 	make $(EXE) "CFLAGS=$(QMPI_CFLAGS)" "LD_FLAGS=$(QMPI_LD_FLAGS)"\
 		"MDL=$(QMPI_MDL)" "XOBJ=$(QMPI_XOBJ)" "LIBMDL=$(QMPI_LIBMDL)"
 
+xt3:
+	cd $(XT3_MDL); make CC=mpicc "CC_FLAGS=$(XT3_MDL_CFLAGS)"
+	cd $(XT3_XDR); make CC=gcc "CC_FLAGS=$(XT3_XDR_CFLAGS)"
+	make $(EXE) CC=mpicc "CFLAGS=$(XT3_CFLAGS)" "LD_FLAGS=$(XT3_LD_FLAGS)"\
+		"MDL=$(XT3_MDL)" "XOBJ=$(XT3_XOBJ)" "LIBMDL=$(XT3_LIBMDL)"
 
 mpi: spx
 

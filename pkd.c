@@ -4,8 +4,13 @@
 #include <assert.h>
 #include <sys/time.h>
 
+#ifdef CRAY_XT3
+#include "../xdr/types.h"
+#include "../xdr/xdr.h"
+#else
 #include <rpc/types.h>
 #include <rpc/xdr.h>
+#endif
 
 #include "pkd.h"
 #include "ewald.h"

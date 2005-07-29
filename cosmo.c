@@ -140,9 +140,12 @@ double csmExp2Time(CSM csm,double dExp)
 		}	
 	    }
 	else {
-	    return dRombergO(csm, (double (*)(void *, double)) csmCosmoTint,
-			     0.0, pow(dExp, 1.5), EPSCOSMO);
-	    }
+             /* Set accuracy to 0.01 EPSCOSMO to make Romberg integration
+              * more accurate than Newton's method criterion in csmTime2Exp. --JPG
+              */
+            return dRombergO(csm, (double (*)(void *, double)) csmCosmoTint,
+                             0.0, pow(dExp, 1.5), 0.01*EPSCOSMO);
+ 	    }
 	}
 
 double csmTime2Exp(CSM csm,double dTime)
