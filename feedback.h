@@ -12,6 +12,8 @@ typedef struct sfevent {
     double dMass;            /* mass in star formation event in solar masses */
     double dTimeForm;      /* time of star formation event in years */
     double dMetals;           /*  metallicity of stars in event */
+    double dMFracOxygen;           /*  metallicity of stars in event */
+    double dMFracIron;           /*  metallicity of stars in event */
     } SFEvent;
 
 /*

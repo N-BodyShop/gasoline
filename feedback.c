@@ -56,6 +56,8 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 		fbTotals[i].dMassLoss = 0.0;
 		fbTotals[i].dEnergy = 0.0;
 		fbTotals[i].dMetals = 0.0;
+		fbTotals[i].dMIron = 0.0;
+		fbTotals[i].dMOxygen = 0.0;
 		}
     dTime *= fb->dSecUnit/SEC_YR;
     dDeltaYr = dDelta*fb->dSecUnit/SEC_YR;
@@ -76,6 +78,8 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                 sfEvent.dMass = p->fMassForm*fb->dGmUnit/MSOLG;
             sfEvent.dTimeForm = p->fTimeForm*fb->dSecUnit/SEC_YR;;
             sfEvent.dMetals = p->fMetals;
+            sfEvent.dMFracOxygen = p->fMFracOxygen;
+            sfEvent.dMFracIron = p->fMFracIron;
 
             /*
              * Call all the effects in order and accumulate them.
@@ -111,19 +115,22 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                     assert(0);
                     }
 
-                    p->fNSN += fbEffects.dEnergy * MSOLG*fbEffects.dMassLoss/sn->dESN;
+                if( sn->dESN > 0.0) p->fNSN += fbEffects.dEnergy * MSOLG*fbEffects.dMassLoss/sn->dESN;
+                else p->fNSN += 0.0;
                 fbEffects.dMassLoss *= MSOLG/fb->dGmUnit;
                 fbEffects.dEnergy /= fb->dErgPerGmUnit;
 
                 dTotMassLoss += fbEffects.dMassLoss;
                 p->fESNrate += fbEffects.dEnergy*fbEffects.dMassLoss;
                 dTotMetals += fbEffects.dMetals*fbEffects.dMassLoss;
+                dTotMOxygen += fbEffects.dMOxygen*fbEffects.dMassLoss;
+                dTotMIron += fbEffects.dMIron*fbEffects.dMassLoss;
 
                 fbTotals[j].dMassLoss += fbEffects.dMassLoss;
                 fbTotals[j].dEnergy += fbEffects.dEnergy*fbEffects.dMassLoss;
                 fbTotals[j].dMetals += fbEffects.dMetals*fbEffects.dMassLoss;
-                dTotMOxygen += fbEffects.dMOxygen*fbEffects.dMassLoss;
-                dTotMIron += fbEffects.dMIron*fbEffects.dMassLoss;
+                fbTotals[j].dMIron += fbEffects.dMIron*fbEffects.dMassLoss;
+                fbTotals[j].dMOxygen += fbEffects.dMOxygen*fbEffects.dMassLoss;
                 }
 
             /*
@@ -133,8 +140,6 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 
             p->fMass -= dTotMassLoss;
             p->fMSN = dTotMassLoss;
-            p->fMIronOut = dTotMIron;
-            p->fMOxygenOut = dTotMOxygen;
             /* The SNMetals and ESNrate used to be specific
                quantities, but we are making them totals as
                they leave the stars so that they are easier
@@ -143,6 +148,8 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                will be converted back to specific quantities when
                they are parts of gas particles. */
             p->fSNMetals = dTotMetals;
+            p->fMIronOut = dTotMIron;
+            p->fMOxygenOut = dTotMOxygen;
             p->fESNrate /= dDelta; /* convert to rate */
             }
 	    
@@ -206,6 +213,8 @@ void snCalcWindFeedback(SN sn, SFEvent sfEvent,
     fbEffects->dEnergy = 0.0;    
     /* Use stars metallicity for gas returned */
     fbEffects->dMetals = sfEvent.dMetals; 
+    fbEffects->dMIron = sfEvent.dMFracIron; 
+    fbEffects->dMOxygen = sfEvent.dMFracOxygen; 
 
   } else {
     fbEffects->dMassLoss = 0.0;

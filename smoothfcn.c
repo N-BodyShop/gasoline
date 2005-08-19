@@ -2057,7 +2057,9 @@ void initDistDeletedGas(void *p1)
 		((PARTICLE *)p1)->v[2] = 0;
 		((PARTICLE *)p1)->u = 0;
 		((PARTICLE *)p1)->uDot = 0.0;
-		((PARTICLE *)p1)->fMetals = 0;
+		((PARTICLE *)p1)->fMetals = 0.0;
+		((PARTICLE *)p1)->fMFracOxygen = 0.0;
+		((PARTICLE *)p1)->fMFracIron = 0.0;
 		}
     }
 
@@ -2092,6 +2094,8 @@ void combDistDeletedGas(void *vp1,void *vp2)
 			p1->v[1] = f1*p1->v[1] + f2*p2->v[1];            
 			p1->v[2] = f1*p1->v[2] + f2*p2->v[2];            
 			p1->fMetals = f1*p1->fMetals + f2*p2->fMetals;
+			p1->fMFracOxygen = f1*p1->fMFracOxygen + f2*p2->fMFracOxygen;
+			p1->fMFracIron = f1*p1->fMFracIron + f2*p2->fMFracIron;
 			if(p1->uDot < 0.0)
 				p1->uDot = p1->uPred/fTCool;
 			}
@@ -2161,6 +2165,8 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q->v[1] = f1*q->v[1]+f2*p->v[1];            
 		q->v[2] = f1*q->v[2]+f2*p->v[2];            
 		q->fMetals = f1*q->fMetals + f2*p->fMetals;
+                q->fMFracOxygen = f1*q->fMFracOxygen + f2*p->fMFracOxygen;
+                q->fMFracIron = f1*q->fMFracIron + f2*p->fMFracIron;
 		if(q->uDot < 0.0) /* make sure we don't shorten cooling time */
 			q->uDot = q->uPred/fTCool;
         }
@@ -2285,7 +2291,7 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
    if (smf->bSmallSNSmooth) {
         fmind = BALL2(p);
         imind = 0;
-        if ( p->fESNrate != 0.0 ) {
+        if ( p->fESNrate > 0.0 ) {
             /* Change smoothing radius to blast radius 
              * so that we only distribute mass, metals, and energy
              * over that range. 

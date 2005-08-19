@@ -3899,20 +3899,24 @@ double pkdMassCheck(PKD pkd)
 	return(dMass);
 	}
 
-void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, 
-                    double *dTotMetals, double *dTotEnergy) 
+void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, double *dTotMetals, 
+                    double *dTotOx, double *dTotFe, double *dTotEnergy) 
 {
 	int i;
 	*dTotMass=0.0;
 	*dTotMetals=0.0;
+	*dTotOx=0.0;
+	*dTotFe=0.0;
 	*dTotEnergy=0.0;
 
 	for (i=0;i<pkdLocal(pkd);++i) {
 		*dTotMass += pkd->pStore[i].fMass;
-                if ( TYPETest(&pkd->pStore[i], TYPE_GAS) ){
 #ifdef GASOLINE 
-                    *dTotMetals += pkd->pStore[i].fMass*pkd->pStore[i].fMetals;
+                *dTotMetals += pkd->pStore[i].fMass*pkd->pStore[i].fMetals;
+                *dTotOx += pkd->pStore[i].fMass*pkd->pStore[i].fMFracOxygen;
+                *dTotFe += pkd->pStore[i].fMass*pkd->pStore[i].fMFracIron;
 #endif
+                if ( TYPETest(&pkd->pStore[i], TYPE_GAS) ){
 #ifdef STARFORM
                     *dTotEnergy += pkd->pStore[i].fMass*pkd->pStore[i].fESNrate;
 #endif

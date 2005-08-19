@@ -944,10 +944,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"bShortCoolShutoff", 0, &msr->param.bShortCoolShutoff,
 		    sizeof(int), "bShortCoolShutoff",
 		    "<Which cooling shutoff time to use> = long one");
-	msr->param.bSmallSNSmooth = 1;
-	prmAddParam(msr->prm,"bSmallSNSmooth", 0, &msr->param.bSmallSNSmooth,
-		    sizeof(int), "bSmallSNSmooth",
-		    "<smooth SN ejecta over blast or smoothing radius> = blast radius");
 	msr->param.iStarFormRung = 0;
 	prmAddParam(msr->prm,"iStarFormRung", 2, &msr->param.iStarFormRung,
 		    sizeof(double), "iStarFormRung",
@@ -961,6 +957,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dESN", 2, &msr->param.sn->dESN,
 		    sizeof(double), "snESN",
 		    "<Energy of supernova in ergs> = 1e51");
+	if (msr->param.sn->dESN > 0.0) msr->param.bSmallSNSmooth = 1;
+        else msr->param.bSmallSNSmooth = 0;
+	prmAddParam(msr->prm,"bSmallSNSmooth", 0, &msr->param.bSmallSNSmooth,
+		    sizeof(int), "bSmallSNSmooth",
+		    "<smooth SN ejecta over blast or smoothing radius> = blast radius");
 
 #endif /* STARFORM */
 #endif /* GASOLINE */
@@ -4949,14 +4950,16 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 	return(out.dMass);
 	}
 
-void msrMassMetalsEnergyCheck(MSR msr,double *dTotMass, 
-        double *dTotMetals, double *dTotEnergy,char *pszWhere)
+void msrMassMetalsEnergyCheck(MSR msr,double *dTotMass, double *dTotMetals, 
+        double *dTotFe, double *dTotOx, double *dTotEnergy,char *pszWhere)
 {
 	struct outMassMetalsEnergyCheck out;
 	
 #ifdef GROWMASS
 	out.dTotMass = 0.0;
 	out.dTotMetals = 0.0;
+	out.dTotFe = 0.0;
+	out.dTotOx = 0.0;
 	out.dTotEnergy = 0.0;
 #else
 #ifndef SUPPRESSMASSCHECKREPORT      
@@ -4969,6 +4972,7 @@ void msrMassMetalsEnergyCheck(MSR msr,double *dTotMass,
 			printf("ERROR: Mass not conserved (%s): %.15e != %.15e!\n",
 				   pszWhere,*dTotMass,out.dTotMass);
 			}
+#ifdef STARFORM
             /* Commented out because metals are almost conserved.  Error
              * comes because some of the gas mass gets converted into stars
              * so conservation error is reported as a net loss in metals
@@ -4977,7 +4981,22 @@ void msrMassMetalsEnergyCheck(MSR msr,double *dTotMass,
 			 printf("ERROR: Metal mass not conserved (%s): %.15e != %.15e!\n",
 			 pszWhere,*dTotMetals,out.dTotMetals);
 			 }*/
-#ifdef STARFORM
+                if ( fabs(*dTotMetals - out.dTotMetals) > 1e-12*(*dTotMetals) ) {
+			 printf("ERROR: Metal mass not conserved (%s): %.15e != %.15e!\n",
+			 pszWhere,*dTotMetals,out.dTotMetals);
+			 }
+                if ( fabs(*dTotFe - out.dTotFe) > 1e-12*(*dTotFe) ) {
+			 printf("ERROR: Iron mass not conserved (%s): %.15e != %.15e!\n",
+			 pszWhere,*dTotFe,out.dTotFe);
+			 }
+                if ( fabs(*dTotOx - out.dTotOx) > 1e-12*(*dTotOx) ) {
+			 printf("ERROR: Oxygen mass not conserved (%s): %.15e != %.15e!\n",
+			 pszWhere,*dTotOx,out.dTotOx);
+			 }
+                if ( fabs(out.dTotMetals - out.dTotOx - out.dTotFe) > 1e-12*(out.dTotMetals) ) {
+			 printf("ERROR: Oxygen and Iron do not add up to total metals (%s): %.15e != %.15e!\n",
+			 pszWhere,(out.dTotOx + out.dTotFe),out.dTotMetals);
+			 }
 		if ( fabs(*dTotEnergy - out.dTotEnergy*msr->param.dDeltaStarForm) > 1e-12*(*dTotEnergy) ) {
 			printf("ERROR: SN Energy not conserved (%s): %.15e != %.15e!\n",
 				   pszWhere,*dTotEnergy,out.dTotEnergy*msr->param.dDeltaStarForm);
@@ -4987,6 +5006,8 @@ void msrMassMetalsEnergyCheck(MSR msr,double *dTotMass,
 #endif
 	*dTotMass = out.dTotMass;
 	*dTotMetals = out.dTotMetals;
+	*dTotFe = out.dTotFe;
+	*dTotOx = out.dTotOx;
 	*dTotEnergy = out.dTotEnergy;
 	return;
 	}
@@ -6238,7 +6259,8 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
     struct outFormStars outFS;
     struct inFeedback inFB;
     struct outFeedback outFB;
-    double dTotMass = -1.0, dTotMetals = -1.0, dTotEnergy = -1.0;
+    double dTotMass = -1.0, dTotMetals = -1.0, dTotFe = -1.0, 
+            dTotOx = -1.0, dTotEnergy = -1.0;
     double dTotSNEnergy = 0.0;
     int i;
     int iDum;
@@ -6260,7 +6282,8 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
     
     if (msr->param.bVDetails) printf("Form Stars ... ");
 
-    msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, &dTotEnergy, "Form Stars");
+    msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, 
+        &dTotFe, &dTotOx, &dTotEnergy, "Form Stars");
     
     msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
     msrDomainDecomp(msr, 0, 1);
@@ -6327,6 +6350,8 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 					   outFB.fbTotals[i].dMetals
 					   /outFB.fbTotals[i].dMassLoss : 0.0);
                                 dTotMetals += outFB.fbTotals[i].dMetals;
+                                dTotFe += outFB.fbTotals[i].dMIron;
+                                dTotOx += outFB.fbTotals[i].dMOxygen;
                                 dTotSNEnergy += outFB.fbTotals[i].dEnergy;
                                 }
 			}
@@ -6344,8 +6369,8 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		msrActiveType(msr, TYPE_STAR, TYPE_SMOOTHACTIVE);
 		assert(msr->nSmoothActive == msr->nStar);
 		msrSmooth(msr, dTime, SMX_DIST_SN_ENERGY, 1);
-		msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, 
-                            &dTotSNEnergy, "Form stars: after feedback");
+		msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, &dTotFe, 
+                    &dTotOx, &dTotSNEnergy, "Form stars: after feedback");
 
 		dsec = msrTime() - sec;
 		printf("Feedback Calculated, Wallclock: %f secs\n\n",dsec);

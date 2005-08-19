@@ -548,8 +548,8 @@ void pkdCalcRoot(PKD,struct ilCellNewt *);
 void pkdDistribRoot(PKD,struct ilCellNewt *);
 void pkdSwapAll(PKD pkd, int idSwap);
 double pkdMassCheck(PKD pkd);
-void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, 
-                    double *dTotMetals, double *dTotEnergy);
+void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, double *dTotMetals, 
+                    double *dTotOx, double *dTotFe, double *dTotEnergy);
 void pkdSetRung(PKD pkd, int iRung);
 void pkdBallMax(PKD pkd, int iRung, int bGreater, double ddHonHLimit);
 int pkdActiveRung(PKD pkd, int iRung, int bGreater);

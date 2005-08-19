@@ -667,6 +667,8 @@ void pstMassCheck(PST,void *,int,void *,int *);
 struct outMassMetalsEnergyCheck {
 	double dTotMass;
         double dTotMetals;
+        double dTotOx;
+        double dTotFe;
         double dTotEnergy;
 	};
 void pstMassMetalsEnergyCheck(PST,void *,int,void *,int *);

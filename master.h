@@ -131,7 +131,7 @@ void msrWriteCheck(MSR,double,int);
 int msrOutTime(MSR,double);
 void msrReadOuts(MSR,double);
 double msrMassCheck(MSR,double,char *);
-void msrMassMetalsEnergyCheck(MSR,double *, double *, double *,char *);
+void msrMassMetalsEnergyCheck(MSR,double *, double *, double *, double *, double *,char *);
 void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta, 
 				   double *pdMultiEff);
 void msrTopStepKDK(MSR msr,

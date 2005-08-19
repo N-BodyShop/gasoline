@@ -79,7 +79,7 @@ void snInitConstants(SN sn)
        Raiteri, Villata and Navarro, A&A 315, 105, 1996 */
     sn->dMEjexp = 1.056;    
     sn->dMEjconst = 0.7682; 
-    sn->dMFeexp = 1.864;
+    sn->dMFeexp = 1.864;    
     sn->dMFeconst = 2.802e-4;
     sn->dMOxexp = 2.721;
     sn->dMOxconst = 4.586e-4; 
@@ -183,8 +183,7 @@ void snCalcSNIIFeedback(SN sn, SFEvent sfEvent,
                     / (sn->dMEjconst * pow(dMeanMStar, sn->dMEjexp));
         
     fbEffects->dMetals = ( fbEffects->dMIron + fbEffects->dMOxygen );
-    
-	}
+    }
 
 void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
 						double dTime, /* current time in years */
@@ -220,16 +219,14 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
 
         assert (dMStarMinIa < dMStarMaxIa && dMStarMinIa >0.0 && dMStarMaxIa > 0.0);
         
-        /* mass of stars that go SNIa */
+        /* mass of stars that go SNIa based on normalized IMF */
         dMSNTypeIa = dMSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
-        
-        /* number of stars that go SNIa */        
-        dNSNTypeIa = dNSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
         dMSNTypeIa /= dMtot;	/* convert to mass fraction of stars */
-        
         /* convert to mass of stars that go SNIa */ 
         dMSNTypeIa *= sfEvent.dMass; 
 
+        /* number of stars that go SNIa */        
+        dNSNTypeIa = dNSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
         dNSNTypeIa /= dMtot;	/* convert to number per solar mass of stars */
         dNSNTypeIa *= sfEvent.dMass; /* convert to absolute number of SNIa */
 

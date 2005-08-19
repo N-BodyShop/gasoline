@@ -17,8 +17,8 @@ void MSInitialize(MSPARAM *pms)
     struct MillerScaloContext initms = 
 	{ 	42.0,	-0.4, .1, /* parameters from Ap.J. Supp., 41,1979 */
 		42.0,	-1.5, 1.0,
-		240.0,	-2.3, 10.0,
-		100.0};
+		240.0,	-2.3, 10.0, /*This is discontinuous, but is what */
+		100.0};		    /*they report in paper, s we leave it.*/
 
     ms = (MSPARAM) malloc(sizeof(struct MillerScaloContext));
     

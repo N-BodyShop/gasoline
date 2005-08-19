@@ -3557,11 +3557,13 @@ void pstMassMetalsEnergyCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,&outUp,pnOut);
 		out->dTotMass += outUp.dTotMass;
 		out->dTotMetals += outUp.dTotMetals;
+		out->dTotFe += outUp.dTotFe;
+		out->dTotOx += outUp.dTotOx;
 		out->dTotEnergy += outUp.dTotEnergy;
 		}
 	else {
-		pkdMassMetalsEnergyCheck(plcl->pkd,&out->dTotMass,
-                            &out->dTotMetals,&out->dTotEnergy);
+		pkdMassMetalsEnergyCheck(plcl->pkd,&out->dTotMass,&out->dTotMetals,
+                            &out->dTotOx,&out->dTotFe,&out->dTotEnergy);
 		}
 	if (pnOut) *pnOut = sizeof(struct outMassMetalsEnergyCheck);
 	}
