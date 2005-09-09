@@ -1019,7 +1019,7 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage,
 		  col.b = in->ColStar.b*fabs(1-0.7*al);
 		  col.g = in->ColStar.g*0.4;
 		  col.r = in->ColStar.r*(0.4+0.32*al);
-		  //		  printf("star: %g %g %g %g %g  %g %g %g\n",fAge,al,col.r,col.g,col.b,in->ColStar.r,in->ColStar.g,in->ColStar.b);
+		  /*		  printf("star: %g %g %g %g %g  %g %g %g\n",fAge,al,col.r,col.g,col.b,in->ColStar.r,in->ColStar.g,in->ColStar.b);*/
 		  }
 		  break;
 		default:
@@ -1144,7 +1144,7 @@ void dfRenderParticleSolid( struct inDumpFrame *in, void *vImage,
 		  col.b = in->ColStar.b*fabs(1-0.7*al);
 		  col.g = in->ColStar.g*0.4;
 		  col.r = in->ColStar.r*(0.4+0.32*al);
-		  //		  printf("star: %g %g %g %g %g  %g %g %g\n",fAge,al,col.r,col.g,col.b,in->ColStar.r,in->ColStar.g,in->ColStar.b);
+		  /*		  printf("star: %g %g %g %g %g  %g %g %g\n",fAge,al,col.r,col.g,col.b,in->ColStar.r,in->ColStar.g,in->ColStar.b); */
 		  }
 		  break;
 		default:

@@ -2254,12 +2254,12 @@ void combDistSNEnergy(void *p1,void *p2)
 
 void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
-        if ( (p->fMSN == 0.0) && (p->fESNrate == 0.0)){return;}
 	PARTICLE *q;
 	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fNorm_Pres,fAveDens,fNewBall,f2h2;
         FLOAT delta_m,m_new,f1,f2,fBlastRadius,fShutoffTime,fmind;
 	int i,counter,imind;
 
+	if ( (p->fMSN == 0.0) && (p->fESNrate == 0.0)){return;}
 	assert(TYPETest(p, TYPE_STAR));
 	ih2 = 4.0/BALL2(p);
         f2h2=BALL2(p);
