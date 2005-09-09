@@ -482,13 +482,13 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	PARTICLE *q;
 
 	/* G = 1 
-	 p is star/sink particle
+	 p is sink particle
 	 q is gas particle */
 	EBO = -0.5*p->fMass/smf->dSinkBoundOrbitRadius;
-	
+
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2;
-	    if (r2 > 0 && r2 < dSinkRadius2) {
+        if (r2 > 0 && r2 <= dSinkRadius2) {
 		  q = nnList[i].pPart;
 		  if (TYPETest( q, TYPE_GAS )) {
 			dvx = p->v[0]-q->v[0];

@@ -482,6 +482,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bVariableSoft = 0;
 	prmAddParam(msr->prm,"bVariableSoft",0,&msr->param.bVariableSoft,sizeof(int),"VarSoft",
 				"<Variable gravitational softening length> -VarSoft");
+	msr->param.bVariableSoftStar = 1;
+	prmAddParam(msr->prm,"bVariableSoftStar",0,&msr->param.bVariableSoftStar,sizeof(int),"VarSoftStar",
+				"<Variable gravitational softening length stars> -VarSoftStar");
+	msr->param.bVariableSoftGas = 1;
+	prmAddParam(msr->prm,"bVariableSoftGas",0,&msr->param.bVariableSoftGas,sizeof(int),"VarSoftGas",
+				"<Variable gravitational softening length gas> -VarSoftGas");
+	msr->param.bVariableSoftDark = 1;
+	prmAddParam(msr->prm,"bVariableSoftDark",0,&msr->param.bVariableSoftDark,sizeof(int),"VarSoft",
+				"<Variable gravitational softening length dark> -VarSoftDark");
 	msr->param.nSoftNbr = 32;
 	prmAddParam(msr->prm,"nSoftNbr",1,&msr->param.nSoftNbr,sizeof(int),"VarSoft",
 				"<Neighbours for Variable gravitational softening length> 32");
@@ -568,6 +577,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoSinks = 0;
 	prmAddParam(msr->prm,"bDoSinks",0,&msr->param.bDoSinks,sizeof(int),
 				"sinks","enable/disable sinks = -sinks");
+	msr->param.bDoSinksAtStart = 0;
+	prmAddParam(msr->prm,"bDoSinksAtStart",0,&msr->param.bDoSinksAtStart,sizeof(int),
+				"sinksas","enable/disable sinks at start = -sinksas");
 	msr->param.bSinkThermal = 0;
 	prmAddParam(msr->prm,"bSinkThermal",0,&msr->param.bSinkThermal,sizeof(int),
 				"tsinks","enable/disable thermal energy in sink calcs = -tsinks");
@@ -581,11 +593,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dDeltaSink", 2, &msr->param.dDeltaSink,
 		    sizeof(double), "dDeltaSink",
 		    "<Minimum SF timestep in years> = dDelta");
+	msr->param.dSinkMassMin = 0;
+	prmAddParam(msr->prm,"dSinkMassMin", 2, &msr->param.dSinkMassMin,
+		    sizeof(double), "dSinkMassMin", "<Minimum Mass to act as a sink> = 0" );
 	msr->param.iSinkRung = 0;
 	prmAddParam(msr->prm,"iSinkRung", 2, &msr->param.iSinkRung,
 		    sizeof(double), "iSinkRung",
-		    "<Star Formation Rung> = 0");
-
+		    "<Sink Rung> = 0");
 	msr->param.dPeriod = 1.0;
 	prmAddParam(msr->prm,"dPeriod",2,&msr->param.dPeriod,sizeof(double),"L",
 				"<periodic box length> = 1.0");
@@ -1750,6 +1764,12 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef COOLING_PLANET
  	fprintf(fp," COOLING_PLANET");
 #endif
+#ifdef COOLING_BATE
+ 	fprintf(fp," COOLING_BATE");
+#endif
+#ifdef COOLING_DISK
+ 	fprintf(fp," COOLING_DISK");
+#endif
 #ifdef GLASS
 	fprintf(fp," GLASS");
 #endif
@@ -1849,7 +1869,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	else
 		fprintf(fp," dSoft: input");
 	fprintf(fp,"\n# bPhysicalSoft: %d",msr->param.bPhysicalSoft);
-	fprintf(fp," bVariableSoft: %d",msr->param.bVariableSoft);
+	fprintf(fp," bVariableSoft: %d (%d %d %d)",msr->param.bVariableSoft,msr->param.bVariableSoftStar,msr->param.bVariableSoftGas,msr->param.bVariableSoftDark);
 	fprintf(fp," nSoftNbr: %d",msr->param.nSoftNbr);
 	fprintf(fp," bSoftByType: %d",msr->param.bSoftByType);
 	fprintf(fp," bSoftMaxMul: %d",msr->param.bSoftMaxMul);
@@ -1885,9 +1905,11 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dOmega: %g",msr->param.dOmega);
 	fprintf(fp," dOmegaDot: %g",msr->param.dOmegaDot);
 	fprintf(fp," bDoSinks: %d",msr->param.bDoSinks );
+	fprintf(fp," bDoSinksAtStart: %d",msr->param.bDoSinksAtStart );
 	fprintf(fp," bSinksThermal: %d",msr->param.bSinkThermal );
 	fprintf(fp," dSinkRadius: %g",msr->param.dSinkRadius);
 	fprintf(fp," dSinkBoundOrbitRadius: %g",msr->param.dSinkBoundOrbitRadius);
+	fprintf(fp," dSinkMassMin: %g",msr->param.dSinkMassMin);
 	fprintf(fp,"\n# dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
 	fprintf(fp," dFracNoDomainDimChoice: %g",msr->param.dFracNoDomainDimChoice);
 	fprintf(fp," bFastGas: %d",msr->param.bFastGas);
@@ -2737,6 +2759,19 @@ void msrSetSoft(MSR msr,double dSoft)
 	pstSetSoft(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
+void msrSetSink(MSR msr) 
+{
+    struct inSetSink in;
+    struct outSetSink out;
+	
+	if (msr->param.bDoSinks) {
+	  in.dSinkMassMin = msr->param.dSinkMassMin;
+	  pstSetSink(msr->pst,&in,sizeof(in),&out,NULL);
+	  if (msr->param.bVDetails) printf("Identified %d sink particles\n",out.nSink);
+	  msr->nSink = out.nSink;
+	  }
+    }
+
 
 void msrDomainDecomp(MSR msr, int iRung, int bGreater)
 {
@@ -3169,7 +3204,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.bSymmetric = bSymmetric;
 	in.iSmoothType = iSmoothType;
 	in.dfBall2OverSoft2 = (msr->param.bLowerSoundSpeed ? 0 :
-			       4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft);
+						   4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft);
 	if (msrComove(msr)) {
 		in.smf.H = csmTime2Hub(msr->param.csm,dTime);
 		in.smf.a = csmTime2Exp(msr->param.csm,dTime);
@@ -3185,6 +3220,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.bSinkThermal = msr->param.bSinkThermal;
 	in.smf.dSinkRadius = msr->param.dSinkRadius;
 	in.smf.dSinkBoundOrbitRadius = msr->param.dSinkBoundOrbitRadius;
+	in.smf.iSmoothFlags = 0; /* Initial value, return value in outSmooth */
 #ifdef GASOLINE
 	in.smf.alpha = msr->param.dConstAlpha;
 	in.smf.beta = msr->param.dConstBeta;
@@ -3277,8 +3313,10 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	    double dAccFac = 1.0/(in.smf.a*in.smf.a*in.smf.a);
 	    in.smf.dDeltaAccelFac = msr->param.dEtaDeltaAccel/sqrt(dAccFac);
 	    }
+	in.smf.bSinkThermal = msr->param.bSinkThermal;
 	in.smf.dSinkRadius = msr->param.dSinkRadius;
 	in.smf.dSinkBoundOrbitRadius = msr->param.dSinkBoundOrbitRadius;
+	in.smf.iSmoothFlags = 0; /* Initial value, return value in outSmooth */
 #ifdef GASOLINE
 	in.smf.alpha = msr->param.dConstAlpha;
 	in.smf.beta = msr->param.dConstBeta;
@@ -3375,36 +3413,43 @@ void msrUpdateSoft(MSR msr,double dTime) {
 	 pstPhysicalSoft(msr->pst,&in,sizeof(in),NULL,NULL);
        }
        else {
-	 struct inPostVariableSoft inPost;
+		 int type;
+		 struct inPreVariableSoft inPre;
+		 struct inPostVariableSoft inPost;
+		 type =
+		   (msr->param.bVariableSoftDark ? TYPE_DARK : 0) |
+		   (msr->param.bVariableSoftStar ? TYPE_STAR : 0) |
+		   (msr->param.bVariableSoftGas ? TYPE_GAS : 0);
+		 inPre.iVariableSoftType = type;
+		 pstPreVariableSoft(msr->pst,&inPre,sizeof(inPre),NULL,NULL);
+		 
+		 if (msr->param.bSoftByType) {
+		   if (msr->nDark && msr->param.bVariableSoftDark) {
+			 msrActiveType(msr,TYPE_DARK,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+			 msrBuildTree(msr,1,-1.0,1);
+			 msrSmooth(msr,dTime,SMX_NULL,0);
+		   }
+		   if (msr->nGas && msr->param.bVariableSoftGas) {
+			 msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+			 msrBuildTree(msr,1,-1.0,1);
+			 msrSmooth(msr,dTime,SMX_NULL,0);
+		   }
+		   if (msr->nStar && msr->param.bVariableSoftStar) {
+			 msrActiveType(msr,TYPE_STAR,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+			 msrBuildTree(msr,1,-1.0,1);
+			 msrSmooth(msr,dTime,SMX_NULL,0);
+		   }
+		 }
+		 else {
+		   msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+		   msrBuildTree(msr,1,-1.0,1);
+		   msrSmooth(msr,dTime,SMX_NULL,0);
+		 }
 
-	 pstPreVariableSoft(msr->pst,NULL,0,NULL,NULL);
-
-	 if (msr->param.bSoftByType) {
-	   if (msr->nDark) {
-	     msrActiveType(msr,TYPE_DARK,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-	     msrBuildTree(msr,1,-1.0,1);
-	     msrSmooth(msr,dTime,SMX_NULL,0);
-	   }
-	   if (msr->nGas) {
-	     msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-	     msrBuildTree(msr,1,-1.0,1);
-	     msrSmooth(msr,dTime,SMX_NULL,0);
-	   }
-	   if (msr->nStar) {
-	     msrActiveType(msr,TYPE_STAR,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-	     msrBuildTree(msr,1,-1.0,1);
-	     msrSmooth(msr,dTime,SMX_NULL,0);
-	   }
-	 }
-	 else {
-	   msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-	   msrBuildTree(msr,1,-1.0,1);
-	   msrSmooth(msr,dTime,SMX_NULL,0);
-	 }
-
-	 inPost.dSoftMax = msr->param.dSoftMax;
-	 inPost.bSoftMaxMul = msr->param.bSoftMaxMul;
-	 pstPostVariableSoft(msr->pst,&inPost,sizeof(inPost),NULL,NULL);
+		 inPost.dSoftMax = msr->param.dSoftMax;
+		 inPost.bSoftMaxMul = msr->param.bSoftMaxMul;
+		 inPost.iVariableSoftType = type;
+		 pstPostVariableSoft(msr->pst,&inPost,sizeof(inPost),NULL,NULL);
        }
 #endif
 }
@@ -5861,7 +5906,7 @@ msrDoSinks(MSR msr)
 	double sec,sec1,dsec,dMass;
 	int nAccreted;
 
-    if(msr->param.bDoSinks == 0 || msr->nStar == 0) return;
+    if(msr->param.bDoSinks == 0 || msr->nSink == 0) return;
 	    
 	sec = msrTime();
 
@@ -5871,9 +5916,9 @@ msrDoSinks(MSR msr)
 	    msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
 		msrBuildTree(msr,0,-1.0,1);
 	    }
-	msrResetType(msr,TYPE_STAR,TYPE_SMOOTHDONE);
-	msrActiveType(msr,TYPE_STAR,TYPE_ACTIVE|TYPE_SMOOTHACTIVE);
-	/* Using smooth we kill only up to nSmooth particles at once */
+
+	msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
+	msrActiveType(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE);
 	msrSmooth(msr,0.0,SMX_SINKACCRETE,1);
 
 	nAccreted = msr->nGas;
@@ -5889,6 +5934,43 @@ msrDoSinks(MSR msr)
 	dsec = sec1 - sec;
 	printf("Sinks Done (%d accreted) Calculated, Wallclock: %f secs\n\n",nAccreted,dsec);
 
+    }
+
+/* In principle this code is general for any search but for now
+   it will be restricted to looking for a nearby star particle */
+void
+msrCoolUsingParticleList(MSR msr )
+{
+#ifndef NOCOOLING
+    double sec,sec1,dsec;	
+	struct inSoughtParticleList in;
+	struct inoutParticleList list;
+	int nOut;
+	int i;
+  
+	in.iTypeSought = TYPE_STAR;
+	in.nMax = MAXSOUGHTPARTICLELIST;
+
+	sec = msrTime();
+	
+	/* O(N_seek N_sought) */
+	pstSoughtParticleList(msr->pst,&in,sizeof(in),&list,NULL);
+	if (list.n > in.nMax) {
+	  fprintf(stderr," Sought Particles returned more than Max (%d > %d)\n",list.n,in.nMax);
+	  assert(list.n <= in.nMax);
+	}
+	for (i=0;i<list.n;i++) {
+	  printf("star %d: %g %g %g\n",i,list.p[i].x,list.p[i].y,list.p[i].z);
+	}
+
+	pstCoolUsingParticleList(msr->pst,&list,sizeof(list),NULL,NULL);
+	
+
+	sec1 = msrTime();
+	dsec = sec1 - sec;
+	printf("Cooling Radii Calculated (%d Stars), Wallclock: %f secs\n\n",list.n,dsec);
+	
+#endif
     }
 
 int msrDoDensity(MSR msr)
@@ -5989,6 +6071,14 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateY)
 	struct outUpdateuDot out;
 	double a;
 	
+#if defined(COOLING_DISK) 
+	switch (msr->param.iGasModel) {
+	case GASMODEL_COOLING:
+	  msrCoolUsingParticleList( msr );
+	  break;
+	}
+#endif
+
 	in.duDelta = dDelta;
 	dTime += dDelta/2.0;
 	a = csmTime2Exp(msr->param.csm,dTime);
@@ -6169,7 +6259,8 @@ int msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart) {
 		sprintf(achFile,"%s/%s.director",msr->param.achDataSubPath,
 				msr->param.achOutName);
 		
-		dfInitialize( &msr->df, dTime, msr->param.dDumpFrameTime, dStep, 
+		dfInitialize( &msr->df, msr->param.dSecUnit/SECONDSPERYEAR, 
+					 dTime, msr->param.dDumpFrameTime, dStep, 
 					 msr->param.dDumpFrameStep, msr->param.dDelta, 
 					 msr->param.iMaxRung, msr->param.bVDetails,
 					 achFile );

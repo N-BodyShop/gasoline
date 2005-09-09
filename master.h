@@ -42,6 +42,7 @@ typedef struct msrContext {
 	int nDark;
 	int nGas;
 	int nStar;
+    int nSink;
 	int nMaxOrder;		/* Order number of last particle */
 	int nMaxOrderGas;
 	int nMaxOrderDark;
@@ -109,6 +110,7 @@ int msrSetTypeFromFile(MSR msr, char *file, int type);
 double msrReadTipsy(MSR);
 void msrWriteTipsy(MSR,char *,double);
 void msrSetSoft(MSR msr,double);
+void msrSetSink(MSR msr);
 void msrDomainDecomp(MSR,int,int);
 void msrBuildTree(MSR,int,double,int);
 void msrDomainColor(MSR);

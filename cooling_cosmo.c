@@ -386,7 +386,9 @@ double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
 
   /* PUT INTO erg/gm/sec */
   return Y->e * ( 
+#ifndef NOCOMPTON
     cl->R.Cool_Comp * ( Rate->T-CL_Tcmb0 ) * ( 1 + cl->z ) + 
+#endif
     en_B * (
     (wTln0*RT0->Cool_Brem_1+wTln1*RT1->Cool_Brem_1) * ( Y->HII + Y->HeII ) +
     (wTln0*RT0->Cool_Brem_2+wTln1*RT1->Cool_Brem_2) * Y->HeIII +

@@ -154,9 +154,16 @@ void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, doubl
 
 double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double E, double dDensity );
 
+void CoolCodePressureOnDensitySoundSpeed( COOL *cl, COOLPARTICLE *cp, double uPred, double fDensity, double gamma, double gammam1, double *PoverRho, double *c );
+#define CoolCodePressureOnDensitySoundSpeed( cl__, cp__, uPred__, fDensity__, gamma__, gammam1__, PoverRho__, c__ ) { \
+  *(PoverRho__) = ((gammam1__)*(uPred__)); \
+  *(c__) = sqrt((gamma__)*(*(PoverRho__))); }
+
+/*
 double CoolCodePressureOnDensity( COOL *cl, COOLPARTICLE *cp, double uPred, double fDensity, double gammam1 );
 
 #define CoolCodePressureOnDensity( cl, cp, uPred, fDensity, gammam1 ) ((gammam1)*(uPred))
+*/
 
 struct inInitCooling {
     double dGmPerCcUnit;

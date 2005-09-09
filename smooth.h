@@ -27,12 +27,15 @@ typedef struct pqNode {
 	FLOAT az;
 	} PQ;
 
+#define LOWHFIX_NONE         0
+#define LOWHFIX_HOVERSOFT    1 
+#define LOWHFIX_SINKRADIUS   2
 
 typedef struct smContext {
 	PKD pkd;
 	int nSmooth;
 	int bPeriodic;
-	int bLowhFix;
+	int iLowhFix;
 	double dfBall2OverSoft2;
 	void (*fcnSmooth)(PARTICLE *,int,NN *,SMF *);
 	void (*fcnPost)(PARTICLE *,SMF *);

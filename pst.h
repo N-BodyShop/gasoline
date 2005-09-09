@@ -129,6 +129,8 @@ enum pst_service {
       PST_ACTIVEMASKRUNG,
       PST_ACTIVETYPERUNG,
       PST_SETPARTICLETYPES,
+	  PST_SOUGHTPARTICLELIST,
+	  PST_COOLUSINGPARTICLELIST,
 	  PST_SETTYPEFROMFILE,
       PST_MARKSMOOTH,
       PST_RESMOOTH,
@@ -202,7 +204,8 @@ enum pst_service {
       PST_DUMPVOXEL,
       PST_COM,
 	  PST_COMBYTYPE,
-	  PST_OLDESTSTAR
+	  PST_OLDESTSTAR,
+	  PST_SETSINK,
       };
 
 void pstAddServices(PST,MDL);
@@ -390,6 +393,7 @@ struct inSmooth {
 	SMF smf;
 	};
 struct outSmooth {
+    int iSmoothFlags;  /* Warning Flags for need to smooth again, etc... */
 	/*
 	 ** Cache Statistics.
 	 */
@@ -607,12 +611,16 @@ struct inPhysicalSoft {
 void pstPhysicalSoft(PST,void *,int,void *,int *);
 
 /* PST_PREVARIABLESOFT */
+struct inPreVariableSoft {
+        int iVariableSoftType;
+        };
 void pstPreVariableSoft(PST,void *,int,void *,int *);
 
 /* PST_POSTVARIABLESOFT */
 struct inPostVariableSoft {
         double dSoftMax;
         int bSoftMaxMul;
+        int iVariableSoftType;
         };
 void pstPostVariableSoft(PST,void *,int,void *,int *);
 #endif
@@ -813,6 +821,21 @@ struct inSetParticleTypes {
 
 void pstSetParticleTypes(PST,void *,int,void *,int *);
 
+#define MAXSOUGHTPARTICLELIST 10
+
+struct inSoughtParticleList {
+	int iTypeSought;
+    int nMax;
+	};
+
+struct inoutParticleList {
+    int n;
+    struct SoughtParticle p[MAXSOUGHTPARTICLELIST];
+	};
+
+void pstSoughtParticleList(PST,void *,int,void *,int *);
+void pstCoolUsingParticleList(PST,void *,int,void *,int *);
+
 /* PST_RESMOOTH */
 struct inMarkSmooth {
 	int nSmooth;
@@ -833,6 +856,7 @@ struct inReSmooth {
 	SMF smf;
 	};
 struct outReSmooth {
+    int iSmoothFlags;  /* Warning Flags for need to smooth again, etc... */
 	/*
 	 ** Cache Statistics.
 	 */
@@ -1337,6 +1361,18 @@ void pstCOM(PST,void *,int,void *,int *);
 void pstCOMByType(PST,void *,int,void *,int *);
 
 void pstOldestStar(PST,void *,int,void *,int *);
+
+struct inSetSink 
+{
+  double dSinkMassMin;
+  };
+
+struct outSetSink 
+{
+  int nSink;
+  };
+
+void pstSetSink(PST,void *,int,void *,int *);
 
 /* Return is pixmap */
 void pstDumpVoxel(PST,void *,int,void *,int *);

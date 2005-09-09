@@ -73,6 +73,19 @@ enum df_target {
 	DF_TARGET_PHOTOGENIC
     };
 
+enum df_log {
+    DF_LOG_NULL,
+	DF_LOG_SATURATE,
+	DF_LOG_COLOURSAFE
+    };
+
+enum df_star_age_colour {
+    DF_STAR_AGE_BASIC,
+	DF_STAR_AGE_BRIGHT,
+	DF_STAR_AGE_COLOUR,
+	DF_STAR_AGE_BRIGHT_COLOUR
+    };
+
 /* PST */
 /* There is a common subset with framesetup that needs it's own structure -- parent class even */
 struct inDumpFrame {
@@ -97,14 +110,16 @@ struct inDumpFrame {
 	double pScale1,pScale2;
 	double dGasSoftMul,dDarkSoftMul,dStarSoftMul;
 	double xlim,ylim,hmul;
+    double dYearUnit;
 	DFIMAGE ColStar,ColGas,ColDark;
 	int bColMassWeight;
-	int bLogScale;
 	int bGasSph;
+    int iColStarAge;
+	int iLogScale;
     int iTarget;
 	int iRender;       
 	/* Render Particle interface */
-	int offsetp_r,offsetp_fMass,offsetp_fSoft,offsetp_fBall2,offsetp_iActive;
+	int offsetp_r,offsetp_fMass,offsetp_fSoft,offsetp_fBall2,offsetp_iActive,offsetp_fTimeForm;
 	int sizeofp;
 	int iTypeGas,iTypeDark,iTypeStar;
 	
@@ -120,6 +135,7 @@ struct inDumpFrame {
    changing properties of frames */
 struct dfFrameSetup {
 	double dTime;
+    double dYearUnit;
 	/* Projection info */
 	double target[3]; /* Centre */
 	double eye[3]; /* Eye Position */
@@ -142,8 +158,9 @@ struct dfFrameSetup {
 	double pScale1,pScale2;
 	DFIMAGE ColStar,ColGas,ColDark;
 	int bColMassWeight;
-	int bLogScale;
 	int bGasSph;
+    int iColStarAge;
+	int iLogScale;
     int iTarget;
 	double dGasSoftMul,dDarkSoftMul,dStarSoftMul;
 	int iRender;       /* Rendering */
@@ -164,7 +181,7 @@ struct DumpFrameContext {
 	double dTime;
 	double dDumpFrameStep;
 	double dDumpFrameTime;
-
+    double dYearUnit;
 	/* Particle Filters */
 	double dMassGasMin, dMassGasMax;
 	double dMassDarkMin,dMassDarkMax;
@@ -193,7 +210,7 @@ struct DumpFrameContext {
 	char FileName[161];
 	};
 
-void dfInitialize( struct DumpFrameContext **pdf, double dTime, 
+void dfInitialize( struct DumpFrameContext **pdf, double dYearUnit, double dTime, 
 				  double dDumpFrameTime, double dStep, double dDumpFrameStep,
 				  double dDelta, int iMaxRung, int bVDetails, char* );
 void dfFinalize( struct DumpFrameContext *df );
@@ -211,18 +228,18 @@ void dfMergeImage( struct inDumpFrame *in, void *Image1, int *nImage1, void *Ima
 void dfClearImage( struct inDumpFrame *in, void *Image, int *nImage );
 
 void dfRenderParticlePoint( struct inDumpFrame *in, void *vImage, 
-						   double *r, double fMass, double fSoft, double fBall2, int iActive );
+						   double *r, double fMass, double fSoft, double fBall2, int iActive, double fAge );
 void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage, 
-						 double *r, double fMass, double fSoft, double fBall2, int iActive );
+						 double *r, double fMass, double fSoft, double fBall2, int iActive, double fAge );
 void dfRenderParticleSolid( struct inDumpFrame *in, void *vImage, 
-						 double *r, double fMass, double fSoft, double fBall2, int iActive );
+						 double *r, double fMass, double fSoft, double fBall2, int iActive, double fAge );
 void dfRenderParticleInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark, int iTypeStar );
 void dfRenderParticle( struct inDumpFrame *in, void *vImage, 
-					  double *r, double fMass, double fSoft, double fBall2, int iActive );
+					  double *r, double fMass, double fSoft, double fBall2, int iActive, double fTimeForm );
 
 void dfRenderParticlesInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark, int iTypeStar,
-						   double *pr, double *pfMass, double *pfSoft, double *pfBall2, unsigned int *piActive, 
-						   void *p, int sizeofp );
+							double *pr, double *pfMass, double *pfSoft, double *pfBall2, unsigned int *piActive, double *pfTimeForm, void *p, int sizeofp );
+
 void dfRenderParticles( struct inDumpFrame *in, void *vImage, void *pStore, int n );
 
 /* Relies on PKD definition -- not portable */

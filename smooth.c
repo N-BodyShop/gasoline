@@ -26,7 +26,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	smx->nSmooth = nSmooth;
 	smx->bPeriodic = bPeriodic;
 	smx->dfBall2OverSoft2 = dfBall2OverSoft2;
-	smx->bLowhFix = ( dfBall2OverSoft2 > 0.0 ? 1 : 0 );
+	smx->iLowhFix = ( dfBall2OverSoft2 > 0.0 ? LOWHFIX_HOVERSOFT : LOWHFIX_NONE );
 #ifdef SLIDING_PATCH
 	smx->dOrbFreq = smf->dOrbFreq;
 	smx->dTime = smf->dTime;
@@ -88,6 +88,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		init = initSinkAccrete; /* Cached copies */
 		comb = combSinkAccrete;
 		smx->fcnPost = NULL;
+		smx->iLowhFix = LOWHFIX_SINKRADIUS;
 		break;
 #ifdef SUPERCOOL
 	case SMX_MEANVEL:
@@ -1016,7 +1017,9 @@ void smSmooth(SMX smx,SMF *smf)
 	** If desired reject fBall2 below a minimum 
 	** We may get many more than nSmooth neighbours here -- resort to a ReSmooth
 	*/
-	if (smx->bLowhFix && fBall2 < smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft) {
+	if (smx->iLowhFix && 
+		((smx->iLowhFix==LOWHFIX_HOVERSOFT && fBall2 < smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft) ||
+ 		 (smx->iLowhFix==LOWHFIX_SINKRADIUS && fBall2 < smf->dSinkRadius*smf->dSinkRadius)) ) {
 		/* We ReSmooth for this guy later */
 		p[pi].fBall2 = 0;
 		TYPESet(&p[pi],TYPE_SMOOTHDONE);
@@ -1166,11 +1169,21 @@ void smSmooth(SMX smx,SMF *smf)
 
  DoneSmooth:
 	for (pi=0;pi<nLocal;++pi) {
-	        if (!TYPETest(&(p[pi]),TYPE_SMOOTHACTIVE) || p[pi].fBall2 > 0) continue;
+	    if (!TYPETest(&(p[pi]),TYPE_SMOOTHACTIVE) || p[pi].fBall2 > 0) continue;
 		/*
 		 ** Do a Ball Gather at r^2 = fBall2
 		 */
- 	        fBall2 = smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft;
+		switch (smx->iLowhFix) {
+		case LOWHFIX_HOVERSOFT:
+		  fBall2 = smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft;
+		  break;
+		case LOWHFIX_SINKRADIUS:
+		  fBall2 = smf->dSinkRadius*smf->dSinkRadius;
+		  break;
+		default:
+		  fprintf(stderr,"Illegal value for iLowhFix %d in smooth\n",smx->iLowhFix);
+		  assert(0);
+		}
 		p[pi].fBall2 = fBall2;
 		p[pi].cpStart = 0;
 		cp = 0;

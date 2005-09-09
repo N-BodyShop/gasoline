@@ -196,6 +196,7 @@ int main(int argc,char **argv)
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
 #endif
+		if (msr->param.bDoSinksAtStart) msrDoSinks(msr);
 		/* 
 		 ** Dump Frame Initialization
 		 */
@@ -262,6 +263,8 @@ int main(int argc,char **argv)
 	dMass = msrMassCheck(msr,-1.0,"Initial");
 	if (prmSpecified(msr->prm,"dSoft")) msrSetSoft(msr,msrSoft(msr));
 	msrMassCheck(msr,dMass,"After msrSetSoft");
+
+	msrSetSink(msr);
 #ifdef COLLISIONS
 	if (msr->param.bFindRejects) msrFindRejects(msr);
 #endif
@@ -329,6 +332,7 @@ int main(int argc,char **argv)
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
 #endif
+		if (msr->param.bDoSinksAtStart) msrDoSinks(msr);
 		/* 
 		 ** Dump Frame Initialization
 		 */

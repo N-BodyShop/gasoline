@@ -1783,20 +1783,20 @@ void pkdPhysicalSoft(PKD pkd,double dSoftMax,double dFac,int bSoftMaxMul)
 	        }
 	}
 
-void pkdPreVariableSoft(PKD pkd)
+void pkdPreVariableSoft(PKD pkd,int iVariableSoftType)
 {
 	PARTICLE *p;
 	int i,n;
 
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
-	
+
 	for (i=0;i<n;++i) {
-	        if (TYPEQueryACTIVE(&(p[i]))) p[i].fSoft = p[i].fBall2;
+	        if (TYPETest(&(p[i]),iVariableSoftType) && TYPEQueryACTIVE(&(p[i]))) p[i].fSoft = p[i].fBall2;
 	        }
 	}
 
-void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul)
+void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSoftType)
 {
 	PARTICLE *p;
 	int i,n;
@@ -1807,7 +1807,7 @@ void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul)
 	
 	if (bSoftMaxMul) {
 	        for (i=0;i<n;++i) {
-	                if (TYPEQueryACTIVE(&(p[i]))) {
+	                if (TYPETest(&(p[i]),iVariableSoftType) && TYPEQueryACTIVE(&(p[i]))) {
 		                  dTmp = sqrt(p[i].fBall2*.25);
 	                          p[i].fBall2 = p[i].fSoft;
 	                          p[i].fSoft = (dTmp <= p[i].fSoft0*dSoftMax ? dTmp : p[i].fSoft0*dSoftMax);
@@ -1816,7 +1816,7 @@ void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul)
 	        }
 	else {
 	        for (i=0;i<n;++i) {
-	                if (TYPEQueryACTIVE(&(p[i]))) {
+	                if (TYPETest(&(p[i]),iVariableSoftType) && TYPEQueryACTIVE(&(p[i]))) {
 		                  dTmp = sqrt(p[i].fBall2*.25);
 	                          p[i].fBall2 = p[i].fSoft;
 	                          p[i].fSoft = (dTmp <= dSoftMax ? dTmp : dSoftMax);
@@ -3913,14 +3913,14 @@ void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, double *dTotMetals,
 		*dTotMass += pkd->pStore[i].fMass;
 #ifdef GASOLINE 
                 *dTotMetals += pkd->pStore[i].fMass*pkd->pStore[i].fMetals;
+#ifdef STARFORM
                 *dTotOx += pkd->pStore[i].fMass*pkd->pStore[i].fMFracOxygen;
                 *dTotFe += pkd->pStore[i].fMass*pkd->pStore[i].fMFracIron;
-#endif
                 if ( TYPETest(&pkd->pStore[i], TYPE_GAS) ){
-#ifdef STARFORM
                     *dTotEnergy += pkd->pStore[i].fMass*pkd->pStore[i].fESNrate;
-#endif
                     }
+#endif
+#endif
 		}
 	}
 
@@ -4621,6 +4621,69 @@ void pkdSetParticleTypes(PKD pkd, int nSuperCool)
 		}
     }
 
+int
+pkdSoughtParticleList(PKD pkd, int iTypeSought, int nMax, int *n, struct SoughtParticle *sp)
+{
+    int i, nFound;
+	PARTICLE *p = pkd->pStore;
+
+	nFound = 0;
+    for(i=0;i<pkdLocal(pkd);++i) {
+ 	  if (TYPETest((p+i),iTypeSought)) {
+		/* Don't halt on overflow -- just stop copying */
+		if (nFound < nMax) {
+		  sp[nFound].iOrder = p[i].iOrder;
+		  sp[nFound].iActive = p[i].iActive;
+		  sp[nFound].x = p[i].r[0];
+		  sp[nFound].y = p[i].r[1];
+		  sp[nFound].z = p[i].r[2];
+		}
+		nFound ++;
+	  }
+	}
+	*n = nFound;
+	for (i=0;i<nFound;i++) {
+	  printf("pkd sub star %d: %g %g %g\n",i,sp[i].x,sp[i].y,sp[i].z);
+	}
+
+	return (nFound);
+}
+
+void
+pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *l)
+{
+#ifndef NOCOOLING
+    int i,j;
+	double r2,r2min,dx;
+	PARTICLE *p = pkd->pStore;
+
+	assert(nList > 0);
+    for(i=0;i<pkdLocal(pkd);++i) {
+ 	  if (TYPEQueryACTIVE(&p[i]) && TYPETest(&p[i],TYPE_GAS)) {
+		dx = p[i].r[0]-l[0].x;
+		r2 = dx*dx;
+		dx = p[i].r[1]-l[0].y;
+		r2 += dx*dx;
+		dx = p[i].r[2]-l[0].z;
+		r2 += dx*dx;
+		r2min = r2;
+		for (j=1;j<nList;j++) {
+		  dx = p[i].r[0]-l[j].x;
+		  r2 = dx*dx;
+		  dx = p[i].r[1]-l[j].y;
+		  r2 += dx*dx;
+		  dx = p[i].r[2]-l[j].z;
+		  r2 += dx*dx;
+		  if (r2 < r2min) r2min = r2;
+		}
+#ifdef COOLING_DISK
+		p[i].CoolParticle.r = sqrt(r2min);
+#endif
+	  }
+	}
+#endif
+}
+
 void pkdGrowMass(PKD pkd,int nGrowMass, double dDeltaM)
 {
     int i;
@@ -4845,9 +4908,8 @@ void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma)
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p)) {
-			PoverRho = CoolCodePressureOnDensity( cl, &p->cp, p->uPred, p->fDensity, gammam1 );
+		    CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, &PoverRho, &(p->c) );
 			p->PoverRho2 = PoverRho/p->fDensity;
-   			p->c = sqrt(gamma*PoverRho);
 			}
 #ifdef DEBUG
 		if (pkdIsGas(pkd,p) && (p->iOrder % 1000)==0) {
@@ -5693,4 +5755,21 @@ pkdOldestStar(PKD pkd, double *com)
   	  }
 #endif
    }
+
+int pkdSetSink(PKD pkd, double dSinkMassMin)
+{
+    PARTICLE *p;
+    int i,nSink = 0;
+    int nLocal = pkdLocal(pkd);
+
+    for(i=0;i<nLocal;++i) { 
+		p = &pkd->pStore[i];
+		if (TYPETest(p,TYPE_STAR) && p->fMass >= dSinkMassMin) {
+			TYPESet(p,TYPE_SINK);
+			nSink++;
+			}
+		}
+
+    return nSink;
+    }
 

@@ -115,7 +115,7 @@ pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inPhysicalSoft),0);
 	mdlAddService(mdl,PST_PREVARIABLESOFT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstPreVariableSoft,
-				  0,0);
+				  sizeof(struct inPreVariableSoft),0);
 	mdlAddService(mdl,PST_POSTVARIABLESOFT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstPostVariableSoft,
 				  sizeof(struct inPostVariableSoft),0);
@@ -221,6 +221,12 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_SETPARTICLETYPES,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetParticleTypes,
 				  sizeof(struct inSetParticleTypes),0);
+	mdlAddService(mdl,PST_SOUGHTPARTICLELIST,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSoughtParticleList,
+				  sizeof(struct inSoughtParticleList),sizeof(struct inoutParticleList));
+	mdlAddService(mdl,PST_COOLUSINGPARTICLELIST,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstCoolUsingParticleList,
+				  sizeof(struct inoutParticleList),0);
 	mdlAddService(mdl,PST_GROWMASS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGrowMass,
 				  sizeof(struct inGrowMass),0);
@@ -432,6 +438,10 @@ pstAddServices(PST pst,MDL mdl)
 		      (void (*)(void *,void *,int,void *,int *))
 		      pstOldestStar, 0,
 		      sizeof(double)*4 );
+	mdlAddService(mdl,PST_SETSINK,pst,
+		      (void (*)(void *,void *,int,void *,int *))
+		      pstSetSink, sizeof(struct inSetSink),
+		      sizeof(struct outSetSink) );
 #ifdef VOXEL
 	mdlAddService(mdl,PST_DUMPVOXEL,pst,
 		      (void (*)(void *,void *,int,void *,int *))
@@ -2668,15 +2678,16 @@ void pstPhysicalSoft(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 void pstPreVariableSoft(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
+	struct inPreVariableSoft *in = vin;
 
-	mdlassert(pst->mdl,nIn == 0);
+	mdlassert(pst->mdl,nIn == sizeof(struct inPreVariableSoft));
 	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_PREVARIABLESOFT,vin,nIn);
-		pstPreVariableSoft(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlReqService(pst->mdl,pst->idUpper,PST_PREVARIABLESOFT,in,nIn);
+		pstPreVariableSoft(pst->pstLower,in,nIn,NULL,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdPreVariableSoft(plcl->pkd);
+		pkdPreVariableSoft(plcl->pkd,in->iVariableSoftType);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2693,7 +2704,7 @@ void pstPostVariableSoft(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdPostVariableSoft(plcl->pkd,in->dSoftMax,in->bSoftMaxMul);
+		pkdPostVariableSoft(plcl->pkd,in->dSoftMax,in->bSoftMaxMul,in->iVariableSoftType);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -2788,9 +2799,10 @@ void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pstSmooth(pst->pstLower,in,nIn,out,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
 		if (out != NULL) {
-			/*
-			 ** Cache statistics sums.
-			 */
+		    out->iSmoothFlags |= outUp.iSmoothFlags;
+		/*
+		 ** Cache statistics sums.
+		 */
 			out->dpASum += outUp.dpASum;
 			out->dpMSum += outUp.dpMSum;
 			out->dpCSum += outUp.dpCSum;
@@ -2810,10 +2822,12 @@ void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 					 in->bSymmetric,in->iSmoothType,1,in->dfBall2OverSoft2);
 		smSmooth(smx,&in->smf);
 		smFinish(smx,&in->smf, &cs);
+		
 		if (out != NULL) {
-			/*
-			 ** Cache statistics
-			 */
+		    out->iSmoothFlags |= in->smf.iSmoothFlags;
+		/*
+		 ** Cache statistics
+		 */
 			out->dpASum = cs.dpNumAccess;
 			out->dpMSum = cs.dpMissRatio;
 			out->dpCSum = cs.dpCollRatio;
@@ -2865,7 +2879,9 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlReqService(pst->mdl,pst->idUpper,PST_RESMOOTH,in,nIn);
 		pstReSmooth(pst->pstLower,in,nIn,out,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+
 		if (out != NULL) {
+		    out->iSmoothFlags |= outUp.iSmoothFlags;
 			/*
 			 ** Cache statistics sums.
 			 */
@@ -2888,7 +2904,9 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 					 in->bSymmetric,in->iSmoothType,0,in->dfBall2OverSoft2);
 		smReSmooth(smx,&in->smf);
 		smFinish(smx,&in->smf, &cs);
+
 		if (out != NULL) {
+		    out->iSmoothFlags |= in->smf.iSmoothFlags;
 			/*
 			 ** Cache statistics
 			 */
@@ -2903,6 +2921,53 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 		}
 	if (pnOut) *pnOut = sizeof(struct outReSmooth);
+	}
+
+
+void pstSoughtParticleList(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inSoughtParticleList *in = vin;
+	struct inoutParticleList *out = vout;
+	struct inoutParticleList outUp;
+	int i,n;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inSoughtParticleList));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_SOUGHTPARTICLELIST,in,nIn);
+		pstSoughtParticleList(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+
+		n = out->n+outUp.n;
+		if (n > in->nMax) n = in->nMax;
+		for (i=out->n;i<n;i++) {
+		  out->p[i] = outUp.p[i-out->n];
+		}
+		out->n += outUp.n; /* If this exceeds the max it quietly returns but stops
+							  copying data: Caller should test  */
+	    }
+	else {
+		pkdSoughtParticleList(pst->plcl->pkd, in->iTypeSought, in->nMax, &out->n, &(out->p[0]));
+		}
+
+	if (pnOut) *pnOut = sizeof(struct inoutParticleList);
+	}
+
+
+void pstCoolUsingParticleList(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inoutParticleList *list = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inoutParticleList));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_COOLUSINGPARTICLELIST,list,nIn);
+		pstCoolUsingParticleList(pst->pstLower,list,nIn,vout,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,vout,NULL);
+	    }
+	else {
+		pkdCoolUsingParticleList(pst->plcl->pkd, list->n, &(list->p[0]));
+		}
+
+	if (pnOut) *pnOut = 0;
 	}
 
 
@@ -5277,8 +5342,13 @@ pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		PARTICLE *p = pst->plcl->pkd->pStore;
 		dfClearImage( in, vout, pnOut );
 		dfRenderParticlesInit( in, TYPE_GAS, TYPE_DARK, TYPE_STAR,
-							  &p->r[0], &p->fMass, &p->fSoft, &p->fBall2, &p->iActive,
-							  p, sizeof(p[0]) );
+							   &p->r[0], &p->fMass, &p->fSoft, &p->fBall2, &p->iActive, 
+#ifdef GASOLINE 
+							   &p->fTimeForm,
+#else
+							   p,
+#endif
+							   p, sizeof(p[0]) );
 		dfRenderParticles( in, vout, p, pst->plcl->pkd->nLocal );
 		}
 	}
@@ -5356,6 +5426,27 @@ pstOldestStar(PST pst,void *vin,int nIn,void *vout,int *pnOut)
                 pkdOldestStar( pst->plcl->pkd, &com[0] );
                 if (pnOut) *pnOut = sizeof(double)*4;
                 }
+        }
+
+
+void
+pstSetSink(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+  struct inSetSink *in = vin;
+  struct outSetSink *out = vout, outtmp;
+
+  assert(nIn == sizeof(struct inSetSink));
+   
+        if (pst->nLeaves > 1) {
+		  mdlReqService(pst->mdl,pst->idUpper,PST_SETSINK,vin,nIn);
+		  pstSetSink(pst->pstLower, vin,nIn, out, pnOut);
+		  mdlGetReply(pst->mdl,pst->idUpper, &outtmp, pnOut);
+		  out->nSink += outtmp.nSink;
+		  }
+        else {
+                out->nSink = pkdSetSink( pst->plcl->pkd, in->dSinkMassMin );
+                }
+		if (pnOut) *pnOut = sizeof(struct outSetSink);
         }
 
 

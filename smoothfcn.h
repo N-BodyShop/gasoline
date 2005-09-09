@@ -27,6 +27,8 @@
 #define PRES_ACC(a,b) (sqrt(a*b)*2)
 #endif
 
+#define SMF_SMOOTHAGAIN    1
+
 typedef struct smfParameters {
 	double H;
 	double a;
@@ -43,6 +45,7 @@ typedef struct smfParameters {
 	int bGrowSmoothList;
 #endif
     int bSinkThermal;
+    int iSmoothFlags; /* Read/Write locally.  Master sets initial value. */
 #ifdef STARFORM
         double dMinMassFrac;
         double dRadPreFactor;

@@ -15,7 +15,7 @@
 
 #include "dumpframe.h"
 
-void dfInitialize( struct DumpFrameContext **pdf, double dTime, 
+void dfInitialize( struct DumpFrameContext **pdf, double dYearUnit, double dTime,  
 				  double dDumpFrameTime, double dStep, double dDumpFrameStep,
 				  double dDelta, int iMaxRung, int bVDetails, char* filename ) {
 	double tock=0.0;/*initialized to suppress warning: DCR 12/19/02*/
@@ -34,6 +34,7 @@ void dfInitialize( struct DumpFrameContext **pdf, double dTime,
 
 	df = *pdf;
 	df->iMaxRung = 0;
+	df->dYearUnit = dYearUnit;
 
 	df->dTime = 0;
 	df->dDumpFrameTime = 0;
@@ -148,8 +149,9 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 	in->ColGas = fs->ColGas;
 	in->ColDark = fs->ColDark;
 	in->bColMassWeight = fs->bColMassWeight;
-	in->bLogScale = fs->bLogScale;
 	in->bGasSph = fs->bGasSph;
+	in->iColStarAge = fs->iColStarAge;
+	in->iLogScale = fs->iLogScale;
 	in->iTarget = fs->iTarget;
 	in->dGasSoftMul = fs->dGasSoftMul;
 	in->dDarkSoftMul = fs->dDarkSoftMul;
@@ -488,8 +490,9 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 	fs.ColStar.g = 0.7;
 	fs.ColStar.b = 1.0;
 	fs.bColMassWeight = 0;
-	fs.bLogScale = 0;
 	fs.bGasSph = 1;
+	fs.iColStarAge = DF_STAR_AGE_BASIC;
+	fs.iLogScale = DF_LOG_NULL;
 	fs.iTarget = DF_TARGET_USER;
 	fs.dGasSoftMul = 1;
 	fs.dDarkSoftMul = 1;
@@ -699,8 +702,21 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 				bCMW |= CMWOFF;
 				}
 			}
-		else if (!strcmp( command, "colstar" )) {
+		else if (!strcmp( command, "colstar" ) 
+				 || !strcmp( command, "colstarbri" ) 
+				 || !strcmp( command, "colstarcol" )
+				 || !strcmp( command, "colstarbricol" )) {
+
 			float scaler;
+			if (!strcmp( command, "colstar" ))
+			  fs.iColStarAge = DF_STAR_AGE_BASIC;
+			else if(!strcmp( command, "colstarbri" ))
+			  fs.iColStarAge = DF_STAR_AGE_BRIGHT;
+			else if(!strcmp( command, "colstarcol" ))
+			  fs.iColStarAge = DF_STAR_AGE_COLOUR;
+			else if(!strcmp( command, "colstarbricol" ))
+			  fs.iColStarAge = DF_STAR_AGE_BRIGHT_COLOUR;
+
 			nitem = sscanf( line, "%s %f %f %f %f", command, &fs.ColStar.r, &fs.ColStar.g, &fs.ColStar.b, &scaler );
 			if (nitem == 5) {
 				assert( !(bCMW & CMWOFF) );
@@ -725,7 +741,12 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 		else if (!strcmp( command, "logscale" )) {
 			nitem = sscanf( line, "%s %lf %lf", command, &fs.pScale1, &fs.pScale2 );
 			assert( nitem == 3 );
-			fs.bLogScale = 1;
+			fs.iLogScale = DF_LOG_SATURATE;
+			}
+		else if (!strcmp( command, "logscalecoloursafe" )) {
+			nitem = sscanf( line, "%s %lf %lf", command, &fs.pScale1, &fs.pScale2 );
+			assert( nitem == 3 );
+			fs.iLogScale = DF_LOG_COLOURSAFE;
 			}
 		else if (!strcmp( command, "softgassph" )) {
 			fs.bGasSph = 1;
@@ -784,6 +805,7 @@ void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, doub
 	int ifs = df->iFrameSetup;
 
 	vin->dTime = dTime;
+	vin->dYearUnit = df->dYearUnit;
 	vin->dStep = dStep;
 	vin->dExp = dExp;
 	vin->bVDetails = df->bVDetails;
@@ -919,7 +941,7 @@ int trackcnt = 0;
 #endif
 
 void dfRenderParticlePoint( struct inDumpFrame *in, void *vImage, 
-						 double *r, double fMass, double fSoft, double fBall2, int iActive ) {
+						 double *r, double fMass, double fSoft, double fBall2, int iActive, double fAge ) {
 
 	DFIMAGE *Image = vImage;
 	DFIMAGE col; /* Colour */
@@ -964,9 +986,8 @@ void dfRenderParticlePoint( struct inDumpFrame *in, void *vImage,
 	}
 
 void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage, 
-						 double *r, double fMass, double fSoft, double fBall2, int iActive ) {
-
-	DFIMAGE *Image = vImage;
+						 double *r, double fMass, double fSoft, double fBall2, int iActive, double fAge ) {
+    DFIMAGE *Image = vImage;
 	DFIMAGE col; /* Colour */
 	double h;
 	double x,y,z,dr[3],br0;
@@ -974,6 +995,7 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage,
 	int j;
 	int xp,yp;
 
+	br0=1;
 	if ((iActive & in->iTypeGas)) {
 		if (fMass < in->dMassGasMin || fMass > in->dMassGasMax) return;
 		if (in->bGasSph) h = sqrt(fBall2)*0.5*in->dGasSoftMul;
@@ -988,10 +1010,34 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage,
 	else if ((iActive & in->iTypeStar)) {
 		if (fMass < in->dMassStarMin || fMass > in->dMassStarMax) return;
 		h = fSoft*in->dStarSoftMul;
-		col = in->ColStar;
+		switch (in->iColStarAge) {
+		case DF_STAR_AGE_BRIGHT_COLOUR:
+		case DF_STAR_AGE_COLOUR:
+		  {
+		  float al;
+		  al = (log(fabs(fAge+1e6))-13.815)*(1/9.6);
+		  col.b = in->ColStar.b*fabs(1-0.7*al);
+		  col.g = in->ColStar.g*0.4;
+		  col.r = in->ColStar.r*(0.4+0.32*al);
+		  //		  printf("star: %g %g %g %g %g  %g %g %g\n",fAge,al,col.r,col.g,col.b,in->ColStar.r,in->ColStar.g,in->ColStar.b);
+		  }
+		  break;
+		default:
+		  col = in->ColStar;
 		}
-	
-	if (in->bColMassWeight) br0=fMass;
+		switch (in->iColStarAge) {
+		case DF_STAR_AGE_BASIC:
+		  break;
+		case DF_STAR_AGE_BRIGHT:
+		case DF_STAR_AGE_BRIGHT_COLOUR:
+		  br0 = 1./(fabs(fAge)/1e6+1.);
+		  break;
+		case DF_STAR_AGE_COLOUR:
+		  break;
+		}
+		}
+
+	if (in->bColMassWeight) br0*=fMass;
 	
 	for (j=0;j<3;j++) {
 		dr[j] = r[j]-in->r[j];
@@ -1020,9 +1066,9 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage,
 				y = in->ylim-y;  /* standard screen convention */
 				yp = y;
 				if (hint < 1) {
-					Image[ xp + yp*in->nxPix ].r += col.r;
-					Image[ xp + yp*in->nxPix ].g += col.g;
-					Image[ xp + yp*in->nxPix ].b += col.b;
+					Image[ xp + yp*in->nxPix ].r += br0*col.r;
+					Image[ xp + yp*in->nxPix ].g += br0*col.g;
+					Image[ xp + yp*in->nxPix ].b += br0*col.b;
 #ifdef DEBUGTRACK
 					trackcnt++;
 					if ((trackcnt<DEBUGTRACK)) {
@@ -1035,7 +1081,7 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage,
 					DFIMAGE *Imagey;
 					double br,br1,r2,ih2;
 					ih2 = 1./(h*h);
-					br1 = (6/(2.0*3.1412))*ih2;
+					br1 = br0*(6/(2.0*3.1412))*ih2;
 					xpmin = xp - hint; if (xpmin<0) xpmin=0;
 					xpmax = xp + hint; if (xpmax>=in->nxPix) xpmax=in->nxPix-1;
 					ypmin = yp - hint; if (ypmin<0) ypmin=0;
@@ -1063,7 +1109,7 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage,
 	}
 
 void dfRenderParticleSolid( struct inDumpFrame *in, void *vImage, 
-						 double *r, double fMass, double fSoft, double fBall2, int iActive ) {
+						 double *r, double fMass, double fSoft, double fBall2, int iActive, double fAge ) {
 
 	DFIMAGE *Image = vImage;
 	DFIMAGE col; /* Colour */
@@ -1089,10 +1135,32 @@ void dfRenderParticleSolid( struct inDumpFrame *in, void *vImage,
 	else if ((iActive & in->iTypeStar )) {
 		if (fMass < in->dMassStarMin || fMass > in->dMassStarMax) return;
 		h = fSoft*in->dStarSoftMul;
-		col = in->ColStar;
+		switch (in->iColStarAge) {
+		case DF_STAR_AGE_BRIGHT_COLOUR:
+		case DF_STAR_AGE_COLOUR:
+		  {
+		  float al;
+		  al = (log(fabs(fAge+1e6))-13.815)*(1/9.6);
+		  col.b = in->ColStar.b*fabs(1-0.7*al);
+		  col.g = in->ColStar.g*0.4;
+		  col.r = in->ColStar.r*(0.4+0.32*al);
+		  //		  printf("star: %g %g %g %g %g  %g %g %g\n",fAge,al,col.r,col.g,col.b,in->ColStar.r,in->ColStar.g,in->ColStar.b);
+		  }
+		  break;
+		default:
+		  col = in->ColStar;
+		}
+		switch (in->iColStarAge) {
+		case DF_STAR_AGE_BASIC:
+		  break;
+		case DF_STAR_AGE_BRIGHT:
+		case DF_STAR_AGE_BRIGHT_COLOUR:
+		  br0 = 1./(fabs(fAge)/1e6+1.);
+		  break;
+		}
 		}
 	
-	if (in->bColMassWeight) br0=fMass;
+	if (in->bColMassWeight) br0*=fMass;
 	
 	for (j=0;j<3;j++) {
 		dr[j] = r[j]-in->r[j];
@@ -1154,21 +1222,21 @@ void dfRenderParticleInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark, 
 	}
 
 void dfRenderParticle( struct inDumpFrame *in, void *vImage, 
-					  double r[3], double fMass, double fSoft, double fBall2, int iActive ) 
+					  double r[3], double fMass, double fSoft, double fBall2, int iActive, double fTimeForm ) 
 {
 
 	switch (in->iRender) {
 	case DF_RENDER_POINT:
-		dfRenderParticlePoint( in, vImage, r, fMass, fSoft, fBall2, iActive );
+		dfRenderParticlePoint( in, vImage, r, fMass, fSoft, fBall2, iActive, (in->dTime-fTimeForm)*in->dYearUnit );
 		break;
 	case DF_RENDER_TSC:
-		dfRenderParticleTSC( in, vImage, r, fMass, fSoft, fBall2, iActive );
+		dfRenderParticleTSC( in, vImage, r, fMass, fSoft, fBall2, iActive, (in->dTime-fTimeForm)*in->dYearUnit );
 		break;
 	case DF_RENDER_SOLID:
-		dfRenderParticleSolid( in, vImage, r, fMass, fSoft, fBall2, iActive );
+		dfRenderParticleSolid( in, vImage, r, fMass, fSoft, fBall2, iActive, (in->dTime-fTimeForm)*in->dYearUnit );
 		break;
 	case DF_RENDER_SHINE: /* Not implemented -- just does point */
-		dfRenderParticlePoint( in, vImage, r, fMass, fSoft, fBall2, iActive );
+		dfRenderParticlePoint( in, vImage, r, fMass, fSoft, fBall2, iActive, (in->dTime-fTimeForm)*in->dYearUnit );
 		break;
 		}
 	}
@@ -1182,7 +1250,7 @@ void dfRenderParticle( struct inDumpFrame *in, void *vImage,
      position must be three contiguous memory locations
 */
 void dfRenderParticlesInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark, int iTypeStar,
-						   double *pr, double *pfMass, double *pfSoft, double *pfBall2, unsigned int *piActive, 
+							double *pr, double *pfMass, double *pfSoft, double *pfBall2, unsigned int *piActive, double *pfTimeForm,
 						   void *p, int sizeofp )
 {
 	in->offsetp_r = ((char *) pr)-((char *) p);
@@ -1190,6 +1258,7 @@ void dfRenderParticlesInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark,
 	in->offsetp_fSoft = ((char *) pfSoft)-((char *) p);
 	in->offsetp_fBall2 = ((char *) pfBall2)-((char *) p);
 	in->offsetp_iActive = ((char *) piActive)-((char *) p);
+	in->offsetp_fTimeForm = ((char *) pfTimeForm)-((char *) p);
     in->sizeofp = sizeofp;
 	in->iTypeGas = iTypeGas;
 	in->iTypeDark = iTypeDark;
@@ -1205,30 +1274,34 @@ void dfRenderParticles( struct inDumpFrame *in, void *vImage, void *pStore, int 
 	int offsetp_fSoft = in->offsetp_fSoft;
 	int offsetp_fBall2 = in->offsetp_fBall2;
 	int offsetp_iActive = in->offsetp_iActive;
+	int offsetp_fTimeForm = in->offsetp_fTimeForm;
 	int sizeofp = in->sizeofp;
+
+	/*	printf("DF: ColStarAge Type %d, LogScaleType %d\n",in->iColStarAge,in->iLogScale);*/
 
 	switch (in->iRender) {
 	case DF_RENDER_POINT:
 		for (i=0;i<n;i++) {
-			dfRenderParticlePoint( in, vImage, (double *) (p+offsetp_r), *((double *) (p+offsetp_fMass)), 0, 0, *((int *) (p+offsetp_iActive)) );
+			dfRenderParticlePoint( in, vImage, (double *) (p+offsetp_r), *((double *) (p+offsetp_fMass)), 0, 0, *((int *) (p+offsetp_iActive)), (in->dTime - *((double *) (p+offsetp_fTimeForm)))*in->dYearUnit );
 			p += sizeofp;
 			}
 		break;
 	case DF_RENDER_TSC:
 		for (i=0;i<n;i++) {
-			dfRenderParticleTSC( in, vImage, (double *) (p+offsetp_r), *((double *) (p+offsetp_fMass)), *((double *) (p+offsetp_fSoft)), *((double *) (p+offsetp_fBall2)), *((int *) (p+offsetp_iActive)) );
+			dfRenderParticleTSC( in, vImage, (double *) (p+offsetp_r), *((double *) (p+offsetp_fMass)), *((double *) (p+offsetp_fSoft)), *((double *) (p+offsetp_fBall2)), *((int *) (p+offsetp_iActive)), (in->dTime - *((double *) (p+offsetp_fTimeForm)))*in->dYearUnit );
+			/*			if (!(i%1000)) printf("%d %d : %g %g %g %g\n",i,*((int *) (p+offsetp_iActive)), in->dTime, *((double *) (p+offsetp_fTimeForm)), in->dYearUnit,  (in->dTime - *((double *) (p+offsetp_fTimeForm)))*in->dYearUnit);*/
 			p += sizeofp;
 			}
 		break;
 	case DF_RENDER_SOLID:
 		for (i=0;i<n;i++) {	
-			dfRenderParticleSolid( in, vImage, (double *) (p+offsetp_r), *((double *) (p+offsetp_fMass)), *((double *) (p+offsetp_fSoft)), *((double *) (p+offsetp_fBall2)), *((int *) (p+offsetp_iActive)) );
+			dfRenderParticleSolid( in, vImage, (double *) (p+offsetp_r), *((double *) (p+offsetp_fMass)), *((double *) (p+offsetp_fSoft)), *((double *) (p+offsetp_fBall2)), *((int *) (p+offsetp_iActive)), (in->dTime - *((double *) (p+offsetp_fTimeForm)))*in->dYearUnit );
 			p += sizeofp;
 			}
 		break;
 	case DF_RENDER_SHINE: /* Not implemented -- just does point */
 		for (i=0;i<n;i++) {
-			dfRenderParticlePoint( in, vImage, (double *) (p+offsetp_r), *((double *) (p+offsetp_fMass)), 0, 0, *((int *) (p+offsetp_iActive)) );
+			dfRenderParticlePoint( in, vImage, (double *) (p+offsetp_r), *((double *) (p+offsetp_fMass)), 0, 0, *((int *) (p+offsetp_iActive)), (in->dTime - *((double *) (p+offsetp_fTimeForm)))*in->dYearUnit );
 			p += sizeofp;
 			}
 		break;
@@ -1248,7 +1321,7 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 			r[0] = p[i].r[0];
 			r[1] = p[i].r[1];
 			r[2] = p[i].r[2];
-			dfRenderParticlePoint( in, vImage, r, p[i].fMass, 0, 0, p[i].iActive );
+			dfRenderParticlePoint( in, vImage, r, p[i].fMass, 0, 0, p[i].iActive, 0 );
 			}
 		}
 	else if (in->iRender == DF_RENDER_TSC) {
@@ -1258,7 +1331,7 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 			r[0] = p[i].r[0];
 			r[1] = p[i].r[1];
 			r[2] = p[i].r[2];
-			dfRenderParticleTSC( in, vImage, r, p[i].fMass, p[i].fSoft, p[i].fBall2, p[i].iActive );
+			dfRenderParticleTSC( in, vImage, r, p[i].fMass, p[i].fSoft, p[i].fBall2, p[i].iActive, 0 );
 			}
 		}
 	else if (in->iRender == DF_RENDER_SOLID) {
@@ -1267,7 +1340,7 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 			r[0] = p[i].r[0];
 			r[1] = p[i].r[1];
 			r[2] = p[i].r[2];
-			dfRenderParticleSolid( in, vImage, r, p[i].fMass, p[i].fSoft, p[i].fBall2, p[i].iActive );
+			dfRenderParticleSolid( in, vImage, r, p[i].fMass, p[i].fSoft, p[i].fBall2, p[i].iActive, 0 );
 			}
 		}
 	else if (in->iRender == DF_RENDER_SHINE) { /* Not implemented -- just does point */
@@ -1276,7 +1349,7 @@ void dfRenderImage( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 			r[0] = p[i].r[0];
 			r[1] = p[i].r[1];
 			r[2] = p[i].r[2];
-			dfRenderParticlePoint( in, vImage, r, p[i].fMass, 0, 0, p[i].iActive );
+			dfRenderParticlePoint( in, vImage, r, p[i].fMass, 0, 0, p[i].iActive, 0 );
 			}
 		}
 	}
@@ -1425,6 +1498,7 @@ void dfRenderImageOld( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 		int hint;
 		
 		br0=1;
+		if (in->bColMassWeight) br0=p[i].fMass;
 
 		for (i=0;i<pkd->nLocal;i++) {
 			if (TYPETest( &p[i], TYPE_GAS )) {
@@ -1444,7 +1518,6 @@ void dfRenderImageOld( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 				col = in->ColStar;
 				}
 
-			if (in->bColMassWeight) br0=p[i].fMass;
 
 			for (j=0;j<3;j++) {
 				dr[j] = p[i].r[j]-in->r[j];
@@ -1610,7 +1683,33 @@ void dfFinishFrame( struct DumpFrameContext *df, double dTime, double dStep, str
 			}
 		}
 	else if (in->iRender == DF_RENDER_TSC || in->iRender == DF_RENDER_SOLID || in->iRender == DF_RENDER_SHINE) {
-		if (in->bLogScale) {
+		if (in->iLogScale == DF_LOG_COLOURSAFE) {
+			double lmin,factor;
+			lmin = log(in->pScale1);
+			factor = 255.999/(log(in->pScale2)-lmin);
+			for (i=0,g=gray;i<iMax;i++) {
+				int bing;
+				float tot = 3./(Image[i].r + Image[i].g + Image[i].b);
+				if (tot < 0) {
+				  *g = 0; g++;
+				  *g = 0; g++;
+				  *g = 0; g++;
+				}
+				else {
+				  tot = tot*factor*(-log(tot)-lmin);
+				  bing = Image[i].r*tot;
+				  *g = (bing < 255 ? (bing < 0 ? 0 : bing) : 255 );
+				  g++;
+				  bing = Image[i].g*tot;
+				  *g = (bing < 255 ? (bing < 0 ? 0 : bing) : 255 );
+				  g++;
+				  bing = Image[i].b*tot;
+				  *g = (bing < 255 ? (bing < 0 ? 0 : bing) : 255 );
+				  g++;
+				  }
+			    }
+		    }
+		else if (in->iLogScale == DF_LOG_SATURATE) {
 			double lmin,factor;
 			lmin = log(in->pScale1);
 			factor = 255.999/(log(in->pScale2)-lmin);

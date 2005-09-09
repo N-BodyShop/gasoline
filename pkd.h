@@ -177,6 +177,7 @@ typedef struct particle {
 #define TYPE_DELETED           (1<<12)
 
 #define TYPE_PHOTOGENIC        (1<<13)
+#define TYPE_SINK              (1<<14)
 
 /* Combination Masks */
 #define TYPE_ALLACTIVE			(TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
@@ -498,8 +499,8 @@ void pkdReadTipsy(PKD,char *,int,int,int,int,double,double);
 void pkdSetSoft(PKD pkd,double dSoft);
 #ifdef CHANGESOFT
 void pkdPhysicalSoft(PKD pkd,double, double, int);
-void pkdPreVariableSoft(PKD pkd);
-void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul);
+void pkdPreVariableSoft(PKD pkd,int iVariableSoftType);
+void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSoftType);
 #endif
 void pkdCalcBound(PKD,BND *,BND *,BND *,BND *);
 void pkdGasWeight(PKD);
@@ -580,6 +581,17 @@ int pkdActiveTypeRung(PKD pkd, unsigned int iTestMask, unsigned int iSetMask, in
 int pkdSetTypeFromFile(PKD pkd, int iSetMask, int biGasOrder, char *file, int *pniOrder, int *pnSet, int *pnSetiGasOrder);
 
 void pkdSetParticleTypes(PKD pkd, int nSuperCool);
+
+struct SoughtParticle {
+  int iOrder;
+  int iActive; 
+  double x,y,z;
+};
+
+int pkdSoughtParticleList(PKD pkd, int iTypeSought, int nMax, int *n, struct SoughtParticle *sp);
+
+void pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *sp);
+
 void pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 				  int *nDeltaStar);
 void pkdNewOrder(PKD pkd, int nStart);
@@ -670,3 +682,4 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
 void pkdCOM(PKD pkd, double *com);
 void pkdCOMByType(PKD pkd, int type, double *com);
 void pkdOldestStar(PKD pkd, double *com);
+int pkdSetSink(PKD pkd, double dSinkMassMin);
