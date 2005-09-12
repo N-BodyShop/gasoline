@@ -950,10 +950,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dSoftMin", 2, &msr->param.stfm->dSoftMin,
 		    sizeof(double), "stSoftMin",
 		    "<Minimum softening for star formation> = 0.0");
-	msr->param.dDeltaStarForm = msr->param.dDelta;
+	msr->param.dDeltaStarForm = 1e6;
 	prmAddParam(msr->prm,"dDeltaStarForm", 2, &msr->param.dDeltaStarForm,
 		    sizeof(double), "dDeltaStarForm",
-		    "<Minimum SF timestep in years> = dDelta");
+		    "<Minimum SF timestep in years> = 1e6");
 	msr->param.bShortCoolShutoff = 0;
 	prmAddParam(msr->prm,"bShortCoolShutoff", 0, &msr->param.bShortCoolShutoff,
 		    sizeof(int), "bShortCoolShutoff",
@@ -1408,10 +1408,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			/GCGS/msr->param.dMsolUnit/MSOLG/msr->param.dMsolUnit/MSOLG;
 	    /* convert to system units */
 	    msr->param.stfm->dPhysDenMin *= MHYDR/msr->param.stfm->dGmPerCcUnit;
-            if( prmSpecified(msr->prm, "dDeltaStarForm") ){
-                msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
-                msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm;
-                }
+            msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
+            msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm;
 
 	    msr->param.fb->dSecUnit = msr->param.dSecUnit;
 	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
@@ -6377,7 +6375,10 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         &dTotFe, &dTotOx, &dTotEnergy, "Form Stars");
     
     msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
-    msrDomainDecomp(msr, 0, 1);
+      /* Only worth the trouble if you're deleting the gas particles
+	* as described in method 2 below.  Does not scale well otherwise.
+     	* msrDomainDecomp(msr, 0, 1);
+	*/
     msrBuildTree(msr,1,dTotMass,1);
     pstFormStars(msr->pst, &in, sizeof(in), &outFS, NULL);
     if (msr->param.bVDetails)
@@ -6397,9 +6398,9 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
     /*
      * Find low mass gas particles and mark them for deletion.
 	 * For better numerical treatment
-     */
     if (msr->param.bVDetails) printf("Delete Gas ...\n");
     msrSmooth(msr, dTime, SMX_DELETE_GAS, 0);
+     */
     
     /*
      * Record star formation events XXX - not done.

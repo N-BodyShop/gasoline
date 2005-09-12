@@ -2266,6 +2266,7 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         rstot = 0.0;  
         fNorm_u = 0.0;
         fNorm_Pres = 0.0;
+	fAveDens = 0.0;
 	
 	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
 	for (i=0;i<nSmooth;++i) {
