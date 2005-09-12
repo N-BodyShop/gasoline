@@ -752,6 +752,7 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 			fs.bGasSph = 1;
 			}
 		else if (!strcmp( command, "softgas" )) {
+			fs.bGasSph = 0;
 			nitem = sscanf( line, "%s %lf", command, &fs.dGasSoftMul );
 			assert( nitem == 2 );
 			}
@@ -1689,14 +1690,16 @@ void dfFinishFrame( struct DumpFrameContext *df, double dTime, double dStep, str
 			factor = 255.999/(log(in->pScale2)-lmin);
 			for (i=0,g=gray;i<iMax;i++) {
 				int bing;
-				float tot = 3./(Image[i].r + Image[i].g + Image[i].b);
-				if (tot < 0) {
+				float tot = Image[i].r;
+				if (Image[i].g > tot) tot = Image[i].g;
+				if (Image[i].b > tot) tot = Image[i].b;
+				if (tot <= 0) {
 				  *g = 0; g++;
 				  *g = 0; g++;
 				  *g = 0; g++;
 				}
 				else {
-				  tot = tot*factor*(-log(tot)-lmin);
+				  tot = factor/tot*(log(tot)-lmin);
 				  bing = Image[i].r*tot;
 				  *g = (bing < 255 ? (bing < 0 ? 0 : bing) : 255 );
 				  g++;
