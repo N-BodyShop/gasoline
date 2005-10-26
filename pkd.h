@@ -612,7 +612,7 @@ void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int, int nMaxOrderGas
 void pkdSunIndirect(PKD,double *,int,double,double);
 void pkdLogHalo(PKD);
 void pkdHernquistSpheroid(PKD pkd);
-void pkdNFWSpheroid(PKD pkd);
+void pkdNFWSpheroid(PKD pkd, double M_200, double r_200, double c, double dSoft);
 void pkdElliptical(PKD pkd, int bEllipticalDarkNFW);
 void pkdHomogSpheroid(PKD pkd);
 void pkdBodyForce(PKD pkd);

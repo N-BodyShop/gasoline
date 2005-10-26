@@ -3084,7 +3084,7 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			pkdHernquistSpheroid(plcl->pkd);
 			}
 		if (in->bNFWSpheroid) {
-			pkdNFWSpheroid(plcl->pkd);
+			pkdNFWSpheroid(plcl->pkd,in->dNFWm200,in->dNFWr200,in->dNFWconc,in->dNFWsoft);
 			}
 		if (in->bElliptical) {
 		    pkdElliptical(plcl->pkd,in->bEllipticalDarkNFW);

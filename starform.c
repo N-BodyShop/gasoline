@@ -122,6 +122,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     if (l_jeans2 < p->fSoft*p->fSoft*stfm->dSoftMin*stfm->dSoftMin) 
         small_jeans = 1;
 
+    /*printf("tsound:  %g  c_sound:  %g  Temp:  %g  tdyn:  %g\n",tsound,p->c,T,tdyn);*/
     if (!small_jeans && tsound <= tdyn)
         return;
 #else

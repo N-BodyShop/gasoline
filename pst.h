@@ -472,6 +472,10 @@ struct inGravExternal {
 	int bLogHalo;
 	int bHernquistSpheroid;
     int bNFWSpheroid;
+        double dNFWm200;
+        double dNFWr200;
+        double dNFWconc;
+        double dNFWsoft;
     int bElliptical;
     int bEllipticalDarkNFW;
 	int bHomogSpheroid;

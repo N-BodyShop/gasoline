@@ -735,6 +735,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bNFWSpheroid = 0;
 	prmAddParam(msr->prm,"bNFWSpheroid",0,&msr->param.bNFWSpheroid,
 				sizeof(int),"NFWspher","use/don't use galaxy NFW Spheroid = -NFWspher");
+        prmAddParam(msr->prm,"dNFWm200",2,&msr->param.dNFWm200,sizeof(double),
+                    "dNFWm200","Mass inside rho/rho_c = 200");
+        prmAddParam(msr->prm,"dNFWr200",2,&msr->param.dNFWr200,sizeof(double),
+                    "dNFWr200","Radius of rho/rho_c = 200");
+        prmAddParam(msr->prm,"dNFWconc",2,&msr->param.dNFWconc,sizeof(double),
+                    "dNFWconc","NFW concentration");
+        prmAddParam(msr->prm,"dNFWsoft",2,&msr->param.dNFWsoft,sizeof(double),
+                    "dNFWsoft","Fixed potential softening length");
 	msr->param.bElliptical=0;
 	prmAddParam(msr->prm,"bElliptical",0,&msr->param.bElliptical,
 				sizeof(int),"elliptical","use/don't");
@@ -1343,6 +1351,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		break;
 		}
 
+        if( msr->param.bNFWSpheroid ){
+            assert (prmSpecified(msr->prm, "dNFWm200") &&
+                         prmSpecified(msr->prm, "dNFWr200")&&
+                         prmSpecified(msr->prm, "dNFWconc")&&
+                         prmSpecified(msr->prm, "dNFWsoft"));
+            }
 	if(msr->param.iGasModel == GASMODEL_COOLING) {
 		assert (prmSpecified(msr->prm, "dMsolUnit") &&
 				prmSpecified(msr->prm, "dKpcUnit"));
@@ -1375,7 +1389,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		msr->param.dComovingGmPerCcUnit = msr->param.dGmPerCcUnit;
 		}
 
-	if(msr->param.bStarForm) {
+	if(msr->param.bStarForm || msr->param.bFeedBack) {
 	    assert (prmSpecified(msr->prm, "dMsolUnit") &&
 		    prmSpecified(msr->prm, "dKpcUnit"));
 
@@ -1895,6 +1909,12 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# bLogHalo: %d",msr->param.bLogHalo );
 	fprintf(fp," bHernquistSpheroid: %d",msr->param.bHernquistSpheroid );
 	fprintf(fp," bNFWSpheroid: %d",msr->param.bNFWSpheroid );
+        if( msr->param.bNFWSpheroid ){
+            fprintf(fp," dNFWm200: %g",msr->param.dNFWm200 );
+            fprintf(fp," dNFWr200: %g",msr->param.dNFWr200 );
+            fprintf(fp," dNFWsoft: %g",msr->param.dNFWsoft );
+            fprintf(fp," dNFWconc: %g",msr->param.dNFWconc );
+            }
 	fprintf(fp," bHomogSpheroid: %d",msr->param.bHomogSpheroid );
 	fprintf(fp," bBodyForce: %d",msr->param.bBodyForce );
 	fprintf(fp," bMiyamotoDisk: %d",msr->param.bMiyamotoDisk );
@@ -3577,7 +3597,12 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		    for (j=0;j<3;++j) inExt.aSun[j] = out.aSun[j];
 		inExt.bLogHalo = msr->param.bLogHalo;
 		inExt.bHernquistSpheroid = msr->param.bHernquistSpheroid;
-		inExt.bNFWSpheroid = msr->param.bNFWSpheroid;
+		if( inExt.bNFWSpheroid = msr->param.bNFWSpheroid ){
+                    inExt.dNFWm200= msr->param.dNFWm200;
+                    inExt.dNFWr200= msr->param.dNFWr200;
+                    inExt.dNFWconc= msr->param.dNFWconc;
+                    inExt.dNFWsoft= msr->param.dNFWsoft;
+                    }
 		inExt.bElliptical= msr->param.bElliptical;
 		inExt.bEllipticalDarkNFW= msr->param.bEllipticalDarkNFW;
 		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
@@ -6358,76 +6383,79 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 
 	sec = msrTime();
 
-    if(msr->param.bStarForm == 0)
-		return;
+        msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, 
+            &dTotFe, &dTotOx, &dTotEnergy, "Form Stars");
+    if(msr->param.bStarForm){
+/*		return;*/
     
-    in.dTime = dTime;
-    msr->param.stfm->dDeltaT = dDelta;
-    in.stfm = *msr->param.stfm;
-    inFB.dTime = dTime;
-    inFB.dDelta = dDelta;
-    inFB.fb  = *msr->param.fb;
-    inFB.sn  = *msr->param.sn;
-    
-    if (msr->param.bVDetails) printf("Form Stars ... ");
+        in.dTime = dTime;
+        msr->param.stfm->dDeltaT = dDelta;
+        in.stfm = *msr->param.stfm;
+        
+        if (msr->param.bVDetails) printf("Form Stars ... ");
 
-    msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, 
-        &dTotFe, &dTotOx, &dTotEnergy, "Form Stars");
-    
-    msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
-      /* Only worth the trouble if you're deleting the gas particles
-	* as described in method 2 below.  Does not scale well otherwise.
-     	* msrDomainDecomp(msr, 0, 1);
-	*/
-    msrBuildTree(msr,1,dTotMass,1);
-    pstFormStars(msr->pst, &in, sizeof(in), &outFS, NULL);
-    if (msr->param.bVDetails)
-		printf("%d Stars formed with mass %g, %d gas deleted\n",
-			   outFS.nFormed, outFS.dMassFormed, outFS.nDeleted);
-    /* there are two gas particle deletion criteria:
-	   
-       1) in pstFormStars: gas particles with mass less than
-       stfm->dMinGasMass are marked for deletion
-	   
-       2) in DeleteGas (see smoothfcn.c): gas particles with 
-       mass less than dMinMassFrac of the average mass of neighbouring
-       gas particles are also marked for deletion 
-	   
-       - eh, Feb 7/01*/
+        msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, 
+            &dTotFe, &dTotOx, &dTotEnergy, "Form Stars");
+        
+        msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
+          /* Only worth the trouble if you're deleting the gas particles
+            * as described in method 2 below.  Does not scale well otherwise.
+            * msrDomainDecomp(msr, 0, 1);
+            */
+        msrBuildTree(msr,1,dTotMass,1);
+        pstFormStars(msr->pst, &in, sizeof(in), &outFS, NULL);
+        if (msr->param.bVDetails)
+                    printf("%d Stars formed with mass %g, %d gas deleted\n",
+                               outFS.nFormed, outFS.dMassFormed, outFS.nDeleted);
+        /* there are two gas particle deletion criteria:
+               
+           1) in pstFormStars: gas particles with mass less than
+           stfm->dMinGasMass are marked for deletion
+               
+           2) in DeleteGas (see smoothfcn.c): gas particles with 
+           mass less than dMinMassFrac of the average mass of neighbouring
+           gas particles are also marked for deletion 
+               
+           - eh, Feb 7/01*/
 
-    /*
-     * Find low mass gas particles and mark them for deletion.
-	 * For better numerical treatment
-    if (msr->param.bVDetails) printf("Delete Gas ...\n");
-    msrSmooth(msr, dTime, SMX_DELETE_GAS, 0);
-     */
-    
-    /*
-     * Record star formation events XXX - not done.
-     * NB.  At the moment each star is a star formation event.
-     */
-      
-    /*
-     * Distribute mass, and metals of deleted gas particles.
-     */
-    if (msr->param.bVDetails) printf("Distribute Deleted Gas ...\n");
-    msrActiveType(msr, TYPE_DELETED, TYPE_SMOOTHACTIVE);
-    msrSmooth(msr, dTime, SMX_DIST_DELETED_GAS, 1);
-    /*
-     * adjust particle numbers
-     */
-    msrAddDelParticles(msr);
-    msrMassCheck(msr, dTotMass, "Form stars: after particle adjustment");
+        /*
+         * Find low mass gas particles and mark them for deletion.
+             * For better numerical treatment
+        if (msr->param.bVDetails) printf("Delete Gas ...\n");
+        msrSmooth(msr, dTime, SMX_DELETE_GAS, 0);
+         */
+        
+        /*
+         * Record star formation events XXX - not done.
+         * NB.  At the moment each star is a star formation event.
+         */
+          
+        /*
+         * Distribute mass, and metals of deleted gas particles.
+         */
+        if (msr->param.bVDetails) printf("Distribute Deleted Gas ...\n");
+        msrActiveType(msr, TYPE_DELETED, TYPE_SMOOTHACTIVE);
+        msrSmooth(msr, dTime, SMX_DIST_DELETED_GAS, 1);
+        /*
+         * adjust particle numbers
+         */
+        msrAddDelParticles(msr);
+        msrMassCheck(msr, dTotMass, "Form stars: after particle adjustment");
 
-	dsec = msrTime() - sec;
-	printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
-
+            dsec = msrTime() - sec;
+            printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
+        }
     /*
      * Calculate energy of SN for any stars for the next timestep.  This
      * requires looking at past star forming events.  Also calculate
      * mass loss.
      */
+     
     if(msr->param.bFeedBack) {
+        inFB.dTime = dTime;
+        inFB.dDelta = dDelta;
+        inFB.fb  = *msr->param.fb;
+        inFB.sn  = *msr->param.sn;
 		if (msr->param.bVDetails) printf("Calculate Feedback ...\n");
 		sec = msrTime();
 		pstFeedback(msr->pst, &inFB, sizeof(inFB),

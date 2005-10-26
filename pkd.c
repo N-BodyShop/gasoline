@@ -2999,20 +2999,17 @@ void pkdHernquistSpheroid(PKD pkd)
 	}
 
 
-void pkdNFWSpheroid(PKD pkd)
+void pkdNFWSpheroid(PKD pkd, double M_200, double r_200, double c, double dSoft)
 {
 	PARTICLE *p;
 	int i,n;
-
-	const double M_200 = 5.379e-6;	/* Units 1e12 Solar masses */
-	const double r_200 = .00153;       /* Units kpc */
+        /* M_200, r_200, c, and dSoft are now set in param file as
+         * dNFWm200, dNFWr200, dNFWconc, and dNFWsoft */
 	const double G = 1;
 	/* Assuming G = 1 (this sets a timescale) */
 	/* TimeUnit = sqrt(kpc^3/(G*1e12 Msun)) = 1.1285945e+09 yr */
         /* Vunit = 2073.8081 km/s */
 
-        const double c = 20.648; /* NFW concentration (cf. Lucio) */
-	const double dSoft = 5.379e-6; /* kpc */
 	const double eps = c*dSoft/r_200; 
 
 	/* r=r_200 (x=1, cx=c), M=M_200 */
