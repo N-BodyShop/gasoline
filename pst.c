@@ -748,7 +748,7 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 #define MAX_ITTR	64
 #define EPS_BOUND	0.01
 #define MASS_EPS	1e-11
-#define PARANOID_CHECK
+/* #define PARANOID_CHECK */
 
 void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoSplitDimFind)
 {
