@@ -1414,6 +1414,7 @@ void pkdSwapAll(PKD pkd, int idSwap)
     size_t nOutBytes,nSndBytes,nRcvBytes;
     int i;
     int iBuf;
+    int bGood;
     
     /*
      ** Move particles to High memory.
@@ -1424,8 +1425,9 @@ void pkdSwapAll(PKD pkd, int idSwap)
 
     nBuf = pkdFreeStore(pkd)*sizeof(PARTICLE);
     nOutBytes = pkdLocal(pkd)*sizeof(PARTICLE);
-    mdlSwap(pkd->mdl,idSwap,nBuf,&pkd->pStore[0], nOutBytes,
+    bGood = mdlSwap(pkd->mdl,idSwap,nBuf,&pkd->pStore[0], nOutBytes,
 			&nSndBytes, &nRcvBytes);
+    mdlassert(pkd->mdl,bGood);
     mdlassert(pkd->mdl,nSndBytes/sizeof(PARTICLE) == pkdLocal(pkd));
     pkd->nLocal = nRcvBytes/sizeof(PARTICLE);
     }
@@ -2673,12 +2675,14 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 			c[i].iUpper = UPPER(i);
 			c[LOWER(i)].bnd = c[i].bnd;
 			c[LOWER(i)].bnd.fMax[d] = c[i].fSplit;
-			c[LOWER(i)].bndBall = c[i].bndBall; /* too big: fixed in pkdUpPass */
+			/* Unknown here; fix in pkdUpPass
+			c[LOWER(i)].bndBall = c[i].bndBall; */
 			c[LOWER(i)].pLower = c[i].pLower;
 			c[LOWER(i)].pUpper = m;
 			c[UPPER(i)].bnd = c[i].bnd;
 			c[UPPER(i)].bnd.fMin[d] = c[i].fSplit;
-			c[UPPER(i)].bndBall = c[i].bndBall; /* too big: fixed in pkdUpPass */
+			/* Unknown here; fix in pkdUpPass
+			c[UPPER(i)].bndBall = c[i].bndBall; */
 			c[UPPER(i)].pLower = m+1;
 			c[UPPER(i)].pUpper = c[i].pUpper;
 			diff = (m-c[i].pLower+1)-(c[i].pUpper-m);
