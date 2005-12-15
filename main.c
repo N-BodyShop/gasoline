@@ -114,6 +114,7 @@ int main(int argc,char **argv)
 	 */
 	if(!msr->param.bOverwrite && msrFindCheck(msr)) {
 		dTime = msrReadCheck(msr,&iStep);
+		msr->param.bRestart = 1;
 #ifdef COLLISIONS
 		if (msr->param.nSmooth > msr->N) {
 			msr->param.nSmooth = msr->N;
@@ -212,16 +213,13 @@ int main(int argc,char **argv)
 		if (msrSteps(msr) == 0) goto CheckForDiagnosticOutput;
 		goto Restart;
 		}
-	/*
-	 ** Establish safety lock.
-	 */
-	/* Lockfile not used with automatic checkpoint finding
-	if (!msrGetLock(msr)) {
+	if(msr->param.bRestart) {
+	    printf("Error: restart requested and no checkpoint file found\n");
 	    msrFinish(msr);
 	    mdlFinish(mdl);
 	    return 1;
 	    }
-	*/
+	    
 	/*
 	 ** Read in the binary file, this may set the number of timesteps or
 	 ** the size of the timestep when the zto parameter is used.
