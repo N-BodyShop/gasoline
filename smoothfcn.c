@@ -2318,9 +2318,14 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         if (fNorm_u ==0.0){
             r2 = nnList[imind].fDist2*ih2;            
             KERNEL(rs,r2);
+	    /*
+	     * N.B. This will be NEGATIVE, but that's OK since it will
+	     * cancel out down below.
+	     */
             fNorm_u = nnList[imind].pPart->fMass*rs;
             }
 	 }
+	assert(fNorm_u != 0.0);
         fNorm_u = 1./fNorm_u;
 counter=0;
 	for (i=0;i<nSmooth;++i) {
