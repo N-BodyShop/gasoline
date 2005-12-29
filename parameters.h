@@ -20,6 +20,11 @@ struct parameters {
 	int bVStep;
 	int bVRungStat;
 	int bVDetails;
+        int bLogTiming;
+        int bLogTimingSubStep;
+        int bLogTimingStep;
+        int bLogTimingSubStepTot;
+        int bLogTimingStepTot;
 	int bPeriodic;
 	int bRestart;
 	int bParaRead;

@@ -24,6 +24,22 @@
 #define MSR_TREE_QQ			3
 #endif
 
+enum TimingType {
+    TIMING_Total,
+    TIMING_DD, TIMING_SPHTree, TIMING_GravTree, TIMING_Gravity,
+    TIMING_Smooth, TIMING_ReSmooth, TIMING_MarkSmooth,
+    TIMING_Drift, TIMING_Kick,
+    TIMING_Cool, TIMING_Sink, TIMING_StarForm, TIMING_Feedback, TIMING_DumpFrame,
+    TIMING_N
+    }; 
+
+struct RungData {
+    long long nPart, nPartMin, nPartMax, nUses;
+    long long nPartTot, nPartMinTot, nPartMaxTot, nUsesTot;
+    long long nCall[TIMING_N]; /* consistency check */
+    double t[TIMING_N], tTot[TIMING_N];
+    };
+
 typedef struct msrContext {
 	PRM prm;
 	PST pst;
@@ -42,7 +58,7 @@ typedef struct msrContext {
 	int nDark;
 	int nGas;
 	int nStar;
-    int nSink;
+        int nSink;
 	int nMaxOrder;		/* Order number of last particle */
 	int nMaxOrderGas;
 	int nMaxOrderDark;
@@ -98,6 +114,8 @@ typedef struct msrContext {
         int nActive;
         int nTreeActive;
         int nSmoothActive;
+        int iRungStat;
+        struct RungData *RungStat;
 	} * MSR;
 
 void msrInitialize(MSR *,MDL,int,char **);
@@ -277,5 +295,40 @@ void msrAggsDeactivate(MSR msr);
 #endif
 void msrFormStars(MSR msr, double dTime, double dDelta);
 void msrSimpleStarForm(MSR msr, double dTime, double dDelta);
+
+FILE *LogTimingInit( MSR msr, char *fileflag );
+void LogTimingZeroCounters( MSR msr );
+void LogTimingOutput( MSR msr, FILE *fpLogTiming, double dTime, int bAll );
+void LogTimingFinish( MSR msr, FILE *fpLogTiming, double dTime );
+void LogTimingSetN( MSR msr, int n );
+void LogTimingSetRung ( MSR msr, int iRung );
+
+void LOGTIMINGUPDATE( double, int );
+#ifdef TIMINGDEBUG
+#define LOGTIMINGUPDATE( __dsec, __timingtype) \
+     if (msr->param.bLogTiming) { \
+       char *TimingTypeName[]={ "Total", "DD", "SPHTree", "GravTree", "Gravity",  "Smooth", "ReSmooth", "MarkSmooth",   "Drift", "Kick",  "Cool", "Sink", "StarForm", "Feedback", "DumpFrame",   "N" }; \
+      msr->RungStat[msr->iRungStat].nCall[__timingtype]++; \
+      msr->RungStat[msr->iRungStat].t[__timingtype]+=__dsec; \
+      printf("Timing: rung %d: type %s: ncall %lld dsec %f\n",msr->iRungStat,TimingTypeName[__timingtype],msr->RungStat[msr->iRungStat].nCall[__timingtype],msr->RungStat[msr->iRungStat].t[__timingtype]); }
+
+#else
+#define LOGTIMINGUPDATE( __dsec, __timingtype) \
+     if (msr->param.bLogTiming) { \
+      msr->RungStat[msr->iRungStat].nCall[__timingtype]++; \
+      msr->RungStat[msr->iRungStat].t[__timingtype]+=__dsec; }
+
+#endif
+     
+#define LOGTIME( __func, __message, __timingtype ) \
+   if (msr->param.bVDetails || msr->param.bLogTiming) { \
+     double __sec, __dsec; \
+     __sec = msrTime(); \
+     (__func); \
+     __dsec = msrTime()-__sec; \
+     if (msr->param.bVDetails) printf("%s, Wallclock: %f sec\n",__message,__dsec); \
+     LOGTIMINGUPDATE( __dsec, __timingtype); \
+     } \
+   else (__func); 
 
 #endif

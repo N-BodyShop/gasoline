@@ -1499,9 +1499,9 @@ void dfRenderImageOld( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 		int hint;
 		
 		br0=1;
-		if (in->bColMassWeight) br0=p[i].fMass;
 
 		for (i=0;i<pkd->nLocal;i++) {
+		        if (in->bColMassWeight) br0=p[i].fMass;
 			if (TYPETest( &p[i], TYPE_GAS )) {
 				if (p[i].fMass < in->dMassGasMin || p[i].fMass > in->dMassGasMax) continue;
 				if (in->bGasSph) h = sqrt(p[i].fBall2)*0.5*in->dGasSoftMul;

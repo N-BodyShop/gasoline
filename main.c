@@ -47,6 +47,7 @@ int main(int argc,char **argv)
 	MDL mdl;
 	MSR msr;
 	FILE *fpLog = NULL;
+	FILE *fpLogTiming = NULL;
 	char achFile[256]; /*DEBUG use MAXPATHLEN here (& elsewhere)? -- DCR*/
 	double dTime;
 	double E=0,T=0,U=0,Eth=0,L[3]={0,0,0};
@@ -148,7 +149,11 @@ int main(int argc,char **argv)
 			for (i=0;i<argc;++i) fprintf(fpLog,"%s ",argv[i]);
 			fprintf(fpLog,"\n");
 			msrLogParams(msr,fpLog);
-			}
+			/* Timing data, if requested */
+			if ((fpLogTiming = LogTimingInit( msr, "a" ))) {
+			    fprintf(fpLogTiming,"# RESTART (dTime = %g)\n# ",dTime);
+			    }
+		        }
 #ifdef COLLISIONS
 		if (msr->param.iCollLogOption != COLL_LOG_NONE) {
 			FILE *fp = fopen(msr->param.achCollLog,"r");
@@ -300,6 +305,8 @@ int main(int argc,char **argv)
 			for (i=0;i<argc;++i) fprintf(fpLog,"%s ",argv[i]);
 			fprintf(fpLog,"\n");
 			msrLogParams(msr,fpLog);
+			/* Timing data, if requested */
+			fpLogTiming = LogTimingInit( msr, "w" );
 			}
 		/*
 		 ** Build tree, activating all particles first (just in case).
@@ -326,6 +333,7 @@ int main(int argc,char **argv)
 							   E,T,U,Eth,L[0],L[1],L[2],iSec,dWMax,dIMax,dEMax,
 							   dMultiEff);
 				}
+			/* LogTimingOutput( msr, fpLogTiming, dTime, 0 ); */
 			}
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
@@ -336,6 +344,7 @@ int main(int argc,char **argv)
 		 */
 		msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep, 0);
 
+		LogTimingZeroCounters( msr );
 		for (iStep=msr->param.iStartStep+1;iStep<=msrSteps(msr);++iStep) {
 			if (msrComove(msr)) {
 				msrSwitchTheta(msr,dTime);
@@ -372,8 +381,9 @@ int main(int argc,char **argv)
 								   "%.16e %li %e %e %e %e\n",dTime,
 								   1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
 								   E,T,U,Eth,L[0],L[1],L[2],lSec,dWMax,dIMax,
-								   dEMax,dMultiEff);
-					}
+						                   dEMax,dMultiEff);
+				        }
+				LogTimingOutput( msr, fpLogTiming, dTime, 0 );
 				}
 			else {
 				lSec = time(0);
@@ -408,7 +418,9 @@ int main(int argc,char **argv)
 								   1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
 								   E,T,U,Eth,L[0],L[1],L[2],time(0)-lSec,dWMax,
 								   dIMax,dEMax,dMultiEff);
+
 					}
+				LogTimingOutput( msr, fpLogTiming, dTime, 0 );
 				lSec = time(0) - lSec;
 				}
 			/*
@@ -618,7 +630,10 @@ int main(int argc,char **argv)
 				}
 			if (iStop) break;
 			}
-		if (msrLogInterval(msr)) (void) fclose(fpLog);
+		if (msrLogInterval(msr)) {
+		    (void) fclose(fpLog);
+		    LogTimingFinish( msr, fpLogTiming, dTime );
+		    }
 		if (msr->param.bVStart) printf("Integration complete\n");
 		}
 	else {

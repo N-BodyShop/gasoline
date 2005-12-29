@@ -383,6 +383,21 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bVDetails = 0;
 	prmAddParam(msr->prm,"bVDetails",0,&msr->param.bVDetails,sizeof(int),
 				"vdetails","enable/disable verbose details = +vdetails");
+	msr->param.bLogTiming = 0;
+	prmAddParam(msr->prm,"bLogTiming",0,&msr->param.bLogTiming,sizeof(int),
+				"logtiming","enable/disable log of timing data = +timing");
+	msr->param.bLogTimingStep = 0;
+	prmAddParam(msr->prm,"bLogTimingStep",0,&msr->param.bLogTimingStep,sizeof(int),
+				"logtimingstep","log of timing data per step = +timings");
+	msr->param.bLogTimingSubStep = 0;
+	prmAddParam(msr->prm,"bLogTimingSubStep",0,&msr->param.bLogTimingSubStep,sizeof(int),
+				"logtimingstep","log of timing data per sub step = +timingss");
+	msr->param.bLogTimingStepTot = 0;
+	prmAddParam(msr->prm,"bLogTimingStepTot",0,&msr->param.bLogTimingStepTot,sizeof(int),
+				"logtimingstep","log of total timing data per step = +timingst");
+	msr->param.bLogTimingSubStepTot = 0;
+	prmAddParam(msr->prm,"bLogTimingSubStepTot",0,&msr->param.bLogTimingSubStepTot,sizeof(int),
+				"logtimingstep","log of total timing data per substep = +timingsst");
 	nDigits = 5;
 	prmAddParam(msr->prm,"nDigits",1,&nDigits,sizeof(int),"nd",
 				"<number of digits to use in output filenames> = 5");
@@ -1866,6 +1881,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dDumpFrameStep: %g",msr->param.dDumpFrameStep);
 	fprintf(fp," dDumpFrameTime: %g",msr->param.dDumpFrameTime);
 	fprintf(fp," iLogInterval: %d",msr->param.iLogInterval);
+	fprintf(fp," bLogTiming: %d (%d%d%d%d)",msr->param.bLogTiming,msr->param.bLogTimingSubStep,msr->param.bLogTimingStep,msr->param.bLogTimingSubStepTot,msr->param.bLogTimingStepTot);
 	fprintf(fp,"\n# iCheckInterval: %d",msr->param.iCheckInterval);
 	fprintf(fp," iOrder: %d",msr->param.iOrder);
 	fprintf(fp," iEwOrder: %d",msr->param.iEwOrder);
@@ -2229,6 +2245,7 @@ msrCheckForStop(MSR msr)
 	 */
 
 	static char achFile[256];
+	static char achFile2[256];
 	static int first_call = 1;
 
 	FILE *fp = NULL;
@@ -2237,12 +2254,20 @@ msrCheckForStop(MSR msr)
 		char achTmp[256];
 		_msrMakePath(msr->param.achDataSubPath,STOPFILE,achTmp);
 		_msrMakePath(msr->lcl.pszDataPath,achTmp,achFile);
+                /* same as for a log file -- does it matter? */
+		sprintf(achFile2,"%s.%s",msrOutName(msr),STOPFILE);
 		first_call = 0;
 		}
 	if ((fp = fopen(achFile,"r"))) {
 		(void) printf("User interrupt detected.\n");
 		(void) fclose(fp);
 		(void) unlink(achFile);
+		return 1;
+		}
+	if ((fp = fopen(achFile2,"r"))) {
+		(void) printf("User interrupt2 detected.\n");
+		(void) fclose(fp);
+		(void) unlink(achFile2);
 		return 1;
 		}
 	return 0;
@@ -2871,21 +2896,9 @@ void msrDomainDecomp(MSR msr, int iRung, int bGreater)
 		pstRungDDWeight(msr->pst,&inRDD,sizeof(struct inRungDDWeight),NULL,NULL);
 		}
 
-	if (msr->param.bVDetails) {
-		double sec,dsec;
-		printf("nActive %d nTreeActive %d nSmoothActive %d\n",msr->nActive,msr->nTreeActive,msr->nSmoothActive);
-		printf("Domain Decomposition...\n");
-		sec = msrTime();
-
-		pstDomainDecomp(msr->pst,&in,sizeof(in),NULL,NULL);
-		msr->bDoneDomainDecomp = 1; 
-		dsec = msrTime() - sec;
-		printf("Domain Decomposition complete, Wallclock: %f secs\n\n",dsec);
-		}
-	else {
-		pstDomainDecomp(msr->pst,&in,sizeof(in),NULL,NULL);
-		msr->bDoneDomainDecomp = 1; 
-		}
+	if (msr->param.bVDetails) printf("DD: nActive %d nTreeActive %d nSmoothActive %d\n",msr->nActive,msr->nTreeActive,msr->nSmoothActive);
+	LOGTIME( pstDomainDecomp(msr->pst,&in,sizeof(in),NULL,NULL), "Domain Decomposition", TIMING_DD );
+	msr->bDoneDomainDecomp = 1; 
 
 	msr->iLastRungDomainDecomp = iRungDD;
 	if (iRungDD < iRung) {
@@ -2906,7 +2919,7 @@ void msrBuildTree(MSR msr,int bActiveOnly, double dMass,int bSmooth)
 	if (msr->param.bVDetails) printf("Building local trees...\n");
 
 	/*
-	 ** First make sure the particles are in Active/Inactive order.
+	 ** First make sure the particles are in (Tree) Active/Inactive order.
 	 */
 	msrActiveTypeOrder(msr, TYPE_ACTIVE|TYPE_TREEACTIVE );
 	in.nBucket = msr->param.nBucket;
@@ -2914,11 +2927,15 @@ void msrBuildTree(MSR msr,int bActiveOnly, double dMass,int bSmooth)
 	in.iOrder = (msr->param.iOrder >= msr->param.iEwOrder)?
 		msr->param.iOrder:msr->param.iEwOrder;
 	in.dCrit = msr->dCrit;
+
+	in.bActiveOnly = bActiveOnly;
+	in.bTreeActiveOnly = bActiveOnly;
 	if (bSmooth) {
 		in.bBinary = 0;
 		in.bGravity = 0;
 		msr->iTreeType = MSR_TREE_DENSITY;
 		msr->bGravityTree = 0;
+		LOGTIME( pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum), "Tree built", TIMING_SPHTree );
 		}
 	else {
 		in.bBinary = msr->param.bBinary;
@@ -2930,21 +2947,10 @@ void msrBuildTree(MSR msr,int bActiveOnly, double dMass,int bSmooth)
 		else {
 			msr->iTreeType = MSR_TREE_DENSITY;
 			}
+		LOGTIME( pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum), "Tree built", TIMING_GravTree );
 		}
-	in.bActiveOnly = bActiveOnly;
-	in.bTreeActiveOnly = bActiveOnly;
-	if (msr->param.bVDetails) {
-		double sec,dsec;
-		sec = msrTime();
-		pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
-		msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
-		dsec = msrTime() - sec;
-		printf("Tree built, Wallclock: %f secs\n\n",dsec);
-		}
-	else {
-		pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
-		msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
-		}
+	msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
+
 	nCell = 1<<(1+(int)ceil(log((double)msr->nThreads)/log(2.0)));
 	pkdn = malloc(nCell*sizeof(KDN));
 	assert(pkdn != NULL);
@@ -3276,32 +3282,26 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.dCentMass = 0; /* to disable Hill sphere checks */
 #endif
 	if (msr->param.bVStep) {
-		struct outSmooth out;
-		double sec,dsec;
-
-		printf("Smoothing...\n");
-		sec = msrTime();
-		pstSmooth(msr->pst,&in,sizeof(in),&out,NULL);
-		dsec = msrTime() - sec;
-		printf("Smooth Calculated, Wallclock: %f secs\n\n",dsec);
-		if (msr->nThreads > 1) {
-		    double iP = 1.0/msr->nThreads;
-		    printf("Particle Cache Statistics (average per processor):\n");
-		    printf("    Accesses:    %10g\n",out.dpASum*iP);
-		    printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
-		    printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
-		    printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
-		    printf("Cell Cache Statistics (average per processor):\n");
-		    printf("    Accesses:    %10g\n",out.dcASum*iP);
-		    printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
-		    printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
-		    printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
-		    printf("\n");
-		    }
+	    struct outSmooth out;
+	    LOGTIME( pstSmooth(msr->pst,&in,sizeof(in),&out,NULL), "Smooth Calculated", TIMING_Smooth );
+	    if (msr->nThreads > 1) {
+		double iP = 1.0/msr->nThreads;
+		printf("Particle Cache Statistics (average per processor):\n");
+		printf("    Accesses:    %10g\n",out.dpASum*iP);
+		printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
+		printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
+		printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
+		printf("Cell Cache Statistics (average per processor):\n");
+		printf("    Accesses:    %10g\n",out.dcASum*iP);
+		printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
+		printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
+		printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
+		printf("\n");
 		}
+	    }
 	else {
-		pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
-		}
+	    LOGTIME( pstSmooth(msr->pst,&in,sizeof(in),NULL,NULL), "Smooth Calculated", TIMING_Smooth );
+	    }
 	}
 
 
@@ -3346,13 +3346,8 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 #endif
 	if (msr->param.bVStep) {
 		struct outSmooth out;
-		double sec,dsec;
 
-		printf("ReSmoothing...\n");
-		sec = msrTime();
-		pstReSmooth(msr->pst,&in,sizeof(in),&out,NULL);
-		dsec = msrTime() - sec;
-		printf("ReSmooth Calculated, Wallclock: %f secs\n\n",dsec);
+		LOGTIME( pstReSmooth(msr->pst,&in,sizeof(in),&out,NULL), "ReSmooth Calculated", TIMING_ReSmooth );
 		if (msr->nThreads > 1) {
 		    double iP = 1.0/msr->nThreads;
 		    printf("Particle Cache Statistics (average per processor):\n");
@@ -3369,7 +3364,7 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 		    }
 		}
 	else {
-		pstReSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
+		LOGTIME( pstReSmooth(msr->pst,&in,sizeof(in),NULL,NULL), "ReSmooth Calculated", TIMING_ReSmooth );
 		}
 	}
 
@@ -3403,17 +3398,7 @@ void msrMarkSmooth(MSR msr,double dTime,int bSymmetric,int iMarkType)
 	in.smf.bCannonical = msr->param.bCannonical;
 	in.smf.bGrowSmoothList = 0;
 #endif
-	if (msr->param.bVStep) {
-		double sec,dsec;
-		printf("MarkSmoothing...\n");
-		sec = msrTime();
-		pstMarkSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
-		dsec = msrTime() - sec;
-		printf("MarkSmooth Calculated, Wallclock: %f secs\n\n",dsec);
-		}
-	else {
-		pstMarkSmooth(msr->pst,&in,sizeof(in),NULL,NULL);
-		}
+	LOGTIME( pstMarkSmooth(msr->pst,&in,sizeof(in),NULL,NULL), "MarkSmooth Calculated", TIMING_MarkSmooth );
 	}
 
 void msrUpdateSoft(MSR msr,double dTime) {
@@ -3509,6 +3494,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		sec = msrTime();
 		pstGravity(msr->pst,&in,sizeof(in),&out,&iDum);
 		dsec = msrTime() - sec;
+		LOGTIMINGUPDATE( dsec, TIMING_Gravity );
 #ifdef SPECIAL_PARTICLES
 		if (msr->param.nSpecial) {
 			/*
@@ -3907,9 +3893,10 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	if (dDelta != 0.0) {
 		struct outKick out;
 		int nout;
-	    pstKickVpred(msr->pst,&invpr,sizeof(invpr),&out,&nout);
+		pstKickVpred(msr->pst,&invpr,sizeof(invpr),&out,&nout);
 		if (nout) printf("Drift (Vpred): Avg Wallclock %f, Max Wallclock %f\n",
 						 out.SumTime/out.nSum,out.MaxTime);
+		LOGTIMINGUPDATE( out.MaxTime, TIMING_Drift );
 	    }
 #endif /* NEED_VPRED */
 
@@ -4040,6 +4027,7 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
 	printf("Kick: Avg Wallclock %f, Max Wallclock %f\n",
 	       out.SumTime/out.nSum,out.MaxTime);
+	LOGTIMINGUPDATE( out.MaxTime, TIMING_Kick );
 	}
 
 /*
@@ -4109,9 +4097,11 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 #ifdef AGGS
 	msrAggsActivate(msr);
 #endif
-	if (msr->param.bVDetails)
+	if (msr->param.bVDetails) 
 		printf("KickOpen: Avg Wallclock %f, Max Wallclock %f\n",
 			   out.SumTime/out.nSum,out.MaxTime);
+	LOGTIMINGUPDATE( out.MaxTime, TIMING_Kick );
+
 #ifdef COLLISIONS
 	/*
 	 ** This would be better as an external potential call, but usually
@@ -4201,6 +4191,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 	if (msr->param.bVDetails)
 		printf("KickClose: Avg Wallclock %f, Max Wallclock %f\n",
 			   out.SumTime/out.nSum,out.MaxTime);
+	LOGTIMINGUPDATE( out.MaxTime, TIMING_Kick );
 #ifdef COLLISIONS
 	{
 	struct inKickUnifGrav inkug;
@@ -5619,6 +5610,7 @@ void msrTopStepKDK(MSR msr,
     double dMass = -1.0;
     int nActive;
 
+    LogTimingSetRung( msr, iKickRung );
     if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
 		if (msr->param.bVDetails) printf("Adjust, iRung: %d\n",iRung);
 		msrActiveRung(msr, iRung, 1);
@@ -5631,7 +5623,7 @@ void msrTopStepKDK(MSR msr,
 		    msrAccelStep(msr,dTime);
 			}
 		if (msr->param.bDensityStep) {
-			msrDomainDecomp(msr,iRung,1);
+		    msrDomainDecomp(msr,iRung,1);
 		    msrActiveRung(msr,iRung,1);
 		    msrBuildTree(msr,0,dMass,1);
 		    msrDensityStep(msr,dTime);
@@ -5684,6 +5676,8 @@ void msrTopStepKDK(MSR msr,
 		 */
 		msrTopStepKDK(msr,dStep,dTime,0.5*dDelta,iRung+1,iRung+1,0,
 					  pdActiveSum,pdWMax,pdIMax,pdEMax,piSec);
+                /* Call to TopStep can change the rung setting so redo Set Rung */
+		LogTimingSetRung( msr, iKickRung );
 		dStep += 1.0/(2 << iRung);
 		dTime += 0.5*dDelta;
 		msrActiveRung(msr,iRung,0);
@@ -5692,6 +5686,7 @@ void msrTopStepKDK(MSR msr,
 #endif
 		msrTopStepKDK(msr,dStep,dTime,0.5*dDelta,iRung+1,iKickRung,1,
 					  pdActiveSum,pdWMax,pdIMax,pdEMax,piSec);
+		LogTimingSetRung( msr, iKickRung );
 		}
     else {
 		/* This Drifts everybody */
@@ -5734,6 +5729,7 @@ void msrTopStepKDK(MSR msr,
 		 */
                 msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 		msrActiveMaskRung(msr,TYPE_ACTIVE,iKickRung,1);
+		LogTimingSetN( msr, msr->nActive );
 
 		if (msr->nActive) {
 			msrDomainDecomp(msr,iKickRung,1);
@@ -5956,7 +5952,7 @@ msrDoSinks(MSR msr)
 	sec1 = msrTime();
 	dsec = sec1 - sec;
 	printf("Sinks Done (%d accreted) Calculated, Wallclock: %f secs\n\n",nAccreted,dsec);
-
+	LOGTIMINGUPDATE( dsec, TIMING_Sink );
     }
 
 /* In principle this code is general for any search but for now
@@ -5992,6 +5988,7 @@ msrCoolUsingParticleList(MSR msr )
 	sec1 = msrTime();
 	dsec = sec1 - sec;
 	printf("Cooling Radii Calculated (%d Stars), Wallclock: %f secs\n\n",list.n,dsec);
+	LOGTIMINGUPDATE( dsec, TIMING_Cool );
 	
 #endif
     }
@@ -6114,6 +6111,7 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateY)
 
 	printf("UpdateUdot: Avg Wallclock %f, Max Wallclock %f\n",
 	       out.SumTime/out.nSum,out.MaxTime);
+	LOGTIMINGUPDATE( out.MaxTime, TIMING_Cool );
 	}
 
 void msrUpdateShockTracker(MSR msr,double dDelta)
@@ -6325,6 +6323,7 @@ void msrDumpFrame(MSR msr, double dTime, double dStep)
 		
 		printf("DF Dumped Voxel %i at %g (Wallclock: Render %f tot %f secs).\n",
 			   msr->df->nFrame-1,dTime,dsec1,dsec2);
+		LOGTIMINGUPDATE( dsec2, TIMING_DumpFrame );
 #endif
 		}
 	else {
@@ -6361,7 +6360,8 @@ void msrDumpFrame(MSR msr, double dTime, double dStep)
 		
 		printf("DF Dumped Image %i at %g (Wallclock: Render %f tot %f secs).\n",
 			   msr->df->nFrame-1,dTime,dsec1,dsec2);
-		
+		LOGTIMINGUPDATE( dsec2, TIMING_DumpFrame );
+
 		dfFreeImage( Image );
 		}
 	}
@@ -6444,6 +6444,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 
             dsec = msrTime() - sec;
             printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
+	    LOGTIMINGUPDATE( dsec, TIMING_StarForm );
         }
     /*
      * Calculate energy of SN for any stars for the next timestep.  This
@@ -6494,6 +6495,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 
 		dsec = msrTime() - sec;
 		printf("Feedback Calculated, Wallclock: %f secs\n\n",dsec);
+		LOGTIMINGUPDATE( dsec, TIMING_Feedback );
 		}
 
 #endif
@@ -6550,7 +6552,8 @@ void msrSimpleStarForm(MSR msr, double dTime, double dDelta)
 
 	sec1 = msrTime();
 	dsec = sec1 - sec;
-	printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
+	printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec)
+	LOGTIMINGUPDATE( dsec, TIMING_StarForm );
 
 	if (msr->param.bFeedBack && out.nFormed) {
 		/* Build a tree to distribute energy from SN, if nFormed > 0  */
@@ -6561,6 +6564,7 @@ void msrSimpleStarForm(MSR msr, double dTime, double dDelta)
 		msrSmooth(msr, dTime, SMX_SIMPLESF_FEEDBACK, 1);
 		dsec = msrTime() - sec1;
 		printf("Feedback Calculated, Wallclock: %f secs\n\n",dsec);
+		LOGTIMINGUPDATE( dsec, TIMING_Feedback );
 		}
 #endif
     }
@@ -6893,6 +6897,7 @@ msrPlanetsKDK(MSR msr,double dStep,double dTime,double dDelta,double *pdWMax,
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
 	printf("Kick: Avg Wallclock %f, Max Wallclock %f\n",
 	       out.SumTime/out.nSum,out.MaxTime);
+	LOGTIMINGUPDATE( out.MaxTime, TIMING_Kick );
 	if (msr->param.bVDetails) printf("Planets Drift\n");
 	msrPlanetsDrift(msr,dStep,dTime,dDelta);
 	dTime += 0.5*dDelta; /* not used */
@@ -6912,6 +6917,7 @@ msrPlanetsKDK(MSR msr,double dStep,double dTime,double dDelta,double *pdWMax,
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
 	printf("Kick: Avg Wallclock %f, Max Wallclock %f\n",
 	       out.SumTime/out.nSum,out.MaxTime);
+	LOGTIMINGUPDATE( out.MaxTime, TIMING_Kick );
 	}
 
 void
@@ -7422,6 +7428,7 @@ msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 	if (msr->param.bVDetails) {
 		printf("Domain Decomposition complete, Wallclock: %f secs\n\n",dsec);
 		}
+	LOGTIMINGUPDATE( dsec, TIMING_DD );
 	if (msr->param.bVDetails) printf("Building local trees...\n");
 	/*
 	 ** First make sure the particles are in Active/Inactive order.
@@ -7438,6 +7445,7 @@ msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 	if (msr->param.bVDetails) {
 		printf("Tree built, Wallclock: %f secs\n\n",dsec);
 		}
+	LOGTIMINGUPDATE( dsec, TIMING_GravTree );
 	nCell = 1<<(1+(int)ceil(log((double)msr->nThreads)/log(2.0)));
 	pkdn = malloc(nCell*sizeof(KDN));
 	assert(pkdn != NULL);
@@ -8080,3 +8088,210 @@ int msrSetTypeFromFile(MSR msr, char *file, int iSetMask)
 	
 	return out.nSet+out.nSetiGasOrder;
 	}
+
+FILE *LogTimingInit( MSR msr, char *fileflag )
+    {
+    char achFile[256];
+    FILE *fpLogTiming;
+    int i,j;
+    struct RungData *r;
+    
+    if (!msr->param.bLogTiming) return NULL;
+
+    sprintf(achFile,"%s.timing",msrOutName(msr));
+    fpLogTiming = fopen(achFile,fileflag);
+    assert(fpLogTiming != NULL);
+    setbuf(fpLogTiming,(char *) NULL); /* no buffering */
+
+    msr->iRungStat = 0;
+    msr->RungStat = (struct RungData *) malloc(sizeof(struct RungData)*msr->param.iMaxRung);
+    assert( msr->RungStat != NULL );
+
+    return fpLogTiming;
+    }
+
+void LogTimingZeroCounters( MSR msr ) 
+    {
+    int i,j;
+    struct RungData *r;
+
+    for (i=0;i<msr->param.iMaxRung;i++) {
+	r = &(msr->RungStat[i]);
+	r->nPart = 0;
+	r->nPartMin = 2*msr->N;
+	r->nPartMax = 0;
+	r->nUses = 0;
+	r->nPartTot = 0;
+	r->nPartMinTot = 2*msr->N;
+	r->nPartMaxTot = 0;
+	r->nUsesTot = 0;
+	for (j=0;j<TIMING_N;j++) {
+	    r->nCall[j] = 0;
+	    r->t[j] = 0;
+	    r->tTot[j] = 0;
+	    }
+	}
+    }
+
+void LogTimingSetRung ( MSR msr, int iRung )
+    {
+    msr->iRungStat = iRung;
+    printf("Timing: rung: %d set\n",msr->iRungStat);
+    }
+
+void LogTimingSetN( MSR msr, int n ) 
+    {
+    struct RungData *r;
+
+    r = &(msr->RungStat[msr->iRungStat]);
+    r->nPart += n;
+    r->nUses ++;
+    if (n < r->nPartMin) r->nPartMin = n;
+    if (n > r->nPartMax) r->nPartMax = n;
+    printf("Timing: rung: %d set n %d\n",msr->iRungStat,n);
+    }
+
+
+void LogTimingOutput( MSR msr, FILE *fpLogTiming, double dTime, int bAll )
+    {
+    int i,j,nStep;
+    double f,Stept[TIMING_N],SteptTot[TIMING_N];
+    struct RungData *r;
+    
+    if (!msr->param.bLogTiming) return;
+
+    /* Note: some entries (e.g. Total for now have zero for nCall! ) */
+#ifdef TIMINGDEBUG
+    printf("Timing: Output and Zero step timers\n");
+#endif
+
+    for (j=0;j<TIMING_N;j++) {
+	Stept[j] = 0;
+	SteptTot[j] = 0;
+	}
+
+    for (i=0;i<msr->param.iMaxRung;i++) {
+	r = &(msr->RungStat[i]);
+	r->t[0] = 0;
+	for (j=1;j<TIMING_N;j++) {
+	    r->t[0] += r->t[j];
+	    Stept[j] += r->t[j];
+	    }
+	Stept[0] += r->t[0];
+	}
+
+    for (i=0;i<msr->param.iMaxRung;i++) {
+	r = &(msr->RungStat[i]);
+	r->nPartTot += r->nPart;
+	if (r->nPartMin < r->nPartMinTot)  r->nPartMinTot = r->nPartMin;
+	if (r->nPartMax > r->nPartMaxTot)  r->nPartMaxTot = r->nPartMax;
+	r->nUsesTot += r->nUses;
+	for (j=0;j<TIMING_N;j++) {
+	    r->tTot[j] += r->t[j];
+	    SteptTot[j] += r->tTot[j];
+	    }
+	}
+
+    nStep = msr->RungStat[0].nUsesTot;
+    fprintf( fpLogTiming,"%d %e %e, %f %f\n",
+	     nStep,dTime,1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,Stept[0],SteptTot[0]/nStep);
+
+    fprintf( fpLogTiming,"STEP TOT    : " );
+    for (j=0;j<TIMING_N;j++) fprintf( fpLogTiming,"%f ",Stept[j] );
+    fprintf( fpLogTiming,"\n" );
+    if (bAll) {
+	fprintf( fpLogTiming,"STEP TOT AVG: " );
+	f = 1.0/nStep;
+	for (j=0;j<TIMING_N;j++) fprintf( fpLogTiming,"%f ",SteptTot[j]*f );
+	fprintf( fpLogTiming,"\n" );
+	}
+    
+    if (msr->param.bLogTimingSubStep) {
+	for (i=0;i<msr->param.iMaxRung;i++) {
+	    r = &(msr->RungStat[i]);
+	    if (r->nUses) {
+		f = 1.0/r->nUses;
+		fprintf( fpLogTiming,"%d: %lld, %f %lld %lld,   ", i,r->nUses, r->nPart*f, r->nPartMin, r->nPartMax);
+		for (j=0;j<TIMING_N;j++) fprintf( fpLogTiming,"%f ",r->t[j]*f );
+		fprintf( fpLogTiming,"\n");
+		}
+	    }
+	}
+    
+    if (msr->param.bLogTimingStep) {
+	for (i=0;i<msr->param.iMaxRung;i++) {
+	    r = &(msr->RungStat[i]);
+	    if (r->nUses) {
+		f = 1.0/r->nUses;
+		fprintf( fpLogTiming,"%d: %lld, %f %lld %lld,  S ", i,r->nUses, r->nPart*f, r->nPartMin, r->nPartMax);
+		for (j=0;j<TIMING_N;j++) fprintf( fpLogTiming,"%f ",r->t[j] );
+		fprintf( fpLogTiming,"\n");
+		}
+	    }
+	}
+
+    if (msr->param.bLogTimingSubStepTot || bAll) {
+	for (i=0;i<msr->param.iMaxRung;i++) {
+	    r = &(msr->RungStat[i]);
+	    if (r->nUsesTot) {
+		f = 1.0/r->nUsesTot;
+		fprintf( fpLogTiming,"%d: %lld, %f %lld %lld,  T ", i,r->nUsesTot, r->nPartTot*f, r->nPartMinTot, r->nPartMaxTot);
+		for (j=0;j<TIMING_N;j++) fprintf( fpLogTiming,"%f ",r->tTot[j]*f );
+		fprintf( fpLogTiming,"\n");
+		}
+	    }
+	}
+    
+    if (msr->param.bLogTimingStepTot || bAll) {
+	for (i=0;i<msr->param.iMaxRung;i++) {
+	    r = &(msr->RungStat[i]);
+	    if (r->nUsesTot) {
+		f = 1.0/r->nUsesTot;
+		fprintf( fpLogTiming,"%d: %lld, %f %lld %lld, ST ", i,r->nUsesTot, r->nPartTot*f, r->nPartMinTot, r->nPartMaxTot);
+		f = 1.0/nStep;
+		for (j=0;j<TIMING_N;j++) fprintf( fpLogTiming,"%f ",r->tTot[j]*f );
+		fprintf( fpLogTiming,"\n");
+		}
+	    }
+	}
+    
+
+    for (i=0;i<msr->param.iMaxRung;i++) {
+	r = &(msr->RungStat[i]);
+	r->nPart = 0;
+	r->nPartMin = 2*msr->N;
+	r->nPartMax = 0;
+	r->nUses = 0;
+	for (j=0;j<TIMING_N;j++) {
+	    r->t[j] = 0;
+	    }
+	}
+    }
+
+void LogTimingFinish( MSR msr, FILE *fpLogTiming, double dTime )
+    {
+    double f;
+    struct RungData *r;
+    int i,j;
+
+    if (!msr->param.bLogTiming) return;
+
+    fprintf( fpLogTiming,"Log Complete\n");
+    for (i=0;i<msr->param.iMaxRung;i++) {
+	r = &(msr->RungStat[i]);
+	if (r->nUsesTot) {
+	    f = 1.0/r->nUsesTot;
+	    fprintf( fpLogTiming,"%d: Calls/Use ", i );
+	    for (j=0;j<TIMING_N;j++) fprintf( fpLogTiming,"%f ",r->nCall[j]*f );
+	    fprintf( fpLogTiming,"\n");
+	    }
+	}
+    
+
+    /* Note this corrupts the Data for a final output but we are deallocating it */
+    LogTimingOutput( msr, fpLogTiming, dTime, 1 );
+
+    fclose(fpLogTiming);
+    
+    free( msr->RungStat );
+    }
