@@ -15,9 +15,13 @@ void MSInitialize(MSPARAM *pms)
     MSPARAM ms;
     
     struct MillerScaloContext initms = 
-	{ 	42.0,	-0.4, .1, /* parameters from Ap.J. Supp., 41,1979 */
+	{ 	0.5652,	-0.3, .08, /* parameters from A+A 315 105 Raiteri et al */
+		0.3029,	-1.2, 0.5,
+		0.3029,	-1.7, 1.0, 
+		100.0};
+/*	{ 	42.0,	-0.4, .1, /* parameters from Ap.J. Supp., 41,1979 /
 		42.0,	-1.5, 1.0,
-		240.0,	-2.3, 10.0, /*This is discontinuous, but is what */
+		240.0,	-2.3, 10.0, /*This is discontinuous, but is what /
 		100.0};		    /*they report in paper, s we leave it.*/
 
     ms = (MSPARAM) malloc(sizeof(struct MillerScaloContext));
@@ -107,6 +111,20 @@ double dMSCumMass(MSPARAM p, double mass)
     return dCumM;
     }
 
+double imf1to8Exp(MSPARAM p)
+{
+  if(p->m3 < 3.0) return p->b3;
+  else if(p->m2 < 3.0) return p->b2;
+  else return p->b1;
+}
+
+double imf1to8PreFactor(MSPARAM p)
+{
+  if(p->m3 < 3.0) return p->a3;
+  else if(p->m2 < 3.0) return p->a2;
+  else return p->a1;
+}
+
 #if 0
 int
 main(int argc, char **argv)
@@ -126,14 +144,14 @@ main(int argc, char **argv)
     dMassT1 = 3;
     dMassT2 = 8;
     imax = 101;
-/*    for (i = 0; i < imax; i++) {
+    for (i = 0; i < imax; i++) {
         dMass = dMassT1 + i*(dMassT2-dMassT1)/(float) imax;
         part = dMSIMFSec (MSparam, dMass);
         printf ("%g %g\n", dMass, part);
         sum += part*0.05;
     }
     printf ("sum = %g\n", sum);
-*/
+
     printf ("number SN Ia = %g\n", dNSNIa (MSparam, dMassT1, dMassT2));
     printf ("mass in SN Ia %g\n", dMSNIa (MSparam, dMassT1, dMassT2));
 

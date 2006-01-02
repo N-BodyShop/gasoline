@@ -6145,21 +6145,20 @@ void msrInitSph(MSR msr,double dTime)
 #ifndef NOCOOLING
 	switch (msr->param.iGasModel) {
 	case GASMODEL_COOLING:
-	    if(msr->param.bRestart)
-		break;		/* Already OK from checkpoint */
-		/*
-		* Get a consistent initial state where energy is consistent with 
-		* the initial density and input temperature and the ionization
-		* fraction is the consistent equilibrium state.
-		**/
-		in.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
-			msr->param.dMeanMolWeight;
-		a = csmTime2Exp(msr->param.csm,dTime);
-		in.z = 1/a - 1;
-		in.dTime = dTime;
-		pstInitEnergy(msr->pst, &in, sizeof(in), NULL, NULL);
-		break;
-		}
+	    if(msr->param.bRestart) break;  /* Already OK from checkpoint */
+            /*
+            * Get a consistent initial state where energy is consistent with 
+            * the initial density and input temperature and the ionization
+            * fraction is the consistent equilibrium state.
+            **/
+            in.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
+                    msr->param.dMeanMolWeight;
+            a = csmTime2Exp(msr->param.csm,dTime);
+            in.z = 1/a - 1;
+            in.dTime = dTime;
+            pstInitEnergy(msr->pst, &in, sizeof(in), NULL, NULL);
+            break;
+            }
 #endif
 
 	if (msrDoGas(msr)) {

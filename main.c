@@ -114,6 +114,7 @@ int main(int argc,char **argv)
 	 checkpoints exist.
 	 */
 	if(!msr->param.bOverwrite && msrFindCheck(msr)) {
+                msr->param.bRestart = 1;
 		dTime = msrReadCheck(msr,&iStep);
 		msr->param.bRestart = 1;
 #ifdef COLLISIONS
@@ -554,7 +555,7 @@ int main(int argc,char **argv)
 				}
 #endif
 
-				if(msr->param.bStarForm) {
+				if(msr->param.bStarForm || msr->param.bFeedBack) {
 					msrReorder(msr);
 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
 					strncat(achFile,".igasorder",256);

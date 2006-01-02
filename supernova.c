@@ -57,23 +57,24 @@ void snInitConstants(SN sn)
     MSPARAM tempMS;
     PDVAPARAM tempPDVA;
     
-    sn->dMSNrem = 1.4;			/* mass of supernova remnant in solar masses */
+    sn->dMSNrem = 1.4;			/* mass of supernova remnant in solar masses 
+                                         * Also used for SNIa ejected mass */
     
     /*sn->dESN = 1e51;		*/	/* Energy of Supernovae in ergs. */
     sn->dMSNIImin = 8.0;		/* Mass above which stars
-								   supernova in solar
-								   masses */
+                                           supernova in solar
+                                           masses */
     sn->dMSNIImax = 40.;		/* Mass below which stars
-								   supernova in solar masses */
+                                           supernova in solar masses */
     sn->dMBmin = 3.0;			/* Minimum mass of binary that
-								   can go SNIa */
+                                           can go SNIa */
     
     sn->dMBmax = 16.0;			/* Maximum mass of binary that
-								   can go SNIa */
-    sn->dFracBinSNIa = 0.16;	/* fraction of binary systems in
-								   appropriate mass range that go SNIa =
-								   0.16 (van den Bergh & McClure, ApJ
-								   425, 205, 1994) */
+                                           can go SNIa */
+    sn->dFracBinSNIa = 0.16;/*0.04847;	 fraction of binary systems in
+                                   appropriate mass range that go SNIa =
+                                   0.16 (van den Bergh & McClure, ApJ
+                                   425, 205, 1994) */
     /* normalization constant and exponent in formulae for masses of
        ejected Fe and O16 as a function of stellar mass taken from
        Raiteri, Villata and Navarro, A&A 315, 105, 1996 */
@@ -209,21 +210,20 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
     dMStarMin = dSTMStarLtime(&sn->ppdva, dStarLtimeMax, sfEvent.dMetals); 
     dMStarMax = dSTMStarLtime(&sn->ppdva, dStarLtimeMin, sfEvent.dMetals); 
 
-    dMtot = dMSCumMass(&sn->MSparam, 0.0); /* total mass in stars
-											 integrated over IMF */
+    dMtot = dMSCumMass(&sn->MSparam, 0.0); /* total mass in stars integrated over IMF */
 
-    if (dMStarMin > sn->dMBmin && dMStarMax < sn->dMBmax/2.) {
+    if (dMStarMin > sn->dMBmin/2. && dMStarMax < sn->dMBmax/2.) {
 
-        dMStarMinIa = max (sn->dMBmin, dMStarMin); 
+        dMStarMinIa = max (sn->dMBmin/2., dMStarMin); 
         dMStarMaxIa = min (sn->dMBmax/2., dMStarMax); 
 
         assert (dMStarMinIa < dMStarMaxIa && dMStarMinIa >0.0 && dMStarMaxIa > 0.0);
         
         /* mass of stars that go SNIa based on normalized IMF */
-        dMSNTypeIa = dMSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
-        dMSNTypeIa /= dMtot;	/* convert to mass fraction of stars */
-        /* convert to mass of stars that go SNIa */ 
-        dMSNTypeIa *= sfEvent.dMass; 
+/*        dMSNTypeIa = dMSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
+        dMSNTypeIa /= dMtot;	/* convert to mass fraction of stars /
+        /* convert to mass of stars that go SNIa / 
+        dMSNTypeIa *= sfEvent.dMass; */
 
         /* number of stars that go SNIa */        
         dNSNTypeIa = dNSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
@@ -231,18 +231,19 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
         dNSNTypeIa *= sfEvent.dMass; /* convert to absolute number of SNIa */
 
         dESNTypeIa = dNSNTypeIa * sn->dESN;
-		} else {
-			fbEffects->dMassLoss = 0.0;
-			fbEffects->dEnergy = 0.0;    
-			fbEffects->dMetals = 0.0; 
-                        fbEffects->dMIron = 0.0;
-                        fbEffects->dMOxygen = 0.0;
-			return;
-			}
+        } else {
+        fbEffects->dMassLoss = 0.0;
+        fbEffects->dEnergy = 0.0;    
+        fbEffects->dMetals = 0.0; 
+        fbEffects->dMIron = 0.0;
+        fbEffects->dMOxygen = 0.0;
+        return;
+        }
     
     /* decrement mass of star particle by mass of stars that go SN
-       and SN Ia have no remnants. */
-    fbEffects->dMassLoss = dMSNTypeIa;
+       and SN Ia have no remnants.   
+       The MSNrem is the same Chandrasekhar mass that explodes as a SNIa.*/
+    fbEffects->dMassLoss = dNSNTypeIa*sn->dMSNrem;
 
     /* SN specific energy rate to be re-distributed among neighbouring gas
        particles */
@@ -255,10 +256,10 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
      */
     fbEffects->dMIron = dNSNTypeIa*0.63/fbEffects->dMassLoss;
     fbEffects->dMOxygen = dNSNTypeIa*0.13/fbEffects->dMassLoss;
-	/* Fraction of mass in metals to be re-distributed among neighbouring
-	 * gas particles: assumes fixed amount of metals per supernovea independent of
-	 * mass. See Raiteri, Villata and Navarro, page 108.
-	 */
+    /* Fraction of mass in metals to be re-distributed among neighbouring
+     * gas particles: assumes fixed amount of metals per supernovea independent of
+     * mass. See Raiteri, Villata and Navarro, page 108.
+     */
     fbEffects->dMetals = dNSNTypeIa*sn->dSNIaMetals/fbEffects->dMassLoss; 
-	}
+    }
 #endif
