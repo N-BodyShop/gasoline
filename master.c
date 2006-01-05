@@ -8092,8 +8092,6 @@ FILE *LogTimingInit( MSR msr, char *fileflag )
     {
     char achFile[256];
     FILE *fpLogTiming;
-    int i,j;
-    struct RungData *r;
     
     if (!msr->param.bLogTiming) return NULL;
 
@@ -8114,6 +8112,7 @@ void LogTimingZeroCounters( MSR msr )
     int i,j;
     struct RungData *r;
 
+    if (!msr->param.bLogTiming) return;
     for (i=0;i<msr->param.iMaxRung;i++) {
 	r = &(msr->RungStat[i]);
 	r->nPart = 0;
@@ -8142,6 +8141,7 @@ void LogTimingSetN( MSR msr, int n )
     {
     struct RungData *r;
 
+    if (!msr->param.bLogTiming) return;
     r = &(msr->RungStat[msr->iRungStat]);
     r->nPart += n;
     r->nUses ++;
