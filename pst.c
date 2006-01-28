@@ -5346,7 +5346,8 @@ pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 #ifdef GASOLINE 
 							   &p->fTimeForm,
 #else
-							   p,
+		/* N.B. This is just a place holder when we don't have stars */
+							   &p->fMass,
 #endif
 							   p, sizeof(p[0]) );
 		dfRenderParticles( in, vout, p, pst->plcl->pkd->nLocal );
