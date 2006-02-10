@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "millerscalo.h"
 
+
 /* Miller-Scalo IMF (Miller & Scalo, Ap.J. Supp., 41, 513, 1979) in
    stars per unit logarithmic mass.  Divide by M (mass) for IMF in
    stars per unit mass.  Also IMF is defined per yer per pc^2,
@@ -14,6 +15,13 @@ void MSInitialize(MSPARAM *pms)
 {
     MSPARAM ms;
     
+#ifdef KROUPA
+    struct MillerScaloContext initms = 
+         {       0.3029*1.86606, -0.3, .08, /* parameters from A&A, 315,1996 */
+                 0.3029, -1.2, 0.5,
+                 0.3029, -1.7, 1.0,
+                 100.0};
+#else
     struct MillerScaloContext initms = 
 	{ 	0.5652,	-0.3, .08, /* parameters from A+A 315 105 Raiteri et al */
 		0.3029,	-1.2, 0.5,
@@ -23,6 +31,7 @@ void MSInitialize(MSPARAM *pms)
 		42.0,	-1.5, 1.0,
 		240.0,	-2.3, 10.0, /*This is discontinuous, but is what /
 		100.0};		    /*they report in paper, s we leave it.*/
+#endif
 
     ms = (MSPARAM) malloc(sizeof(struct MillerScaloContext));
     

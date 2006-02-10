@@ -374,7 +374,7 @@ struct inBuildTree {
 	int iOrder;
 	double dCrit;
 	int bBinary;
-	int bActiveOnly;
+        int bActiveOnly;
 	int bTreeActiveOnly;
 	int bGravity;
 	};

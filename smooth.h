@@ -36,6 +36,7 @@ typedef struct smContext {
 	int nSmooth;
 	int bPeriodic;
 	int iLowhFix;
+    int bUseBallMax;
 	double dfBall2OverSoft2;
 	void (*fcnSmooth)(PARTICLE *,int,NN *,SMF *);
 	void (*fcnPost)(PARTICLE *,SMF *);

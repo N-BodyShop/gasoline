@@ -203,7 +203,7 @@ int main(int argc,char **argv)
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
 #endif
-		if (msr->param.bDoSinksAtStart) msrDoSinks(msr);
+		if (msr->param.bDoSinksAtStart) msrDoSinks(msr,0.0);
 		/* 
 		 ** Dump Frame Initialization
 		 */
@@ -339,7 +339,7 @@ int main(int argc,char **argv)
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
 #endif
-		if (msr->param.bDoSinksAtStart) msrDoSinks(msr);
+		if (msr->param.bDoSinksAtStart) msrDoSinks(msr,0.0);
 		/* 
 		 ** Dump Frame Initialization
 		 */
@@ -846,7 +846,7 @@ int main(int argc,char **argv)
 			    }
 			else {
 			    msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
-			    msrBuildTree(msr,0,-1.0,1);
+			    msrBuildTree(msr,1,-1.0,1);
 			}
 			msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 			msrBuildTree(msr,0,-1.0,1);

@@ -35,6 +35,10 @@ typedef struct smfParameters {
     double dDeltaAccelFac;
     double dSinkRadius;
     double dSinkBoundOrbitRadius;
+    double dBHSinkEddFactor;
+    double dBHSinkAlphaFactor;
+    double dBHSinkFeedbackFactor;
+    double dSinkCurrentDelta;
 #ifdef GASOLINE
 	double alpha;
 	double beta;
@@ -46,11 +50,13 @@ typedef struct smfParameters {
 #endif
     int bSinkThermal;
     int iSmoothFlags; /* Read/Write locally.  Master sets initial value. */
+#if defined(STARFORM) || defined(CHECKSOFT)
+	double dTime;
+#endif
 #ifdef STARFORM
         double dMinMassFrac;
         double dRadPreFactor;
         double dTimePreFactor;
-	double dTime;
 	int bShortCoolShutoff;
 	int bSmallSNSmooth;
 #endif    
@@ -94,6 +100,7 @@ enum smx_smoothtype {
   SMX_MEANVEL,
   SMX_DELTAACCEL,
   SMX_SINKACCRETE,
+  SMX_BHSINKACCRETE,
 #ifdef GASOLINE
   SMX_SPHPRESSURETERMS,
   SMX_DIVVORT,
@@ -163,6 +170,11 @@ void combDeltaAccel(void *,void *);
 void SinkAccrete(PARTICLE *,int,NN *,SMF *);
 void initSinkAccrete(void *);
 void combSinkAccrete(void *,void *);
+
+/* SMX_BHSINKACCRETE */
+void BHSinkAccrete(PARTICLE *,int,NN *,SMF *);
+void initBHSinkAccrete(void *);
+void combBHSinkAccrete(void *,void *);
 
 #ifdef GASOLINE
 

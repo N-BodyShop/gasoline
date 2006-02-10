@@ -592,6 +592,18 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoSinks = 0;
 	prmAddParam(msr->prm,"bDoSinks",0,&msr->param.bDoSinks,sizeof(int),
 				"sinks","enable/disable sinks = -sinks");
+	msr->param.bBHSink = 0;
+	prmAddParam(msr->prm,"bBHSink",0,&msr->param.bBHSink,sizeof(int),
+				"bhsink","Bondi-Hoyle type sink = -bhsink");
+	msr->param.dBHSinkEddEff = 0.1;
+	prmAddParam(msr->prm,"dBHSinkEddEff",2,&msr->param.dBHSinkEddEff,sizeof(double),"bhsinkeddeff",
+				"<BHSink Eddington Efficiency>");
+	msr->param.dBHSinkFeedbackEff = 0.05;
+	prmAddParam(msr->prm,"dBHSinkFeedbackEff",2,&msr->param.dBHSinkFeedbackEff,sizeof(double),"bhsinkfbeff",
+				"<BHSink Feedback Efficiency>");
+	msr->param.dBHSinkAlpha = 1;
+	prmAddParam(msr->prm,"dBHSinkAlpha",2,&msr->param.dBHSinkAlpha,sizeof(double),"bhsinkalpha",
+				"<BHSink Alpha>");
 	msr->param.bDoSinksAtStart = 0;
 	prmAddParam(msr->prm,"bDoSinksAtStart",0,&msr->param.bDoSinksAtStart,sizeof(int),
 				"sinksas","enable/disable sinks at start = -sinksas");
@@ -607,11 +619,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dDeltaSink = msr->param.dDelta;
 	prmAddParam(msr->prm,"dDeltaSink", 2, &msr->param.dDeltaSink,
 		    sizeof(double), "dDeltaSink",
-		    "<Minimum SF timestep in years> = dDelta");
-	msr->param.dSinkMassMin = 0;
+		    "<Minimum sink timestep in years> = dDelta");
+	msr->param.dSinkMassMin = 0;  /* Default reset to FLT_MAX for BH sink */
 	prmAddParam(msr->prm,"dSinkMassMin", 2, &msr->param.dSinkMassMin,
 		    sizeof(double), "dSinkMassMin", "<Minimum Mass to act as a sink> = 0" );
-	msr->param.iSinkRung = 0;
+	msr->param.iSinkRung = 0; 
 	prmAddParam(msr->prm,"iSinkRung", 2, &msr->param.iSinkRung,
 		    sizeof(double), "iSinkRung",
 		    "<Sink Rung> = 0");
@@ -1386,6 +1398,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #define GCGS 6.67e-8
 	/* kiloparsec in centimeters */
 #define KPCCM 3.085678e21
+	/* Thompson cross-section (cm^2) */
+#define SIGMAT 6.6524e-25
+	/* Speed of Light cm/s */
+#define LIGHTSPEED 3.9979e10
 	/*
 	 ** Convert kboltz/mhydrogen to system units, assuming that
 	 ** G == 1.
@@ -1412,6 +1428,21 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			fprintf(stderr,"Warning: You are not running a cooling"
 					"EOS with starformation\n");
 			}
+
+	if (msr->param.bBHSink) {
+	    /* For BH sinks -- default to metallicity as sink indicator */
+	    if(!prmSpecified(msr->prm, "dSinkMassMin")) msr->param.dSinkMassMin = FLT_MAX;
+#ifndef GASOLINE
+	    fprintf(stderr, "Gas required for BH Sinks\n");
+	    assert(0);
+#endif
+	    msr->param.bDoSinks = 1;
+            /* Units of inverse time -- code units */
+	    msr->param.dBHSinkEddFactor = GCGS*4*M_PI*MHYDR/
+		(SIGMAT*LIGHTSPEED*msr->param.dBHSinkEddEff)/msr->param.dSecUnit;
+	    /* c^2 times efficiency factor (ergs per g) -- code units */
+	    msr->param.dBHSinkFeedbackFactor = msr->param.dBHSinkFeedbackEff*msr->param.dBHSinkEddEff*(LIGHTSPEED*LIGHTSPEED)/msr->param.dErgPerGmUnit;
+	    }
 
 #ifdef STARFORM
 	    assert((msr->param.stfm->dStarEff > 0.0 && 
@@ -1939,6 +1970,10 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dOmega: %g",msr->param.dOmega);
 	fprintf(fp," dOmegaDot: %g",msr->param.dOmegaDot);
 	fprintf(fp," bDoSinks: %d",msr->param.bDoSinks );
+	fprintf(fp," bBHSink: %d",msr->param.bBHSink );
+	fprintf(fp," dBHSinkEddEff: %g",msr->param.dBHSinkEddEff);
+	fprintf(fp," dBHSinkFeedbackEff: %g",msr->param.dBHSinkFeedbackEff);
+	fprintf(fp," dBHSinkAlpha: %g",msr->param.dBHSinkAlpha);
 	fprintf(fp," bDoSinksAtStart: %d",msr->param.bDoSinksAtStart );
 	fprintf(fp," bSinksThermal: %d",msr->param.bSinkThermal );
 	fprintf(fp," dSinkRadius: %g",msr->param.dSinkRadius);
@@ -2005,12 +2040,14 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dESN: %g",msr->param.sn->dESN);
 	fprintf(fp," bShortCoolShutoff: %i",msr->param.bShortCoolShutoff);
 	fprintf(fp," bSmallSNSmooth: %i",msr->param.bSmallSNSmooth);
+
         for ( testDelta = msr->param.dDelta; 
-            testDelta >= msr->param.dDeltaStarForm && 
-            msr->param.dDeltaStarForm != 0.0; testDelta *= 0.5 ){
-                    if ( !(prmSpecified(msr->prm,"iStarFormRung")) )
-                        msr->param.iStarFormRung++;
-                    }
+	      testDelta >= msr->param.dDeltaStarForm && 
+		  msr->param.dDeltaStarForm != 0.0; testDelta *= 0.5 ){
+	    if ( !(prmSpecified(msr->prm,"iStarFormRung")) )
+		msr->param.iStarFormRung++;
+	    }
+
         if ( testDelta <= msr->param.dDelta ){ 
             fprintf(fp," dDeltaStarForm (set): %g, effectively: %g = %g yrs, iStarFormRung: %i",
                     msr->param.dDeltaStarForm, testDelta,
@@ -2029,28 +2066,33 @@ void msrLogParams(MSR msr,FILE *fp)
 
 #endif
   	  if (msr->param.bDoSinks) {
-        for ( testDelta = msr->param.dDelta; 
-            testDelta >= msr->param.dDeltaSink && 
-            msr->param.dDeltaSink != 0.0; testDelta *= 0.5 ){
-                    if ( !(prmSpecified(msr->prm,"iSinkRung")) )
+	      if (prmSpecified(msr->prm,"iSinkRung")) {
+		  /* Find associated timestep for iSinkRung */
+		  int iRung;
+		  if (msr->param.iSinkRung > msr->param.iMaxRung) 
+		      msr->param.iSinkRung = msr->param.iMaxRung;
+
+		  testDelta = msr->param.dDelta;
+		  for ( iRung = 0; iRung < msr->param.iSinkRung ; iRung++ ) 
+		      testDelta *= 0.5;
+		  }
+	      else {
+		  /* Find associate Rung for dDeltaSink */
+		  /* NB: dDeltaSink is always in code units */
+		  msr->param.iSinkRung = 0;
+		  for ( testDelta = msr->param.dDelta; 
+			testDelta > msr->param.dDeltaSink ; testDelta *= 0.5 ) {
                         msr->param.iSinkRung++;
-                    }
-        if ( msr->param.dDeltaSink == 0.0 ) {
-            fprintf(fp," dDeltaSink (set): %g, effectively: 0.0 = 0.0 yrs, iSinkRung: maxRung",
-                    msr->param.dDeltaSink );
-            msr->param.iSinkRung = msr->param.iMaxRung;
-            }
-        else if ( testDelta <= msr->param.dDelta ){ 
-            fprintf(fp," dDeltaSink (set): %g, effectively: %g = %g yrs, iSinkRung: %i",
-                    msr->param.dDeltaSink, testDelta,
-                    testDelta*msr->param.dSecUnit/SECONDSPERYEAR,
-                    msr->param.iSinkRung );
-            msr->param.dDeltaSink = testDelta;
-            }
-        else {
-            fprintf(fp," dDeltaSink (set): %g, effectively:  NO SINK ACCRETION", msr->param.dDeltaSink);
-            }
-	  }
+			if (msr->param.iSinkRung >= msr->param.iMaxRung) exit;
+		      }
+		  }		  
+	      fprintf(fp," dDeltaSink (set): %g, effectively: %g = %g yrs, iSinkRung: %i",
+		      msr->param.dDeltaSink, testDelta,
+		      testDelta*msr->param.dSecUnit/SECONDSPERYEAR,
+		      msr->param.iSinkRung );
+	      msr->param.dDeltaSink = testDelta;
+	      }
+
 
 #ifdef SIMPLESF
 	fprintf(fp,"\n# SSF: bStarForm: %d",msr->param.bStarForm);
@@ -2907,7 +2949,7 @@ void msrDomainDecomp(MSR msr, int iRung, int bGreater)
 		}
 	}
 
-void msrBuildTree(MSR msr,int bActiveOnly, double dMass,int bSmooth)
+void msrBuildTree(MSR msr,int bTreeActiveOnly, double dMass,int bSmooth)
 {
 	struct inBuildTree in;
 	struct outBuildTree out;
@@ -2928,8 +2970,8 @@ void msrBuildTree(MSR msr,int bActiveOnly, double dMass,int bSmooth)
 		msr->param.iOrder:msr->param.iEwOrder;
 	in.dCrit = msr->dCrit;
 
-	in.bActiveOnly = bActiveOnly;
-	in.bTreeActiveOnly = bActiveOnly;
+	in.bActiveOnly = bTreeActiveOnly;
+	in.bTreeActiveOnly = bTreeActiveOnly;
 	if (bSmooth) {
 		in.bBinary = 0;
 		in.bGravity = 0;
@@ -2949,8 +2991,19 @@ void msrBuildTree(MSR msr,int bActiveOnly, double dMass,int bSmooth)
 			}
 		LOGTIME( pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum), "Tree built", TIMING_GravTree );
 		}
-	msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
-
+	in.bTreeActiveOnly = bTreeActiveOnly;
+	if (msr->param.bVDetails) {
+		double sec,dsec;
+		sec = msrTime();
+		pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
+		msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
+		dsec = msrTime() - sec;
+		printf("Tree built, Wallclock: %f secs\n\n",dsec);
+		}
+	else {
+		pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
+		msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
+		}
 	nCell = 1<<(1+(int)ceil(log((double)msr->nThreads)/log(2.0)));
 	pkdn = malloc(nCell*sizeof(KDN));
 	assert(pkdn != NULL);
@@ -3241,6 +3294,10 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	    double dAccFac = 1.0/(in.smf.a*in.smf.a*in.smf.a);
 	    in.smf.dDeltaAccelFac = msr->param.dEtaDeltaAccel/sqrt(dAccFac);
 	    }
+	in.smf.dBHSinkAlphaFactor = msr->param.dBHSinkAlpha*4*M_PI;
+	in.smf.dBHSinkEddFactor = msr->param.dBHSinkEddEff;
+	in.smf.dBHSinkFeedbackFactor = msr->param.dBHSinkFeedbackFactor;
+	in.smf.dSinkCurrentDelta = msr->param.dSinkCurrentDelta;
 	in.smf.bSinkThermal = msr->param.bSinkThermal;
 	in.smf.dSinkRadius = msr->param.dSinkRadius;
 	in.smf.dSinkBoundOrbitRadius = msr->param.dSinkBoundOrbitRadius;
@@ -3253,6 +3310,9 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.bGeometric = msr->param.bGeometric;
 	in.smf.bCannonical = msr->param.bCannonical;
 	in.smf.bGrowSmoothList = 0;
+#endif
+#if defined(STARFORM) || defined(CHECKSOFT)
+	in.smf.dTime = dTime;
 #endif
 #ifdef STARFORM
         in.smf.dMinMassFrac = msr->param.stfm->dMinMassFrac;
@@ -3331,6 +3391,10 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	    double dAccFac = 1.0/(in.smf.a*in.smf.a*in.smf.a);
 	    in.smf.dDeltaAccelFac = msr->param.dEtaDeltaAccel/sqrt(dAccFac);
 	    }
+	in.smf.dBHSinkAlphaFactor = msr->param.dBHSinkAlpha*4*M_PI;
+	in.smf.dBHSinkEddFactor = msr->param.dBHSinkEddEff;
+	in.smf.dBHSinkFeedbackFactor = msr->param.dBHSinkFeedbackFactor;
+	in.smf.dSinkCurrentDelta = msr->param.dSinkCurrentDelta;
 	in.smf.bSinkThermal = msr->param.bSinkThermal;
 	in.smf.dSinkRadius = msr->param.dSinkRadius;
 	in.smf.dSinkBoundOrbitRadius = msr->param.dSinkBoundOrbitRadius;
@@ -3428,24 +3492,37 @@ void msrUpdateSoft(MSR msr,double dTime) {
 		 
 		 if (msr->param.bSoftByType) {
 		   if (msr->nDark && msr->param.bVariableSoftDark) {
-			 msrActiveType(msr,TYPE_DARK,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+			 msrActiveType(msr,TYPE_DARK,TYPE_TREEACTIVE);
 			 msrBuildTree(msr,1,-1.0,1);
+			 msrActiveExactType(msr,TYPE_ACTIVE|TYPE_DARK,TYPE_ACTIVE|TYPE_DARK,TYPE_SMOOTHACTIVE);
 			 msrSmooth(msr,dTime,SMX_NULL,0);
+
 		   }
 		   if (msr->nGas && msr->param.bVariableSoftGas) {
+#ifdef DENSSOFT
+			 msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE|TYPE_DensZeroed);
 			 msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 			 msrBuildTree(msr,1,-1.0,1);
+			 msrActiveType(msr,TYPE_ACTIVE,TYPE_DensACTIVE );
+			 msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1);
+#else
+			 msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
+			 msrBuildTree(msr,1,-1.0,1);
+			 msrActiveExactType(msr,TYPE_ACTIVE|TYPE_GAS,TYPE_ACTIVE|TYPE_GAS,TYPE_SMOOTHACTIVE);
 			 msrSmooth(msr,dTime,SMX_NULL,0);
+#endif
 		   }
 		   if (msr->nStar && msr->param.bVariableSoftStar) {
-			 msrActiveType(msr,TYPE_STAR,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+			 msrActiveType(msr,TYPE_STAR,TYPE_TREEACTIVE);
 			 msrBuildTree(msr,1,-1.0,1);
+			 msrActiveExactType(msr,TYPE_ACTIVE|TYPE_STAR,TYPE_ACTIVE|TYPE_STAR,TYPE_SMOOTHACTIVE);
 			 msrSmooth(msr,dTime,SMX_NULL,0);
 		   }
 		 }
 		 else {
-		   msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+		   msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
 		   msrBuildTree(msr,1,-1.0,1);
+		   msrActiveType(msr,TYPE_ACTIVE,TYPE_SMOOTHACTIVE);
 		   msrSmooth(msr,dTime,SMX_NULL,0);
 		 }
 
@@ -3920,7 +3997,9 @@ void msrCoolVelocity(MSR msr,double dTime,double dMass)
 			msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 			msrDomainDecomp(msr,0,1);
 			msrActiveType(msr,TYPE_SUPERCOOL,TYPE_ACTIVE);
-			msrBuildTree(msr,1,dMass,1);
+			/* Unsure what is desired here -- assuming all particles are in tree 
+			   as per above setting of TREEACTIVE-- JW */
+			msrBuildTree(msr,0,dMass,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
 			msrReSmooth(msr,dTime,SMX_MEANVEL,1);
 			}
@@ -5635,10 +5714,10 @@ void msrTopStepKDK(MSR msr,
 #ifdef DELTAACCELACTIVE
 			    msrActiveRung(msr,iRung,1);
 			    msrActiveType(msr,TYPE_ACTIVE,TYPE_TREEACTIVE);
-		        msrBuildTree(msr,0,-1.0,1);
+		        msrBuildTree(msr,1,-1.0,1);   /* bTreeActive */
 #else
 			    msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
-			    msrBuildTree(msr,0,-1.0,1);
+			    msrBuildTree(msr,1,-1.0,1);   /* bTreeActive */
 #endif
 			    }
 		    msrActiveRung(msr,iRung,1);
@@ -5710,12 +5789,10 @@ void msrTopStepKDK(MSR msr,
 #endif
 #ifdef STARFORM
                 /* only form stars at user defined intervals */
+                /* JW: Is this dDelta choice correct? */
                 if ( iKickRung <= msr->param.iStarFormRung )
                     msrFormStars(msr, dTime, max(dDelta,msr->param.dDeltaStarForm));
 #endif
-                /* only accrete onto sinks at user defined intervals */
-                if ( iKickRung <= msr->param.iSinkRung )
-                    msrDoSinks(msr);
 		/* 
 		 ** Dump Frame
 		 */
@@ -5727,7 +5804,7 @@ void msrTopStepKDK(MSR msr,
 		/* 
 		 ** Calculate Forces (if required)
 		 */
-                msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+		msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 		msrActiveMaskRung(msr,TYPE_ACTIVE,iKickRung,1);
 		LogTimingSetN( msr, msr->nActive );
 
@@ -5746,6 +5823,31 @@ void msrTopStepKDK(MSR msr,
 					msrBuildTree(msr,0,dMass,0);
 					}
 				msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nActive);
+#ifdef CHECKSOFT			  
+	   {
+	   char achFile[256]; 
+
+  	   fprintf(stderr,"Outputing .soft .dt .den tipsy\n");
+	   msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE|TYPE_DensZeroed);
+	   msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
+	   msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+	   msrBuildTree(msr,1,-1.0,1);
+	   msrActiveType(msr,TYPE_ACTIVE,TYPE_DensACTIVE );
+	   msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1);
+	   /*	   msrSmooth(msr,dTime,SMX_DENSITY,1);*/
+	   msrReorder(msr);
+	   sprintf(achFile,"step%015.10f.soft",dTime);
+	   msrOutArray(msr,achFile,OUT_SOFT_ARRAY);
+	   sprintf(achFile,"step%015.10f.dt",dTime);
+	   msrOutArray(msr,achFile,OUT_DT_ARRAY);
+	   sprintf(achFile,"step%015.10f.pot",dTime);
+	   msrOutArray(msr,achFile,OUT_POT_ARRAY);
+	   sprintf(achFile,"step%015.10f.den",dTime);
+	   msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
+	   sprintf(achFile,"step%015.10f",dTime);
+	   msrWriteTipsy(msr,achFile,dTime);
+	   }
+#endif
 				*pdActiveSum += (double)nActive/msr->N;
 				}
 			
@@ -5838,6 +5940,10 @@ void msrTopStepKDK(MSR msr,
 				}
 #endif /* GASOLINE */
 			}
+                /* only accrete onto sinks at user defined intervals 
+		   Can I do this after the gas kick and save a treebuild? */
+                if ( iKickRung <= msr->param.iSinkRung )
+                    msrDoSinks(msr, max(dDelta,msr->param.dDeltaSink) );
 
 		}
     if (msr->param.bVDetails) printf("Kick, iRung: %d\n",iRung);
@@ -5920,27 +6026,38 @@ msrAddDelParticles(MSR msr)
     }
 
 void
-msrDoSinks(MSR msr)
+msrDoSinks(MSR msr, double dDelta)
 {
 	double sec,sec1,dsec,dMass;
 	int nAccreted;
 
     if(msr->param.bDoSinks == 0 || msr->nSink == 0) return;
+    if (msr->param.bBHSink && dDelta <= 0.0) return;
 	    
-	sec = msrTime();
+    sec = msrTime();
 
     dMass = msrMassCheck(msr, -1, "Accrete onto Sinks: Initial Value");
 
+    /* Note: Only gas particles are accreted by sinks */
     if (msr->iTreeType != MSR_TREE_DENSITY) {
 	    msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
-		msrBuildTree(msr,0,-1.0,1);
+		msrBuildTree(msr,1,-1.0,1);  /* bTreeActive */
 	    }
 
-	msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
-	msrActiveType(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE);
-	msrSmooth(msr,0.0,SMX_SINKACCRETE,1);
+    msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
+    msrActiveType(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE);
 
-	nAccreted = msr->nGas;
+    msr->param.dSinkCurrentDelta = dDelta;
+    if (msr->param.bBHSink) {
+        /* Smooth Bondi-Hoyle Accretion: radius set by nSmooth */
+	msrSmooth(msr,0.0,SMX_BHSINKACCRETE,1);
+	}
+    else {
+	/* Fixed Radius Accretion: particle by particle (cf. Bate) */
+	msrSmooth(msr,0.0,SMX_SINKACCRETE,1);
+	}
+    
+    nAccreted = msr->nGas;
 
     msrMassCheck(msr, dMass, "Accrete onto Sinks: before particle adjustment");
 
@@ -6137,10 +6254,8 @@ void msrInitSph(MSR msr,double dTime)
 	double a;
 
 	msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-
 	msrBuildTree(msr,1,-1.0,1);
 	msrSmooth(msr,dTime,SMX_DENSITY,1);
-	msrBallMax(msr, 0, 1);
 
 #ifndef NOCOOLING
 	switch (msr->param.iGasModel) {
@@ -6162,7 +6277,8 @@ void msrInitSph(MSR msr,double dTime)
 #endif
 
 	if (msrDoGas(msr)) {
-	        if (msr->param.bViscosityLimiter || msr->param.bBulkViscosity
+	    msrBallMax(msr, 0, 1);
+	    if (msr->param.bViscosityLimiter || msr->param.bBulkViscosity
 		    || msr->param.bStarForm) {
 		        msrReSmooth(msr,dTime,SMX_DIVVORT,1);
 			}

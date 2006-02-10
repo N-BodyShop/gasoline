@@ -103,11 +103,12 @@ struct parameters {
     int bVariableSoftDark;
 	int bDoSoftOutput;
     int bDoSinks;
+    int bBHSink;
     int bDoSinksAtStart;
     int bSinkThermal;
     int iSinkRung;
 	double dEta;
-    double dEtaDeltaAccel;
+        double dEtaDeltaAccel;
 	double dExtraStore;
 	double dSoft;
 	double dSoftMax;
@@ -132,6 +133,12 @@ struct parameters {
     double dSinkBoundOrbitRadius;
     double dDeltaSink;
     double dSinkMassMin;
+    double dBHSinkEddEff;
+    double dBHSinkFeedbackEff;
+    double dBHSinkEddFactor;
+    double dBHSinkFeedbackFactor;
+    double dBHSinkAlpha;
+    double dSinkCurrentDelta;
 	char achDigitMask[MAXPATHLEN];
 	char achInFile[MAXPATHLEN];
 	char achOutName[MAXPATHLEN];

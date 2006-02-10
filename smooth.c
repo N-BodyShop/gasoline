@@ -27,6 +27,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	smx->bPeriodic = bPeriodic;
 	smx->dfBall2OverSoft2 = dfBall2OverSoft2;
 	smx->iLowhFix = ( dfBall2OverSoft2 > 0.0 ? LOWHFIX_HOVERSOFT : LOWHFIX_NONE );
+	smx->bUseBallMax = 1;
 #ifdef SLIDING_PATCH
 	smx->dOrbFreq = smf->dOrbFreq;
 	smx->dTime = smf->dTime;
@@ -40,6 +41,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		init = NULL; /* Cached copies */
 		comb = NULL;
 		smx->fcnPost = NULL;
+		smx->bUseBallMax = 0;
 		break;
 	case SMX_DENSITY:
 		smx->fcnSmooth = bSymmetric?DensitySym:Density;
@@ -89,6 +91,15 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		comb = combSinkAccrete;
 		smx->fcnPost = NULL;
 		smx->iLowhFix = LOWHFIX_SINKRADIUS;
+		smx->bUseBallMax = 0;
+		break;
+	case SMX_BHSINKACCRETE:
+		smx->fcnSmooth = BHSinkAccrete;
+		initParticle = NULL; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
+		init = initBHSinkAccrete; /* Cached copies */
+		comb = combBHSinkAccrete;
+		smx->fcnPost = NULL;
 		break;
 #ifdef SUPERCOOL
 	case SMX_MEANVEL:
@@ -165,6 +176,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		init = NULL;
 		comb = NULL;
 		smx->fcnPost = NULL;
+		smx->bUseBallMax = 0;
 		break;
 	case SMX_DIST_DELETED_GAS:
                 assert(bSymmetric != 0);
@@ -174,6 +186,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		init = initDistDeletedGas;
 		comb = combDistDeletedGas;
 		smx->fcnPost = NULL;
+		smx->bUseBallMax = 0;
 		break;
 	case SMX_DIST_SN_ENERGY:
                 assert(bSymmetric != 0);
@@ -183,6 +196,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		init = initDistSNEnergy;
 		comb = combDistSNEnergy;
 		smx->fcnPost = postDistSNEnergy;
+		smx->bUseBallMax = 0;
 		break;
 #endif
 #ifdef SIMPLESF
@@ -194,6 +208,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		init = initSimpleSF_Feedback;
 		comb = combSimpleSF_Feedback;
 		smx->fcnPost = NULL;
+		smx->bUseBallMax = 0;
 		break;
 #endif
 
@@ -207,6 +222,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		init = initFindRejects;
 		comb = combFindRejects;
 		smx->fcnPost = NULL;
+		smx->bUseBallMax = 0;
 		break;
 #ifdef OLD_KEPLER
 	case SMX_ENCOUNTER:
@@ -217,6 +233,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		init = NULL;
 		comb = NULL;
 		smx->fcnPost = NULL;
+		smx->bUseBallMax = 0;
 		break;
 #endif
 	case SMX_COLLISION:
@@ -227,6 +244,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		init = NULL;
 		comb = NULL;
 		smx->fcnPost = NULL;
+		smx->bUseBallMax = 0;
 		break;
 #endif /* COLLISIONS */
 	default:
@@ -1036,7 +1054,7 @@ void smSmooth(SMX smx,SMF *smf)
 		}
 	else {
 		/* Limit fBall2 growth to help stability and neighbour finding */
-		if (p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)
+		if (smx->bUseBallMax && p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)
 			fBall2=p[pi].fBallMax*p[pi].fBallMax;
 
 		p[pi].fBall2 = fBall2;
