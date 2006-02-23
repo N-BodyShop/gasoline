@@ -613,6 +613,10 @@ int smBallGather(SMX smx,FLOAT fBall2,FLOAT *ri)
 	    }
 	nCnt = 0;
 	cp = ROOT;
+	if(c[cp].pLower > c[cp].pUpper) {
+	    return(0);		/* Empty Tree */
+	    }
+	    
 	while (1) {
 		INTERSECT(&c[cp],fBall2,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNextCell);
 		/*
@@ -663,6 +667,9 @@ int smBallGatherNP(SMX smx,FLOAT fBall2,FLOAT *ri,int cp)
 	y = ri[1];
 	z = ri[2];
 	nCnt = 0;
+	if(c[cp].pLower > c[cp].pUpper) {
+	    return(0);		/* Empty Tree */
+	    }
 	while (1) {
 		INTERSECTNP(&c[cp],fBall2,x,y,z,GetNextCell);
 		/*
