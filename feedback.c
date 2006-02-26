@@ -64,7 +64,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
     
     for(i = 0; i < n; ++i) {
         p = &pkd->pStore[i];
-        if(pkdIsStar(pkd, p) && p->fTimeForm > 0) {
+        if(pkdIsStar(pkd, p) && p->fTimeForm >= 0.0) {
             dTotMassLoss = 0.0;
             dTotMetals = 0.0;
             dTotMOxygen = 0.0;
