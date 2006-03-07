@@ -5777,22 +5777,22 @@ pkdOldestStar(PKD pkd, double *com)
 
 int pkdSetSink(PKD pkd, double dSinkMassMin)
 {
+#ifdef GASOLINE
     PARTICLE *p;
     int i,nSink = 0;
     int nLocal = pkdLocal(pkd);
 
     for(i=0;i<nLocal;++i) { 
 		p = &pkd->pStore[i];
-#if (0)
-		if ((TYPETest(p,TYPE_STAR) && p->fMass >= dSinkMassMin) || p->fMetals < 0) {
-#else 
 		if ((TYPETest(p,TYPE_STAR) && p->fTimeForm < 0)) {
-#endif
 			TYPESet(p,TYPE_SINK);
 			nSink++;
 			}
 		}
 
     return nSink;
+#else
+    assert(0);	/* GASOLINE needed for sink particles to work */
+#endif
     }
 
