@@ -538,12 +538,15 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 /* Cached Tree Active particles */
 void initBHSinkAccrete(void *p)
 {
+#ifdef GASOLINE
     if (TYPEQueryTREEACTIVE((PARTICLE *) p))
 	((PARTICLE *)p)->u = 0.0;
+#endif
     }
 
 void combBHSinkAccrete(void *p1,void *p2)
 {
+#ifdef GASOLINE
     if (!(TYPETest( ((PARTICLE *) p1), TYPE_DELETED )) &&
         TYPETest( ((PARTICLE *) p2), TYPE_DELETED ) ) {
 	((PARTICLE *) p1)-> fMass = ((PARTICLE *) p2)-> fMass;
@@ -552,6 +555,7 @@ void combBHSinkAccrete(void *p1,void *p2)
     else if (TYPEQueryTREEACTIVE((PARTICLE *) p1)) {
 	((PARTICLE *)p1)->u += ((PARTICLE *)p2)->u;
 	}
+#endif
 }
 
 void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
