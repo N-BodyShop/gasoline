@@ -2994,19 +2994,8 @@ void msrBuildTree(MSR msr,int bTreeActiveOnly, double dMass,int bSmooth)
 			}
 		LOGTIME( pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum), "Tree built", TIMING_GravTree );
 		}
-	in.bTreeActiveOnly = bTreeActiveOnly;
-	if (msr->param.bVDetails) {
-		double sec,dsec;
-		sec = msrTime();
-		pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
-		msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
-		dsec = msrTime() - sec;
-		printf("Tree built, Wallclock: %f secs\n\n",dsec);
-		}
-	else {
-		pstBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
-		msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
-		}
+	msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildTree");
+
 	nCell = 1<<(1+(int)ceil(log((double)msr->nThreads)/log(2.0)));
 	pkdn = malloc(nCell*sizeof(KDN));
 	assert(pkdn != NULL);
@@ -3014,33 +3003,7 @@ void msrBuildTree(MSR msr,int bTreeActiveOnly, double dMass,int bSmooth)
 	inc.nCell = nCell;
 	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
 	msrMassCheck(msr,dMass,"After pstColCells in msrBuildTree");
-#if (0)
-	{ int i;
-	for (i=1;i<nCell;++i) {
-		struct pkdCalcCellStruct *m;
 
-		printf("\nLTTO:%d\n",i);
-		printf("    iDim:%1d fSplit:%g pLower:%d pUpper:%d\n",
-			   pkdn[i].iDim,pkdn[i].fSplit,pkdn[i].pLower,pkdn[i].pUpper);
-		printf("    bnd:(%g,%g) (%g,%g) (%g,%g)\n",
-			   pkdn[i].bnd.fMin[0],pkdn[i].bnd.fMax[0],
-			   pkdn[i].bnd.fMin[1],pkdn[i].bnd.fMax[1],
-			   pkdn[i].bnd.fMin[2],pkdn[i].bnd.fMax[2]);
-		printf("    fMass:%g fSoft:%g\n",pkdn[i].fMass,pkdn[i].fSoft);
-		printf("    rcm:%g %g %g fOpen2:%g\n",pkdn[i].r[0],pkdn[i].r[1],
-			   pkdn[i].r[2],pkdn[i].fOpen2);
-		m = &pkdn[i].mom;
-		printf("    xx:%g yy:%g zz:%g xy:%g xz:%g yz:%g\n",
-			   m->Qxx,m->Qyy,m->Qzz,m->Qxy,m->Qxz,m->Qyz);
-		printf("    xxx:%g xyy:%g xxy:%g yyy:%g xxz:%g yyz:%g xyz:%g\n",
-			   m->Oxxx,m->Oxyy,m->Oxxy,m->Oyyy,m->Oxxz,m->Oyyz,m->Oxyz);
-		printf("    xxxx:%g xyyy:%g xxxy:%g yyyy:%g xxxz:%g\n",
-			   m->Hxxxx,m->Hxyyy,m->Hxxxy,m->Hyyyy,m->Hxxxz);
-		printf("    yyyz:%g xxyy:%g xxyz:%g xyyz:%g\n",
-			   m->Hyyyz,m->Hxxyy,m->Hxxyz,m->Hxyyz);
-		}
-	}
-#endif
 	pstDistribCells(msr->pst,pkdn,nCell*sizeof(KDN),NULL,NULL);
 	msrMassCheck(msr,dMass,"After pstDistribCells in msrBuildTree");
 	free(pkdn);
