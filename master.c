@@ -2086,7 +2086,8 @@ void msrLogParams(MSR msr,FILE *fp)
 		  for ( testDelta = msr->param.dDelta; 
 			testDelta > msr->param.dDeltaSink ; testDelta *= 0.5 ) {
                         msr->param.iSinkRung++;
-			if (msr->param.iSinkRung >= msr->param.iMaxRung) exit;
+			if (msr->param.iSinkRung >= msr->param.iMaxRung)
+				exit(-1);
 		      }
 		  }		  
 	      fprintf(fp," dDeltaSink (set): %g, effectively: %g = %g yrs, iSinkRung: %i",
