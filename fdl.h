@@ -1,5 +1,7 @@
 #ifndef FDL_HINCLUDED
 
+#include <stdio.h>
+
 #include "htable.h"
 
 #define ELEMENT			0

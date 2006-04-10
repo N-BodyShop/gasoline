@@ -57,7 +57,7 @@ int main(int argc,char **argv)
 
 	char achBaseMask[256];
 
-	/* code to make gasoline core dump if there is a floating point exception 
+	/* code to make gasoline core dump if there is a floating point exception
 	feenableexcept(FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);*/
 
 #ifdef TINY_PTHREAD_STACK
@@ -138,6 +138,9 @@ int main(int argc,char **argv)
 		    msrInitCooling(msr);
 #endif
 #endif
+		if(msr->param.bRotatingBar) {
+		    msrInitRotatingBar(msr, dTime);
+		    }
 		msrInitStep(msr);
 		dMass = msrMassCheck(msr,-1.0,"Initial");
 		if (msr->param.bVStart) printf("Restart Step:%d\n",iStep);
@@ -260,6 +263,8 @@ int main(int argc,char **argv)
 		msrInitCooling(msr);
 #endif
 #endif
+	if(msr->param.bRotatingBar)
+	    msrInitRotatingBar(msr, dTime);
 	msrInitStep(msr);
 #ifdef GLASS
 	msrInitGlass(msr);

@@ -9,6 +9,7 @@
 #ifdef GASOLINE
 #include "cooling.h"
 #endif
+#include "rotbar.h"
 
 /*
  ** The following sort of definition should really be in a global
@@ -392,6 +393,7 @@ typedef struct pkdContext {
 	double dOrbFreq;
 	double dTime;
 #endif
+        ROTBAR  rotbar;
 	} * PKD;
 
 int pkdIsGas(PKD,PARTICLE *);
@@ -669,6 +671,8 @@ void pkdQQBuild(PKD pkd, int nBucket, int bActiveOnly, KDN *pRoot);
 void pkdPatch(PKD pkd, double dOrbFreqZ2);
 #endif
 
+void pkdMassInR(PKD pkd, double R, double *pdMass, FLOAT *com);
+
 #ifdef NEED_VPRED
 #ifdef GASOLINE
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,
@@ -678,8 +682,17 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
 #endif
 #endif
 
-#endif
+void pkdInitRotBar(PKD pkd, ROTBAR rotbar);
+void pkdRotatingBar(PKD pkd, double amp, /* relative amplitude of bar */
+		    double posang, /* position angle of bar */
+		    double b5,	/* radial scale length (^5) */
+		    FLOAT *aCom, /* Center of mass */
+		    double *accCom, /* acceleration (returned) */
+		    double *dTorque); /* acceleration (returned) */
+
+
 void pkdCOM(PKD pkd, double *com);
 void pkdCOMByType(PKD pkd, int type, double *com);
 void pkdOldestStar(PKD pkd, double *com);
 int pkdSetSink(PKD pkd, double dSinkMassMin);
+#endif

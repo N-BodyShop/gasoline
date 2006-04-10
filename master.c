@@ -788,12 +788,18 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bTimeVarying = 0;
 	prmAddParam(msr->prm,"bTimeVarying",0,&msr->param.bTimeVarying,
 				sizeof(int),"tvar","use/don't use the time varying externalpotential = -tvar");
+	rotbarInitialize(&msr->param.rotbar);
+	msr->param.bRotatingBar = 0;
+	prmAddParam(msr->prm,"bRotatingBar",0,&msr->param.bRotatingBar,
+		    sizeof(int),"rotbar",
+		    "use/don't use rotating bar = -rotbar");
+	rotbarAddParams(msr->param.rotbar, msr->prm);
 	msr->param.bRotFrame = 0;
 	prmAddParam(msr->prm,"bRotFrame",0,&msr->param.bRotFrame,
 				sizeof(int),"rframe","use/don't use rotating frame = -rframe");
 	msr->param.dOmega = 0;
 	prmAddParam(msr->prm,"dOmega",2,&msr->param.dOmega,sizeof(double),
-				"omega","<dOmega> = 0");
+				"omega","rotating frame <dOmega> = 0");
 	msr->param.dOmegaDot = 0;
 	prmAddParam(msr->prm,"dOmegaDot",2,&msr->param.dOmegaDot,sizeof(double),
 				"omegadot","<dOmegaDot> = 0");
@@ -1969,6 +1975,9 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bBodyForce: %d",msr->param.bBodyForce );
 	fprintf(fp," bMiyamotoDisk: %d",msr->param.bMiyamotoDisk );
 	fprintf(fp," bTimeVarying: %d",msr->param.bTimeVarying );
+	fprintf(fp,"\n# bRotatingBar: %d",msr->param.bRotatingBar);
+	rotbarLogParams( msr->param.rotbar, fp );
+
 	fprintf(fp,"\n# bRotFrame: %d",msr->param.bRotFrame);
 	fprintf(fp," dOmega: %g",msr->param.dOmega);
 	fprintf(fp," dOmegaDot: %g",msr->param.dOmegaDot);
@@ -3610,7 +3619,9 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		msr->param.bHernquistSpheroid || msr->param.bNFWSpheroid ||
 		msr->param.bElliptical ||
 		msr->param.bHomogSpheroid || msr->param.bBodyForce ||
-        msr->param.bMiyamotoDisk || msr->param.bTimeVarying) {
+	    	msr->param.bRotatingBar ||
+        	msr->param.bMiyamotoDisk || msr->param.bTimeVarying) {
+	        struct outGravExternal outExt;
 		/*
 		 ** Provide the time.
 		 */
@@ -3639,8 +3650,30 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bBodyForce = msr->param.bBodyForce;
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		inExt.bTimeVarying = msr->param.bTimeVarying;
-		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
-		}
+		inExt.bRotatingBar = msr->param.bRotatingBar;
+		if(msr->param.bRotatingBar) {
+		    for (j=0;j<3;++j)
+			inExt.aCom[j] = msr->param.rotbar->dPos[j];
+		    
+		    inExt.dRotBarAmp = msr->param.rotbar->amplitude;
+		    inExt.dRotBarPosAng = msr->param.rotbar->dPosAng;
+		    inExt.dRotBarB5 = msr->param.rotbar->dB5;
+		    }
+		pstGravExternal(msr->pst,&inExt,sizeof(inExt),&outExt, NULL);
+		if(msr->param.bRotatingBar) {
+		    struct outCalcEandL outL;
+		    int iDum;
+		    
+		    pstCalcEandL(msr->pst, NULL, 0, &outL, &iDum);
+		    
+		    msr->param.rotbar->dLzPart = outL.L[2];
+		    for (j=0;j<3;++j) {
+			msr->param.rotbar->dAcc[j] = outExt.dAcc[j];
+			msr->param.rotbar->dTorque[j] = outExt.dTorque[j];
+			}
+		    }
+	    }
+	
 #ifdef ROT_FRAME
 	if (msr->param.bRotFrame) { /* general rotating frame */
 		inExt.bRotFrame = msr->param.bRotFrame;
@@ -3888,6 +3921,9 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	 */
 	msr->iTreeType = MSR_TREE_NONE;
 
+	if(msr->param.bRotatingBar) {
+	    rotbarDrift(msr->param.rotbar, dTime, dDelta);
+	    }
 #ifdef NEED_VPRED
 
 #ifdef PREDRHO
@@ -4018,6 +4054,7 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 	double H,a;
 	struct inKick in;
 	struct outKick out;
+	int j;
 
 #ifndef NEED_VPRED
 	in.dvPredFacOne = in.dvPredFacTwo = in.duDelta = in.duPredDelta = in.duDotLimit =
@@ -4073,6 +4110,13 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
 	printf("Kick: Avg Wallclock %f, Max Wallclock %f\n",
 	       out.SumTime/out.nSum,out.MaxTime);
+	if(msr->param.bRotatingBar && msr->param.dDelta == dDelta) {
+	    for (j=0;j<3;++j) {
+		msr->param.rotbar->dVel[j]
+		    = msr->param.rotbar->dVel[j]*in.dvFacOne
+		    + msr->param.rotbar->dAcc[j]*in.dvFacTwo;
+		}
+	    }
 	LOGTIMINGUPDATE( out.MaxTime, TIMING_Kick );
 	}
 
@@ -4146,6 +4190,10 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 	if (msr->param.bVDetails) 
 		printf("KickOpen: Avg Wallclock %f, Max Wallclock %f\n",
 			   out.SumTime/out.nSum,out.MaxTime);
+	if(msr->param.bRotatingBar && msr->param.dDelta*.5 == dDelta) {
+	    rotbarKick(msr->param.rotbar, in.dvFacOne, in.dvFacTwo);
+	    }
+	
 	LOGTIMINGUPDATE( out.MaxTime, TIMING_Kick );
 
 #ifdef COLLISIONS
@@ -4237,6 +4285,9 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 	if (msr->param.bVDetails)
 		printf("KickClose: Avg Wallclock %f, Max Wallclock %f\n",
 			   out.SumTime/out.nSum,out.MaxTime);
+	if(msr->param.bRotatingBar && msr->param.dDelta*.5 == dDelta) {
+	    rotbarKick(msr->param.rotbar, in.dvFacOne, in.dvFacTwo);
+	    }
 	LOGTIMINGUPDATE( out.MaxTime, TIMING_Kick );
 #ifdef COLLISIONS
 	{
@@ -4586,6 +4637,14 @@ double msrReadCheck(MSR msr,int *piStep)
 		msr->param.bMiyamotoDisk = 0;
 		}
 
+	if (iVersion > 6) {
+	    FDL_read(fdl,"bRotatingBar", &msr->param.bRotatingBar);
+	    rotbarCheckRead(msr->param.rotbar, fdl);
+	    }
+	else {
+	    msr->param.bRotatingBar = 0;
+	    }
+	
 	/*
 	 * Check if redshift file is present, and if so reread it --JPG
 	 */
@@ -4792,6 +4851,9 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	FDL_write(fdl,"bLogHalo",&msr->param.bLogHalo);
 	FDL_write(fdl,"bHernquistSpheroid",&msr->param.bHernquistSpheroid);
 	FDL_write(fdl,"bMiyamotoDisk",&msr->param.bMiyamotoDisk);
+	FDL_write(fdl,"bRotatingBar", &msr->param.bRotatingBar);
+	rotbarCheckWrite(msr->param.rotbar, fdl);
+	
 	FDL_write(fdl,"nBucket",&msr->param.nBucket);
 	FDL_write(fdl,"iOutInterval",&msr->param.iOutInterval);
 	FDL_write(fdl,"iLogInterval",&msr->param.iLogInterval);
@@ -5660,7 +5722,6 @@ void msrTopStepKDK(MSR msr,
     if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
 		if (msr->param.bVDetails) printf("Adjust, iRung: %d\n",iRung);
 		msrActiveRung(msr, iRung, 1);
-		msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 		msrInitDt(msr);
 		if (msr->param.bGravStep) {
 			msrGravStep(msr,dTime);
@@ -5669,6 +5730,7 @@ void msrTopStepKDK(MSR msr,
 		    msrAccelStep(msr,dTime);
 			}
 		if (msr->param.bDensityStep) {
+		    msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 		    msrDomainDecomp(msr,iRung,1);
 		    msrActiveRung(msr,iRung,1);
 		    msrBuildTree(msr,0,dMass,1);
@@ -5711,8 +5773,8 @@ void msrTopStepKDK(MSR msr,
 		}
     if (msr->param.bVDetails) printf("Kick, iRung: %d\n",iRung);
     msrActiveRung(msr,iRung,0);
-    msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 #ifdef GASOLINE
+    msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
     msrUpdateuDot(msr,dTime,0.5*dDelta,1);
 #endif
     msrKickKDKOpen(msr,dTime,0.5*dDelta);
@@ -5771,7 +5833,9 @@ void msrTopStepKDK(MSR msr,
 		/* 
 		 ** Calculate Forces (if required)
 		 */
+#if 0
 		msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+#endif
 		msrActiveMaskRung(msr,TYPE_ACTIVE,iKickRung,1);
 		LogTimingSetN( msr, msr->nActive );
 

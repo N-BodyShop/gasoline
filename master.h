@@ -223,6 +223,8 @@ void msrAccelStep(MSR msr, double dTime);
 void msrDensityStep(MSR msr, double dTime);
 void msrInitDt(MSR msr);
 void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll);
+void msrInitRotatingBar(MSR msr, double dTime);
+void msrUpdateRotBar(MSR msr, double dTime);
 
 /*
  ** Interface functions.

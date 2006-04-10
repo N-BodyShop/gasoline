@@ -70,6 +70,9 @@ struct parameters {
         int bBodyForce;
 	int bMiyamotoDisk;
 	int bTimeVarying;
+	int bRotatingBar;
+        ROTBAR  rotbar;
+    
 	int bRotFrame;
 	double dOmega;
 	double dOmegaDot;

@@ -195,6 +195,8 @@ enum pst_service {
       PST_COOLTABLEREAD,
       PST_GROWMASS,
       PST_CLEARTIMER,
+      PST_MASSINR,
+      PST_ROTBARINIT,
       PST_BALLMAX,
       PST_FORMSTARS,
       PST_FEEDBACK,
@@ -482,6 +484,12 @@ struct inGravExternal {
 	int bBodyForce;
 	int bMiyamotoDisk;
 	int bTimeVarying;
+	int bRotatingBar;
+	double dRotBarAmp;
+	double dRotBarPosAng;
+	double dRotBarB5;
+    FLOAT aCom[3];
+    
 #ifdef ROT_FRAME
 	int bRotFrame;
 	double dOmega;
@@ -501,6 +509,11 @@ struct inGravExternal {
 	double dTime;
 #endif
 	};
+struct outGravExternal {
+    double dAcc[3];
+    double dTorque[3];
+    };
+
 void pstGravExternal(PST,void *,int,void *,int *);
 
 /* PST_CALCEANDL */
@@ -1397,6 +1410,25 @@ struct inClearTimer
     };
 
 void pstClearTimer(PST,void *,int,void *,int *);
+
+/* PST_MASSINR */
+struct inMassInR 
+{
+    double R;
+    };
+
+struct outMassInR
+{
+    double dMass;
+    FLOAT com[3];
+    };
+void pstMassInR(PST,void *,int,void *,int *);
+
+struct inRotBar
+{
+    struct rotbarContext rotbar;
+    };
+void pstInitRotBar(PST,void *,int,void *,int *);
 
 /* PST_KICKVPRED */
 #ifdef NEED_VPRED

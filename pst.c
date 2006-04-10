@@ -86,7 +86,7 @@ pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inGravity),sizeof(struct outGravity));
 	mdlAddService(mdl,PST_GRAVEXTERNAL,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGravExternal,
-				  sizeof(struct inGravExternal),0);
+				  sizeof(struct inGravExternal),sizeof(struct outGravExternal));
 	mdlAddService(mdl,PST_CALCEANDL,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstCalcEandL,
 				  0,sizeof(struct outCalcEandL));
@@ -415,8 +415,14 @@ pstAddServices(PST pst,MDL mdl)
 		      sizeof(struct inSimpleStarForm),sizeof(struct outSimpleStarForm));
 #endif
 	mdlAddService(mdl,PST_CLEARTIMER,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstClearTimer,
-				  sizeof(struct inClearTimer),0);
+		      (void (*)(void *,void *,int,void *,int *)) pstClearTimer,
+		      sizeof(struct inClearTimer),0);
+	mdlAddService(mdl,PST_MASSINR,pst,
+		      (void (*)(void *,void *,int,void *,int *)) pstMassInR,
+		      sizeof(struct inMassInR), sizeof(struct outMassInR));
+	mdlAddService(mdl,PST_ROTBARINIT,pst,
+		      (void (*)(void *,void *,int,void *,int *)) pstInitRotBar,
+		      sizeof(struct inRotBar), 0);
 #ifdef NEED_VPRED
 	mdlAddService(mdl,PST_KICKVPRED,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstKickVpred, 
@@ -3066,14 +3072,28 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	struct inGravExternal *in = vin;
+	struct outGravExternal *out = vout;
+	struct outGravExternal outLcl;
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inGravExternal));
 	if (pst->nLeaves > 1) {
+	        int j;
+	    
 		mdlReqService(pst->mdl,pst->idUpper,PST_GRAVEXTERNAL,in,nIn);
-		pstGravExternal(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		pstGravExternal(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outLcl,NULL);
+		for(j = 0; j < 3; j++) {
+		    out->dAcc[j] += outLcl.dAcc[j];
+		    out->dTorque[j] += outLcl.dTorque[j];
+		    }
 		}
 	else {
+	    int j;
+
+	    for(j = 0; j < 3; j++) {
+		out->dAcc[j] = 0.0;
+		out->dTorque[j] = 0.0;
+		}
 		if (in->bIndirect) {
 			pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass,in->dSunSoft);
 			}
@@ -3101,6 +3121,12 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (in->bTimeVarying) {
 			pkdTimeVarying(plcl->pkd,in->dTime);
 			}
+		if (in->bRotatingBar) {
+			pkdRotatingBar(plcl->pkd, in->dRotBarAmp,
+				       in->dRotBarPosAng,
+				       in->dRotBarB5, in->aCom, out->dAcc,
+				       out->dTorque);
+			}
 #ifdef ROT_FRAME
 		if (in->bRotFrame) {
 			pkdRotFrame(plcl->pkd,in->dOmega,in->dOmegaDot);
@@ -3119,7 +3145,7 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 #endif
 		}
-	if (pnOut) *pnOut = 0;
+	if (pnOut) *pnOut = sizeof(struct outGravExternal);
 	}
 
 
@@ -5187,6 +5213,55 @@ pstClearTimer(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
+void pstMassInR(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inMassInR *in = vin;
+	struct outMassInR *out = vout;
+	struct outMassInR outLcl;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inMassInR));
+	if (pst->nLeaves > 1) {
+	        int k;
+		double dTMass;
+
+		mdlReqService(pst->mdl,pst->idUpper,PST_MASSINR,in,nIn);
+		pstMassInR(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outLcl,NULL);
+		dTMass = out->dMass + outLcl.dMass;
+		if(dTMass == 0.0) {
+		    for(k = 0; k < 3; k++)
+			out->com[k] = 0.0;
+		    }
+		else {
+		    for(k = 0; k < 3; k++)
+		        out->com[k] = (out->com[k]*out->dMass +
+			    outLcl.com[k]*outLcl.dMass)/dTMass;
+		    }
+		out->dMass = dTMass;
+		}
+	else {
+		pkdMassInR(plcl->pkd, in->R, &out->dMass, out->com);
+		}
+	if (pnOut) *pnOut = sizeof(struct outMassInR);
+	}
+
+void pstInitRotBar(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inRotBar *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inRotBar));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_ROTBARINIT,in,nIn);
+		pstInitRotBar(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+	    pkdInitRotBar(plcl->pkd, &(in->rotbar));
+	    }
+	if (pnOut) *pnOut = 0;
+	}
 
 #ifdef NEED_VPRED
 #ifdef GASOLINE

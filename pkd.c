@@ -3252,7 +3252,6 @@ void pkdTimeVarying(PKD pkd,double dTime)
 		}
 	}
 
-
 /*DEBUG #define SPINUP*/
 
 #ifdef ROT_FRAME
@@ -3359,6 +3358,34 @@ void pkdCalcEandLExt(PKD pkd,double *dMass,double dSumMR[],double dSumMV[],
 		}
 	}
 
+void pkdMassInR(PKD pkd, double R, double *pdMass, FLOAT *com)
+{
+    PARTICLE *p;
+    int i;
+    int nLocal;
+    double dMass = 0.0;
+    FLOAT fCom[3] = {0.0,0.0,0.0};
+
+    p = pkd->pStore;
+    nLocal = pkdLocal(pkd);
+    for(i = 0; i < nLocal; i++) {
+	double r2 = 0.0;
+	int k;
+	
+	for(k = 0; k < 3; k++) {
+	    r2 += p[i].r[k]*p[i].r[k];
+	    }
+	
+	if(r2 <= R*R) {
+	    dMass += p[i].fMass;
+	    for(k = 0; k < 3; k++)
+		fCom[k] += p[i].fMass*p[i].r[k];
+	    }
+	}
+    *pdMass = dMass;
+    for(i = 0; i < 3; i++)
+	com[i] = fCom[i];
+    }
 
 /* 
  * Use the f and g functions to advance an unperturbed orbit.

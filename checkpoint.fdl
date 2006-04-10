@@ -104,6 +104,69 @@ FDL checkpoint_7 (
 			ELEMENT bMiyamotoDisk (
 				TYPE int
 				)	
+			ELEMENT bRotatingBar (
+				TYPE int
+				)
+			ELEMENT dRotBarMass (
+				TYPE double
+				)
+			ELEMENT dRotBarLength (
+				TYPE double
+				)	
+			ELEMENT dRotBarCorotFac (
+				TYPE double
+				)
+			ELEMENT dRotBarTurnOff (
+				TYPE double
+				)
+			ELEMENT dRotBarTurnOn (
+				TYPE double
+				)
+			ELEMENT dRotBarAmpFac (
+				TYPE double
+				)
+			ELEMENT dRotBarDuration (
+				TYPE double
+				)
+			ELEMENT dRotBarPosAng (
+				TYPE double
+				)
+			ELEMENT dRotBarPosX (
+				TYPE double
+				)
+			ELEMENT dRotBarPosY (
+				TYPE double
+				)
+			ELEMENT dRotBarPosZ (
+				TYPE double
+				)
+			ELEMENT dRotBarVelX (
+				TYPE double
+				)
+			ELEMENT dRotBarVelY (
+				TYPE double
+				)
+			ELEMENT dRotBarVelZ (
+				TYPE double
+				)
+			ELEMENT dRotBarTime0 (
+				TYPE double
+				)
+			ELEMENT dRotBarOmega (
+				TYPE double
+				)
+			ELEMENT dRotBarB5 (
+				TYPE double
+				)
+			ELEMENT dRotBarIz (
+				TYPE double
+				)
+			ELEMENT dRotBarLz (
+				TYPE double
+				)
+			ELEMENT dRotBarLz0 (
+				TYPE double
+				)
 			ELEMENT nBucket (
 				TYPE int
 				)
