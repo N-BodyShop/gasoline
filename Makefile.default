@@ -6,6 +6,10 @@
 # null, sgi, pvm, pthread, pthread_dec, pthread_sgi, ampi, lam_mpi, qmpi, mpi,
 # spx, t3d, t3dmpi, t3empi, ksr, charm, xt3
 #
+# NOTE: When compiling on XT3, make sure that DF_NXPIXMAX and DF_NXPIXMAX are
+#       set to something like 600 or 700 or you will crash after writing a few
+#       frames.
+#
 PNG_INCL =
 PNG_LIB = 
 PNG_OBJ =
@@ -130,10 +134,10 @@ QMPI_MDL_CFLAGS  = -O5 -arch ev6 -fast -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX
 #  
 XT3_MDL            = ../mdl/mpi
 XT3_LIBMDL         = $(XT3_MDL)/mdl.o -lm
-XT3_MDL_CFLAGS     = -g -O2
+XT3_MDL_CFLAGS     = -fastsse -DCRAY_XT3
 XT3_XDR            = ../xdr
 XT3_XDR_CFLAGS     = -g -O2
-XT3_CFLAGS         = -g -O3 -I$(XT3_MDL) -I/usr/include -I$(XT3_XDR) $(BASE_DEF)  $(CC_DEF) -DCRAY_XT3
+XT3_CFLAGS         = -fastsse -Mvect=prefetch -I$(XT3_MDL) -I/usr/include -I$(XT3_XDR) $(BASE_DEF)  $(CC_DEF) -DCRAY_XT3
 XT3_LD_FLAGS       = $(BASE_LD_FLAGS)
 XT3_XOBJ           = erf.o v_sqrt1.o $(XT3_XDR)/xdr.o $(XT3_XDR)/xdr_stdio.o $(XT3_XDR)/xdr_float.o $(XT3_XDR)/htonl.o
 
