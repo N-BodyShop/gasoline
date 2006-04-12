@@ -2332,7 +2332,7 @@ void msrFinish(MSR msr)
 {
 	int id;
 
-	for (id=1;id<msr->nThreads;++id) {
+	for (id=1;id<msr->mdl->nThreads;++id) {
 		if (msr->param.bVDetails) printf("Stopping thread %d\n",id);		
 		mdlReqService(msr->mdl,id,SRV_STOP,NULL,0);
 		mdlGetReply(msr->mdl,id,NULL,NULL);
