@@ -4421,6 +4421,11 @@ int msrFindCheck(MSR msr) {
 	if(latestTime == 0)
 		return 0;
 	
+	/* On the Cray XT3, renaming a file to the same name will not return success,
+	 * so check to make sure LatestCheckFile and CheckFile are not the same name. */
+	if (strcmp(achLatestCheckFile, achCheckFile) == 0)
+	     return 1;	     /* They are the same name, so no need to rename */
+
 	/* Rename latest valid checkpoint file to .chk, return success. */
 	if(!rename(achLatestCheckFile, achCheckFile)) /* The last filename checked is the one we want. */
 		return 1;
