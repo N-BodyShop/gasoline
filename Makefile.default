@@ -230,7 +230,7 @@ CHARMLINK=
 CHARM_MDL			= ../mdl/charm
 CHARM_CFLAGS		= -verbose -g -I$(CHARM_MDL) $(BASE_DEF) 
 CHARM_MDL_CFLAGS	= -verbose -g -Wall
-CHARM_LD_FLAGS		=  $(BASE_LD_FLAGS) -language charm++ -memory os
+CHARM_LD_FLAGS		=  $(BASE_LD_FLAGS) -language charm++
 CHARM_XOBJ                = erf.o v_sqrt1.o
 CHARM_LIBMDL              = $(CHARM_MDL)/mdl.o $(CHARMLINK) -lm
 
