@@ -684,6 +684,7 @@ int main(int argc,char **argv)
 		        }
 #ifdef GASOLINE				
 		if (msr->nGas > 0) {
+			msrInitSph(msr,dTime);
 		        msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 			msrDomainDecomp(msr,0,1);
 			msrBuildTree(msr,1,-1.0,1);
