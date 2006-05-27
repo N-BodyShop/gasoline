@@ -193,6 +193,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	starp.vForm[j] = starp.v[j];
 	}
     starp.u = T;
+    starp.fNSNtot = 0.0;
     starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in
 				       NewParticle() */
 

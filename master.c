@@ -63,7 +63,7 @@ double msrTime(void) {
 #endif
 
 #define DEN_CGS_SYS 1.6831e6 /* multiply density in cgs by this to get
-								density in system units (AU, M_Sun) */
+                                density in system units (AU, M_Sun) */
 
 void _msrLeader(void)
 {
@@ -914,6 +914,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bFeedBack = 0;
 	prmAddParam(msr->prm,"bFeedBack",0,&msr->param.bFeedBack,sizeof(int),
 				"fdbk","<Stars provide feedback> = 0");
+	msr->param.bFormOutputs = 1;
+	prmAddParam(msr->prm,"bFormOutputs",0,&msr->param.bFormOutputs,sizeof(int),
+				"fdbk","<Write *form files?> = 0");
 #ifdef SIMPLESF
 	msr->param.SSF_dComovingDenMin = 200.0;
 	prmAddParam(msr->prm,"SSF_dComovingDenMin", 2, &msr->param.SSF_dComovingDenMin,
@@ -983,7 +986,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dCStar", 2, &msr->param.stfm->dCStar,
 		    sizeof(double), "stCStar",
 		    "<Star formation coefficient> = 0.1");
-	msr->param.stfm->dTempMax = 3.0e4;
+	msr->param.stfm->dTempMax = 1.5e4;
 	prmAddParam(msr->prm,"dTempMax", 2, &msr->param.stfm->dTempMax,
 		    sizeof(double), "stTempMax",
 		    "<Maximum temperature at which star formation occurs> = 0.0");
@@ -1008,15 +1011,19 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	fbInitialize(&msr->param.fb);
         snInitialize(&msr->param.sn);
         snInitConstants(msr->param.sn);
-	msr->param.sn->dESN = 1e51;
+	msr->param.sn->dESN = 0.1e51;
 	prmAddParam(msr->prm,"dESN", 2, &msr->param.sn->dESN,
 		    sizeof(double), "snESN",
-		    "<Energy of supernova in ergs> = 1e51");
+		    "<Energy of supernova in ergs> = 0.1e51");
 	if (msr->param.sn->dESN > 0.0) msr->param.bSmallSNSmooth = 1;
         else msr->param.bSmallSNSmooth = 0;
 	prmAddParam(msr->prm,"bSmallSNSmooth", 0, &msr->param.bSmallSNSmooth,
 		    sizeof(int), "bSmallSNSmooth",
 		    "<smooth SN ejecta over blast or smoothing radius> = blast radius");
+        msr->param.bSNTurnOffCooling = 1;
+	prmAddParam(msr->prm,"bSNTurnOffCooling", 0, &msr->param.bSNTurnOffCooling,
+		    sizeof(int), "bSNTurnOffCooling",
+		    "<Do SN turn off cooling> = 1");
 
 #endif /* STARFORM */
 #endif /* GASOLINE */
@@ -2039,6 +2046,7 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef STARFORM
 	fprintf(fp,"\n# Star Formation: bStarForm: %d",msr->param.bStarForm);
+	fprintf(fp," bFormOutputs: %d",msr->param.bFormOutputs);
 	fprintf(fp," bFeedBack: %d",msr->param.bFeedBack);	
 	fprintf(fp," dOverDenMin: %g",msr->param.stfm->dOverDenMin);
 	fprintf(fp," dPhysDenMin: %g",msr->param.stfm->dPhysDenMin);
@@ -2050,16 +2058,16 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dMinGasMass: %g",msr->param.stfm->dMinGasMass);
 	fprintf(fp," dMaxStarMass: %g",msr->param.stfm->dMaxStarMass);
 	fprintf(fp," dESN: %g",msr->param.sn->dESN);
+	fprintf(fp," bSNTurnOffCooling: %i",msr->param.bSNTurnOffCooling);
 	fprintf(fp," bShortCoolShutoff: %i",msr->param.bShortCoolShutoff);
 	fprintf(fp," bSmallSNSmooth: %i",msr->param.bSmallSNSmooth);
 
         for ( testDelta = msr->param.dDelta; 
-	      testDelta >= msr->param.dDeltaStarForm && 
-		  msr->param.dDeltaStarForm != 0.0; testDelta *= 0.5 ){
-	    if ( !(prmSpecified(msr->prm,"iStarFormRung")) )
-		msr->param.iStarFormRung++;
-	    }
-
+            testDelta >= msr->param.dDeltaStarForm && 
+            msr->param.dDeltaStarForm > 0.0; testDelta *= 0.5 ){
+                    if ( !(prmSpecified(msr->prm,"iStarFormRung")) )
+                        msr->param.iStarFormRung++;
+                    }
         if ( testDelta <= msr->param.dDelta ){ 
             fprintf(fp," dDeltaStarForm (set): %g, effectively: %g = %g yrs, iStarFormRung: %i",
                     msr->param.dDeltaStarForm, testDelta,
@@ -2753,6 +2761,22 @@ void msrCalcWriteStart(MSR msr)
 	}
 
 
+void msrCalcNCWriteStart(MSR msr) 
+{
+	struct outSetTotals out;
+	struct inSetNCWriteStart in;
+
+	pstSetTotals(msr->pst,NULL,0,&out,NULL);
+	assert(out.nGas == msr->nGas);
+	assert(out.nDark == msr->nDark);
+	assert(out.nStar == msr->nStar);
+	in.nGasWriteStart = 0;
+	in.nDarkWriteStart = 0;
+	in.nStarWriteStart = 0;
+	pstSetNCWriteStart(msr->pst,&in,sizeof(in),NULL,NULL);
+	}
+
+
 void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 {
 	FILE *fp;
@@ -2777,10 +2801,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	_msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
 	
 	fp = fopen(achOutFile,"w");
-	if (!fp) {
-		printf("Could not open OutFile:%s\n",achOutFile);
-		_msrExit(msr,1);
-		}
+	assert(fp != NULL);
 	in.bStandard = msr->param.bStandard;
 #ifdef GASOLINE
 	in.duTFac = (msr->param.dConstGamma - 1)*msr->param.dMeanMolWeight/
@@ -2847,6 +2868,104 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	     }
 	}
 
+void msrWriteTipsyHead(MSR msr,char *achOutFile,double dTime, struct inWriteTipsy *in)
+{
+	FILE *fp;
+	struct dump h;
+	char achFile[PST_FILENAME_SIZE];
+	LCL *plcl = msr->pst->plcl;
+	double sec,dsec;
+	
+	fp = fopen(achOutFile,"w");
+        assert(fp);
+/*	if (!fp) {
+            printf("Could not open OutFile:%s\n",achOutFile);
+            _msrExit(msr,1);
+            }*/
+	in->bStandard = msr->param.bStandard;
+#ifdef GASOLINE
+	in->duTFac = (msr->param.dConstGamma - 1)*msr->param.dMeanMolWeight/
+		msr->param.dGasConst;
+#else
+	in->duTFac = 1.0;
+#endif
+	in->iGasModel = msr->param.iGasModel;
+	/*
+	 ** Assume tipsy format for now.
+	 */
+	h.nbodies = msr->N;
+	h.ndark = msr->nDark;
+	h.nsph = msr->nGas;
+	h.nstar = msr->nStar;
+	if (msrComove(msr)) {
+		h.time = csmTime2Exp(msr->param.csm,dTime);
+		if (msr->param.bCannonical) {
+			in->dvFac = 1.0/(h.time*h.time);
+			}
+		else {
+			in->dvFac = 1.0;
+			}
+		}
+	else {
+		h.time = dTime;
+		in->dvFac = 1.0;
+		}
+	h.ndim = 3;
+	if (msr->param.bVDetails) {
+		if (msrComove(msr)) {
+			printf("Writing file...\nTime:%g Redshift:%g\n",
+				   dTime,(1.0/h.time - 1.0));
+			}
+		else {
+			printf("Writing file...\nTime:%g\n",dTime);
+			}
+		}
+	if (in->bStandard) {
+		XDR xdrs;
+
+		xdrstdio_create(&xdrs,fp,XDR_ENCODE);
+		xdrHeader(&xdrs,&h);
+		xdr_destroy(&xdrs);
+		}
+	else {
+		fwrite(&h,sizeof(struct dump),1,fp);
+		}
+	fclose(fp);
+    }
+    
+void msrWriteTipsyBody(MSR msr,char *pszFileName,double dTime, struct inWriteTipsy *in)
+{
+	FILE *fp;
+	char achOutFile[PST_FILENAME_SIZE];
+	LCL *plcl = msr->pst->plcl;
+	double sec,dsec;
+
+	/*
+	 ** Add local Data Path.
+	 */
+	_msrMakePath(plcl->pszDataPath,in->achOutFile,achOutFile);
+	
+	fp = fopen(achOutFile,"w");
+        assert(fp);
+/*	if (!fp) {
+		printf("Could not open OutFile:%s\n",achOutFile);
+		_msrExit(msr,1);
+		}*/
+	/* Write Timings --JPG */
+	if (msr->param.bVDetails) {
+	     puts("Writing output file data...");
+	     sec = msrTime();
+	     }
+	if(msr->param.bParaWrite)
+	    pstWriteTipsy(msr->pst,in,sizeof(in),NULL,NULL);
+	else
+	    msrOneNodeWriteTipsy(msr, in);
+	if (msr->param.bVDetails) {
+	     dsec = msrTime() - sec;
+	     printf("Data write complete, Wallclock: %f secs\n",dsec);
+	     puts("Output file has been successfully written, Wallclock");
+	     }
+	}
 
 void msrSetSoft(MSR msr,double dSoft)
 {
@@ -3061,20 +3180,511 @@ void msrReorder(MSR msr)
 	}
 
 
+void msrCreateAllStepZeroOutputList(MSR msr, int *iNumOutputs, int OutputList[])
+{
+    /* Do all the stuff smoothed over all particles. */
+    *iNumOutputs = 0;
+    OutputList[(*iNumOutputs)++]=OUT_ACCELG_VECTOR;
+    OutputList[(*iNumOutputs)++]=OUT_POT_ARRAY;
+    OutputList[(*iNumOutputs)++]=OUT_DT_ARRAY;
+    if (msrDoDensity(msr)) OutputList[(*iNumOutputs)++]=OUT_DENSITY_ARRAY;
+}
+
+void msrCreateGasStepZeroOutputList(MSR msr, int *iNumOutputs, int OutputList[])
+{
+    /* Do all the stuff smoothed over all particles. */
+    *iNumOutputs = 0;
+#ifdef GASOLINE				
+    if (msr->param.bDoSphhOutput) OutputList[(*iNumOutputs)++]=OUT_SPHH_ARRAY;
+    if (msr->param.bSphStep) OutputList[(*iNumOutputs)++]=OUT_SPHDT_ARRAY;
+    if (!msr->param.bBulkViscosity){
+        OutputList[(*iNumOutputs)++]=OUT_BALSARASWITCH_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_DIVV_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_MUMAX_ARRAY;
+        if (msr->param.bShockTracker) {
+            OutputList[(*iNumOutputs)++]=OUT_SHOCKTRACKER_ARRAY;
+            OutputList[(*iNumOutputs)++]=OUT_DIVONCONH_ARRAY;
+            OutputList[(*iNumOutputs)++]=OUT_DIVONCONX_ARRAY;
+            OutputList[(*iNumOutputs)++]=OUT_DIVRHOV_ARRAY;
+            OutputList[(*iNumOutputs)++]=OUT_GRADRHO_VECTOR;
+            OutputList[(*iNumOutputs)++]=OUT_ACCELPRES_VECTOR;
+        }
+
+        OutputList[(*iNumOutputs)++]=OUT_ACCEL_VECTOR;
+        OutputList[(*iNumOutputs)++]=OUT_PDV_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_PDVPRES_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_PDVVISC_ARRAY;
+        }
+#ifndef NOCOOLING				
+    {
+    int ArrayCnt = 0;
+    char OutSuffix[20];
+    int OutType;
+    
+    for (;;) {	
+        CoolOutputArray( &msr->param.CoolParam, ArrayCnt, &OutType, OutSuffix );
+        if (OutType == OUT_NULL) break;
+        OutputList[(*iNumOutputs)++]=OutType;
+        ArrayCnt++;
+        }
+    }
+#endif
+#endif
+    
+}
+
+void msrCreateAllOutputList(MSR msr, int (*iNumOutputs), int OutputList[])
+{
+    /* Do all the stuff smoothed over all particles. */
+    (*iNumOutputs) = 0;
+    if (msrDoDensity(msr))  OutputList[(*iNumOutputs)++]=OUT_DENSITY_ARRAY;
+    if (msr->param.bDoSoftOutput) OutputList[(*iNumOutputs)++]=OUT_SOFT_ARRAY;
+    if (msr->param.bDohOutput) OutputList[(*iNumOutputs)++]=OUT_H_ARRAY;
+}
+
+void msrCreateGasOutputList(MSR msr, int (*iNumOutputs), int OutputList[])
+{
+    /* Add your new output file to the list after you've added
+     * your item to the enumerated list in outtype.h, what the
+     * value is in outtype.c ArrType or VecType and what the 
+     * postfix is in outtype.c ArrFilename or VecFilename
+     */
+    (*iNumOutputs) = 0;
+
+    if(msr->param.iBinaryOutput ==6)  {
+        OutputList[(*iNumOutputs)++]=OUT_POS_VECTOR;
+        OutputList[(*iNumOutputs)++]=OUT_VEL_VECTOR;
+        OutputList[(*iNumOutputs)++]=OUT_MASS_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_POT_ARRAY;
+#ifdef GASOLINE				
+        OutputList[(*iNumOutputs)++]=OUT_GASDENSITY_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_TEMP_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_H_ARRAY;
+#endif
+        }
+    else OutputList[(*iNumOutputs)++]=BIG_FILE; /*Tipsy, SS or whatever*/
+    if(msr->param.bDoIOrderOutput) OutputList[(*iNumOutputs)++]=OUT_IORDER_ARRAY;
+    if (msr->param.bDodtOutput) OutputList[(*iNumOutputs)++]=OUT_DT_ARRAY;
+#ifdef GASOLINE				
+    if (msr->param.bDoSphhOutput) OutputList[(*iNumOutputs)++]=OUT_SPHH_ARRAY;
+#ifdef PDVDEBUG
+    OutputList[(*iNumOutputs)++]=OUT_PDVPRES_ARRAY;
+    OutputList[(*iNumOutputs)++]=OUT_PDVVISC_ARRAY;
+#endif
+    if (msr->param.bShockTracker) {
+        OutputList[(*iNumOutputs)++]=OUT_SHOCKTRACKER_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_BALSARASWITCH_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_SPHH_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_DIVV_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_DIVRHOV_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_GRADRHO_VECTOR;
+    }
+#ifndef NOCOOLING				
+    {
+    int ArrayCnt = 0;
+    char OutSuffix[20];
+    int OutType;
+    
+    for (;;) {	
+        CoolOutputArray( &msr->param.CoolParam, ArrayCnt, &OutType, OutSuffix );
+        if (OutType == OUT_NULL) break;
+        OutputList[(*iNumOutputs)++]=OutType;
+        ArrayCnt++;
+        }
+    }
+#endif
+
+#ifdef STARFORM
+    if(msr->param.bStarForm || msr->param.bFeedBack) {
+        OutputList[(*iNumOutputs)++]=OUT_IGASORDER_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_COOLTURNONTIME_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_OXYGENMASSFRAC_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_IRONMASSFRAC_ARRAY;
+        if(msr->param.bFormOutputs){
+            OutputList[(*iNumOutputs)++]=OUT_TIMEFORM_ARRAY;
+            OutputList[(*iNumOutputs)++]=OUT_MASSFORM_ARRAY;
+            OutputList[(*iNumOutputs)++]=OUT_DENSITYFORM_ARRAY;
+            OutputList[(*iNumOutputs)++]=OUT_TEMPFORM_ARRAY;
+            OutputList[(*iNumOutputs)++]=OUT_RFORM_VECTOR;
+            OutputList[(*iNumOutputs)++]=OUT_VFORM_VECTOR;
+            }
+#ifdef SIMPLESF
+        OutputList[(*iNumOutputs)++]=OUT_DIVV_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_TCOOLAGAIN_ARRAY;
+        OutputList[(*iNumOutputs)++]=OUT_MSTAR_ARRAY;
+#endif
+        }
+#endif
+#endif
+}
+
+void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, double dTime)
+{
+    FILE *fp, *xmlfp;
+    char vecOutFile[256], dirname[256];
+    int i, k, iDim, nDim, code, id, preminmax, magic=1062053;
+    LCL *plcl = msr->pst->plcl;
+    char achOutFile[PST_FILENAME_SIZE], xmlFile[PST_FILENAME_SIZE];
+    char *typenames[3];
+    int nTypes[3];
+    struct inOutput inOut;
+    struct outNC out;
+    XDR xdrs;
+#ifdef COLLISIONS
+    struct inWriteSS in;
+#else
+    struct inWriteTipsy in;
+#endif
+
+    preminmax = 4*sizeof(int)+sizeof(double);
+    typenames[0]="gas";
+    typenames[1]="dark";
+    typenames[2]="star";
+    /*
+     ** Calculate where to start writing.
+     ** This sets plcl->n(Gas|Dark|Start)WriteStart.
+     */
+    msrCalcNCWriteStart(msr);
+    /*
+     ** Add Data Subpath for local and non-local names.
+     */
+    _msrMakePath(msr->param.achDataSubPath,achFile,inOut.achOutFile);
+    /*
+     ** Add local Data Path only for writing from this function.
+     ** Other nodes may have different directory structures.
+     */
+    _msrMakePath(plcl->pszDataPath,inOut.achOutFile,achOutFile);
+    
+    assert(mkdir(achOutFile, 0775)<1);
+/*    sprintf(xmlFile,"%s/description.xml",achOutFile);
+    xmlfp = fopen(xmlFile,"w");
+    fprintf(xmlfp,"<?xml version=\"1.0\" encoding=\"iso-8859-1\"?>\n<simulation>\n");*/
+    sprintf(dirname,"%s/gas",achOutFile);
+    if (msr->nGas) assert(mkdir(dirname,0775)<1);
+    sprintf(dirname,"%s/dark",achOutFile);
+    if (msr->nDark) assert(mkdir(dirname,0775)<1);
+    sprintf(dirname,"%s/star",achOutFile);
+    if (msr->nStar) assert(mkdir(dirname,0775)<1);
+
+    for (i=0; i<iNumOutputs;i++){
+        code = FLOAT32;
+        nTypes[0] = msr->nGas;nTypes[1] = msr->nDark;nTypes[2] = msr->nStar;
+        switch (OutputList[i]){
+            case OUT_TIMEFORM_ARRAY:
+            case OUT_MASSFORM_ARRAY:
+            case OUT_DENSITYFORM_ARRAY:
+            case OUT_U_ARRAY:
+                nTypes[0]=nTypes[1]=0;
+                break;
+            case OUT_IGASORDER_ARRAY:
+                nTypes[0]=nTypes[1]=0;
+            case OUT_IORDER_ARRAY:
+                code=INT32;
+                break;
+            /* Gas only floats*/
+            case OUT_COOLTURNONTIME_ARRAY:
+            case OUT_COOL_ARRAY0:
+            case OUT_COOL_ARRAY1:
+            case OUT_COOL_ARRAY2:
+            case OUT_SPHH_ARRAY:
+            case OUT_TEMP_ARRAY:
+            case OUT_GASDENSITY_ARRAY:
+                nTypes[1]=nTypes[2]=0;
+                break;
+            case OUT_OXYGENMASSFRAC_ARRAY:
+            case OUT_IRONMASSFRAC_ARRAY:
+            case OUT_METALS_ARRAY:
+                nTypes[1]=0;
+                break;
+            }
+            
+        nDim = (OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
+        inOut.iBinaryOutput = msr->param.iBinaryOutput;
+        inOut.N = msr->N;
+        inOut.iType=OutputList[i];
+        pstOutNCVector(msr->pst,&inOut,sizeof(inOut),&out,NULL);
+        for (k=0;k<3;k++){
+            _msrMakePath(plcl->pszDataPath,inOut.achOutFile,achOutFile);
+            if (nTypes[k]) {
+                sprintf(achOutFile,"%s/%s/",achOutFile,typenames[k]);
+                VecFilename(achOutFile,OutputList[i]);
+                fp = fopen(achOutFile,"r+");
+                assert(fp != NULL);
+                xdrstdio_create(&xdrs,fp,XDR_ENCODE);
+                xdr_int(&xdrs,&magic);
+                xdr_double(&xdrs,&dTime);
+                xdr_int(&xdrs,&nTypes[k]);
+                xdr_int(&xdrs,&nDim);
+                xdr_int(&xdrs,&code);
+                for (iDim=0; iDim<nDim; iDim++) 
+                    xdr_float(&xdrs,&out.min[k][iDim]);
+                for (iDim=0; iDim<nDim; iDim++) 
+                    xdr_float(&xdrs,&out.max[k][iDim]);
+                xdr_destroy(&xdrs);
+                fclose(fp);
+                }
+            }
+        }
+
+    }
+
+void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, double dTime)
+{
+    FILE *fp;
+    char vecOutFile[256];
+    int i, k, iDim, nDim, code, id, magic=1062053;
+    LCL *plcl = msr->pst->plcl;
+    char achOutFile[PST_FILENAME_SIZE];
+    struct inOutput inOut;
+#ifdef COLLISIONS
+    struct inWriteSS in;
+#else
+    struct inWriteTipsy in;
+#endif
+
+    if (msr->param.iBinaryOutput == 6) {
+        msrWriteNCOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+        return;
+        }
+
+    /*
+     ** Calculate where to start writing.
+     ** This sets plcl->nWriteStart.
+     */
+    msrCalcWriteStart(msr);
+    /*
+     ** Add Data Subpath for local and non-local names.
+     */
+    _msrMakePath(msr->param.achDataSubPath,achFile,in.achOutFile);
+    /*
+     ** Add local Data Path only for writing from this function.
+     ** Other nodes may have different directory structures.
+     */
+    _msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
+        
+    /* Write Headers */
+    in.bDoneTipsy=0;
+    sprintf(inOut.achOutFile,"%s.",in.achOutFile);
+    for (i=0; i<iNumOutputs;i++){
+        if ( OutputList[i] == BIG_FILE ){
+#ifdef COLLISIONS
+            msrWriteSSHead(msr,achOutFile,dTime,&in);
+#else
+            msrWriteTipsyHead(msr,achOutFile,dTime,&in);
+#endif
+            } 
+        else {
+            _msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
+            strncat(achOutFile,".",5);
+            VecFilename(achOutFile,OutputList[i]);
+            fp = fopen(achOutFile,"w");
+            assert(fp != NULL);
+            if (msr->param.iBinaryOutput && msr->param.bStandard) {
+                XDR xdrs;
+                xdrstdio_create(&xdrs,fp,XDR_ENCODE);
+                xdr_int(&xdrs,&msr->N);
+                }
+            else if (msr->param.iBinaryOutput) fwrite(&msr->N,sizeof(int),1,fp);
+            else fprintf(fp,"%d\n",msr->N);
+            fclose(fp);
+            }
+        }
+    
+    /* Write Data */
+    inOut.iBinaryOutput = msr->param.iBinaryOutput;
+    inOut.N = msr->N;
+    if (msr->param.iBinaryOutput) {
+        if(msr->param.bParaWrite) {
+            for (i=0; i<iNumOutputs;i++){
+                if ( OutputList[i] == BIG_FILE ){
+#ifdef COLLISIONS
+                    pstWriteSS(msr->pst,&in,sizeof(in),NULL,NULL);
+#else
+                    pstWriteTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
+#endif
+                    } 
+                else {
+                    inOut.iType=OutputList[i];
+                    if ((OutputList[i] > OUT_1D3DSPLIT)&& msr->param.bPackedVector) {
+                        inOut.iDim = -3;
+                        pstOutVector(msr->pst,&inOut,sizeof(inOut),NULL,NULL);
+                     } else {
+                    nDim=(OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
+                    for (iDim=0; iDim<nDim; iDim++) {
+                        inOut.iDim = iDim;
+                        pstOutVector(msr->pst,&inOut,sizeof(inOut),NULL,NULL);
+                        }
+                    }
+                }
+                }
+            } else /* Serial Binary */
+            msrOneNodeWriteOutputs(msr, OutputList, iNumOutputs, &in);
+        } else  /* ASCII:  NO PARALLEL OPTION! Only packed vectors supported. */
+        msrOneNodeWriteOutputs(msr, OutputList, iNumOutputs, &in);
+
+    }
+    
+void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs, struct inWriteTipsy *in)
+{
+    int i,id,iDim,nDim;
+    int nStart;
+    PST pst0;
+    LCL *plcl;
+    char achOutFile[PST_FILENAME_SIZE];
+    int inswap;
+
+    pst0 = msr->pst;
+    while(pst0->nLeaves > 1)
+		pst0 = pst0->pstLower;
+    plcl = pst0->plcl;
+    /*
+     ** Add the local Data Path to the provided filename.
+     */
+    _msrMakePath(plcl->pszDataPath,in->achOutFile,achOutFile);
+
+    /* 
+     * First write our own particles.
+     */
+    assert(msr->pMap[0] == 0);
+    nStart = plcl->pkd->nLocal;
+    for (i=0; i<iNumOutputs;i++){
+        if( OutputList[i]== BIG_FILE){
+#ifdef COLLISIONS
+            pkdWriteSS(plcl->pkd,achOutFile,plcl->nWriteStart);
+#else
+            pkdWriteTipsy(plcl->pkd,achOutFile,plcl->nWriteStart,in->bStandard,
+                                      in->dvFac,in->duTFac,in->iGasModel); 
+#endif
+            } else {
+            /* Only packed ASCII format supported!
+             * Use readpackedvector in Tipsy */
+            if ((OutputList[i] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
+                pkdOutVector(plcl->pkd,achOutFile,plcl->nWriteStart, -3, OutputList[i], msr->param.iBinaryOutput,msr->N,in->bStandard);
+                } else {
+                nDim=(OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
+                for (iDim=0; iDim<nDim; iDim++) 
+                    pkdOutVector(plcl->pkd,achOutFile,plcl->nWriteStart, iDim, OutputList[i],msr->param.iBinaryOutput,msr->N,in->bStandard);
+                }
+            }
+        } 
+        
+    /* Write out the particles on all the other nodes */
+    for (i=1;i<msr->nThreads;++i) {
+        id = msr->pMap[i];
+        /* 
+         * Swap particles with the remote processor.
+         */
+        inswap = 0;
+        mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+        pkdSwapAll(plcl->pkd, id);
+        mdlGetReply(pst0->mdl,id,NULL,NULL);
+        /* 
+         * Write the swapped particles.
+         */
+        for (i=0; i<iNumOutputs;i++){
+            if( OutputList[i]== BIG_FILE){
+#ifdef COLLISIONS
+                pkdWriteSS(plcl->pkd,achOutFile,plcl->nWriteStart);
+#else
+                pkdWriteTipsy(plcl->pkd,achOutFile,plcl->nWriteStart,in->bStandard,
+                                          in->dvFac,in->duTFac,in->iGasModel); 
+#endif
+                } else {
+                /* Only packed ASCII format supported!
+                 * Use readpackedvector in Tipsy */
+                if ((OutputList[i] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
+                    pkdOutVector(plcl->pkd,achOutFile,plcl->nWriteStart, -3, OutputList[i], msr->param.iBinaryOutput,msr->N,in->bStandard);
+                    } else {
+                    nDim=(OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
+                    for (iDim=0; iDim<nDim; iDim++) {
+        #ifdef SIMPLESF
+                        pkdOutVector(plcl->pkd,in->achOutFile, plcl->nWriteStart, iDim, OutputList[i], ((OutputList[i]==OUT_TCOOLAGAIN_ARRAY || OutputList[i]==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput), msr->N,in->bStandard);
+        #else
+                        pkdOutVector(plcl->pkd,in->achOutFile,plcl->nWriteStart, iDim, OutputList[i],msr->param.iBinaryOutput, msr->N,in->bStandard); 
+        #endif
+                        }
+                    }
+                }
+            }
+        nStart += plcl->pkd->nLocal;
+        /* 
+         * Swap them back again.
+         */
+        inswap = 0;
+        mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+        pkdSwapAll(plcl->pkd, id);
+        mdlGetReply(pst0->mdl,id,NULL,NULL);
+        }
+    assert(nStart == msr->N);
+    if(!in->bDoneTipsy) in->bDoneTipsy = 1;
+    }
+    
+void msrOneNodeOutArray(MSR msr, struct inOutput *in)
+{
+    int i,id;
+    int nStart;
+    PST pst0;
+    LCL *plcl;
+    char achOutFile[PST_FILENAME_SIZE];
+    int inswap;
+
+    pst0 = msr->pst;
+    while(pst0->nLeaves > 1)
+		pst0 = pst0->pstLower;
+    plcl = pst0->plcl;
+    /*
+     ** Add the local Data Path to the provided filename.
+     */
+    _msrMakePath(plcl->pszDataPath,in->achOutFile,achOutFile);
+
+    /* 
+     * First write our own particles.
+     */
+    assert(msr->pMap[0] == 0);
+    nStart = plcl->pkd->nLocal;
+    pkdOutVector(plcl->pkd,in->achOutFile,nStart, 0, in->iType,in->iBinaryOutput, msr->N,in->bStandard); 
+    for (i=1;i<msr->nThreads;++i) {
+            id = msr->pMap[i];
+        /* 
+         * Swap particles with the remote processor.
+         */
+        inswap = 0;
+        mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+        pkdSwapAll(plcl->pkd, id);
+        mdlGetReply(pst0->mdl,id,NULL,NULL);
+        /* 
+         * Write the swapped particles.
+         */
+#ifdef SIMPLESF
+        pkdOutVector(plcl->pkd,in->achOutFile, nStart, 0, in->iType, ((in->iType==OUT_TCOOLAGAIN_ARRAY || in->iType==OUT_MSTAR_ARRAY) ? 1 : in->iBinaryOutput), msr->N,in->bStandard);
+#else
+        pkdOutVector(plcl->pkd,in->achOutFile,nStart, 0, in->iType,in->iBinaryOutput, msr->N,in->bStandard); 
+#endif
+        nStart += plcl->pkd->nLocal;
+        /* 
+         * Swap them back again.
+         */
+        inswap = 0;
+        mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+        pkdSwapAll(plcl->pkd, id);
+        mdlGetReply(pst0->mdl,id,NULL,NULL);
+        }
+    assert(nStart == msr->N);
+    }
+
 void msrOutArray(MSR msr,char *pszFile,int iType)
 {
-	struct inOutArray in;
-	char achOutFile[PST_FILENAME_SIZE];
-	LCL *plcl;
-	PST pst0;
 	FILE *fp;
-	int id,i;
-	int inswap;
+	struct inOutput in;
+	char achOutFile[PST_FILENAME_SIZE];
+	LCL *plcl = msr->pst->plcl;
 
-	pst0 = msr->pst;
-	while(pst0->nLeaves > 1)
-	    pst0 = pst0->pstLower;
-	plcl = pst0->plcl;
+	/*
+	 ** Calculate where to start writing.
+	 ** This sets plcl->nWriteStart.
+	 */
+	msrCalcWriteStart(msr);
+
 	if (pszFile) {
 		/*
 		 ** Add Data Subpath for local and non-local names.
@@ -3099,61 +3709,129 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 	/*
 	 ** Write the Header information and close the file again.
 	 */
+	in.iType = iType;
+	in.iBinaryOutput = msr->param.iBinaryOutput;
+        in.iDim=1;
+        in.N = msr->N;
 	if (msr->param.iBinaryOutput) {
 		fwrite(&msr->N,sizeof(int),1,fp);
+                fclose(fp);
+                if(msr->param.bParaWrite)
+                    pstOutArray(msr->pst,&in,sizeof(in),NULL,NULL);
+                else
+                    msrOneNodeOutArray(msr, &in);
 		}
 	else {
 		fprintf(fp,"%d\n",msr->N);
+                fclose(fp);
+                msrOneNodeOutArray(msr, &in);
 		}
-	fclose(fp);
-	/* 
-	 * First write our own particles.
-	 */
-	assert(msr->pMap[0] == 0);
-	pkdOutArray(plcl->pkd,achOutFile,iType,msr->param.iBinaryOutput); 
-	for (i=1;i<msr->nThreads;++i) {
-		id = msr->pMap[i];
-	    /* 
-	     * Swap particles with the remote processor.
-	     */
-	    inswap = 0;
-	    mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-	    pkdSwapAll(plcl->pkd, id);
-	    mdlGetReply(pst0->mdl,id,NULL,NULL);
-	    /* 
-	     * Write the swapped particles.
-	     */
-#ifdef SIMPLESF
-	    pkdOutArray(plcl->pkd,achOutFile,iType,((iType==OUT_TCOOLAGAIN_ARRAY || iType==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput));
-#else
-	    pkdOutArray(plcl->pkd,achOutFile,iType,msr->param.iBinaryOutput); 
-#endif
-	    /* 
-	     * Swap them back again.
-	     */
-	    inswap = 0;
-	    mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-	    pkdSwapAll(plcl->pkd, id);
-	    mdlGetReply(pst0->mdl,id,NULL,NULL);
-	    }
 	}
 
 
+void msrOneNodeOutVector(MSR msr, struct inOutput *in)
+{
+    int i,id, iDim;
+    int nStart;
+    PST pst0;
+    LCL *plcl;
+    char achOutFile[PST_FILENAME_SIZE];
+    int inswap;
+
+    pst0 = msr->pst;
+    while(pst0->nLeaves > 1)
+		pst0 = pst0->pstLower;
+    plcl = pst0->plcl;
+    /*
+     ** Add the local Data Path to the provided filename.
+     */
+    _msrMakePath(plcl->pszDataPath,in->achOutFile,achOutFile);
+
+    assert(msr->pMap[0] == 0);
+    if (in->iBinaryOutput || msr->param.bPackedVector) {
+        nStart = plcl->pkd->nLocal;
+        /* 
+         * First write our own particles.
+         */
+        if (msr->param.bPackedVector) {
+            pkdOutVector(plcl->pkd,in->achOutFile,nStart, -3, in->iType,in->iBinaryOutput, msr->N,in->bStandard); 
+            } else {
+            for (iDim=0;iDim<3;++iDim) {
+                pkdOutVector(plcl->pkd,achOutFile, nStart, iDim, in->iType,msr->param.iBinaryOutput, msr->N,in->bStandard);
+                }
+            }
+            
+        for (i=1;i<msr->nThreads;++i) {
+            id = msr->pMap[i];
+            /* 
+             * Swap particles with the remote processor.
+             */
+            inswap = 0;
+            mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+            pkdSwapAll(plcl->pkd, id);
+            mdlGetReply(pst0->mdl,id,NULL,NULL);
+            /* 
+             * Write the swapped particles.
+             */
+           if (msr->param.bPackedVector) {
+                pkdOutVector(plcl->pkd,in->achOutFile,nStart,-3,in->iType,in->iBinaryOutput, msr->N,in->bStandard); 
+                } else {
+                for (iDim=0;iDim<3;++iDim) {
+                    pkdOutVector(plcl->pkd,achOutFile,nStart, iDim,in->iType,msr->param.iBinaryOutput, msr->N,in->bStandard);
+                    }
+                }
+            nStart += plcl->pkd->nLocal;
+            /* 
+             * Swap them back again.
+             */
+            inswap = 0;
+            mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+            pkdSwapAll(plcl->pkd, id);
+            mdlGetReply(pst0->mdl,id,NULL,NULL);
+            }
+        assert(nStart == msr->N);
+        } else { /* ASCII, non packed vectors are a pain! 
+                  * Note all the swap all's.  You should
+                  * definitely use packed vectors or binary
+                  * format for large simulations!
+                  */
+            nStart = 0;
+            for (iDim=0;iDim<3;++iDim) {
+                pkdOutVector(plcl->pkd,achOutFile,nStart, iDim,in->iType,msr->param.iBinaryOutput, msr->N,in->bStandard);
+                nStart += plcl->pkd->nLocal;
+                for (i=1;i<msr->nThreads;++i) {
+                    id = msr->pMap[i];
+                    inswap = 0;
+                    mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+                    pkdSwapAll(plcl->pkd, id);
+                    mdlGetReply(pst0->mdl,id,NULL,NULL);
+
+                    pkdOutVector(plcl->pkd,achOutFile,nStart, iDim,in->iType,msr->param.iBinaryOutput, msr->N,in->bStandard);
+                    
+                    nStart += plcl->pkd->nLocal;
+                    /* 
+                     * Swap them back again.
+                     */
+                    inswap = 0;
+                    mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+                    pkdSwapAll(plcl->pkd, id);
+                    mdlGetReply(pst0->mdl,id,NULL,NULL);
+                    }
+                }
+            assert(nStart == 3*msr->N);
+            }
+    }
+
 void msrOutVector(MSR msr,char *pszFile,int iType)
 {
-	struct inOutVector in;
+	struct inOutput in;
 	char achOutFile[PST_FILENAME_SIZE];
-	LCL *plcl;
-	PST pst0;
+	LCL *plcl = msr->pst->plcl;
 	FILE *fp;
-	int id,i;
-	int inswap;
 	int iDim;
 
-	pst0 = msr->pst;
-	while(pst0->nLeaves > 1)
-	    pst0 = pst0->pstLower;
-	plcl = pst0->plcl;
+        msrCalcWriteStart(msr);
+
 	if (pszFile) {
 		/*
 		 ** Add Data Subpath for local and non-local names.
@@ -3178,68 +3856,27 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	/*
 	 ** Write the Header information and close the file again.
 	 */
+	in.iType = iType;
+	in.iBinaryOutput = msr->param.iBinaryOutput;
 	if (msr->param.iBinaryOutput) {
-		fwrite(&msr->N,sizeof(int),1,fp);
-		}
-	else {
+            fwrite(&msr->N,sizeof(int),1,fp);
+            fclose(fp);
+            in.N=msr->N;
+            if(msr->param.bParaWrite){
+                if (msr->param.bPackedVector) {
+                    in.iDim = -3;
+                    pstOutVector(msr->pst,&in,sizeof(in),NULL,NULL);
+                    } else {
+                    for (iDim=0;iDim<3;++iDim) {
+                        in.iDim = iDim;
+                        pstOutVector(msr->pst,&in,sizeof(in),NULL,NULL);
+                        }
+                    }
+                } else msrOneNodeOutVector(msr, &in);
+            } else {
 		fprintf(fp,"%d\n",msr->N);
-		}
-	fclose(fp);
-
-	/* 
-	 * First write our own particles.
-	 */
-	assert(msr->pMap[0] == 0);
-	
-	if (msr->param.bPackedVector) {
-		pkdOutVector(plcl->pkd,achOutFile,-3,iType,msr->param.iBinaryOutput); 
-		for (i=1;i<msr->nThreads;++i) {
-			id = msr->pMap[i];
-			/* 
-			 * Swap particles with the remote processor.
-			 */
-			inswap = 0;
-			mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-			pkdSwapAll(plcl->pkd, id);
-			mdlGetReply(pst0->mdl,id,NULL,NULL);
-			/* 
-			 * Write the swapped particles.
-			 */
-			pkdOutVector(plcl->pkd,achOutFile,-3,iType,msr->param.iBinaryOutput); 
-			/* 
-			 * Swap them back again.
-			 */
-			inswap = 0;
-			mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-			pkdSwapAll(plcl->pkd,id);
-			mdlGetReply(pst0->mdl,id,NULL,NULL);
-			}
-		}
-	else {
-		for (iDim=0;iDim<3;++iDim) {
-			pkdOutVector(plcl->pkd,achOutFile,iDim,iType,msr->param.iBinaryOutput); 
-			for (i=1;i<msr->nThreads;++i) {
-				id = msr->pMap[i];
-				/* 
-				 * Swap particles with the remote processor.
-				 */
-				inswap = 0;
-				mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-				pkdSwapAll(plcl->pkd, id);
-				mdlGetReply(pst0->mdl,id,NULL,NULL);
-			/* 
-			 * Write the swapped particles.
-			 */
-				pkdOutVector(plcl->pkd,achOutFile,iDim,iType,msr->param.iBinaryOutput); 
-				/* 
-				 * Swap them back again.
-				 */
-				inswap = 0;
-				mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-				pkdSwapAll(plcl->pkd,id);
-				mdlGetReply(pst0->mdl,id,NULL,NULL);
-				}
-			}
+                fclose(fp);
+                msrOneNodeOutVector(msr, &in);
 		}
 	}
 
@@ -3291,8 +3928,12 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.dTime = dTime;
 #endif
 #ifdef STARFORM
+        in.smf.dSecUnit = msr->param.dSecUnit;  /*if you want to output feedback shutoff time in years*/
+        in.smf.dGmUnit = msr->param.dMsolUnit*MSOLG;  /*if you want to use snCalcSNIIFeedback to calculate feedback*/
+        in.smf.sn = *msr->param.sn;
         in.smf.dMinMassFrac = msr->param.stfm->dMinMassFrac;
 	in.smf.dTime = dTime;
+	in.smf.bSNTurnOffCooling = msr->param.bSNTurnOffCooling;
 	in.smf.bSmallSNSmooth = msr->param.bSmallSNSmooth;
 	in.smf.bShortCoolShutoff = msr->param.bShortCoolShutoff;
         /* from McKee and Ostriker (1977) ApJ 218 148 */
@@ -7034,6 +7675,37 @@ msrWriteSS(MSR msr,char *pszFileName,double dTime)
 	if (msr->param.bVDetails) puts("Output file successfully written.");
 	}
 
+void
+msrWriteSSHead(MSR msr,char *achOutFile,double dTime)
+{
+	SSIO ssio;
+	SSHEAD head;
+	struct inWriteSS in;
+	char achOutFile[PST_FILENAME_SIZE];
+	LCL *plcl = msr->pst->plcl;
+
+	if (ssioOpen(achOutFile,&ssio,SSIO_WRITE)) {
+            printf("Could not open OutFile:%s\n",achOutFile);
+            _msrExit(msr,1);
+            }
+
+        in.achOutFile = achOutFile;
+	/* Write header */
+
+	head.time = dTime;
+	head.n_data = msr->N;
+	head.pad = -1;
+
+	if (ssioHead(&ssio,&head)) {
+		printf("Could not write header of OutFile:%s\n",achOutFile);
+		_msrExit(msr,1);
+		}
+	if (ssioClose(&ssio)) {
+		printf("Could not close OutFile:%s\n",achOutFile);
+		_msrExit(msr,1);
+		}
+    }
+    
 void
 msrPlanetsKDK(MSR msr,double dStep,double dTime,double dDelta,double *pdWMax,
 			  double *pdIMax,double *pdEMax,int *piSec)

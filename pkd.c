@@ -318,6 +318,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef STARFORM
 		p->fESNrate = 0.0;
 		p->fNSN = 0.0;
+		p->fNSNtot = 0.0;
 		p->fMOxygenOut = 0.0;
 		p->fMIronOut = 0.0;
 		p->fMFracOxygen = 0.0;
@@ -1472,6 +1473,20 @@ int pkdLocal(PKD pkd)
 {
 	return(pkd->nLocal);
 	}
+
+void pkdTotals(PKD pkd, int *nDark, int *nGas, int *nStar)
+{
+    int i,nd,ng,ns;
+    nd=ng=ns=0;
+    for (i=0;i<pkd->nLocal;++i) {
+        if (pkdIsDark(pkd,&pkd->pStore[i])) nd++;
+        if (pkdIsGas(pkd,&pkd->pStore[i])) ng++;
+        if (pkdIsStar(pkd,&pkd->pStore[i])) ns++;
+        }
+    *nDark=nd;
+    *nGas=ng;
+    *nStar=ns;
+    }
 
 int pkdNodes(PKD pkd)
 {
@@ -3690,6 +3705,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		p->iGasOrder = cp.iGasOrder;
                 p->fTimeCoolIsOffUntil = cp.fTimeCoolIsOffUntil;
                 p->fNSN = 0.0;
+                p->fNSNtot = 0.0;
                 p->fMFracOxygen = cp.fMFracOxygen;
                 p->fMFracIron = cp.fMFracIron;
 #endif

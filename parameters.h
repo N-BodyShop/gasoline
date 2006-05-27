@@ -206,6 +206,7 @@ struct parameters {
 	double dDumpFrameTime;
 	int    bStarForm;
 	int    bFeedBack;
+	int    bFormOutputs;
 #ifdef SIMPLESF
 	double SSF_dEfficiency;
     double SSF_dTMax;
@@ -221,6 +222,7 @@ struct parameters {
 	FB     fb;
         SN sn;
         double dDeltaStarForm;
+        int bSNTurnOffCooling;
 	int bShortCoolShutoff;
 	int bSmallSNSmooth;
         int iStarFormRung;

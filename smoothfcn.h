@@ -8,6 +8,9 @@
 #include "collision.h" /* for definition of WALLS */
 #endif
 
+#ifdef STARFORM
+#include "supernova.h"
+#endif
 
 /* Benz Method (Default) */
 #if !defined(PRES_MONAGHAN) && !defined(PRES_HK)
@@ -58,7 +61,11 @@ typedef struct smfParameters {
         double dRadPreFactor;
         double dTimePreFactor;
 	int bShortCoolShutoff;
+        int bSNTurnOffCooling;
 	int bSmallSNSmooth;
+        double dSecUnit;
+        double dGmUnit;
+        struct snContext sn;
 #endif    
 #ifdef COLLISIONS
 	double dTime;

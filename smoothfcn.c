@@ -2471,7 +2471,7 @@ counter=0;
             q = nnList[i].pPart;
             if (smf->bSmallSNSmooth) {
                 if ( (nnList[i].fDist2 <= f2h2) || (i == imind) ) {
-                    if( p->fNSN > 0.0 && 
+                    if( p->fNSN > 0.0 && smf->bSNTurnOffCooling && 
                        (fBlastRadius*fBlastRadius >= nnList[i].fDist2)) {
                         q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
                             smf->dTime + fShutoffTime);}
@@ -2500,7 +2500,7 @@ counter++;
                 q->fMFracOxygen += rs*fNorm_u*q->fMass*p->fMOxygenOut;
                 q->fMFracIron += rs*fNorm_u*q->fMass*p->fMIronOut;
                 
-                if ( p->fESNrate > 0.0 && 
+                if ( p->fESNrate > 0.0 && smf->bSNTurnOffCooling && 
                      (fBlastRadius*fBlastRadius >= nnList[i].fDist2)){
                     q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
                         smf->dTime + fShutoffTime);

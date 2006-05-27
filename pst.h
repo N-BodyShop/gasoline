@@ -35,6 +35,9 @@ typedef struct lclBlock {
 	FLOAT fLow;
 	FLOAT fHigh;
 	int nWriteStart;
+	int nDarkWriteStart;
+	int nGasWriteStart;
+	int nStarWriteStart;
 	} LCL;
 
 typedef struct pstContext {
@@ -55,6 +58,9 @@ typedef struct pstContext {
 	FLOAT fSplit;
 	FLOAT fSplitInactive;
 	int nTotal;
+	int nDark;
+	int nGas;
+	int nStar;
 	/*
 	 ** The PST node is also a valid cell for the tree.
 	 */
@@ -84,6 +90,7 @@ enum pst_service {
       PST_LOCALORDER,
       PST_OUTARRAY,
       PST_OUTVECTOR,
+      PST_OUTNCVECTOR,
       PST_WRITETIPSY,
       PST_BUILDTREE,
       PST_SMOOTH,
@@ -100,6 +107,7 @@ enum pst_service {
       PST_PREVARIABLESOFT,
       PST_POSTVARIABLESOFT,
       PST_SETTOTAL,
+      PST_SETTOTALS,
       PST_CALCCELL,
       PST_COLCELLS,
       PST_DISTRIBCELLS,
@@ -139,6 +147,7 @@ enum pst_service {
       PST_INITDT,
       PST_ORDWEIGHT,
       PST_SETWRITESTART,
+      PST_SETNCWRITESTART,
       PST_COLNPARTS,
       PST_NEWORDER,
       PST_GETNPARTS,
@@ -345,22 +354,34 @@ void pstLocalOrder(PST,void *,int,void *,int *);
 /* PST_OUTARRAY */
 struct inOutArray {
 	char achOutFile[PST_FILENAME_SIZE];
+        int nStart;
 	int iType;
 	int iBinaryOutput;
+	int bStandard;
 	};
 void pstOutArray(PST,void *,int,void *,int *);
 
+/*PST_OUTNCVECTOR*/
+struct outNC {
+    float min[3][3];
+    float max[3][3];
+    };
+void pstOutNCVector(PST,void *,int,void *,int *);
+
 /* PST_OUTVECTOR */
-struct inOutVector {
+struct inOutput {
 	char achOutFile[PST_FILENAME_SIZE];
 	int iDim;
 	int iType;
 	int iBinaryOutput;
+	int N;
+	int bStandard;
 	};
 void pstOutVector(PST,void *,int,void *,int *);
 
 /* PST_WRITETIPSY */
 struct inWriteTipsy {
+        int bDoneTipsy;
 	int bStandard;
 	double dvFac;
 	double duTFac;
@@ -648,6 +669,14 @@ struct outSetTotal {
 	};
 void pstSetTotal(PST,void *,int,void *,int *);
 
+/* PST_SETTOTALS */
+struct outSetTotals {
+	int nGas;
+	int nStar;
+	int nDark;
+	};
+void pstSetTotals(PST,void *,int,void *,int *);
+
 /* PST_CALCCELL */
 struct inCalcCell {
 	int iOrder;
@@ -928,6 +957,14 @@ struct inSetWriteStart {
 	int nWriteStart;
 	};
 void pstSetWriteStart(PST,void *,int,void *,int *);
+
+/* PST_SETNCWRITESTART */
+struct inSetNCWriteStart {
+	int nDarkWriteStart;
+	int nGasWriteStart;
+	int nStarWriteStart;
+	};
+void pstSetNCWriteStart(PST,void *,int,void *,int *);
 
 /* PST_COLNPARTS */
 struct outColNParts {

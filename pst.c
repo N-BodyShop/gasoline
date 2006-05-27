@@ -69,9 +69,12 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_OUTARRAY,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstOutArray,
 				  sizeof(struct inOutArray),0);
+	mdlAddService(mdl,PST_OUTNCVECTOR,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstOutNCVector,
+				  sizeof(struct inOutput),sizeof(struct outNC));
 	mdlAddService(mdl,PST_OUTVECTOR,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstOutVector,
-				  sizeof(struct inOutVector),0);
+				  sizeof(struct inOutput),0);
 	mdlAddService(mdl,PST_WRITETIPSY,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstWriteTipsy,
 				  sizeof(struct inWriteTipsy),0);
@@ -123,9 +126,15 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_SETTOTAL,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetTotal,
 				  0,sizeof(struct outSetTotal));
+	mdlAddService(mdl,PST_SETTOTALS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSetTotals,
+				  0,sizeof(struct outSetTotals));
 	mdlAddService(mdl,PST_SETWRITESTART,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetWriteStart,
 				  sizeof(struct inSetWriteStart),0);
+	mdlAddService(mdl,PST_SETNCWRITESTART,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSetNCWriteStart,
+				  sizeof(struct inSetNCWriteStart),0);
 	mdlAddService(mdl,PST_CALCCELL,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstCalcCell,
 				  sizeof(struct inCalcCell),sizeof(struct outCalcCell));
@@ -2557,16 +2566,13 @@ void pstActiveOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 void pstOutArray(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
-	struct inOutArray *in = vin;
+	struct inOutput *in = vin;
 	char achOutFile[PST_FILENAME_SIZE];
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inOutArray));
 	if (pst->nLeaves > 1) {
-		/*
-		 ** Non-Recursive Text output.
-		 */
-		pstOutArray(pst->pstLower,in,nIn,NULL,NULL);
 		mdlReqService(pst->mdl,pst->idUpper,PST_OUTARRAY,in,nIn);
+		pstOutArray(pst->pstLower,in,nIn,NULL,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
@@ -2579,25 +2585,67 @@ void pstOutArray(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			strcat(achOutFile,"/");
 			}
 		strcat(achOutFile,in->achOutFile);
-		pkdOutArray(plcl->pkd,achOutFile,in->iType,in->iBinaryOutput);
+		pkdOutVector(plcl->pkd,achOutFile,plcl->nWriteStart, 1,in->iType, in->iBinaryOutput, in->N,in->bStandard);
 		}
 	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstOutNCVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inOutput *in = vin;
+        struct outNC *out = vout;
+        struct outNC outUp;
+        int i,iDim;
+	char achOutFile[PST_FILENAME_SIZE];
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inOutput));
+	if (pst->nLeaves > 1) {
+		/*
+		 ** Non-Recursive Text output.
+		 */
+		mdlReqService(pst->mdl,pst->idUpper,PST_OUTNCVECTOR,in,nIn);
+		pstOutNCVector(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+                if (out != NULL){
+                    for(i=0; i<3; i++){
+                        for(iDim=0;iDim<3;iDim++){
+                            out->min[i][iDim]=(out->min[i][iDim] < outUp.min[i][iDim]) ? out->min[i][iDim]: outUp.min[i][iDim];
+                            out->max[i][iDim]=(out->max[i][iDim] < outUp.max[i][iDim]) ? out->max[i][iDim]: outUp.max[i][iDim];
+                            }
+                        }
+                    }
+		}
+	else {
+		/*
+		 ** Add the local Data Path to the provided filename.
+		 */
+		achOutFile[0] = 0;
+		if (plcl->pszDataPath) {
+			strcat(achOutFile,plcl->pszDataPath);
+			strcat(achOutFile,"/");
+			}
+		strcat(achOutFile,in->achOutFile);
+		pkdOutNChilada(plcl->pkd,achOutFile,plcl->nGasWriteStart, plcl->nDarkWriteStart, plcl->nStarWriteStart, in->iType,out->min, out->max);
+		}
+	if (pnOut) *pnOut = sizeof(struct outNC);
 	}
 
 
 void pstOutVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
-	struct inOutVector *in = vin;
+	struct inOutput *in = vin;
 	char achOutFile[PST_FILENAME_SIZE];
 
-	mdlassert(pst->mdl,nIn == sizeof(struct inOutVector));
+	mdlassert(pst->mdl,nIn == sizeof(struct inOutput));
 	if (pst->nLeaves > 1) {
 		/*
 		 ** Non-Recursive Text output.
 		 */
-		pstOutVector(pst->pstLower,in,nIn,NULL,NULL);
 		mdlReqService(pst->mdl,pst->idUpper,PST_OUTVECTOR,in,nIn);
+		pstOutVector(pst->pstLower,in,nIn,NULL,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
@@ -2610,7 +2658,7 @@ void pstOutVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			strcat(achOutFile,"/");
 			}
 		strcat(achOutFile,in->achOutFile);
-		pkdOutVector(plcl->pkd,achOutFile,in->iDim,in->iType,in->iBinaryOutput);
+		pkdOutVector(plcl->pkd,achOutFile,plcl->nWriteStart, in->iDim,in->iType,in->iBinaryOutput,in->N,in->bStandard);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -3314,6 +3362,38 @@ void pstSetTotal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+void pstSetTotals(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{	
+	LCL *plcl = pst->plcl;
+	struct outSetTotals *out = vout;
+	struct outSetTotals oute;
+        int nDark, nGas, nStar;
+
+	mdlassert(pst->mdl,nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_SETTOTALS,NULL,0);
+		pstSetTotals(pst->pstLower,NULL,0,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&oute,NULL);
+		out->nDark += oute.nDark;
+		pst->nDark = out->nDark;
+		out->nGas += oute.nGas;
+		pst->nGas = out->nGas;
+		out->nStar += oute.nStar;
+		pst->nStar = out->nStar;
+		}
+	else {
+		pkdTotals(plcl->pkd,&nDark,&nGas,&nStar);
+                pst->nDark = nDark;
+		out->nDark = pst->nDark;
+		pst->nGas = nGas;
+		out->nGas = pst->nGas;
+		pst->nStar = nStar;
+		out->nStar = pst->nStar;
+		}
+	if (pnOut) *pnOut = sizeof(struct outSetTotals);
+	}
+
+
 void pstSetWriteStart(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {	
 	LCL *plcl = pst->plcl;
@@ -3331,6 +3411,36 @@ void pstSetWriteStart(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		plcl->nWriteStart = nWriteStart;
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstSetNCWriteStart(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{	
+	LCL *plcl = pst->plcl;
+	struct inSetNCWriteStart *in = vin;
+	int nDarkWriteStart,nGasWriteStart,nStarWriteStart;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inSetNCWriteStart));
+	nDarkWriteStart = in->nDarkWriteStart;
+	nGasWriteStart = in->nGasWriteStart;
+	nStarWriteStart = in->nStarWriteStart;
+	if (pst->nLeaves > 1) {
+		in->nDarkWriteStart = nDarkWriteStart + pst->pstLower->nDark;
+		in->nGasWriteStart = nGasWriteStart + pst->pstLower->nGas;
+		in->nStarWriteStart = nStarWriteStart + pst->pstLower->nStar;
+		mdlReqService(pst->mdl,pst->idUpper,PST_SETNCWRITESTART,in,nIn);
+		in->nDarkWriteStart = nDarkWriteStart;
+		in->nGasWriteStart = nGasWriteStart;
+		in->nStarWriteStart = nStarWriteStart;
+		pstSetNCWriteStart(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		plcl->nDarkWriteStart = nDarkWriteStart;
+		plcl->nGasWriteStart = nGasWriteStart;
+		plcl->nStarWriteStart = nStarWriteStart;
 		}
 	if (pnOut) *pnOut = 0;
 	}

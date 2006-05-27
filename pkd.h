@@ -113,6 +113,7 @@ typedef struct particle {
 	FLOAT fMFracOxygen;
 	FLOAT fMFracIron;
 	FLOAT fSNMetals;
+	FLOAT fNSNtot;
         FLOAT fTimeCoolIsOffUntil;
 	FLOAT rForm[3];		/* record pos and vel of star formation */
 	FLOAT vForm[3];
@@ -522,6 +523,7 @@ int pkdSwapRejects(PKD,int);
 int pkdSwapSpace(PKD);
 int pkdFreeStore(PKD);
 int pkdLocal(PKD);
+void pkdTotals(PKD pkd, int *nDark, int *nGas, int *nStar);
 int pkdActive(PKD);
 int pkdTreeActive(PKD);
 int pkdInactive(PKD);

@@ -53,8 +53,7 @@ int main(int argc,char **argv)
 	double E=0,T=0,U=0,Eth=0,L[3]={0,0,0};
 	double dWMax=0,dIMax=0,dEMax=0,dMass=0,dMultiEff=0;
 	long lSec=0,lStart;
-	int i,iStep,iSec=0,iStop=0,nActive;
-
+	int i,iStep,iSec=0,iStop=0,nActive,iNumOutputs, OutputList[NUMOUTPUTS];
 	char achBaseMask[256];
 
 	/* code to make gasoline core dump if there is a floating point exception
@@ -449,7 +448,20 @@ int main(int argc,char **argv)
 				msrReorder(msr);
 				msrMassCheck(msr,dMass,"After msrReorder in OutTime");
 				sprintf(achFile,msr->param.achDigitMask,msrOutName(msr),iStep);
-#ifndef COLLISIONS
+                                msrCreateGasOutputList(msr, &iNumOutputs, OutputList);
+                                msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+
+				if (msrDoDensity(msr) || msr->param.bDohOutput) {
+					msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+					msrDomainDecomp(msr,0,1);
+					msrBuildTree(msr,0,dMass,1);
+					msrSmooth(msr,dTime,SMX_DENSITY,1);
+				        msrReorder(msr);
+				        }
+                                msrCreateAllOutputList(msr, &iNumOutputs, OutputList);
+                                msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+
+/*#ifndef COLLISIONS
 				msrWriteTipsy(msr,achFile,dTime);
 #else
 				msrWriteSS(msr,achFile,dTime);
@@ -460,15 +472,8 @@ int main(int argc,char **argv)
 				    strncat(achFile,".iord",256);
 				    msrOutArray(msr,achFile,OUT_IORDER_ARRAY);
 				    }
-				if (msrDoDensity(msr) || msr->param.bDohOutput) {
-					msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-					msrDomainDecomp(msr,0,1);
-					msrBuildTree(msr,0,dMass,1);
-					msrSmooth(msr,dTime,SMX_DENSITY,1);
-				        }
-				if (msrDoDensity(msr)) {
-				        msrReorder(msr);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
+                                if (msrDoDensity(msr)) {
+	sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
 					strncat(achFile,".den",256);
 					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
 				        }
@@ -643,235 +648,188 @@ int main(int argc,char **argv)
 		if (msr->param.bVStart) printf("Integration complete\n");
 		}
 	else {
-		/* Do DiagnosticOutput */
-		struct inInitDt in;
-		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+            /* Do DiagnosticOutput */
+            struct inInitDt in;
+            msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 
-		in.dDelta = 1e37; /* large number */
-		pstInitDt(msr->pst,&in,sizeof(in),NULL,NULL);
-	        msrInitAccel(msr);
-		puts("Initialized Accel and dt\n");
-    
-		if (msrRestart(msr)) {
-			msrReorder(msr);
-			sprintf(achFile,"%s.diag",msrOutName(msr));
+            in.dDelta = 1e37; /* large number */
+            pstInitDt(msr->pst,&in,sizeof(in),NULL,NULL);
+            msrInitAccel(msr);
+            puts("Initialized Accel and dt\n");
+            sprintf(achFile,"%s.diag",msrOutName(msr));
+
+            if (msrRestart(msr)) {
+                msrReorder(msr);
+                sprintf(achFile,"%s.diag",msrOutName(msr));
 #ifndef COLLISIONS
-			msrWriteTipsy(msr,achFile,dTime);
+                msrWriteTipsy(msr,achFile,dTime);
 #else
-			msrWriteSS(msr,achFile,dTime);
+                msrWriteSS(msr,achFile,dTime);
 #endif
-			}
+                }
 
-		if (msrDoGravity(msr)) {
-			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
-			msrDomainDecomp(msr,0,1);
-			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
-			msrUpdateSoft(msr,dTime);
-			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
-			msrBuildTree(msr,0,dMass,0);
-			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Gravity");
-			msrGravity(msr,0.0,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
-			msrMassCheck(msr,dMass,"After msrGravity in OutSingle Gravity");
-			msrReorder(msr);
-			msrMassCheck(msr,dMass,"After msrReorder in OutSingle Gravity");
-			sprintf(achFile,"%s.accg",msrOutName(msr));
-			msrOutVector(msr,achFile,OUT_ACCEL_VECTOR);
-			msrMassCheck(msr,dMass,"After msrOutVector in OutSingle Gravity");
-			sprintf(achFile,"%s.pot",msrOutName(msr));
-			msrReorder(msr);
-			msrOutArray(msr,achFile,OUT_POT_ARRAY);
-			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Gravity");
-		        }
+            if (msrDoGravity(msr)) {
+                msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+                msrDomainDecomp(msr,0,1);
+                msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+                msrUpdateSoft(msr,dTime);
+                msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
+                msrBuildTree(msr,0,dMass,0);
+                msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Gravity");
+                msrGravity(msr,0.0,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+                msrMassCheck(msr,dMass,"After msrGravity in OutSingle Gravity");
+                msrReorder(msr);
+                msrMassCheck(msr,dMass,"After msrReorder in OutSingle Gravity");
+                iNumOutputs = 0;
+                OutputList[iNumOutputs++]=OUT_ACCELG_VECTOR;
+                OutputList[iNumOutputs++]=OUT_POT_ARRAY;
+                msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+                msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Gravity");
+                }
 #ifdef GASOLINE				
-		if (msr->nGas > 0) {
-			msrInitSph(msr,dTime);
-		        msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-			msrDomainDecomp(msr,0,1);
-			msrBuildTree(msr,1,-1.0,1);
-			msrSmooth(msr,dTime,SMX_DENSITY,1);
-			if (msr->param.bBulkViscosity) {
-			  msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-			  msrGetGasPressure(msr);
-			  msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
-			  } 
-			else {
-			  if (msr->param.bViscosityLimiter || msr->param.bShockTracker)
-			    msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+            if (msr->nGas > 0) {
+                msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+                msrDomainDecomp(msr,0,1);
+                msrBuildTree(msr,1,-1.0,1);
+                msrSmooth(msr,dTime,SMX_DENSITY,1);
+                if (msr->param.bBulkViscosity) {
+                    msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+                    msrGetGasPressure(msr);
+                    msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
+                    } 
+                else {
+                    if (msr->param.bViscosityLimiter || msr->param.bShockTracker)
+                    msrReSmooth(msr,dTime,SMX_DIVVORT,1);
 
-			  msrSphViscosityLimiter(msr, dTime);
-			  msrGetGasPressure(msr);
-			  /*
-			  msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
-			  */
-			  msrReSmooth(msr,dTime,SMX_SPHPRESSURE,1);
-			  msrUpdateShockTracker(msr, 0.0);
-			  msrReSmooth(msr,dTime,SMX_SPHVISCOSITY,1);
-			  /*
- 			  if (msr->param.bShockTracker)
-			    msrReSmooth(msr,dTime,SMX_SHOCKTRACK,1);
-			  */
-			  /*
-			  msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
-			  */
-			  msrReorder(msr);
-			  sprintf(achFile,"%s.BSw",msrOutName(msr));
-			  msrOutArray(msr,achFile,OUT_BALSARASWITCH_ARRAY);
-			  sprintf(achFile,"%s.divv",msrOutName(msr));
-			  msrOutArray(msr,achFile,OUT_DIVV_ARRAY);
-			  sprintf(achFile,"%s.mumax",msrOutName(msr));
-			  msrOutArray(msr,achFile,OUT_MUMAX_ARRAY);
-			  if (msr->param.bShockTracker) {
-			       sprintf(achFile,"%s.ST",msrOutName(msr));
-			       msrOutArray(msr,achFile,OUT_SHOCKTRACKER_ARRAY);
-
-			       sprintf(achFile,"%s.dch",msrOutName(msr));
-			       msrOutArray(msr,achFile,OUT_DIVONCONH_ARRAY);
-			       sprintf(achFile,"%s.dcx",msrOutName(msr));
-			       msrOutArray(msr,achFile,OUT_DIVONCONX_ARRAY);
-
-			       sprintf(achFile,"%s.divrhov",msrOutName(msr));
-			       msrOutArray(msr,achFile,OUT_DIVRHOV_ARRAY);
-			       sprintf(achFile,"%s.gradrho",msrOutName(msr));
-			       msrOutVector(msr,achFile,OUT_GRADRHO_VECTOR);
-
-			       sprintf(achFile,"%s.accp",msrOutName(msr));
-			       msrOutVector(msr,achFile,OUT_ACCELPRES_VECTOR);
-			  }
-
-			  sprintf(achFile,"%s.acc",msrOutName(msr));
-			  msrOutVector(msr,achFile,OUT_ACCEL_VECTOR);
-			  sprintf(achFile,"%s.PdV",msrOutName(msr));
-			  msrOutArray(msr,achFile,OUT_PDV_ARRAY);
- 			  sprintf(achFile,"%s.PdVpres",msrOutName(msr));
-			  msrOutArray(msr,achFile,OUT_PDVPRES_ARRAY);
-			  sprintf(achFile,"%s.PdVvisc",msrOutName(msr));
-			  msrOutArray(msr,achFile,OUT_PDVVISC_ARRAY);
-			  }
-
-			if (msr->param.bSphStep) {
-		          fprintf(stderr,"Adding SphStep dt\n");
-			  msrSphStep(msr,dTime);
-			  msrReorder(msr);
-			  sprintf(achFile,"%s.SPHdt",msrOutName(msr));
-			  msrOutArray(msr,achFile,OUT_DT_ARRAY);
-			  }
-		        }
-
-		if (msr->param.bDoSphhOutput) {
-		        msrReorder(msr);
-			sprintf(achFile,"%s.SPHH",msrOutName(msr));
-			msrOutArray(msr,achFile,OUT_H_ARRAY);
-		        }
-#ifndef NOCOOLING				
-				{
-				int ArrayCnt = 0;
-				char OutSuffix[20];
-				int OutType;
-				
-				for (;;) {	
-					CoolOutputArray( &msr->param.CoolParam, ArrayCnt, &OutType, OutSuffix );
-					if (OutType == OUT_NULL) break;
-					sprintf(achFile,"%s.%s",msrOutName(msr),OutSuffix);
-					msrOutArray(msr,achFile, OutType);
-                    ArrayCnt++;
-					}
-				}
+                    msrSphViscosityLimiter(msr, dTime);
+                    msrGetGasPressure(msr);
+                    /*
+                    msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
+                    */
+                    msrReSmooth(msr,dTime,SMX_SPHPRESSURE,1);
+                    msrUpdateShockTracker(msr, 0.0);
+                    msrReSmooth(msr,dTime,SMX_SPHVISCOSITY,1);
+                    /*
+                    if (msr->param.bShockTracker)
+                    msrReSmooth(msr,dTime,SMX_SHOCKTRACK,1);
+                    */
+                    /*
+                    msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
+                    */
+                    }
+                msrReorder(msr);
+                if (msr->param.bSphStep) {
+                    fprintf(stderr,"Adding SphStep dt\n");
+                    msrSphStep(msr,dTime);
+                    }
+                msrCreateGasStepZeroOutputList(msr, &iNumOutputs,OutputList);
+                msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+                }
 #endif
-#endif
-		/*
-		 ** Build tree, activating all particles first (just in case).
-		 */
-		if (msrDoDensity(msr) || msr->param.bDensityStep) {
-			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-			msrDomainDecomp(msr,0,1);
-			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-			msrBuildTree(msr,0,-1.0,1);
-			msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Density");
-			msrSmooth(msr,dTime,SMX_DENSITY,1);
-			msrMassCheck(msr,dMass,"After msrSmooth in OutSingle Density");
-		        } 
-		if (msrDoDensity(msr)) {
-			msrReorder(msr);
-			msrMassCheck(msr,dMass,"After msrReorder in OutSingle Density");
-			sprintf(achFile,"%s.den",msrOutName(msr));
-			msrReorder(msr);
-			msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
-			msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Density");
+            /*
+             ** Build tree, activating all particles first (just in case).
+             */
+            if (msrDoDensity(msr) || msr->param.bDensityStep) {
+                    msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+                    msrDomainDecomp(msr,0,1);
+                    msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+                    msrBuildTree(msr,0,-1.0,1);
+                    msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Density");
+                    msrSmooth(msr,dTime,SMX_DENSITY,1);
+                    msrMassCheck(msr,dMass,"After msrSmooth in OutSingle Density");
+                    } 
+            if (msrDoDensity(msr)) {
+                    msrReorder(msr);
+                    msrMassCheck(msr,dMass,"After msrReorder in OutSingle Density");
+                    iNumOutputs = 0;
+                    OutputList[iNumOutputs++]=OUT_DENSITY_ARRAY;
+                    msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+            /*	sprintf(achFile,"%s.den",msrOutName(msr));
+                    msrReorder(msr);
+                    msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);*/
+                    msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Density");
+
 #if OLD_KEPLER/*DEBUG*/
-			{
-			struct inSmooth smooth;
-			int sec,dsec;
+                    {
+                    struct inSmooth smooth;
+                    int sec,dsec;
 
-			sec = time(0);
-			(void) printf("Building QQ tree...\n");
-			msrBuildQQTree(msr, 0, dMass);
-			dsec = time(0) - sec;
-			(void) printf("QQ tree built, time = %i sec\n",dsec);
-			smooth.nSmooth = 32;
-			smooth.bPeriodic = 0;
-			smooth.bSymmetric = 0;
-			smooth.iSmoothType = SMX_ENCOUNTER;
-			smooth.smf.pkd = NULL;
-			smooth.smf.dTime = dTime;
-			smooth.smf.dDelta = msrDelta(msr);
-			smooth.smf.dCentMass = msr->param.dCentMass;
-			sec = time(0);
-			(void) printf("Beginning encounter search...\n");
-			pstQQSmooth(msr->pst,&smooth,sizeof(smooth),NULL,NULL);
-			dsec = time(0) - sec;
-			(void) printf("Encounter search completed, time = %i sec\n",dsec);
-			msrReorder(msr);
-			sprintf(achFile,"%s.enc",msrOutName(msr));
+                    sec = time(0);
+                    (void) printf("Building QQ tree...\n");
+                    msrBuildQQTree(msr, 0, dMass);
+                    dsec = time(0) - sec;
+                    (void) printf("QQ tree built, time = %i sec\n",dsec);
+                    smooth.nSmooth = 32;
+                    smooth.bPeriodic = 0;
+                    smooth.bSymmetric = 0;
+                    smooth.iSmoothType = SMX_ENCOUNTER;
+                    smooth.smf.pkd = NULL;
+                    smooth.smf.dTime = dTime;
+                    smooth.smf.dDelta = msrDelta(msr);
+                    smooth.smf.dCentMass = msr->param.dCentMass;
+                    sec = time(0);
+                    (void) printf("Beginning encounter search...\n");
+                    pstQQSmooth(msr->pst,&smooth,sizeof(smooth),NULL,NULL);
+                    dsec = time(0) - sec;
+                    (void) printf("Encounter search completed, time = %i sec\n",dsec);
+                    msrReorder(msr);
+                    iNumOutputs = 0;
+                    OutputList[iNumOutputs++]=OUT_DENSITY_ARRAY;
+                    msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+    /*		sprintf(achFile,"%s.enc",msrOutName(msr));
 
-			msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
-			}
+                    msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);*/
+                    }
 #endif
-		        }
+                    }
 
-		if (msrDoGravity(msr)) {
-			if (msr->param.bGravStep) {
-			        fprintf(stderr,"Adding GravStep dt\n");
-				msrGravStep(msr,dTime);
-				}
-			if (msr->param.bAccelStep) {
-			        fprintf(stderr,"Adding AccelStep dt\n");
-				msrAccelStep(msr,dTime);
-				}
-			}
+            if (msrDoGravity(msr)) {
+                    if (msr->param.bGravStep) {
+                            fprintf(stderr,"Adding GravStep dt\n");
+                            msrGravStep(msr,dTime);
+                            }
+                    if (msr->param.bAccelStep) {
+                            fprintf(stderr,"Adding AccelStep dt\n");
+                            msrAccelStep(msr,dTime);
+                            }
+                    }
 
-		if (msr->param.bDensityStep) {
-		    fprintf(stderr,"Adding DensStep dt\n");
-		    msrDensityStep(msr,dTime);
-		        }
+            if (msr->param.bDensityStep) {
+                fprintf(stderr,"Adding DensStep dt\n");
+                msrDensityStep(msr,dTime);
+                    }
 
-		if (msr->param.bDeltaAccelStep) {
- 		    fprintf(stderr,"Adding DeltaAccelStep dt\n");
-			if (!msr->param.bDeltaAccelStepGasTree) {
-			    msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
-			    msrBuildTree(msr,0,-1.0,1);
-			    }
-			else {
-			    msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
-			    msrBuildTree(msr,1,-1.0,1);
-			}
-			msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-			msrBuildTree(msr,0,-1.0,1);
-		     msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-			/* This smooth sets dt directly -- hardwired coefficient */
-			msrSmooth(msr,dTime,SMX_DELTAACCEL,0);
-		    }
-		/*
-		msrDtToRung(msr,0,msrDelta(msr),1);
-		msrRungStats(msr);
-		*/
-		msrReorder(msr);
-		sprintf(achFile,"%s.dt",msrOutName(msr));
-		msrOutArray(msr,achFile,OUT_DT_ARRAY);
-		if(msr->param.iMaxRung > 1 && (msr->param.bDensityStep || msrDoGravity(msr))) {
-			msrDtToRung(msr,0,msrDelta(msr),1);
-			msrRungStats(msr);
-			}
-		}
+            if (msr->param.bDeltaAccelStep) {
+                fprintf(stderr,"Adding DeltaAccelStep dt\n");
+                    if (!msr->param.bDeltaAccelStepGasTree) {
+                        msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
+                        msrBuildTree(msr,0,-1.0,1);
+                        }
+                    else {
+                        msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
+                        msrBuildTree(msr,0,-1.0,1);
+                    }
+                    msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+                    msrBuildTree(msr,0,-1.0,1);
+                    msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+                    /* This smooth sets dt directly -- hardwired coefficient */
+                    msrSmooth(msr,dTime,SMX_DELTAACCEL,0);
+                }
+            /*
+            msrDtToRung(msr,0,msrDelta(msr),1);
+            msrRungStats(msr);
+            */
+            msrReorder(msr);
+            iNumOutputs = 0;
+            OutputList[iNumOutputs++]=OUT_DT_ARRAY;
+            msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+            /*sprintf(achFile,"%s.dt",msrOutName(msr));
+            msrOutArray(msr,achFile,OUT_DT_ARRAY);*/
+            if(msr->param.iMaxRung > 1 && (msr->param.bDensityStep || msrDoGravity(msr))) {
+                msrDtToRung(msr,0,msrDelta(msr),1);
+                msrRungStats(msr);
+                }
+            }
 	
 	dfFinalize( msr->df );
 	msrFinish(msr);
