@@ -52,6 +52,13 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
         case OUT_TEMPFORM_ARRAY:
 	case OUT_U_ARRAY:
 		return(p->u);
+	case OUT_TEMP_ARRAY:
+#ifndef NOCOOLING
+                vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u );
+#else
+                vTemp = pkd->duTFac*p->u;
+#endif
+		return(vTemp);
 #ifndef NOCOOLING
 	case OUT_UDOT_ARRAY:
 		return(p->uDot);
@@ -123,15 +130,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 		return(p->v[iDim]);
 	case OUT_MASS_ARRAY:
 		return(p->fMass);
-#ifdef GASOLINE
-	case OUT_TEMP_ARRAY:
-#ifndef NOCOOLING
-                vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u );
-#else
-                vTemp = duTFac*p->u;
-#endif
-		return(vTemp);
-#endif
 	case OUT_ACCELG_VECTOR:
 	case OUT_ACCEL_VECTOR:
 		return(p->a[iDim]);
@@ -335,7 +333,7 @@ void VecFilename(char *achFile, int iType)
 		}
 	}
 
-void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int nStarStart, int iVecType, float minValue[3][3], float maxValue[3][3])
+void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int nStarStart, int iVecType, float minValue[3][3], float maxValue[3][3], double duTFac)
 {
     FILE *gasFp, *darkFp, *starFp;
     float fOut, min[3][3], max[3][3];
@@ -351,6 +349,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         }
     
     nGas = pkd->nGas; nDark = pkd->nDark; nStar = pkd->nStar;
+    pkd->duTFac = duTFac;
     switch (iVecType){
         case OUT_TEMP_ARRAY:
         case OUT_GASDENSITY_ARRAY:

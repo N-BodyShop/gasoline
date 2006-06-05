@@ -376,6 +376,7 @@ struct inOutput {
 	int iBinaryOutput;
 	int N;
 	int bStandard;
+	double duTFac;
 	};
 void pstOutVector(PST,void *,int,void *,int *);
 

@@ -3336,6 +3336,12 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
     struct inWriteTipsy in;
 #endif
 
+#ifdef GASOLINE
+    inOut.duTFac = (msr->param.dConstGamma - 1)*msr->param.dMeanMolWeight/
+		msr->param.dGasConst;
+#else
+    inOut.duTFac = 1.0;
+#endif
     preminmax = 4*sizeof(int)+sizeof(double);
     typenames[0]="gas";
     typenames[1]="dark";
