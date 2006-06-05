@@ -28,18 +28,15 @@ enum outtype_arraytype {
 	OUT_IMASS_ARRAY,
         OUT_MASS_ARRAY,
 	OUT_RUNG_ARRAY,
-#ifdef GASOLINE
 	OUT_SPHH_ARRAY,
 	OUT_U_ARRAY,
         OUT_TEMP_ARRAY,
         OUT_GASDENSITY_ARRAY,
 	OUT_HSMDIVV_ARRAY,
-#ifndef NOCOOLING
 	OUT_UDOT_ARRAY,
 	OUT_COOL_ARRAY0,
 	OUT_COOL_ARRAY1,
 	OUT_COOL_ARRAY2,
-#endif
 	OUT_BALSARASWITCH_ARRAY,
 	OUT_DIVV_ARRAY,
 	OUT_MUMAX_ARRAY,
@@ -53,7 +50,6 @@ enum outtype_arraytype {
 	OUT_PDVSN_ARRAY,
 	OUT_USN_ARRAY,
 	OUT_METALS_ARRAY,
-#ifdef STARFORM
 	OUT_IGASORDER_ARRAY,
         OUT_TIMEFORM_ARRAY,
         OUT_TEMPFORM_ARRAY,
@@ -64,16 +60,12 @@ enum outtype_arraytype {
         OUT_IRONMASSFRAC_ARRAY,
 	OUT_TCOOLAGAIN_ARRAY,
 	OUT_MSTAR_ARRAY,
-#endif
-#endif
 	OUT_SOFT_ARRAY,
 	OUT_IORDER_ARRAY,
 	OUT_H_ARRAY,
         OUT_SPHDT_ARRAY,
 	OUT_DT_ARRAY,
-#ifdef COLLISIONS
 	OUT_REJECTS_ARRAY,
-#endif
         OUT_1D3DSPLIT,  /* NOTICE!!
                        * Everything above here is 1D 
                        * Everything below here is 3D
@@ -82,11 +74,9 @@ enum outtype_arraytype {
 	OUT_VEL_VECTOR,
 	OUT_ACCEL_VECTOR,
         OUT_ACCELG_VECTOR,
-#ifdef NEED_VPRED
 	OUT_VPRED_VECTOR,
 	OUT_GRADRHO_VECTOR,
 	OUT_ACCELPRES_VECTOR,
-#endif
 	OUT_RFORM_VECTOR,
 	OUT_VFORM_VECTOR
 	};

@@ -123,6 +123,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 		return(p->v[iDim]);
 	case OUT_MASS_ARRAY:
 		return(p->fMass);
+#ifdef GASOLINE
 	case OUT_TEMP_ARRAY:
 #ifndef NOCOOLING
                 vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u );
@@ -130,6 +131,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
                 vTemp = duTFac*p->u;
 #endif
 		return(vTemp);
+#endif
 	case OUT_ACCELG_VECTOR:
 	case OUT_ACCEL_VECTOR:
 		return(p->a[iDim]);
@@ -491,6 +493,15 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         }
     }
 
+void xdr_FLOAT(XDR *xdrs, FLOAT *fIn) 
+{
+#ifdef SINGLE
+    xdr_float(xdrs, fIn);
+#else
+    xdr_double(xdrs, fIn);
+#endif
+    }
+
 void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,int iBinaryOutput, int N, int bStandard)
 {
     FILE *fp;
@@ -531,14 +542,14 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                         }
                     } else {
                     switch (iVecType) {
-    #ifdef STARFORM
+#ifdef STARFORM
                         case OUT_IGASORDER_ARRAY:
                             pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(IntOut));
                             for (i=0;i<pkd->nLocal;++i) {
                                 xdr_int(&xdrs,&(pkd->pStore[i].iGasOrder));
                                 }
                             break;
-    #endif
+#endif
                         case OUT_IORDER_ARRAY:
                             pkdGenericSeek(pkd,fp,nStart, sizeof(int), sizeof(IntOut));
                             for (i=0;i<pkd->nLocal;++i) {
@@ -568,7 +579,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                         
                     } else {
                     switch (iVecType) {
-    #ifdef STARFORM
+#ifdef STARFORM
                         case OUT_IGASORDER_ARRAY:
                             pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
                             for (i=0;i<pkd->nLocal;++i) {
@@ -576,7 +587,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                                 xdr_long(&xdrs,&LongOut);
                                 }
                             break;
-    #endif
+#endif
                         case OUT_IORDER_ARRAY:
                             pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
                             for (i=0;i<pkd->nLocal;++i) {
@@ -598,22 +609,22 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                     pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(fOut));
                     for (i=0;i<pkd->nLocal;++i) {
                         fOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
-                        xdr_float(&xdrs,&fOut);
+                        xdr_FLOAT(&xdrs,&fOut);
                         fOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
-                        xdr_float(&xdrs,&fOut);
+                        xdr_FLOAT(&xdrs,&fOut);
                         fOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
-                        xdr_float(&xdrs,&fOut);
+                        xdr_FLOAT(&xdrs,&fOut);
                         }
                     } else {
                     switch (iVecType) {
-    #ifdef STARFORM
+#ifdef STARFORM
                         case OUT_IGASORDER_ARRAY:
                             pkdGenericSeek(pkd,fp, nStart, sizeof(int), sizeof(pkd->pStore[i].iGasOrder));
                             for (i=0;i<pkd->nLocal;++i) {
                                 xdr_int(&xdrs,&(pkd->pStore[i].iGasOrder));
                                 }
                             break;
-    #endif
+#endif
                         case OUT_IORDER_ARRAY:
                             pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(pkd->pStore[i].iOrder));
                             for (i=0;i<pkd->nLocal;++i) {
@@ -624,7 +635,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                                 pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(fOut));
                                 for (i=0;i<pkd->nLocal;++i) {
                                         fOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
-                                        xdr_float(&xdrs,&fOut);
+                                        xdr_FLOAT(&xdrs,&fOut);
                                         }
                         }
                     }
