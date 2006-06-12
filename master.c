@@ -3481,7 +3481,7 @@ void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, 
             } 
         else {
             _msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
-            strncat(achOutFile,".",5);
+            strcat(achOutFile,".");
             VecFilename(achOutFile,OutputList[i]);
             fp = fopen(achOutFile,"w");
             assert(fp != NULL);
@@ -3537,6 +3537,7 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs, struct i
     PST pst0;
     LCL *plcl;
     char achOutFile[PST_FILENAME_SIZE];
+    char achOutFileVec[PST_FILENAME_SIZE];
     int inswap;
 
     pst0 = msr->pst;
@@ -3547,6 +3548,7 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs, struct i
      ** Add the local Data Path to the provided filename.
      */
     _msrMakePath(plcl->pszDataPath,in->achOutFile,achOutFile);
+    sprintf(achOutFileVec, "%s.", achOutFile);
 
     /* 
      * First write our own particles.
@@ -3565,11 +3567,15 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs, struct i
             /* Only packed ASCII format supported!
              * Use readpackedvector in Tipsy */
             if ((OutputList[i] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
-                pkdOutVector(plcl->pkd,achOutFile,plcl->nWriteStart, -3, OutputList[i], msr->param.iBinaryOutput,msr->N,in->bStandard);
+                pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart, -3,
+			     OutputList[i], msr->param.iBinaryOutput,msr->N,
+			     in->bStandard);
                 } else {
                 nDim=(OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
                 for (iDim=0; iDim<nDim; iDim++) 
-                    pkdOutVector(plcl->pkd,achOutFile,plcl->nWriteStart, iDim, OutputList[i],msr->param.iBinaryOutput,msr->N,in->bStandard);
+                    pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
+				 iDim, OutputList[i],msr->param.iBinaryOutput,
+				 msr->N,in->bStandard);
                 }
             }
         } 
@@ -3599,15 +3605,25 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs, struct i
                 /* Only packed ASCII format supported!
                  * Use readpackedvector in Tipsy */
                 if ((OutputList[i] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
-                    pkdOutVector(plcl->pkd,achOutFile,plcl->nWriteStart, -3, OutputList[i], msr->param.iBinaryOutput,msr->N,in->bStandard);
+                    pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
+				 -3, OutputList[i], msr->param.iBinaryOutput,
+				 msr->N,in->bStandard);
                     } else {
                     nDim=(OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
                     for (iDim=0; iDim<nDim; iDim++) {
-        #ifdef SIMPLESF
-                        pkdOutVector(plcl->pkd,in->achOutFile, plcl->nWriteStart, iDim, OutputList[i], ((OutputList[i]==OUT_TCOOLAGAIN_ARRAY || OutputList[i]==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput), msr->N,in->bStandard);
-        #else
-                        pkdOutVector(plcl->pkd,in->achOutFile,plcl->nWriteStart, iDim, OutputList[i],msr->param.iBinaryOutput, msr->N,in->bStandard); 
-        #endif
+#ifdef SIMPLESF
+			/* The SF variables are written in binary no
+			   matter what */
+                        pkdOutVector(plcl->pkd,achOutFileVec,
+				     plcl->nWriteStart, iDim, OutputList[i],
+				     ((OutputList[i]==OUT_TCOOLAGAIN_ARRAY || OutputList[i]==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput),
+				     msr->N,in->bStandard);
+#else
+                        pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
+				     iDim, OutputList[i],
+				     msr->param.iBinaryOutput, msr->N,
+				     in->bStandard); 
+#endif
                         }
                     }
                 }
