@@ -351,15 +351,33 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     nGas = pkd->nGas; nDark = pkd->nDark; nStar = pkd->nStar;
     pkd->duTFac = duTFac;
     switch (iVecType){
+        /* Gas only floats */
+        case OUT_COOLTURNONTIME_ARRAY:
+        case OUT_DIVV_ARRAY:
+        case OUT_TCOOLAGAIN_ARRAY:
+        case OUT_MSTAR_ARRAY:
+        case OUT_COOL_ARRAY0:
+        case OUT_COOL_ARRAY1:
+        case OUT_COOL_ARRAY2:
+        case OUT_SPHH_ARRAY:
         case OUT_TEMP_ARRAY:
         case OUT_GASDENSITY_ARRAY:
+        case OUT_PDVPRES_ARRAY:
+        case OUT_PDVVISC_ARRAY:
             nDark=nStar=0;
             break;
         case OUT_IGASORDER_ARRAY:
         case OUT_TIMEFORM_ARRAY:
+        case OUT_MASSFORM_ARRAY:
+        case OUT_RFORM_VECTOR:
+        case OUT_VFORM_VECTOR:
+        case OUT_DENSITYFORM_ARRAY:
+        case OUT_TEMPFORM_ARRAY:
             nGas=nDark=0;
             break;
         case OUT_METALS_ARRAY:
+        case OUT_OXYGENMASSFRAC_ARRAY:
+        case OUT_IRONMASSFRAC_ARRAY:
             nDark=0;
             break;
         }

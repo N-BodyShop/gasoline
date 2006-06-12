@@ -3378,8 +3378,10 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
         switch (OutputList[i]){
             case OUT_TIMEFORM_ARRAY:
             case OUT_MASSFORM_ARRAY:
+            case OUT_RFORM_VECTOR:
+            case OUT_VFORM_VECTOR:
             case OUT_DENSITYFORM_ARRAY:
-            case OUT_U_ARRAY:
+            case OUT_TEMPFORM_ARRAY:
                 nTypes[0]=nTypes[1]=0;
                 break;
             case OUT_IGASORDER_ARRAY:
@@ -3395,6 +3397,8 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
             case OUT_SPHH_ARRAY:
             case OUT_TEMP_ARRAY:
             case OUT_GASDENSITY_ARRAY:
+            case OUT_PDVPRES_ARRAY:
+            case OUT_PDVVISC_ARRAY:
                 nTypes[1]=nTypes[2]=0;
                 break;
             case OUT_OXYGENMASSFRAC_ARRAY:
