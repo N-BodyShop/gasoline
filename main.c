@@ -656,7 +656,7 @@ int main(int argc,char **argv)
             pstInitDt(msr->pst,&in,sizeof(in),NULL,NULL);
             msrInitAccel(msr);
             puts("Initialized Accel and dt\n");
-            sprintf(achFile,"%s.diag",msrOutName(msr));
+            sprintf(achFile,"%s",msrOutName(msr));
 
             if (msrRestart(msr)) {
                 msrReorder(msr);
