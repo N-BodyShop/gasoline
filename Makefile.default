@@ -383,6 +383,7 @@ pkd.o: tipsydefs.h dumpframe.h
 pst.o: pst.h pkd.h floattype.h cooling.h smoothfcn.h starform.h feedback.h
 pst.o: outtype.h smooth.h dumpframe.h
 romberg.o: floattype.h
+rotbar.o: rotbar.h pkd.h param.h
 smooth.o: smooth.h pkd.h floattype.h cooling.h smoothfcn.h
 smoothfcn.o: smoothfcn.h pkd.h floattype.h cooling.h
 startime.o: floattype.h startime.h
