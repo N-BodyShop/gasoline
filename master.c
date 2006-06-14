@@ -3542,6 +3542,7 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
 			    )
 {
     int i,id,iDim,nDim;
+    int iOut;  /* iterator through OutputList */
     int nStart;
     PST pst0;
     LCL *plcl;
@@ -3563,9 +3564,8 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
      * First write our own particles.
      */
     assert(msr->pMap[0] == 0);
-    nStart = plcl->pkd->nLocal;
-    for (i=0; i<iNumOutputs;i++){
-        if( OutputList[i]== BIG_FILE){
+    for (iOut=0; iOut<iNumOutputs;iOut++){
+        if( OutputList[iOut]== BIG_FILE){
 #ifdef COLLISIONS
             pkdWriteSS(plcl->pkd,achOutFile,plcl->nWriteStart);
 #else
@@ -3575,20 +3575,21 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
             } else {
             /* Only packed ASCII format supported!
              * Use readpackedvector in Tipsy */
-            if ((OutputList[i] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
+            if ((OutputList[iOut] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
                 pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart, -3,
-			     OutputList[i], msr->param.iBinaryOutput,msr->N,
+			     OutputList[iOut], msr->param.iBinaryOutput,msr->N,
 			     msr->param.bStandard);
                 } else {
-                nDim=(OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
+                nDim=(OutputList[iOut] > OUT_1D3DSPLIT) ? 3 : 1;
                 for (iDim=0; iDim<nDim; iDim++) 
                     pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
-				 iDim, OutputList[i],msr->param.iBinaryOutput,
+				 iDim, OutputList[iOut],msr->param.iBinaryOutput,
 				 msr->N,msr->param.bStandard);
                 }
             }
         } 
         
+    nStart = plcl->pkd->nLocal;
     /* Write out the particles on all the other nodes */
     for (i=1;i<msr->nThreads;++i) {
         id = msr->pMap[i];
@@ -3602,34 +3603,34 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
         /* 
          * Write the swapped particles.
          */
-        for (i=0; i<iNumOutputs;i++){
-            if( OutputList[i]== BIG_FILE){
+        for (iOut=0; iOut<iNumOutputs;iOut++){
+            if( OutputList[iOut]== BIG_FILE){
 #ifdef COLLISIONS
-                pkdWriteSS(plcl->pkd,achOutFile,plcl->nWriteStart);
+                pkdWriteSS(plcl->pkd,achOutFile,nStart);
 #else
-                pkdWriteTipsy(plcl->pkd,achOutFile,plcl->nWriteStart,in->bStandard,
+                pkdWriteTipsy(plcl->pkd,achOutFile,nStart,in->bStandard,
                                           in->dvFac,in->duTFac,in->iGasModel); 
 #endif
                 } else {
                 /* Only packed ASCII format supported!
                  * Use readpackedvector in Tipsy */
-                if ((OutputList[i] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
-                    pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
-				 -3, OutputList[i], msr->param.iBinaryOutput,
+                if ((OutputList[iOut] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
+                    pkdOutVector(plcl->pkd,achOutFileVec, nStart,
+				 -3, OutputList[iOut], msr->param.iBinaryOutput,
 				 msr->N,msr->param.bStandard);
                     } else {
-                    nDim=(OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
+                    nDim=(OutputList[iOut] > OUT_1D3DSPLIT) ? 3 : 1;
                     for (iDim=0; iDim<nDim; iDim++) {
 #ifdef SIMPLESF
 			/* The SF variables are written in binary no
 			   matter what */
                         pkdOutVector(plcl->pkd,achOutFileVec,
-				     plcl->nWriteStart, iDim, OutputList[i],
-				     ((OutputList[i]==OUT_TCOOLAGAIN_ARRAY || OutputList[i]==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput),
+				     nStart, iDim, OutputList[iOut],
+				     ((OutputList[iOut]==OUT_TCOOLAGAIN_ARRAY || OutputList[iOut]==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput),
 				     msr->N,msr->param.bStandard);
 #else
-                        pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
-				     iDim, OutputList[i],
+                        pkdOutVector(plcl->pkd,achOutFileVec, nStart,
+				     iDim, OutputList[iOut],
 				     msr->param.iBinaryOutput, msr->N,
 				     msr->param.bStandard); 
 #endif
