@@ -3473,12 +3473,11 @@ void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, 
     _msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
         
     /* Write Headers */
-    in.bDoneTipsy=0;
     sprintf(inOut.achOutFile,"%s.",in.achOutFile);
     for (i=0; i<iNumOutputs;i++){
         if ( OutputList[i] == BIG_FILE ){
 #ifdef COLLISIONS
-            msrWriteSSHead(msr,achOutFile,dTime,&in);
+            msrWriteSSHead(msr,achOutFile,dTime);
 #else
             msrWriteTipsyHead(msr,achOutFile,dTime,&in);
 #endif
@@ -3534,7 +3533,13 @@ void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, 
 
     }
     
-void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs, struct inWriteTipsy *in)
+void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
+#ifdef COLLISIONS
+			    struct inWriteSS *in
+#else
+			    struct inWriteTipsy *in
+#endif
+			    )
 {
     int i,id,iDim,nDim;
     int nStart;
@@ -3573,13 +3578,13 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs, struct i
             if ((OutputList[i] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
                 pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart, -3,
 			     OutputList[i], msr->param.iBinaryOutput,msr->N,
-			     in->bStandard);
+			     msr->param.bStandard);
                 } else {
                 nDim=(OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
                 for (iDim=0; iDim<nDim; iDim++) 
                     pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
 				 iDim, OutputList[i],msr->param.iBinaryOutput,
-				 msr->N,in->bStandard);
+				 msr->N,msr->param.bStandard);
                 }
             }
         } 
@@ -3611,7 +3616,7 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs, struct i
                 if ((OutputList[i] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
                     pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
 				 -3, OutputList[i], msr->param.iBinaryOutput,
-				 msr->N,in->bStandard);
+				 msr->N,msr->param.bStandard);
                     } else {
                     nDim=(OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
                     for (iDim=0; iDim<nDim; iDim++) {
@@ -3621,12 +3626,12 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs, struct i
                         pkdOutVector(plcl->pkd,achOutFileVec,
 				     plcl->nWriteStart, iDim, OutputList[i],
 				     ((OutputList[i]==OUT_TCOOLAGAIN_ARRAY || OutputList[i]==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput),
-				     msr->N,in->bStandard);
+				     msr->N,msr->param.bStandard);
 #else
                         pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
 				     iDim, OutputList[i],
 				     msr->param.iBinaryOutput, msr->N,
-				     in->bStandard); 
+				     msr->param.bStandard); 
 #endif
                         }
                     }
@@ -3642,7 +3647,6 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs, struct i
         mdlGetReply(pst0->mdl,id,NULL,NULL);
         }
     assert(nStart == msr->N);
-    if(!in->bDoneTipsy) in->bDoneTipsy = 1;
     }
     
 void msrOneNodeOutArray(MSR msr, struct inOutput *in)
@@ -7707,7 +7711,6 @@ msrWriteSSHead(MSR msr,char *achOutFile,double dTime)
 	SSIO ssio;
 	SSHEAD head;
 	struct inWriteSS in;
-	char achOutFile[PST_FILENAME_SIZE];
 	LCL *plcl = msr->pst->plcl;
 
 	if (ssioOpen(achOutFile,&ssio,SSIO_WRITE)) {
@@ -7715,7 +7718,7 @@ msrWriteSSHead(MSR msr,char *achOutFile,double dTime)
             _msrExit(msr,1);
             }
 
-        in.achOutFile = achOutFile;
+        strcpy(in.achOutFile, achOutFile);
 	/* Write header */
 
 	head.time = dTime;

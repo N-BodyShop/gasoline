@@ -382,7 +382,6 @@ void pstOutVector(PST,void *,int,void *,int *);
 
 /* PST_WRITETIPSY */
 struct inWriteTipsy {
-        int bDoneTipsy;
 	int bStandard;
 	double dvFac;
 	double duTFac;

@@ -131,7 +131,13 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *iNumOutputs, int OutputList[])
 void msrCreateAllOutputList(MSR msr, int *iNumOutputs, int OutputList[]);
 void msrCreateGasOutputList(MSR msr, int *iNumOutputs, int OutputList[]);
 void msrWriteOutputs(MSR msr, char *achFile, int *OutputList, int iNumOutputs, double dTime);
-void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs, struct inWriteTipsy *in);
+void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
+#ifdef COLLISIONS
+			    struct inWriteSS *in
+#else
+			    struct inWriteTipsy *in
+#endif
+			    );
 void msrWriteTipsy(MSR,char *,double);
 void msrWriteTipsyHead(MSR msr,char *achOutFile,double dTime, struct inWriteTipsy *in);
 void msrWriteTipsyBody(MSR msr,char *pszFileName,double dTime, struct inWriteTipsy *in);
@@ -282,6 +288,7 @@ void msrInitGlass(MSR);
 #ifdef COLLISIONS
 void msrFindRejects(MSR msr);
 double msrReadSS(MSR msr);
+void msrWriteSSHead(MSR msr,char *achOutFile,double dTime);
 void msrWriteSS(MSR msr, char *pszFileName, double dTime);
 void msrPlanetsKDK(MSR msr, double dStep, double dTime, double dDelta,
 				   double *pdWMax, double *pdIMax, double *pdEMax, int *piSec);
