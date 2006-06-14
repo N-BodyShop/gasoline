@@ -144,7 +144,7 @@ FDL_CTX *FDL_initialize(FILE *fp,FILE *fdlp,int bCopyFdl)
     FDL_addcom(CTX,"ARRAY",ARRAY);
     FDL_addcom(CTX,"FDL",FDL);
     FDL_addcom(CTX,"TYPE",TYPE);
-    FDL_addcom(CTX,"SIZE",SIZE);
+    FDL_addcom(CTX,"SIZE",FDL_SIZE);
     FDL_addcom(CTX,"INDEX",INDEX);
     
     CTX->fileptr = fp;
@@ -395,7 +395,7 @@ int FDL_expr(FDL_CTX *CTX,FDL_NODE **E,char *retsyms)
         if (err) return(FDL_error(CTX,err,__FILE__,__LINE__));
         else return(0);
         
-    case SIZE:
+    case FDL_SIZE:
         
         tok = CTX->curr_token;
         while (tok == ' ') tok = FDL_token(CTX);
