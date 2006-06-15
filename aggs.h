@@ -113,10 +113,10 @@ void pkdAggsBackDrift(PKD pkd,int iAggIdx,double dt);
 
 void pkdAggsGetCOM(PKD pkd,int iAggIdx,Scalar *m,Vector mr,Vector mv);
 
-void pkdAggsGetAxes(PKD pkd,int iAggIdx,const Vector r_com,const Vector v_com,
-					Matrix I,Vector L);
+void pkdAggsGetAxesAndSpin(PKD pkd,int iAggIdx,const Vector r_com,
+						   const Vector v_com,Matrix I,Vector L);
 
-void pkdAggsToBodyAxes(PKD pkd,int iAggIdx,Matrix spaceToBody);
+void pkdAggsSetBodyPos(PKD pkd,int iAggIdx,Matrix spaceToBody);
 
 void pkdAggsSetSpacePos(PKD pkd,int iAggIdx,const Vector r_com,Matrix lambda);
 
@@ -125,14 +125,16 @@ void pkdAggsSetSpaceVel(PKD pkd,int iAggIdx,const Vector v_com,const Vector omeg
 
 void pkdAggsSetSpaceSpins(PKD pkd,int iAggIdx,const Vector omega);
 
+void pkdAggsDelete(PKD pkd,int iAggIdx,int *bFound);
+
 void pkdAggsGetAccel(PKD pkd,int iAggIdx,Scalar *m,Vector ma);
+
+void pkdAggsCheckStress(PKD pkd,int iAggIdx,const Vector r_com,const Vector a_com,
+						const Vector omega,FLOAT fTensileStrength,FLOAT fShearStrength,
+						int *nLost,int *nLeft);
 
 void pkdAggsGetTorque(PKD pkd,int iAggIdx,const Vector r_com,const Vector a_com,
 					  Vector torque);
-
-void pkdAggsActivate(PKD pkd);
-
-void pkdAggsDeactivate(PKD pkd);
 
 /** Function that returns the values for the derivatives of the Euler 
  *   equations of motion.  For more information, refer to the accompanying

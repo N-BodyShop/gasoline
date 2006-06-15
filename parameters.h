@@ -7,6 +7,7 @@
 #endif
 
 #include "cosmo.h"
+#include "patch.h"
 
 struct parameters {
 	/*
@@ -51,6 +52,7 @@ struct parameters {
  	int bDoSphhOutput;
 	int bDodtOutput;
 	int bDoIonOutput;
+	int bDoDminOutput;
 	int bSymCool;
         int bDoGravity;
         int bDoSelfGravity;
@@ -77,7 +79,7 @@ struct parameters {
 	double dOmega;
 	double dOmegaDot;
 	int bPatch;
-	double dOrbFreq;
+  PATCH_PARAMS PP;
 	int bSimpleGasDrag;
 	int bEpstein;
 	double dGamma;
@@ -247,11 +249,21 @@ struct parameters {
 	 */
 	int bFindRejects;
 	int iCollLogOption;
+        int iMinCollRung;
 	char achCollLog[MAXPATHLEN];
 	double dSmallStep;
 	double dxUnifGrav;
 	double dyUnifGrav;
 	double dzUnifGrav;
+	int    iMinBinaryRung;
+        double dBallVelFact;
+        double dMaxBinaryEcc;
+#ifdef SLIDING_PATCH
+        int    iRandStep;
+        double dLargeMass;
+        double dRandBall;
+        int iNextRandomization;
+#endif
 	COLLISION_PARAMS CP;
 #endif /* COLLISIONS */
 #ifdef SPECIAL_PARTICLES
@@ -259,6 +271,9 @@ struct parameters {
 	int iSpecialId[MAX_NUM_SPECIAL_PARTICLES];
 	SPECIAL_PARTICLE_DATA sSpecialData[MAX_NUM_SPECIAL_PARTICLES];
 #endif /* SPECIAL_PARTICLES */
+#ifdef RUBBLE_ZML
+	int bRubbleStep; /* at the moment, this cannot be changed by user */
+#endif
 	};
 
 #endif

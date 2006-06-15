@@ -11,5 +11,5 @@ default: mdl.o
 clean:
 	-rm -f $(OBJ)
 
-mdl.o: ../Makefile.tmpl ../../pkdgrav/build
+mdl.o: ../Makefile.tmpl ../../../pkdgrav/build
 

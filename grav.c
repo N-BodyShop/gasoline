@@ -228,6 +228,11 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			dy = p[j].r[1] - p[i].r[1];
 			dz = p[j].r[2] - p[i].r[2];
 			d2 = dx*dx + dy*dy + dz*dz;
+#ifdef COLLISIONS
+			/* determine closest approach */
+			if (d2<p[i].mindist2) 
+				p[i].mindist2=d2;
+#endif
 			twoh = p[i].fSoft + p[j].fSoft;
 			SPLINE(d2,twoh,a,b);
 #ifdef GR_DRAG

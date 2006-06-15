@@ -946,9 +946,7 @@ void dfRenderParticlePoint( struct inDumpFrame *in, void *vImage,
 
 	DFIMAGE *Image = vImage;
 	DFIMAGE col; /* Colour */
-	double h;
-	double x,y,z,dr[3],br0;
-	int hint;
+	double x,y,z,dr[3];
 	int j;
 	int xp,yp;
 

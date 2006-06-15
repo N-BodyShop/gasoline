@@ -7,11 +7,14 @@
 
 #include "collision.h"
 
+#ifdef RUBBLE_ZML
+#include "rubble.h"
+#endif
+
 #define BOUNCE_OK 0
 #define NEAR_MISS 1
 
-void
-pkdNextCollision(PKD pkd,double *dt,int *iOrder1,int *iOrder2)
+void pkdNextCollision(PKD pkd,double *dt,int *iOrder1,int *iOrder2)
 {
 	/*
 	 ** Returns time and iOrder of particles for earliest predicted
@@ -20,9 +23,9 @@ pkdNextCollision(PKD pkd,double *dt,int *iOrder1,int *iOrder2)
 	 */
 
 	PARTICLE *p;
-	int i;
+	int i,nLocal = pkdLocal(pkd);
 
-	for (i=0;i<pkdLocal(pkd);i++) {
+	for (i=0;i<nLocal;i++) {
 		p = &pkd->pStore[i];
 		if (!TYPEQueryACTIVE(p)) continue; /* skip over inactive particles */
 		if (p->iOrder < 0) continue; /* skip over deleted particles */
@@ -34,19 +37,308 @@ pkdNextCollision(PKD pkd,double *dt,int *iOrder1,int *iOrder2)
 		}
 	}
 
-void
-pkdGetColliderInfo(PKD pkd,int iOrder,COLLIDER *c)
+double LastKickTime(int iRung,double dBaseTime,double dTimeNow) 
+{
+	/*
+	 ** Determines the last time a particle received a force update.
+	 */
+
+	double dRungTime;
+	int nRungSteps;
+
+	dRungTime = dBaseTime/(1<<iRung);
+	nRungSteps = (int)(dTimeNow/dRungTime);
+
+	return dTimeNow - (dRungTime*nRungSteps);
+}
+
+void MergerReorder(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,const COLLIDER *c,
+				   COLLIDER *cOut,double dt,const COLLISION_PARAMS *CP,
+				   int bDiagInfo,const FLOAT fOffset[],
+#ifdef RUBBLE_ZML
+				   double dMassInDust,
+#endif
+#ifdef SLIDING_PATCH
+				   FLOAT fShear,
+#endif
+				   int bPeriodic)
+{
+  /*
+  ** NOTE:
+  **   c1 = (input) pointer to 1st particle's pre-collision info
+  **   c2 = (input) pointer to 2nd particle's pre-collision info
+  **    c = (input) pointer to array of post-collision particle
+  **        info, adjusted to start of step
+  ** cOut = (output) pointer to array of post-collision particle
+  **        info, intended for collision log
+  */
+
+  const PARTICLE_ID *pMrg=NULL,*pDel=NULL,*pOth=NULL;
+
+  assert(c1 != NULL);
+  assert(c2 != NULL);
+  assert(c != NULL);
+  assert(cOut != NULL);
+  assert(CP != NULL);
+
+  if (c1->id.iPid == pkd->idSelf) { /* local particle */
+	/*
+	** Keep this particle if it has larger mass, or, if both
+	** particles are the same mass, keep this particle if it
+	** has a lower original index, or, if both particles have
+	** same original index, keep this particle if it has a
+	** lower processor number, or, if both particles are on
+	** same processor, keep particle with lower iOrder.
+	*/
+	if (c1->fMass > c2->fMass ||
+		(c1->fMass == c2->fMass &&
+		 (c1->id.iOrgIdx < c2->id.iOrgIdx ||
+		  (c1->id.iOrgIdx == c2->id.iOrgIdx &&
+		   (c1->id.iPid < c2->id.iPid ||
+			(c1->id.iPid == c2->id.iPid &&
+			 c1->id.iOrder < c2->id.iOrder))))))
+	  pMrg = &c1->id; /* new centre-of-mass particle */
+	else
+	  pDel = &c1->id; /* this particle is removed */
+	pOth = &c2->id;
+  }
+  if (c2->id.iPid == pkd->idSelf) { /* same thing for other particle */
+	if (c2->fMass > c1->fMass ||
+		(c2->fMass == c1->fMass &&
+		 (c2->id.iOrgIdx < c1->id.iOrgIdx ||
+		  (c2->id.iOrgIdx == c1->id.iOrgIdx &&
+		   (c2->id.iPid < c1->id.iPid ||
+			(c2->id.iPid == c1->id.iPid &&
+			 c2->id.iOrder < c1->id.iOrder))))))
+	  pMrg = &c2->id;
+	else
+	  pDel = &c2->id;
+	pOth = &c1->id;
+  }
+  /* 
+  ** Store or delete particle as appropriate, and make
+  ** sure master knows ID of surviving particle for
+  ** tracking purposes.  INT_MAX is used to indicate that
+  ** the other collider is now gone.
+  */
+  if (pMrg != NULL) {
+	PutColliderInfo(c,INT_MAX,&pkd->pStore[pMrg->iIndex],dt);
+	if (bDiagInfo) cOut->id = *pMrg; /* struct copy */
+#ifdef RUBBLE_ZML
+	{
+	  /*DEBUG -- CHECK FOR ABNORMAL DENSITY*/
+	  double rho;
+	  rho = c->fMass/(4.0/3.0*M_PI*CUBE(c->fRadius));
+	  if (rho > 4.0e6 && pkd->pStore[pMrg->iIndex].iColor == PLANETESIMAL) /* f=1 */
+		(void) printf("BAD MERGED DENSITY: iOrder=%i iOrgIdx=%i rho=%g\n",pMrg->iOrder,pMrg->iOrgIdx,rho);
+	}
+	if (CP->iRubForcedOutcome == RUB_FORCED_NONE) {
+	  /*
+	  ** Store any dust created by an interpolated collision into
+	  ** particle dust parameter.
+	  **DEBUG Should this be a +=?
+	  */
+	  pkd->pStore[pMrg->iIndex].dDustMass = dMassInDust;
+	}
+#endif
+  }
+  if (pDel != NULL) {
+	pkdDeleteParticle(pkd,&pkd->pStore[pDel->iIndex]);
+	if (bDiagInfo && pMrg == NULL) cOut->id = *pOth; /* may need merger info */
+  }
+}
+
+void SetMergerRung(const COLLIDER *c1,const COLLIDER *c2,COLLIDER *c,
+				   double dBaseStep,double dTimeNow,int iTime0)
+{
+  double lastkick1,lastkick2;
+  FLOAT m1,m2,m;
+  int k;
+
+  m1 = c1->fMass;
+  m2 = c2->fMass;
+  m = m1 + m2;
+
+  if (c1->iRung!=c2->iRung) {
+    lastkick1=LastKickTime(c1->iRung,dBaseStep,(dTimeNow-iTime0));
+    lastkick2=LastKickTime(c2->iRung,dBaseStep,(dTimeNow-iTime0));
+    if (m1 > m2) {
+      c->iRung=c1->iRung;
+      if (lastkick1>lastkick2) {
+	for (k=0;k<3;k++) {
+	  c->v[k]+=(m1/m)*c1->a[k]*(lastkick1-lastkick2);
+	}
+      } else {
+	for (k=0;k<3;k++) {
+	  c->v[k]+=(m2/m)*c2->a[k]*(lastkick2-lastkick1);
+	}
+      }
+    } else { /* c2->fMass > c1->fMass */
+      c->iRung=c2->iRung;
+      if (lastkick1>lastkick2) {
+	for (k=0;k<3;k++) {
+	  c->v[k]+=(m1/m)*c1->a[k]*(lastkick1-lastkick2);
+	}
+      } else {
+	for (k=0;k<3;k++) {
+	  c->v[k]+=(m2/m)*c2->a[k]*(lastkick2-lastkick1);
+	}
+      }
+    }
+  } else { /* c1->iRung == c2->iRung */
+    c->iRung=c1->iRung;
+  }
+  /* This was the old way of fixing the resultant particle's rung
+   * c->iRung = (c2->fMass > c1->fMass ? c2->iRung : c1->iRung); */
+}
+
+void CalcOffset(PKD pkd,COLLIDER *c1,COLLIDER *c2, FLOAT fOffset[]
+#ifdef SLIDING_PATCH
+				,FLOAT *fShear
+#endif
+				)
+{
+  int i;
+
+  for (i=0;i<3;i++) {
+    if (c2->r[i] - c1->r[i] >= 0.5*pkd->fPeriod[i]) {
+      fOffset[i] -= pkd->fPeriod[i];
+      c2->r[i] -= pkd->fPeriod[i];
+    }
+    else if (c2->r[i] - c1->r[i] < - 0.5*pkd->fPeriod[i]) {
+      fOffset[i] += pkd->fPeriod[i];
+      c2->r[i] += pkd->fPeriod[i];
+    }
+#ifdef SLIDING_PATCH
+    if (i == 0) {
+      if (fOffset[0] < 0) {
+	*fShear = 1.5*pkd->PP->dOrbFreq*pkd->fPeriod[0];
+	fOffset[1] = SHEAR(-1,pkd->dTime,pkd->PP);
+      }
+      else if (fOffset[0] > 0) {
+	*fShear = - 1.5*pkd->PP->dOrbFreq*pkd->fPeriod[0];
+	fOffset[1] = SHEAR(1,pkd->dTime,pkd->PP);
+      }
+      c2->r[1] += fOffset[1];
+      c2->v[1] += *fShear;
+    }
+#endif
+  }
+}
+
+void pkdFindTightestBinary(PKD pkd,double *dBindEn,int *iOrder1,int *iOrder2,int *n)
+{
+  /* Find the local binary with the highest binding energy. */
+
+  PARTICLE *p;
+  int i,nLocal = pkdLocal(pkd);
+
+  for (i=0;i<nLocal;i++) {
+    p = &pkd->pStore[i];
+    if (!TYPEQueryACTIVE(p)) continue;
+    if (p->iOrder<0) continue;
+    if (p->dtCol < *dBindEn) { /* This particle is more tightly bound */
+      *n=2;
+      *dBindEn = p->dtCol;
+      *iOrder1 = p->iOrder;
+      *iOrder2 = p->iOrderCol;
+    }
+  }
+}
+
+void pkdMergeBinary(PKD pkd,const COLLIDER *pc1,const COLLIDER *pc2,COLLIDER *cOut,
+					int bPeriodic,double dBaseStep,double dTimeNow,int iTime0,
+					double dDensity,int *bool)
+{
+  COLLIDER c1,c2,c;
+  FLOAT rc1[3],rc2[3],vc1[3],vc2[3],ac1[3],ac2[3];
+  FLOAT m1,m2,m;
+  int k,bDiagInfo;
+  FLOAT rsq1=0,rsq2=0,vsq1=0,vsq2=0,r2,r1,ang_mom,ke;
+  const double dDenFac = 4.0/3*M_PI;  
+  FLOAT fOffset[3] = {0,0,0};
+#ifdef SLIDING_PATCH
+  FLOAT fShear=0.0;
+#endif
+
+  c1 = *pc1;
+  c2 = *pc2;
+
+  /* First find center of mass position and velocity */
+
+  m1=c1.fMass;
+  m2=c2.fMass;
+  m=m1+m2;
+  r1=c1.fRadius;
+  r2=c2.fRadius;
+
+  bDiagInfo = (c1.id.iPid == pkd->idSelf); 
+ 
+  if (bPeriodic) 
+    CalcOffset(pkd,&c1,&c2,fOffset
+#ifdef SLIDING_PATCH
+	       ,&fShear
+#endif
+	       );
+
+  for (k=0;k<3;k++) {
+    c.r[k] = (m1*c1.r[k] + m2*c2.r[k])/m;
+    c.v[k] = (m1*c1.v[k] + m2*c2.v[k])/m;
+    c.a[k] = (m1*c1.a[k] + m2*c2.a[k])/m;
+    c.w[k] = (m1*c1.w[k] + m2*c2.w[k])/m;/*DEBUG can't do this with spins, can you?--DCR*/
+    rc1[k] = c1.r[k] - c.r[k];
+    rc2[k] = c2.r[k] - c.r[k];
+    vc1[k] = c1.v[k] - c.v[k];
+    vc2[k] = c2.v[k] - c.v[k];
+    ac1[k] = c1.a[k] - c.a[k];
+    ac2[k] = c2.a[k] - c.a[k];
+    rsq1+=rc1[k]*rc1[k];
+    vsq1+=vc1[k]*vc1[k];
+    rsq2+=rc2[k]*rc2[k];
+    vsq2+=vc2[k]*vc2[k];
+  }
+  c.fMass=m;
+  if (dDensity)
+    c.fRadius = pow(m/(dDenFac*dDensity),1.0/3);
+  else
+    c.fRadius = (m2 > m1 ? r2*pow(m/m2,1.0/3) : r1*pow(m/m1,1.0/3));
+
+  /* This much angular momentum and kinetic energy are lost. *//*DEBUG why is ang mom lost?--DCR*/
+  ang_mom = m1*sqrt(rsq1)*sqrt(vsq1) + m2*sqrt(rsq2)*sqrt(vsq1);
+  ke=0.5*(m1*vsq1 + m2*vsq2);
+
+  /* For now both colliders are the same type */
+  c.iColor = c1.iColor;
+
+  SetMergerRung(&c1,&c2,&c,dBaseStep,dTimeNow,iTime0);
+  MergerReorder(pkd,&c1,&c2,(const COLLIDER *) &c,&c,-1,NULL/*DEBUG--hack*/,bDiagInfo,fOffset,
+#ifdef RUBBLE_ZML
+				0.0/*DEBUG--hack*/,
+#endif
+#ifdef SLIDING_PATCH 
+		fShear,
+#endif
+		bPeriodic);
+
+  *cOut = c;
+
+  /* For parallel purposes, let's now set the boolean to 1 */
+  *bool=1;
+}
+
+void pkdGetColliderInfo(PKD pkd,int iOrder,COLLIDER *c)
 {
 	/*
 	 ** Returns collider info for particle with matching iOrder.
 	 */
 
 	PARTICLE *p;
-	int i,j;
+	int i,j,nLocal = pkdLocal(pkd);
 
-	for (i=0;i<pkdLocal(pkd);i++) {
+	for (i=0;i<nLocal;i++) {
 		p = &pkd->pStore[i];
 		if (p->iOrder == iOrder) {
+			assert(TYPEQueryACTIVE(p));
 			c->id.iPid = pkd->idSelf;
 			c->id.iOrder = iOrder;
 			c->id.iIndex = i;
@@ -57,6 +349,7 @@ pkdGetColliderInfo(PKD pkd,int iOrder,COLLIDER *c)
 				c->r[j] = p->r[j];
 				c->v[j] = p->v[j];
 				c->w[j] = p->w[j];
+				c->a[j] = p->a[j];
 				}
 			c->iColor = p->iColor;
 			c->dt = p->dt;
@@ -73,11 +366,15 @@ void PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt)
 	 ** Stores collider info in particle structure (except id & color).
 	 ** Also, dt is stored in dtPrevCol for inelastic collapse checks.
 	 **
+	 ** dt is set to -1 in a binary merge.
+	 **
 	 ** NOTE: Because colliding particles have their positions traced back to
 	 ** the start of the step using their NEW velocities, it is possible for
 	 ** a neighbour to no longer lie inside a previous collider's search ball.
 	 ** To fix this, the ball radius is expanded by a conservative estimate of
-	 ** the displacement amount (using the "Manhattan metric").
+	 ** the displacement amount (using the "Manhattan metric").  This is
+	 ** needed so we can use resmooth instead of smooth to save time after
+	 ** a collision occurs during the search interval.
 	 */
 
 	int i;
@@ -87,24 +384,47 @@ void PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt)
 	p->fSoft = SOFT(c); /* half particle radius */
 	r = fabs(c->r[0] - p->r[0]) +
 		fabs(c->r[1] - p->r[1]) +
-		fabs(c->r[2] - p->r[2]);
+		fabs(c->r[2] - p->r[2]); /* measured AFTER collider traced back */
 	for (i=0;i<3;i++) {
 		p->r[i] = c->r[i];
 		p->v[i] = c->v[i];
 		p->w[i] = c->w[i];
+		p->a[i] = c->a[i];
 #ifdef NEED_VPRED
 		p->vPred[i] = c->v[i] - dt*p->a[i];
 #endif
 		}
 	p->iRung = c->iRung;
 	p->fBall2 += 2*sqrt(p->fBall2)*r + r*r;
-	p->dtPrevCol = dt;
+	p->dtPrevCol = dt; /* N.B. this is set to -1 in a binary merge */
 	p->iPrevCol = iOrder2; /* stored to avoid false collisions */
-	}
+}
 
-void
-pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,double dDensity,
-		 COLLIDER **cOut,int *pnOut)
+void pkdSetBall(PKD pkd, double dDelta, double fac)
+{
+  PARTICLE *p;
+  double vsq;
+  int i,j,k,nLocal = pkdLocal(pkd);
+
+  for (i=0;i<nLocal;i++) {
+    p = &pkd->pStore[i];
+    vsq=0;
+    for (j=0;j<3;j++) 
+      vsq+=p->v[j]*p->v[j];
+    /* search radius = (fac*dDelta*v + 4*softlength)^2 */
+    p->fBall2=fac*fac*dDelta*dDelta*vsq + 4.0*fac*dDelta*sqrt(vsq)*p->fSoft + 16.0*p->fSoft*p->fSoft;
+    if (pkd->fPeriod[0]<FLOAT_MAXVAL || pkd->fPeriod[1]<FLOAT_MAXVAL ||
+	pkd->fPeriod[2]<FLOAT_MAXVAL) {
+      for (k=0;k<3;k++) 
+	assert(p->fBall2 < 0.25*pkd->fPeriod[k]*pkd->fPeriod[k]);
+    }
+    p->cpStart = 0;
+  }
+}
+
+void pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,double dDensity,
+			  COLLIDER **cOut,int *pnOut,int iTime0,double dBaseStep,
+			  double dTimeNow)
 {
 	/*
 	 ** Merges colliders into new centre-of-mass particle (cOut[0])
@@ -117,6 +437,7 @@ pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,double dDensity,
 
 	COLLIDER *c;
 	FLOAT com_pos[3],com_vel[3],rc1[3],rc2[3],vc1[3],vc2[3],ang_mom[3];
+	FLOAT com_acc[3],ac1[3],ac2[3];
 	FLOAT m1,m2,m,r1,r2,r,i1,i2,i;
 	int k;
 
@@ -140,6 +461,9 @@ pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,double dDensity,
 		com_vel[k] = (m1*c1->v[k] + m2*c2->v[k])/m;
 		vc1[k] = c1->v[k] - com_vel[k];
 		vc2[k] = c2->v[k] - com_vel[k];
+		com_acc[k] = (m1*c1->a[k] + m2*c2->a[k])/m;
+		ac1[k] = c1->a[k] - com_acc[k];
+		ac2[k] = c2->a[k] - com_acc[k];
 	}
 
 	ang_mom[0] = m1*(rc1[1]*vc1[2] - rc1[2]*vc1[1]) + i1*c1->w[0] +
@@ -161,21 +485,22 @@ pkdMerge(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,double dDensity,
 	c->fRadius = r;
 
 	for (k=0;k<3;k++) {
-		c->r[k] = com_pos[k];
-		c->v[k] = com_vel[k];
-		c->w[k] = ang_mom[k]/i;
-		}
-
-	/* Set merger's timestep to iRung of largest mass. */
-	/* XXX there is a bug in changing timesteps during a collision 
-	   but this makes it less bothersome. */
-	c->iRung = (c2->fMass > c1->fMass ? c2->iRung : c1->iRung);
+	  c->r[k] = com_pos[k];
+	  c->v[k] = com_vel[k];
+	  c->w[k] = ang_mom[k]/i;
+	  c->a[k] = com_acc[k];
 	}
 
-int
-pkdBounce(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
-		  double dEpsN,double dEpsT,int bFixCollapse,
-		  COLLIDER **cOut,int *pnOut)
+	/* Set merger's timestep to iRung of largest mass. */
+	/* We have to do some messy logic to correct for the possibility
+	   of the two colliders being on different rungs, and hence having
+	   received their last kick at different times. */
+	SetMergerRung(c1,c2,c,dBaseStep,dTimeNow,iTime0);
+}
+
+int pkdBounce(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
+			  double dEpsN,double dEpsT,int bFixCollapse,
+			  COLLIDER **cOut,int *pnOut)
 {
 	/* Bounces colliders, preserving particle order */
 
@@ -324,9 +649,8 @@ pkdBounce(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
 	return BOUNCE_OK;
 	}
 
-void
-pkdFrag(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
-		COLLIDER **cOut,int *pnOut)
+void pkdFrag(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
+			 COLLIDER **cOut,int *pnOut)
 {
 	/*
 	 ** Fragments colliders into at most MAX_NUM_FRAG pieces.
@@ -337,12 +661,16 @@ pkdFrag(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
 	 ** - and decide on starting iRung values
 	 ** - and assign colors
 	 */
+
+	assert(0);
+	*cOut = NULL;
+	*pnOut = 0;
 	}
 
-void
-pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
-			   int bPeriodic,const COLLISION_PARAMS *CP,int *piOutcome,
-			   double *dT,COLLIDER *cOut,int *pnOut)
+void pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
+					int bPeriodic,int iTime0,double dBaseStep,double dTimeNow,
+					const COLLISION_PARAMS *CP,int *piOutcome,double *dT,
+					COLLIDER *cOut,int *pnOut)
 {
 	/*
 	 ** Processes collision by advancing particle coordinates to impact
@@ -357,18 +685,21 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 	 ** The offset is removed before calling PutColliderInfo().
 	 */
 
-	COLLIDER c1,c2,*c;
-	FLOAT fOffset[3] = {0,0,0};
+	COLLIDER c1,c2,*c = NULL;
+	FLOAT fOffset[3] = {0.0,0.0,0.0};
 	double v2,ve2,dImpactEnergy;
 	int bDiagInfo,iOutcome,i,j,n; /*DEBUG would bReportInfo be better?*/
 #ifdef SLIDING_PATCH
-	FLOAT fShear = 0;
+	FLOAT fShear = 0.0,ct,st,wx,wy;
 #endif
 
 /*DEBUG verbose collision output
 	(void) printf("COLLISION %i & %i (dt = %.16e)\n",
 				  pc1->id.iOrder,pc2->id.iOrder,dt);
 */
+#ifdef RUBBLE_ZML
+	double dMassInDust;
+#endif
 
 	/* Get local copies of collider info */
 
@@ -578,32 +909,11 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 	 */
 
 	if (bPeriodic) {
-		for (i=0;i<3;i++) {
-			if (c2.r[i] - c1.r[i] >= 0.5*pkd->fPeriod[i]) {
-				fOffset[i] -= pkd->fPeriod[i];
-				c2.r[i] -= pkd->fPeriod[i];
-				}
-			else if (c2.r[i] - c1.r[i] < - 0.5*pkd->fPeriod[i]) {
-				fOffset[i] += pkd->fPeriod[i];
-				c2.r[i] += pkd->fPeriod[i];
-				}
+	  CalcOffset(pkd,&c1,&c2,fOffset
 #ifdef SLIDING_PATCH
-			if (i == 0) {
-				if (fOffset[0] < 0) {
-					fShear = 1.5*pkd->dOrbFreq*pkd->fPeriod[0];
-					fOffset[1] = SHEAR(-1,pkd->fPeriod[0],pkd->fPeriod[1],
-									   pkd->dOrbFreq,pkd->dTime);
-					}
-				else if (fOffset[0] > 0) {
-					fShear = - 1.5*pkd->dOrbFreq*pkd->fPeriod[0];
-					fOffset[1] = SHEAR(1,pkd->fPeriod[0],pkd->fPeriod[1],
-									   pkd->dOrbFreq,pkd->dTime);
-					}
-				c2.r[1] += fOffset[1];
-				c2.v[1] += fShear;
-				}
+		     ,&fShear
 #endif
-			}
+		     );
 		}
 
 	/* Advance coordinates to impact time */
@@ -613,10 +923,61 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 		c2.r[i] += c2.v[i]*dt;
 	}
 
+#ifdef SLIDING_PATCH
+	/* For sliding patch, need to transform spins to patch frame as well */
+
+	ct = cos(pkd->PP->dOrbFreq*(pkd->dTime + dt));
+	st = sin(pkd->PP->dOrbFreq*(pkd->dTime + dt));
+	wx =  ct*c1.w[0] + st*c1.w[1];
+	wy = -st*c1.w[0] + ct*c1.w[1];
+	c1.w[0] = wx;
+	c1.w[1] = wy;
+	wx =  ct*c2.w[0] + st*c2.w[1];
+	wy = -st*c2.w[0] + ct*c2.w[1];
+	c2.w[0] = wx;
+	c2.w[1] = wy;
+#endif
+
 	/* Determine collision outcome */
+#ifdef RUBBLE_ZML	
 
+	/* should this be merged with stuff below? (i.e. after "CP->iOutcomes & FRAG" line) */
+	if (CP->iRubForcedOutcome == RUB_FORCED_NONE) {
+
+  		extern void rubRubbleCollide(const COLLIDER *col_a,const COLLIDER *col_b,
+									 const COLLISION_PARAMS *cp,COLLIDER **col_c,
+									 double *dMassInDust,int *nOut);
+		printf("c1.id.iOrder = %i c2.id.iOrder = %i\n",
+			   c1.id.iOrder, c2.id.iOrder);
+		rubRubbleCollide(&c1,&c2,CP,&c,&dMassInDust,&n); /*dMinMass to be part CP*/
+      
+		if (n == 1)
+			iOutcome = MERGE; /* could have produced dust */
+		else if (n == 2) {
+			assert(0); /*DEBUG THIS SHOULD NEVER HAPPEN*/
+			iOutcome = BOUNCE; /* ditto */
+			/* need to call pkdBounce() here */
+			}
+		else if (n > 2)
+			iOutcome = FRAG;
+		else
+			assert(0); /* not possible */
+		
+/*		printf("iOutcome = %s\n",iOutcome); *//*DEBUG 03.14.04*/
+		/* return diagnostic info if necessary */
+		if (bDiagInfo) {
+			*piOutcome = iOutcome;
+			*dT = 0.0; /* kinetic energy loss -- too nasty to worry about */
+			for (i=0;i<(n < MAX_NUM_FRAG ? n : MAX_NUM_FRAG);i++) /* only first MAX_NUM_FRAG reported */
+			  cOut[i] = c[i];
+			*pnOut = n;
+			}
+		goto finish; /*need to call add or delete particle routine */
+		}
+#endif /* RUBBLE_ZML */
+	
 	v2 = 0;
-
+  
 	for (i=0;i<3;i++)
 		v2 += (c2.v[i] - c1.v[i])*(c2.v[i] - c1.v[i]);
 
@@ -626,11 +987,17 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 
 	iOutcome = MISS;
 
+	
+#ifdef RUBBLE_ZML  
+	if (CP->iRubForcedOutcome == RUB_FORCED_MERGE) {
+#else
 	if (CP->iOutcomes == MERGE ||
 		((CP->iOutcomes & MERGE) &&
 		 v2 <= CP->dBounceLimit*CP->dBounceLimit*ve2)) {
+#endif
 		iOutcome = MERGE;
-		pkdMerge(pkd,&c1,&c2,CP->dDensity,&c,&n);
+		pkdMerge(pkd,&c1,&c2,CP->dDensity,&c,&n,iTime0,dBaseStep,dTimeNow);
+		assert(c != NULL);
 		assert(n == 1);
 		if (CP->iOutcomes & (BOUNCE | FRAG)) { /* check if spinning too fast */
 			double w2max,w2=0;
@@ -643,11 +1010,16 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 				iOutcome = BOUNCE;
 				rv = pkdBounce(pkd,&c1,&c2,CP->dEpsN,CP->dEpsT,CP->bFixCollapse,&c,&n);
 				assert(rv == BOUNCE_OK);
+				assert(c != NULL);
 				assert(n == 2);
 				}
 			}
-		}
-	else if (CP->iOutcomes & BOUNCE) {
+		}	
+#ifdef RUBBLE_ZML
+	else if (CP->iRubForcedOutcome == RUB_FORCED_BOUNCE) {
+#else
+    else if (CP->iOutcomes & BOUNCE) {
+#endif
 		double dEpsN=1,dEpsT=1;
 		iOutcome = BOUNCE;
 		if (c1.bTinyStep || c2.bTinyStep) {
@@ -656,6 +1028,34 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 			}
 		else if ((CP->iSlideOption == EscVel && v2 < CP->dSlideLimit2*ve2) ||
 				 (CP->iSlideOption == MaxTrv && v2 < CP->dSlideLimit2)) {
+			/*#define EXPERIMENTAL*//*DEBUG*/
+#ifdef EXPERIMENTAL
+			/*DEBUG -- new inelastic collapse strategy! does not allow parallel, sliding friction, zero-mass particles, or ghosts though*/
+			double rn[3],vr=0,r2,imr2;
+			(void) fprintf(stderr,"***** COLLAPSE *****\n");
+			for (i=0;i<3;i++) {
+				c1.r[i] -= c1.v[i]*dt; /* trace back first */
+				c2.r[i] -= c2.v[i]*dt;
+				rn[i] = c2.r[i] - c1.r[i];
+				vr += (c2.v[i] - c1.v[i])*rn[i];
+				}
+			r2 = rn[0]*rn[0] + rn[1]*rn[1] + rn[2]*rn[2];
+			assert(r2 > 0);
+			imr2 = 1.0/(r2*(c1.fMass + c2.fMass));
+			/* remove component of velocities in radial direction */
+			for (i=0;i<3;i++) {
+				c1.v[i] += c2.fMass*vr*rn[i]*imr2;
+				c2.v[i] -= c1.fMass*vr*rn[i]*imr2;
+				}
+			PutColliderInfo(&c1,c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
+			PutColliderInfo(&c2,c1.id.iOrder,&pkd->pStore[c2.id.iIndex],dt);
+			cOut[0] = c1;
+			cOut[1] = c2;
+			*pnOut = 2;
+			*piOutcome = COLLAPSE;
+			return;
+			/* end of inelastic collapse stuff */
+#endif
 			dEpsN = CP->dSlideEpsN;
 			dEpsT = CP->dSlideEpsT;
 			}
@@ -703,11 +1103,13 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 			}
 		if (pkdBounce(pkd,&c1,&c2,dEpsN,dEpsT,CP->bFixCollapse,&c,&n) == NEAR_MISS)
 			iOutcome = MISS;
+		assert(c != NULL);
 		assert(n == 2);
 		}
 	else if (CP->iOutcomes & FRAG) {
 		iOutcome = FRAG;
 		pkdFrag(pkd,&c1,&c2,&c,&n);
+		assert(c != NULL);
 		assert(n <= MAX_NUM_FRAG);
 		}
 
@@ -742,64 +1144,38 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 		*pnOut = n;
 		}
 
+#ifdef RUBBLE_ZML
+ finish:
+#endif
+  
 	/* Trace particles back to start of step */
 
 	for (i=0;i<n;i++)
 		for (j=0;j<3;j++)
 			c[i].r[j] -= c[i].v[j]*dt;
 
+#ifdef SLIDING_PATCH
+	/* And transform spin(s) back to space frame */
+
+	for (i=0;i<n;i++) {
+	  wx = ct*c[i].w[0] - st*c[i].w[1];
+	  wy = st*c[i].w[0] + ct*c[i].w[1];
+	  c[i].w[0] = wx;
+	  c[i].w[1] = wy;
+	}
+#endif
+
 	/* Handle output cases */
 
-	if (n == 1) { /* merge */
-		PARTICLE_ID *pMrg=NULL,*pDel=NULL,*pOth=NULL;
-		if (c1.id.iPid == pkd->idSelf) { /* local particle */
-			/*
-			 ** Keep this particle if it has larger mass, or, if both
-			 ** particles are the same mass, keep this particle if it
-			 ** has a lower original index, or, if both particles have
-			 ** same original index, keep this particle if it has a
-			 ** lower processor number, or, if both particles are on
-			 ** same processor, keep particle with lower iOrder.
-			 */
-			if (c1.fMass > c2.fMass ||
-				(c1.fMass == c2.fMass &&
-				 (c1.id.iOrgIdx < c2.id.iOrgIdx ||
-				  (c1.id.iOrgIdx == c2.id.iOrgIdx &&
-				   (c1.id.iPid < c2.id.iPid ||
-					(c1.id.iPid == c2.id.iPid &&
-					 c1.id.iOrder < c2.id.iOrder))))))
-				pMrg = &c1.id; /* new centre-of-mass particle */
-			else
-				pDel = &c1.id; /* this particle is removed */
-			pOth = &c2.id;
-			}
-		if (c2.id.iPid == pkd->idSelf) { /* same thing for other particle */
-			if (c2.fMass > c1.fMass ||
-				(c2.fMass == c1.fMass &&
-				 (c2.id.iOrgIdx < c1.id.iOrgIdx ||
-				  (c2.id.iOrgIdx == c1.id.iOrgIdx &&
-				   (c2.id.iPid < c1.id.iPid ||
-					(c2.id.iPid == c1.id.iPid &&
-					 c2.id.iOrder < c1.id.iOrder))))))
-				pMrg = &c2.id;
-			else
-				pDel = &c2.id;
-			pOth = &c1.id;
-			}
-		/* 
-		 ** Store or delete particle as appropriate, and make
-		 ** sure master knows ID of surviving particle for
-		 ** tracking purposes.
-		 */
-		if (pMrg) {
-			PutColliderInfo(&c[0],INT_MAX,&pkd->pStore[pMrg->iIndex],dt);
-			if (bDiagInfo) cOut[0].id = *pMrg; /* struct copy */
-			}
-		if (pDel) {
-			pkdDeleteParticle(pkd,&pkd->pStore[pDel->iIndex]);
-			if (bDiagInfo && !pMrg) cOut[0].id = *pOth; /* may need merger info */
-			}
-		}
+	if (n == 1) /* merge */
+	  MergerReorder(pkd,&c1,&c2,c,cOut,dt,CP,bDiagInfo,fOffset,
+#ifdef RUBBLE_ZML
+					dMassInDust,
+#endif
+#ifdef SLIDING_PATCH
+			fShear,
+#endif
+			bPeriodic);
 	else if (n == 2) { /* bounce or mass transfer */
 		if (c1.id.iPid == pkd->idSelf)
 			PutColliderInfo(&c[0],c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
@@ -815,17 +1191,49 @@ pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 			}
 		}
 	else { /* fragmentation */
+#ifdef RUBBLE_ZML
+		if (CP->iRubForcedOutcome == RUB_FORCED_NONE) {
+			PARTICLE p;
+			if (c1.id.iPid == pkd->idSelf) {
+				PutColliderInfo(&c[0],c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
+				pkd->pStore[c1.id.iIndex].iColor = CP->iRubColor; /* override color */
+				}
+			if (c2.id.iPid == pkd->idSelf) {
+				PutColliderInfo(&c[1],c1.id.iOrder,&pkd->pStore[c2.id.iIndex],dt);
+				pkd->pStore[c2.id.iIndex].iColor = CP->iRubColor;
+				}
+			/*
+			 ** For now, create new particles on 1st processor. Hopefully
+			 ** domain decomposition will rebalance quickly. Note that
+			 ** rubble pile particles created by 2nd processor are ignored.
+			 ** Why do we bother making them at all in that case? Good question.
+			 */
+			if (c1.id.iPid == pkd->idSelf) {
+				p = pkd->pStore[c1.id.iIndex]; /* quick and dirty initialization */
+				p.iColor = CP->iRubColor;
+				assert(p.iColor != PLANETESIMAL);
+				p.dtPrevCol = 0;
+				p.iPrevCol = INT_MAX;
+				for (i=2;i<n;i++) {
+					PutColliderInfo(&c[i],-1,&p,dt);
+					/* fix up some things PutColliderInfo() doesn't take care of */
+					p.iOrgIdx = c[i].id.iOrgIdx;
+					pkdNewParticle(pkd,p);
+					}
+				}
+			}
+#else
 		assert(0); /* not implemented yet */
 		/* note in this case new iOrders start at pkd->nMaxOrderDark */
+#endif
 		}
 
 	/* Free resources */
 
-	free((void *) c);
+	free((void *) c); /* (if c is NULL, op is ignored) */
 	}
 
-void
-pkdResetColliders(PKD pkd,int iOrder1,int iOrder2)
+void pkdResetColliders(PKD pkd,int iOrder1,int iOrder2)
 {
 	/*
 	 ** Set SMOOTHACTIVE flag for those particles that were involved
@@ -837,9 +1245,9 @@ pkdResetColliders(PKD pkd,int iOrder1,int iOrder2)
 	 */
 
 	PARTICLE *p;
-	int i;
+	int i,nLocal = pkdLocal(pkd);
 
-	for (i=0;i<pkdLocal(pkd);i++) {
+	for (i=0;i<nLocal;i++) {
 		p = &pkd->pStore[i];
 		if (!TYPEQueryACTIVE(p)) continue;
 		if (p->iOrder == iOrder1 || p->iOrder == iOrder2 ||
@@ -873,9 +1281,8 @@ pkdResetColliders(PKD pkd,int iOrder1,int iOrder2)
  ** Currently assumes G := 1.
  */
 
-double
-dInteract(double dTime,double dDelta,double dCentMass,
-		  PARTICLE *pi,PARTICLE *pj)
+double dInteract(double dTime,double dDelta,double dCentMass,
+				 PARTICLE *pi,PARTICLE *pj)
 {
 	double dEccAnom(double,double);
 
@@ -1198,5 +1605,183 @@ dInteract(double dTime,double dDelta,double dCentMass,
 	return(0);
 	}
 #endif /* OLD_KEPLER */
+
+#ifdef SLIDING_PATCH
+void pkdFindLargeMasses(PKD pkd,double dMass,double dCentralMass,double dHelio,double hill,PARTICLE *p,double *r,int *n)
+{
+    int i,nLocal = pkdLocal(pkd);
+
+    *n=0;
+    for (i=0;i<nLocal;i++) {
+	if (pkd->pStore[i].fMass > dMass) {
+	    p[*n]=pkd->pStore[i];
+	    r[*n]=hill*(pow((pkd->pStore[i].fMass/(3*dCentralMass)),(1.0/3))*(dHelio+pkd->pStore[i].r[0])); /* This assumes z height is negligible */ 
+	    *n+= 1;
+	    assert(*n < MAXLARGEMASS);
+	    }
+	}	
+    }
+
+void pkdGetNeighborParticles(PKD pkd,double *r,double dRadius2,int id,double dTime,PARTICLE *p,double *sep2,int *n) 
+{
+    double dDist2,dist2;
+    double dx,dx1,dy,dy1,dz,dz1,sx,sy,sz;
+    int i,j,nLocal = pkdLocal(pkd);
+
+    /* This subroutine assumes that it is part of the sliding
+       patch. Although there may be future uses for this that would be
+       more general. Because of the unusual geometry of the sliding
+       patch (namely that the ghost cells themselves are shearing),
+       this algorithm is surprisingly tricky, and is modelled after
+       Derek's INTERSECT macro in smooth.h. --Rory 07/12/04 
+    */
+
+    *n=0;
+    i=0;
+    while (i < nLocal) {
+	/* First make sure we're not dealing with the large mass
+	   particle */
+	if (pkd->pStore[i].iOrder == id) {
+	    i++;
+	    continue;
+	    }
+	
+	dDist2=0;	
+	dx = pkd->pStore[i].r[0] - r[0];
+	dx1 = r[0] - pkd->pStore[i].r[0];
+	sy = r[1];
+	if (dx > 0.0 ) {
+	    dx1 += pkd->fPeriod[0];
+	    if (dx1 < dx) {
+		dDist2 = dx1*dx1;
+		sx = r[0] + pkd->fPeriod[0];
+		sy += SHEAR(1,dTime,pkd->PP);
+		if (sy >= 0.5*pkd->fPeriod[1]) sy -= pkd->fPeriod[1];
+		else if (sy < -0.5*pkd->fPeriod[1]) sy += pkd->fPeriod[1];
+		}
+	    else {
+		dDist2 = dx*dx;
+		sx = r[0];
+		}
+	    if (dDist2 > dRadius2) {
+		i++;
+		continue;
+		}	    
+	    }
+	
+	else if (dx1 > 0.0) {
+	    dx += pkd->fPeriod[0];
+	    if (dx < dx1) {
+		dDist2 = dx*dx;
+		sx =  r[0] - pkd->fPeriod[0];
+		sy += SHEAR(-1,dTime,pkd->PP);
+		if (sy >= 0.5*pkd->fPeriod[1]) sy -= pkd->fPeriod[1];
+		else if (sy < -0.5*pkd->fPeriod[1]) sy += pkd->fPeriod[1];
+		}
+	    else {
+		dDist2 = dx1*dx1;
+		sx = r[0];
+		}
+	    if (dDist2 > dRadius2) {
+		i++;
+		continue;
+		}	
+	    }
+	else {
+	    dDist2 = 0.0;
+	    sx = r[0];
+	    }
+	
+	dy = pkd->pStore[i].r[1] - sy;
+	dy1 = sy - pkd->pStore[i].r[1];
+	if (dy > 0.0) {
+	    dy1 += pkd->fPeriod[1];
+	    if (dy1 < dy) {
+		dDist2 += dy1*dy1;
+		sy += pkd->fPeriod[1];
+		}
+	    else {
+		dDist2 += dy*dy;
+		}
+	    if (dDist2 > dRadius2) {
+		i++;
+		continue;
+		}	    
+	    }
+	else if (dy1 > 0) {
+	    dy += pkd->fPeriod[1];
+	    if (dy < dy1) {
+		dDist2 += dy*dy;
+		sy -= pkd->fPeriod[1];
+		}
+	    else {
+		dDist2 += dy1*dy1;
+		}
+	    if (dDist2 > dRadius2) {
+		i++;
+		continue;
+		}
+	    }
+	else {
+	    }
+	
+	/* Is this necessary in sliding_patch? */
+	dz = pkd->pStore[i].r[2] - r[2];
+	dz1 = r[2] - pkd->pStore[i].r[2];
+	if (dz > 0.0) {
+	    dz1 += pkd->fPeriod[2];
+	    if (dz1 < dz) {
+		dDist2 += dz1*dz1;
+		sz = r[2]+pkd->fPeriod[2];
+		}
+	    else {
+		dDist2 += dz*dz;
+		sz = r[2];
+		}
+	    if (dDist2 > dRadius2) {
+		i++;
+		continue;
+		}
+	    }
+	else if (dz1 > 0.0) {
+	    dz += pkd->fPeriod[2];
+	    if (dz < dz1) {
+		dDist2 += dz*dz;
+		sz = r[2]-pkd->fPeriod[2];
+		}
+	    else {
+		dDist2 += dz1*dz1;
+		sz = r[2];
+		}
+	    if (dDist2 > dRadius2) {
+		i++;
+		continue;
+		}	    
+	    }
+	else {
+	    sz = r[2];
+	    }
+    
+	/* The particle is within the sphere */
+	assert(dDist2 < dRadius2);
+    
+	/* Just for safe keeping here is the version in the
+	   non-sliding patch, non periodic case */
+	dist2=0;	
+	for (j=0;j<3;j++) 
+	    dist2+= (pkd->pStore[i].r[j]-r[j])*(pkd->pStore[i].r[j]-r[j]);
+	   /* if ((dist2 < radius*radius) && (dist2 != 0)) { */
+	
+	p[*n] = pkd->pStore[i];
+	sep2[*n] = dDist2;	
+	*n+= 1;
+	assert(*n < MAXNEIGHBORS);
+	i++;
+	}    
+    }
+
+
+#endif /* SLIDING_PATCH */
+
 
 #endif /* COLLISIONS */

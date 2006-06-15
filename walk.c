@@ -376,8 +376,7 @@ void pkdBucketWalk(PKD pkd,int iBucket,int nReps,int iOrder)
 			if (iy && pkd->fPeriod[1] >= FLOAT_MAXVAL) continue;
 			rOffset[1] = iy*pkd->fPeriod[1];
 #ifdef SLIDING_PATCH
-			rOffset[1] += SHEAR(ix,pkd->fPeriod[0],pkd->fPeriod[1],
-								pkd->dTime,pkd->dOrbFreq);
+			rOffset[1] += SHEAR(ix,pkd->dTime,pkd->PP);
 #endif
 			for (iz=-nReps;iz<=nReps;++iz) {
 				if (iz && pkd->fPeriod[2] >= FLOAT_MAXVAL) continue;

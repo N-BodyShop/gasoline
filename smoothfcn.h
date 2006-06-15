@@ -75,10 +75,10 @@ typedef struct smfParameters {
 	double dEnd;
 	double dCollapseLimit; /* limit for inelastic collapse checks */
 	int bFixCollapse;
+    double dMaxBinaryEcc;
 #endif
 #ifdef SLIDING_PATCH
-	double dOrbFreq;
-	FLOAT fLx;
+  PATCH_PARAMS PP;
 #endif
 #ifdef SAND_PILE
 	WALLS walls;
@@ -130,8 +130,12 @@ enum smx_smoothtype {
 #ifdef OLD_KEPLER
   SMX_ENCOUNTER,
 #endif
-  SMX_COLLISION
+  SMX_COLLISION,
+  SMX_FINDBINARY,
 #endif /* COLLISIONS */
+#ifdef SLIDING_PATCH
+  SMX_FIND_OVERLAPS,
+#endif /* SLIDING_PATCH */
   };
 
 
@@ -266,17 +270,28 @@ void SimpleSF_Feedback(PARTICLE *, int, NN *, SMF *);
 
 /* SMX_REJECTS */
 void initFindRejects(void *p);
-void combFindRejects(void *p1, void *p2);
-void FindRejects(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
+void combFindRejects(void *p1,void *p2);
+void FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf);
 
 #ifdef OLD_KEPLER
 /* SMX_ENCOUNTER */
-void CheckForEncounter(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
+void CheckForEncounter(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf);
 #endif
 
 /* SMX_COLLISION */
-void CheckForCollision(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
+void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf);
+
+void FindBinary(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf);
 
 #endif /* COLLISIONS */
+
+#ifdef SLIDING_PATCH
+
+/* SMX_FIND_OVERLAPS */
+void initFindOverlaps(void *p);
+void combFindOverlaps(void *p1,void *p2);
+void FindOverlaps(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf);
+
+#endif /* SLIDING_PATCH */
 
 #endif

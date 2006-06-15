@@ -433,7 +433,7 @@ void combDeltaAccel(void *p1,void *p2)
 void DeltaAccel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	int i;
-    FLOAT dax,da2,r2,dt,dtFac;
+    FLOAT dax,da2,r2,dt;
 	PARTICLE *q;
 
 #ifdef DELTACCELCAP
@@ -560,14 +560,14 @@ void combBHSinkAccrete(void *p1,void *p2)
 
 void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
-	PARTICLE *q;
+#ifdef GASOLINE
+	PARTICLE *q = NULL;
 
 	FLOAT ih2,r2,rs,fDensity;
 	FLOAT v[3],cs,fW,dv2,dv;
 	FLOAT mdot, mdotEdd, dm, dmq, dE, ifMass;
-	int i,iEat;
+	int i;
 
-#ifdef GASOLINE
 	ih2 = 4.0/BALL2(p);
 	fDensity = 0.0; cs = 0;
 	v[0] = 0; v[1] = 0; v[2] = 0;
@@ -1272,7 +1272,7 @@ void SphPressureSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT ih2,r2,rs1,rq,rp;
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
 	FLOAT pPoverRho2,pPdV,pa[3],pMass,pmumax;
-	FLOAT ph,pc,pDensity,visc,hav,absmu;
+	FLOAT ph,pc,pDensity;
 	FLOAT fNorm,fNorm1,aFac,vFac;
 	int i;
 
@@ -1435,7 +1435,7 @@ void SphViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	PARTICLE *q;
 	FLOAT ih2,r2,rs1,rq,rp;
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	FLOAT pPoverRho2,pPdV,pa[3],pMass,pmumax;
+	FLOAT pPdV,pa[3],pMass,pmumax;
 	FLOAT ph,pc,pDensity,visc,hav,absmu;
 	FLOAT fNorm,fNorm1,aFac,vFac;
 	int i;
@@ -1824,11 +1824,11 @@ void ShockTrack(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 /* Output is physical divv and curlv -- thus a*h_co*divv is physical */
 void ShockTrackSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
+#ifdef SHOCKTRACK
 	PARTICLE *q;
 	double Mach,dv;
 	int i,j;
 
-#ifdef SHOCKTRACK
 	if (TYPEQueryACTIVE( p )) {
 		/* p active */
 		for (i=0;i<nSmooth;++i) {
@@ -2117,7 +2117,7 @@ void HKViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	PARTICLE *q;
 	FLOAT ih2,r2,rs1,rq,rp;
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	FLOAT pPoverRho2,pQonRho2,qQonRho2,qhdivv;
+	FLOAT pQonRho2,qQonRho2,qhdivv;
 	FLOAT ph,pc,pDensity,visc,absmu,qh,pMass,hav;
 	FLOAT fNorm,fNorm1,aFac,vFac;
 	int i;
@@ -2589,20 +2589,17 @@ void SimpleSF_Feedback(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 #ifdef COLLISIONS
 
-void
-initFindRejects(void *p)
+void initFindRejects(void *p)
 {
-	((PARTICLE *)p)->dtCol = 0;
+	((PARTICLE *)p)->dtCol = 0.0;
 	}
 
-void
-combFindRejects(void *p1,void *p2)
+void combFindRejects(void *p1,void *p2)
 {
-	if (((PARTICLE *)p2)->dtCol < 0) ((PARTICLE *)p1)->dtCol = -1;
+	if (((PARTICLE *)p2)->dtCol < 0.0) ((PARTICLE *)p1)->dtCol = -1.0;
 	}
 
-void
-FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+void FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	/*
 	 ** Checks "nSmooth" neighbours of "p" for overlap (physical, Hill
@@ -2615,14 +2612,19 @@ FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	 */
 
 	PARTICLE *pn;
-	double a=0,r,r2,v2,an,rh,rn,sr;
+	double r,rn,sr;
 	int i;
 
-	if (p->dtCol < 0) return;
+#ifndef SLIDING_PATCH
+	double a=0.0,r2,v2,an,rh;
+#endif
+
+	if (p->dtCol < 0.0) return;
 
 	r = RADIUS(p); /* radius = 2 * softening */
 
-	if (smf->dCentMass > 0) {
+#ifndef SLIDING_PATCH /*DEBUG really should handle this more generally*/
+	if (smf->dCentMass > 0.0) {
 		r2 = p->r[0]*p->r[0] + p->r[1]*p->r[1] + p->r[2]*p->r[2];
 		v2 = p->v[0]*p->v[0] + p->v[1]*p->v[1] + p->v[2]*p->v[2];
 		assert(r2 > 0.0); /* particle must not be at origin */
@@ -2630,12 +2632,14 @@ FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		assert(a != 0.0); /* can't handle parabolic orbits */
 		a = 1/a;
 		}
+#endif
 
 	for (i=0;i<nSmooth;i++) {
 		pn = nnList[i].pPart;
-		if (pn->iOrder == p->iOrder || pn->dtCol < 0) continue;
+		if (pn->iOrder == p->iOrder || pn->dtCol < 0.0) continue;
 		rn = RADIUS(pn);
-		if (smf->dCentMass > 0) {
+#ifndef SLIDING_PATCH /*DEBUG as above*/
+		if (smf->dCentMass > 0.0) {
 			r2 = pn->r[0]*pn->r[0] + pn->r[1]*pn->r[1] + pn->r[2]*pn->r[2];
 			v2 = pn->v[0]*pn->v[0] + pn->v[1]*pn->v[1] + pn->v[2]*pn->v[2];
 			assert(r2 > 0.0);
@@ -2646,11 +2650,12 @@ FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			if (rh > r) r = rh;
 			if (rh > rn) rn = rh;
 			}
+#endif
 		if (rn > r || (rn == r && pn->iOrder < p->iOrder)) continue;
 		sr = r + rn;
-		if (nnList[i].fDist2 <= sr*sr) pn->dtCol = -1; /* cf REJECT macro */
-		}
+		if (nnList[i].fDist2 <= sr*sr) pn->dtCol = -1.0; /* cf REJECT() macro */
 	}
+}
 
 void
 _CheckForCollapse(PARTICLE *p,double dt,double rdotv,double r2,SMF *smf)
@@ -2682,15 +2687,79 @@ _CheckForCollapse(PARTICLE *p,double dt,double rdotv,double r2,SMF *smf)
 #endif /* INTERNAL_WARNINGS */
 		p->bTinyStep = 1;
 		}
-	}
+}
 
-void
-CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+
+void FindBinary(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	/* This subroutine looks for binaries. Search only those particle
+	 * on rungs higher than iMinBinaryRung. The particles have been 
+	 * predetermined to be on high rungs which may result from being
+	 * bound. The particles are considered bound if they have a total 
+	 * energy < 0.
+	 */
+
+	PARTICLE *pn;
+	int i,j;
+	FLOAT *x,*v,v_circ2,ke=0,pe,r=0,vsq=0;
+
+	x=malloc(3*sizeof(FLOAT));
+	v=malloc(3*sizeof(FLOAT));		
+
+	for (i=0;i<nSmooth;i++) {
+	  pn=nnList[i].pPart;
+	  if (p == pn) continue;
+	  /* Now transform to p's rest frame */
+	  for (j=0;j<3;j++) {		
+	    v[j]=p->v[j] - pn->v[j];
+	    x[j]=p->r[j] - pn->r[j];
+	    vsq+=v[j]*v[j];
+	    ke+=0.5*vsq;
+	    r+=x[j]*x[j];
+	  }
+	  r=sqrt(r);
+
+#ifdef SLIDING_PATCH
+	  if (p->r[0] > pn->r[0] && nnList[i].dx < 0)
+	    v[1] += 1.5*smf->PP.dOrbFreq*smf->PP.dWidth;
+	  else if (p->r[0] < pn->r[0] && nnList[i].dx > 0)
+	    v[1] -= 1.5*smf->PP.dOrbFreq*smf->PP.dWidth;
+#endif
+	
+	  /* First cut: Is the particle bound? */
+	  pe=-p->fMass/r;
+	  /* WARNING! Here I am overloading the dtCol field. In this 
+	   ** situation I am going to fill it with the binding energy of
+	   ** the binary. This is used later in pst/pkdFindTightestBinary.
+	   */
+	  p->dtCol = FLOAT_MAXVAL;
+	  if ((ke+pe) < 0 ) {
+	    v_circ2=ke-pe;
+	    /* This is quick, but not optimal. We need to be sure we don't 
+	       automatically merge any bound particles, as those on highly
+	       eccentric orbits may be distrupted at apocenter. Therefore
+	       we assume that these particles will only reach this point of
+	       the code near pericenter (due to iMinBinaryRung), and we can 
+	       safely exclude particles that do not meet the following 
+	       criterion. Some fiddling with iMinBinaryRung and dMaxBinaryEcc
+	       may be necessary to acheive an appropriate balance of merging.
+	    */
+	    if (vsq < sqrt((1+smf->dMaxBinaryEcc)/(1-smf->dMaxBinaryEcc))*v_circ2) {
+	      p->dtCol = ke+pe;
+	      p->iOrderCol = pn->iOrder;
+	    }
+	  }
+	}
+	free((void *) x);
+	free((void *) v);
+}
+
+void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	/*
 	 ** Checks whether particle "p" will collide with any of its "nSmooth"
 	 ** nearest neighbours in "nnList" during drift interval smf->dStart to
-	 ** smf->dEnd, relative to current time. If any collisions are found,
+	 ** smf->dEnd, relative to current time.  If any collisions are found,
 	 ** the relative time to the one that will occur first is noted in
 	 ** p->dtCol along with the iOrder of the collider in p->iOrderCol.
 	 ** Note that it can happen that only one particle of a colliding pair
@@ -2698,16 +2767,20 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	 */
 
 	PARTICLE *pn;
-	FLOAT vx,vy,vz,rdotv,v2,sr,D,dt;
+	FLOAT vx,vy,vz,rdotv,v2,sr,dr2,D,dt;
 	int i;
+
+#ifdef AGGS
+	FLOAT qx,qy,qz;
+#endif
 
     assert(TYPEQueryACTIVE(p)); /* just to be sure */
 
 	p->dtCol = DBL_MAX; /* initialize */
 	p->iOrderCol = -1;
 	p->bTinyStep = 0;
-	if (smf->dStart == 0) { /* these are set in PutColliderInfo() */
-		p->dtPrevCol = 0;
+	if (smf->dStart == 0.0) { /* these are set in PutColliderInfo() */
+		p->dtPrevCol = 0.0;
 		p->iPrevCol = INT_MAX;
 		}
 
@@ -2717,41 +2790,81 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		 ** Consider all valid particles, even if inactive.  We can skip
 		 ** this neighbour if it's the last particle we collided with in
 		 ** this search interval, eliminating the potential problem of
-		 ** "ghost" particles colliding due to roundoff error. Note that
+		 ** "ghost" particles colliding due to roundoff error.  Note that
 		 ** iPrevCol must essentially be reset after each KICK.
 		 */
 		if (pn == p || pn->iOrder < 0 || pn->iOrder == p->iPrevCol) continue;
 #ifdef AGGS
+		/*
+		 ** Do not consider collisions between particles in the same
+		 ** aggregate.
+		 */
 		if (IS_AGG(p) && IS_AGG(pn) && AGG_IDX(p) == AGG_IDX(pn)) continue;
 #endif
 		vx = p->v[0] - pn->v[0];
 		vy = p->v[1] - pn->v[1];
 		vz = p->v[2] - pn->v[2];
+#ifdef AGGS
+		/* centripetal terms (vx,vy,vz contain omega x r term for aggs) */
+		qx = qy = qz = 0.0;
+		if (IS_AGG(p)) {
+			qx = p->a[0];
+			qy = p->a[1];
+			qz = p->a[2];
+			}
+		if (IS_AGG(pn)) {
+			qx -= p->a[0];
+			qy -= p->a[1];
+			qz -= p->a[2];
+			}
+#endif
 #ifdef SLIDING_PATCH
-		if (p->r[0] > pn->r[0] && nnList[i].dx < 0)
-			vy += 1.5*smf->dOrbFreq*smf->fLx;
-		else if (p->r[0] < pn->r[0] && nnList[i].dx > 0)
-			vy -= 1.5*smf->dOrbFreq*smf->fLx;
+		if (p->r[0] > pn->r[0] && nnList[i].dx < 0.0)
+			vy += 1.5*smf->PP.dOrbFreq*smf->PP.dWidth;
+		else if (p->r[0] < pn->r[0] && nnList[i].dx > 0.0)
+			vy -= 1.5*smf->PP.dOrbFreq*smf->PP.dWidth;
 #endif
 		rdotv = nnList[i].dx*vx + nnList[i].dy*vy + nnList[i].dz*vz;
-		if (rdotv >= 0)	continue; /* skip if particle not approaching */
+		if (rdotv >= 0) /*DEBUG not guaranteed for aggregates?*/
+			continue; /* skip if particles not approaching */
 		v2 = vx*vx + vy*vy + vz*vz;
+#ifdef AGGS
+		v2 += nnList[i].dx*qx + nnList[i].dy*qy + nnList[i].dz*qz;
+#endif
+#ifdef RUBBLE_ZML
+		/* 
+		 ** If both particles are planetesimals increase sr by a factor
+		 ** of 2 to redusce missed collisions. Inflate radius so time step
+		 ** is dropped to lowest rung. The factor 2*1.4 comes from assuming
+		 ** v_rms = v_esc - fg = 1+(v_esc/v_rms)^2 = 2.
+		 */
+		if (p->iColor == PLANETESIMAL && pn->iColor == PLANETESIMAL &&
+			p->iRung == 0 && pn->iRung == 0) 
+			sr = 5*(p->fSoft + pn->fSoft); /*experimenting with expansion*/
+/*			sr = 2.8*(p->fSoft + pn->fSoft);*/ /* softening = 0.5 * particle radius */
+		else	
+			sr = 2*(p->fSoft + pn->fSoft); /* softening = 0.5 * particle radius */
+#else
 		sr = RADIUS(p) + RADIUS(pn); /* radius = twice softening */
-		D = 1 - v2*(nnList[i].fDist2 - sr*sr)/(rdotv*rdotv);
-		if (D < 0) continue; /* no real solutions ==> no collision */
+#endif
+		dr2 = nnList[i].fDist2 - sr*sr; /* negative ==> overlap... */
+		D = rdotv*rdotv - dr2*v2;
+		if (D <= 0.0)
+			continue; /* no real solutions (or graze) ==> no collision */
 		D = sqrt(D);
-		dt = rdotv*(D - 1)/v2; /* minimum time to surface contact */
+		/* if rdotv < 0, only one valid root possible */
+		dt = (- rdotv - D)/v2; /* minimum time to surface contact */
 		/*
 		 ** Normally there should be no touching or overlapping particles
-		 ** at the start of the step. But inelastic collapse and other
+		 ** at the start of the step.  But inelastic collapse and other
 		 ** numerical problems may make it necessary to relax this...
 		 */
-		if (smf->dStart == 0 && dt <= 0) {
+		if (smf->dStart == 0.0 && dt <= 0.0) {
 			if (smf->bFixCollapse) {
 #if (INTERNAL_WARNINGS)
 				static int bGiveWarning1 = 1,bGiveWarning2 = 1;
-				FLOAT fOverlap = 1 - sqrt(nnList[i].fDist2)/sr;
-				if (bGiveWarning1) {
+				FLOAT fOverlap = 1.0 - sqrt(nnList[i].fDist2)/sr;
+				if (bGiveWarning1 && p->iOrder < pn->iOrder) {
 					(void) fprintf(stderr,"WARNING [T=%e]: "
 								   "POSITION FIX %i & %i D=%e dt=%e\n",
 								   smf->dTime,p->iOrder,pn->iOrder,D,dt);
@@ -2759,7 +2872,7 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					bGiveWarning1 = 0;
 #endif
 					}
-				if (bGiveWarning2 && fOverlap > 0.01) {
+				if (bGiveWarning2 && p->iOrder < pn->iOrder && fOverlap > 0.01) {
 					(void) fprintf(stderr,"WARNING [T=%e]: "
 								   "LARGE OVERLAP %i & %i (%g%%)\n",
 								   smf->dTime,p->iOrder,pn->iOrder,100*fOverlap);
@@ -2787,14 +2900,34 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 							   rdotv,sr,sqrt(nnList[i].fDist2) - sr,D,dt);
 				assert(0); /* particle not allowed to touch or overlap initially */
 				}
-			}
+			} /* if overlap */
+		/* finally, decide if this collision should be stored */
 		if (dt > smf->dStart && dt <= smf->dEnd) {
 			if (dt > p->dtCol) continue; /* skip if this one happens later */
 			assert(dt < p->dtCol); /* can't handle simultaneous collisions */
 			p->dtCol = dt;
 			p->iOrderCol = pn->iOrder;
-			if (smf->dCollapseLimit)
+			/*DEBUG rdotv slightly different for aggs in following---ok?*/
+			if (smf->dCollapseLimit > 0.0)
 				_CheckForCollapse(p,dt,rdotv,nnList[i].fDist2,smf);
+#ifdef RUBBLE_ZML
+			/*
+			 ** At the start of the top step we need to know if any
+			 ** *planetesimals* (i.e., not rubble pieces) are predicted
+			 ** to collide during the top step so that we can demote
+			 ** them to the lowest timestep rungs (since the rubble
+			 ** pieces need to be treated much more carefully, and the
+			 ** collision will generally occur sometime in the middle
+			 ** of the step).  Note that we only check at the beginning
+			 ** of the step (i.e. when dStart is exactly zero), since
+			 ** there are no resmoothing circumstances that can lead
+			 ** two planetesimals to collide that have *not* already
+			 ** undergone a collision themselves during the step.
+			 */
+			if (smf->dStart == 0 && p->iColor == PLANETESIMAL &&
+				pn->iColor == PLANETESIMAL)	p->bMayCollide = 1;
+			/* note: flag is reset with call to pkdRubbleResetColFlag() */
+#endif
 			}
 		}
 
@@ -3017,3 +3150,51 @@ CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	}
 
 #endif /* COLLISIONS */
+
+#ifdef SLIDING_PATCH
+
+void initFindOverlaps(void *p)
+{
+	((PARTICLE *)p)->dtCol = 0.0;
+	}
+
+void combFindOverlaps(void *p1,void *p2)
+{
+	if (((PARTICLE *)p2)->dtCol < 0.0) ((PARTICLE *)p1)->dtCol = -1.0;
+	}
+
+void FindOverlaps(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	/*
+	 ** Streamlined version of FindRejects() designed specifically
+	 ** for the sliding patch when we want to randomize particle
+	 ** data following an azimuthal boundary wrap.  As part of the
+	 ** randomization procedure, we need to make sure we don't
+	 ** overlap any particles.  That's what's checked for here.
+	 */
+
+	PARTICLE *pn = NULL;
+	double r,rn,sr;
+	int i;
+
+	assert(nSmooth > 1); /* for now */
+
+	assert(p->dtCol >= 0.0); /* can't already be rejected */
+
+	assert(p->bAzWrap == 1); /* must have wrapped */
+
+	r = RADIUS(p); /* radius = 2 * softening */
+
+	for (i=0;i<nSmooth;i++) {
+		pn = nnList[i].pPart;
+		if (pn->iOrder == p->iOrder) continue;
+		rn = RADIUS(pn);
+		sr = r + rn;
+		if (nnList[i].fDist2 <= sr*sr) p->dtCol = -1.0; /* cf REJECT() macro */
+	}
+
+	if (p->dtCol >= 0.0) p->bAzWrap = 0; /* if not rejected, do not need to regenerate */
+	/*DEBUG*/if (p->bAzWrap) printf("FindOverlaps(): particle %i overlaps particle %i\n",p->iOrder,pn->iOrder);
+}
+
+#endif /* SLIDING_PATCH */

@@ -29,8 +29,8 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	smx->iLowhFix = ( dfBall2OverSoft2 > 0.0 ? LOWHFIX_HOVERSOFT : LOWHFIX_NONE );
 	smx->bUseBallMax = 1;
 #ifdef SLIDING_PATCH
-	smx->dOrbFreq = smf->dOrbFreq;
 	smx->dTime = smf->dTime;
+	smx->PP = &smf->PP;
 #endif
 
 	switch (iSmoothType) {
@@ -246,7 +246,25 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		smx->fcnPost = NULL;
 		smx->bUseBallMax = 0;
 		break;
+	case SMX_FINDBINARY:
+		smx->fcnSmooth = FindBinary;
+		initParticle = NULL;
+		init = NULL;
+		comb = NULL;
+		smx->fcnPost = NULL;
+		break;
 #endif /* COLLISIONS */
+#ifdef SLIDING_PATCH
+	case SMX_FIND_OVERLAPS:
+		assert(bSymmetric != 0);
+		smx->fcnSmooth = FindOverlaps;
+		initParticle = initFindOverlaps;
+		initTreeParticle = NULL;
+		init = initFindOverlaps;
+		comb = combFindOverlaps;
+		smx->fcnPost = NULL;
+		break;
+#endif /* SLIDING_PATCH */
 	default:
 		assert(0);
 		}
@@ -321,7 +339,6 @@ void smFinish(SMX smx,SMF *smf, CASTAT *pcs)
 {
 	PKD pkd = smx->pkd;
 	int pi;
-    char achOut[128];
 
 	/*
 	 ** Get caching statistics.

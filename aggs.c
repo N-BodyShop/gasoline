@@ -7,7 +7,7 @@
  * Mods:   Derek C. Richardson
  *         dcr@astro.umd.edu
  *
- * Modified: 01/28/01; DCR: 07/10/02, 5/29/03
+ * Modified: 01/28/01; DCR: 07/10/02, 5/29/03, 7/14/05
  */
  
 #ifdef AGGS
@@ -65,10 +65,12 @@ void pkdAggsMerge(PKD pkd,int iOldIdx,int iNewIdx)
 {
 	/*
 	 ** "Merges" two aggregates by assigning aggregate index of each
-	 ** particle in old aggregate to index of new aggregate. A call
+	 ** particle in old aggregate to index of new aggregate.  A call
 	 ** to msrAggsUpdate() is needed to compute new dynamical
 	 ** quantities (COM, spin, etc.; this is done in msrAggsMerge()).
 	 */
+
+	/*DEBUG for now, the color of the old aggregate is preserved */
 
 	PARTICLE *p;
 	int i,n;
@@ -89,21 +91,22 @@ void pkdAggsBackDrift(PKD pkd,int iAggIdx,double dt)
 	 ** Drifts aggregate particle space positions back interval dt
 	 ** (should be to start of step) so that collision prediction
 	 ** (which assumes particle positions are at start of step) will
-	 ** work properly. Also sets SMOOTHACTIVE for all particles in
+	 ** work properly.  Also sets SMOOTHACTIVE for all particles in
 	 ** aggregate to force recomputation of collision circumstances.
+	 ** Particle "accelerations" are taken to be second-order terms
+	 ** in velocity expression, as computed in pkdAggsSetSpaceVel().
 	 */
 
 	PARTICLE *p;
-	Vector drift;
-	int i,n;
+	int i,k,n;
 
 	n = pkdLocal(pkd);
 
 	for (i=0;i<n;i++) {
 		p = &pkd->pStore[i];
 		if (AGG_IDX(p) == iAggIdx) {
-			vectorScale(p->v,dt,drift);
-			vectorSub(p->r,drift,p->r);
+			for (k=0;k<3;k++)
+				p->r[k] -= (p->v[k] + 0.5*p->a[k]*dt)*dt;
 			TYPESet(p,TYPE_SMOOTHACTIVE);
 			}
 		}
@@ -112,8 +115,8 @@ void pkdAggsBackDrift(PKD pkd,int iAggIdx,double dt)
 void pkdAggsGetCOM(PKD pkd,int iAggIdx,Scalar *m,Vector mr,Vector mv)
 {
 	/*
-	 ** Computes contribution (moments) of local particles to center
-	 ** of mass position and velocity of specified aggregate.
+	 ** Computes contribution (moments) of local particles to center-
+	 ** of-mass position and velocity of specified aggregate.
 	 */
 
 	PARTICLE *p;
@@ -133,15 +136,17 @@ void pkdAggsGetCOM(PKD pkd,int iAggIdx,Scalar *m,Vector mr,Vector mv)
 		}
 	}
 
-void pkdAggsGetAxes(PKD pkd,int iAggIdx,const Vector r_com,const Vector v_com,
-					Matrix I,Vector L)
+void pkdAggsGetAxesAndSpin(PKD pkd,int iAggIdx,const Vector r_com,
+						   const Vector v_com,Matrix I,Vector L)
 {
 	/*
-	 ** Computes contribution of local particles to inertia tensor and
-	 ** angular momentum vector relative to center of mass of
+	 ** Computes contribution of local particles to inertia tensor
+	 ** and angular momentum vector relative to center of mass of
 	 ** specified aggregate.  Particles belonging to the aggregate
-	 ** will have a copy of their positions relative to the aggregate
-	 ** COM stored for later use by pkdAggsToBodyAxes().
+	 ** have a copy of their positions relative to the aggregate COM
+	 ** stored in p->r_agg (in space coordinates, not body coordinates,
+	 ** since the transformation matrix isn't availble yet---we're
+	 ** building it now!; to transform later, see pkdAggsToBodyAxes()).
 	 */
 
 	PARTICLE *p;
@@ -180,13 +185,13 @@ void pkdAggsGetAxes(PKD pkd,int iAggIdx,const Vector r_com,const Vector v_com,
 		}
 	}
 
-void pkdAggsToBodyAxes(PKD pkd,int iAggIdx,Matrix spaceToBody)
+void pkdAggsSetBodyPos(PKD pkd,int iAggIdx,Matrix spaceToBody)
 {
 	/*
 	 ** Transforms positions of local particles (belonging
 	 ** to specified aggregate) from space to body coordinates
-	 ** relative to center of mass. Note pkdAggsGetAxes() must
-	 **	be called before pkdAggsToBodyAxes().
+	 ** relative to center of mass.  Note pkdAggsGetAxes() must
+	 **	be called first.
 	 */
 
 	PARTICLE *p;
@@ -209,7 +214,7 @@ void pkdAggsSetSpacePos(PKD pkd,int iAggIdx,const Vector r_com,Matrix lambda)
 	/*
 	 ** Transforms positions of local particles (belonging to
 	 ** specified aggregate) from body to space coordinates.
-	 ** Called after a drift.
+	 ** Called by msrAggsAdvance() during drift step.
 	 */
 
 	PARTICLE *p;
@@ -232,13 +237,14 @@ void pkdAggsSetSpaceVel(PKD pkd,int iAggIdx,const Vector v_com,
 						const Vector omega,Matrix lambda)
 {
 	/*
-	 ** Transforms velocities of local particles (belonging to
-	 ** specified aggregate) from body to space coordinates.
-	 ** Called after a kick. Note depends on omega & lambda!
+	 ** Computes space velocities of local particles (belonging
+	 ** to specified aggregate) to 2nd order.  Called after a
+	 ** kick by msrAggsKick() and before back drifting by
+	 ** msrAggsBackDrift().
 	 */
 
 	PARTICLE *p;
-	Vector v;
+	Vector v,a;
 	int i,n;
 
 	n = pkdLocal(pkd);
@@ -252,6 +258,10 @@ void pkdAggsSetSpaceVel(PKD pkd,int iAggIdx,const Vector v_com,
 			matrixTransform(lambda,v,p->v);
 			/* add center of mass component */
 			vectorAdd(p->v,v_com,p->v);
+			/* compute 2nd-order (centripetal) term */
+			vectorCross(omega,v,a);
+			/* convenient to store this in particle's "a" vector */
+			matrixTransform(lambda,v,p->a);
 			}
 		}
 	}
@@ -272,11 +282,30 @@ void pkdAggsSetSpaceSpins(PKD pkd,int iAggIdx,const Vector omega)
 		}
 	}
 
+void pkdAggsDelete(PKD pkd,int iAggIdx,int *bFound)
+{
+	PARTICLE *p;
+	int i,n;
+
+	n = pkdLocal(pkd);
+
+	for (i=0;i<n;i++) {
+		p = &pkd->pStore[i];
+		if (AGG_IDX(p) == iAggIdx) {
+			assert(*bFound == 0);
+			p->iOrgIdx = INT_MAX; /*DEBUG for now--same as above*/
+			p->iColor = 3; /*ditto*/
+			*bFound = 1; /* could return, but keep looping as sanity check */
+			}
+		}
+	}
+
 void pkdAggsGetAccel(PKD pkd,int iAggIdx,Scalar *m,Vector ma)
 {
 	/*
 	 ** Computes contribution (moments) of local particles to center
-	 ** of mass acceleration of specified aggregate.
+	 ** of mass acceleration of specified aggregate.  Must be called
+	 ** after computing interparticle gravitational accelerations.
 	 */
 
 	PARTICLE *p;
@@ -290,6 +319,76 @@ void pkdAggsGetAccel(PKD pkd,int iAggIdx,Scalar *m,Vector ma)
 			*m += p->fMass; /* used as a check in msrAggsGetAccel() */
 			for (k=0;k<3;k++)
 				ma[k] += p->fMass*p->a[k];
+			}
+		}
+	}
+
+void pkdAggsCheckStress(PKD pkd,int iAggIdx,const Vector r_com,const Vector a_com,
+						const Vector omega,FLOAT fTensileStrength,FLOAT fShearStrength,
+						int *nLost,int *nLeft)
+{
+	/*DEBUG COMMENT
+	 */
+
+	PARTICLE *p;
+	Vector r,r_hat,a,a_rad,a_tan,v,a_cen;
+	double adotr;
+	FLOAT fTensileStress,fShearStress;
+	int i,n;
+
+	n = pkdLocal(pkd);
+
+	for (i=0;i<n;i++) {
+		p = &pkd->pStore[i];
+		if (AGG_IDX(p) == iAggIdx) {
+			/* particle position relative to com */
+			vectorSub(p->r,r_com,r);
+			/* unit radial vector from com to particle */
+			vectorCopy(r,r_hat);
+			vectorNorm(r_hat);
+			/* differential acceleration wrt com */
+			vectorSub(p->a,a_com,a);
+			/* construct radial and tangential components */
+			adotr = vectorDot(a,r_hat);
+			vectorScale(r_hat,adotr,a_rad);
+			vectorSub(a,a_rad,a_tan); /* same as r-hat x a */
+			/* now add centrifugal term to radial component */
+			vectorCross(omega,r,v);
+			vectorCross(omega,v,a_cen);
+			vectorSub(a_rad,a_cen,v); /* minus: centripetal --> centrifugal */
+			/* compute stress */
+			fTensileStress = vectorDot(v,r_hat); /* net radial component */
+			fShearStress = vectorMag(a_tan); /* tangential component */
+			if (fTensileStress > fTensileStrength ||
+				fShearStress > fShearStrength) {
+				if (fTensileStress > fTensileStrength) {
+					/*
+					 ** For this instant, apply the excess radial
+					 ** acceleration to the particle.  This ensures it
+					 ** will separate without immediately recolliding.
+					 */
+					vectorSub(a,a_rad,a);
+					vectorScale(r_hat,fTensileStress - fTensileStrength,v);
+					vectorAdd(a,v,a);
+					vectorAdd(a_com,a,p->a);
+					}
+				if (fShearStress > fShearStrength) {
+					/*DEBUG do nothing for now!*/
+					}
+				p->iOrgIdx = INT_MAX; /*DEBUG for now*/
+				p->iColor = 3; /*ditto*/
+				++(*nLost);
+/*DEBUG! release all particles*/
+printf("STRESS = %g i=%i\n",fTensileStress,p->iOrder);
+for (i=0;i<n;i++) {
+	p = &pkd->pStore[i];
+	p->iOrgIdx = 9999;
+	p->iColor = 3;
+	}
+*nLost = n; *nLeft = 0; return;
+				}
+			else
+				++(*nLeft);
 			}
 		}
 	}
@@ -320,34 +419,6 @@ void pkdAggsGetTorque(PKD pkd,int iAggIdx,const Vector r_com,const Vector a_com,
 			/* N += m (a x r) */
 			vectorAdd(torque,dN,torque);
 			}
-		}
-	}
-
-void pkdAggsActivate(PKD pkd)
-{
-	PARTICLE *p;
-	int i,n;
-
-	n = pkdLocal(pkd);
-
-	for (i=0;i<n;i++) {
-		p = &pkd->pStore[i];
-		if (IS_AGG(p))
-			TYPESet(p,TYPE_ALLACTIVE); /* turn on active types */
-		}
-	}
-
-void pkdAggsDeactivate(PKD pkd)
-{
-	PARTICLE *p;
-	int i,n;
-
-	n = pkdLocal(pkd);
-
-	for (i=0;i<n;i++) {
-		p = &pkd->pStore[i];
-		if (IS_AGG(p))
-			TYPEClearACTIVE(p); /* turn off active types */
 		}
 	}
 
@@ -640,14 +711,17 @@ static void aggsBounce(const COLLIDER *pc1,const COLLIDER *pc2,
 		aggsAggToSingleParticle(agg2,&((*pcOut)[1]));
 	}
 
-static void aggsPutColliderInfo(const COLLIDER *c,int iOrdOth,PARTICLE *p,
-								double dt,int iAggIdx)
+static void aggsPutColliderInfo(const COLLIDER *c,PARTICLE *p,double dt,
+								int iAggIdx)
 {
 	/* used for merging particles with aggs in pkdAggsDoCollision() */
 
-	PutColliderInfo(c,iOrdOth,p,dt);
-	AGG_SET_IDX(p,iAggIdx);
-	p->iColor = 4 + iAggIdx%10;/*DEBUG a quick & dirty way to color aggs*/
+	int i;
+
+	for (i=0;i<3;i++)
+		p->r[i] = c->r[i]; /* position at contact */
+	AGG_SET_IDX(p,iAggIdx); /* particle now belongs to this agg */
+	p->iColor = 4 + iAggIdx%10; /*DEBUG a quick & dirty way to color aggs*/
 	}
 
 void pkdAggsDoCollision(PKD pkd,double dt,const COLLIDER *pc1,
@@ -663,9 +737,11 @@ void pkdAggsDoCollision(PKD pkd,double dt,const COLLIDER *pc1,
 	assert(bPeriodic == 0); /* for now */
 
 	/*DEBUG verbose collision output*/
+
+/*
 	(void) printf("COLLISION %i (%i) & %i (%i) (dt = %.16e)\n",
 				  pc1->id.iOrder,pc1->id.iOrgIdx,pc2->id.iOrder,pc2->id.iOrgIdx,dt);
-/*	*/
+*/
 
 	/* get local copies of collider data for manipulation */
 
@@ -679,31 +755,31 @@ void pkdAggsDoCollision(PKD pkd,double dt,const COLLIDER *pc1,
 
 	bReturnOutput = (c1.id.iPid == pkd->idSelf);
 
-	if (bReturnOutput && dT) *dT = 0; /*DEBUG not used (change in energy not computed for aggs)*/
+	if (bReturnOutput && dT != NULL) *dT = 0.0; /*DEBUG not used (change in energy not computed for aggs)*/
 
 	/*
-	 ** Advance impacting particles to contact point.
-	 ** NOTE: aggregate center-of-mass motion and rotation
-	 ** state already advanced at the master level, but the
-	 ** constituent particles are still at the start of step.
-	 ** We advance the colliders linearly here even if one or
-	 ** both is part of an aggregate, in order to be
-	 ** consistent with how the collision is predicted in the
-	 ** first place (Cf. CheckForCollision() in smoothfcn.c)
-	 ** (i.e., it's too hard to predict actual collisions
-	 ** with the complicated rotational motion of the aggs
-	 ** taken into account). This means agg update steps must
-	 ** be SHORT. It also means that collisions involving
-	 ** aggregates will be systematically in error since
-	 ** the predicted positions of aggregate particles will
-	 ** always be slightly further from the aggregate center
-	 ** than they should be as a result of the linear
-	 ** extrapolation.
+	 ** Advance coordinates of non-aggregate particles to impact time.
+	 ** (Aggregate particles already advanced in msrAggsAdvance().)
+	 ** Note that the aggregate advance step actually integrates the
+	 ** Euler equations of motions to the impact time, taking into
+	 ** account gravitational torques on each aggregate, whereas
+	 ** collision prediction in CheckForCollision() uses a simpler
+	 ** expression good to second order assuming the aggregate spin
+	 ** vector(s) remain unchanged over the interval.  This means the
+	 ** collision circumstances may be slightly off here (particles
+	 ** either overlapping or not touching).  To minimize these
+	 ** problems, the timestep should be SHORT.  Even so, it may be
+	 ** necessary to turn on the "fix collapse" feature, particularly
+	 ** if bouncing is allowed, to circumvent overlap errors.
 	 */
 
-	for (k=0;k<3;k++) {
-		c1.r[k] += c1.v[k]*dt;
-		c2.r[k] += c2.v[k]*dt;
+	if (!COLLIDER_IS_AGG(&c1)) {
+		for (k=0;k<3;k++)
+			c1.r[k] += c1.v[k]*dt;
+		}
+	if (!COLLIDER_IS_AGG(&c2)) {
+		for (k=0;k<3;k++)
+			c2.r[k] += c2.v[k]*dt;
 		}
 
 	/* determine collision outcome */
@@ -715,7 +791,7 @@ void pkdAggsDoCollision(PKD pkd,double dt,const COLLIDER *pc1,
 		/*
 		 ** If both merging and bouncing are allowed, determine
 		 ** outcome based on rough estimate of mutual escape
-		 ** speed of colliders. Aggregates are treated as giant
+		 ** speed of colliders.  Aggregates are treated as giant
 		 ** spherical particles for this purpose.
 		 */
 
@@ -742,18 +818,20 @@ void pkdAggsDoCollision(PKD pkd,double dt,const COLLIDER *pc1,
 
 		for (k=0;k<3;k++) {
 			d2 += (r2[k] - r1[k])*(r2[k] - r1[k]);
+			/*DEBUG following ignores 2nd-order terms in v for aggs*/
 			v2 += (c2.v[k] - c1.v[k])*(c2.v[k] - c1.v[k]);
 			}
 
-/*DEBUG!*/if (d2 <= 0.0) {
-	(void) fprintf(stderr,"OOPS: d2 = %.16e\n",d2);
-	(void) fprintf(stderr,"r1 = %.16e %.16e %.16e\n",r1[0],r1[1],r1[2]);
-	(void) fprintf(stderr,"r2 = %.16e %.16e %.16e\n",r2[0],r2[1],r2[2]);
-	(void) fprintf(stderr,"c1: agg? %i org idx = %i\n",COLLIDER_IS_AGG(&c1),
-				   c1.id.iOrgIdx);
-	(void) fprintf(stderr,"c2: agg? %i org idx = %i\n",COLLIDER_IS_AGG(&c2),
-				   c2.id.iOrgIdx);
-	}
+		/*
+		 ** Since aggregates can have arbitrarily bizarre shapes,
+		 ** it's possible (though unlikely) for particles and/or
+		 ** aggregates to have exactly overlapping mass centers.
+		 ** So we impose a minimum separation for the escape speed
+		 ** calculation of the sum of the touching particle radii.
+		 */
+
+		if (d2 < c1.fRadius*c1.fRadius + c2.fRadius*c2.fRadius)
+			d2 = c1.fRadius*c1.fRadius + c2.fRadius*c2.fRadius;
 
 		assert(d2 > 0.0);
 
@@ -784,22 +862,22 @@ void pkdAggsDoCollision(PKD pkd,double dt,const COLLIDER *pc1,
 		else if (COLLIDER_IS_AGG(&c1) && !COLLIDER_IS_AGG(&c2)) {
 			/* add single particle at current position to aggregate */
 			if (c2.id.iPid == pkd->idSelf) /* only if particle is local */
-				aggsPutColliderInfo(&c2,INT_MAX,&pkd->pStore[c2.id.iIndex],dt,
+				aggsPutColliderInfo(&c2,&pkd->pStore[c2.id.iIndex],dt,
 									COLLIDER_AGG_IDX(&c1));
 			}
 		else if (COLLIDER_IS_AGG(&c2) && !COLLIDER_IS_AGG(&c1)) {
 			/* ditto */
 			if (c1.id.iPid == pkd->idSelf)
-				aggsPutColliderInfo(&c1,INT_MAX,&pkd->pStore[c1.id.iIndex],dt,
+				aggsPutColliderInfo(&c1,&pkd->pStore[c1.id.iIndex],dt,
 									COLLIDER_AGG_IDX(&c2));
 			}
 		else { /* i.e., !COLLIDER_IS_AGG(&c1) && !COLLIDER_IS_AGG(&c2) */
 			/* make new aggregate from single particles at current positions */
 			if (c1.id.iPid == pkd->idSelf)
-				aggsPutColliderInfo(&c1,INT_MAX,&pkd->pStore[c1.id.iIndex],dt,
+				aggsPutColliderInfo(&c1,&pkd->pStore[c1.id.iIndex],dt,
 									iAggNewIdx);
 			if (c2.id.iPid == pkd->idSelf)
-				aggsPutColliderInfo(&c2,INT_MAX,&pkd->pStore[c2.id.iIndex],dt,
+				aggsPutColliderInfo(&c2,&pkd->pStore[c2.id.iIndex],dt,
 									iAggNewIdx);
 			}
 		}
@@ -829,12 +907,11 @@ void pkdAggsDoCollision(PKD pkd,double dt,const COLLIDER *pc1,
 		 */
 
 		for (i=0;i<n;i++)
-			if (!COLLIDER_IS_AGG(&c[i])) {
+			if (!COLLIDER_IS_AGG(&c[i]) && c[i].id.iPid == pkd->idSelf) {
 				for (k=0;k<3;k++)
 					c[i].r[k] -= c[i].v[k]*dt;
-				if (c[i].id.iPid == pkd->idSelf)
-					PutColliderInfo(&c[i],c[(i+1)%2].id.iOrder,
-									&pkd->pStore[c[i].id.iIndex],dt);
+				PutColliderInfo(&c[i],c[(i+1)%2].id.iOrder,
+								&pkd->pStore[c[i].id.iIndex],dt);
 				}
 
 		/* free resources */
@@ -843,6 +920,24 @@ void pkdAggsDoCollision(PKD pkd,double dt,const COLLIDER *pc1,
 		}
 	else {
 		assert(0);/*DEBUG no other outcomes allowed yet*/
+		}
+
+	/*
+	 ** For aggs, need to set dtPrevCol and reset iPrevCol.  (For
+	 ** non-aggregate particles, this is done in PutColliderInfo().)
+	 ** Note we have to set iPrevCol to INT_MAX (infinity) here
+	 ** because it's possible for particles inside different aggs to
+	 ** collide with one another more than once during the interval.
+	 */
+
+	if (COLLIDER_IS_AGG(&c1) && c1.id.iPid == pkd->idSelf) {
+		pkd->pStore[c1.id.iIndex].dtPrevCol = dt;
+		pkd->pStore[c1.id.iIndex].iPrevCol = INT_MAX;
+		}
+
+	if (COLLIDER_IS_AGG(&c2) && c2.id.iPid == pkd->idSelf) {
+		pkd->pStore[c2.id.iIndex].dtPrevCol = dt;
+		pkd->pStore[c2.id.iIndex].iPrevCol = INT_MAX;
 		}
 	}
 

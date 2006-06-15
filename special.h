@@ -10,6 +10,7 @@
 #define SPECIAL_OBLATE	(1<<0)
 #define SPECIAL_GR		(1<<1) /* not implemented */
 #define SPECIAL_FORCE	(1<<2)
+#define SPECIAL_NOGHOSTPERT	(1<<3)	/* No seeds in ghost cells */
 
 struct oblate_s {
 	double dRadEq;	/* equatorial radius (system units) */
@@ -28,14 +29,25 @@ typedef struct {
 	} SPECIAL_PARTICLE_DATA;
 
 typedef struct {
+        int bNonInertial;
+        double dCentMass;
+        double dxPeriod;
+        double dyPeriod;
+        double dzPeriod;
+        double dOmega;
+        double dTime;
+        int nReplicas;
+        } SPECIAL_MASTER_INFO;
+
+typedef struct {
 	int iOrder;
 	FLOAT fMass,fRadius;
 	FLOAT r[3];
 	} SPECIAL_PARTICLE_INFO;
 
 void pkdGetSpecialParticles(PKD pkd, int nSpecial, int iId[],
-							FLOAT fCentMass, SPECIAL_PARTICLE_INFO sInfo[]);
-void pkdDoSpecialParticles(PKD pkd, int nSpecial, int bNonInertial,
+							SPECIAL_MASTER_INFO *mInfo, SPECIAL_PARTICLE_INFO sInfo[]);
+void pkdDoSpecialParticles(PKD pkd, int nSpecial, SPECIAL_MASTER_INFO *mInfo,
 						   SPECIAL_PARTICLE_DATA sData[],
 						   SPECIAL_PARTICLE_INFO sInfo[], FLOAT aFrame[]);
 

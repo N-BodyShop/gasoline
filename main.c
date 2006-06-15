@@ -14,7 +14,7 @@
 #include <rpc/xdr.h> /* needed for time stamping terse collision log on restart */
 #endif
 
-/*DEBUG! for FPE trapping... (not defined on most systems)
+/*DEBUG for FPE trapping... (not defined on most systems)
 #include <fpu_control.h>
 */
 
@@ -56,7 +56,11 @@ int main(int argc,char **argv)
 	int i,iStep,iSec=0,iStop=0,nActive,iNumOutputs, OutputList[NUMOUTPUTS];
 	char achBaseMask[256];
 
-	/* code to make gasoline core dump if there is a floating point exception
+#ifdef COLLISIONS
+	double sec,dsec;
+#endif
+
+	/* code to make gasoline core dump if there is a floating point exception 
 	feenableexcept(FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);*/
 
 #ifdef TINY_PTHREAD_STACK
@@ -122,7 +126,8 @@ int main(int argc,char **argv)
 			if (msr->param.bVWarnings)
 				printf("WARNING: nSmooth reduced to %i\n",msr->N);
 			}
-#endif
+#endif /* COLLISIONS */
+
 #ifdef AGGS
 		/*
 		 ** Aggregate info not currently stored in checkpoints, so
@@ -254,6 +259,16 @@ int main(int argc,char **argv)
 			}
 		fclose(fp);
 		}
+#ifdef SLIDING_PATCH
+	if (msr->param.iRandStep) {
+	    FILE *rfp = fopen("random.log","w");
+	    assert(rfp);
+	    fclose(rfp);
+	    msr->param.iNextRandomization=msrGetNextRandomTime(msr->param.iRandStep,msr->param.iStartStep+1);
+	    }
+	
+#endif /* SLIDING_PATCH */
+
 #endif
 #ifdef GASOLINE
 #ifndef NOCOOLING
@@ -358,38 +373,114 @@ int main(int argc,char **argv)
 				dMultiEff = 0.0;
 				lSec = time(0);
 #ifdef OLD_KEPLER
-				if (msr->param.bFandG)
+				if (msr->param.bFandG) {
 					msrPlanetsKDK(msr,iStep - 1,dTime,msrDelta(msr),
 								  &dWMax,&dIMax,&dEMax,&iSec);
-				else
+					continue;
+				}
+#endif
+#ifdef COLLISIONS
+				if (msr->param.iMinBinaryRung > 0 && 
+					msr->iCurrMaxRung >= msr->param.iMinBinaryRung) {
+					if (msr->param.bVDetails) {
+					  sec = msrTime();
+					  printf("\nSearching for binaries...\n");
+					  msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+					  msrDomainDecomp(msr,0,1);
+					  msrBuildTree(msr,0,dMass,1);
+					  msrCheckForBinary(msr,dTime);
+					  dsec=msrTime() - sec;
+					  printf("Binary search complete, Wallclock: %f sec\n\n",dsec);
+					} else {
+					  msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+					  msrDomainDecomp(msr,0,1);
+					  msrBuildTree(msr,0,dMass,1);
+
+					  msrCheckForBinary(msr,dTime);
+					}
+				}
+
+#ifdef SLIDING_PATCH
+				if (msr->param.iRandStep) {
+					if (iStep >= msr->param.iNextRandomization) {
+					    msrRandomizeLargeMasses(msr,iStep,dTime);
+					}
+				}
+#endif /* SLIDING_PATCH */
+
+#endif /* COLLISIONS */
+
+#ifdef RUBBLE_ZML
+				{
+				  int j;
+				  msrMassCheck(msr,dMass,"Before msrRubCleanup"); /*DEBUG*/
+
+				  /*
+				  ** Are there any dust particles that need to be added 
+				  ** to the dust bins?
+				  ** Skip step 0 so initial conditions are preserved.
+				  */
+
+				  if (iStep > 0)
+					msrRubCleanup(msr,dTime);
+				  msrMassCheck(msr,dMass,"After msrRubCleanup"); /*DEBUG*/
+				  /*
+				  ** Is it time to add dust to planetesimals?
+				  ** Skip step 0 so initial conditions are preserved.
+				  */
+
+				  if (iStep > 0 && msr->param.CP.DB.nDustBins > 0 && 
+					  iStep%msr->param.CP.DB.iDustBinsApplyInt == 0) {
+					msrDustBinsApply(msr);
+					if (iStep%msr->param.iOutInterval == 0) {
+					  printf("iStep = %i\n", iStep);
+					  for (j=0;j<msr->param.CP.DB.nDustBins;j++)
+						printf("DustBin[%i] = %e\n",j,
+							   msr->aDustBins[j].dMass);
+					}
+				  }
+				  msrMassCheck(msr,dMass,"After dust applied to planetesimals"); /*DEBUG*/
+				  /*
+				  ** The rubble routines need to know if two
+				  ** planetesimals will collide during the drift
+				  ** interval so that they can be forced to the
+				  ** smallest rung. But this may actually result in
+				  ** the two planetesimals *not* colliding (since
+				  ** their orbits will be better integrated), so
+				  ** it's necessary before each top step to reset
+				  ** the flags warning of imminent collision.
+				  */
+				  msrRubbleResetColFlag(msr);
+				  msrMassCheck(msr,dMass,"Before msrTopStepKDK"); /*DEBUG*/
+				}
 #endif
 				{
-				    msrTopStepKDK(msr,iStep-1,dTime,
-						  msrDelta(msr),0,0,1,
-						  &dMultiEff,&dWMax,&dIMax,
-						  &dEMax,&iSec);
-				    }
+				  msrTopStepKDK(msr,iStep-1,dTime,
+								msrDelta(msr),0,0,1,
+								&dMultiEff,&dWMax,&dIMax,
+								&dEMax,&iSec);
+				}
 				
 				msrRungStats(msr);
 				msrCoolVelocity(msr,dTime,dMass);	/* Supercooling if specified */
 				msrMassCheck(msr,dMass,"After CoolVelocity in KDK");
 				dTime += msrDelta(msr);
 				/*
-				 ** Output a log file line if requested.
-				 ** Note: no extra gravity calculation required.
-				 */
+				** Output a log file line if requested.
+				** Note: no extra gravity calculation required.
+				*/
 				if (msrLogInterval(msr) && iStep%msrLogInterval(msr) == 0) {
-					msrCalcEandL(msr,MSR_STEP_E,dTime,&E,&T,&U,&Eth,L);
-					msrMassCheck(msr,dMass,"After msrCalcEandL in KDK");
-					lSec = time(0) - lSec;
-					(void) fprintf(fpLog,"%e %e %.16e %e %e %e %.16e %.16e "
-								   "%.16e %li %e %e %e %e\n",dTime,
-								   1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
-								   E,T,U,Eth,L[0],L[1],L[2],lSec,dWMax,dIMax,
-						                   dEMax,dMultiEff);
-				        }
-				LogTimingOutput( msr, fpLogTiming, dTime, 0 );
+				  msrCalcEandL(msr,MSR_STEP_E,dTime,&E,&T,&U,&Eth,L);
+				  msrMassCheck(msr,dMass,"After msrCalcEandL in KDK");
+				  lSec = time(0) - lSec;
+				  (void) fprintf(fpLog,"%e %e %.16e %e %e %e %.16e %.16e "
+								 "%.16e %li %e %e %e %e\n",dTime,
+								 1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
+								 E,T,U,Eth,L[0],L[1],L[2],lSec,dWMax,dIMax,
+								 dEMax,dMultiEff);
 				}
+				LogTimingOutput( msr, fpLogTiming, dTime, 0 );
+			}
 			else {
 				lSec = time(0);
 				msr->bDoneDomainDecomp = 0;
@@ -461,158 +552,6 @@ int main(int argc,char **argv)
                                 msrCreateAllOutputList(msr, &iNumOutputs, OutputList);
                                 msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
 
-/*#ifndef COLLISIONS
-				msrWriteTipsy(msr,achFile,dTime);
-#else
-				msrWriteSS(msr,achFile,dTime);
-#endif
-				if(msr->param.bDoIOrderOutput) {
-				    sprintf(achFile,achBaseMask,
-					    msrOutName(msr),iStep);
-				    strncat(achFile,".iord",256);
-				    msrOutArray(msr,achFile,OUT_IORDER_ARRAY);
-				    }
-                                if (msrDoDensity(msr)) {
-	sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".den",256);
-					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
-				        }
-				if (msr->param.bDoSoftOutput) {
-				        msrReorder(msr);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".soft",256);
-					msrOutArray(msr,achFile,OUT_SOFT_ARRAY);
-				        }
-				if (msr->param.bDohOutput) {
-					msrReorder(msr);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".H",256);
-					msrOutArray(msr,achFile,OUT_H_ARRAY);
-					}
-#ifdef GASOLINE				
- 				if (msr->param.bDoSphhOutput) {
-					msrReorder(msr);
- 					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".SPHH",256);
-					msrOutArray(msr,achFile,OUT_H_ARRAY);
-					}
-				if (msrDoDensity(msr) || msr->param.bDohOutput || msr->param.bDoSphhOutput) {
-					msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-					msrDomainDecomp(msr,0,1);
-					msrBuildTree(msr,1,-1.0,1);
-					msrSmooth(msr,dTime,SMX_DENSITY,1);
-					}
-#ifdef PDVDEBUG
-				msrReorder(msr);
-				sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-				strncat(achFile,".PdVpres",256);
- 				msrOutArray(msr,achFile,OUT_PDVPRES_ARRAY);
-				sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-				strncat(achFile,".PdVvisc",256);
- 				msrOutArray(msr,achFile,OUT_PDVVISC_ARRAY);
-#endif
-				if (msr->param.bShockTracker) {
- 					msrReorder(msr);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".ST",256);
-					msrOutArray(msr,achFile,OUT_SHOCKTRACKER_ARRAY);
-
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".BSw",256);
-					msrOutArray(msr,achFile,OUT_BALSARASWITCH_ARRAY);
-
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".SPHH",256);
-					msrOutArray(msr,achFile,OUT_H_ARRAY);
-
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".divv",256);
-					msrOutArray(msr,achFile,OUT_DIVV_ARRAY);
-					
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".divrhov",256);
-					msrOutArray(msr,achFile,OUT_DIVRHOV_ARRAY);
-
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".gradrho",256);
-					msrOutVector(msr,achFile,OUT_GRADRHO_VECTOR);
-
-				}
-				if (msr->param.bSN) {
-					msrReorder(msr);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".PdVSN",256);
-					msrOutArray(msr,achFile,OUT_PDVSN_ARRAY);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".uSN",256);
-					msrOutArray(msr,achFile,OUT_USN_ARRAY);
-				        }
-#ifndef NOCOOLING				
-				{
-				int ArrayCnt = 0;
-				char OutSuffix[20];
-				int OutType;
-				
-				msrReorder(msr);
-				for (;;) {	
-					CoolOutputArray( &msr->param.CoolParam, ArrayCnt, &OutType, OutSuffix );
-					if (OutType == OUT_NULL) break;
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,OutSuffix,256);
-					msrOutArray(msr,achFile, OutType);
-                    ArrayCnt++;
-					}
-				}
-#endif
-
-				if(msr->param.bStarForm || msr->param.bFeedBack) {
-					msrReorder(msr);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".igasorder",256);
-					msrOutArray(msr,achFile,OUT_IGASORDER_ARRAY);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".massform",256);
-					msrOutArray(msr,achFile,OUT_MASSFORM_ARRAY);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".coolontime",256);
-					msrOutArray(msr,achFile,OUT_COOLTURNONTIME_ARRAY);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".OxMassFrac",256);
-					msrOutArray(msr,achFile,OUT_OXYGENMASSFRAC_ARRAY);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".FeMassFrac",256);
-					msrOutArray(msr,achFile,OUT_IRONMASSFRAC_ARRAY);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".rhoform",256);
-					msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".Tform",256);
-					msrOutArray(msr,achFile,OUT_U_ARRAY);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".rform",256);
-					msrOutVector(msr,achFile,OUT_RFORM_VECTOR);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".vform",256);
-					msrOutVector(msr,achFile,OUT_VFORM_VECTOR);
-#ifdef SIMPLESF
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".divv",256);
-					msrOutArray(msr,achFile,OUT_DIVV_ARRAY);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".tCoolAgain",256);
-					msrOutArray(msr,achFile,OUT_TCOOLAGAIN_ARRAY);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".mStar",256);
-					msrOutArray(msr,achFile,OUT_MSTAR_ARRAY);
-#endif
-				    }
-#endif
-				if (msr->param.bDodtOutput) {
-					msrReorder(msr);
-					sprintf(achFile,achBaseMask,msrOutName(msr),iStep);
-					strncat(achFile,".dt",256);
-					msrOutArray(msr,achFile,OUT_DT_ARRAY);
-					}
 				/*
 				 ** Don't allow duplicate outputs.
 				 */
@@ -660,7 +599,7 @@ int main(int argc,char **argv)
 
             if (msrRestart(msr)) {
                 msrReorder(msr);
-                sprintf(achFile,"%s.diag",msrOutName(msr));
+                sprintf(achFile,"%s",msrOutName(msr));
 #ifndef COLLISIONS
                 msrWriteTipsy(msr,achFile,dTime);
 #else
@@ -686,7 +625,7 @@ int main(int argc,char **argv)
                 msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
                 msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Gravity");
                 }
-#ifdef GASOLINE				
+#ifdef GASOLINE
             if (msr->nGas > 0) {
                 msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
                 msrDomainDecomp(msr,0,1);

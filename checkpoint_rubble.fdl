@@ -1,4 +1,4 @@
-FDL checkpoint_8 (
+FDL checkpoint_81 (
 	ELEMENT version (
 		TYPE int
 		)
@@ -57,6 +57,38 @@ FDL checkpoint_8 (
 			ELEMENT out_time (
 				TYPE double
 				)
+			)
+		ELEMENT num_rub_events (
+		    TYPE int
+			)
+		ARRAY rub_clock_array (
+		    INDEX rub_event_index
+			SIZE num_rub_events
+			ELEMENT rub_iColor (
+				TYPE int
+				)
+			ELEMENT rub_dTStartMergePhase (
+			    TYPE double
+				)
+			ELEMENT rub_dTEndRubblePhase (
+				TYPE double
+				)
+			)
+		ELEMENT num_dust_bins (
+			TYPE int
+			)
+		ARRAY dust_bin_array (
+			INDEX dust_bins_index
+			SIZE num_dust_bins
+			ELEMENT dust_bins_mass (
+				TYPE double
+				)
+			ELEMENT dust_bins_volume (
+				TYPE double
+				)
+			)
+		ELEMENT dust_bins_trash (
+			TYPE double
 			)
 		ELEMENT parameters (
 			ELEMENT bPeriodic (

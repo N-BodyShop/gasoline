@@ -49,8 +49,8 @@ typedef struct smContext {
 	int nHash;
 	PQ **pqHash;
 #ifdef SLIDING_PATCH
-	double dOrbFreq;
-	double dTime;
+  double dTime;
+  PATCH_PARAMS *PP;
 #endif
 	} * SMX;
 
@@ -189,7 +189,7 @@ typedef struct smContext {
 		if (INTRSCT_dx1 < INTRSCT_dx) {\
 			INTRSCT_fDist2 = INTRSCT_dx1*INTRSCT_dx1;\
 			sx = x+lx;\
-			sy += SHEAR(1,lx,ly,smx->dOrbFreq,smx->dTime);\
+			sy += SHEAR(1,smx->dTime,smx->PP);\
 			if (sy >= 0.5*ly) sy -= ly;\
 			else if (sy < - 0.5*ly) sy += ly;\
 			bPeriodic = 1;\
@@ -205,7 +205,7 @@ typedef struct smContext {
 		if (INTRSCT_dx < INTRSCT_dx1) {\
 			INTRSCT_fDist2 = INTRSCT_dx*INTRSCT_dx;\
 			sx = x-lx;\
-			sy += SHEAR(-1,lx,ly,smx->dOrbFreq,smx->dTime);\
+			sy += SHEAR(-1,smx->dTime,smx->PP);\
 			if (sy >= 0.5*ly) sy -= ly;\
 			else if (sy < - 0.5*ly) sy += ly;\
 			bPeriodic = 1;\

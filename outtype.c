@@ -20,8 +20,10 @@
 
 FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 {
-        FLOAT vTemp;
-        
+#ifdef GASOLINE
+  FLOAT vTemp;
+#endif
+
 	switch (iType) {
 	case OUT_IORDER_ARRAY:
 	    return((FLOAT) p->iOrder);
@@ -288,11 +290,6 @@ void VecFilename(char *achFile, int iType)
 	case OUT_H_ARRAY:
 		strncat(achFile,"smoothlength",256);
             break;
-/*#ifdef COLLISIONS
-	case OUT_REJECTS_ARRAY:
-		/* Rejected particles indicated by their iOrder, otherwise -1 /
-		return(REJECT(p) ? p->iOrder : -1);
-#endif /* COLLISIONS */
 	case OUT_POS_VECTOR:
 	    strncat(achFile,"pos",256);
             break;
@@ -335,7 +332,7 @@ void VecFilename(char *achFile, int iType)
 
 void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int nStarStart, int iVecType, float minValue[3][3], float maxValue[3][3], double duTFac)
 {
-    FILE *gasFp, *darkFp, *starFp;
+    FILE *gasFp = NULL, *darkFp = NULL, *starFp = NULL;
     float fOut, min[3][3], max[3][3];
     int i, iDim, nDim, headerlength;
     int nGas, nDark, nStar;

@@ -8,7 +8,7 @@ endif
 #
 set template = Makefile.tmpl
 #
-set OBJ = ({aggs,collision,cooling,cosmo,dffuncs,dumpframe,dumpvoxel,eccanom,ewald,fdl,grav,htable,hypanom,linalg,main,master,millerscalo,outtype,param,pkd,pst,qqsmooth,romberg,runge,smooth,smoothfcn,special,ssio,starform,walk}.o)
+set OBJ = ({aggs,collision,cooling,cosmo,dffuncs,dumpframe,dumpvoxel,eccanom,ewald,fdl,grav,htable,hypanom,linalg,main,master,millerscalo,outtype,param,pkd,pst,qqsmooth,romberg,rotbar,rubble,runge,smooth,smoothfcn,special,ssio,starform,walk}.o)
 #
 set mdl = ../mdl
 #
@@ -17,7 +17,7 @@ if !(-d $mdl) then
 	exit 1
 endif
 #
-set targets = (pkdgrav gasoline collisions aggregates sand_pile tumbler rot_frame sliding_patch simple_gas_drag patch_with_drag gr_drag clean archive)
+set targets = (pkdgrav gasoline collisions aggregates rubble sand_pile tumbler rot_frame sliding_patch simple_gas_drag patch_with_drag gr_drag clean archive)
 set modes = (null mpi pthread pvm ALL)
 set options = (optimize debug profile depend)
 @ target_dflt = 1
@@ -25,13 +25,7 @@ set options = (optimize debug profile depend)
 @ option_dflt = 1
 if (-e build.cfg) source build.cfg
 #
-set OS = `/bin/uname`
-if ($status) then
-	echo Unable to determine operating system
-	exit 1
-endif
-#
-if ($OS == Linux) set OS = $OS-`uname -a | awk '{print $(NF - 1)}'`
+set OS = `uname | sed 's/ //'`-`uname -m | sed 's/ //'`
 #
 @ i = 1
 foreach choice ($targets)
@@ -131,7 +125,7 @@ foreach mode ($modes)
 	endif
 	#
 	if !(-e $mdl/$mode/$template) then
-		echo $mode/$template not found...copying
+		echo $mdl/$mode/$template not found...copying
 		if !(-e templates/mdl/Makefile.$mode) then
 			echo $mode mdl Makefile template not found...skipping this mode
 			continue
@@ -146,7 +140,7 @@ foreach mode ($modes)
 	switch ($target)
 	case gasoline:
 		set EXE = gasoline
-		set CODEDEF = -DGASOLINE
+		set CODEDEF = "-DGASOLINE -DCOOLING_COSMO -DNOCOOLING"
 		breaksw
 	case collisions:
 		set EXE = pkdgrav
@@ -155,6 +149,10 @@ foreach mode ($modes)
 	case aggregates:
 		set EXE = pkdgrav
 		set CODEDEF = "-DCOLLISIONS -DAGGS"
+		breaksw
+	case rubble:
+		set EXE = pkdgrav
+		set CODEDEF = "-DCOLLISIONS -DRUBBLE_ZML"
 		breaksw
 	case sand_pile:
 		set EXE = pkdgrav
@@ -257,7 +255,7 @@ foreach mode ($modes)
 	#	if ($mode != mpi) set CFLAGS = ($CFLAGS -malign-double -mstack-align-double -mpentium)
 		breaksw
 	case SunOS:
-	#	set LDFLAGS = ($LDFLAGS -lnsl)
+		set LDFLAGS = ($LDFLAGS -lnsl)
 		breaksw
 	endsw
 	#

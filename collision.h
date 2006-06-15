@@ -16,6 +16,10 @@
 #include "aggs.h" /* for Aggregate struct */
 #endif
 
+#ifdef RUBBLE_ZML
+#include "rubble.h"
+#endif
+
 #define NORMAL 0	/* drift types */
 #define KEPLER 1
 
@@ -42,10 +46,11 @@ unsigned int BIT(unsigned int n);
 #define COLL_LOG_VERBOSE	1
 #define COLL_LOG_TERSE		2
 
-#define MISS	0
-#define MERGE	BIT(0)
-#define BOUNCE	BIT(1)
-#define FRAG	BIT(2)
+#define MISS	      0
+#define MERGE	      BIT(0)
+#define BOUNCE	      BIT(1)
+#define FRAG	      BIT(2)
+#define BINARY_MERGE  BIT(3)
 
 #define MAX_NUM_FRAG 4
 
@@ -101,6 +106,13 @@ typedef struct {
 #ifdef SAND_PILE
 	WALLS walls;
 #endif
+#ifdef RUBBLE_ZML
+	int iRubForcedOutcome;
+	int iRubColor;
+	double dRubbleMinFracMass;
+	int bDoRubbleKDKRestart;
+	DUST_BINS_PARAMS DB;
+#endif
 	} COLLISION_PARAMS;
 
 typedef struct {
@@ -117,13 +129,17 @@ typedef struct {
 	FLOAT r[3];
 	FLOAT v[3];
 	FLOAT w[3];
-	int iColor;
+        FLOAT a[3];
 	FLOAT dt;
+        FLOAT fDummy;
 	int iRung;
-	int bTinyStep;
+	int iColor;
+        int bTinyStep;
 #ifdef AGGS
 	Aggregate agg;
 #endif
+        int iPad;  /* This is a cheat to make the code work on intel
+		      64 bit machines */
 	} COLLIDER;
 
 FLOAT SOFT(COLLIDER *c);
@@ -148,9 +164,37 @@ void pkdNextCollision(PKD pkd, double *dtCol, int *iOrder1, int *iOrder2);
 void pkdGetColliderInfo(PKD pkd, int iOrder, COLLIDER *c);
 void PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt);
 void pkdDoCollision(PKD pkd, double dt, const COLLIDER *c1, const COLLIDER *c2,
-					int bPeriodic, const COLLISION_PARAMS *CP, int *piOutcome,
-					double *dT,	COLLIDER *cOut, int *pnOut);
+ int bPeriodic, int iTime0, double dBaseStep, double dTimeNow,
+const COLLISION_PARAMS *CP, int *piOutcome,double *dT,	COLLIDER *cOut, 
+int *pnOut);
 void pkdResetColliders(PKD pkd, int iOrder1, int iOrder2);
+double LastKickTime(int iRung, double dBaseStep, double dTimeNow);
+void pkdSetBall(PKD pkd,double dDelta,double fac);
+void PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt);
+void pkdFindTightestBinary(PKD pkd,double *dBindEn,int *iOrder1,int *iOrder2,
+ int *n);
+void SetMergerRung(const COLLIDER *c1,const COLLIDER *c2,COLLIDER *c,
+				   double dBaseStep,double dTimeNow,int iTime0);
+void MergerReorder(PKD pkd,const COLLIDER *pc1,const COLLIDER *pc2,const COLLIDER *c,
+				   COLLIDER *cOut,double dt,const COLLISION_PARAMS *CP,
+				   int bDiagInfo,const FLOAT fOffset[]
+#ifdef RUBBLE_ZML
+				   ,double dMassInDust
+#endif
+#ifdef SLIDING_PATCH
+				   ,FLOAT fShear
+#endif
+				   ,int bPeriodic);
+void pkdMergeBinary(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,COLLIDER *c,
+					int bPeriodic,double dBaseStep,double dTimeNow,int iTime0,
+					double dDensity,int *bool);
+#ifdef SLIDING_PATCH
+#define MAXLARGEMASS 25	 /* Maximum number of particles to randomize */
+#define MAXNEIGHBORS 250 /* Maximum neighbors surrounding a large
+			    particle */
+void pkdFindLargeMasses(PKD,double,double,double,double,PARTICLE *p,double *,int *);
+void pkdGetNeighborParticles(PKD,double *,double,int,double,PARTICLE *p,double *,int *);
+#endif
 
 #endif /* COLLISIONS */
 

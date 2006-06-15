@@ -11,6 +11,10 @@
 #endif
 #include "rotbar.h"
 
+#ifdef SLIDING_PATCH
+#include "patch.h"
+#endif
+
 /*
  ** The following sort of definition should really be in a global
  ** configuration header file -- someday...
@@ -131,6 +135,13 @@ typedef struct particle {
 	double dtPrevCol;	/* time of previous collision */
 	int iPrevCol;		/* iOrder of previous collider */
 	int bTinyStep;		/* flag for imminent collapse */
+	FLOAT mindist2;		/* record min dist for all encounters */
+#endif /* COLLISIONS */
+#ifdef SPECIAL_PARTICLES
+	int bGhostExclude;	/* particle not included in ghost cells */
+#endif /* SPECIAL_PARTICLES */ 
+#ifdef SLIDING_PATCH
+    int bAzWrap;        /* flag set on azimuthal boundary wrap */
 #endif
 #ifdef SAND_PILE
 	int bStuck;
@@ -139,12 +150,22 @@ typedef struct particle {
 	FLOAT vPred[3];		/* predicted velocity (time centered) */
 #endif
 #ifdef AGGS
-	/* Position in principal frame of the aggregate (normally).  We
-	 *  temporarily store the COM frame position here during the
-	 *  process of computing the aggregate parameters. */
+	/*
+	 ** Position of particle in principal frame of the aggregate
+	 ** (normally).  We temporarily store the COM frame position
+	 ** here during the process of computing the aggregate
+	 ** parameters.
+	 */
 	FLOAT r_agg[3];
 #endif
-	} PARTICLE;
+#ifdef RUBBLE_ZML
+	double dDustMass;	/* predicted mass increase from dust */
+	int iBin;				/* dust bin that planetesimal is in */
+	int bMayCollide;	/* true if planetesimal is predicted to
+						   collide with another planetesimal during
+						   the top step interval */
+#endif
+} PARTICLE;
 
 /* Active Type Masks */
 
@@ -209,7 +230,12 @@ int TYPEClear( PARTICLE *a );
 #define TYPEClearACTIVE(a)       ((a)->iActive &= (TYPE_ALL|TYPE_SUPERCOOL))
 #define TYPEClear(a)             ((a)->iActive = 0)
 
-#define CHECKPOINT_VERSION 7
+#ifdef RUBBLE_ZML
+/* RUBBLE_ZML puts extra stuff in the checkpoint file, changes version to indicate this  ZML 01.08.04 */
+#define CHECKPOINT_VERSION 81
+#else
+#define CHECKPOINT_VERSION 8
+#endif
 
 typedef struct chkParticle {
 	int iOrder;
@@ -389,11 +415,11 @@ typedef struct pkdContext {
 #endif
 #endif
 #ifdef SLIDING_PATCH
-	/*
-	 ** Rotating frame info...
-	 */
-	double dOrbFreq;
-	double dTime;
+  /*
+  ** Info needed for sliding patch model...
+  */
+  double dTime;
+  PATCH_PARAMS *PP;
 #endif
         ROTBAR  rotbar;
 	} * PKD;
@@ -600,6 +626,8 @@ void pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *sp);
 void pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
 				  int *nDeltaStar);
 void pkdNewOrder(PKD pkd, int nStart);
+void pkdMoveParticle(PKD pkd, double *xcenter,double *xoffset,int iOrder);
+
 
 struct outGetNParts { 
 	int n;
@@ -648,6 +676,15 @@ void pkdGlassGasPressure(PKD, void *in);
 void pkdRandomVelocities(PKD pkd, double dMaxVL, double dMaxVR);
 #endif
 
+#ifdef SLIDING_PATCH
+double SHEAR(int,double,PATCH_PARAMS *);
+#define SHEAR(ix,t,pp)\
+	((ix) < 0 ? fmod(0.5*(pp)->dLength - 1.5*(ix)*(pp)->dOrbFreq*(pp)->dWidth*(t),(pp)->dLength) - 0.5*(pp)->dLength:\
+	 (ix) > 0 ? 0.5*(pp)->dLength - fmod(0.5*(pp)->dLength + 1.5*(ix)*(pp)->dOrbFreq*(pp)->dWidth*(t),(pp)->dLength): 0.0)
+void pkdPatch(PKD pkd);
+int pkdRandAzWrap(PKD pkd);
+#endif
+
 #ifdef COLLISIONS
 int pkdNumRejects(PKD pkd);
 void pkdReadSS(PKD pkd, char *pszFileName, int nStart, int nLocal);
@@ -657,7 +694,7 @@ void pkdNextEncounter(PKD pkd, double *dt);
 void pkdMarkEncounters(PKD pkd, double dt);
 #ifdef SIMPLE_GAS_DRAG
 void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
-					  double dOmegaZ,double dTime);
+					  double dTime);
 #endif
 #ifdef OLD_KEPLER/*DEBUG*/
 int pkdLowerQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);
@@ -666,13 +703,6 @@ void pkdQQCalcBound(PKD pkd, BND *pbnd, BND *pbndActive);
 void pkdQQBuild(PKD pkd, int nBucket, int bActiveOnly, KDN *pRoot);
 #endif
 #endif /* COLLISIONS */
-
-#ifdef SLIDING_PATCH
-#define SHEAR(ix,lx,ly,w,t)\
-	((ix) < 0 ? fmod(0.5*(ly) - 1.5*(ix)*(w)*(lx)*(t),(ly)) - 0.5*(ly):\
-	 (ix) > 0 ? 0.5*(ly) - fmod(0.5*(ly) + 1.5*(ix)*(w)*(lx)*(t),(ly)): 0.0)
-void pkdPatch(PKD pkd, double dOrbFreqZ2);
-#endif
 
 void pkdMassInR(PKD pkd, double R, double *pdMass, FLOAT *com);
 

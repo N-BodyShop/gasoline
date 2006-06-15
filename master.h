@@ -7,6 +7,10 @@
 #include "parameters.h"
 #include "floattype.h"
 
+#ifdef RUBBLE_ZML
+#include "rubble.h"
+#endif
+
 #define MSR_INIT_E		1
 #define MSR_STEP_E		0
 
@@ -81,6 +85,13 @@ typedef struct msrContext {
 	int iAggNewIdx;
 	Aggregate *pAggs;
 #endif
+#ifdef RUBBLE_ZML
+	/* Event handler for rubble piles */
+	struct rubEvents re;
+	/* Data structures for dust */
+	DustBins aDustBins[DUST_BINS_MAX_NUM]; /* fixed max b/c passed to pst */
+	double dDustBinsTrash; /* trash bin for dust that travels outside bin range */
+#endif
 	/*
 	 ** Redshift output points.
 	 */
@@ -133,11 +144,11 @@ void msrCreateGasOutputList(MSR msr, int *iNumOutputs, int OutputList[]);
 void msrWriteOutputs(MSR msr, char *achFile, int *OutputList, int iNumOutputs, double dTime);
 void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
 #ifdef COLLISIONS
-			    struct inWriteSS *in
+							struct inWriteSS *in
 #else
-			    struct inWriteTipsy *in
+							struct inWriteTipsy *in
 #endif
-			    );
+							);
 void msrWriteTipsy(MSR,char *,double);
 void msrWriteTipsyHead(MSR msr,char *achOutFile,double dTime, struct inWriteTipsy *in);
 void msrWriteTipsyBody(MSR msr,char *pszFileName,double dTime, struct inWriteTipsy *in);
@@ -164,6 +175,7 @@ double msrReadCheck(MSR,int *);
 void msrWriteCheck(MSR,double,int);
 int msrOutTime(MSR,double);
 void msrReadOuts(MSR,double);
+double msrTime(void);
 double msrMassCheck(MSR,double,char *);
 void msrMassMetalsEnergyCheck(MSR,double *, double *, double *, double *, double *,char *);
 void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta, 
@@ -288,15 +300,23 @@ void msrInitGlass(MSR);
 #ifdef COLLISIONS
 void msrFindRejects(MSR msr);
 double msrReadSS(MSR msr);
-void msrWriteSSHead(MSR msr,char *achOutFile,double dTime);
 void msrWriteSS(MSR msr, char *pszFileName, double dTime);
+void msrWriteSSHead(MSR msr,char *achOutFile,double dTime);
 void msrPlanetsKDK(MSR msr, double dStep, double dTime, double dDelta,
 				   double *pdWMax, double *pdIMax, double *pdEMax, int *piSec);
 void msrPlanetsDrift(MSR msr, double dStep, double dTime, double dDelta);
 void msrNextEncounter(MSR msr, double dStart, double dEnd, double *dNext);
 void msrMarkEncounters(MSR msr, double dTmax);
 void msrLinearKDK(MSR msr, double dStep, double dTime, double dDelta);
-void msrDoCollision(MSR msr, double dTime, double dDelta);
+void msrDoCollisions(MSR msr, double dTime, double dDelta);
+void msrCheckForBinary(MSR msr,double dTime);
+void msrDoCollLog(MSR msr,COLLIDER *c1,COLLIDER *c2,struct outDoCollision *outDo,
+ int option,double dt,double dTime);
+#ifdef SLIDING_PATCH
+void msrPickNewCoordinates(PARTICLE *p,int n,double *dHill,double dxPeriod,double dyPeriod,double **new,int pick);
+void msrRandomizeLargeMasses(MSR msr,int iStep,double dTime);
+int msrGetNextRandomTime(int iBaseTime,int iTimeNow);
+#endif /* SLIDING_PATCH */
 #endif /* COLLISIONS */
 #ifdef AGGS
 void msrAggsFind(MSR msr);
@@ -306,12 +326,17 @@ void msrAggsAdvance(MSR msr,int iAggIdx,Aggregate *agg,double dToTime);
 void msrAggsAdvanceClose(MSR msr,double dt);
 void msrAggsMerge(MSR msr,COLLIDER *c1,COLLIDER *c2,double dImpactTime,COLLIDER *cOut);
 void msrAggsBounce(MSR msr,COLLIDER *c1,COLLIDER *c2,double dImpactTime);
-void msrAggsGetAccelAndTorque(MSR msr);
-void msrAggsActivate(MSR msr);
-void msrAggsDeactivate(MSR msr);
+void msrAggsGravity(MSR msr);
 #endif
 void msrFormStars(MSR msr, double dTime, double dDelta);
 void msrSimpleStarForm(MSR msr, double dTime, double dDelta);
+
+#ifdef RUBBLE_ZML
+void msrDustBinsApply(MSR msr);
+void msrRubbleResetColFlag(MSR msr);
+void msrRubbleStep(MSR msr);
+void msrRubCleanup(MSR msr,double dTime);
+#endif
 
 FILE *LogTimingInit( MSR msr, char *fileflag );
 void LogTimingZeroCounters( MSR msr );

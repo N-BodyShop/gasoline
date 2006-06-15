@@ -29,6 +29,16 @@
 #include "aggs.h"
 #endif
 
+#ifdef SLIDING_PATCH
+#include <sys/types.h> /* for getpid() */
+#include <unistd.h> /* ditto */
+#include <time.h> /* for time() */
+#ifndef SGN
+int SGN(double x);
+#define SGN(x) ((x) < 0.0 ? (-1) : (x) > 0.0 ? 1 : 0)
+#endif
+#endif
+
 #ifdef _LARGE_FILES
 #define fseek fseeko
 #endif
@@ -3267,6 +3277,7 @@ void pkdTimeVarying(PKD pkd,double dTime)
 		}
 	}
 
+
 /*DEBUG #define SPINUP*/
 
 #ifdef ROT_FRAME
@@ -3529,10 +3540,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 #endif
 		for (i=0;i<n;++i) {
 			p = &pkd->pStore[i];
-#ifdef AGGS
-			if (IS_AGG(p))
-				continue;
-#endif
 			fg(pkd->mdl,fCentMass + p->fMass,p->r,p->v,dDelta);
 		}
 	else {
@@ -3540,10 +3547,11 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 		for (i=0;i<n;++i,++p) {
 #ifdef AGGS
 			if (IS_AGG(p))
-				continue;
+				continue; /* skip aggregate particles; handled in msrAggsAdvance() */
 #endif
 #ifdef SLIDING_PATCH
-			fShear = 0;
+			fShear = 0.0;
+			p->bAzWrap = 0; /* reset azimuthal wrap flag */
 #endif
 			for (j=0;j<3;++j) {
 				p->r[j] += dDelta*p->v[j];
@@ -3551,23 +3559,25 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 					if (p->r[j] >= lfCenter[j] + 0.5*pkd->fPeriod[j]) {
 						p->r[j] -= pkd->fPeriod[j];
 #ifdef SLIDING_PATCH
-						if (j == 0) {
-							fShear = 1.5*pkd->dOrbFreq*pkd->fPeriod[0];
-							p->r[1] += SHEAR(-1,pkd->fPeriod[0],
-											   pkd->fPeriod[1],pkd->dOrbFreq,
-											   pkd->dTime + dDelta);
-							}
+						if (j == 0) { /* radial wrap */
+						  fShear = 1.5*pkd->PP->dOrbFreq*pkd->PP->dWidth; /* (dWidth is same as fPeriod[0]) */
+						  p->r[1] += SHEAR(-1,pkd->dTime + dDelta,pkd->PP);
+						}
+						/* apply randomization only if there was no radial wrap (fShear=0) */
+						if (pkd->PP->bRandAzWrap == 1 && j == 1 && fShear == 0.0) /* azimuthal wrap */
+						  p->bAzWrap = 1;
 #endif
 						}
 					if (p->r[j] < lfCenter[j] - 0.5*pkd->fPeriod[j]) {
 						p->r[j] += pkd->fPeriod[j];
 #ifdef SLIDING_PATCH
 						if (j == 0) {
-							fShear = - 1.5*pkd->dOrbFreq*pkd->fPeriod[0];
-							p->r[1] += SHEAR(1,pkd->fPeriod[0],
-											   pkd->fPeriod[1],pkd->dOrbFreq,
-											   pkd->dTime + dDelta);
-							}
+						  fShear = - 1.5*pkd->PP->dOrbFreq*pkd->PP->dWidth;
+						  p->r[1] += SHEAR(1,pkd->dTime + dDelta,pkd->PP);
+						}
+						/* apply randomization only if there was no radial wrap (fShear=0) */
+						if (pkd->PP->bRandAzWrap == 1 && j == 1 && fShear == 0.0)
+						  p->bAzWrap = 1;
 #endif
 						}
 					bInBox = bInBox && (p->r[j] >= lfCenter[j]-0.5*pkd->fPeriod[j]);
@@ -3578,9 +3588,9 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 			p->v[1] += fShear;
 			p->vPred[1] += fShear;
 #endif
+			mdlassert(pkd->mdl, bInBox);
 			}
 		}
-	mdlassert(pkd->mdl, bInBox);
 	mdlDiag(pkd->mdl, "Out of pkddrift\n");
 	}
 
@@ -3598,6 +3608,10 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i,++p) {
+#ifdef AGGS
+		if (IS_AGG(p)) /* skip aggregate particles; handled in msrAggsKick() */
+			continue;
+#endif
 		if (TYPEQueryACTIVE(p)) {
 #ifdef NEED_VPRED
 #ifdef GASOLINE
@@ -4220,6 +4234,27 @@ int pkdRungParticles(PKD pkd,int iRung)
 	return n;
 	}
 
+void 
+pkdMoveParticle(PKD pkd, double *xcenter,double *xoffset,int iOrder)
+{
+    int i,j;
+    
+    for (i=0;i<pkdLocal(pkd);i++) {
+	if (pkd->pStore[i].iOrder == iOrder) {
+	    
+#ifdef SLIDING_PATCH
+	    pkd->pStore[i].v[1]+=1.5*pkd->PP->dOrbFreq*pkd->pStore[i].r[0];
+#endif	
+	    for (j=0;j<3;j++)
+		pkd->pStore[i].r[j]=xcenter[j]+xoffset[j];
+#ifdef SLIDING_PATCH
+	    pkd->pStore[i].v[1]-=1.5*pkd->PP->dOrbFreq*pkd->pStore[i].r[0];
+#endif
+	    }
+	}
+    }
+
+
 void
 pkdUnDeleteParticle(PKD pkd, PARTICLE *p)
 {
@@ -4585,7 +4620,7 @@ int CompSortStruct(const void * a, const void * b) {
 void pkdSetTypeFromFileSweep(PKD pkd, int iSetMask, char *file, 
 	   struct SortStruct *ss, int nss, int *pniOrder, int *pnSet) {
   int niOrder = 0, nSet = 0;
-  int iOrder, iOrderOld, nRet, i;
+  int iOrder, iOrderOld, nRet;
   FILE *fp;
   int iss;
 
@@ -4795,10 +4830,10 @@ int pkdIsStarByOrder(PKD pkd,PARTICLE *p) {
 
 void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasModel, int bUpdateY )
 {
+#ifndef NOCOOLING	
 	PARTICLE *p;
 	int i,n;
 	int bCool = 0;
-#ifndef NOCOOLING	
 	COOL *cl = NULL;
 	COOLPARTICLE cp;
 	double E,dt = 0;
@@ -4988,7 +5023,6 @@ void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma)
 void pkdLowerSoundSpeed(PKD pkd, double dhMinOverSoft)
 {
     PARTICLE *p;
-    double PoverRho;
     double dfBall2MinOverSoft,dfBall2Min,ratio;
     int i;
 
@@ -5469,7 +5503,11 @@ pkdReadSS(PKD pkd,char *pszFileName,int nStart,int nLocal)
 		iSetMask = TYPE_DARK;
 		if (ssioData(&ssio,&data))
 			mdlassert(pkd->mdl,0); /* error during read in ss file */
+
+		/* This is changed because the data.org_idx appears to always be zero. DCR made a change that has probably not been incorporated yet. This will work as long as pkdReadSS is only called from msrOneNodeReadSS. This is the original line of code:
 		p->iOrgIdx = data.org_idx;
+		*/
+		p->iOrgIdx = p->iOrder;
 		p->fMass = data.mass;
 		p->fSoft = SOFT_FROM_SSDATA(&data); /* half physical radius */
 #ifdef CHANGESOFT 
@@ -5591,23 +5629,175 @@ pkdMarkEncounters(PKD pkd,double dt)
 
 #ifdef SLIDING_PATCH
 
-void
-pkdPatch(PKD pkd,double dOrbFreqZ2)
+void pkdPatch(PKD pkd)
 {
-	PARTICLE *p;
-	int i;
+  PARTICLE *p;
+  PATCH_PARAMS *PP;
+  int i;
+
+  PP = pkd->PP;
+
+  for (i=0;i<pkd->nLocal;i++) {
+	p = &pkd->pStore[i];
+	if (!TYPEQueryACTIVE(p)) continue;
+	/*
+	** Apply Hill's Equations, using *predicted* velocities...
+	*/
+	p->a[0] += PP->dOrbFreq*(2*p->vPred[1] + 3*PP->dOrbFreq*p->r[0]);
+	p->a[1] -= 2*PP->dOrbFreq*p->vPred[0];
+	p->a[2] -= PP->dOrbFreqZ2*p->r[2];
+  }
+
+  if (PP->bExtPert) {
+	double rPert[3];      /* position of perturber relative to saturn */
+	double rpp[3];        /* position of patch relative to perturber */
+	double R[3];          /* position of a patch particle relative to perturber (goal) */
+	double Rmag,Rmag3inv; /* magnitude of R, and inverse cube */
+
+	/*
+	** NOTE: positive x: away from saturn, y: direction of orbital velocity, z: RH rule
+	** NOTE: All vectors are calculated in the *patch* frame (rotating wrt saturn)
+	*/
+
+	/* calculate position of perturber relative to saturn, in the patch frame,
+	** by using a rotation matrix:
+    **       cos(omega_patch * t)        sin(omega_patch * t)
+    **      -sin(omega_patch * t)        cos(omega_patch * t)
+	*/
+
+	rPert[0] = (PP->dPertOrbDist*cos((PP->dPertOrbFreq*pkd->dTime) + PP->dPertPhase)*cos(PP->dOrbFreq*pkd->dTime))
+	  + (PP->dPertOrbDist*sin((PP->dPertOrbFreq*pkd->dTime) + PP->dPertPhase)*sin(PP->dOrbFreq*pkd->dTime));
+
+	rPert[1] = (PP->dPertOrbDist*cos((PP->dPertOrbFreq*pkd->dTime) + PP->dPertPhase)*(-sin(PP->dOrbFreq*pkd->dTime)))
+	  + (PP->dPertOrbDist*sin((PP->dPertOrbFreq*pkd->dTime) + PP->dPertPhase)*cos(PP->dOrbFreq*pkd->dTime));
+
+	rPert[2] = PP->dPertMaxZ*cos((PP->dPertOrbFreqZ*pkd->dTime) + PP->dPertPhaseZ);
+
+	/* calculate vector pointing from perturber (center) to patch center */
+	rpp[0] = PP->dOrbDist - rPert[0];
+	rpp[1] = -rPert[1];
+	rpp[2] = -rPert[2];
 
 	for (i=0;i<pkd->nLocal;i++) {
-		p = &pkd->pStore[i];
-		if (!TYPEQueryACTIVE(p)) continue;
-		/*
-		 ** Apply Hill's Equations, using *predicted* velocities...
-		 */
-		p->a[0] += pkd->dOrbFreq*(2*p->vPred[1] + 3*pkd->dOrbFreq*p->r[0]);
-		p->a[1] -= 2*pkd->dOrbFreq*p->vPred[0];
-		p->a[2] -= dOrbFreqZ2*p->r[2];
-		}
+	  p = &pkd->pStore[i];
+	  if (!TYPEQueryACTIVE(p)) continue;
+
+	  /* calculate force/mass of an external perturber on sliding-patch particles */
+
+	  /* calculate position vector */
+	  R[0] = rpp[0] + p->r[0];
+	  R[1] = rpp[1] + p->r[1];
+	  R[2] = rpp[2] + p->r[2];
+
+	  Rmag = sqrt(R[0]*R[0] + R[1]*R[1] + R[2]*R[2]);
+	  Rmag3inv = 1.0/(Rmag*Rmag*Rmag);
+
+	  p->a[0] -= PP->dPertMass*R[0]*Rmag3inv;
+	  p->a[1] -= PP->dPertMass*R[1]*Rmag3inv;
+	  p->a[2] -= PP->dPertMass*R[2]*Rmag3inv;
 	}
+  }
+}
+
+double _pkdUniRan(void)
+{
+  return (double) random()/RAND_MAX;
+}
+
+double _pkdGauRan(void)
+{
+  /* generates Gaussian deviate, mean 0, std dev 1 */
+  /* based on NRiC 7.2 gasdev() */
+
+  static int iNeedDev = 1;
+  static double dSecondDev;
+  double x,y,r2,f;
+
+  if (iNeedDev) {
+	do {
+	  x = 2.0*_pkdUniRan() - 1.0;
+	  y = 2.0*_pkdUniRan() - 1.0;
+	  r2 = x*x + y*y;
+	} while (r2 >= 1.0 || r2 == 0.0);
+	f = sqrt(-2.0*log(r2)/r2);
+	dSecondDev = x*f;
+	iNeedDev = 0;
+	return y*f;
+  } else {
+	iNeedDev = 1;
+	return dSecondDev;
+  }
+}
+
+int pkdRandAzWrap(PKD pkd)
+{
+  /*DEBUG CURRENTLY IGNORING SPIN*/
+  /*
+  ** This routine probably only valid for low surface densities
+  ** that do not lead to strong wake/aggregate formation.
+  */
+
+  const double Sqrt2OverPi = M_2_SQRTPI/M_SQRT2; /* sqrt(2/PI) */
+
+  static int bFirstCall = 1;
+
+  PATCH_PARAMS *PP;
+  PARTICLE *p;
+  double amp,phase;
+  int i,iSide,nRand = 0;
+
+  assert(pkd->nLocal > 0);
+
+  if (bFirstCall) {
+	/*
+	** Seeding strategy: since nodes in a cluster may be well
+	** sychronized, we mod the seed (PID) by the iOrder of the first
+	** particle on the processor (plus the number of local particles
+	** in case the iOrder is zero).
+	*/
+	unsigned int seed = (int) time(NULL) % getpid() + getppid();
+
+	(void) printf("pkdRandAzWrap(): processor %i random seed = %u\n",pkd->idSelf,seed);
+	srandom(seed);
+	bFirstCall = 0;
+  }
+
+  PP = pkd->PP;
+
+  for (i=0;i<pkd->nLocal;i++) {
+	p = &pkd->pStore[i];
+	TYPESet(p,TYPE_TREEACTIVE); /* all particles go into density tree */
+	TYPEReset(p,TYPE_SMOOTHACTIVE); /* not all are centers for overlap searches */
+	if (p->bAzWrap) {
+	  /* assign uniform random radial position depending on side */
+	  iSide = SGN(p->r[0]); /* -1 ==> left side of patch; +1 ==> right side */
+	  if (iSide == 0) iSide = 2*(random()%2) - 1; /* handle rare case */
+	  /* flip side if equilibrium stream on opposite side */
+	  if ((iSide == -1 && PP->iStripOption == STRIP_RIGHT_ONLY) ||
+		  (iSide ==  1 && PP->iStripOption == STRIP_LEFT_ONLY))
+		iSide *= -1;
+	  p->r[0] = iSide*(PP->dStripInner + (PP->dStripOuter - PP->dStripInner)*_pkdUniRan());
+	  /* assign random velocity relative to shear */
+	  p->v[0] = _pkdGauRan()*PP->dVelDispX*sqrt(PP->dAvgMass/p->fMass);
+	  p->v[1] = _pkdGauRan()*PP->dVelDispY*sqrt(PP->dAvgMass/p->fMass);
+	  p->v[1] -= 1.5*PP->dOrbFreq*p->r[0]; /* add shear */
+	  /* deal with the third dimension */
+	  amp = PP->dAvgVertAmp*Sqrt2OverPi*sqrt(-2.0*log(_pkdUniRan()))*sqrt(PP->dAvgMass/p->fMass); /* Rayleigh deviate */
+	  phase = 2.0*M_PI*_pkdUniRan();
+	  p->r[2] = amp*cos(phase);
+	  p->v[2] = - amp*sin(phase);
+	  /* set flag to do an overlap search around this particle */
+	  TYPESet(p,TYPE_SMOOTHACTIVE);
+	  ++nRand;
+	  /*DEBUG*/
+	  if ((iSide == -1 && p->r[1] > -0.4*PP->dLength) ||
+		  (iSide == 1 && p->r[1] < 0.4*PP->dLength))
+		(void) fprintf(stderr,"DEBUG iOrd=%i iSide=%i y=%g (Ly=%g)\n",p->iOrder,iSide,p->r[1],PP->dLength);
+	}
+  }
+
+  return nRand;
+}
 
 #endif /* SLIDING_PATCH */
 
@@ -5644,9 +5834,8 @@ _pkdSimpleGasVel(double r[],int iFlowOpt,double dTime,double u[])
 		}
 }
 
-void
-pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
-				 double dOmegaZ,double dTime)
+void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
+					  double dTime)
 {
 	PARTICLE *p;
 	double u[3],dCoef;
@@ -5798,9 +5987,10 @@ pkdCOMByType(PKD pkd, int type, double *com)
 void
 pkdOldestStar(PKD pkd, double *com)
 {
-    int i;
+#if defined(STARFORM) || defined (SIMPLESF)
     int nLocal = pkdLocal(pkd);
-   
+#endif
+
 	com[0] = 0;
 	com[1] = 0;
 	com[2] = 0;
@@ -5837,5 +6027,6 @@ int pkdSetSink(PKD pkd, double dSinkMassMin)
 #else
     assert(0);	/* GASOLINE needed for sink particles to work */
 #endif
+	return -1; /* to keep compiler happy */
     }
 

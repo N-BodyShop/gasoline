@@ -66,6 +66,10 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_LOCALORDER,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstLocalOrder,
 				  0,0);
+	mdlAddService(mdl,PST_MOVEPART,pst,
+		      (void (*)(void *,void *,int,void *,int *)) pstMoveParticle,
+		      sizeof(struct inMoveParticle),0);
+	
 	mdlAddService(mdl,PST_OUTARRAY,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstOutArray,
 				  sizeof(struct inOutArray),0);
@@ -320,6 +324,9 @@ pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inDoSpecial),sizeof(struct outDoSpecial));
 #endif
 #ifdef COLLISIONS
+	mdlAddService(mdl,PST_SETBALL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSetBall,
+				  sizeof(struct inSetBall),0);
 	mdlAddService(mdl,PST_NUMREJECTS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstNumRejects,
 				  0,sizeof(struct outNumRejects));
@@ -351,6 +358,12 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_RESETCOLLIDERS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstResetColliders,
 				  sizeof(struct inResetColliders),0);
+	mdlAddService(mdl,PST_FINDBINARY,pst,
+		                  (void (*)(void *,void *,int,void *,int *)) pstFindTightestBinary,
+		      sizeof(struct inBinary),sizeof(struct outBinary));
+	mdlAddService(mdl,PST_MERGEBINARY,pst,
+		                  (void (*)(void *,void *,int,void *,int *)) pstMergeBinary,
+		      sizeof(struct inMrgBnry),sizeof(struct outMrgBnry));
 #ifdef OLD_KEPLER
 	mdlAddService(mdl,PST_QQCALCBOUND,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstQQCalcBound,
@@ -364,7 +377,16 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_QQSMOOTH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstQQSmooth,
 				  sizeof(struct inSmooth),0);
-#endif
+#endif /* OLD_KEPLER */
+
+#ifdef SLIDING_PATCH
+	mdlAddService(mdl,PST_FINDLM,pst,
+		                  (void (*)(void *,void *,int,void *,int *)) pstFindLargeMasses,
+				  sizeof(struct inLargeMass),sizeof(struct outLargeMass));
+	mdlAddService(mdl,PST_GETNEIGHBORS,pst,
+		                  (void (*)(void *,void *,int,void *,int *)) pstGetNeighborParticles,
+				  sizeof(struct inGetNeighbors),sizeof(struct outGetNeighbors));
+#endif /* SLIDING_PATCH */
 #endif /* COLLISIONS */
 #ifdef AGGS
 	mdlAddService(mdl,PST_AGGSFIND,pst,
@@ -382,12 +404,12 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_AGGSGETCOM,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstAggsGetCOM,
 				  sizeof(struct inAggsGetCOM),sizeof(struct outAggsGetCOM));
-	mdlAddService(mdl,PST_AGGSGETAXES,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstAggsGetAxes,
-				  sizeof(struct inAggsGetAxes),sizeof(struct outAggsGetAxes));
-	mdlAddService(mdl,PST_AGGSTOBODYAXES,pst,
-				  (void (*)(void *,void *,int,void *,int *)) pstAggsToBodyAxes,
-				  sizeof(struct inAggsToBodyAxes),0);
+	mdlAddService(mdl,PST_AGGSGETAXESANDSPIN,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsGetAxesAndSpin,
+				  sizeof(struct inAggsGetAxesAndSpin),sizeof(struct outAggsGetAxesAndSpin));
+	mdlAddService(mdl,PST_AGGSSETBODYPOS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsSetBodyPos,
+				  sizeof(struct inAggsSetBodyPos),0);
 	mdlAddService(mdl,PST_AGGSSETSPACEPOS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstAggsSetSpacePos,
 				  sizeof(struct inAggsSetSpacePos),0);
@@ -397,17 +419,47 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_AGGSSETSPACESPINS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstAggsSetSpaceSpins,
 				  sizeof(struct inAggsSetSpaceSpins),0);
+	mdlAddService(mdl,PST_AGGSDELETE,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsDelete,
+				  sizeof(struct inAggsDelete),sizeof(struct outAggsDelete));
 	mdlAddService(mdl,PST_AGGSGETACCEL,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstAggsGetAccel,
 				  sizeof(struct inAggsGetAccel),sizeof(struct outAggsGetAccel));
+	mdlAddService(mdl,PST_AGGSCHECKSTRESS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAggsCheckStress,
+				  sizeof(struct inAggsCheckStress),sizeof(struct outAggsCheckStress));
 	mdlAddService(mdl,PST_AGGSGETTORQUE,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstAggsGetTorque,
 				  sizeof(struct inAggsGetTorque),sizeof(struct outAggsGetTorque));
-	mdlAddService(mdl,PST_AGGSACTIVATE,pst,
-				  (void (*)(void*,void*,int,void*,int*)) pstAggsActivate,0,0);
-	mdlAddService(mdl,PST_AGGSDEACTIVATE,pst,
-				  (void (*)(void*,void*,int,void*,int*)) pstAggsDeactivate,0,0);
 #endif /* AGGS */
+#ifdef SLIDING_PATCH
+	mdlAddService(mdl,PST_RANDAZWRAP,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstRandAzWrap,
+				  sizeof(struct inRandAzWrap),sizeof(struct outRandAzWrap));
+#endif /* SLIDING_PATCH */
+#ifdef RUBBLE_ZML
+	mdlAddService(mdl,PST_DUSTBINSGETMASS,pst,
+				  (void (*)(void*,void*,int,void*,int*)) pstDustBinsGetMass,
+				  sizeof(struct inDustBinsGetMass),sizeof(struct outDustBinsGetMass));
+	mdlAddService(mdl,PST_DUSTBINSAPPLY,pst,
+				  (void (*)(void*,void*,int,void*,int*)) pstDustBinsApply,
+				  sizeof(struct inDustBinsApply),0);
+	mdlAddService(mdl,PST_RUBBLERESETCOLFLAG,pst,
+				  (void (*)(void*,void*,int,void*,int*)) pstRubbleResetColFlag,0,0);
+	mdlAddService(mdl,PST_RUBBLECHECKFORKDKRESTART,pst,
+				  (void (*)(void*,void*,int,void*,int*)) pstRubbleCheckForKDKRestart,
+				  0,sizeof(struct outRubbleCheckForKDKRestart));
+	mdlAddService(mdl,PST_RUBBLESTEP,pst,
+				  (void (*)(void*,void*,int,void*,int*)) pstRubbleStep,
+				  sizeof(struct inRubbleStep),0);
+	mdlAddService(mdl,PST_RUBCLEANUP,pst,
+				  (void (*)(void*,void*,int,void*,int*)) pstRubCleanup,
+				  sizeof(struct inRubCleanup),sizeof(struct outRubCleanup));
+	mdlAddService(mdl,PST_RUBINTERPCLEANUP,pst,
+				  (void (*)(void*,void*,int,void*,int*)) pstRubInterpCleanup,
+				  sizeof(struct inRubInterpCleanup),
+				  sizeof(struct outRubInterpCleanup));
+#endif /* RUBBLE_ZML */
 #ifdef STARFORM
 	mdlAddService(mdl,PST_FORMSTARS,pst,
 		      (void (*)(void *,void *,int,void *,int *)) pstFormStars,
@@ -860,14 +912,14 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 	     inWt.fSplit = fmm;
 	     inWt.ittr = 0;
 	     inWt.iSplitSide = 1;
-	     inWt.pFlag = 1;
+	     inWt.pFlag = 1; /* RUBBLE_ZML - Zoe found that parallel runs decomposed better with this set to 0 */
 	     mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 	     inWt.iSplitSide = 0;
 	     pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
 	     mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
 	     nTotalActive = outWtLow.nLow + outWtHigh.nLow
 	       + outWtLow.nHigh + outWtHigh.nHigh;
-	     pFlag = 1;
+	     pFlag = 1; /* RUBBLE_ZML - Zoe found that parallel runs decomposed better with this set to 0 */
 	     if (!bDoRootFind) {
 	          pFlag = 0; /* Divide them all */
 		  mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
@@ -3084,8 +3136,8 @@ void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 #ifdef SLIDING_PATCH
-		plcl->pkd->dOrbFreq = in->dOrbFreq;
 		plcl->pkd->dTime = in->dTime;
+		plcl->pkd->PP = &in->PP;
 #endif
 		pkdGravAll(plcl->pkd,in->nReps,in->bPeriodic,in->iOrder,in->bEwald,
 				   in->iEwOrder,in->dEwCut,in->dEwhCut,in->bDoSun,in->dSunSoft,out->aSun,
@@ -3130,17 +3182,21 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlReqService(pst->mdl,pst->idUpper,PST_GRAVEXTERNAL,in,nIn);
 		pstGravExternal(pst->pstLower,in,nIn,out,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,&outLcl,NULL);
-		for(j = 0; j < 3; j++) {
+		if (out != NULL) {
+		  for(j = 0; j < 3; j++) {
 		    out->dAcc[j] += outLcl.dAcc[j];
 		    out->dTorque[j] += outLcl.dTorque[j];
-		    }
+		  }
+		}
 		}
 	else {
 	    int j;
 
-	    for(j = 0; j < 3; j++) {
-		out->dAcc[j] = 0.0;
-		out->dTorque[j] = 0.0;
+		if (out != NULL) {
+		  for(j = 0; j < 3; j++) {
+			out->dAcc[j] = 0.0;
+			out->dTorque[j] = 0.0;
+		  }
 		}
 		if (in->bIndirect) {
 			pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass,in->dSunSoft);
@@ -3170,6 +3226,7 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			pkdTimeVarying(plcl->pkd,in->dTime);
 			}
 		if (in->bRotatingBar) {
+		  assert(out != NULL);
 			pkdRotatingBar(plcl->pkd, in->dRotBarAmp,
 				       in->dRotBarPosAng,
 				       in->dRotBarB5, in->aCom, out->dAcc,
@@ -3182,14 +3239,19 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 #endif
 #ifdef SLIDING_PATCH
 		if (in->bPatch) {
-			plcl->pkd->dOrbFreq = in->dOrbFreq;
-			pkdPatch(plcl->pkd,in->dOrbFreqZ2);
-			}
+		  /*
+		  ** Could just pass these to pkdPatch directly, but since the
+		  ** PKD struct already has space for them, we'll just use that.
+		  */
+		  plcl->pkd->dTime = in->dTime;
+		  plcl->pkd->PP = &in->PP;
+		  pkdPatch(plcl->pkd);
+		}
 #endif
 #ifdef SIMPLE_GAS_DRAG
 		if (in->bSimpleGasDrag) {
 			pkdSimpleGasDrag(plcl->pkd,in->iFlowOpt,in->bEpstein,in->dGamma,
-							 in->dOmegaZ,in->dTime);
+							 in->dTime);
 			}
 #endif
 		}
@@ -3255,8 +3317,8 @@ void pstDrift(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 #ifdef SLIDING_PATCH
-		plcl->pkd->dOrbFreq = in->dOrbFreq;
 		plcl->pkd->dTime = in->dTime;
+		plcl->pkd->PP = &in->PP;
 #endif
 		pkdDrift(plcl->pkd,in->dDelta,in->fCenter,in->bPeriodic,in->bFandG,
 				 in->fCentMass);
@@ -4612,7 +4674,7 @@ pstGetSpecialParticles(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 				out->sInfo[i] = local.sInfo[i];
 		}
 	else {
-		pkdGetSpecialParticles(plcl->pkd,in->nSpecial,in->iId,in->dCentMass,
+		pkdGetSpecialParticles(plcl->pkd,in->nSpecial,in->iId,&in->mInfo,
 							   out->sInfo);
 		}
 	if (pnOut) *pnOut = sizeof(*out);
@@ -4632,12 +4694,12 @@ pstDoSpecialParticles(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlReqService(pst->mdl,pst->idUpper,PST_DOSPECIALPARTICLES,
 			      vin,nIn);
 		pstDoSpecialParticles(pst->pstLower,vin,nIn,vout,pnOut);
-		if (in->bNonInertial) for (k=0;k<3;k++) aFrame[k] = out->aFrame[k];
+		if (in->mInfo.bNonInertial) for (k=0;k<3;k++) aFrame[k] = out->aFrame[k];
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
-		if (in->bNonInertial) for (k=0;k<3;k++) out->aFrame[k] += aFrame[k];
+		if (in->mInfo.bNonInertial) for (k=0;k<3;k++) out->aFrame[k] += aFrame[k];
 		}
 	else {
-		pkdDoSpecialParticles(plcl->pkd,in->nSpecial,in->bNonInertial,
+		pkdDoSpecialParticles(plcl->pkd,in->nSpecial,&in->mInfo,
 							  in->sData,in->sInfo,out->aFrame);
 		}
 	if (pnOut) *pnOut = sizeof(*out);
@@ -4646,6 +4708,24 @@ pstDoSpecialParticles(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 #endif /* SPECIAL_PARTICLES */
 
 #ifdef COLLISIONS
+
+void pstSetBall(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inSetBall *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inSetBall));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_SETBALL,in,nIn);
+		pstSetBall(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdSetBall(plcl->pkd,in->dDelta,in->dBallVelFact);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+  
 
 void
 pstNumRejects(PST pst,void *vin,int nIn,void *vout,int *pnOut)
@@ -4840,6 +4920,55 @@ pstGetColliderInfo(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = sizeof(*out);
 	}
 
+void 
+pstFindTightestBinary(PST pst,void *vin,int nIn,void *vout,int *pnOut) 
+{
+  LCL *plcl = pst->plcl;
+  struct inBinary *in = vin;
+  struct outBinary local,*out = vout;
+  
+  mdlassert(pst->mdl,nIn == sizeof(*in));
+  local.dBindEn = out->dBindEn = 0;
+  local.n = out->n = 0;
+  if (pst->nLeaves > 1) {
+    mdlReqService(pst->mdl,pst->idUpper,PST_FINDBINARY,vin,nIn);
+    pstFindTightestBinary(pst->pstLower,vin,nIn,&local,NULL);
+    mdlGetReply(pst->mdl,pst->idUpper,vout,NULL);
+    if (local.dBindEn < out->dBindEn) *out = local;
+  } else {
+    pkdFindTightestBinary(plcl->pkd,&out->dBindEn,&out->iOrder1,
+			  &out->iOrder2,&out->n);
+  }
+  if (pnOut) *pnOut = sizeof(*out);
+}
+
+void
+pstMergeBinary(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+  LCL *plcl = pst->plcl;
+  struct inMrgBnry *in = vin;
+  struct outMrgBnry local,*out = vout;
+
+  mdlassert(pst->mdl,nIn == sizeof(*in));
+  local.n=0;
+  if (pst->nLeaves > 1) {
+    mdlReqService(pst->mdl,pst->idUpper,PST_MERGEBINARY,vin,nIn);
+    pstMergeBinary(pst->pstLower,vin,nIn,&local,NULL);
+    mdlGetReply(pst->mdl,pst->idUpper,vout,NULL);
+    if (local.n) *out = local;
+  } else {
+    PKD pkd = plcl->pkd;
+    if (in->c1.id.iPid == pkd->idSelf || in->c2.id.iPid == pkd->idSelf) {
+#ifdef SLIDING_PATCH
+      pkd->PP = &in->PP;
+      pkd->dTime = in->dTime;
+#endif
+      pkdMergeBinary(pkd,(const COLLIDER *) &in->c1,(const COLLIDER *) &in->c2,&out->cOut,in->bPeriodic,in->dBaseStep,in->dTimeNow,in->iTime0,in->dDensity,&out->n);
+    }
+    if (pnOut) *pnOut = sizeof(*out);
+  }
+}
+
 void
 pstDoCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -4861,8 +4990,8 @@ pstDoCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (in->Collider1.id.iPid == pkd->idSelf ||
 			in->Collider2.id.iPid == pkd->idSelf) {
 #ifdef SLIDING_PATCH
-			pkd->dOrbFreq = in->dOrbFreq;
 			pkd->dTime = in->dTime;
+			pkd->PP = &in->PP;
 #endif
 #ifdef AGGS
 			pkdAggsDoCollision(pkd,in->dt,&in->Collider1,&in->Collider2,
@@ -4870,7 +4999,8 @@ pstDoCollision(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 							   &out->iOutcome,&out->dT,out->Out,&out->nOut);
 #else
 			pkdDoCollision(pkd,in->dt,&in->Collider1,&in->Collider2,
-						   in->bPeriodic,&in->CP,&out->iOutcome,&out->dT,
+						   in->bPeriodic,in->iTime0,in->dBaseTime,
+					in->dTime,&in->CP,&out->iOutcome,&out->dT,
 						   out->Out,&out->nOut);
 #endif
 			}
@@ -5046,7 +5176,99 @@ pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 #endif /* OLD_KEPLER */
 
+#ifdef SLIDING_PATCH
+/* These are the subroutines for randomizing masses which are so large
+   they will violate the shearing patch Hamiltonian. */ 
+void 
+pstFindLargeMasses(PST pst,void *vin,int nIn,void *vOut,int *pnOut)
+{
+    struct inLargeMass *in = vin;
+    struct outLargeMass local,*out = vOut;
+    int i;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inLargeMass));
+	local.n = out->n = 0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_FINDLM,in,nIn);
+		pstFindLargeMasses(pst->pstLower,vin,nIn,vOut,NULL);
+		local = *out;		
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		mdlprintf(pst->mdl,"After GetReply\n");
+		if (local.n > 0) {
+		    /* assert((local.n+out->n) < MAXLARGEMASS);	*/	    
+		    for (i=0;i<local.n;i++) {
+			out->dRadius[out->n + i]=local.dRadius[i];
+			out->p[out->n + i]=local.p[i];		    
+			}
+		    out->n += local.n;
+		    }		
+	    }	
+	else {
+	    pkdFindLargeMasses(pst->plcl->pkd,in->dMass,in->dCentMass,in->dOrbRad,in->fNumHillSphere,out->p,out->dRadius,&out->n);
+	    }
+	
+	if (pnOut) *pnOut = sizeof(struct outLargeMass);
+	
+
+    }
+
+void
+pstGetNeighborParticles(PST pst,void *vin,int nIn,void *vOut,int *pnOut)
+{
+    struct inGetNeighbors *in = vin;
+    struct outGetNeighbors local,*out = vOut;
+    int i;    
+    
+        mdlassert(pst->mdl,nIn == sizeof(struct inGetNeighbors));
+	local.n = out->n = 0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_GETNEIGHBORS,in,nIn);
+		pstGetNeighborParticles(pst->pstLower,in,nIn,&local,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		if (local.n > 0) {
+		    assert((local.n + out->n) < MAXNEIGHBORS);		    
+		    for (i=0;i<local.n;i++) {
+			out->dSep2[i+out->n]=local.dSep2[i];
+			out->p[i+out->n]=local.p[i];
+			}
+		    out->n += local.n;
+		    }
+		
+	    }
+	else {
+	  pst->plcl->pkd->PP = &in->PP; /* PKD struct already has space for patch params pointer, so use that */
+	    pkdGetNeighborParticles(pst->plcl->pkd,in->x,in->dDist*in->dDist,in->id,in->dTime,out->p,out->dSep2,&out->n);
+	    }
+	if (pnOut) *pnOut = sizeof(struct outGetNeighbors);
+
+    }
+
+
+#endif /* SLIDING_PATCH */
+
 #endif /* COLLISIONS */
+
+void 
+pstMoveParticle(PST pst,void *vin,int nIn,void *vOut,int *pnOut)
+{
+    struct inMoveParticle *in = vin;
+
+        mdlassert(pst->mdl,nIn == sizeof(struct inMoveParticle));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_MOVEPART,in,nIn);
+		pstMoveParticle(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+#ifdef SLIDING_PATCH
+	  pst->plcl->pkd->PP = &in->PP;
+#endif
+	    pkdMoveParticle(pst->plcl->pkd,in->dOrigin,in->dRelx,in->p.iOrder);    
+	    }
+	
+    }
+ 
+
 
 #ifdef AGGS
 
@@ -5146,17 +5368,17 @@ void pstAggsGetCOM(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
 	if (pnOut) *pnOut = sizeof(*out);
 	}
 
-void pstAggsGetAxes(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+void pstAggsGetAxesAndSpin(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
 {
-	struct inAggsGetAxes *in = vIn;
-	struct outAggsGetAxes local,*out = vOut;
+	struct inAggsGetAxesAndSpin *in = vIn;
+	struct outAggsGetAxesAndSpin local,*out = vOut;
 
 	mdlassert(pst->mdl,nIn == sizeof(*in));
 	out->I[0][0] = out->I[0][1] = out->I[0][2] = out->I[1][1] =
 	out->I[1][2] = out->I[2][2] = out->L[0] = out->L[1] = out->L[2] = 0.0;
 	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSGETAXES,vIn,nIn);
-		pstAggsGetAxes(pst->pstLower,vIn,nIn,vOut,NULL);
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSGETAXESANDSPIN,vIn,nIn);
+		pstAggsGetAxesAndSpin(pst->pstLower,vIn,nIn,vOut,NULL);
 		local = *out;
 		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
 		out->I[0][0] += local.I[0][0];
@@ -5170,23 +5392,23 @@ void pstAggsGetAxes(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
 		out->L[2] += local.L[2];
 		}
 	else
-		pkdAggsGetAxes(pst->plcl->pkd,in->iAggIdx,in->r_com,in->v_com,
-					   out->I,out->L);
+		pkdAggsGetAxesAndSpin(pst->plcl->pkd,in->iAggIdx,in->r_com,in->v_com,
+							  out->I,out->L);
 	if (pnOut) *pnOut = sizeof(*out);
 	}
 
-void pstAggsToBodyAxes(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+void pstAggsSetBodyPos(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
 {
-	struct inAggsToBodyAxes *in = vIn;
+	struct inAggsSetBodyPos *in = vIn;
 
 	mdlassert(pst->mdl,nIn == sizeof(*in));
 	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSTOBODYAXES,vIn,nIn);
-		pstAggsToBodyAxes(pst->pstLower,vIn,nIn,NULL,NULL);
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSSETBODYPOS,vIn,nIn);
+		pstAggsSetBodyPos(pst->pstLower,vIn,nIn,NULL,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else
-		pkdAggsToBodyAxes(pst->plcl->pkd,in->iAggIdx,in->spaceToBody);
+		pkdAggsSetBodyPos(pst->plcl->pkd,in->iAggIdx,in->spaceToBody);
 	if (pnOut) *pnOut = 0;
 	}
 
@@ -5236,6 +5458,25 @@ void pstAggsSetSpaceSpins(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
+void pstAggsDelete(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inAggsDelete *in = vIn;
+	struct outAggsDelete local,*out = vOut;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	out->bFound = 0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSDELETE,vIn,nIn);
+		pstAggsDelete(pst->pstLower,vIn,nIn,NULL,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		if (local.bFound == 1) out->bFound = 1;
+		}
+	else
+		pkdAggsDelete(pst->plcl->pkd,in->iAggIdx,&out->bFound);
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
 void pstAggsGetAccel(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
 {
 	struct inAggsGetAccel *in = vIn;
@@ -5255,6 +5496,28 @@ void pstAggsGetAccel(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
 		}
 	else
 		pkdAggsGetAccel(pst->plcl->pkd,in->iAggIdx,&out->m,out->ma);
+	if (pnOut) *pnOut = sizeof(*out);
+	}
+
+void pstAggsCheckStress(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inAggsCheckStress *in = vIn;
+	struct outAggsCheckStress local,*out = vOut;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	out->nLost = out->nLeft = 0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSCHECKSTRESS,vIn,nIn);
+		pstAggsCheckStress(pst->pstLower,vIn,nIn,vOut,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		out->nLost += local.nLost;
+		out->nLeft += local.nLeft;
+		}
+	else
+		pkdAggsCheckStress(pst->plcl->pkd,in->iAggIdx,in->r_com,in->a_com,
+						   in->omega,in->fTensileStrength,in->fShearStrength,
+						   &out->nLost,&out->nLeft);
 	if (pnOut) *pnOut = sizeof(*out);
 	}
 
@@ -5279,32 +5542,174 @@ void pstAggsGetTorque(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
 	if (pnOut) *pnOut = sizeof(*out);
 	}
 
-void pstAggsActivate(PST pst,void* vin,int nIn,void* vOut,int* pnOut)
-{
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSACTIVATE,0,0);
-		pstAggsActivate(pst->pstLower,NULL,0,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-		}
-	else
-		pkdAggsActivate(pst->plcl->pkd);
-	if (pnOut) *pnOut = 0;
-	}
-
-void pstAggsDeactivate(PST pst,void* vin,int nIn,void* vOut,int* pnOut)
-{
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_AGGSDEACTIVATE,0,0);
-		pstAggsDeactivate(pst->pstLower,NULL,0,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-		}
-	else
-		pkdAggsDeactivate(pst->plcl->pkd);
-	if (pnOut) *pnOut = 0;
-	}
-
 #endif /* AGGS */
 
+#ifdef SLIDING_PATCH
+
+void pstRandAzWrap(PST pst,void *vIn,int nIn,void *vOut,int *pnOut)
+{
+  LCL *plcl = pst->plcl;
+  struct inRandAzWrap *in = vIn;
+  struct outRandAzWrap *out = vOut;
+  int nRand;
+
+  mdlassert(pst->mdl,nIn == sizeof(*in));
+  if (pst->nLeaves > 1) {
+	mdlReqService(pst->mdl,pst->idUpper,PST_RANDAZWRAP,vIn,nIn);
+	pstRandAzWrap(pst->pstLower,vIn,nIn,vOut,pnOut);
+	nRand = out->nRandomized;
+	mdlGetReply(pst->mdl,pst->idUpper,vOut,pnOut);
+	out->nRandomized += nRand;
+  }
+  else {
+	/*
+	** Like pkdPatch(), could just pass this directly, but since the
+	** PKD struct already has space for them, we'll just use that.
+	*/
+	plcl->pkd->PP = &in->PP;
+	out->nRandomized = pkdRandAzWrap(plcl->pkd);
+  }
+  if (pnOut) *pnOut = sizeof(*out);
+}
+
+#endif /* SLIDING_PATCH */
+
+#ifdef RUBBLE_ZML
+
+void 
+pstDustBinsGetMass(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inDustBinsGetMass *in = vIn;
+	struct outDustBinsGetMass local,*out = vOut;
+	int i;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	for (i=0;i<in->DB.nDustBins;i++) out->aDustBinsMassLoss[i] = 0.0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DUSTBINSGETMASS,vIn,nIn);
+		pstDustBinsGetMass(pst->pstLower,vIn,nIn,vOut,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		for (i=0;i<in->DB.nDustBins;i++)
+			out->aDustBinsMassLoss[i] += local.aDustBinsMassLoss[i];
+		}
+	else
+		pkdDustBinsGetMass(pst->plcl->pkd,&in->DB,in->aDustBins,in->dTimeInt,in->dCentMass,
+						   out->aDustBinsMassLoss);
+	if (pnOut) *pnOut = sizeof(*out);
+	}				   
+
+void 
+pstDustBinsApply(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inDustBinsApply *in = vIn;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DUSTBINSAPPLY,vIn,nIn);
+		pstDustBinsApply(pst->pstLower,vIn,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else
+		pkdDustBinsApply(pst->plcl->pkd,in->dCentMass,in->aMassIncrFrac,in->nBins);
+	}				   
+
+void 
+pstRubbleResetColFlag(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	mdlassert(pst->mdl,nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_RUBBLERESETCOLFLAG,NULL,0);
+		pstRubbleResetColFlag(pst->pstLower,NULL,0,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else
+		pkdRubbleResetColFlag(pst->plcl->pkd);
+}
+
+void 
+pstRubbleCheckForKDKRestart(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct outRubbleCheckForKDKRestart local,*out = vOut;
+
+	mdlassert(pst->mdl,nIn == 0);
+	out->bRestart = 0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_RUBBLECHECKFORKDKRESTART,NULL,0);
+		pstRubbleCheckForKDKRestart(pst->pstLower,NULL,0,vOut,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		if (local.bRestart) out->bRestart = 1;
+		}
+	else
+		out->bRestart = pkdRubbleCheckForKDKRestart(pst->plcl->pkd);
+}
+
+void 
+pstRubbleStep(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inRubbleStep *in = vIn;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_RUBBLESTEP,vIn,nIn);
+		pstRubbleStep(pst->pstLower,vIn,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else
+		pkdRubbleStep(pst->plcl->pkd,in->dMaxStep,in->dMinStep);
+}
+
+void 
+pstRubCleanup(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inRubCleanup *in = vIn;
+	struct outRubCleanup local,*out = vOut;
+	int i;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+
+	for (i=0;i<in->DB.nDustBins;i++) out->aDustBinsMassGain[i] = 0.0;
+	out->dDustBinsRubTrash = 0.0;
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_RUBCLEANUP,vIn,nIn);
+		pstRubCleanup(pst->pstLower,vIn,nIn,vOut,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		for (i=0;i<in->DB.nDustBins;i++) 
+			out->aDustBinsMassGain[i] += local.aDustBinsMassGain[i];
+		out->dDustBinsRubTrash += local.dDustBinsRubTrash;
+	}
+	else
+		pkdRubCleanup(pst->plcl->pkd,in->iColor,&in->DB,in->dCentMass,
+					  out->aDustBinsMassGain,&out->dDustBinsRubTrash);
+	if (pnOut) *pnOut = sizeof(*out);
+}
+
+void 
+pstRubInterpCleanup(PST pst,void* vIn,int nIn,void* vOut,int* pnOut)
+{
+	struct inRubInterpCleanup *in = vIn;
+	struct outRubInterpCleanup local,*out = vOut;
+
+	mdlassert(pst->mdl,nIn == sizeof(*in));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_RUBINTERPCLEANUP,vIn,nIn);
+		pstRubInterpCleanup(pst->pstLower,vIn,nIn,vOut,NULL);
+		local = *out;
+		mdlGetReply(pst->mdl,pst->idUpper,vOut,NULL);
+		if (local.dDustBinsInterpMass > 0.0) {
+			assert(out->dDustBinsInterpMass == 0.0); /* sanity check: only one processor can report dust mass */
+			*out = local;
+			}
+		}
+	else
+		pkdRubInterpCleanup(pst->plcl->pkd,&in->DB,in->dCentMass,in->iOrder,
+							&out->iBin,&out->dDustBinsInterpMass);
+	if (pnOut) *pnOut = sizeof(*out);
+}
+
+#endif /* RUBBLE_ZML */
 
 void 
 pstClearTimer(PST pst,void *vin,int nIn,void *vout,int *pnOut)
@@ -5325,53 +5730,53 @@ pstClearTimer(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 void pstMassInR(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
-	LCL *plcl = pst->plcl;
-	struct inMassInR *in = vin;
-	struct outMassInR *out = vout;
-	struct outMassInR outLcl;
+        LCL *plcl = pst->plcl;
+        struct inMassInR *in = vin;
+        struct outMassInR *out = vout;
+        struct outMassInR outLcl;
 
-	mdlassert(pst->mdl,nIn == sizeof(struct inMassInR));
-	if (pst->nLeaves > 1) {
-	        int k;
-		double dTMass;
+        mdlassert(pst->mdl,nIn == sizeof(struct inMassInR));
+        if (pst->nLeaves > 1) {
+                int k;
+                double dTMass;
 
-		mdlReqService(pst->mdl,pst->idUpper,PST_MASSINR,in,nIn);
-		pstMassInR(pst->pstLower,in,nIn,out,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,&outLcl,NULL);
-		dTMass = out->dMass + outLcl.dMass;
-		if(dTMass == 0.0) {
-		    for(k = 0; k < 3; k++)
-			out->com[k] = 0.0;
-		    }
-		else {
-		    for(k = 0; k < 3; k++)
-		        out->com[k] = (out->com[k]*out->dMass +
-			    outLcl.com[k]*outLcl.dMass)/dTMass;
-		    }
-		out->dMass = dTMass;
-		}
-	else {
-		pkdMassInR(plcl->pkd, in->R, &out->dMass, out->com);
-		}
-	if (pnOut) *pnOut = sizeof(struct outMassInR);
-	}
+                mdlReqService(pst->mdl,pst->idUpper,PST_MASSINR,in,nIn);
+                pstMassInR(pst->pstLower,in,nIn,out,NULL);
+                mdlGetReply(pst->mdl,pst->idUpper,&outLcl,NULL);
+                dTMass = out->dMass + outLcl.dMass;
+                if(dTMass == 0.0) {
+                    for(k = 0; k < 3; k++)
+                        out->com[k] = 0.0;
+                    }
+                else {
+                    for(k = 0; k < 3; k++)
+                        out->com[k] = (out->com[k]*out->dMass +
+                            outLcl.com[k]*outLcl.dMass)/dTMass;
+                    }
+                out->dMass = dTMass;
+                }
+        else {
+                pkdMassInR(plcl->pkd, in->R, &out->dMass, out->com);
+                }
+        if (pnOut) *pnOut = sizeof(struct outMassInR);
+        }
 
 void pstInitRotBar(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
-	LCL *plcl = pst->plcl;
-	struct inRotBar *in = vin;
+        LCL *plcl = pst->plcl;
+        struct inRotBar *in = vin;
 
-	mdlassert(pst->mdl,nIn == sizeof(struct inRotBar));
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_ROTBARINIT,in,nIn);
-		pstInitRotBar(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
-		}
-	else {
-	    pkdInitRotBar(plcl->pkd, &(in->rotbar));
-	    }
-	if (pnOut) *pnOut = 0;
-	}
+        mdlassert(pst->mdl,nIn == sizeof(struct inRotBar));
+        if (pst->nLeaves > 1) {
+                mdlReqService(pst->mdl,pst->idUpper,PST_ROTBARINIT,in,nIn);
+                pstInitRotBar(pst->pstLower,in,nIn,NULL,NULL);
+                mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+                }
+        else {
+            pkdInitRotBar(plcl->pkd, &(in->rotbar));
+            }
+        if (pnOut) *pnOut = 0;
+        }
 
 #ifdef NEED_VPRED
 #ifdef GASOLINE

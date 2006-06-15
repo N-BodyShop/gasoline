@@ -8,7 +8,7 @@
 #define ARRAY			1
 #define FDL				2
 #define TYPE			3
-#define FDL_SIZE			4
+#define FDL_SIZE		4
 #define INDEX			5
 #define NUM_COMMANDS	6
 #define FIX_SIZE		7

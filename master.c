@@ -45,7 +45,10 @@
 #include "collision.h"
 #endif
 
-#define LOCKFILE ".lockfile"	/* for safety lock */
+#ifdef RUBBLE_ZML
+#include "rubble.h"
+#endif
+
 #define STOPFILE "STOP"			/* for user interrupt */
 
 #define NEWTIME
@@ -63,7 +66,7 @@ double msrTime(void) {
 #endif
 
 #define DEN_CGS_SYS 1.6831e6 /* multiply density in cgs by this to get
-                                density in system units (AU, M_Sun) */
+								density in system units (AU, M_Sun) */
 
 void _msrLeader(void)
 {
@@ -287,7 +290,7 @@ _msrGetSpecialData(MSR msr,const char achFilenameWithQuotes[])
 				}
 			}
 		if (!((s[i].iType & SPECIAL_OBLATE) || (s[i].iType & SPECIAL_GR) ||
-			  (s[i].iType & SPECIAL_FORCE))) {
+			 (s[i].iType & SPECIAL_FORCE)|| (s[i].iType & SPECIAL_NOGHOSTPERT))) {
 			(void) fprintf(stderr,"Invalid data type (%i) in \"%s\", entry %i\n",
 						   s[i].iType,achFilename,i);
 			goto abort;
@@ -312,6 +315,9 @@ _msrGetSpecialData(MSR msr,const char achFilenameWithQuotes[])
 				goto abort;
 				}
 			}
+		if (s[i].iType & SPECIAL_NOGHOSTPERT) {
+		        /* Do Nothing */
+		        }
 		}
 	(void) fclose(fp);
 	return;
@@ -367,7 +373,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"enable/disable per thread diagnostic output");
 	msr->param.bOverwrite = 0;
 	prmAddParam(msr->prm,"bOverwrite",0,&msr->param.bOverwrite,sizeof(int),
-				"overwrite","enable/disable overwrite safety lock = +overwrite");
+				"overwrite","enable/disable checkpoint overwrite = +overwrite");
 	msr->param.bVWarnings = 1;
 	prmAddParam(msr->prm,"bVWarnings",0,&msr->param.bVWarnings,sizeof(int),
 				"vwarnings","enable/disable warnings = +vwarnings");
@@ -561,6 +567,49 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.iMaxRung = 1;
 	prmAddParam(msr->prm,"iMaxRung",1,&msr->param.iMaxRung,sizeof(int),
 				"mrung", "<maximum timestep rung>");
+#ifdef COLLISIONS
+	assert(MAX_NUM_FRAG >= 2); /* must allow at least 2 particles */
+	/* Set to < 0 to disable */
+	msr->param.iMinBinaryRung=-1;
+	prmAddParam(msr->prm,"iMinBinaryRung",1,&msr->param.iMinBinaryRung,
+				sizeof(int),"MinBinaryRung",
+				"<minimum rung to search for binaries>");
+	msr->param.dBallVelFact=0;
+	prmAddParam(msr->prm,"dBallVelFact",2,&msr->param.dBallVelFact,
+		    sizeof(double),"BallVelFact",
+		    "<radius of collision search: r=dBVF*dDelta*velocity>");
+	msr->param.dMaxBinaryEcc=1;
+	prmAddParam(msr->prm,"dMaxBinaryEcc",2,&msr->param.dMaxBinaryEcc,
+		    sizeof(double),"MaxBinaryEcc",
+		    "<maximum binary eccentricity>");
+	assert(msr->param.dMaxBinaryEcc <= 1 && msr->param.dMaxBinaryEcc >= 0);
+	msr->param.iMinCollRung=0;
+	prmAddParam(msr->prm,"iMinCollRung",1,&msr->param.iMinCollRung,
+		    sizeof(int),"MinCollisionRung",
+		    "<minimum rung to search for collisions");
+	if (msr->param.iMinCollRung)
+	  assert(msr->param.iMaxRung > 1);
+#ifdef SLIDING_PATCH
+	msr->param.iRandStep=0;
+	prmAddParam(msr->prm,"iRandStep",1,&msr->param.iRandStep,
+		    sizeof(int),"StepsForRandomizingLargeMasses",
+		    "<whole steps between randomizing big masses>");
+	msr->param.dLargeMass=0;
+	prmAddParam(msr->prm,"dLargeMass",2,&msr->param.dLargeMass,
+		    sizeof(double),"MinMassForRandomization",
+		    "<minimum mass to randomly move>");
+	if (msr->param.iRandStep)
+	    assert(msr->param.dLargeMass > 0);
+	msr->param.dRandBall=0;
+	prmAddParam(msr->prm,"dRandBall",2,&msr->param.dRandBall,
+		    sizeof(double),"SizeOfBallDuringRandomMove",
+		    "<size of sphere to rondomly move>");
+	if (msr->param.dRandBall > 0) {
+	    assert(msr->param.dLargeMass != 0);
+	    assert(msr->param.iRandStep);
+	    }
+#endif /* SLIDING_PATCH */
+#endif /* COLLISIONS */
 	msr->param.dEwCut = 2.6;
 	prmAddParam(msr->prm,"dEwCut",2,&msr->param.dEwCut,sizeof(double),"ew",
 				"<dEwCut> = 2.6");
@@ -1051,12 +1100,65 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dGlassVR",2,&msr->param.dGlassVR,sizeof(double),
 				"dGlassVR","Right Max Random Velocity = 0.0");
 #endif /* GLASS */
+
+	/*
+	** Following is for the sliding patch model (cf. patch.h)...
+	*/
+
 	msr->param.bPatch = 0;
 	prmAddParam(msr->prm,"bPatch",0,&msr->param.bPatch,sizeof(int),
 				"patch","enable/disable patch reference frame = -patch");
-	msr->param.dOrbFreq = 0.0;
-	prmAddParam(msr->prm,"dOrbFreq",2,&msr->param.dOrbFreq,
-				sizeof(double),"orbfreq","<Patch orbit frequency>");
+	msr->param.PP.dOrbDist = 0.0;
+	prmAddParam(msr->prm,"dOrbDist",2,&msr->param.PP.dOrbDist,
+				sizeof(double),"orbdist","<Patch orbital distance>");
+	msr->param.PP.bExtPert = 0;
+	prmAddParam(msr->prm,"bExtPert",0,&msr->param.PP.bExtPert,
+				sizeof(int),"extpert","enable/disable patch perturber = -extpert");
+	msr->param.PP.dPertOrbDist = 0.0;
+	prmAddParam(msr->prm,"dPertOrbDist",2,&msr->param.PP.dPertOrbDist,
+				sizeof(double),"pertorbdist","<Perturber orbital distance>");
+	msr->param.PP.dPertMass = 0.0;
+	prmAddParam(msr->prm,"dPertMass",2,&msr->param.PP.dPertMass,
+				sizeof(double),"pertmass","<Perturber mass>");
+	msr->param.PP.dPertMaxZ = 0.0;
+	prmAddParam(msr->prm,"dPertMaxZ",2,&msr->param.PP.dPertMaxZ,
+				sizeof(double),"pertmaxz","<Perturber maximum z height>");
+	msr->param.PP.dPertOrbFreqZ = 0.0;
+	prmAddParam(msr->prm,"dPertOrbFreqZ",2,&msr->param.PP.dPertOrbFreqZ,
+				sizeof(double),"pertorbfreqz","<Perturber vertical orbital frequency>");
+	msr->param.PP.dPertPhase = 0.0;
+	prmAddParam(msr->prm,"dPertPhase",2,&msr->param.PP.dPertPhase,
+				sizeof(double),"pertphase","<Perturber orbital phase>");
+	msr->param.PP.dPertPhaseZ = 0.0;
+	prmAddParam(msr->prm,"dPertPhaseZ",2,&msr->param.PP.dPertPhaseZ,
+				sizeof(double),"pertphasez","<Perturber vertical orbital phase>");
+	msr->param.PP.bRandAzWrap = 0;
+	prmAddParam(msr->prm,"bRandAzWrap",0,&msr->param.PP.bRandAzWrap,
+				sizeof(int),"randazwrap","enable/disable random azimuthal wrap = -randazwrap");
+	msr->param.PP.iStripOption = 2;
+	prmAddParam(msr->prm,"iStripOption",1,&msr->param.PP.iStripOption,
+				sizeof(int),"stripoption","<Strip option> = 2");
+	msr->param.PP.dStripInner = 0.0;
+	prmAddParam(msr->prm,"dStripInner",2,&msr->param.PP.dStripInner ,
+				sizeof(double),"stripinner","<Inner edge of strip in patch width units for random azimuthal wrap> = 0.0");
+	msr->param.PP.dStripOuter = 0.5;
+	prmAddParam(msr->prm,"dStripOuter",2,&msr->param.PP.dStripOuter,
+				sizeof(double),"stripouter","<Outer edge of strip in patch width units for random azimuthal wrap> = 0.5");
+	msr->param.PP.dVelDispX = 0.0;
+	prmAddParam(msr->prm,"dVelDispX",2,&msr->param.PP.dVelDispX,
+				sizeof(double),"veldispx","<Radial velocity dispersion for random azimuthal wrap>");
+	msr->param.PP.dVelDispY = 0.0;
+	prmAddParam(msr->prm,"dVelDispY",2,&msr->param.PP.dVelDispY,
+				sizeof(double),"veldispy","<Azimuthal velocity dispersion for random azimuthal wrap>");
+	msr->param.PP.dAvgVertAmp = 0.0;
+	prmAddParam(msr->prm,"dAvgVertAmp",2,&msr->param.PP.dAvgVertAmp,
+				sizeof(double),"avgvertamp","<Mean vertical oscillation amplitude for random azimuthal wrap>");	
+	msr->param.PP.dAvgMass = 0.0;
+	prmAddParam(msr->prm,"dAvgMass",2,&msr->param.PP.dAvgMass,
+				sizeof(double),"avgmass","<Average particle mass for random azimuthal wrap>");
+
+	/* simple gas drag */
+
 	msr->param.bSimpleGasDrag = 0;
 	prmAddParam(msr->prm,"bSimpleGasDrag",0,&msr->param.bSimpleGasDrag,
 				sizeof(int),"sgd","enable/disable simple gas drag = -sgd");
@@ -1134,6 +1236,49 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.CP.bFixCollapse = 0;
 	prmAddParam(msr->prm,"bFixCollapse",0,&msr->param.CP.bFixCollapse,
 				sizeof(int),"overlap","enable/disable overlap fix = -overlap");
+	/*
+	 ** Added to ss.par by ZML 08.20.03 - for resolved rubble collisions
+	 */
+
+#ifdef RUBBLE_ZML
+	msr->param.CP.dRubbleMinFracMass = 0.2;
+	prmAddParam(msr->prm,"dRubbleMinFracMass",2,&msr->param.CP.dRubbleMinFracMass,
+				sizeof(double),"rubminfrac","<rubminfrac collision outcome criterion> = 0.2");
+	msr->param.CP.DB.dRubMinMass = 1.5e-10;
+	prmAddParam(msr->prm,"dRubMinMass",2,&msr->param.CP.DB.dRubMinMass,sizeof(double),
+				"rubmin","<rubmin max size put into dust> = 1.5e-10");
+	msr->param.CP.DB.iRubNumDynToBounce = 10;
+	prmAddParam(msr->prm,"iRubNumDynToBounce",0,&msr->param.CP.DB.iRubNumDynToBounce,
+				sizeof(int),"rndtb","<rndtb number of dyn times bouncing> = 10");
+	msr->param.CP.DB.iRubNumDynToMerge = 10;
+	prmAddParam(msr->prm,"iRubNumDynToMerge",0,&msr->param.CP.DB.iRubNumDynToMerge,
+				sizeof(int),"rndtm","<rndtm number of dyn times merging> = 10");
+	msr->param.bRubbleStep = 1;
+	prmAddParam(msr->prm,"bRubbleStep",0,&msr->param.bRubbleStep,sizeof(int),
+				"rs","<Rubble timestepping (min & max steps only)>");
+	msr->param.CP.DB.nDustBins = 0; /* turned off by default */
+	prmAddParam(msr->prm,"nDustBins",1,&msr->param.CP.DB.nDustBins,sizeof(int),
+				"ndb","<Number of dust bins (0 disables)> = 0");
+	msr->param.CP.DB.iDustBinsApplyInt = 10; /* should be < # steps/orbits */
+	prmAddParam(msr->prm,"iDustBinsApplyInt",1,&msr->param.CP.DB.iDustBinsApplyInt,
+				sizeof(int),"dba","<Dust bins application interval (> 0)> = 10");
+	msr->param.CP.DB.dDustBinsInner = 0.5; /* in AU */
+	prmAddParam(msr->prm,"dDustBinsInner",2,&msr->param.CP.DB.dDustBinsInner,
+				sizeof(double),"dbi","<Inner dust bin radius (AU)> = 0.5");
+	msr->param.CP.DB.dDustBinsOuter = 2.0; /* in AU */
+	prmAddParam(msr->prm,"dDustBinsOuter",2,&msr->param.CP.DB.dDustBinsOuter,
+				sizeof(double),"dbo","<Outer dust bin radius (AU)> = 2.0");
+	msr->param.CP.DB.dDustBinsScaleHeight = 1.0e-4; /* in AU */
+	prmAddParam(msr->prm,"dDustBinsScaleHeight",2,&msr->param.CP.DB.dDustBinsScaleHeight,
+				sizeof(double),"dbsh","<Dust bins scale height (AU)> = 1.0e-4");
+	msr->param.CP.DB.dDustBinsInitSigma = 0.1; /* in g/cm^2 */
+	prmAddParam(msr->prm,"dDustBinsInitSigma",2,&msr->param.CP.DB.dDustBinsInitSigma,
+				sizeof(double),"dbis","<Init. dust surf. mass den. at 1 AU (g/cm^2)> = 0.1");
+	msr->param.CP.DB.dDustBinsInitAlpha = -1.5;
+	prmAddParam(msr->prm,"dDustBinsInitAlpha",2,&msr->param.CP.DB.dDustBinsInitAlpha,
+				sizeof(double),"dbia","<Init. dust surf. mass den. power law exponent> = -1.5");
+#endif /* RUBBLE_ZML */
+
 	/*
 	 ** The following parameters are only relevant to SAND_PILE and SPECIAL_PARTICLES,
 	 ** but the parser is picky about unrecognized commands in parameter files, so
@@ -1508,10 +1653,126 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		}
 #endif
 
-#ifdef COLLISIONS
 	/*
 	 ** Parameter checks and initialization.
 	 */
+
+#ifdef SLIDING_PATCH
+	assert(msr->param.bDoGravity);
+	assert(!msr->param.bHeliocentric);
+	assert(!msr->param.bFandG);
+	if (msr->param.bPatch) {
+	  PATCH_PARAMS *PP = &msr->param.PP;
+	  if (!msr->param.bPeriodic) {
+		puts("ERROR: must use periodic BCs for patch model");
+		_msrExit(msr,1);
+	  }
+	  assert(msr->param.dxPeriod > 0.0);
+	  assert(msr->param.dyPeriod > 0.0);
+	  assert(msr->param.dzPeriod > 0.0);
+	  if (msr->param.dyPeriod == FLOAT_MAXVAL) {
+		puts("ERROR: must specify positive y period for patch");
+		_msrExit(msr,1);
+	  }
+	  assert(msr->param.nReplicas > 0);
+	  if (msr->param.bEwald) {
+		puts("ERROR: cannot use Ewald correction in patch model");
+		_msrExit(msr,1);
+	  }
+	  if (msr->param.dCentMass <= 0.0) {
+		puts("ERROR: must specify positive central mass for patch model");
+		_msrExit(msr,1);
+	  }
+	  if (PP->dOrbDist <= 0.0) {
+		puts("ERROR: must specify positive orbital distance for patch model");
+		_msrExit(msr,1);
+	  }
+	  if (PP->bExtPert) {
+		if (PP->dPertOrbDist <= 0.0) {
+		  puts("ERROR: must specify positive perturber orbital distance");
+		  _msrExit(msr,1);
+		}
+		if (PP->dPertMass <= 0.0) {
+		  puts("ERROR: must specify positive perturber mass");
+		  _msrExit(msr,1);
+		}
+		if (PP->dPertMaxZ < 0.0) {
+		  puts("ERROR: perturber maximum vertical displacement must be non-negative");
+		  _msrExit(msr,1);
+		}
+		if (PP->dPertOrbFreqZ < 0.0) {
+		  puts("ERROR: perturber vertical orbital frequency must be non-negative");
+		  _msrExit(msr,1);
+		}
+	  }
+	  if (PP->bRandAzWrap) {
+		if (PP->iStripOption != STRIP_LEFT_ONLY && PP->iStripOption !=
+			STRIP_RIGHT_ONLY && PP->iStripOption != STRIP_BOTH) {
+		  puts("ERROR: invalid strip option");
+		  _msrExit(msr,1);
+		}
+		if (PP->dStripInner < 0.0 || PP->dStripInner >= 0.5) {
+		  puts("ERROR: strip inner edge must be >= 0.0 and < 0.5");
+		  _msrExit(msr,1);
+		}
+		if (PP->dStripOuter <= 0.0 || PP->dStripOuter > 0.5) {
+		  puts("ERROR: strip outer edge must be > 0.0 and <= 0.5");
+		  _msrExit(msr,1);
+		}
+		if (PP->dStripInner >= PP->dStripOuter) {
+		  puts("ERROR: strip inner edge must be < strip outer edge");
+		  _msrExit(msr,1);
+		}
+		if (PP->dVelDispX < 0.0) {
+		  puts("ERROR: radial velocity dispersion must be non-negative");
+		  _msrExit(msr,1);
+		}
+		if (PP->dVelDispY < 0.0) {
+		  puts("ERROR: azimuthal velocity dispersion must be non-negative");
+		  _msrExit(msr,1);
+		}
+		if (PP->dAvgVertAmp < 0.0) {
+		  puts("ERROR: vertical amplitude must be non-negative");
+		  _msrExit(msr,1);
+		}
+		if (PP->dAvgMass <= 0.0) {
+		  puts("ERROR: average particle mass must be positive");
+		  _msrExit(msr,1);
+		}
+	  }
+	  /* load up PATCH_PARAMS struct */
+	  PP->dCentMass = msr->param.dCentMass;
+	  PP->dWidth = msr->param.dxPeriod;
+	  PP->dLength = msr->param.dyPeriod;
+	  PP->dOrbFreq = sqrt(PP->dCentMass/(PP->dOrbDist*PP->dOrbDist*PP->dOrbDist));
+	  if (msr->param.bVStart)
+		(void) printf("Patch: orb freq = %g = %g rad/s <==> P = %g h = %g d\n",
+					  PP->dOrbFreq,2*M_PI*PP->dOrbFreq/(365.25*24*3600),
+					  365.25*24/PP->dOrbFreq,365.25/PP->dOrbFreq);
+	  if (PP->bExtPert) {
+		PP->dPertOrbFreq = sqrt(PP->dCentMass/(PP->dPertOrbDist*PP->dPertOrbDist*PP->dPertOrbDist));
+		if (msr->param.bVStart)
+		  (void) printf("Patch: perturber orb freq = %g = %g rad/s <==> P = %g h = %g d\n",
+						PP->dPertOrbFreq,2*M_PI*PP->dPertOrbFreq/(365.25*24*3600),
+						365.25*24/PP->dPertOrbFreq,365.25/PP->dPertOrbFreq);
+	  }
+	  if (PP->bRandAzWrap) {
+		PP->dStripInner *= PP->dWidth;
+		PP->dStripOuter *= PP->dWidth;
+		if (msr->param.bVStart)
+		  (void) printf("Patch: strip limits = %g to %g AU\n",PP->dStripInner,PP->dStripOuter);
+	  }
+	}
+	else
+	  puts("WARNING: SLIDING_PATCH set without bPatch");
+#else
+	if (msr->param.bPatch) {
+	  puts("ERROR: bPatch set without SLIDING_PATCH");
+	  _msrExit(msr,1);
+	}
+#endif /* SLIDING_PATCH */
+
+#ifdef COLLISIONS
 #ifdef GASOLINE
 	puts("ERROR: can't mix COLLISIONS and GASOLINE!");
 	_msrExit(msr,1);
@@ -1531,12 +1792,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	if (msr->param.bVWarnings && msr->param.nSmooth < 2)
 		puts("WARNING: collision detection disabled (nSmooth < 2)");
 #endif
-	if (!msr->param.bHeliocentric) msr->param.dCentMass = 0; /* just in case */
 	assert(msr->param.dCentMass >= 0.0);
 	if (msr->param.bFandG) {
-#ifdef SLIDING_PATCH
-		assert(0);
-#endif
 #ifdef SAND_PILE
 		assert(0);
 #endif
@@ -1562,45 +1819,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			_msrExit(msr,1);
 			}
 		}
-	if (msr->param.bPatch) {
-		if (msr->param.dOrbFreq <= 0) {
-			puts("ERROR: must specify positive patch orbit frequency");
-			_msrExit(msr,1);
-			}
-		if (!msr->param.bPeriodic) {
-			puts("ERROR: must use periodic BCs for patch model");
-			_msrExit(msr,1);
-			}
-		assert(msr->param.dxPeriod > 0.0);
-		assert(msr->param.dyPeriod > 0.0);
-		assert(msr->param.dzPeriod > 0.0);
-		if (msr->param.dyPeriod == FLOAT_MAXVAL) {
-			puts("ERROR: must specify positive y period");
-			_msrExit(msr,1);
-			}
-		assert(msr->param.nReplicas > 0);
-		if (msr->param.bEwald) {
-			puts("ERROR: cannot use Ewald correction in patch model");
-			_msrExit(msr,1);
-			}
-		}
 #ifdef SAND_PILE
 	if (msr->param.iCheckInterval) {
 		puts("ERROR: Unable to checkpoint with SAND_PILE"); /* bStuck... */
-		_msrExit(msr,1);
-		}
-#endif
-#ifdef SLIDING_PATCH
-	if (!msr->param.bPatch) {
-		puts("WARNING: SLIDING_PATCH set without bPatch");
-		}
-	if (msr->param.bPatch && msr->param.bHeliocentric) {
-		puts("ERROR: Patch and Helocentric are incompatible");
-		_msrExit(msr,1);
-		}
-#else
-	if (msr->param.bPatch) {
-		puts("ERROR: bPatch set without SLIDING_PATCH");
 		_msrExit(msr,1);
 		}
 #endif
@@ -1719,8 +1940,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #ifdef AGGS
 #ifndef COLLISIONS
 	puts("ERROR: For aggregates, collisions must be defined.");
-	_msrExit(msr, 1);
+	_msrExit(msr,1);
 #endif
+	if (!msrKDK(msr)) {
+		puts("ERROR: For aggregates, only KDK scheme may be used.");
+		_msrExit(msr,1);
+		}
 #endif
 
 #ifdef SAND_PILE
@@ -1728,6 +1953,40 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #endif
 #ifdef SPECIAL_PARTICLES
 	_msrGetSpecialData(msr,achSpecialFile);
+#endif
+
+#ifdef RUBBLE_ZML
+	assert(msr->param.bHeliocentric);
+	assert(msr->param.bRubbleStep);
+	assert(msr->param.iMaxRung > 1);
+	assert(msr->param.CP.dDensity > 0);
+	if (msr->param.CP.DB.nDustBins > 0) {
+		DUST_BINS_PARAMS *p = &msr->param.CP.DB;
+		double ri,ro,a;
+		int i;
+		/* checks */
+		assert(p->nDustBins <= DUST_BINS_MAX_NUM);
+		assert(p->iDustBinsApplyInt > 0);
+		assert(p->dDustBinsInner < p->dDustBinsOuter);
+		assert(p->dDustBinsScaleHeight > 0.0);
+		assert(p->dDustBinsInitSigma >= 0.0);
+		if (p->dDustBinsInitSigma > 0.0) {
+			p->dDustBinsInitSigma *= 10*SQ(AU)/M_SUN; /* from g/cm^2 to system units */
+			assert(p->dDustBinsInitAlpha != -2);
+			}
+		/* initialization */
+		p->dDustBinsWidth = (p->dDustBinsOuter - p->dDustBinsInner)/p->nDustBins;
+		a = p->dDustBinsInitAlpha + 2; /* from integration of surface mass density */
+		for (i=0;i<p->nDustBins;i++) {
+			ri = p->dDustBinsInner + i*p->dDustBinsWidth;
+			ro = ri + p->dDustBinsWidth;
+			msr->aDustBins[i].dMass = TWO_PI*p->dDustBinsInitSigma*(pow(ro,a) - pow(ri,a))/a;
+			printf("Mass in DustBin = %e\n", msr->aDustBins[i].dMass);
+			msr->aDustBins[i].dVolume = M_PI*(SQ(ro) - SQ(ri))*p->dDustBinsScaleHeight;
+			}
+		}
+	msr->dDustBinsTrash = 0.0; /* no dust in the overflow variable */
+	msr->re.nEvents = 0; /* no events for rubble clocks yet */	
 #endif
 
 	pstInitialize(&msr->pst,msr->mdl,&msr->lcl);
@@ -1882,6 +2141,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef SIMPLE_GAS_DRAG
 	fprintf(fp," SIMPLE_GAS_DRAG");
+#endif
+#ifdef RUBBLE_ZML
+	fprintf(fp," RUBBLE_ZML");
 #endif
 #ifdef _REENTRANT
 	fprintf(fp," _REENTRANT");
@@ -2128,7 +2390,30 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," SSF_bdivv: %d",msr->param.SSF_bdivv);
 #endif
 	fprintf(fp,"\n# bPatch: %d",msr->param.bPatch);
-	fprintf(fp," dOrbFreq: %g",msr->param.dOrbFreq);
+	if (msr->param.bPatch) {
+	  PATCH_PARAMS *PP = &msr->param.PP;
+	  fprintf(fp," dOrbDist: %g",PP->dOrbDist);
+	  fprintf(fp," (dOrbFreq: %g)",PP->dOrbFreq);
+	  fprintf(fp," bExtPert: %d",PP->bExtPert);
+	  if (PP->bExtPert) {
+		fprintf(fp,"\n# dPertOrbDist: %g",PP->dPertOrbDist);
+		fprintf(fp," dPertMass: %g",PP->dPertMass);
+		fprintf(fp," dPertMaxZ: %g",PP->dPertMaxZ);
+		fprintf(fp," dPertOrbFreqZ: %g",PP->dPertOrbFreqZ);
+		fprintf(fp,"\n# dPertPhase: %g",PP->dPertPhase);
+		fprintf(fp," dPertPhaseZ: %g",PP->dPertPhaseZ);
+		fprintf(fp," (dPertOrbFreq: %g)",PP->dPertOrbFreq);
+	  }
+	  fprintf(fp,"\n# bRandAzWrap: %d",PP->bRandAzWrap);
+	  if (PP->bRandAzWrap) {
+		fprintf(fp," dStripInner: %g",PP->dStripInner/PP->dWidth);
+		fprintf(fp," dStripOuter: %g",PP->dStripOuter/PP->dWidth);
+		fprintf(fp," dVelDispX: %g",PP->dVelDispX);
+		fprintf(fp," dVelDispY: %g",PP->dVelDispY);
+		fprintf(fp," dAvgVertAmp: %g",PP->dAvgVertAmp);
+		fprintf(fp," dAvgMass: %g",PP->dAvgMass);
+	  }
+	}
 	fprintf(fp,"\n# bSimpleGasDrag: %d",msr->param.bSimpleGasDrag);
 	fprintf(fp," bEpstein: %d",msr->param.bEpstein);
 	fprintf(fp," dGamma: %g",msr->param.dGamma);
@@ -2137,6 +2422,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bFindRejects: %d",msr->param.bFindRejects);
 	fprintf(fp," iCollLogOption: %d",msr->param.iCollLogOption);
 	fprintf(fp," dSmallStep: %g",msr->param.dSmallStep);
+	fprintf(fp," iMinCollRung: %d",msr->param.iMinCollRung);
 	fprintf(fp,"\n# dxUnifGrav: %g",msr->param.dxUnifGrav);
 	fprintf(fp," dyUnifGrav: %g",msr->param.dyUnifGrav);
 	fprintf(fp," dzUnifGrav: %g",msr->param.dzUnifGrav);
@@ -2146,6 +2432,9 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," iBounceOption: %d",msr->param.CP.iBounceOption);
     fprintf(fp," dEpsN: %g",msr->param.CP.dEpsN);
     fprintf(fp," dEpsT: %g",msr->param.CP.dEpsT);
+    fprintf(fp,"\n# iMinBinaryRung: %d",msr->param.iMinBinaryRung);
+    fprintf(fp," dBallVelFact: %g",msr->param.dBallVelFact);
+    fprintf(fp," dMaxBinaryEcc: %g",msr->param.dMaxBinaryEcc);
     fprintf(fp,"\n# iSlideOption: %d",msr->param.CP.iSlideOption);
 	fprintf(fp," dSlideLimit: %g",msr->param.CP.dSlideLimit);
     fprintf(fp," dSlideEpsN: %g",msr->param.CP.dSlideEpsN);
@@ -2175,6 +2464,8 @@ void msrLogParams(MSR msr,FILE *fp)
 			fprintf(fp,"UNSUPPORTED");
 		if (s->iType & SPECIAL_FORCE)
 			fprintf(fp,"dMag: %g",s->force.dMag);
+	        if (s->iType & SPECIAL_NOGHOSTPERT) 
+		        fprintf(fp,"Excluded from ghost cell gravity calculations");
 		}
 	}
 #endif
@@ -2198,6 +2489,22 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 		}
 	}
+#endif /* SAND_PILE */
+#ifdef RUBBLE_ZML
+	fprintf(fp,"\n# Rubble...");
+	fprintf(fp," bRubbleStep: %d",msr->param.bRubbleStep);
+	fprintf(fp," dRubbleMinFracMass: %g",msr->param.CP.dRubbleMinFracMass);
+	fprintf(fp," dRubMinMass: %g",msr->param.CP.DB.dRubMinMass);
+	fprintf(fp," iRubNumDynToBounce: %i",msr->param.CP.DB.iRubNumDynToBounce);
+	fprintf(fp," iRubNumDynToMerge: %i",msr->param.CP.DB.iRubNumDynToMerge);
+	fprintf(fp,"\n# nDustBins: %d",msr->param.CP.DB.nDustBins);
+	fprintf(fp," iDustBinsApplyInt: %d",msr->param.CP.DB.iDustBinsApplyInt);
+	fprintf(fp," dDustBinsInner: %g",msr->param.CP.DB.dDustBinsInner);
+	fprintf(fp," dDustBinsOuter: %g",msr->param.CP.DB.dDustBinsOuter);
+	fprintf(fp,"\n# dDustBinsScaleHeight: %g",msr->param.CP.DB.dDustBinsScaleHeight);
+	fprintf(fp," dDustBinsInitSigma: %g",msr->param.CP.DB.dDustBinsInitSigma);
+	fprintf(fp," dDustBinsInitAlpha: %g",msr->param.CP.DB.dDustBinsInitAlpha);
+	fprintf(fp," (dDustBinsWidth: %g)",msr->param.CP.DB.dDustBinsWidth);
 #endif
 	switch (msr->iOpenType) {
 	case OPEN_JOSH:
@@ -2257,47 +2564,64 @@ void msrLogParams(MSR msr,FILE *fp)
 			fprintf(fp," %f",msr->pdOutTime[i]);
 			}
 		fprintf(fp,"\n");
-		}
-	}
-
-int
-msrGetLock(MSR msr)
+	    }
+    }
+ 
+double
+msrGammaLog(double xx)
 {
-	/*
-	 ** Attempts to lock run directory to prevent overwriting. If an old lock
-	 ** is detected with the same achOutName, an abort is signaled. Otherwise
-	 ** a new lock is created. The bOverwrite parameter flag can be used to
-	 ** suppress lock checking.
-	 */
+    /* This subroutine is taken from NRiC, page 214. */
+    double x,y,tmp,ser;
+    static double cof[6]={76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.12086505973866179e-2,-0.5395239384953e-5};
+    int j;
+    
+    y=x=xx;
+    tmp=x+5.5;
+    ser=1.000000000190015;
+    for (j=0;j<5;j++) ser += cof[j]/++y;
+    return -tmp+log(2.5066282746310005*ser/x);
+    }
 
-	FILE *fp = NULL;
-	char achTmp[256],achFile[256];
+int 
+msrPoissonDeviates(double mean)
+{
+    /* This subroutine is lifted from Numerical Recipes in C (breathe,
+       Tom!), pages 293-295 (2nd Ed.), with a few changes. This may
+       not work in parallel. */
+ 
+    static double sq,alxm,g,oldm=(-1.0); /* The non-parallel part! */
+    double em,t,y;
 
-	_msrMakePath(msr->param.achDataSubPath,LOCKFILE,achTmp);
-	_msrMakePath(msr->lcl.pszDataPath,achTmp,achFile);
-	if (!msr->param.bOverwrite && (fp = fopen(achFile,"r"))) {
-		(void) fscanf(fp,"%s",achTmp);
-		(void) fclose(fp);
-		if (!strcmp(msr->param.achOutName,achTmp)) {
-			(void) printf("ABORT: %s detected.\nPlease ensure data is safe to "
-						  "overwrite. Delete lockfile and try again.\n",achFile);
-			return 0;
-			}
-		}
-	if (!(fp = fopen(achFile,"w"))) {
-		if (msr->param.bOverwrite && msr->param.bVWarnings) {
-			(void) printf("WARNING: Unable to create %s...ignored.\n",achFile);
-			return 1;
-			}
-		else {
-			(void) printf("Unable to create %s\n",achFile);
-			return 0;
-			}
-		}
-	(void) fprintf(fp,msr->param.achOutName);
-	(void) fclose(fp);
-	return 1;
+    if (mean < 12.0) {
+	if (mean != oldm) {
+	    oldm=mean;
+	    g=exp(-mean);
+	    }
+	em = -1;
+	t = 1.0;
+	do {
+	    ++em;
+	    t *= rand()/((double) RAND_MAX);
+	    } while (t > g);
 	}
+    else {
+	if (mean != oldm) {
+	    oldm = mean;
+	    sq = sqrt(2.0*mean);
+	    alxm = log(mean);
+	    g=mean*alxm - msrGammaLog(mean+1.0);
+	    }
+	do {
+	    do {
+		y=tan(M_PI*rand()/((double) RAND_MAX));
+		em=sq*y + mean;
+		} while (em < 0.0);
+	    em=floor(em);
+	    t=0.9*(1.0 + y*y)*exp(em*alxm - msrGammaLog(em+1.0) - g);
+	    } while ( (rand()/((double) RAND_MAX)) > t );
+	}
+    return (int)em;
+    }
 
 int
 msrCheckForStop(MSR msr)
@@ -2321,7 +2645,7 @@ msrCheckForStop(MSR msr)
 		sprintf(achFile2,"%s.%s",msrOutName(msr),STOPFILE);
 		first_call = 0;
 		}
-	if ((fp = fopen(achFile,"r"))) {
+	if ((fp = fopen(achFile,"r")) != NULL) {
 		(void) printf("User interrupt detected.\n");
 		(void) fclose(fp);
 		(void) unlink(achFile);
@@ -2801,7 +3125,10 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	_msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
 	
 	fp = fopen(achOutFile,"w");
-	assert(fp != NULL);
+	if (!fp) {
+		printf("Could not open OutFile:%s\n",achOutFile);
+		_msrExit(msr,1);
+		}
 	in.bStandard = msr->param.bStandard;
 #ifdef GASOLINE
 	in.duTFac = (msr->param.dConstGamma - 1)*msr->param.dMeanMolWeight/
@@ -2872,9 +3199,6 @@ void msrWriteTipsyHead(MSR msr,char *achOutFile,double dTime, struct inWriteTips
 {
 	FILE *fp;
 	struct dump h;
-	char achFile[PST_FILENAME_SIZE];
-	LCL *plcl = msr->pst->plcl;
-	double sec,dsec;
 	
 	fp = fopen(achOutFile,"w");
         assert(fp);
@@ -3320,21 +3644,16 @@ void msrCreateGasOutputList(MSR msr, int (*iNumOutputs), int OutputList[])
 
 void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, double dTime)
 {
-    FILE *fp, *xmlfp;
-    char vecOutFile[256], dirname[256];
-    int i, k, iDim, nDim, code, id, preminmax, magic=1062053;
+    FILE *fp;
+    char dirname[256];
+    int i, k, iDim, nDim, code, preminmax, magic=1062053;
     LCL *plcl = msr->pst->plcl;
-    char achOutFile[PST_FILENAME_SIZE], xmlFile[PST_FILENAME_SIZE];
+    char achOutFile[PST_FILENAME_SIZE];
     char *typenames[3];
     int nTypes[3];
     struct inOutput inOut;
     struct outNC out;
     XDR xdrs;
-#ifdef COLLISIONS
-    struct inWriteSS in;
-#else
-    struct inWriteTipsy in;
-#endif
 
 #ifdef GASOLINE
     inOut.duTFac = (msr->param.dConstGamma - 1)*msr->param.dMeanMolWeight/
@@ -3441,8 +3760,7 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
 void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, double dTime)
 {
     FILE *fp;
-    char vecOutFile[256];
-    int i, k, iDim, nDim, code, id, magic=1062053;
+    int i, iDim, nDim;
     LCL *plcl = msr->pst->plcl;
     char achOutFile[PST_FILENAME_SIZE];
     struct inOutput inOut;
@@ -3473,8 +3791,9 @@ void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, 
     _msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
         
     /* Write Headers */
+
     sprintf(inOut.achOutFile,"%s.",in.achOutFile);
-    for (i=0; i<iNumOutputs;i++){
+    for (i=0;i<iNumOutputs;i++){
         if ( OutputList[i] == BIG_FILE ){
 #ifdef COLLISIONS
             msrWriteSSHead(msr,achOutFile,dTime);
@@ -3484,7 +3803,7 @@ void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, 
             } 
         else {
             _msrMakePath(plcl->pszDataPath,in.achOutFile,achOutFile);
-            strcat(achOutFile,".");
+			strcat(achOutFile,".");
             VecFilename(achOutFile,OutputList[i]);
             fp = fopen(achOutFile,"w");
             assert(fp != NULL);
@@ -3530,16 +3849,15 @@ void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, 
             msrOneNodeWriteOutputs(msr, OutputList, iNumOutputs, &in);
         } else  /* ASCII:  NO PARALLEL OPTION! Only packed vectors supported. */
         msrOneNodeWriteOutputs(msr, OutputList, iNumOutputs, &in);
-
     }
     
 void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
 #ifdef COLLISIONS
-			    struct inWriteSS *in
+							struct inWriteSS *in
 #else
-			    struct inWriteTipsy *in
+							struct inWriteTipsy *in
 #endif
-			    )
+							)
 {
     int i,id,iDim,nDim;
     int iOut;  /* iterator through OutputList */
@@ -3558,7 +3876,7 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
      ** Add the local Data Path to the provided filename.
      */
     _msrMakePath(plcl->pszDataPath,in->achOutFile,achOutFile);
-    sprintf(achOutFileVec, "%s.", achOutFile);
+	sprintf(achOutFileVec, "%s.", achOutFile);
 
     /* 
      * First write our own particles.
@@ -3566,6 +3884,7 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
     assert(msr->pMap[0] == 0);
     for (iOut=0; iOut<iNumOutputs;iOut++){
         if( OutputList[iOut]== BIG_FILE){
+
 #ifdef COLLISIONS
             pkdWriteSS(plcl->pkd,achOutFile,plcl->nWriteStart);
 #else
@@ -3575,21 +3894,21 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
             } else {
             /* Only packed ASCII format supported!
              * Use readpackedvector in Tipsy */
-            if ((OutputList[iOut] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
+			  if ((OutputList[iOut] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
                 pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart, -3,
-			     OutputList[iOut], msr->param.iBinaryOutput,msr->N,
-			     msr->param.bStandard);
+							 OutputList[iOut], msr->param.iBinaryOutput,msr->N,
+							 msr->param.bStandard);
                 } else {
                 nDim=(OutputList[iOut] > OUT_1D3DSPLIT) ? 3 : 1;
                 for (iDim=0; iDim<nDim; iDim++) 
-                    pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
-				 iDim, OutputList[iOut],msr->param.iBinaryOutput,
-				 msr->N,msr->param.bStandard);
+				  pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
+							   iDim, OutputList[iOut],msr->param.iBinaryOutput,
+							   msr->N,msr->param.bStandard);
                 }
             }
         } 
-        
-    nStart = plcl->pkd->nLocal;
+
+	nStart = plcl->pkd->nLocal;
     /* Write out the particles on all the other nodes */
     for (i=1;i<msr->nThreads;++i) {
         id = msr->pMap[i];
@@ -3609,33 +3928,33 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
                 pkdWriteSS(plcl->pkd,achOutFile,nStart);
 #else
                 pkdWriteTipsy(plcl->pkd,achOutFile,nStart,in->bStandard,
-                                          in->dvFac,in->duTFac,in->iGasModel); 
+							  in->dvFac,in->duTFac,in->iGasModel); 
 #endif
                 } else {
                 /* Only packed ASCII format supported!
                  * Use readpackedvector in Tipsy */
                 if ((OutputList[iOut] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
-                    pkdOutVector(plcl->pkd,achOutFileVec, nStart,
-				 -3, OutputList[iOut], msr->param.iBinaryOutput,
-				 msr->N,msr->param.bStandard);
-                    } else {
-                    nDim=(OutputList[iOut] > OUT_1D3DSPLIT) ? 3 : 1;
-                    for (iDim=0; iDim<nDim; iDim++) {
+				  pkdOutVector(plcl->pkd,achOutFileVec, nStart,
+							   -3, OutputList[iOut], msr->param.iBinaryOutput,
+							   msr->N,msr->param.bStandard);
+				  } else {
+                  nDim=(OutputList[iOut] > OUT_1D3DSPLIT) ? 3 : 1;
+                  for (iDim=0; iDim<nDim; iDim++) {
 #ifdef SIMPLESF
-			/* The SF variables are written in binary no
-			   matter what */
-                        pkdOutVector(plcl->pkd,achOutFileVec,
-				     nStart, iDim, OutputList[iOut],
-				     ((OutputList[iOut]==OUT_TCOOLAGAIN_ARRAY || OutputList[iOut]==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput),
-				     msr->N,msr->param.bStandard);
+					  /* The SF variables are written in binary no
+						 matter what */
+					  pkdOutVector(plcl->pkd,achOutFileVec,
+								   nStart, iDim, OutputList[iOut],
+								   ((OutputList[iOut]==OUT_TCOOLAGAIN_ARRAY || OutputList[iOut]==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput),
+								   msr->N,msr->param.bStandard);
 #else
-                        pkdOutVector(plcl->pkd,achOutFileVec, nStart,
-				     iDim, OutputList[iOut],
-				     msr->param.iBinaryOutput, msr->N,
-				     msr->param.bStandard); 
+					  pkdOutVector(plcl->pkd,achOutFileVec, nStart,
+								   iDim, OutputList[iOut],
+								   msr->param.iBinaryOutput, msr->N,
+								   msr->param.bStandard); 
 #endif
-                        }
-                    }
+                      }
+                   }
                 }
             }
         nStart += plcl->pkd->nLocal;
@@ -3648,6 +3967,7 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
         mdlGetReply(pst0->mdl,id,NULL,NULL);
         }
     assert(nStart == msr->N);
+
     }
     
 void msrOneNodeOutArray(MSR msr, struct inOutput *in)
@@ -3985,9 +4305,9 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.dCentMass = msr->param.dCentMass; /* for Hill sphere checks */
 #endif
 #ifdef SLIDING_PATCH /* called by msrFindRejects() only */
-	in.smf.dOrbFreq = msr->param.dOrbFreq;
 	in.smf.dTime = dTime;
-	in.smf.dCentMass = 0; /* to disable Hill sphere checks */
+	in.smf.PP = msr->param.PP; /* struct copy */
+	in.smf.dCentMass = 0.0; /* to disable Hill sphere checks */
 #endif
 	if (msr->param.bVStep) {
 	    struct outSmooth out;
@@ -4204,8 +4524,8 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		in.bEwald = msr->param.bEwald;
 		in.iEwOrder = msr->param.iEwOrder;
 #ifdef SLIDING_PATCH
-		in.dOrbFreq = msr->param.dOrbFreq;
 		in.dTime = dStep*msr->param.dDelta;
+		in.PP = msr->param.PP; /* struct copy */
 #endif
 		/*
 		 ** The meaning of 'bDoSun' here is that we want the accel on (0,0,0)
@@ -4233,7 +4553,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 			inGetSpec.nSpecial = msr->param.nSpecial;
 			for (j=0;j<msr->param.nSpecial;j++)
 				inGetSpec.iId[j] = msr->param.iSpecialId[j]; /* orig indices */
-			inGetSpec.dCentMass = msr->param.dCentMass; /* ignored unless special frame */
+			inGetSpec.mInfo.dCentMass = msr->param.dCentMass; /* if special frame */
 			pstGetSpecialParticles(msr->pst,&inGetSpec,sizeof(inGetSpec),
 								   &outGetSpec,NULL);
 			inDoSpec.nSpecial = msr->param.nSpecial;
@@ -4241,13 +4561,19 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 				inDoSpec.sData[j] = msr->param.sSpecialData[j]; /* struct cp */
 				inDoSpec.sInfo[j] = outGetSpec.sInfo[j]; /* ditto */
 				}
-			inDoSpec.bNonInertial = msr->param.bHeliocentric;
-			if (inDoSpec.bNonInertial)
+			inDoSpec.mInfo.bNonInertial = msr->param.bHeliocentric;
+			inDoSpec.mInfo.dxPeriod = msr->param.dxPeriod;
+			inDoSpec.mInfo.dyPeriod = msr->param.dyPeriod;
+			inDoSpec.mInfo.dzPeriod = msr->param.dzPeriod;
+			inDoSpec.mInfo.dOmega = msr->param.dOmega;
+			inDoSpec.mInfo.dTime =  dStep*msr->param.dDelta;
+			inDoSpec.mInfo.nReplicas = msr->param.nReplicas;
+			if (inDoSpec.mInfo.bNonInertial)
 				for (j=0;j<3;j++)
 					outDoSpec.aFrame[j] = 0.0; /* initialize */
 			pstDoSpecialParticles(msr->pst,&inDoSpec,sizeof(inDoSpec),
 								  &outDoSpec,NULL);
-			if (inDoSpec.bNonInertial)
+			if (inDoSpec.mInfo.bNonInertial)
 				for (j=0;j<3;j++)
 					out.aSun[j] += outDoSpec.aFrame[j]; /* add non-inertial term */
 			}
@@ -4306,18 +4632,18 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bDoSun = bDoSun;  /* Treat the Sun explicitly. */
 		inExt.dSunMass = msr->param.dCentMass;
 		inExt.dSunSoft = msr->param.dSunSoft;
-		if(inExt.bIndirect)
+		if (inExt.bIndirect)
 		    for (j=0;j<3;++j) inExt.aSun[j] = out.aSun[j];
 		inExt.bLogHalo = msr->param.bLogHalo;
 		inExt.bHernquistSpheroid = msr->param.bHernquistSpheroid;
-		if( inExt.bNFWSpheroid = msr->param.bNFWSpheroid ){
-                    inExt.dNFWm200= msr->param.dNFWm200;
-                    inExt.dNFWr200= msr->param.dNFWr200;
-                    inExt.dNFWconc= msr->param.dNFWconc;
-                    inExt.dNFWsoft= msr->param.dNFWsoft;
-                    }
-		inExt.bElliptical= msr->param.bElliptical;
-		inExt.bEllipticalDarkNFW= msr->param.bEllipticalDarkNFW;
+		if (inExt.bNFWSpheroid == msr->param.bNFWSpheroid) {
+		  inExt.dNFWm200= msr->param.dNFWm200;
+		  inExt.dNFWr200= msr->param.dNFWr200;
+		  inExt.dNFWconc= msr->param.dNFWconc;
+		  inExt.dNFWsoft= msr->param.dNFWsoft;
+		}
+		inExt.bElliptical = msr->param.bElliptical;
+		inExt.bEllipticalDarkNFW = msr->param.bEllipticalDarkNFW;
 		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
 		inExt.bBodyForce = msr->param.bBodyForce;
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
@@ -4358,49 +4684,45 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 #if defined(SLIDING_PATCH) || defined(SIMPLE_GAS_DRAG)
 	if (msr->param.bPatch || msr->param.bSimpleGasDrag) {
 #ifdef SLIDING_PATCH
-		if (msr->param.bPatch) {
-			static int bFirstCall = 1;
-			static double dOrbFreqZ2 = 0;
-			inExt.bPatch = msr->param.bPatch;
-			inExt.dOrbFreq = msr->param.dOrbFreq;
-			if (bFirstCall) {
-				bFirstCall = 0;
-				dOrbFreqZ2 = msr->param.dOrbFreq*msr->param.dOrbFreq;
-				if (msr->param.bDoSelfGravity) {
-					if (msr->param.dxPeriod == FLOAT_MAXVAL ||
-						msr->param.dyPeriod == FLOAT_MAXVAL) {
-						(void) printf("WARNING: Vert. freq. enhancement disabled\n"
-									  "(no boundary condition in either x or y, or both!)");
-						}
-					else {
-						double m_total = msrMassCheck(msr,-1.0,"");
-
-						dOrbFreqZ2 += 2*M_PI*m_total/msr->param.nReplicas/
-							pow(msr->param.dxPeriod*msr->param.dyPeriod,1.5);
-						}
-					if (msr->param.bVStart)
-						(void) printf("Vert. freq. enhancement factor = %e\n",
-									  sqrt(dOrbFreqZ2)/msr->param.dOrbFreq);
-					}
-				}
-			inExt.dOrbFreqZ2 = dOrbFreqZ2;
+	  if (msr->param.bPatch) {
+		static int bFirstCall = 1;
+		if (bFirstCall) {
+		  PATCH_PARAMS *PP = &msr->param.PP;
+		  /* need to compute vertical frequency enhancement */
+		  PP->dOrbFreqZ2 = PP->dOrbFreq*PP->dOrbFreq;
+		  if (msr->param.bDoSelfGravity) {
+			if (PP->dWidth == FLOAT_MAXVAL || PP->dLength == FLOAT_MAXVAL)
+			  (void) printf("WARNING: Vert. freq. enhancement disabled\n"
+							"(no boundary condition in either x or y, or both!)\n");
+			else {
+			  double m_total = msrMassCheck(msr,-1.0,"");
+			  PP->dOrbFreqZ2 += 2*M_PI*m_total/msr->param.nReplicas/
+				pow(PP->dWidth*PP->dLength,1.5);
 			}
+		  }
+		  if (msr->param.bVStart)
+			(void) printf("Patch: vert. freq. enhancement factor = %g\n",
+						  sqrt(PP->dOrbFreqZ2)/PP->dOrbFreq);
+		  bFirstCall = 0;
+		}
+		inExt.bPatch = msr->param.bPatch;
+		inExt.PP = msr->param.PP; /* struct copy */
+	  }
 #endif
 #ifdef SIMPLE_GAS_DRAG
-		if (msr->param.bSimpleGasDrag) {
-			inExt.bSimpleGasDrag = msr->param.bSimpleGasDrag;
-			inExt.iFlowOpt	= 1; /* temporary */
-			inExt.bEpstein	= msr->param.bEpstein;
-			inExt.dGamma	= msr->param.dGamma;
-			inExt.dOmegaZ	= msr->param.dOrbFreq;
-			inExt.dTime		= dStep*msr->param.dDelta;
-			}
+	  if (msr->param.bSimpleGasDrag) {
+		inExt.bSimpleGasDrag = msr->param.bSimpleGasDrag;
+		inExt.iFlowOpt	= 1; /* temporary */
+		inExt.bEpstein	= msr->param.bEpstein;
+		inExt.dGamma	= msr->param.dGamma;
+		inExt.dTime		= dStep*msr->param.dDelta;
+	  }
 #endif
-		pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
-		}
-#endif /* if (SLIDING_PATCH || SIMPLE_GAS_DRAG) */
+	  pstGravExternal(msr->pst,&inExt,sizeof(inExt),NULL,NULL);
+	}
+#endif /* SLIDING_PATCH || SIMPLE_GAS_DRAG */
 #ifdef AGGS
-	msrAggsGetAccelAndTorque(msr);
+	msrAggsGravity(msr);
 #endif
 	/*
 	 ** Output.
@@ -4567,7 +4889,16 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 #endif
 
 #ifdef COLLISIONS
-	msrDoCollision(msr,dTime,dDelta);
+	if (msr->param.iMinCollRung) {
+	  if (msr->iCurrMaxRung >= msr->param.iMinCollRung)
+	    msrDoCollisions(msr,dTime,dDelta);
+	} else {
+	  msrDoCollisions(msr,dTime,dDelta);
+	}
+#ifdef RUBBLE_ZML
+	if (msr->param.CP.bDoRubbleKDKRestart)
+		return;
+#endif
 #endif
 
 	if (msr->param.bCannonical) {
@@ -4583,8 +4914,8 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	in.bFandG = msr->param.bFandG;
 	in.fCentMass = msr->param.dCentMass;
 #ifdef SLIDING_PATCH
-	in.dOrbFreq = msr->param.dOrbFreq;
 	in.dTime = dTime;
+	in.PP = msr->param.PP; /* struct copy */
 #endif
 	pstDrift(msr->pst,&in,sizeof(in),NULL,NULL);
 	/*
@@ -4651,6 +4982,22 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		LOGTIMINGUPDATE( out.MaxTime, TIMING_Drift );
 	    }
 #endif /* NEED_VPRED */
+
+#ifdef SLIDING_PATCH
+	if (msr->param.PP.bRandAzWrap == 1) {
+	  struct inRandAzWrap inrand;
+	  struct outRandAzWrap outrand;
+
+	  inrand.PP = msr->param.PP; /* struct copy */
+	  while (1) {
+		pstRandAzWrap(msr->pst,&inrand,sizeof(inrand),&outrand,NULL);
+		/* (no point checking for wrap overlaps if collisions disabled) */
+		if (outrand.nRandomized == 0 || msr->param.nSmooth == 1) break;
+		msrBuildTree(msr,0,-1.0,1); /* force rebuild of density tree since particles have moved */
+		msrSmooth(msr,0.0,SMX_FIND_OVERLAPS,1); /* check for any overlaps, keep looping until none */
+		}
+	}
+#endif
 
 #ifdef AGGS
 	msrAggsAdvanceClose(msr,dDelta);
@@ -4852,13 +5199,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.duDotLimit = msr->param.duDotLimit;
 #endif /* NEED_VPRED */
 		}
-#ifdef AGGS
-	msrAggsDeactivate(msr);
-#endif
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
-#ifdef AGGS
-	msrAggsActivate(msr);
-#endif
 	if (msr->param.bVDetails) 
 		printf("KickOpen: Avg Wallclock %f, Max Wallclock %f\n",
 			   out.SumTime/out.nSum,out.MaxTime);
@@ -4947,13 +5288,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.duDotLimit = msr->param.duDotLimit;
 #endif /* NEED_VPRED */
 		}
-#ifdef AGGS
-	msrAggsDeactivate(msr);
-#endif
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
-#ifdef AGGS
-	msrAggsActivate(msr);
-#endif
 	if (msr->param.bVDetails)
 		printf("KickClose: Avg Wallclock %f, Max Wallclock %f\n",
 			   out.SumTime/out.nSum,out.MaxTime);
@@ -5179,6 +5514,27 @@ double msrReadCheck(MSR msr,int *piStep)
 		FDL_index(fdl,"out_time_index",i);
 		FDL_read(fdl,"out_time",&msr->pdOutTime[i]);
 		}
+#ifdef RUBBLE_ZML
+	if (iVersion > 70) {
+		printf("checkpoint version = %d\n", iVersion);
+		FDL_read(fdl,"num_rub_events", &msr->re.nEvents);
+		for (i=0;i<msr->re.nEvents;i++) {
+			FDL_index(fdl,"rub_event_index",i);
+			FDL_read(fdl,"rub_iColor",&msr->re.rc[i].iColor);
+			FDL_read(fdl,"rub_dTStartMergePhase",
+					 &msr->re.rc[i].dTStartMergePhase);
+			FDL_read(fdl,"rub_dTEndRubblePhase",
+					 &msr->re.rc[i].dTEndRubblePhase);
+			}
+		FDL_read(fdl,"num_dust_bins", &msr->param.CP.DB.nDustBins);
+		for (i=0;i<msr->param.CP.DB.nDustBins;i++) {
+			FDL_index(fdl,"dust_bins_index",i);
+			FDL_read(fdl,"dust_bins_mass",&msr->aDustBins[i].dMass);
+			FDL_read(fdl,"dust_bins_volume",&msr->aDustBins[i].dVolume);
+			}	
+		FDL_read(fdl,"dust_bins_trash",&msr->dDustBinsTrash);
+	}
+#endif /*RUBBLE_ZML*/
 	/*
 	 ** Read the old parameters.
 	 */
@@ -5510,6 +5866,24 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 		FDL_index(fdl,"out_time_index",i);
 		FDL_write(fdl,"out_time",&msr->pdOutTime[i]);
 		}
+#ifdef RUBBLE_ZML
+	FDL_write(fdl,"num_rub_events", &msr->re.nEvents);
+	for (i=0;i<msr->re.nEvents;i++) {
+		FDL_index(fdl,"rub_event_index",i);
+		FDL_write(fdl,"rub_iColor",&msr->re.rc[i].iColor);
+		FDL_write(fdl,"rub_dTStartMergePhase",
+				  &msr->re.rc[i].dTStartMergePhase);
+		FDL_write(fdl,"rub_dTEndRubblePhase",
+				  &msr->re.rc[i].dTEndRubblePhase);
+		}
+	FDL_write(fdl,"num_dust_bins", &msr->param.CP.DB.nDustBins);
+	for (i=0;i<msr->param.CP.DB.nDustBins;i++) {
+		FDL_index(fdl,"dust_bins_index",i);
+		FDL_write(fdl,"dust_bins_mass",&msr->aDustBins[i].dMass);
+		FDL_write(fdl,"dust_bins_volume",&msr->aDustBins[i].dVolume);
+		}	
+	FDL_write(fdl,"dust_bins_trash",&msr->dDustBinsTrash);
+#endif /*RUBBLE_ZML*/
 	/*
 	 ** Write the old parameters.
 	 */
@@ -5785,11 +6159,25 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 	if (msr->param.bVDetails) puts("doing mass check...");
 #endif
 	pstMassCheck(msr->pst,NULL,0,&out,NULL);
+#ifdef RUBBLE_ZML
+	{
+	int i;
+
+	for (i=0;i<msr->param.CP.DB.nDustBins;i++) 
+		out.dMass += msr->aDustBins[i].dMass;
+
+	out.dMass += msr->dDustBinsTrash;
+	}
+#endif
 	if (dMass < 0.0) return(out.dMass);
 	else if (fabs(dMass - out.dMass) > 1e-12*dMass) {
 		printf("ERROR: Mass not conserved (%s): %.15e != %.15e!\n",
 			   pszWhere,dMass,out.dMass);
-		}	
+#ifdef RUBBLE_ZML
+		printf("out.dMass = %e, DustBinsTrash = %e\n", /*DEBUG*/
+			   out.dMass, msr->dDustBinsTrash);
+#endif
+		}
 #endif
 	return(out.dMass);
 	}
@@ -6438,6 +6826,11 @@ void msrTopStepKDK(MSR msr,
 			msrSphStep(msr,dTime);
 			}
 #endif
+#ifdef RUBBLE_ZML
+		if (msr->param.bRubbleStep) {
+			msrRubbleStep(msr);
+			}
+#endif
 		msrDtToRung(msr,iRung,dDelta,1);
 		if (iRung == 0) {
 		  /*
@@ -6487,6 +6880,31 @@ void msrTopStepKDK(MSR msr,
 		dStep += 1.0/(2 << iRung);
 #else
 		msrDrift(msr,dTime,dDelta);
+#ifdef RUBBLE_ZML
+		/*
+		 ** Since we may need to turn planetesimals to rubble in the
+		 ** middle of the step, and rubble pieces are forced to be on
+		 ** the lowest rung, we may need to recompute the kick
+		 ** circumstances now and proceed with any colliding
+		 ** planetesimals forced to the lowest rung. This should ONLY
+		 ** happen if dDelta is equal to msr->param.dDelta, so there
+		 ** shouldn't be any recursion problems. However, if, in the
+		 ** future, we decide to have a more continuous distribution of
+		 ** rungs for the rubble problem, this quick fix will need to
+		 ** be carefully reconsidered to see if there are any
+		 ** unfortunate repercussions.
+		 */
+
+		if (msr->param.CP.bDoRubbleKDKRestart) {
+			assert(dDelta == msr->param.dDelta);
+			assert(iRung == 0);
+			msr->param.CP.bDoRubbleKDKRestart = 0;
+			msrKickKDKOpen(msr,dTime,-0.5*dDelta); /* go to start of kick */
+			msrTopStepKDK(msr,dStep,dTime,dDelta,iRung,iKickRung,1,
+						  pdActiveSum,pdWMax,pdIMax,pdEMax,piSec);
+			return;
+			}
+#endif /* RUBBLE_ZML */
 		dTime += dDelta;
 		dStep += 1.0/(1 << iRung);
 #endif
@@ -6789,7 +7207,6 @@ msrCoolUsingParticleList(MSR msr )
     double sec,sec1,dsec;	
 	struct inSoughtParticleList in;
 	struct inoutParticleList list;
-	int nOut;
 	int i;
   
 	in.iTypeSought = TYPE_STAR;
@@ -6859,6 +7276,11 @@ void msrInitTimeSteps(MSR msr,double dTime,double dDelta)
 #ifdef GASOLINE
 	if (msr->param.bSphStep) {
 		msrSphStep(msr,dTime);
+		}
+#endif
+#ifdef RUBBLE_ZML
+	if (msr->param.bRubbleStep) {
+		msrRubbleStep(msr);
 		}
 #endif
 	msrDtToRung(msr,0,dDelta,1);
@@ -6958,8 +7380,8 @@ void msrInitSph(MSR msr,double dTime)
 {
 #ifndef NOCOOLING
 	struct inInitEnergy in;
-#endif
 	double a;
+#endif
 
 	msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 	msrBuildTree(msr,1,-1.0,1);
@@ -7562,6 +7984,11 @@ msrReadSS(MSR msr)
 		printf("Simulation to Time:%g\n",tTo);
 		}
 
+#ifdef SLIDING_PATCH
+	if (dTime != 0.0)
+	  (void) fprintf(stderr,"WARNING: SLIDING_PATCH assumes start time = 0!\n");
+#endif
+
 	in.nFileStart = 0;
 	in.nFileEnd = msr->N - 1;
 	in.nDark = msr->nDark;
@@ -7706,20 +8133,16 @@ msrWriteSS(MSR msr,char *pszFileName,double dTime)
 	if (msr->param.bVDetails) puts("Output file successfully written.");
 	}
 
-void
-msrWriteSSHead(MSR msr,char *achOutFile,double dTime)
+void msrWriteSSHead(MSR msr,char *achOutFile,double dTime)
 {
 	SSIO ssio;
 	SSHEAD head;
-	struct inWriteSS in;
-	LCL *plcl = msr->pst->plcl;
 
 	if (ssioOpen(achOutFile,&ssio,SSIO_WRITE)) {
             printf("Could not open OutFile:%s\n",achOutFile);
             _msrExit(msr,1);
             }
 
-        strcpy(in.achOutFile, achOutFile);
 	/* Write header */
 
 	head.time = dTime;
@@ -7887,7 +8310,7 @@ msrLinearKDK(MSR msr,double dStep,double dTime,double dDelta)
 static char *
 _msrParticleLabel(MSR msr,int iColor)
 {
-	/* For use with msrDoCollision() only */
+	/* For use with msrDoCollisions() only */
 
 #ifdef SAND_PILE
 	if (iColor < 0) {
@@ -7931,8 +8354,217 @@ _msrParticleLabel(MSR msr,int iColor)
 		}
 	}
 
-void
-msrDoCollision(MSR msr,double dTime,double dDelta)
+void msrDoCollLog(MSR msr,COLLIDER *c1,COLLIDER *c2,struct outDoCollision *outDo,int option,double dt,double dTime) 
+{
+  /* Here we output to the collision log. */
+  FILE *fp;
+  int i;
+  XDR xdrs;
+  double dDum;
+  COLLIDER *c;
+
+#ifdef RUBBLE_ZML
+  /*DEBUG*/
+  if (option==COLL_LOG_NONE) {
+				/* DEBUG */
+				if (c1->iColor != PLANETESIMAL && c2->iColor != PLANETESIMAL)
+					; /* don't output if rubble - rubble collision */
+				else
+					printf("Time = %e\n", dTime + dt);
+  }
+#endif
+
+  if (option==COLL_LOG_VERBOSE) {
+    fp = fopen(msr->param.achCollLog,"a");
+    assert(fp != NULL);
+    if (dt != -1) { /* -1 => binary merge, => we don't want to update pos. */
+#ifdef AGGS
+				for (i=0;i<3;i++) {
+					if (!COLLIDER_IS_AGG(c1))
+						c1->r[i] += c1->v[i]*dt;
+					if (!COLLIDER_IS_AGG(c2))
+						c2->r[i] += c2->v[i]*dt;
+					}
+#else
+      for (i=0;i<3;i++) {
+	c1->r[i] += c1->v[i]*dt;
+	c2->r[i] += c2->v[i]*dt;
+      }
+#endif
+    }
+    fprintf(fp,"%s-%s COLLISION:T=%e\n",
+	    _msrParticleLabel(msr,c1->iColor),
+	    _msrParticleLabel(msr,c2->iColor),dTime + dt);
+#ifdef AGGS
+				if (COLLIDER_IS_AGG(c1))
+					fprintf(fp,"***1:p=%i,o=%i,i=%i,oi=%i,M=%e,R=*%e*,dt=%e,rung=%i,"
+							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
+							c1->id.iPid,c1->id.iOrder,c1->id.iIndex,c1->id.iOrgIdx,
+							c1->agg.mass,c1->fRadius/*DEBUG*/,c1->dt,c1->iRung,
+							c1->agg.r_com[0],c1->agg.r_com[1],c1->agg.r_com[2],
+							c1->agg.v_com[0],c1->agg.v_com[1],c1->agg.v_com[2],
+							c1->agg.omega[0],c1->agg.omega[1],c1->agg.omega[2]);
+				else
+#endif
+    fprintf(fp,"***1:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,dt=%e,rung=%i,"
+	    "r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
+	    c1->id.iPid,c1->id.iOrder,c1->id.iIndex,c1->id.iOrgIdx,
+	    c1->fMass,c1->fRadius,c1->dt,c1->iRung,
+	    c1->r[0],c1->r[1],c1->r[2],
+	    c1->v[0],c1->v[1],c1->v[2],
+	    c1->w[0],c1->w[1],c1->w[2]);
+#ifdef AGGS
+				if (COLLIDER_IS_AGG(c2))
+					fprintf(fp,"***2:p=%i,o=%i,i=%i,oi=%i,M=%e,R=*%e*,dt=%e,rung=%i,"
+							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
+							c2->id.iPid,c2->id.iOrder,c2->id.iIndex,c2->id.iOrgIdx,
+							c2->agg.mass,c2->fRadius/*DEBUG*/,c2->dt,c2->iRung,
+							c2->agg.r_com[0],c2->agg.r_com[1],c2->agg.r_com[2],
+							c2->agg.v_com[0],c2->agg.v_com[1],c2->agg.v_com[2],
+							c2->agg.omega[0],c2->agg.omega[1],c2->agg.omega[2]);
+				else
+#endif
+    fprintf(fp,"***2:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,dt=%e,rung=%i,"
+	    "r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
+	    c2->id.iPid,c2->id.iOrder,c2->id.iIndex,c2->id.iOrgIdx,
+	    c2->fMass,c2->fRadius,c2->dt,c2->iRung,
+	    c2->r[0],c2->r[1],c2->r[2],
+	    c2->v[0],c2->v[1],c2->v[2],
+	    c2->w[0],c2->w[1],c2->w[2]);
+    fprintf(fp,"***OUTCOME=%s dT=%e\n",
+	    outDo->iOutcome == MISS ? "MISS" :
+	    outDo->iOutcome == MERGE ? "MERGE" :
+	    outDo->iOutcome == BOUNCE ? "BOUNCE" :
+	    outDo->iOutcome == BINARY_MERGE ? "BINARY MERGE" :
+	    outDo->iOutcome == FRAG ? "FRAG" : "UNKNOWN",outDo->dT);
+	for (i=0;i<(outDo->nOut < MAX_NUM_FRAG ? outDo->nOut : MAX_NUM_FRAG);i++) {
+      c = &outDo->Out[i];
+#ifdef AGGS
+					if (COLLIDER_IS_AGG(c))
+						fprintf(fp,"***out%i:p=%i,o=%i,i=%i,oi=%i,M=%e,R=*%e*,rung=%i,"
+								"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",i,
+								c->id.iPid,c->id.iOrder,c->id.iIndex,c->id.iOrgIdx,
+								c->agg.mass,c->fRadius/*DEBUG*/,c->iRung,
+								c->agg.r_com[0],c->agg.r_com[1],c->agg.r_com[2],
+								c->agg.v_com[0],c->agg.v_com[1],c->agg.v_com[2],
+								c->agg.omega[0],c->agg.omega[1],c->agg.omega[2]);
+					else
+#endif
+      fprintf(fp,"***out%i:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,rung=%i,"
+	      "r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",i,
+	      c->id.iPid,c->id.iOrder,c->id.iIndex,c->id.iOrgIdx,
+	      c->fMass,c->fRadius,c->iRung,
+	      c->r[0],c->r[1],c->r[2],
+	      c->v[0],c->v[1],c->v[2],
+	      c->w[0],c->w[1],c->w[2]);
+    }
+    fclose(fp);
+  }
+  else if (option==COLL_LOG_TERSE) {
+     /*
+     ** FORMAT: For each event, time (double), collider 1 iOrgIdx
+     ** (int), collider 2 iOrgIdx (int), number of post-collision
+     ** particles (int), iOrgIdx for each of these (n * int).
+     */
+     
+     if (outDo->iOutcome != MERGE && outDo->iOutcome != BINARY_MERGE && 
+	 outDo->iOutcome != FRAG)
+       return; /* only care when particle indices change */
+     fp = fopen(msr->param.achCollLog,"a");
+     assert(fp != NULL);
+     xdrstdio_create(&xdrs,fp,XDR_ENCODE);
+     dDum = dTime + dt;
+     (void) xdr_double(&xdrs,&dDum);
+     (void) xdr_int(&xdrs,&c1->id.iOrgIdx);
+     (void) xdr_int(&xdrs,&c2->id.iOrgIdx);
+     (void) xdr_int(&xdrs,&outDo->nOut);
+	 for (i=0;i<(outDo->nOut < MAX_NUM_FRAG ? outDo->nOut : MAX_NUM_FRAG);i++)
+       (void) xdr_int(&xdrs,&outDo->Out[i].id.iOrgIdx);
+     xdr_destroy(&xdrs);
+     (void) fclose(fp);
+  } else { 
+    assert(0); /* invalid collision log option */
+  }
+} 
+
+void msrCheckForBinary(MSR msr,double dTime) 
+{
+  /* 
+   ** Determine if any particles in planetary simulations are binaries. We
+   ** only are concerned with particles on a rung higher the iMinBinaryRung.
+   */
+
+  struct inSmooth smooth;
+  struct outSmooth outSm;
+  struct inGetColliderInfo inGet;
+  struct outGetColliderInfo outGet;
+  struct inBinary inBnry;
+  struct outBinary outBnry;
+  struct outDoCollision outDo;
+  struct inMrgBnry inMrg;
+  struct outMrgBnry outMrg;
+  double dt;
+
+  msrActiveType(msr,TYPE_ALL,TYPE_ALLACTIVE);
+  /* Get all particles with iRung>iMinBinaryRung. */
+  msrActiveRung(msr,msr->param.iMinBinaryRung,1);
+  
+  smooth.nSmooth = 2;
+  smooth.bPeriodic = msr->param.bPeriodic;
+  smooth.bSymmetric = 0;
+  smooth.iSmoothType = SMX_FINDBINARY;
+  smooth.dfBall2OverSoft2 = 0.0; /* No softening limit */
+  smooth.smf.dMaxBinaryEcc = msr->param.dMaxBinaryEcc;
+#ifdef SLIDING_PATCH
+  smooth.smf.PP = msr->param.PP; /* struct copy */
+#endif
+
+  /* 
+   ** Determine which particle meet the criterion for merging. We will only 
+   ** search for one binary per big timestep (dDelta). Although it is 
+   ** possible that multiple binaries could occur in a single timestep, it is
+   ** most likely less computationally expensive to only search for one binary.
+   ** To maximize speed-up, we will merge the binary on the highest rung. If
+   ** multiple binaries appear to be slowing down the code considerably, a
+   ** pstNextCollision call should be added.
+   */
+  pstSmooth(msr->pst,&smooth,sizeof(smooth),&outSm,NULL);
+  inBnry.n = outBnry.n = 0;
+  pstFindTightestBinary(msr->pst,&inBnry,sizeof(inBnry),&outBnry,NULL);
+  if (outBnry.n==2) {
+    assert(outBnry.dBindEn < 0);
+    inGet.iOrder=outBnry.iOrder1;
+    pstGetColliderInfo(msr->pst,&inGet,sizeof(inGet),&outGet,NULL);
+    inMrg.c1 = outGet.Collider;
+    inGet.iOrder=outBnry.iOrder2;
+    pstGetColliderInfo(msr->pst,&inGet,sizeof(inGet),&outGet,NULL);
+    inMrg.c2 = outGet.Collider;
+#ifdef SLIDING_PATCH
+    inMrg.PP = msr->param.PP; /* struct copy */
+    inMrg.dTime = dTime;
+#endif
+    inMrg.dBaseStep=msr->param.dDelta;
+    inMrg.iTime0=msr->param.iStartStep;
+    inMrg.dTimeNow=smooth.smf.dTime;
+    inMrg.bPeriodic = msr->param.bPeriodic;
+    inMrg.dDensity=msr->param.CP.dDensity;
+    outMrg.n=0;
+    pstMergeBinary(msr->pst,&inMrg,sizeof(inMrg),&outMrg,NULL);
+    if (msr->param.iCollLogOption) {
+      outDo.iOutcome=BINARY_MERGE;
+      outDo.nOut=1;
+      outDo.Out[0]=outMrg.cOut;
+      dt=0;
+      msrDoCollLog(msr,&inMrg.c1,&inMrg.c2,&outDo,msr->param.iCollLogOption,dt,dTime);
+    }
+    if (msr->param.bVDetails) {
+      printf("Binary Merge at time: %e.\n",dTime);
+    }
+    msrAddDelParticles(msr);
+  }
+}
+
+void msrDoCollisions(MSR msr,double dTime,double dDelta)
 {
 	/*
 	 ** Performs smooth operation to determine if a collision occurs
@@ -7943,13 +8575,16 @@ msrDoCollision(MSR msr,double dTime,double dDelta)
 	 */
 
 	struct inSmooth smooth;
+       	struct outSmooth outSm;	
+	struct outReSmooth outReSm;
 	struct outNextCollision next;
 	struct inGetColliderInfo inGet;
 	struct outGetColliderInfo outGet;
 	struct inDoCollision inDo;
 	struct outDoCollision outDo;
 	struct inResetColliders reset;
-	COLLIDER *c1 = &inDo.Collider1,*c2 = &inDo.Collider2,*c;
+	struct inSetBall setball; 
+	COLLIDER *c1 = &inDo.Collider1,*c2 = &inDo.Collider2;
 	double sec;
 	unsigned int nCol=0,nMis=0,nMrg=0,nBnc=0,nFrg=0;
 	int first_pass;
@@ -7975,32 +8610,52 @@ msrDoCollision(MSR msr,double dTime,double dDelta)
 	smooth.smf.dCollapseLimit = msr->param.CP.dCollapseLimit;
 	smooth.smf.bFixCollapse = msr->param.CP.bFixCollapse;
 #ifdef SLIDING_PATCH
-	smooth.smf.fLx = msr->param.dxPeriod;
-	smooth.smf.dOrbFreq = msr->param.dOrbFreq;
+	smooth.smf.PP = msr->param.PP; /* struct copy */
 #endif
 #ifdef SAND_PILE
-	smooth.smf.walls = msr->param.CP.walls; /* structure copy */
+	smooth.smf.walls = msr->param.CP.walls; /* struct copy */
 #endif
 	inDo.bPeriodic = smooth.bPeriodic;
 #ifdef SLIDING_PATCH
-	inDo.dOrbFreq = smooth.smf.dOrbFreq;
-	inDo.dTime = smooth.smf.dTime;
+	inDo.dTime = dTime;
+	inDo.PP = msr->param.PP;
 #endif
 	first_pass = 1;
-	do {
-		if (first_pass) {
-			if (msr->iTreeType != MSR_TREE_DENSITY) msrBuildTree(msr,0,-1.0,1);
-			pstSmooth(msr->pst,&smooth,sizeof(smooth),NULL,NULL);
-			first_pass = 0;
-			}
-		else {
-			assert(msr->iTreeType == MSR_TREE_DENSITY);
-			/* following assumes inSmooth and inReSmooth are identical... */
+
+	do { /* Default is use nSmooth */
+	  if (msr->param.dBallVelFact > 0) { /* fBall2 determined by v */
+	    if (msr->iTreeType != MSR_TREE_DENSITY) {
+	      msrBuildTree(msr,0,-1.0,1);
+	      setball.dDelta = dDelta;
+	      setball.dBallVelFact = msr->param.dBallVelFact;
+	      pstSetBall(msr->pst,&setball,sizeof(setball),NULL,NULL);
+	    }
+	    pstReSmooth(msr->pst,&smooth,sizeof(smooth),&outReSm,NULL);
+	  } else { /* fBall2 determined by nearest neighbors */
+	    if (first_pass) {
+	      if (msr->iTreeType != MSR_TREE_DENSITY) msrBuildTree(msr,0,-1.0,1);
+	      pstSmooth(msr->pst,&smooth,sizeof(smooth),&outSm,NULL);
+	      first_pass = 0;
+#ifdef RUBBLE_ZML
+			if (dDelta == msr->param.dDelta && smooth.smf.dStart == 0) {
+				struct outRubbleCheckForKDKRestart out;
+				pstRubbleCheckForKDKRestart(msr->pst,NULL,0,&out,NULL);
+				if (out.bRestart) {
+					msr->param.CP.bDoRubbleKDKRestart = 1;
+					/* flag reset in msrTopStepKDK() */
+					return;
+					}
+				}
+#endif
+	    } else {
+	      assert(msr->iTreeType == MSR_TREE_DENSITY);
+	      /* following assumes inSmooth and inReSmooth are identical. */
 			/*DEBUG pstReSmooth() has caused problems in parallel (MDL_CACHE_LINE):
 			  see DCR's e-mails in pkd folder around end of Oct '01 & Jul '03.*/
-			pstReSmooth(msr->pst,&smooth,sizeof(smooth),NULL,NULL);
-			}
-		pstNextCollision(msr->pst,NULL,0,&next,NULL);
+	      pstReSmooth(msr->pst,&smooth,sizeof(smooth),&outReSm,NULL);
+	    }
+	  }
+	  pstNextCollision(msr->pst,NULL,0,&next,NULL);
 		/*
 		 ** The following assert ensures that no two collisions occur at
 		 ** precisely the same instant. Physically this is possible but
@@ -8050,8 +8705,23 @@ msrDoCollision(MSR msr,double dTime,double dDelta)
 				}
 #endif
 			inDo.CP = msr->param.CP;
+			inDo.dBaseTime=msr->param.dDelta;
+			inDo.iTime0=msr->param.iStartStep;
 #ifdef AGGS
 			c1->agg.bAssigned = c2->agg.bAssigned = 0;
+			/*
+			 ** Must advance any aggregates to impact time now
+			 ** by integrating the Euler equations.  Otherwise
+			 ** integrating forward from the START of the step
+			 ** after a collision would mean that the "ghost"
+			 ** orientation of the aggregate after backdrifting
+			 ** would need to be computed.  But RK4 is lossy so
+			 ** integrating backward then forward would not
+			 ** return exactly to the most recent impact point.
+			 ** Thus, the best compromise is to simply integrate
+			 ** forward as we go, keeping track of the most
+			 ** recent update.
+			 */
 			if (COLLIDER_IS_AGG(c1)) {
 				int iAggIdx;
 				Aggregate *agg;
@@ -8069,7 +8739,52 @@ msrDoCollision(MSR msr,double dTime,double dDelta)
 				c2->agg = *agg; /* struct copy */
 			}
 			inDo.iAggNewIdx = msr->iAggNewIdx;
-#endif
+#endif /* AGGS */
+#ifdef RUBBLE_ZML
+			/* decide now if collision outcome is forced */
+			/* ultimately want to check CP.iOutcomes to ensure rubble outcome OK */
+			if (c1->iColor == PLANETESIMAL && c2->iColor == PLANETESIMAL) {
+				printf("COLLISION: planetesimal - planetesimal\n");
+				inDo.CP.iRubForcedOutcome = RUB_FORCED_NONE;
+				}
+			else if (c1->iColor != PLANETESIMAL && c2->iColor != PLANETESIMAL) {
+				RUB_CLOCK *prc1=NULL,*prc2=NULL;
+				double dt;
+				int i;
+				for (i=0;i<msr->re.nEvents;i++) {
+					if (msr->re.rc[i].iColor == c1->iColor)
+						prc1 = &msr->re.rc[i];
+					if (msr->re.rc[i].iColor == c2->iColor)
+						prc2 = &msr->re.rc[i];
+					}
+				assert(prc1 && prc2);
+				if (prc1->dTStartMergePhase >= prc2->dTStartMergePhase)
+					dt = prc1->dTStartMergePhase;
+				else
+					dt = prc2->dTStartMergePhase;
+				if (dTime + next.dt >= dt) 
+					inDo.CP.iRubForcedOutcome = RUB_FORCED_MERGE;
+				else 
+					inDo.CP.iRubForcedOutcome = RUB_FORCED_BOUNCE;
+				}
+			/* May not want a perfect merge if planetesimal hits rubble 10.27.03 */
+			else { /* one collider is planetesimal */
+				inDo.CP.iRubForcedOutcome = RUB_FORCED_MERGE;
+				printf("COLLISION: planetesimal - rubble\n");
+				}
+
+			/* determine next available rubble color if needed */
+/*			inDo.CP.iRubColor = RUB_BASE_COLOR + msr->re.nEvents;*/
+			{
+			int i;
+
+			inDo.CP.iRubColor = RUB_BASE_COLOR;
+			for (i=0;i<msr->re.nEvents;i++)
+				if (msr->re.rc[i].iColor >= inDo.CP.iRubColor)
+					inDo.CP.iRubColor = msr->re.rc[i].iColor + 1;
+			}
+			assert(inDo.CP.iRubColor != PLANETESIMAL); /* just in case */
+#endif /* RUBBLE_ZML */
 			pstDoCollision(msr->pst,&inDo,sizeof(inDo),&outDo,NULL);
 			msr->dTcoll += outDo.dT; /* account for kinetic energy loss */
 			++nCol;
@@ -8091,162 +8806,118 @@ msrDoCollision(MSR msr,double dTime,double dDelta)
 				assert(0); /* unknown outcome */
 				}
 			/*
-			 ** If there's a merger, the deleted particle has ACTIVE set
-			 ** to zero, so we can still use the old tree and ReSmooth().
-			 ** Deleted particles are cleaned up outside this loop.
+			 ** Set SMOOTHACTIVE for colliders and any particles
+			 ** predicted to collide with them in this interval to
+			 ** force recomputation of their (and only their) collision
+			 ** circumstances.  If there's a merger, the deleted particle
+			 ** has ACTIVE set to zero, so we can still use the old tree
+			 ** and ReSmooth().  Deleted particles are cleaned up outside
+			 ** this loop.
 			 */
+			reset.iOrder1 = c1->id.iOrder;
+			reset.iOrder2 = c2->id.iOrder;
+			pstResetColliders(msr->pst,&reset,sizeof(reset),NULL,NULL);
 #ifdef AGGS
+			/*
+			 ** Do this AFTER reset because any backdrifted aggregates
+			 ** must have ALL their particles set SMOOTHACTIVE to force
+			 ** recomputation of collision circumstances.
+			 */
 			switch (outDo.iOutcome) {
 			case MERGE:
 				assert(outDo.nOut == 1);
 				/* merge and store result in outDo for logging */
-				msrAggsMerge(msr,c1,c2,next.dt,(&outDo.Out[0]));
+				msrAggsMerge(msr,c1,c2,next.dt,&outDo.Out[0]);
 				break;
 			case BOUNCE:
 				assert(outDo.nOut == 2);
 				/* copy any output agg structs to master storage and update */
-				msrAggsBounce(msr,&(outDo.Out[0]),&(outDo.Out[1]),next.dt);
+				msrAggsBounce(msr,&outDo.Out[0],&outDo.Out[1],next.dt);
 				break;
 			case FRAG:
-				assert(0);
+			    assert(0);
 			default:
-				assert(0);
+			    assert(0);
+			}
+#endif /* AGGS */
+			if (outDo.iOutcome == FRAG) {
+				/* note this sets msr->iTreeType to MSR_TREE_NONE */
+				msrAddDelParticles(msr);
+#ifdef RUBBLE_ZML
+				printf("N = %i\n", msr->nDark); /* DEBUG */
+#endif
+				/* have to rebuild tree here and do new smooth... */
+				first_pass = 1;
+				/* also have to reactivate all particles */
+				msrActiveType(msr,TYPE_ALL,TYPE_ALLACTIVE);
+				/*DEBUG if nSmooth is too small, need to grow it -- ugly*/
+				if (msr->param.nSmooth < 32) {
+				  smooth.nSmooth = msr->param.nSmooth = (outDo.nOut < 32 ? outDo.nOut : 32);
+				  if (msr->param.bVWarnings)
+				    printf("WARNING: nSmooth set to %i\n",msr->param.nSmooth);				  
+				}
+#ifdef RUBBLE_ZML
+				assert(inDo.CP.iRubForcedOutcome == RUB_FORCED_NONE);
+				/* also need to enforce new timestep rungs for rubble */
+				msrRubbleStep(msr);
+				msrDtToRung(msr,0,msr->param.dDelta,1);
+				/* and store event in array and set clocks */
+				{
+				RUB_CLOCK *rc;
+				double dyn_time;
+
+				assert(msr->re.nEvents < RUB_MAX_NUM_EVENTS);
+				rc = &msr->re.rc[msr->re.nEvents++];
+				rc->iColor = inDo.CP.iRubColor;
+				dyn_time = 
+					3/sqrt(c1->fMass/(4.0/3.0*M_PI*c1->fRadius*c1->fRadius*c1->fRadius));
+				/* make sure dynamical time is consistent with minimum step */
+				if (msr->param.dDelta/(1 << (msr->param.iMaxRung - 1)) >= 
+					   0.05*dyn_time) /* DEBUG*/
+					printf("min step = %e dyn_time = %e dens = %e dens = %e\n", 
+						   msr->param.dDelta/(1 << (msr->param.iMaxRung - 1)), dyn_time,
+						  c1->fMass/(4.0/3.0*M_PI*c1->fRadius*c1->fRadius*c1->fRadius),
+						    c2->fMass/(4.0/3.0*M_PI*c2->fRadius*c2->fRadius*c2->fRadius));
+				assert(msr->param.dDelta/(1 << (msr->param.iMaxRung - 1)) <= 
+					   0.05*dyn_time);
+				rc->dTStartMergePhase = dTime + next.dt + 
+					msr->param.CP.DB.iRubNumDynToBounce*dyn_time;
+				rc->dTEndRubblePhase = rc->dTStartMergePhase +
+					msr->param.CP.DB.iRubNumDynToMerge*dyn_time;
 				}
 #endif
-#ifdef IGNORE_FOR_NOW/*DEBUG*/
-			if (outDo.iOutcome & FRAG) {
-				/* see Zoe's version */
-				}
-#endif
-			reset.iOrder1 = c1->id.iOrder;
-			reset.iOrder2 = c2->id.iOrder;
-			pstResetColliders(msr->pst,&reset,sizeof(reset),NULL,NULL);
+			}
 			smooth.smf.dStart = next.dt;
-			switch (msr->param.iCollLogOption) { /* log collision if requested */
-			case COLL_LOG_NONE:
-				break;
-			case COLL_LOG_VERBOSE:
-				{
-				FILE *fp;
-				int i;
+#ifdef RUBBLE_ZML
+			if (outDo.iOutcome == MERGE && 
+				c1->iColor == PLANETESIMAL && c2->iColor == PLANETESIMAL) {
 
-				fp = fopen(msr->param.achCollLog,"a");
-				assert(fp != NULL);
-#ifdef AGGS
-				for (i=0;i<3;i++) {
-					if (!COLLIDER_IS_AGG(c1))
-						c1->r[i] += c1->v[i]*next.dt;
-					if (!COLLIDER_IS_AGG(c2))
-						c2->r[i] += c2->v[i]*next.dt;
-					}
-#else
-				for (i=0;i<3;i++) {
-					c1->r[i] += c1->v[i]*next.dt;
-					c2->r[i] += c2->v[i]*next.dt;
-					}
-#endif
-				fprintf(fp,"%s-%s COLLISION:T=%e\n",
-						_msrParticleLabel(msr,c1->iColor),
-						_msrParticleLabel(msr,c2->iColor),dTime + next.dt);
-#ifdef AGGS
-				if (COLLIDER_IS_AGG(c1))
-					fprintf(fp,"***1:p=%i,o=%i,i=%i,oi=%i,M=%e,R=*%e*,dt=%e,rung=%i,"
-							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
-							c1->id.iPid,c1->id.iOrder,c1->id.iIndex,c1->id.iOrgIdx,
-							c1->agg.mass,c1->fRadius/*DEBUG*/,c1->dt,c1->iRung,
-							c1->agg.r_com[0],c1->agg.r_com[1],c1->agg.r_com[2],
-							c1->agg.v_com[0],c1->agg.v_com[1],c1->agg.v_com[2],
-							c1->agg.omega[0],c1->agg.omega[1],c1->agg.omega[2]);
-				else
-#endif
-					fprintf(fp,"***1:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,dt=%e,rung=%i,"
-							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
-							c1->id.iPid,c1->id.iOrder,c1->id.iIndex,c1->id.iOrgIdx,
-							c1->fMass,c1->fRadius,c1->dt,c1->iRung,
-							c1->r[0],c1->r[1],c1->r[2],
-							c1->v[0],c1->v[1],c1->v[2],
-							c1->w[0],c1->w[1],c1->w[2]);
-#ifdef AGGS
-				if (COLLIDER_IS_AGG(c2))
-					fprintf(fp,"***2:p=%i,o=%i,i=%i,oi=%i,M=%e,R=*%e*,dt=%e,rung=%i,"
-							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
-							c2->id.iPid,c2->id.iOrder,c2->id.iIndex,c2->id.iOrgIdx,
-							c2->agg.mass,c2->fRadius/*DEBUG*/,c2->dt,c2->iRung,
-							c2->agg.r_com[0],c2->agg.r_com[1],c2->agg.r_com[2],
-							c2->agg.v_com[0],c2->agg.v_com[1],c2->agg.v_com[2],
-							c2->agg.omega[0],c2->agg.omega[1],c2->agg.omega[2]);
-				else
-#endif
-					fprintf(fp,"***2:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,dt=%e,rung=%i,"
-							"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",
-							c2->id.iPid,c2->id.iOrder,c2->id.iIndex,c2->id.iOrgIdx,
-							c2->fMass,c2->fRadius,c2->dt,c2->iRung,
-							c2->r[0],c2->r[1],c2->r[2],
-							c2->v[0],c2->v[1],c2->v[2],
-							c2->w[0],c2->w[1],c2->w[2]);
-				fprintf(fp,"***OUTCOME=%s dT=%e\n",
-						outDo.iOutcome == MISS ? "MISS" :
-						outDo.iOutcome == MERGE ? "MERGE" :
-						outDo.iOutcome == BOUNCE ? "BOUNCE" :
-						outDo.iOutcome == FRAG ? "FRAG" : "UNKNOWN",outDo.dT);
-				for (i=0;i<(outDo.nOut < MAX_NUM_FRAG ? outDo.nOut : MAX_NUM_FRAG);i++) {
-					c = &outDo.Out[i];
-#ifdef AGGS
-					if (COLLIDER_IS_AGG(c))
-						fprintf(fp,"***out%i:p=%i,o=%i,i=%i,oi=%i,M=%e,R=*%e*,rung=%i,"
-								"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",i,
-								c->id.iPid,c->id.iOrder,c->id.iIndex,c->id.iOrgIdx,
-								c->agg.mass,c->fRadius/*DEBUG*/,c->iRung,
-								c->agg.r_com[0],c->agg.r_com[1],c->agg.r_com[2],
-								c->agg.v_com[0],c->agg.v_com[1],c->agg.v_com[2],
-								c->agg.omega[0],c->agg.omega[1],c->agg.omega[2]);
-					else
-#endif
-						fprintf(fp,"***out%i:p=%i,o=%i,i=%i,oi=%i,M=%e,R=%e,rung=%i,"
-								"r=(%e,%e,%e),v=(%e,%e,%e),w=(%e,%e,%e)\n",i,
-								c->id.iPid,c->id.iOrder,c->id.iIndex,c->id.iOrgIdx,
-								c->fMass,c->fRadius,c->iRung,
-								c->r[0],c->r[1],c->r[2],
-								c->v[0],c->v[1],c->v[2],
-								c->w[0],c->w[1],c->w[2]);
-					}
-				fclose(fp);
-				break;
-				}
-			case COLL_LOG_TERSE:
-				{
 				/*
-				 ** FORMAT: For each event, time (double), collider 1 iOrgIdx
-				 ** (int), collider 2 iOrgIdx (int), number of post-collision
-				 ** particles (int), iOrgIdx for each of these (n * int).
+				 ** dust from interpolated collision result is added to DustBins here 
+				 ** note: dust is also generated in resolved (rubble pile collisions) 
+				 ** see Cleanup routines.
 				 */
+				struct inRubInterpCleanup in;
+				struct outRubInterpCleanup out;
 
-				FILE *fp;
-				XDR xdrs;
-				double dDum;
-				int i;
-
-				if (outDo.iOutcome != MERGE && outDo.iOutcome != FRAG)
-					break; /* only care when particle indices change */
-				fp = fopen(msr->param.achCollLog,"a");
-				assert(fp != NULL);
-				xdrstdio_create(&xdrs,fp,XDR_ENCODE);
-				dDum = dTime + next.dt;
-				(void) xdr_double(&xdrs,&dDum);
-				(void) xdr_int(&xdrs,&c1->id.iOrgIdx);
-				(void) xdr_int(&xdrs,&c2->id.iOrgIdx);
-				(void) xdr_int(&xdrs,&outDo.nOut);
-				for (i=0;i<(outDo.nOut < MAX_NUM_FRAG ? outDo.nOut : MAX_NUM_FRAG);i++)
-					(void) xdr_int(&xdrs,&outDo.Out[i].id.iOrgIdx);
-				xdr_destroy(&xdrs);
-				(void) fclose(fp);
-				break;
+				assert(outDo.nOut == 1); /* paranoid! */
+				assert(inDo.CP.iRubForcedOutcome == RUB_FORCED_NONE);
+				in.DB = msr->param.CP.DB; /* struct copy */
+				in.iOrder = outDo.Out[0].id.iOrder;
+				in.dCentMass = msr->param.dCentMass;
+				/*printf("Before pstRubInterpCleanup\n");*/ /*DEBUG*/
+				pstRubInterpCleanup(msr->pst,&in,sizeof(in),&out,NULL);
+				if (out.iBin >= 0 && out.iBin < msr->param.CP.DB.nDustBins) 
+					msr->aDustBins[out.iBin].dMass += out.dDustBinsInterpMass;
+				else
+					msr->dDustBinsTrash += out.dDustBinsInterpMass; /* put dust outside bin range in trash */
 				}
-			default:
-				assert(0); /* invalid collision log option */
-				} /* logging */
-			} /* if collision */
-		} while (COLLISION(next.dt) && smooth.smf.dStart < smooth.smf.dEnd);
+#endif
+			if (msr->param.iCollLogOption) {
+			  msrDoCollLog(msr,c1,c2,&outDo,msr->param.iCollLogOption,next.dt,dTime);
+			}
+		}
+	} while (COLLISION(next.dt) && smooth.smf.dStart < smooth.smf.dEnd);
 	msrAddDelParticles(msr); /* clean up any deletions */
 	if (msr->param.nSmooth > msr->N) {
 		msr->param.nSmooth = msr->N;
@@ -8311,20 +8982,226 @@ msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
 	}
 #endif
 
+#ifdef SLIDING_PATCH
+void
+msrPickNewCoordinates(PARTICLE *p,int n,double *dHill,double dxPeriod,double dyPeriod,double **new,int pick)
+{
+    int j,k,ok;
+    double hill2,dist2;
+    
+    *new=malloc(3*sizeof(double));
+    (*new)[0]=dxPeriod*(rand()/((double) RAND_MAX) - 0.5);
+    (*new)[1]=dyPeriod*(rand()/((double) RAND_MAX) - 0.5);
+    (*new)[2]=p[pick].r[2];
+    for (j=0;j<n;j++) {
+	if (j!=pick) {
+	    hill2=(dHill[pick] + dHill[j])*(dHill[pick] + dHill[j]);
+	    ok=0;
+	    while (!ok) {
+		dist2=0;
+		for (k=0;k<3;k++)
+		    dist2+=((*new)[k] - p[j].r[k])*((*new)[k] - p[j].r[k]);
+		if (dist2 > hill2) ok=1;
+		else {
+		    (*new)[0]=dxPeriod*(rand()/((double) RAND_MAX) - 0.5);
+		    (*new)[1]=dyPeriod*(rand()/((double) RAND_MAX) - 0.5);
+		    }		    
+		}
+	    }    
+	}
+    }
+
+
+
+
+void
+msrRandomLog(int iStep,PARTICLE p,PARTICLE *pn,double *nsep2,int nn,PARTICLE *pr,double *rsep2,int nr,double *x, double dHillRadius)
+{
+    FILE *fp;
+    int i;
+    
+
+    fp=fopen("random.log","a");
+    assert(fp);
+    fprintf(fp,"Radomizing Large Mass, step: %d\n",iStep);
+    fprintf(fp,"Large Mass Info: iOrder=%d, Mass=%e, r=(%e,%e,%e), Hill Radius=%e, nNeighbors=%d\n",p.iOrder,p.fMass,p.r[0],p.r[1],p.r[2],dHillRadius,nn);
+    if (nn == 0)
+	fprintf(fp,"\tNo Neighbor Particles.\n");
+    else {
+	for (i=0;i<nn;i++) {
+	    fprintf(fp,"\tNeighbor %d: iOrder=%d, r=(%.3e,%.3e,%.3e), v=(%.3e,%.3e,%.3e), Distance=%e\n",i,pn[i].iOrder,pn[i].r[0],pn[i].r[1],pn[i].r[2],pn[i].v[0],pn[i].v[1],pn[i].v[2],sqrt(nsep2[i]));
+	    }
+	
+	}
+    fprintf(fp,"New Position: r=(%e,%e,%e), nNeighbors=%d\n",x[0],x[1],x[2],nr);
+    if (nr == 0)
+	fprintf(fp,"\tNo replacement particles.\n");
+    else {	
+	for (i=0;i<nr;i++) {
+	    fprintf(fp,"\tReplacement %d: iOrder=%d, r=(%.3e,%.3e,%.3e), v=(%.3e,%.3e,%.3e), Distance=%e\n",i,pr[i].iOrder,pr[i].r[0],pr[i].r[1],pr[i].r[2],pr[i].v[0],pr[i].v[1],pr[i].v[2],sqrt(rsep2[i]));
+	    }
+	}
+
+    fclose(fp);    
+    }
+
+int 
+msrCheckLargeMassOverlap(PARTICLE *p,double *hill,int n)
+{
+    /* If two large masses have overlapping spheres, then we will not
+       perform the randomization this time. */
+
+    int i,j,k;
+    double dist2;
+    
+    for (i=0;i<n;i++) {
+	for (j=i+1;j<n-i;j++) {
+	    dist2=0;
+	    for (k=0;k<3;k++) 
+		dist2+=(p[i].r[k]-p[j].r[k])*(p[i].r[k]-p[j].r[k]);
+	    if (dist2 < (hill[i]+hill[j])*(hill[i]+hill[j]) )
+		return 0;
+	}
+    }
+    return 1;	    	    
+}
+
+int
+msrGetNextRandomTime(int iBaseTime,int iTimeNow)
+{
+    int dev;
+    int ok=0;
+    
+    
+    while (!ok) {
+	dev=msrPoissonDeviates(iBaseTime);
+	if (dev > 0.0 && dev < 5*iBaseTime) ok=1;
+	}
+    
+    return dev + iTimeNow;
+    }
+    
+int
+msrPickMass(PARTICLE *p,int n)
+{
+    int i;
+    double *prob,pick,msum2=0;
+    
+
+    prob=malloc(n*sizeof(double));
+    for (i=0;i<n;i++) 
+	msum2+= p[i].fMass*p[i].fMass;
+    prob[0]=(p[0].fMass*p[0].fMass)/msum2;    
+    for (i=1;i<n;i++)
+	prob[i]=prob[i-1]+(p[i].fMass*p[i].fMass)/msum2;
+    assert(abs(prob[n-1] - 1) < 1e-10);
+    pick = rand()/((double) RAND_MAX);
+    for (i=0;i<n;i++) {
+	if (pick < prob[i]) {
+	    return i;
+	    }
+	}
+    assert(0); /* Shouldn't get here! */
+	return -1; /* to keep compiler happy */
+    }
+
+
+void
+msrRandomizeLargeMasses(MSR msr,int iStep,double dTime)
+{
+    /* This picks the masses which are large enough to require
+       randomization */
+
+    int j,k,iDoRand,pick;
+    double *newcoo;
+    
+    struct inLargeMass inLM;
+    struct outLargeMass outLM;
+    struct inMoveParticle inMove;
+    struct inGetNeighbors inGNP;
+    struct outGetNeighbors outMass,outReplace;
+    
+    inLM.fNumHillSphere = (FLOAT)msr->param.dRandBall;
+    inLM.dMass = msr->param.dLargeMass;
+    inLM.dCentMass = 1; /* for now  assume solar system */
+    inLM.dOrbRad = pow((inLM.dCentMass*msr->param.PP.dOrbFreq),(-2.0/3));
+    inMove.PP = msr->param.PP; /* struct copy */
+    outLM.n = 0;
+    inGNP.PP = msr->param.PP; /* struct copy */
+    inGNP.dTime = dTime;
+    
+    /* How many Large Masses are eligible to be moved? Returns arrays of
+       PARTICLEs and radii, and total number (scalar) */
+    pstFindLargeMasses(msr->pst,&inLM,sizeof(inLM),&outLM,NULL);
+
+    if (outLM.n) {
+	/* Check for overlap between the large particles' Hill spheres */
+	iDoRand=msrCheckLargeMassOverlap(outLM.p,outLM.dRadius,outLM.n);
+	/* Pick a random position which will become the new location
+	   of the large mass, keep z the same, ensuring there is no
+	   overlap in the new coordinates.. */
+	if (iDoRand) {		    
+	    printf("Randomizing Large Masses...\n");
+	    pick=msrPickMass(outLM.p,outLM.n);
+	    
+	    msrPickNewCoordinates(outLM.p,outLM.n,outLM.dRadius,msr->param.dxPeriod,msr->param.dyPeriod,&newcoo,pick);
+    
+	    inGNP.dDist=outLM.dRadius[pick];
+	    inGNP.id=outLM.p[pick].iOrder;
+	    for (j=0;j<3;j++)
+		inGNP.x[j]=outLM.p[pick].r[j];
+	    pstGetNeighborParticles(msr->pst,&inGNP,sizeof(inGNP),&outMass,NULL);
+	    for (j=0;j<3;j++) 
+		inGNP.x[j]=newcoo[j];
+	
+	    pstGetNeighborParticles(msr->pst,&inGNP,sizeof(inGNP),&outReplace,NULL);
+
+	    /* Now do the switching */
+	    /* Replacement Particles */
+	    for (k=0;k<3;k++) 
+		inMove.dOrigin[k]=outLM.p[pick].r[k];
+	    for (j=0;j<outReplace.n;j++) {	    
+		inMove.p=outReplace.p[j];
+		for (k=0;k<3;k++) 
+		    inMove.dRelx[k]=outReplace.p[j].r[k] - newcoo[k];
+		pstMoveParticle(msr->pst,&inMove,sizeof(inMove),NULL,NULL);
+		}
+	    /* Large Mass Particle */
+	    for (j=0;j<3;j++)
+		inMove.dOrigin[j]=newcoo[j];
+	    inMove.p = outLM.p[pick];
+	    for (k=0;k<3;k++) 
+		inMove.dRelx[k]=0.0;
+	    pstMoveParticle(msr->pst,&inMove,sizeof(inMove),NULL,NULL);
+	    /* Large Mass Neighbor Particles */
+	    for (j=0;j<outMass.n;j++) {    
+		inMove.p = outMass.p[j];
+		for (k=0;k<3;k++)
+		    inMove.dRelx[k]=outMass.p[j].r[k] - outLM.p[pick].r[k];   
+		pstMoveParticle(msr->pst,&inMove,sizeof(inMove),NULL,NULL);
+		}
+	    msrRandomLog(iStep,outLM.p[pick],outMass.p,outMass.dSep2,outMass.n,outReplace.p,outReplace.dSep2,outReplace.n,newcoo,inGNP.dDist);	
+	    }
+	msr->param.iNextRandomization = msrGetNextRandomTime(msr->param.iRandStep,iStep);	
+	}    
+    }
+
+
+#endif /* SLIDING_PATCH */
 #endif /* COLLISIONS */
 
 #ifdef AGGS
 
-void msrAggsToBodyAxes(MSR msr,int iAggIdx,Aggregate *agg)
+void msrAggsSetBodyPos(MSR msr,int iAggIdx,Aggregate *agg)
 {
 	/* to be called ONLY by msrAggsUpdate() */
 	/* requires call to msrAggsGetAxesAndSpin() first */
 
-	struct inAggsToBodyAxes in;
+	struct inAggsSetBodyPos in;
 
 	in.iAggIdx = iAggIdx;
 	matrixTranspose(agg->lambda,in.spaceToBody);
-	pstAggsToBodyAxes(msr->pst,&in,sizeof(in),NULL,NULL);
+	pstAggsSetBodyPos(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
 void msrAggsGetAxesAndSpin(MSR msr,int iAggIdx,Aggregate *agg)
@@ -8332,17 +9209,17 @@ void msrAggsGetAxesAndSpin(MSR msr,int iAggIdx,Aggregate *agg)
 	/* to be called ONLY by msrAggsUpdate() */
 	/* requires call to msrAggsGetCOM() first */
 
-	struct inAggsGetAxes in;
-	struct outAggsGetAxes out;
+	struct inAggsGetAxesAndSpin in;
+	struct outAggsGetAxesAndSpin out;
 	Matrix spaceToBody;
 	Vector h;
 	int k;
 
-	/* compute inertia tensor I and angular momentum L */
+	/* compute inertia tensor I and angular momentum L (not spin, yet!) */
 	in.iAggIdx = iAggIdx;
 	vectorCopy(agg->r_com,in.r_com);
 	vectorCopy(agg->v_com,in.v_com);
-	pstAggsGetAxes(msr->pst,&in,sizeof(in),&out,NULL);
+	pstAggsGetAxesAndSpin(msr->pst,&in,sizeof(in),&out,NULL);
 
 	/*
 	 ** The inertia tensor computed is only valid for the diagonal and
@@ -8359,7 +9236,7 @@ void msrAggsGetAxesAndSpin(MSR msr,int iAggIdx,Aggregate *agg)
 	matrixTranspose(agg->lambda,spaceToBody);
 	matrixTransform(spaceToBody,out.L,h);
 
-	/* compute spin vector omega = I^{-1} h */
+	/* now compute spin vector omega = I^{-1} h */
 	for (k=0;k<3;k++) {/* shortcut for diagonal matrix in body frame */
 		assert(agg->moments[k] > 0.0);
 		agg->omega[k] = h[k]/agg->moments[k];
@@ -8382,6 +9259,43 @@ void msrAggsGetCOM(MSR msr,int iAggIdx,Aggregate *agg)
 	vectorScale(out.mv,1.0/out.m,agg->v_com);
 	}
 
+void msrAggsUpdate(MSR msr,int iAggIdx,Aggregate *agg)
+{
+	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+	assert(agg == &msr->pAggs[iAggIdx]);
+	assert(agg->bAssigned);
+
+	/* get center of mass info, needed before axes */
+	msrAggsGetCOM(msr,iAggIdx,agg);
+	/* get moments, principal axes, and spin vector */
+	msrAggsGetAxesAndSpin(msr,iAggIdx,agg);
+	/* transform particle positions to body frame */
+	msrAggsSetBodyPos(msr,iAggIdx,agg);
+	/*
+	 ** NOTE: particle velocities are not updated at this point
+	 ** since this is done during the kick step (or back drift
+	 ** after a collision)---this works only for the KDK scheme!
+	 ** Similarly, particle spins are not updated since they're
+	 ** currently only needed just before a collision, or at the
+	 ** end of the step (for output purposes).  Hence the spins
+	 ** are updated in msrAggsAdvance().
+	 */
+	}
+
+void msrAggsDelete(MSR msr,int iAggIdx,Aggregate *agg)
+{
+	struct inAggsDelete in;
+	struct outAggsDelete out;
+
+	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+	assert(agg == &msr->pAggs[iAggIdx]);
+	assert(agg->bAssigned);
+	in.iAggIdx = iAggIdx;
+	pstAggsDelete(msr->pst,&in,sizeof(in),&out,NULL);
+	assert(out.bFound == 1);
+	agg->bAssigned = 0;
+	}
+
 void msrAggsGetAccel(MSR msr,int iAggIdx,Aggregate *agg)
 {
 	/* particle accelerations must be up to date */
@@ -8401,8 +9315,37 @@ void msrAggsGetAccel(MSR msr,int iAggIdx,Aggregate *agg)
 			(void) printf("WARNING: Aggregate mass not conserved: %.16e != %.16e!\n",out.m,agg->mass);
 			}
 		vectorScale(out.ma,1.0/out.m,agg->a_com);
+		}
+	} 
+
+void msrAggsCheckStress(MSR msr,int iAggIdx,Aggregate *agg,int *bLostMass)
+{
+	struct inAggsCheckStress in;
+	struct outAggsCheckStress out;
+
+	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
+	assert(agg == &msr->pAggs[iAggIdx]);
+	assert(agg->bAssigned);
+	assert(bLostMass != NULL);
+	*bLostMass = 0;
+	in.iAggIdx = iAggIdx;
+	vectorCopy(agg->r_com,in.r_com);
+	vectorCopy(agg->a_com,in.a_com);
+	matrixTransform(agg->lambda,agg->omega,in.omega); /* space frame */
+	in.fTensileStrength = 0.12; /*DEBUG return if no strength*/
+	in.fShearStrength = FLOAT_MAXVAL; /*DEBUG*/
+	pstAggsCheckStress(msr->pst,&in,sizeof(in),&out,NULL);
+	if (out.nLost > 0) {
+		/*DEBUG*/(void) printf("agg %i lost %i particle(s), %i left\n",iAggIdx,out.nLost,out.nLeft);
+		*bLostMass = 1;
+		if (out.nLeft > 1)
+			msrAggsUpdate(msr,iAggIdx,agg);
+		else if (out.nLeft == 1)
+			msrAggsDelete(msr,iAggIdx,agg);
+		else
+			agg->bAssigned = 0;
+		}
 	}
-}
 
 void msrAggsGetTorque(MSR msr,int iAggIdx,Aggregate *agg)
 {
@@ -8424,44 +9367,31 @@ void msrAggsGetTorque(MSR msr,int iAggIdx,Aggregate *agg)
 		/* transform torque vector to body frame */
 		matrixTranspose(agg->lambda,spaceToBody);
 		matrixTransform(spaceToBody,out.torque,agg->torque);
+		}
 	}
-}
 
-void msrAggsGetAccelAndTorque(MSR msr)
+void msrAggsGravity(MSR msr)
 {
 	/* to be called after particle accelerations have been computed */
 
 	Aggregate *agg;
-	int i;
+	int i,bLostMass;
 
 	for (i=0;i<msr->nAggs;i++) {
 		agg = &msr->pAggs[i];
 		if (agg->bAssigned) {
-			msrAggsGetAccel(msr,i,agg);
+			do {
+				msrAggsGetAccel(msr,i,agg);
+				msrAggsCheckStress(msr,i,agg,&bLostMass);
+				if (!agg->bAssigned)
+					break; /* this means aggregate fragmented entirely */
+				} while (bLostMass == 1);
+			}
+		if (agg->bAssigned)
 			msrAggsGetTorque(msr,i,agg);
 		}
 	}
-}
 
-void msrAggsUpdate(MSR msr,int iAggIdx,Aggregate *agg)
-{
-	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
-	assert(agg == &msr->pAggs[iAggIdx]);
-	assert(agg->bAssigned);
-
-	/* get center of mass info, needed before axes */
-	msrAggsGetCOM(msr,iAggIdx,agg);
-	/* get moments, principal axes, and spin vector */
-	msrAggsGetAxesAndSpin(msr,iAggIdx,agg);
-	/* get particle positions in body frame */
-	msrAggsToBodyAxes(msr,iAggIdx,agg);
-	/*
-	 ** NOTE: particle spins are not updated at this point since
-	 ** they're currently only needed just before a collision,
-	 ** or at the end of the step (for output purposes). Hence
-	 ** the spins are updated in msrAggsAdvance().
-	 */
-	}
 
 void msrAggsGetNewIdx(MSR msr)
 {
@@ -8485,10 +9415,60 @@ void msrAggsGetNewIdx(MSR msr)
 		msr->pAggs[i].bAssigned = 0;
 	}
 
+#ifdef AGGSCLEANUP /*DEBUG not implemented yet*/
+/*DEBUG reconcile with AggsFind()?*/
+/*DEBUG do we really want to rearrange indices?*/
+#define AGGS_EFF_RATIO (1.0/3.0)
+
+void msrAggsCleanup(MSR msr)
+{
+	Aggregate *agg,*new_buf;
+	int i,j,nAggs;
+
+	for (nAggs=i=0;i<msr->nAggs;i++) {
+		agg = &msr->pAggs[i];
+		if (agg->bAssigned)
+			++nAggs;
+		}
+
+	assert(nAggs >= 0);
+
+	if (nAggs < msr->nAggs*AGGS_EFF_RATIO) {
+		struct inAggsCleanup in;
+
+		if (msr->param.bVDetails)
+			(void) printf("Cleaning up unused aggregate space...\n");
+		/* allocate sufficient space in powers of 2 */
+		nAggs = 1 << (int) (log((nAggs + 1) << 1)/M_LN2);
+		new_buf = (Aggregate *) malloc(nAggs*sizeof(Aggregate));
+		for (i=j=0;i<msr->nAggs;i++) {
+			agg = &msr->pAggs[i];
+			if (agg->bAssigned) {
+				assert(j < nAggs);
+				new_buf[j++] = *agg; /* struct copy */
+				in.iOldIdx = i;
+				in.iNewIdx = j;
+				pstAggsCleanup(msr->pst,&in,sizeof(in),NULL,NULL);
+				}
+			}
+		for (j<nAggs;j++)
+			new_buf[j].bAssigned = 0;
+		msr->nAggs = nAggs;
+		free((void *) msr->pAggs);
+		msr->pAggs = new_buf;
+		if (msr->param.bVDetails)
+			(void) printf("Space for %i aggregates reallocated.\n",nAggs);
+		msrAggsGetNewIdx(msr);
+		}
+	}
+
+#undef AGGS_EFF_RATIO
+#endif
+
 void msrAggsFind(MSR msr)
 {
 	/*
-	 ** Finds and initializes aggregates. Must be called immediately
+	 ** Finds and initializes aggregates.  Must be called immediately
 	 ** after initial conditions are loaded.
 	 */
 
@@ -8504,10 +9484,11 @@ void msrAggsFind(MSR msr)
 	/*
 	 ** We don't know in advance how many aggregates there will be.
 	 ** Worse, the aggregate indices could be in any order, and may
-	 ** not even be continguous. Strategy: loop through all particles
-	 ** to find the largest aggregate index (stored as -1 - org_idx)
-	 ** and assume storage for that many aggregates (+ 1) is required.
-	 ** Some slots may be left empty though.
+	 ** not even be continguous.  Strategy: loop through all particles
+	 ** to find the largest aggregate index (stored as -1 - iOrgIdx)
+	 ** and assume storage for that many aggregates (plus one, since
+	 ** aggregate indices start at 0) is required.  Some slots may be
+	 ** left empty though.
 	 */
 
 	pstAggsFind(msr->pst,NULL,0,&outFind,NULL);
@@ -8529,23 +9510,22 @@ void msrAggsFind(MSR msr)
 	if (msr->param.bVDetails)
 		(void) printf("msrAggsFind(): Space for %i aggregates allocated.\n",msr->nAggs);
 
+	/* initialize */
+
 	for (i=0;i<msr->nAggs;i++) {
 		agg = &msr->pAggs[i];
 		agg->bAssigned = 0;
 		/* determine which aggregates are actually occupied */
 		if (i <= outFind.iMaxIdx) {
-			/*DEBUG following could be separate msr routine...*/
 			inConfirm.iAggIdx = i;
 			pstAggsConfirm(msr->pst,&inConfirm,sizeof(inConfirm),&outConfirm,NULL);
-			agg->bAssigned = outConfirm.bAssigned;
-			}
-		if (agg->bAssigned) {
-			++nAssigned;
-			msrAggsUpdate(msr,i,agg);
+			if (outConfirm.bAssigned) {
+				agg->bAssigned = 1;
+				++nAssigned;
+				msrAggsUpdate(msr,i,agg);
+				}
 			}
 		}
-
-	msrAggsGetNewIdx(msr);
 
 	if (msr->param.bVDetails)
 		(void) printf("msrAggsFind(): %i aggregate%s initialized.\n",nAssigned,
@@ -8554,6 +9534,10 @@ void msrAggsFind(MSR msr)
 	if (msr->param.bVWarnings && msr->nAggs > AGGS_INIT_BUFF_SIZE &&
 		nAssigned < (msr->nAggs >> 2))
 		(void) fprintf(stderr,"WARNING: Inefficient use of aggregate buffer\n");
+
+	/* determine what next aggregate index should be, when needed */
+
+	msrAggsGetNewIdx(msr);
 	}
 
 void msrAggsSetSpacePos(MSR msr,int iAggIdx,Aggregate *agg)
@@ -8636,8 +9620,7 @@ void msrAggsAdvance(MSR msr,int iAggIdx,Aggregate *agg,double dToTime)
 	/* dToTime is no larger than current drift interval */
 
 	FLOAT vars[12];
-	FLOAT time = 0.0; /* dummy time */
-	double dt;
+	double dt,dtrunge,t=0.0;
 	int k;
 
 	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
@@ -8652,11 +9635,22 @@ void msrAggsAdvance(MSR msr,int iAggIdx,Aggregate *agg,double dToTime)
 
 	/* Make sure time step is reasonable */
 
-/*DEBUG ???
-	assert(dt < 0.01*2*M_PI/sqrt(agg->omega[0]*agg->omega[0] +
-								 agg->omega[1]*agg->omega[1] +
-								 agg->omega[2]*agg->omega[2]));
-*/
+	if (dt > 0.0) {
+		double omega = vectorMag(agg->omega);
+		int nrunge;
+
+		nrunge = 1;
+		if (omega > 0.0) {
+			double dtmax = 0.03/*DEBUG*/*2*M_PI/omega;
+			if (dt > dtmax)
+				nrunge = (int) (dt/dtmax) + 1;
+			if (nrunge > 1) (void) fprintf(stderr,"WARNING: nrunge = %i dt = %g dtmax = %g omega = %g\n",nrunge,dt,dtmax,omega);/*DEBUG*/
+			}
+
+		assert(nrunge < 1000);/*DEBUG--arbitrary*/
+
+		dtrunge = dt/nrunge;
+		}
 
 	/*
 	 ** Build vars.  To make things easier in aggsEulerDerivs(), we
@@ -8670,11 +9664,14 @@ void msrAggsAdvance(MSR msr,int iAggIdx,Aggregate *agg,double dToTime)
 		}
 
 	/*
-	 ** Take an rk4 step.  Note that the current time is not used,
-	 ** hence we pass 0 (the Euler equations have no explicit time
-	 ** dependence).  The agg structure provides torque and moments.
+	 ** Take as many rk4 steps as needed to complete the interval.
+	 ** The agg structure provides torque and moments.
 	 */
-	aggsRungeStep(dt,time,vars,12,agg,aggsEulerDerivs,&time,vars);
+
+	if (dt < 0.0)
+		aggsRungeStep(dt,t,vars,12,agg,aggsEulerDerivs,&t,vars); /* t not used */
+	else while (t < dt)
+		aggsRungeStep(dtrunge,t,vars,12,agg,aggsEulerDerivs,&t,vars);
 
 	/* Unpack vars */
 	for (k=0;k<3;k++) {
@@ -8692,8 +9689,11 @@ void msrAggsAdvance(MSR msr,int iAggIdx,Aggregate *agg,double dToTime)
 
 	/*
 	 ** Get new particle positions in space frame.
-	 ** NOTE: space velocities not required since these can be
-	 ** computed from the aggregate velocity plus omega x r.
+	 ** NOTE: space velocities set during kick (or during
+	 ** back drift after a collision).  We *could* update
+	 ** them here, but they would only be used for the
+	 ** bounce-vs-stick check in pkdAggsDoCollision(),
+	 ** which is an approximation anyway.
 	 */
 
 	msrAggsSetSpacePos(msr,iAggIdx,agg);
@@ -8727,13 +9727,26 @@ void msrAggsAdvanceClose(MSR msr,double dt)
 
 void msrAggsBackDrift(MSR msr,int iAggIdx,Aggregate *agg,double dt)
 {
-	/* particle space velocities must be up to date (apart from kick) */
+	/*
+	 ** After a collision, it is necessary to drift aggregate
+	 ** "ghost" particles back to start of step.  First we get
+	 ** the post-collision space velocities of each particle
+	 ** (including the second-order term), and then we carry out
+	 ** the back drift.
+	 */
 
 	struct inAggsBackDrift in;
 
 	assert(iAggIdx >= 0 && iAggIdx < msr->nAggs);
 	assert(agg == &msr->pAggs[iAggIdx]);
 	assert(agg->bAssigned);
+
+	/* first update particle velocities to second order */
+
+	msrAggsSetSpaceVel(msr,iAggIdx,agg);
+
+	/* now drift */
+
 	in.iAggIdx = iAggIdx;
 	in.dt = dt;
 	pstAggsBackDrift(msr->pst,&in,sizeof(in),NULL,NULL);
@@ -8770,8 +9783,7 @@ void msrAggsMerge(MSR msr,COLLIDER *c1,COLLIDER *c2,double dImpactTime,COLLIDER 
 		*cOut = *c2;
 		}
 	else { /* i.e., !COLLIDER_IS_AGG(c1) && !COLLIDER_IS_AGG(c2) */
-		iAggIdx = msr->iAggNewIdx; /* note order of these statements is important! */
-		msr->pAggs[iAggIdx].bAssigned = 1;
+		msr->pAggs[iAggIdx = msr->iAggNewIdx].bAssigned = 1;
 		msrAggsGetNewIdx(msr);
 		*cOut = *c1; /* doesn't really matter which */
 		cOut->id.iOrgIdx = -1 - iAggIdx; /* so output log knows this is an agg */
@@ -8781,9 +9793,23 @@ void msrAggsMerge(MSR msr,COLLIDER *c1,COLLIDER *c2,double dImpactTime,COLLIDER 
 	assert(agg->bAssigned);
 	msrAggsUpdate(msr,iAggIdx,agg);
 	agg->dLastUpdate = dImpactTime;
-	msrAggsGetAccel(msr,iAggIdx,agg); /* needed because c_o_m pos & body axes have changed; uses start-of-step accelerations */
-	msrAggsGetTorque(msr,iAggIdx,agg); /* ditto */
-	msrAggsSetSpaceVel(msr,iAggIdx,agg); /*DEBUG put this call in msrAggsBackDrift()?*/
+	/*
+	 ** We need to compute the torque on the new merged body so that
+	 ** it can be advanced properly.  However, we only have the
+	 ** start-of-step particle accelerations, and the particles have
+	 ** moved.  There's no easy fix to this, so we'll just use these
+	 ** accelerations and hope the timestep is small enough that any
+	 ** introduced error is tolerable.  Note that we do NOT check for
+	 ** excessive stress here, because the accelerations are wrong
+	 ** and any liberated particles would need to be flagged for
+	 ** future collision checks during this interval, and would need
+	 ** to be backdrifted, etc. -- basically too messy for now.  This
+	 ** means an aggregate could get a very fast spin (the same could
+	 ** occur with just a bounce!), so this needs to be checked for
+	 ** when advancing.
+	 */
+	msrAggsGetAccel(msr,iAggIdx,agg);
+	msrAggsGetTorque(msr,iAggIdx,agg);
 	msrAggsBackDrift(msr,iAggIdx,agg,dImpactTime);
 	cOut->agg = *agg; /* struct copy for output log */
 	}
@@ -8799,7 +9825,6 @@ void msrAggsBounce(MSR msr,COLLIDER *c1,COLLIDER *c2,double dImpactTime)
 		agg = &msr->pAggs[iAggIdx];
 		assert(agg->bAssigned);
 		*agg = c1->agg; /* struct copy */
-		msrAggsSetSpaceVel(msr,iAggIdx,agg);
 		msrAggsBackDrift(msr,iAggIdx,agg,dImpactTime);
 		}
 
@@ -8809,23 +9834,130 @@ void msrAggsBounce(MSR msr,COLLIDER *c1,COLLIDER *c2,double dImpactTime)
 		agg = &msr->pAggs[iAggIdx];
 		assert(agg->bAssigned);
 		*agg = c2->agg; /* struct copy */
-		msrAggsSetSpaceVel(msr,iAggIdx,agg);
 		msrAggsBackDrift(msr,iAggIdx,agg,dImpactTime);
 		}
 }
 
-void msrAggsActivate(MSR msr)
-{
-	pstAggsActivate(msr->pst,NULL,0,NULL,NULL);
-	}
-
-void msrAggsDeactivate(MSR msr)
-{
-	pstAggsDeactivate(msr->pst,NULL,0,NULL,NULL);
-	}
-
 #endif /* AGGS */
 
+#ifdef RUBBLE_ZML
+
+void 
+msrDustBinsApply(MSR msr)
+{
+	/*
+	 ** Adds mass to planetesimals from dust bins in two steps.
+	 ** 1. Compute total mass accreted regardless of mass in bins.
+	 ** 2. Adjust mass accreted so total does not exceed bin mass,
+	 ** then apply change to each affected planetesimal.
+	 */
+
+	DUST_BINS_PARAMS *DB;
+	struct inDustBinsGetMass in_get;
+	struct outDustBinsGetMass out_get;
+	struct inDustBinsApply in_do;
+	int i;
+
+	/* step 1: get total mass accreted by planetesimals */
+
+	DB = &msr->param.CP.DB; /* shorthand */
+	in_get.DB = *DB; /* struct copy */
+	for (i=0;i<DB->nDustBins;i++)
+		in_get.aDustBins[i] = msr->aDustBins[i]; /* struct copy */
+	in_get.dTimeInt = DB->iDustBinsApplyInt*msr->param.dDelta;
+	in_get.dCentMass = in_do.dCentMass = msr->param.dCentMass;
+	pstDustBinsGetMass(msr->pst,&in_get,sizeof(in_get),&out_get,NULL);
+
+	/* step 2a: adjust values to not exceed bin masses */
+
+	for (i=0;i<DB->nDustBins;i++) {
+		if (out_get.aDustBinsMassLoss[i] > msr->aDustBins[i].dMass) {
+			printf("iBin = %i, mass = %e, mass loss = %e\n", i,  msr->aDustBins[i].dMass,
+			out_get.aDustBinsMassLoss[i]);	   
+			in_do.aMassIncrFrac[i] = msr->aDustBins[i].dMass/out_get.aDustBinsMassLoss[i];
+			msr->aDustBins[i].dMass = 0.0;
+			}
+		else {
+			in_do.aMassIncrFrac[i] = 1.0;
+			msr->aDustBins[i].dMass -= out_get.aDustBinsMassLoss[i];
+			}
+/*		printf("iBin = %i, MassIncr = %f\n", i, in_do.aMassIncrFrac[i]);*/ /*DEBUG*/
+		}
+
+	in_do.nBins = DB->nDustBins;
+
+	/* step 2b: apply changes to planetesimals */
+	pstDustBinsApply(msr->pst,&in_do,sizeof(in_do),NULL,NULL);
+	}
+
+void msrRubbleResetColFlag(MSR msr)
+{
+	pstRubbleResetColFlag(msr->pst,NULL,0,NULL,NULL);
+	}
+
+void msrRubbleStep(MSR msr)
+{
+	/*DEBUG this is a bit inefficient: 1) we don't need to recompute
+	  dMinStep each time, since it's a fixed value; 2) we really just
+	  want to set the particle rungs directly, but it's probably safer
+	  to stick with the usual method of setting the timesteps first,
+	  then calling msrDtToRung().*/
+
+	struct inRubbleStep in;
+
+	in.dMaxStep = msr->param.dDelta;
+	in.dMinStep = msr->param.dDelta/(1<<(msr->param.iMaxRung - 1));
+	pstRubbleStep(msr->pst,&in,sizeof(in),NULL,NULL);
+    }
+
+void
+msrRubCleanup(MSR msr, double dTime)
+{
+	/*
+	 ** Need to check if any rubble pile particles should be converted back
+	 ** to full-fledged planetesimals. For expediency, only do this check at
+	 ** the start of every full (rung 0) timestep. This means some particles
+	 ** may stay as rubble pile particles a little longer than expected (but
+	 ** never more than one full timestep).
+	 */
+
+	DUST_BINS_PARAMS *DB;
+	struct inRubCleanup in;
+	struct outRubCleanup out;
+	int bCleanup = 0;
+	int i,j;
+
+	in.DB = *(DB = &msr->param.CP.DB); /* shorthand */
+	in.dCentMass = msr->param.dCentMass;
+
+/*	printf("In RubCleanup msr->re.nEvents = %d\n", msr->re.nEvents);*/
+
+/*	for (i=msr->re.nEvents - 1;i>=0;i--) */
+	for (i=0;i<msr->re.nEvents;i++)
+		if (dTime >= msr->re.rc[i].dTEndRubblePhase) {
+			bCleanup = 1;
+			in.iColor = msr->re.rc[i].iColor;
+			printf("iColor = %d\n", in.iColor);
+			assert(in.iColor != PLANETESIMAL); /*DEBUG 06.01.04*/
+			pstRubCleanup(msr->pst,&in,sizeof(in),&out,NULL);
+			for (j=0;j<DB->nDustBins;j++) 
+				msr->aDustBins[j].dMass += out.aDustBinsMassGain[j];
+			msr->dDustBinsTrash += out.dDustBinsRubTrash; /* dust outside bin range goes into trash */ 
+			for (j=i--;j<msr->re.nEvents - 1;j++)
+				msr->re.rc[j] = msr->re.rc[j + 1];
+			--msr->re.nEvents; /* decrease the number of active rubble events */
+			}
+	if (bCleanup) {
+		msrAddDelParticles(msr); /* clean up any deletions */
+		if (msr->param.nSmooth > msr->N) {
+			msr->param.nSmooth = msr->N;
+			if (msr->param.bVWarnings)
+				printf("WARNING: nSmooth reduced to %i\n",msr->param.nSmooth);
+			}
+		}
+	}
+
+#endif /* RUBBLE_ZML */
 
 /* Note if dDataOut is NULL it just counts the number of valid input lines */
 int msrReadASCII(MSR msr, char *extension, int nDataPerLine, double *dDataOut)
@@ -8988,7 +10120,8 @@ void LogTimingZeroCounters( MSR msr )
 void LogTimingSetRung ( MSR msr, int iRung )
     {
     msr->iRungStat = iRung;
-    printf("Timing: rung: %d set\n",msr->iRungStat);
+    if (msr->param.bLogTiming)
+		printf("Timing: rung: %d set\n",msr->iRungStat);
     }
 
 void LogTimingSetN( MSR msr, int n ) 

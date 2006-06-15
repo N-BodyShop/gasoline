@@ -15,6 +15,10 @@
 #include "aggs.h"
 #endif
 
+#ifdef RUBBLE_ZML
+#include "rubble.h"
+#endif
+
 #ifdef STARFORM
 #include "starform.h"
 #include "feedback.h"
@@ -75,6 +79,7 @@ enum pst_service {
       PST_SETADD,
       PST_LEVELIZE,
       PST_READTIPSY,
+      PST_MOVEPART,
       PST_DOMAINDECOMP,
       PST_CALCBOUND,
       PST_GASWEIGHT,
@@ -164,6 +169,7 @@ enum pst_service {
       PST_DENSCHECK,
 	  PST_GETSPECIALPARTICLES,
 	  PST_DOSPECIALPARTICLES,
+      PST_GHOSTEXCLUDE,
 	  /* following for COLLISIONS */
       PST_NUMREJECTS,
       PST_READSS,
@@ -175,6 +181,8 @@ enum pst_service {
 	  PST_GETCOLLIDERINFO,
       PST_DOCOLLISION,
 	  PST_RESETCOLLIDERS,
+      PST_FINDBINARY,
+      PST_MERGEBINARY,
 	  /* following for OLD_KEPLER */
 #ifdef OLD_KEPLER
       PST_QQCALCBOUND,
@@ -182,23 +190,38 @@ enum pst_service {
       PST_QQBUILDTREE,
       PST_QQSMOOTH,
 #endif
+#ifdef SLIDING_PATCH
+      PST_FINDLM,
+      PST_GETNEIGHBORS,
+#endif
 	  /* following for AGGS */
 	  PST_AGGSFIND,
 	  PST_AGGSCONFIRM,
 	  PST_AGGSMERGE,
 	  PST_AGGSBACKDRIFT,
 	  PST_AGGSGETCOM,
-	  PST_AGGSGETAXES,
-	  PST_AGGSTOBODYAXES,
+	  PST_AGGSGETAXESANDSPIN,
+	  PST_AGGSSETBODYPOS,
 	  PST_AGGSSETSPACEPOS,
 	  PST_AGGSSETSPACEVEL,
 	  PST_AGGSSETSPACESPINS,
+	  PST_AGGSDELETE,
 	  PST_AGGSGETACCEL,
+	  PST_AGGSCHECKSTRESS,
 	  PST_AGGSGETTORQUE,
-	  PST_AGGSACTIVATE,
-	  PST_AGGSDEACTIVATE,
+	  /* following for SLIDING_PATCH */
+      PST_RANDAZWRAP,
+	  /* following for RUBBLE_ZML */
+	  PST_DUSTBINSGETMASS,
+	  PST_DUSTBINSAPPLY,
+	  PST_RUBBLERESETCOLFLAG,
+	  PST_RUBBLECHECKFORKDKRESTART,
+	  PST_RUBBLESTEP,
+	  PST_RUBCLEANUP,
+	  PST_RUBINTERPCLEANUP,
 	  /* following for SPH, etc. */
       PST_SPHSTEP,
+      PST_SETBALL,
       PST_SPHVISCOSITYLIMITER,
       PST_INITCOOLING,
       PST_COOLTABLEREAD,
@@ -431,6 +454,17 @@ struct outSmooth {
 	};
 void pstSmooth(PST,void *,int,void *,int *);
 
+/* PST_MOVEPART */
+struct inMoveParticle {
+    PARTICLE p;
+    FLOAT dOrigin[3]; /* Origin of new frame */
+    FLOAT dRelx[3]; /* Displacement from newx */
+#ifdef SLIDING_PATCH
+  PATCH_PARAMS PP;
+#endif
+    };
+void pstMoveParticle(PST,void *,int,void *,int *);
+
 /* PST_GRAVITY */
 struct inGravity {
 	int nReps;
@@ -443,8 +477,8 @@ struct inGravity {
 	double dEwCut;
 	double dEwhCut;
 #ifdef SLIDING_PATCH
-	double dOrbFreq;
-	double dTime;
+  double dTime;
+  PATCH_PARAMS PP;
 #endif
 	};
 struct outGravity {
@@ -517,16 +551,14 @@ struct inGravExternal {
 	double dOmegaDot;
 #endif
 #ifdef SLIDING_PATCH
-	int bPatch;
-	double dOrbFreq;
-	double dOrbFreqZ2;
+  int bPatch;
+  PATCH_PARAMS PP;
 #endif
 #ifdef SIMPLE_GAS_DRAG
 	int bSimpleGasDrag;
 	int iFlowOpt;
 	int bEpstein;
 	double dGamma;
-	double dOmegaZ;
 	double dTime;
 #endif
 	};
@@ -566,8 +598,8 @@ struct inDrift {
 	int bFandG;
 	FLOAT fCentMass;
 #ifdef SLIDING_PATCH
-	double dOrbFreq;
-	double dTime;
+  double dTime;
+  PATCH_PARAMS PP;
 #endif
 	};
 void pstDrift(PST,void *,int,void *,int *);
@@ -1077,7 +1109,7 @@ void pstRandomVelocities(PST,void *,int,void *,int *);
 struct inGetSpecial {
 	int nSpecial;
 	int iId[MAX_NUM_SPECIAL_PARTICLES];
-	double dCentMass;
+	SPECIAL_MASTER_INFO mInfo;
 	};
 struct outGetSpecial {
 	SPECIAL_PARTICLE_INFO sInfo[MAX_NUM_SPECIAL_PARTICLES];
@@ -1087,7 +1119,7 @@ void pstGetSpecialParticles(PST,void *,int,void *,int *);
 /* PST_DOSPECIALPARTICLES */
 struct inDoSpecial {
 	int nSpecial;
-	int bNonInertial;
+	SPECIAL_MASTER_INFO mInfo;
 	SPECIAL_PARTICLE_DATA sData[MAX_NUM_SPECIAL_PARTICLES];
 	SPECIAL_PARTICLE_INFO sInfo[MAX_NUM_SPECIAL_PARTICLES];
 	};
@@ -1099,6 +1131,12 @@ void pstDoSpecialParticles(PST,void *,int,void *,int *);
 #endif
 
 #ifdef COLLISIONS
+
+struct inSetBall {
+  double dDelta;
+  double dBallVelFact;
+};
+void pstSetBall(PST,void *,int,void *,int *);
 
 /* PST_NUMREJECTS */
 struct outNumRejects {
@@ -1174,10 +1212,12 @@ struct inDoCollision {
 	COLLIDER Collider1,Collider2;
 	int bPeriodic;
 	COLLISION_PARAMS CP;
+	double dBaseTime;
+	int iTime0;
 #ifdef SLIDING_PATCH
-	double dOrbFreq;
-	double dTime;
+  PATCH_PARAMS PP;
 #endif
+	double dTime;
 #ifdef AGGS
 	int iAggNewIdx;
 #endif
@@ -1195,18 +1235,86 @@ struct inResetColliders {
 	};
 void pstResetColliders(PST,void *,int,void *,int *);
 
+/* PST_FINDTIGHTESTBINARY */
+struct inBinary {
+        int n;
+        };
+struct outBinary {
+        int n;
+        double dBindEn;
+        int iOrder1;
+        int iOrder2;
+        };
+void pstFindTightestBinary(PST,void *,int,void *,int *);
+
+/* PST_MERGEBINARY */
+struct inMrgBnry {
+       COLLIDER c1;
+       COLLIDER c2;
+       int bPeriodic;
+       double dBaseStep;
+       double dTimeNow;
+       double dDensity;
+#ifdef SLIDING_PATCH
+  PATCH_PARAMS PP;
+       double dTime;
+#endif
+       int iTime0;
+       int iPad; /* Cheat to try to make the code owrk in Linux-ia64 */    
+       };
+struct outMrgBnry {
+       COLLIDER cOut;
+       int n;
+       };
+void pstMergeBinary(PST,void *,int,void *,int *);
+
+#ifdef SLIDING_PATCH
+struct inLargeMass {
+    double dMass;
+    FLOAT fNumHillSphere;
+    double dCentMass;
+    double dOrbRad;    
+    };
+struct outLargeMass
+{
+       PARTICLE p[MAXLARGEMASS];           /* large mass particles */
+       double dRadius[MAXLARGEMASS];        /* radius of sphere to be exchanged */    
+       int n;                 /* # of large masses */
+    };
+void pstFindLargeMasses(PST pst,void *vin,int nIn,void *vout,int *pnOut);
+
+struct inGetNeighbors
+{
+    FLOAT x[3];
+    double dDist;
+#ifdef SLIDING_PATCH
+  PATCH_PARAMS PP;
+    double dTime;
+#endif
+    int id;
+    };
+struct outGetNeighbors 
+{
+    PARTICLE p[MAXNEIGHBORS];
+    double dSep2[MAXNEIGHBORS];    
+    int n;
+    };
+void pstGetNeighborParticles(PST pst,void *vin,int nIn,void *vout,int *pnOut);
+
+#endif /* SLIDING_PATCH */
+
 #ifdef OLD_KEPLER
 /* PST_QQCALCBOUND */
-void pstQQCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut);
+void pstQQCalcBound(PST,void *,int,void *,int *);
 
 /* PST_QQDOMAINDECOMP */
-void pstQQDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut);
+void pstQQDomainDecomp(PST,void *,int,void *,int *);
 
 /* PST_QQBUILDTREE */
-void pstQQBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut);
+void pstQQBuildTree(PST,void *,int,void *,int *);
 
 /* PST_QQSMOOTH */
-void pstQQSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut);
+void pstQQSmooth(PST,void *,int,void *,int *);
 #endif
 
 #endif /* COLLISIONS */
@@ -1251,23 +1359,23 @@ struct outAggsGetCOM {
 	};
 void pstAggsGetCOM(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
  
-/* PST_AGGSGETAXES */
-struct inAggsGetAxes {
+/* PST_AGGSGETAXESANDSPIN */
+struct inAggsGetAxesAndSpin {
 	int iAggIdx;
 	Vector r_com,v_com;
 	};
-struct outAggsGetAxes {
+struct outAggsGetAxesAndSpin {
 	Matrix I;
 	Vector L;
 	};
-void pstAggsGetAxes(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+void pstAggsGetAxesAndSpin(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
  
-/* PST_AGGSTOBODYAXES */
-struct inAggsToBodyAxes {
+/* PST_AGGSSETBODYPOS */
+struct inAggsSetBodyPos {
 	int iAggIdx;
 	Matrix spaceToBody; /* transpose of lambda */
 	};
-void pstAggsToBodyAxes(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+void pstAggsSetBodyPos(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
 
 /* PST_AGGSSETSPACEPOS */
 struct inAggsSetSpacePos {
@@ -1292,6 +1400,15 @@ struct inAggsSetSpaceSpins {
 	};
 void pstAggsSetSpaceSpins(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
 
+/* PST_AGGSDELETE */
+struct inAggsDelete {
+	int iAggIdx;
+	};
+struct outAggsDelete {
+	int bFound;
+	};
+void pstAggsDelete(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
 /* PST_AGGSGETACCEL */
 struct inAggsGetAccel {
 	int iAggIdx;
@@ -1302,6 +1419,17 @@ struct outAggsGetAccel {
 	};
 void pstAggsGetAccel(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
 
+/* PST_AGGSCHECKSTRESS */
+struct inAggsCheckStress {
+	int iAggIdx;
+	Vector r_com,a_com,omega;
+	FLOAT fTensileStrength,fShearStrength;
+	};
+struct outAggsCheckStress {
+	int nLost,nLeft;
+	};
+void pstAggsCheckStress(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
 /* PST_AGGSGETTORQUE */
 struct inAggsGetTorque {
 	int iAggIdx;
@@ -1311,14 +1439,77 @@ struct outAggsGetTorque {
 	Vector torque;
 	};
 void pstAggsGetTorque(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
-
-/* PST_AGGSACTIVATE */
-void pstAggsActivate(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
- 
-/* PST_AGGSDEACTIVATE */
-void pstAggsDeactivate(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
  
 #endif /* AGGS */
+
+#ifdef SLIDING_PATCH
+
+/* PST_RANDAZWRAP */
+struct inRandAzWrap {
+  PATCH_PARAMS PP;
+};
+struct outRandAzWrap {
+	int nRandomized;
+};
+void pstRandAzWrap(PST,void *,int,void *,int *);
+
+#endif /* SLIDING_PATCH */
+
+#ifdef RUBBLE_ZML
+
+struct inDustBinsGetMass {
+	DUST_BINS_PARAMS DB;
+	DustBins aDustBins[DUST_BINS_MAX_NUM];
+	double dTimeInt;
+	double dCentMass;
+	};
+struct outDustBinsGetMass {
+	double aDustBinsMassLoss[DUST_BINS_MAX_NUM];
+	};
+void pstDustBinsGetMass(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+struct inDustBinsApply {
+	double dCentMass;
+	double aMassIncrFrac[DUST_BINS_MAX_NUM];
+	int nBins;
+	};
+void pstDustBinsApply(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+void pstRubbleResetColFlag(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+struct outRubbleCheckForKDKRestart {
+	int bRestart;
+	};
+void pstRubbleCheckForKDKRestart(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+struct inRubbleStep {
+	double dMaxStep,dMinStep;
+	};
+void pstRubbleStep(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+struct inRubCleanup {
+	int iColor;
+	DUST_BINS_PARAMS DB;
+	double dCentMass;
+	};
+struct outRubCleanup {
+	double aDustBinsMassGain[DUST_BINS_MAX_NUM];
+	double dDustBinsRubTrash;
+	};
+void pstRubCleanup(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+struct inRubInterpCleanup {
+	DUST_BINS_PARAMS DB;
+	double dCentMass;
+	int iOrder;
+	};
+struct outRubInterpCleanup {
+	double dDustBinsInterpMass;
+	int iBin;
+	};
+void pstRubInterpCleanup(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
+
+#endif /* RUBBLE_ZML */
 
 #ifdef GASOLINE
 

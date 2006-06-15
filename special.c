@@ -50,6 +50,7 @@ do_oblate(const FLOAT r0[3],struct oblate_s *oblate,
 	a[2] += cz*dz;
 	}
 
+#ifdef OLD_COMET_FORCE
 static void
 do_force(struct force_s *force,SPECIAL_PARTICLE_INFO *sInfo,FLOAT r[3],FLOAT a[3])
 {
@@ -75,10 +76,94 @@ do_force(struct force_s *force,SPECIAL_PARTICLE_INFO *sInfo,FLOAT r[3],FLOAT a[3
 	else if (y <= 0.0 && t >= 60.0) /* up to 120 deg counterclockwise from -x-axis for symmetry (no net drift) */
 		a[1] += force->dMag/sInfo->fMass;
 	}
+#endif
+
+static void
+do_noghostpert(const FLOAT r0[3],SPECIAL_MASTER_INFO *mInfo,
+	       SPECIAL_PARTICLE_INFO *sInfo,double **rGhosts,int nGhosts,
+	       FLOAT a[3])
+{
+  int i,j;
+  double r[3],rmag,mir3;
+
+  for (i=0;i<nGhosts;i++) {
+    /* Calculate distance */
+    rmag=0;
+    for (j=0;j<3;j++) {
+      r[j]=r0[j]-rGhosts[i][j];
+      rmag+=r[j]*r[j];
+    }
+    rmag=sqrt(rmag);
+
+    /* Subtract gravity */
+    mir3=sInfo->fMass/(rmag*rmag*rmag);
+    for (j=0;j<3;j++)
+      a[j] += mir3*r[j]; /* Force is negative, must add */
+  }
+}
+
+static void
+getghostcoords(SPECIAL_MASTER_INFO *mInfo,SPECIAL_PARTICLE_INFO *sInfo,double **rGhosts,int nGhosts) {
+  int i;
+  int ix,iy,iz,nx,ny,nz;
+
+
+  nx=(mInfo->dxPeriod < FLOAT_MAXVAL ? mInfo->nReplicas : 0);
+  ny=(mInfo->dyPeriod < FLOAT_MAXVAL ? mInfo->nReplicas : 0);
+  nz=(mInfo->dzPeriod < FLOAT_MAXVAL ? mInfo->nReplicas : 0);
+
+  i=0;
+  ix=-nx;
+  iy=-ny;
+  iz=-nz;
+
+  do {
+    if (ix != 0 || iy != 0 || iz != 0) {
+      rGhosts[i][0]=sInfo->r[0]+ix*mInfo->dxPeriod; 
+      rGhosts[i][1]=sInfo->r[1]+iy*mInfo->dyPeriod; 
+      rGhosts[i][2]=sInfo->r[2]+iz*mInfo->dzPeriod;
+#ifdef SLIDING_PATCH
+    if (mInfo->dxPeriod < FLOAT_MAXVAL)
+      rGhosts[i][1] -= 1.5*mInfo->dOmega*mInfo->dTime*mInfo->dxPeriod;
+#endif /* SLIDING_PATCH */
+    } else {
+      i--; /* reduce i as 0,0,0 shouldn't be counted. */
+    }
+
+    /* This is actually elegant. */
+    if (nz > 0) {
+      iz++;
+      if (iz > nz) {
+	iz=-nz;
+	if (ny > 0) {
+	  iy++;
+	  if (iy > ny) {
+	    iy=-ny;
+	    if (nx > 0) {
+	      ix++;
+	    }
+	  }
+	} else if (nx > 0) {
+	  ix++;
+	}
+      }
+    } else if (ny > 0) {
+      iy++;
+      if (iy > ny) {
+	iy=-ny;
+	if (nx > 0) {
+	  ix++;
+	}
+      }
+    } else if (nx > 0) {
+      ix++;
+    }
+  } while (++i<nGhosts);
+}
 
 void
-pkdGetSpecialParticles(PKD pkd,int nSpecial,int iId[],double dCentMass,
-					   SPECIAL_PARTICLE_INFO sInfo[])
+pkdGetSpecialParticles(PKD pkd,int nSpecial,int iId[],SPECIAL_MASTER_INFO *mInfo,
+					   SPECIAL_PARTICLE_INFO *sInfo)
 {
 	/* retrieves current info for "special" particles */
 
@@ -90,7 +175,7 @@ pkdGetSpecialParticles(PKD pkd,int nSpecial,int iId[],double dCentMass,
 			/* super special case: reference frame itself has special gravity */
 			/* NOTE: all processors will do this -- should be OK...? */
 			sInfo[i].iOrder = -2; /*DEBUG use symbols? -1 reserved... */
-			sInfo[i].fMass = dCentMass;
+			sInfo[i].fMass = mInfo->dCentMass;
 			sInfo[i].fRadius = 0.0; /* undefined */
 			for (k=0;k<3;k++) sInfo[i].r[k] = 0;
 			}
@@ -110,17 +195,23 @@ pkdGetSpecialParticles(PKD pkd,int nSpecial,int iId[],double dCentMass,
 	}
 
 void
-pkdDoSpecialParticles(PKD pkd,int nSpecial,int bNonInertial,
+pkdDoSpecialParticles(PKD pkd,int nSpecial,SPECIAL_MASTER_INFO *mInfo,
 					  SPECIAL_PARTICLE_DATA sData[],
 					  SPECIAL_PARTICLE_INFO sInfo[],FLOAT aFrame[])
 {
 	/* applies effects of "special" particles on other particles */
 
 	PARTICLE *p;
-	int i,j,nLocal=pkdLocal(pkd);
+	int i,j;
+	int nGhosts=0;
+	double **rGhosts=NULL;
+#ifdef OLD_COMET_STUFF
+	/*THIS STUFF #ifdef'D OUT TO SIMPLIFY MERGING OF RORY'S VERSION
+	  WITH UMD SVN VERSION 5/23/06*/
+	int nLocal=pkdLocal(pkd);
 
 	/*DEBUG some (all?) of this stuff is for the comet spin-up problem*/
-	/*DEBUG!!! this first stuff is for do_force(): need to know COM position of rubble pile -- won't work in parallel!!*/
+	/*DEBUG this first stuff is for do_force(): need to know COM position of rubble pile -- won't work in parallel!!*/
 	FLOAT r[3],rc[3];
 	int n,nn;
 	do {
@@ -128,7 +219,7 @@ pkdDoSpecialParticles(PKD pkd,int nSpecial,int bNonInertial,
 		for (i=n=0;i<nLocal;i++) {
 			p = &pkd->pStore[i];
 			if (p->iColor != 2) {
-				r[0] += p->r[0]; /*DEBUG! assumes equal-mass particles...*/
+				r[0] += p->r[0]; /*DEBUG assumes equal-mass particles...*/
 				r[1] += p->r[1];
 				r[2] += p->r[2];
 				++n;
@@ -158,10 +249,24 @@ pkdDoSpecialParticles(PKD pkd,int nSpecial,int bNonInertial,
 	} while (nn < n);
 
 	assert(nn == n);
+#endif /*OLD_COMET_STUFF*/
 
 	for (i=0;i<nSpecial;i++) {
-		for (j=0;j<nLocal;j++) {
-			p = &pkd->pStore[j];
+	  if (sData[i].iType & SPECIAL_NOGHOSTPERT) {
+	    nGhosts=(mInfo->dxPeriod < FLOAT_MAXVAL ? 2*mInfo->nReplicas+1 : 1)*
+	      (mInfo->dyPeriod < FLOAT_MAXVAL ? 2*mInfo->nReplicas+1 : 1)*
+	       (mInfo->dzPeriod < FLOAT_MAXVAL ? 2*mInfo->nReplicas+1 : 1)-1;
+	    if (nGhosts > 0) {
+	      rGhosts=malloc(nGhosts*sizeof(double*));
+	      for (j=0;j<nGhosts;j++) {
+		rGhosts[j]=malloc(3*sizeof(double));
+	      }
+	    getghostcoords(mInfo,&sInfo[i],rGhosts,nGhosts);
+	    }
+	  }
+	  for (j=0;j<pkdLocal(pkd);j++) {
+	    p = &pkd->pStore[j];
+#ifdef OLD_COMET_FORCE
 			if (p->iOrder == sInfo[i].iOrder) {
 				if (sData[i].iType & SPECIAL_FORCE) {
 					/* special case: force applies ONLY to special particle */
@@ -177,14 +282,20 @@ pkdDoSpecialParticles(PKD pkd,int nSpecial,int bNonInertial,
 				else
 					continue;
 				}
+#else
+			continue;
+#endif
 			if (sData[i].iType & SPECIAL_OBLATE) {
 				do_oblate(p->r,&sData[i].oblate,&sInfo[i],p->a);
 				}
 			if (sData[i].iType & SPECIAL_GR) {
 				assert(0); /* not implemented yet */
 				}
-			}
-		if (bNonInertial) {
+			if (sData[i].iType & SPECIAL_NOGHOSTPERT && nGhosts > 0) {
+			  do_noghostpert(p->r,mInfo,&sInfo[i],rGhosts,nGhosts,p->a);
+			        }
+		        }
+		if (mInfo->bNonInertial) {
 			FLOAT r[3]={0,0,0};
 			int k;
 			/* get acceleration on frame */
@@ -197,8 +308,14 @@ pkdDoSpecialParticles(PKD pkd,int nSpecial,int bNonInertial,
 			if (sData[i].iType & SPECIAL_GR) {
 				assert(0); /* not implemented yet */
 				}
+			if (sData[i].iType & SPECIAL_NOGHOSTPERT) {
+			        assert(0); /* Already in patch frame */
+			        }
 			}
 		}
+	  if (rGhosts != NULL) {
+	    free(rGhosts);
+	  }
 	}
 
 #endif /* SPECIAL_PARTICLES */
