@@ -4599,6 +4599,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 	inExt.bBodyForce = 0;
 	inExt.bMiyamotoDisk = 0;
 	inExt.bTimeVarying = 0;
+	inExt.bRotatingBar = 0;
 #ifdef ROT_FRAME
 	inExt.bRotFrame = 0;
 #endif
