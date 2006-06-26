@@ -5989,6 +5989,7 @@ pkdOldestStar(PKD pkd, double *com)
 {
 #if defined(STARFORM) || defined (SIMPLESF)
     int nLocal = pkdLocal(pkd);
+    int i;
 #endif
 
 	com[0] = 0;
@@ -6026,7 +6027,7 @@ int pkdSetSink(PKD pkd, double dSinkMassMin)
     return nSink;
 #else
     assert(0);	/* GASOLINE needed for sink particles to work */
+    return -1; /* to keep compiler happy */
 #endif
-	return -1; /* to keep compiler happy */
     }
 
