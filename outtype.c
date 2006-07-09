@@ -379,13 +379,21 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
             break;
         }
         
+    /*
+     * N-Chilada has a 28 byte header (see FieldHeader in
+     * structures/tree_xdr.h): 4 byte magic + 8 byte time + 8 byte
+     * numParticles + 4 byte dimension + 4 byte data type code.  The
+     * header is followed by a min and max field 6 numbers for vectors
+     * and 2 for scalars.
+     */
+    
     if(iVecType > OUT_1D3DSPLIT) {
         nDim=3;
-        headerlength = 4*sizeof(int)+sizeof(double)+6*sizeof(float);
+        headerlength = 28 + 6*4;
         }
     else {
         nDim=1;
-        headerlength = 4*sizeof(int)+sizeof(double)+2*sizeof(float);
+        headerlength = 28 + 2*4;
         }
     
     if(nGas){
