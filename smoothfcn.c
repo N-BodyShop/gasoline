@@ -593,21 +593,22 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
         /* Scale density after using it to normalize averages */
         fDensity = M_1_PI*sqrt(ih2)*ih2*fDensity; 
-	printf("BHSink:  Density: %f C_s: %f dv: %f\n",fDensity,cs,sqrt(dv2));
+	printf("BHSink:  Density: %g C_s: %g dv: %g\n",fDensity,cs,sqrt(dv2));
 
         /* Bondi-Hoyle rate: cf. di Matteo et al 2005 (G=1) */
 	mdot = smf->dBHSinkAlphaFactor*p->fMass*p->fMass*fDensity*pow(cs*cs+dv2,-1.5);
 	/* Eddington Limit Rate */
 	mdotEdd = smf->dBHSinkEddFactor*p->fMass;
-	printf("BHSink:  mdot (BH): %f mdot (Edd): %f\n",mdot,mdotEdd);
+	printf("BHSink:  mdot (BH): %g mdot (Edd): %g\n",mdot,mdotEdd);
 
 	if (mdot > mdotEdd) mdot = mdotEdd;
 	dm = mdot*smf->dSinkCurrentDelta;
 	dE = smf->dBHSinkFeedbackFactor*dm;
-	printf("BHSink:  Delta: %f dm: %f dE %f\n",smf->dSinkCurrentDelta,dm,dE);
+	printf("BHSink:  Delta: %g dm: %g dE %g\n",smf->dSinkCurrentDelta,dm,dE);
 
 	for (;;) {
-	    FLOAT r2min = -1;
+	    FLOAT r2min = FLOAT_MAXVAL;
+	    q = NULL;
 	    for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2;
 		if (r2 < r2min && nnList[i].pPart->fMass > 0) {
@@ -615,7 +616,9 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		    q = nnList[i].pPart;
 		    }
 		}
-	    assert( r2min >= 0 && q != p && q->fMass > 0);
+	    assert(q != p); /* shouldn't happen because p isn't in
+			       tree */
+	    assert( q != NULL && q->fMass > 0);
 	    /* We have our victim */
 	    dmq = (dm > q->fMass ? q->fMass : dm);
 	    ifMass = 1./(p->fMass + dmq);
