@@ -539,8 +539,10 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 void initBHSinkAccrete(void *p)
 {
 #ifdef GASOLINE
-    if (TYPEQueryTREEACTIVE((PARTICLE *) p))
+    if (TYPEQueryTREEACTIVE((PARTICLE *) p)) {
 	((PARTICLE *)p)->u = 0.0;
+	((PARTICLE *)p)->uPred = 0.0;
+	}
 #endif
     }
 
@@ -554,6 +556,7 @@ void combBHSinkAccrete(void *p1,void *p2)
 	    }
     else if (TYPEQueryTREEACTIVE((PARTICLE *) p1)) {
 	((PARTICLE *)p1)->u += ((PARTICLE *)p2)->u;
+	((PARTICLE *)p1)->uPred += ((PARTICLE *)p2)->uPred;
 	}
 #endif
 }
@@ -659,6 +662,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    KERNEL(rs,r2);
 	    if (q->fMass > 0) {
 		q->u += fW*rs*q->fMass;
+		q->uPred = q->u;
 		}
 	    }
 #endif
