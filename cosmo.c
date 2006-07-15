@@ -156,6 +156,8 @@ double csmTime2Exp(CSM csm,double dTime)
 	else {
 	    double dExpOld = 0.0;
 	    double dExpNew = dTime*dHubble0;
+	    double dDeltaOld = dExpNew;	/* old change in interval */
+	    
 	    int it = 0;
 	    
 	    /*
@@ -164,10 +166,18 @@ double csmTime2Exp(CSM csm,double dTime)
 	    do {
 	    	double f = dTime - csmExp2Time(csm, dExpNew);
 		double fprime = 1.0/(dExpNew*csmExp2Hub(csm, dExpNew));
+		if(fabs(1.0*f) > fabs(dDeltaOld*fprime)) {
+		    /*
+		     * function is not decreasing fast enough.
+		     * Be less aggressive about step size.
+		     */
+		    fprime *= 2.0;
+		    }
 		dExpOld = dExpNew;
-		dExpNew += f/fprime;
+		dDeltaOld = f/fprime;
+		dExpNew += dDeltaOld;
 		it++;
-		assert(it < 20);
+		assert(it < 40);
 		}
 	    while (fabs(dExpNew - dExpOld)/dExpNew > EPSCOSMO);
 	    return dExpNew;
