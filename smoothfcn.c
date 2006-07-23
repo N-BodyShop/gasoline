@@ -662,7 +662,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    KERNEL(rs,r2);
 	    if (q->fMass > 0) {
 		q->u += fW*rs*q->fMass;
-		q->uPred = q->u;
+		q->uPred += fW*rs*q->fMass;
 		}
 	    }
 #endif
