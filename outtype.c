@@ -399,7 +399,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     if(nGas){
         sprintf(gasFileName, "%s/gas/",pszFileName);
         VecFilename(gasFileName,iVecType);
-        gasFp = fopen(gasFileName,"w+");
+        gasFp = fopen(gasFileName,"r+");
         mdlassert(pkd->mdl,gasFp != NULL);
         xdrstdio_create(&gasXdrs,gasFp,XDR_ENCODE);
         }
@@ -407,7 +407,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     if(nDark){
         sprintf(darkFileName, "%s/dark/",pszFileName);
         VecFilename(darkFileName,iVecType);
-        darkFp = fopen(darkFileName,"w+");
+        darkFp = fopen(darkFileName,"r+");
         mdlassert(pkd->mdl,darkFp != NULL);
         xdrstdio_create(&darkXdrs,darkFp,XDR_ENCODE);
         }
@@ -415,7 +415,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     if(nStar){
         sprintf(starFileName, "%s/star/",pszFileName);
         VecFilename(starFileName,iVecType);
-        starFp = fopen(starFileName,"w+");
+        starFp = fopen(starFileName,"r+");
         mdlassert(pkd->mdl,starFp != NULL);
         xdrstdio_create(&starXdrs,starFp,XDR_ENCODE);
         }
@@ -423,6 +423,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     switch (iVecType) {
 #ifdef STARFORM
         case OUT_IGASORDER_ARRAY:
+	  if(nStar) {
             pkdGenericSeek(pkd,starFp, nStarStart*iDim,headerlength,
                             sizeof(pkd->pStore[i].iGasOrder));
             for (i=0;i<pkd->nLocal;++i) {
@@ -432,6 +433,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
                     max[2][0] = (pkd->pStore[i].iOrder < max[2][0]) ? max[2][0]: pkd->pStore[i].iOrder;
                     }
                 }
+	    }
             break;
 #endif
         case OUT_IORDER_ARRAY:
@@ -462,6 +464,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
 #ifdef GASOLINE				
         case OUT_TEMP_ARRAY:
         case OUT_GASDENSITY_ARRAY:
+	  if(nGas) {
             pkdGenericSeek(pkd,gasFp, nGasStart,headerlength,sizeof(pkd->pStore[i].iOrder));
             for (i=0;i<pkd->nLocal;++i) {
                 if (pkdIsGas(pkd,&pkd->pStore[i])) {
@@ -471,6 +474,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
                     xdr_float(&gasXdrs,&fOut);
                     }
                 }
+	    }
             break;
 #endif
         default:

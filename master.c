@@ -3727,11 +3727,27 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
                 break;
             }
             
+	/*
+	 * Create vector files
+	 */
+        for (k=0;k<3;k++){
+            _msrMakePath(plcl->pszDataPath,inOut.achOutFile,achOutFile);
+            if (nTypes[k]) {
+                sprintf(achOutFile,"%s/%s/",achOutFile,typenames[k]);
+                VecFilename(achOutFile,OutputList[i]);
+                fp = fopen(achOutFile,"w");
+                assert(fp != NULL);
+		fclose(fp);
+		}
+	    }
         nDim = (OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
         inOut.iBinaryOutput = msr->param.iBinaryOutput;
         inOut.N = msr->N;
         inOut.iType=OutputList[i];
         pstOutNCVector(msr->pst,&inOut,sizeof(inOut),&out,NULL);
+	/*
+	 * Write headers with min/max data
+	 */
         for (k=0;k<3;k++){
             _msrMakePath(plcl->pszDataPath,inOut.achOutFile,achOutFile);
             if (nTypes[k]) {
