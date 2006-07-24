@@ -386,6 +386,10 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
      * header is followed by a min and max field 6 numbers for vectors
      * and 2 for scalars.
      */
+    /*
+     * XXX WARNING:  Seeks below are assuming sizeof(float) = 4, since
+     * RFCs for XDR assume 4 byte floats.
+     */
     
     if(iVecType > OUT_1D3DSPLIT) {
         nDim=3;
@@ -424,8 +428,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
 #ifdef STARFORM
         case OUT_IGASORDER_ARRAY:
 	  if(nStar) {
-            pkdGenericSeek(pkd,starFp, nStarStart*iDim,headerlength,
-                            sizeof(pkd->pStore[i].iGasOrder));
+	    pkdGenericSeek(pkd,starFp, nStarStart, headerlength, 4);
             for (i=0;i<pkd->nLocal;++i) {
                 if (pkdIsStar(pkd,&pkd->pStore[i])) {
                     xdr_int(&starXdrs,&(pkd->pStore[i].iGasOrder));
@@ -437,12 +440,9 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
             break;
 #endif
         case OUT_IORDER_ARRAY:
-            if(nGas) pkdGenericSeek(pkd,gasFp, nGasStart*iDim,headerlength,
-                            sizeof(pkd->pStore[i].iOrder));
-            if(nDark) pkdGenericSeek(pkd,darkFp, nDarkStart*iDim,headerlength,
-                            sizeof(pkd->pStore[i].iOrder));
-            if(nStar) pkdGenericSeek(pkd,starFp, nStarStart*iDim,headerlength,
-                            sizeof(pkd->pStore[i].iOrder));
+            if(nGas) pkdGenericSeek(pkd,gasFp, nGasStart,headerlength, 4);
+            if(nDark) pkdGenericSeek(pkd,darkFp, nDarkStart,headerlength, 4);
+            if(nStar) pkdGenericSeek(pkd,starFp, nStarStart,headerlength, 4);
             for (i=0;i<pkd->nLocal;++i) {
                 if (nGas && pkdIsGas(pkd,&pkd->pStore[i])) {
                     xdr_int(&gasXdrs,&(pkd->pStore[i].iOrder));
@@ -468,7 +468,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
             pkdGenericSeek(pkd,gasFp, nGasStart,headerlength,sizeof(pkd->pStore[i].iOrder));
             for (i=0;i<pkd->nLocal;++i) {
                 if (pkdIsGas(pkd,&pkd->pStore[i])) {
-                    fOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
+                    fOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
                     min[0][0] = (fOut > min[0][0]) ? min[0][0]: fOut;
                     max[0][0] = (fOut < max[0][0]) ? max[0][0]: fOut;
                     xdr_float(&gasXdrs,&fOut);

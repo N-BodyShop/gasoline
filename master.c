@@ -3751,6 +3751,9 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
         for (k=0;k<3;k++){
             _msrMakePath(plcl->pszDataPath,inOut.achOutFile,achOutFile);
             if (nTypes[k]) {
+		int iHighWord = 0;
+		int iDummy;
+		
                 sprintf(achOutFile,"%s/%s/",achOutFile,typenames[k]);
                 VecFilename(achOutFile,OutputList[i]);
                 fp = fopen(achOutFile,"r+");
@@ -3758,13 +3761,31 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
                 xdrstdio_create(&xdrs,fp,XDR_ENCODE);
                 xdr_int(&xdrs,&magic);
                 xdr_double(&xdrs,&dTime);
+                xdr_int(&xdrs,&iHighWord); /* XXX we are currently
+					      limited to 2G particles! */
                 xdr_int(&xdrs,&nTypes[k]);
                 xdr_int(&xdrs,&nDim);
                 xdr_int(&xdrs,&code);
-                for (iDim=0; iDim<nDim; iDim++) 
-                    xdr_float(&xdrs,&out.min[k][iDim]);
-                for (iDim=0; iDim<nDim; iDim++) 
-                    xdr_float(&xdrs,&out.max[k][iDim]);
+		switch(code) {
+		case FLOAT32:
+		    for (iDim=0; iDim<nDim; iDim++) 
+			xdr_float(&xdrs,&out.min[k][iDim]);
+		    for (iDim=0; iDim<nDim; iDim++) 
+			xdr_float(&xdrs,&out.max[k][iDim]);
+		    break;
+		case INT32:
+		    for (iDim=0; iDim<nDim; iDim++) {
+			iDummy = out.min[k][iDim];
+			xdr_int(&xdrs,&iDummy);
+			}
+		    for (iDim=0; iDim<nDim; iDim++) {
+			iDummy = out.max[k][iDim];
+			xdr_int(&xdrs,&iDummy);
+			}
+		    break;
+		default:
+		    assert(0);	/* bad output type code */
+		    }
                 xdr_destroy(&xdrs);
                 fclose(fp);
                 }
