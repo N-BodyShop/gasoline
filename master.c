@@ -787,6 +787,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoSelfGravity = 1;
 	prmAddParam(msr->prm,"bDoSelfGravity",0,&msr->param.bDoSelfGravity,sizeof(int),"sg",
 				"enable/disable interparticle self gravity = +sg");
+	msr->param.bSplitWork = 1;
+	prmAddParam(msr->prm,"bWorkDomainDecomp",0,&msr->param.bSplitWork,
+		    sizeof(int), "WorkDD","<Domain Decomp on Work> = 1");
 	msr->param.bRungDD = 0;
 	prmAddParam(msr->prm,"bRungDomainDecomp",0,&msr->param.bRungDD,sizeof(int),
 				"RungDD","<Rung Domain Decomp> = 0");
@@ -2285,6 +2288,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bFastGas: %d",msr->param.bFastGas);
 	fprintf(fp," dFracFastGas: %g",msr->param.dFracFastGas);
 	fprintf(fp," dhMinOverSoft: %g",msr->param.dhMinOverSoft);
+	fprintf(fp," bSplitWork: %d",msr->param.bSplitWork);
 	fprintf(fp," bRungDD: %d",msr->param.bRungDD);
 	fprintf(fp," dRungDDWeight: %g ",msr->param.dRungDDWeight);
 	fprintf(fp,"\n# nTruncateRung: %d",msr->param.nTruncateRung);
@@ -3421,6 +3425,8 @@ void msrDomainDecomp(MSR msr, int iRung, int bGreater)
 		pstRungDDWeight(msr->pst,&inRDD,sizeof(struct inRungDDWeight),NULL,NULL);
 		}
 
+	in.bSplitWork = msr->param.bSplitWork;
+	
 	if (msr->param.bVDetails) printf("DD: nActive %d nTreeActive %d nSmoothActive %d\n",msr->nActive,msr->nTreeActive,msr->nSmoothActive);
 	LOGTIME( pstDomainDecomp(msr->pst,&in,sizeof(in),NULL,NULL), "Domain Decomposition", TIMING_DD );
 	msr->bDoneDomainDecomp = 1; 

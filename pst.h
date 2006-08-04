@@ -281,6 +281,7 @@ void pstReadTipsy(PST,void *,int,void *,int *);
 struct inDomainDecomp {
     int bDoRootFind;
     int bDoSplitDimFind;
+    int bSplitWork;
     };
 
 void pstDomainDecomp(PST,void *,int,void *,int *);

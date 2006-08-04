@@ -820,7 +820,8 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 #define MASS_EPS	1e-11
 /* #define PARANOID_CHECK */
 
-void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoSplitDimFind)
+void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
+		   int bDoSplitDimFind, int bSplitWork)
 {
 #ifdef STARFORM
 	int NUM_SAFETY = 64; 	/* Larger margin for extra particles */
@@ -915,14 +916,19 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind, int bDoS
 	     inWt.fSplit = fmm;
 	     inWt.ittr = 0;
 	     inWt.iSplitSide = 1;
-	     inWt.pFlag = 1; /* RUBBLE_ZML - Zoe found that parallel runs decomposed better with this set to 0 */
+	     if(bSplitWork)
+		 pFlag = 1; /* Sometimes parallel runs decomposed better
+				    with this set to 0 */
+	     else
+		 pFlag = 0;
+	     inWt.pFlag = pFlag;
+
 	     mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 	     inWt.iSplitSide = 0;
 	     pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
 	     mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
 	     nTotalActive = outWtLow.nLow + outWtHigh.nLow
 	       + outWtLow.nHigh + outWtHigh.nHigh;
-	     pFlag = 1; /* RUBBLE_ZML - Zoe found that parallel runs decomposed better with this set to 0 */
 	     if (!bDoRootFind) {
 	          pFlag = 0; /* Divide them all */
 		  mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
@@ -1942,7 +1948,8 @@ void pstDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
 		dMass = outMass.dMass;
 		mdlPrintTimer(pst->mdl,"TIME Mass Check done in pstDomainDecomp",&t);
-		_pstRootSplit(pst,d,dMass, in->bDoRootFind, in->bDoSplitDimFind );
+		_pstRootSplit(pst,d,dMass, in->bDoRootFind,
+			      in->bDoSplitDimFind, in->bSplitWork );
 		mdlPrintTimer(pst->mdl,"TIME RootSplit done in pstDomainDecomp",&t);
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
   		if (fabs(dMass - outMass.dMass) > MASS_EPS*dMass) {
@@ -2667,7 +2674,7 @@ void pstOutNCVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
                     for(i=0; i<3; i++){
                         for(iDim=0;iDim<3;iDim++){
                             out->min[i][iDim]=(out->min[i][iDim] < outUp.min[i][iDim]) ? out->min[i][iDim]: outUp.min[i][iDim];
-                            out->max[i][iDim]=(out->max[i][iDim] < outUp.max[i][iDim]) ? out->max[i][iDim]: outUp.max[i][iDim];
+                            out->max[i][iDim]=(out->max[i][iDim] > outUp.max[i][iDim]) ? out->max[i][iDim]: outUp.max[i][iDim];
                             }
                         }
                     }
@@ -5117,7 +5124,7 @@ pstQQDomainDecomp(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
 		dMass = outMass.dMass;
-		_pstRootSplit(pst,d+3,dMass,1,1); /* Scary! */
+		_pstRootSplit(pst,d+3,dMass,1,1,1); /* Scary! */
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
 		if (fabs(dMass - outMass.dMass) > MASS_EPS*dMass) {
 			printf("ERROR id:%d lvl:%d:_pstQQRootSplit mass not cons.\n",
