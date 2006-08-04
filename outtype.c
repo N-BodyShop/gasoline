@@ -51,6 +51,10 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_SOFT_ARRAY:
 	        return(p->fSoft);
 #ifdef GASOLINE
+#ifdef DENSITYU
+	case OUT_DENSITYU_ARRAY:
+		return(p->fDensityU);
+#endif
         case OUT_TEMPFORM_ARRAY:
 	case OUT_U_ARRAY:
 		return(p->u);
@@ -110,6 +114,20 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return((FLOAT) p->fMFracOxygen);
 	case OUT_IRONMASSFRAC_ARRAY:
 	    return((FLOAT) p->fMFracIron);
+#ifdef CHECKSF
+	case OUT_TOFF_YR_ARRAY:
+	    return((FLOAT) p->tOff );
+	case OUT_TCOOL_YR_ARRAY:
+	    return((FLOAT) p->tcool );
+	case OUT_TDYN_YR_ARRAY:
+	    return((FLOAT) p->tdyn );
+	case OUT_RATIOSOUNDDYN_ARRAY:
+	    return((FLOAT) p->ratiosounddyn );
+	case OUT_L_JEANS_ARRAY:
+	    return((FLOAT) p->l_jeans );
+	case OUT_ISMALL_JEANS_ARRAY:
+	    return((FLOAT) p->small_jeans );
+#endif
 #endif
 #ifdef SIMPLESF
 	case OUT_TCOOLAGAIN_ARRAY:
@@ -193,7 +211,12 @@ void VecFilename(char *achFile, int iType)
 	case OUT_SOFT_ARRAY:
 	        strncat(achFile,"soft",256);
             break;
-#ifdef GASOLINE
+#ifdef GASOLINE	
+#ifdef DENSITYU
+        case OUT_DENSITYU_ARRAY:
+	    strncat(achFile,"denu",256);
+	    break;
+#endif
 	case OUT_TEMPFORM_ARRAY:
 		strncat(achFile,"Tform",256);
             break;
@@ -274,6 +297,26 @@ void VecFilename(char *achFile, int iType)
 	case OUT_IRONMASSFRAC_ARRAY:
 	    strncat(achFile,"FeMassFrac",256);
             break;
+#ifdef CHECKSF
+	case OUT_TOFF_YR_ARRAY:
+	    strncat(achFile,"tcooloff",256);
+	    break;
+	case OUT_TCOOL_YR_ARRAY:
+	    strncat(achFile,"tcoolyr",256);
+	    break;
+	case OUT_TDYN_YR_ARRAY:
+	    strncat(achFile,"tdynyr",256);
+	    break;
+	case OUT_RATIOSOUNDDYN_ARRAY:
+	    strncat(achFile,"rsnddyn",256);
+	    break;
+	case OUT_L_JEANS_ARRAY:
+	    strncat(achFile,"ljeans",256);
+	    break;
+	case OUT_ISMALL_JEANS_ARRAY:
+	    strncat(achFile,"ijeans",256);
+	    break;
+#endif
 #endif
 #ifdef SIMPLESF
 	case OUT_TCOOLAGAIN_ARRAY:

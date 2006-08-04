@@ -2,7 +2,7 @@
 #define COOLING_COSMO_HINCLUDED
 
 /* Global consts */
-#if defined(COOLDEBUG) || defined(STARFORM)
+#if defined(COOLDEBUG)
 #include "mdl.h"
 #endif
 #include "floattype.h"
@@ -40,6 +40,7 @@ typedef struct CoolingParametersStruct {
 	int    bUV;
 	int    bUVTableUsesTime;
 	int    bDoIonOutput;
+        int    bLowTCool;
 	double dMassFracHelium;
 	double dCoolingTmin;
 	double dCoolingTmax;
@@ -80,6 +81,8 @@ typedef struct {
   double   Cool_Coll_HeII;
   double   Cool_Diel_HeII;
   double   Cool_Comp;
+  double   Tcmb;
+  double   Cool_LowTFactor;
 
 } RATES_NO_T;
 
@@ -100,6 +103,7 @@ typedef struct {
   CL_RT_FLOAT   Cool_Line_HI;
   CL_RT_FLOAT   Cool_Line_HeI;
   CL_RT_FLOAT   Cool_Line_HeII;
+  CL_RT_FLOAT   Cool_LowT;
 
 } RATES_T;
 
@@ -126,6 +130,7 @@ typedef struct CoolingPKDStruct {
    UVSPECTRUM *UV;
    int        bUVTableUsesTime;
    int        bUVTableLinear;
+   int        bLowTCool;
 
    double     dGmPerCcUnit;
    double     dComovingGmPerCcUnit;
@@ -139,7 +144,7 @@ typedef struct CoolingPKDStruct {
    double     Y_eMAX;
    void       *DerivsData;
 
-#if defined(COOLDEBUG) || defined(STARFORM)
+#if defined(COOLDEBUG) 
    MDL        mdl; /* For diag/debug outputs */
    struct particle *p; /* particle pointer needed for SN feedback */
 #endif
@@ -173,13 +178,14 @@ typedef struct {
   double lineHI;
   double lineHeI;
   double lineHeII;
+  double lowT;
 } COOL_ERGPERSPERGM;
 
 
 typedef struct clDerivsDataStruct {
   void *IntegratorContext;
   COOL *cl;
-  double rho,PdV,E;
+  double rho,ExternalHeating,E,ZMetal;
   RATE Rate;
   PERBARYON Y;
   double     Y_Total0, Y_Total1;
@@ -201,7 +207,7 @@ void clRatesTableError( COOL *cl );
 void clRatesRedshift( COOL *cl, double z, double dTime );
 double clHeatTotal ( COOL *cl, PERBARYON *Y );
 void clRates ( COOL *cl, RATE *Rate, double T );
-double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho );
+double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal );
 COOL_ERGPERSPERGM  clTestCool ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho );
 void clPrintCool ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho );
 
@@ -223,11 +229,13 @@ double clCoolRadrHeIII( double T );
 double clCoolLineHI( double T );
 double clCoolLineHeI( double T );
 double clCoolLineHeII( double T );
-double clEdotInstant ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho );
+double clCoolLowT( double T );
+
+double clEdotInstant ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal );
 void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E, 
-		       double PdV, double rho, double dt );
+		       double ExternalHeating, double rho, double ZMetal, double dt );
 void clIntegrateEnergyDEBUG(COOL *cl, PERBARYON *Y, double *E, 
-		       double PdV, double rho, double dt );
+		       double ExternalHeating, double rho, double ZMetal, double dt );
 
 
 void clDerivs(void *Data, double x, double *y, double *dydx) ;
@@ -292,27 +300,36 @@ double CoolCodeWorkToErgPerGmPerSec( COOL *Cool, double dCodeWork );
 
 #define CoolCodeWorkToErgPerGmPerSec( Cool, dCodeWork ) ((Cool)->dErgPerGmPerSecUnit*(dCodeWork))
 
+double CoolErgPerGmPerSecToCodeWork( COOL *Cool, double dWork );
+
+#define CoolErgPerGmPerSecToCodeWork( Cool, dWork ) ((dWork)/(Cool)->dErgPerGmPerSecUnit)
+
 double CodeDensityToComovingGmPerCc( COOL *Cool, double dCodeDensity );
 
 #define CodeDensityToComovingGmPerCc( Cool, dCodeDensity )  ((Cool)->dComovingGmPerCcUnit*(dCodeDensity))
 
 void CoolIntegrateEnergy(COOL *cl, COOLPARTICLE *cp, double *E, 
-		       double PdV, double rho, double tStep );
+		       double ExternalHeating, double rho, double ZMetal, double tStep );
 
-void CoolIntegrateEnergyEPDRCode(COOL *cl, COOLPARTICLE *cp, double *E, 
-		       double PdV, double rho, double *r, double tStep );
+void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *E, 
+		       double ExternalHeating, double rho, double ZMetal, double *r, double tStep );
 
 void CoolDefaultParticleData( COOLPARTICLE *cp );
 
 void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp );
 
-double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double E, double dDensity );
+/* Deprecated */
+double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double E, double dDensity, double ZMetal );
+
+double CoolEdotInstantCode(COOL *cl, COOLPARTICLE *cp, double ECode, 
+			   double rhoCode, double ZMetal, double *posCode );
 
 void CoolCodePressureOnDensitySoundSpeed( COOL *cl, COOLPARTICLE *cp, double uPred, double fDensity, double gamma, double gammam1, double *PoverRho, double *c );
 
+/* Note: gamma should be 5/3 for this to be consistent! */
 #define CoolCodePressureOnDensitySoundSpeed( cl__, cp__, uPred__, fDensity__, gamma__, gammam1__, PoverRho__, c__ ) { \
-  *(PoverRho__) = ((gammam1__)*(uPred__)); \
-  *(c__) = sqrt((gamma__)*(*(PoverRho__))); }
+  *(PoverRho__) = ((5./3.-1)*(uPred__)); \
+  *(c__) = sqrt((5./3.)*(*(PoverRho__))); }
 
 /*
 double CoolCodePressureOnDensity( COOL *cl, COOLPARTICLE *cp, double uPred, double fDensity, double gammam1 );

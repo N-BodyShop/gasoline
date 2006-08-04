@@ -160,6 +160,7 @@ enum pst_service {
       PST_UPDATEUDOT,
       PST_UPDATESHOCKTRACKER,
       PST_GETGASPRESSURE,
+      PST_GETDENSITYU,
       PST_LOWERSOUNDSPEED,
       PST_INITENERGY,
       PST_KICKVPRED,
@@ -610,7 +611,7 @@ struct inUpdateuDot {
 	double dTime;	
 	double z;
 	int iGasModel;
-	int bUpdateY;
+	int bUpdateState;
 	};
 struct outUpdateuDot {
 	double Time;
@@ -1061,6 +1062,8 @@ struct inGetGasPressure {
 
 /* PST_GETGASPRESSURE */
 void pstGetGasPressure(PST, void *,int,void *,int *);
+
+void pstGetDensityU(PST, void *,int,void *,int *);
 
 struct inLowerSoundSpeed {
 	double dhMinOverSoft;

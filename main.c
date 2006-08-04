@@ -536,6 +536,9 @@ int main(int argc,char **argv)
 					msrBuildTree(msr,1,-1.0,1);
 					msrSmooth(msr,dTime,SMX_DENSITY,1);
 					}
+#ifdef DENSITYU
+				msrGetDensityU(msr);
+#endif
 				msrReorder(msr);
 				msrMassCheck(msr,dMass,"After msrReorder in OutTime");
 				sprintf(achFile,msr->param.achDigitMask,msrOutName(msr),iStep);
@@ -634,6 +637,9 @@ int main(int argc,char **argv)
                 if (msr->param.bBulkViscosity) {
                     msrReSmooth(msr,dTime,SMX_DIVVORT,1);
                     msrGetGasPressure(msr);
+#ifdef DENSITYU
+		    msrGetDensityU(msr);
+#endif
                     msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
                     } 
                 else {
@@ -642,6 +648,9 @@ int main(int argc,char **argv)
 
                     msrSphViscosityLimiter(msr, dTime);
                     msrGetGasPressure(msr);
+#ifdef DENSITYU
+		    msrGetDensityU(msr);
+#endif
                     /*
                     msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
                     */
@@ -656,12 +665,28 @@ int main(int argc,char **argv)
                     msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
                     */
                     }
+                msrCreateGasStepZeroOutputList(msr, &iNumOutputs,OutputList);
+#ifdef DENSITYU
+		OutputList[(iNumOutputs)++]=OUT_DENSITYU_ARRAY;
+#endif
+#ifdef STARFORM
+#ifdef CHECKSF
+		if(msr->param.bStarForm){
+		    msrFormStars(msr, dTime, 1e-6); /* dDelta = 1e-6 not 1e37 */
+		    OutputList[(iNumOutputs)++]=OUT_TOFF_YR_ARRAY;
+		    OutputList[(iNumOutputs)++]=OUT_TCOOL_YR_ARRAY;
+		    OutputList[(iNumOutputs)++]=OUT_TDYN_YR_ARRAY;
+		    OutputList[(iNumOutputs)++]=OUT_RATIOSOUNDDYN_ARRAY;
+		    OutputList[(iNumOutputs)++]=OUT_L_JEANS_ARRAY;
+		    OutputList[(iNumOutputs)++]=OUT_ISMALL_JEANS_ARRAY;
+		    }
+#endif		
+#endif
                 msrReorder(msr);
                 if (msr->param.bSphStep) {
-                    fprintf(stderr,"Adding SphStep dt\n");
+                    fprintf(stdout,"Adding SphStep dt\n");
                     msrSphStep(msr,dTime);
                     }
-                msrCreateGasStepZeroOutputList(msr, &iNumOutputs,OutputList);
                 msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
                 }
 #endif
@@ -724,22 +749,22 @@ int main(int argc,char **argv)
 
             if (msrDoGravity(msr)) {
                     if (msr->param.bGravStep) {
-                            fprintf(stderr,"Adding GravStep dt\n");
+                            fprintf(stdout,"Adding GravStep dt\n");
                             msrGravStep(msr,dTime);
                             }
                     if (msr->param.bAccelStep) {
-                            fprintf(stderr,"Adding AccelStep dt\n");
+                            fprintf(stdout,"Adding AccelStep dt\n");
                             msrAccelStep(msr,dTime);
                             }
                     }
 
             if (msr->param.bDensityStep) {
-                fprintf(stderr,"Adding DensStep dt\n");
+                fprintf(stdout,"Adding DensStep dt\n");
                 msrDensityStep(msr,dTime);
                     }
 
             if (msr->param.bDeltaAccelStep) {
-                fprintf(stderr,"Adding DeltaAccelStep dt\n");
+                fprintf(stdout,"Adding DeltaAccelStep dt\n");
                     if (!msr->param.bDeltaAccelStepGasTree) {
                         msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
                         msrBuildTree(msr,0,-1.0,1);

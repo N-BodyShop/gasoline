@@ -88,6 +88,9 @@ typedef struct particle {
 	FLOAT divv;		/* Balsara viscosity reduction */
 	FLOAT curlv[3];         
 	FLOAT BalsaraSwitch;
+#ifdef DENSITYU
+        FLOAT fDensityU;
+#endif
 #ifdef SHOCKTRACK
         FLOAT aPres[3];
         FLOAT ShockTracker;     /* Shock tracker */
@@ -123,6 +126,14 @@ typedef struct particle {
 	FLOAT vForm[3];
 	FLOAT fMassForm;	/* record original mass of star */
 	int iGasOrder;		/* gas from which star formed */
+#ifdef CHECKSF
+        FLOAT tOff;
+        FLOAT tcool;
+        FLOAT tdyn;
+        FLOAT ratiosounddyn;
+        FLOAT l_jeans;
+        int   small_jeans;
+#endif
 #endif
 #endif  /* GASOLINE */
 #ifdef COLLISIONS
@@ -616,7 +627,7 @@ void pkdSetParticleTypes(PKD pkd, int nSuperCool);
 struct SoughtParticle {
   int iOrder;
   int iActive; 
-  double x,y,z;
+  double x,y,z,m;
 };
 
 int pkdSoughtParticleList(PKD pkd, int iTypeSought, int nMax, int *n, struct SoughtParticle *sp);
@@ -661,6 +672,7 @@ void pkdUpdateuDot(PKD,double,double,double,int,int);
 void pkdUpdateShockTracker(PKD,double, double, double);
 void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma);
 void pkdCoolingGasPressure(PKD, double gammam1, double gamma);
+void pkdGetDensityU(PKD);
 void pkdLowerSoundSpeed(PKD, double);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime );
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);

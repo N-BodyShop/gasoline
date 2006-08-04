@@ -98,15 +98,31 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * Determine cooling time.
      */
 
+
+    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u );
+#if (0)
     E = CoolCodeEnergyToErgPerGm( cl, p->u );
-    T = CoolEnergyToTemperature( cl, &p->CoolParticle, E );
-
     tcool = E/(-CoolHeatingRate( cl, &p->CoolParticle, T, 
-		 CodeDensityToComovingGmPerCc(cl,p->fDensity ))
+		 CodeDensityToComovingGmPerCc(cl,p->fDensity ), p->fMetals )
                     -CoolCodeWorkToErgPerGmPerSec( cl, p->PdV ));
-
     tcool = CoolSecondsToCodeTime( cl, tcool ); 
-
+    printf("tcool %i: %g %g %g\n",p->iOrder,T,p->fDensity,tcool);
+#endif
+    tcool = p->u/(
+#ifdef DENSITYU
+	-CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r )
+#else
+	-CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r )
+#endif
+	-p->PdV );
+#ifdef CHECKSF
+    p->tOff = CoolCodeTimeToSeconds( cl, p->fTimeCoolIsOffUntil - dTime)/3.1557e7;  /* years */
+    p->tcool = CoolCodeTimeToSeconds( cl, tcool)/3.1557e7;
+    p->tdyn = CoolCodeTimeToSeconds( cl, tdyn)/3.1557e7;
+    p->ratiosounddyn = sqrt(0.25*p->fBall2)/p->c/tdyn;
+    p->l_jeans = sqrt(M_PI*p->c*p->c/p->fDensity*dCosmoFac); /* Why not comoving? */
+    p->small_jeans = small_jeans;
+#endif
 #ifdef SFCONDITIONS
     if(tcool < 0.0 && T > stfm->dTempMax) return;
     /*
@@ -119,12 +135,26 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * softening
      */
     l_jeans2 = M_PI*p->c*p->c/p->fDensity*dCosmoFac;
+#if (0)
+/* Old code: problem -- compares physics L_J to comoving softening */
     if (l_jeans2 < p->fSoft*p->fSoft*stfm->dSoftMin*stfm->dSoftMin) 
         small_jeans = 1;
-
     /*printf("tsound:  %g  c_sound:  %g  Temp:  %g  tdyn:  %g\n",tsound,p->c,T,tdyn);*/
+#ifdef CHECKSF
+    p->small_jeans = small_jeans;
+#endif
     if (!small_jeans && tsound <= tdyn)
         return;
+
+#else
+/* New code: physical L_J vs. physics smoothing length (with multiplier) */
+    if (l_jeans2 >= 0.25*p->fBall2*dExp*dExp*stfm->dSoftMin*stfm->dSoftMin) return;
+
+#ifdef CHECKSF
+    p->small_jeans = 1;
+#endif
+#endif
+
 #else
     if(T > stfm->dTempMax) return;
 #endif /*SFCONDITIONS*/

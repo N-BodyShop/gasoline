@@ -50,6 +50,9 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
     double dTotMIron;
     double dDeltaYr;
     double dSNIaMassStore;
+#ifdef STOCHASTICFB
+    double dNSN, dProb;
+#endif
     int j;
         
     for(i = 0; i < FB_NFEEDBACKS; i++) {
@@ -115,10 +118,35 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                     assert(0);
                     }
 
+#ifdef STOCHASTICFB
+		dNSN = fbEffects.dEnergy * MSOLG*fbEffects.dMassLoss/sn->dESN;
+		dProb = dNSN-floor(dNSN);
+		if (dNSN > 0) {
+		    if((rand()/((double) RAND_MAX)) < dProb) {
+			/* SN occurred */
+			fbEffects.dMassLoss += (1-dProb)/dNSN*fbEffects.dMassLoss;
+			}
+		    else  {
+			fbEffects.dMassLoss -= (dProb/dNSN)*fbEffects.dMassLoss;
+			}
+		    }
+#endif
                 if( sn->dESN > 0.0) p->fNSN += fbEffects.dEnergy * MSOLG*fbEffects.dMassLoss/sn->dESN;
                 else p->fNSN += 0.0;
+
                 fbEffects.dMassLoss *= MSOLG/fb->dGmUnit;
                 fbEffects.dEnergy /= fb->dErgPerGmUnit;
+
+#ifdef STOCHASTICFB
+		/* Do not allow more than 75 percent of the original
+		   stellar mass to be lost via feedback 
+		   Note: These cases should be rare
+		   Average is probably ~ 20 percent lost */
+		if (p->fMass - fbEffects.dMassLoss < 0.25*p->fMassForm) {
+		    fbEffects.dMassLoss = p->fMass-0.25*p->fMassForm;
+		    if (fbEffects.dMassLoss < 0) fbEffects.dMassLoss = 0;
+		    }
+#endif
 
                 dTotMassLoss += fbEffects.dMassLoss;
                 p->fESNrate += fbEffects.dEnergy*fbEffects.dMassLoss;
@@ -136,6 +164,11 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
             /*
              * Modify star particle
              */
+#ifdef STOCHASTICFB
+	    if (p->fMass <= dTotMassLoss) {
+		fprintf(stderr,"Minit %g M %g dM %g dProb %g dNSN %g\n",p->fMassForm,p->fMass,dTotMassLoss,dProb,dNSN);
+		}
+#endif
             assert(p->fMass > dTotMassLoss);
 
             p->fMass -= dTotMassLoss;

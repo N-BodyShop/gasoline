@@ -138,21 +138,29 @@ double CoolCodeWorkToErgPerGmPerSec( COOL *Cool, double dCodeWork );
 
 #define CoolCodeWorkToErgPerGmPerSec( Cool, dCodeWork ) ((Cool)->dErgPerGmPerSecUnit*(dCodeWork))
 
+double CoolErgPerGmPerSecToCodeWork( COOL *Cool, double dWork );
+
+#define CoolErgPerGmPerSecToCodeWork( Cool, dWork ) ((dWork)/(Cool)->dErgPerGmPerSecUnit)
+
 double CodeDensityToComovingGmPerCc( COOL *Cool, double dCodeDensity );
 
 #define CodeDensityToComovingGmPerCc( Cool, dCodeDensity )  ((Cool)->dComovingGmPerCcUnit*(dCodeDensity))
 
 void CoolIntegrateEnergy(COOL *cl, COOLPARTICLE *cp, double *E, 
-		       double PdV, double rho, double tStep );
+		       double PdV, double rho, double ZMetal, double tStep );
 
-void CoolIntegrateEnergyEPDRCode(COOL *cl, COOLPARTICLE *cp, double *E, 
-		       double PdV, double rho, double *r, double tStep );
+void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *E, 
+		       double PdV, double rho, double ZMetal, double *r, double tStep );
 
 void CoolDefaultParticleData( COOLPARTICLE *cp );
 
 void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp );
 
+/* Deprecated */
 double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double E, double dDensity );
+
+double CoolEdotInstantCode(COOL *cl, COOLPARTICLE *cp, double ECode, 
+			   double rhoCode, double ZMetal, double *posCode );
 
 void CoolCodePressureOnDensitySoundSpeed( COOL *cl, COOLPARTICLE *cp, double uPred, double fDensity, double gamma, double gammam1, double *PoverRho, double *c );
 #define CoolCodePressureOnDensitySoundSpeed( cl__, cp__, uPred__, fDensity__, gamma__, gammam1__, PoverRho__, c__ ) { \

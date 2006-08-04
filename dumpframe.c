@@ -119,7 +119,7 @@ void dfFreeImage( void *Image ) {
 						ilen = 1./LEN ( a ); \
 						a[0] *= ilen; a[1] *= ilen; a[2] *= ilen; \
 					}
-#define SIZE( a, f ) { \
+#define SIZEVEC( a, f ) { \
 						double ilen; \
 						ilen = f/LEN ( a ); \
 						a[0] *= ilen; a[1] *= ilen; a[2] *= ilen; \
@@ -168,14 +168,14 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 
 /*	fprintf(stderr,"eye2: %i  %lf %lf %lf,  %lf %lf %lf",fs->bEye2,fs->eye2[0],fs->eye2[1],fs->eye2[2], in->z[0],in->z[1],in->z[2] ); */
 
-	if (fs->bzEye1) SIZE( in->z, fs->zEye1 );
+	if (fs->bzEye1) SIZEVEC( in->z, fs->zEye1 );
 
 /* 	fprintf(stderr,"eye2: %i  %lf %lf %lf,  %lf %lf %lf",fs->bEye2,fs->eye2[0],fs->eye2[1],fs->eye2[2], in->z[0],in->z[1],in->z[2] ); */
 
 
 	if (fs->bEye2) {
 		SET( vec, fs->eye2 );
-		if (fs->bzEye2) SIZE( vec, fs->zEye2 );
+		if (fs->bzEye2) SIZEVEC( vec, fs->zEye2 );
 		ADD ( in->z, vec );
 		}
 
@@ -208,18 +208,18 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
 
     CURL( fs->up, in->z, in->x );
     if (fs->iProject == DF_PROJECT_PERSPECTIVE) {
-		SIZE( in->x, (in->nxPix*0.5*in->zEye/width) );
+		SIZEVEC( in->x, (in->nxPix*0.5*in->zEye/width) );
 		}
 	else {
-		SIZE( in->x, (in->nxPix*0.5/width) );
+		SIZEVEC( in->x, (in->nxPix*0.5/width) );
 		}
 
 	CURL( in->z, in->x, in->y );
     if (fs->iProject == DF_PROJECT_PERSPECTIVE) {
-		SIZE( in->y, (in->nyPix*0.5*in->zEye/height) );
+		SIZEVEC( in->y, (in->nyPix*0.5*in->zEye/height) );
 		}
 	else {
-		SIZE( in->y, (in->nyPix*0.5/height) );
+		SIZEVEC( in->y, (in->nyPix*0.5/height) );
 		}
 
 	if (fs->bPeriodic) {

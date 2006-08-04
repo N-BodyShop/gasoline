@@ -270,6 +270,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_GETGASPRESSURE,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGetGasPressure,
 				  sizeof(struct inGetGasPressure),0);
+	mdlAddService(mdl,PST_GETDENSITYU,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstGetDensityU,
+				  0,0);
 	mdlAddService(mdl,PST_LOWERSOUNDSPEED,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstLowerSoundSpeed,
 				  sizeof(struct inLowerSoundSpeed),0);
@@ -4305,7 +4308,7 @@ void pstUpdateuDot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (outUp.MaxTime > out->MaxTime) out->MaxTime = outUp.MaxTime;
 		}
 	else {
-		pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->iGasModel,in->bUpdateY);
+		pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->iGasModel,in->bUpdateState);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -4366,6 +4369,22 @@ void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+void pstGetDensityU(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_GETDENSITYU,vin,nIn);
+		pstGetDensityU(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+  	        pkdGetDensityU(plcl->pkd);
+		}
+	if (pnOut) *pnOut = 0;
+}
+
+
 void pstLowerSoundSpeed(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -4411,7 +4430,7 @@ void pstInitCooling(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-#if defined(STARFORM) || defined(COOLDEBUG)
+#if defined(COOLDEBUG)
 		(plcl->pkd->Cool)->mdl = plcl->pkd->mdl;
 #endif
 		clInitConstants((plcl->pkd->Cool),in->dGmPerCcUnit,in->dComovingGmPerCcUnit,

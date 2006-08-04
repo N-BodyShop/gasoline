@@ -46,7 +46,8 @@ typedef struct smfParameters {
 	double alpha;
 	double beta;
 	double gamma;
-	double algam;
+        double algam;
+        double Pext;
 	int bGeometric;
 	int bCannonical;
 	int bGrowSmoothList;

@@ -464,10 +464,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.iOutInterval = 0;
 	prmAddParam(msr->prm,"iOutInterval",1,&msr->param.iOutInterval,sizeof(int),
 				"oi","<number of timesteps between snapshots> = 0");
-	msr->param.dDumpFrameStep = 0;
+	msr->param.dDumpFrameStep = -1;
 	prmAddParam(msr->prm,"dDumpFrameStep",2,&msr->param.dDumpFrameStep,sizeof(double),
 				"dfi","<number of steps between dumped frames> = 0");
-	msr->param.dDumpFrameTime = 0;
+	msr->param.dDumpFrameTime = -1;
 	prmAddParam(msr->prm,"dDumpFrameTime",2,&msr->param.dDumpFrameTime,sizeof(double),
 				"dft","<number of timesteps between dumped frames> = 0");
 	msr->param.iLogInterval = 10;
@@ -922,8 +922,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"<Gas Constant>");
 	msr->param.dKBoltzUnit = 1.0;
 	prmAddParam(msr->prm,"dKBoltzUnit",2,&msr->param.dKBoltzUnit,
-				sizeof(double),"gcnst",
+				sizeof(double),"kb",
 				"<Boltzmann Constant in System Units>");
+	msr->param.dPext = 0;
+	prmAddParam(msr->prm,"dPext",2,&msr->param.dPext,
+				sizeof(double),"pext",
+				"<External Pressure>");
 	msr->param.dMsolUnit = 1.0;
 	prmAddParam(msr->prm,"dMsolUnit",2,&msr->param.dMsolUnit,
 				sizeof(double),"msu",
@@ -1578,6 +1582,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		msr->param.dComovingGmPerCcUnit = msr->param.dGmPerCcUnit;
 		}
 
+#ifndef PEXT
+	if (prmSpecified(msr->prm,"dPext")) {
+	    fprintf(stderr,"External Pressure specified but not compiled in\nUse -DPEXT during compilation\n");
+	    assert(0);
+	    }
+#endif
+
 	if(msr->param.bStarForm || msr->param.bFeedBack) {
 	    assert (prmSpecified(msr->prm, "dMsolUnit") &&
 		    prmSpecified(msr->prm, "dKpcUnit"));
@@ -2073,6 +2084,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef KROUPA
 	fprintf(fp," KROUPA");
 #endif
+#ifdef SFCONDITIONS
+	fprintf(fp," SFCONDITIONS");
+#endif
 #ifdef SIMPLESF
 	fprintf(fp," SIMPLESF");
 #endif
@@ -2157,6 +2171,12 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef PRES_HK
 	fprintf(fp," PRES_HK");
 #endif 
+#ifdef PEXT
+	fprintf(fp, "PEXT");
+#endif
+#ifdef STARSINK
+	fprintf(fp, "STARSINK");
+#endif
 	{
 	time_t timep;
 
@@ -2289,6 +2309,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dMeanMolWeight: %g",msr->param.dMeanMolWeight);
 	fprintf(fp," dGasConst: %g",msr->param.dGasConst);
 	fprintf(fp," dKBoltzUnit: %g",msr->param.dKBoltzUnit);
+	fprintf(fp," dPext: %g",msr->param.dPext);
 	fprintf(fp," dMsolUnit: %g",msr->param.dMsolUnit);
 	fprintf(fp," dKpcUnit: %g",msr->param.dKpcUnit);
 	fprintf(fp," ddHonHLimit: %g",msr->param.ddHonHLimit);
@@ -2743,6 +2764,9 @@ void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
 		struct inSetNParts inset;
 		
 		pstGetNParts(msr->pst,NULL,0,&outget,NULL);
+                if (outget.iMaxOrderGas == -1) outget.iMaxOrderGas = 0;
+                if (outget.iMaxOrderDark == -1) outget.iMaxOrderDark = outget.iMaxOrderGas;
+                if (outget.iMaxOrderStar == -1) outget.iMaxOrderStar = outget.iMaxOrderDark;
 		assert(outget.nGas == msr->nGas);
 		assert(outget.nDark == msr->nDark);
 		assert(outget.nStar == msr->nStar);
@@ -2985,6 +3009,9 @@ double msrReadTipsy(MSR msr)
 		struct inSetNParts inset;
 		
 		pstGetNParts(msr->pst,NULL,0,&outget,NULL);
+                if (outget.iMaxOrderGas == -1) outget.iMaxOrderGas = 0;
+                if (outget.iMaxOrderDark == -1) outget.iMaxOrderDark = outget.iMaxOrderGas;
+                if (outget.iMaxOrderStar == -1) outget.iMaxOrderStar = outget.iMaxOrderDark;
 		assert(outget.nGas == msr->nGas);
 		assert(outget.nDark == msr->nDark);
 		assert(outget.nStar == msr->nStar);
@@ -4308,6 +4335,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.beta = msr->param.dConstBeta;
 	in.smf.gamma = msr->param.dConstGamma;
 	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
+	in.smf.Pext = msr->param.dPext;
 	in.smf.bGeometric = msr->param.bGeometric;
 	in.smf.bCannonical = msr->param.bCannonical;
 	in.smf.bGrowSmoothList = 0;
@@ -4409,6 +4437,7 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.beta = msr->param.dConstBeta;
 	in.smf.gamma = msr->param.dConstGamma;
 	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
+	in.smf.Pext = msr->param.dPext;
 	in.smf.bGeometric = msr->param.bGeometric;
 	in.smf.bCannonical = msr->param.bCannonical;
 	in.smf.bGrowSmoothList = 0;
@@ -4463,6 +4492,7 @@ void msrMarkSmooth(MSR msr,double dTime,int bSymmetric,int iMarkType)
 	in.smf.beta = msr->param.dConstBeta;
 	in.smf.gamma = msr->param.dConstGamma;
 	in.smf.algam = in.smf.alpha*sqrt(in.smf.gamma*(in.smf.gamma - 1));
+	in.smf.Pext = msr->param.dPext;
 	in.smf.bGeometric = msr->param.bGeometric;
 	in.smf.bCannonical = msr->param.bCannonical;
 	in.smf.bGrowSmoothList = 0;
@@ -7082,7 +7112,9 @@ void msrTopStepKDK(MSR msr,
 					msrReSmooth(msr,dTime,SMX_DIVVORT,1);
 					}
 				msrSphViscosityLimiter(msr, dTime);
-				
+#ifdef DENSITYU
+				msrGetDensityU(msr);
+#endif
 				msrGetGasPressure(msr);
 				
 				if (msr->param.bShockTracker) { 
@@ -7360,6 +7392,11 @@ void msrGetGasPressure(MSR msr)
 	if (msr->param.bLowerSoundSpeed) msrLowerSoundSpeed(msr);
 	}
 
+void msrGetDensityU(MSR msr)
+{
+	pstGetDensityU(msr->pst,NULL,0,NULL,NULL);
+	}
+
 void msrLowerSoundSpeed(MSR msr)
 {
 	struct inLowerSoundSpeed in;
@@ -7370,7 +7407,7 @@ void msrLowerSoundSpeed(MSR msr)
 	}
 
 
-void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateY)
+void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateState)
 {
 	struct inUpdateuDot in;
 	struct outUpdateuDot out;
@@ -7390,7 +7427,7 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateY)
 	in.z = 1/a - 1;
 	in.dTime = dTime;
 	in.iGasModel = msr->param.iGasModel;
-	in.bUpdateY = bUpdateY;
+	in.bUpdateState = bUpdateState;
 
 	pstUpdateuDot(msr->pst,&in,sizeof(in),&out,NULL);
 

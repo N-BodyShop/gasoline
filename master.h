@@ -161,6 +161,7 @@ void msrReorder(MSR);
 void msrOutArray(MSR,char *,int);
 void msrOutVector(MSR,char *,int);
 void msrGetGasPressure(MSR);
+void msrGetDensityU(MSR);
 void msrLowerSoundSpeed(MSR);
 void msrSmooth(MSR,double,int,int);
 void msrReSmooth(MSR,double,int,int);

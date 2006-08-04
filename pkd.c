@@ -4734,13 +4734,14 @@ pkdSoughtParticleList(PKD pkd, int iTypeSought, int nMax, int *n, struct SoughtP
 		  sp[nFound].x = p[i].r[0];
 		  sp[nFound].y = p[i].r[1];
 		  sp[nFound].z = p[i].r[2];
+		  sp[nFound].m = p[i].fMass;
 		}
 		nFound ++;
 	  }
 	}
 	*n = nFound;
 	for (i=0;i<nFound;i++) {
-	  printf("pkd sub star %d: %g %g %g\n",i,sp[i].x,sp[i].y,sp[i].z);
+	  printf("pkd sub star %d: %g %g %g  %g\n",i,sp[i].x,sp[i].y,sp[i].z,sp[i].m);
 	}
 
 	return (nFound);
@@ -4751,7 +4752,7 @@ pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *l)
 {
 #ifndef NOCOOLING
     int i,j;
-	double r2,r2min,dx;
+	double r2,r2min,dx,mass_min;
 	PARTICLE *p = pkd->pStore;
 
 	assert(nList > 0);
@@ -4764,6 +4765,7 @@ pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *l)
 		dx = p[i].r[2]-l[0].z;
 		r2 += dx*dx;
 		r2min = r2;
+		mass_min = l[0].m;
 		for (j=1;j<nList;j++) {
 		  dx = p[i].r[0]-l[j].x;
 		  r2 = dx*dx;
@@ -4771,10 +4773,14 @@ pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *l)
 		  r2 += dx*dx;
 		  dx = p[i].r[2]-l[j].z;
 		  r2 += dx*dx;
-		  if (r2 < r2min) r2min = r2;
+		  if (r2 < r2min) { 
+		      r2min = r2;
+		      mass_min = l[0].m;
+		      }
 		}
 #ifdef COOLING_DISK
 		p[i].CoolParticle.r = sqrt(r2min);
+		p[i].CoolParticle.StarMass = mass_min;
 #endif
 	  }
 	}
@@ -4828,7 +4834,7 @@ int pkdIsStarByOrder(PKD pkd,PARTICLE *p) {
 
 #ifdef GASOLINE
 
-void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasModel, int bUpdateY )
+void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasModel, int bUpdateState )
 {
 #ifndef NOCOOLING	
 	PARTICLE *p;
@@ -4836,7 +4842,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 	int bCool = 0;
 	COOL *cl = NULL;
 	COOLPARTICLE cp;
-	double E,dt = 0;
+	double E,dt = 0,ExternalHeating;
 #endif
 
 	pkdClearTimer(pkd,1);
@@ -4856,27 +4862,34 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i,++p) {
 		if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
+		        ExternalHeating = p->PdV;
+#ifdef STARFORM
+		        ExternalHeating += p->fESNrate;
+#endif
 			if ( bCool 
 #ifdef STARFORM
                             &&  ((dTime >= p->fTimeCoolIsOffUntil) 
-                               || ((p->fESNrate + p->PdV)*duDelta + p->u < 0 ))  
+                               || (ExternalHeating*duDelta + p->u < 0 ))  
 #endif                                
 			  ) {
 				cp = p->CoolParticle;
 				E = p->u;
-#ifdef STARFORM
-				cl->p = p;
-                                CoolIntegrateEnergyEPDRCode(cl, &cp, &E, p->fESNrate + p->PdV, p->fDensity, p->r, dt);
-#else
-				CoolIntegrateEnergyEPDRCode(cl, &cp, &E, p->PdV, p->fDensity, p->r, dt);
+#ifdef COOLDEBUG
+				cl->p = p; /* Send in particle pointer only for temporary debug */
 #endif
+#ifdef DENSITYU
+                                CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensityU, p->fMetals, p->r, dt);
+#else
+                                CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensity, p->fMetals, p->r, dt);
+#endif
+
 				mdlassert(pkd->mdl,E > 0);
 
 				p->uDot = (E - p->u)/duDelta;
 #ifdef STARFORM
-                                if ((p->uDot < (p->fESNrate + p->PdV)) 
+                                if ((p->uDot < ExternalHeating) 
                                     && (dTime < p->fTimeCoolIsOffUntil)) {
-                                        p->uDot = p->fESNrate + p->PdV;
+                                        p->uDot = ExternalHeating;
                                         }
 #endif
 #ifdef SIMPLESF 
@@ -4885,14 +4898,10 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 					}
 #endif
 
-				if (bUpdateY) p->CoolParticle = cp;
+				if (bUpdateState) p->CoolParticle = cp;
 				}
 			else { 
-#ifdef STARFORM
-				p->uDot = p->PdV + p->fESNrate;
-#else
-				p->uDot = p->PdV;
-#endif
+				p->uDot = ExternalHeating;
 				}
 			}
 		}
@@ -4989,6 +4998,21 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma)
 #endif            
 		}
     }
+
+void pkdGetDensityU(PKD pkd)
+{
+    PARTICLE *p;
+    int i;
+
+#ifdef DENSITYU
+    p = pkd->pStore;
+    for(i=0;i<pkdLocal(pkd);++i,++p) {
+		if (pkdIsGas(pkd,p) && TYPEQueryACTIVE(p)) {
+   			p->fDensityU /= p->uPred;
+		}
+	}
+#endif
+}
 
 #ifndef NOCOOLING
 /* Note: Uses uPred */
@@ -5279,8 +5303,8 @@ pkdSphViscosityLimiter(PKD pkd, int bOn, int bShockTracker)
     if (bOn) {
         for(i=0;i<pkdLocal(pkd);++i) {
 			p = &pkd->pStore[i];
-
-			if(pkdIsGas(pkd, p)) {
+                        /* Only set values for particles with fresh curlv, divv from smooth */
+			if(pkdIsGas(pkd, p) && TYPETest(p,TYPE_ACTIVE)) {
 				if (p->divv!=0.0) {         	 
 					p->BalsaraSwitch = fabs(p->divv)/
 						(fabs(p->divv)+sqrt(p->curlv[0]*p->curlv[0]+
@@ -6018,10 +6042,18 @@ int pkdSetSink(PKD pkd, double dSinkMassMin)
 
     for(i=0;i<nLocal;++i) { 
 		p = &pkd->pStore[i];
+#ifdef STARSINK
+                if ((TYPETest(p,TYPE_STAR))) {
+#else
+#if (0)
+		if ((TYPETest(p,TYPE_STAR) && p->fMass >= dSinkMassMin) || p->fMetals < 0) {
+#else 
 		if ((TYPETest(p,TYPE_STAR) && p->fTimeForm < 0)) {
-			TYPESet(p,TYPE_SINK);
-			nSink++;
-			}
+#endif
+#endif
+		    TYPESet(p,TYPE_SINK);
+		    nSink++;
+		    }
 		}
 
     return nSink;

@@ -323,8 +323,8 @@ double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E ) {
 
 #define CONVERT_CMPERKPC (3.0857e21)
 
-void CoolIntegrateEnergyEPDRCode(COOL *cl, COOLPARTICLE *cp, double *ECode, 
-		       double PdVCode, double rhoCode, double *posCode, double tStep ) {
+void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *ECode, 
+		       double PdVCode, double rhoCode, double ZMetal, double *posCode, double tStep ) {
 	double radius;
 	
 	radius= sqrt(posCode[0]*posCode[0]+posCode[1]*posCode[1]+posCode[2]*posCode[2])
@@ -340,7 +340,17 @@ void CoolIntegrateEnergyEPDRCode(COOL *cl, COOLPARTICLE *cp, double *ECode,
 /* Star form function -- do not use */
 double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double T, double dDensity ) {
 	assert(0);
+	return 0;
 	}
+
+/* Not implemented */
+double CoolEdotInstantCode(COOL *cl, COOLPARTICLE *cp, double ECode, 
+			  double rhoCode, double ZMetal, double *posCode ) {
+    double T,E,rho,Edot;
+
+    assert(0);
+    return CoolErgPerGmPerSecToCodeWork( cl, Edot );
+    }
 
 #endif /* NOCOOLING */
 #endif /* GASOLINE */

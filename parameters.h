@@ -230,6 +230,7 @@ struct parameters {
         int iStarFormRung;
 #endif
 	double dKBoltzUnit;
+        double dPext;
 #ifdef GLASS
 	/*
 	 ** Additional parameters for GLASS.

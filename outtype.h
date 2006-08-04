@@ -23,6 +23,7 @@ enum outtype_arraytype {
         BIG_FILE,
 	OUT_COLOR_ARRAY,
 	OUT_DENSITY_ARRAY,
+	OUT_DENSITYU_ARRAY,
 	OUT_POT_ARRAY,
 	OUT_AMAG_ARRAY,
 	OUT_IMASS_ARRAY,
@@ -66,6 +67,12 @@ enum outtype_arraytype {
         OUT_SPHDT_ARRAY,
 	OUT_DT_ARRAY,
 	OUT_REJECTS_ARRAY,
+	OUT_TOFF_YR_ARRAY,
+	OUT_TCOOL_YR_ARRAY,
+	OUT_TDYN_YR_ARRAY,
+	OUT_RATIOSOUNDDYN_ARRAY,
+	OUT_L_JEANS_ARRAY,
+	OUT_ISMALL_JEANS_ARRAY,
         OUT_1D3DSPLIT,  /* NOTICE!!
                        * Everything above here is 1D 
                        * Everything below here is 3D

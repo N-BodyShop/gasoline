@@ -6,6 +6,14 @@
 #include <math.h>
 #include <assert.h>
 
+/* Usage/Interfaces:
+   Functions starting with
+
+   Cool are public: intended to be used by outside callers
+
+   cl are private: only intended for using by cooling routine itself
+*/
+
 /* General accuracy target */
 #define EPS 1e-5
 #define MAXABUNDITERATIONS 20
@@ -90,6 +98,7 @@ void clInitConstants( COOL *cl, double dGmPerCcUnit, double dComovingGmPerCcUnit
   cl->bUV = CoolParam.bUV;
   cl->bUVTableUsesTime = CoolParam.bUVTableUsesTime;
   cl->bUVTableLinear = CoolParam.bUVTableUsesTime; /* Linear if using time */
+  cl->bLowTCool = CoolParam.bLowTCool;
 
   /* Derivs Data Struct */
   {
@@ -191,6 +200,7 @@ void clInitRatesTable( COOL *cl, double TMin, double TMax, int nTable ) {
     (cl->RT+i)->Cool_Line_HI = clCoolLineHI( T );
     (cl->RT+i)->Cool_Line_HeI = clCoolLineHeII( T );
     (cl->RT+i)->Cool_Line_HeII = clCoolLineHeII( T );
+    (cl->RT+i)->Cool_LowT = clCoolLowT( T );
   }    
 }
 
@@ -251,6 +261,8 @@ void clRatesRedshift( COOL *cl, double zIn, double dTimeIn ) {
   cl->dComovingGmPerCcUnit = cl->dGmPerCcUnit*pow(1.+zIn,3.);
      
   cl->R.Cool_Comp = pow((1+zIn)*CL_Ccomp,4.0)*CL_B_gm;
+  cl->R.Tcmb = CL_Tcmb0*(1+zIn);
+  cl->R.Cool_LowTFactor = (cl->bLowTCool ? CL_B_gm*cl->Y_H*cl->Y_H/0.001 : 0 );
 
   /* Photo-Ionization rates */
 
@@ -359,6 +371,7 @@ void clRates ( COOL *cl, RATE *Rate, double T ) {
   Rate->Radr_HeIII = (wTln0*RT0->Rate_Radr_HeIII+wTln1*RT1->Rate_Radr_HeIII);
 }
 
+/* Deprecated except for testing: use EdotInstant */
 double clHeatTotal ( COOL *cl, PERBARYON *Y ) {
   /* erg /gram /sec
      Note: QQ_* premultiplied by (CL_B_gm*erg_ev) */
@@ -368,12 +381,13 @@ double clHeatTotal ( COOL *cl, PERBARYON *Y ) {
          Y->HeII * cl->R.Heat_Phot_HeII * cl->R.Rate_Phot_HeII;
 }
 
-double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
+/* Deprecated except for testing: use EdotInstant */
+double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal ) {
   /* Assumes clRates called previously */
   /* erg /gram /sec */
 
   double en_B=rho*CL_B_gm;
-  double xTln,wTln0,wTln1;
+  double xTln,wTln0,wTln1,LowTCool;
   RATES_T *RT0,*RT1;
   int iTln;
 
@@ -384,10 +398,15 @@ double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
   wTln1 = xTln-iTln;
   wTln0 = 1-wTln1;
 
+  if (Rate->T > cl->R.Tcmb)
+      LowTCool = (wTln0*RT0->Cool_LowT+wTln1*RT1->Cool_LowT)*cl->R.Cool_LowTFactor*en_B*ZMetal;
+  else
+      LowTCool = 0;
+
   /* PUT INTO erg/gm/sec */
   return Y->e * ( 
 #ifndef NOCOMPTON
-    cl->R.Cool_Comp * ( Rate->T-CL_Tcmb0 ) * ( 1 + cl->z ) + 
+    cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb ) + 
 #endif
     en_B * (
     (wTln0*RT0->Cool_Brem_1+wTln1*RT1->Cool_Brem_1) * ( Y->HII + Y->HeII ) +
@@ -405,7 +424,7 @@ double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
 
     (wTln0*RT0->Cool_Line_HI+wTln1*RT1->Cool_Line_HI) * Y->HI +
     (wTln0*RT0->Cool_Line_HeI+wTln1*RT1->Cool_Line_HeI) * Y->HeI +
-    (wTln0*RT0->Cool_Line_HeII+wTln1*RT1->Cool_Line_HeII) * Y->HeII ) );
+    (wTln0*RT0->Cool_Line_HeII+wTln1*RT1->Cool_Line_HeII) * Y->HeII ) ) + LowTCool;
 }
 
 COOL_ERGPERSPERGM  clTestCool ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
@@ -427,7 +446,7 @@ COOL_ERGPERSPERGM  clTestCool ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho )
 
   /* PUT INTO erg/gm/sec */
   ret.compton = Y->e * ( 
-    cl->R.Cool_Comp * ( Rate->T-CL_Tcmb0 ) * ( 1 + cl->z ));
+    cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb ));
   ret.bremHII = Y->e * en_B * (
     (wTln0*RT0->Cool_Brem_1+wTln1*RT1->Cool_Brem_1) * ( Y->HII ));
   ret.bremHeII = Y->e * en_B * (
@@ -454,6 +473,8 @@ COOL_ERGPERSPERGM  clTestCool ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho )
     (wTln0*RT0->Cool_Line_HeI+wTln1*RT1->Cool_Line_HeI) * Y->HeI;
   ret.lineHeII = Y->e * en_B * 
     (wTln0*RT0->Cool_Line_HeII+wTln1*RT1->Cool_Line_HeII) * Y->HeII;
+  ret.lowT = en_B * 
+    (wTln0*RT0->Cool_LowT+wTln1*RT1->Cool_LowT)*cl->R.Cool_LowTFactor*0.001; /* assume metallicity 0.001 */
 
   return ret;
 }
@@ -477,7 +498,7 @@ void clPrintCool ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
   /* PUT INTO erg/gm/sec */
   printf("Compton:  %e\n",
     Y->e * ( 
-    cl->R.Cool_Comp * ( Rate->T-CL_Tcmb0 ) * ( 1 + cl->z )));
+    cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb )));
   printf("Cool Brem HII    %e\n",
     Y->e * en_B * (
     (wTln0*RT0->Cool_Brem_1+wTln1*RT1->Cool_Brem_1) * ( Y->HII )) );
@@ -517,6 +538,9 @@ void clPrintCool ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
   printf("Line cooling HeII  %e\n",
     Y->e * en_B * 
     (wTln0*RT0->Cool_Line_HeII+wTln1*RT1->Cool_Line_HeII) * Y->HeII );
+  printf("Low T cooling (Z=0.001)  %e\n",
+    en_B * 
+    (wTln0*RT0->Cool_LowT+wTln1*RT1->Cool_LowT)*cl->R.Cool_LowTFactor*0.001);
 }
 
 void clAbunds( COOL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
@@ -810,14 +834,28 @@ double clCoolLineHeII( double T ) {
   return CL_B_gm*CL_aHeII*exp(-CL_bHeII*T_inv)*pow(T_inv,CL_p_HeII)*Cen_correctn;
 }
 
-double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho )
+double clCoolLowT( double T ) {
+    double x;
+    /* Cooling Rate for low T, fit from Bromm et al. MNRAS, 328, 969 (Figure 1). by Maschenko */
+    /* Fit for metallicity Z = 0.001 -- scales linearly with Z */
+    /* Returns cooling in erg cm^-3 s^-1 (after multiplied by n_H ^2) */
+    /* Code uses erg g^-1 s^-1 so need to multiply the return value by Y_H^2 n_B * B_gm */
+    
+    if (T > 1e4) return 0;
+    x = log10(log10(log10(T)));
+    return pow(10.0,-27.81 + 2.928*x - 0.6982*x*x);
+    }
+
+/* Returns Heating - Cooling excluding External Heating, units of ergs s^-1 g^-1 
+   Public interface CoolEdotInstantCode */
+double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal )
 {
   double en_B = rho*CL_B_gm;
   double xTln,wTln0,wTln1;
   RATES_T *RT0,*RT1;
   int iTln;
 
-  double Edot,ne;
+  double Edot,ne,LowTCool;
 
   ne = Y->e*en_B;
 
@@ -828,10 +866,15 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho )
   wTln1 = (xTln-iTln);
   wTln0 = (1-wTln1);
 
+  if (Rate->T > cl->R.Tcmb)
+      LowTCool = (wTln0*RT0->Cool_LowT+wTln1*RT1->Cool_LowT)*cl->R.Cool_LowTFactor*en_B*ZMetal;
+  else
+      LowTCool = 0;
+
   Edot = 
 #ifndef NOCOMPTON
     - 
-    Y->e * cl->R.Cool_Comp * ( Rate->T-CL_Tcmb0 ) * ( 1 + cl->z ) 
+      Y->e * cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb ) 
 #endif
     - 
     ne * ((wTln0*RT0->Cool_Brem_1+wTln1*RT1->Cool_Brem_1) * ( Y->HII + Y->HeII ) +
@@ -850,6 +893,8 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho )
 	  cl->R.Cool_Coll_HI * Y->HI * Rate->Coll_HI +
 	  cl->R.Cool_Coll_HeI * Y->HeI * Rate->Coll_HeI + 
 	  cl->R.Cool_Coll_HeII * Y->HeII * Rate->Coll_HeII )
+    - 
+      LowTCool
     +
     Y->HI   * cl->R.Heat_Phot_HI * cl->R.Rate_Phot_HI +
     Y->HeI  * cl->R.Heat_Phot_HeI * cl->R.Rate_Phot_HeI +
@@ -862,7 +907,7 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho )
  *  We solve the implicit equation:  
  *  Eout = Ein + dt * Cooling ( Yin, Yout, Ein, Eout )
  *
- *  E erg/gm, PdV erg/gm/s, rho gm/cc, dt sec
+ *  E erg/gm, ExternalHeating erg/gm/s, rho gm/cc, dt sec
  * 
  */
 
@@ -912,7 +957,7 @@ void clDerivs(void *Data, double x, double *y, double *dydx) {
 
   d->E = y[1];
   clTempIteration( d );
-  dydx[1] = clEdotInstant( d->cl, &d->Y, &d->Rate, d->rho ) + d->PdV;
+  dydx[1] = clEdotInstant( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal ) + d->ExternalHeating;
 }
 
 void clJacobn(void *Data, double x, double y[], double dfdx[], double **dfdy) {
@@ -924,17 +969,17 @@ void clJacobn(void *Data, double x, double y[], double dfdx[], double **dfdy) {
   /* Approximate dEdt/dE */
   d->E = E*(EMUL);
   clTempIteration( d );
-  dE = clEdotInstant( d->cl, &d->Y, &d->Rate, d->rho );
+  dE = clEdotInstant( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal );
 
   d->E = E*(1/EMUL);
   clTempIteration( d );
-  dE -= clEdotInstant( d->cl, &d->Y, &d->Rate, d->rho );
+  dE -= clEdotInstant( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal );
 
   dfdy[1][1] = dE/(E*d->dlnE);
 }
 
 void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E, 
-		       double PdV, double rho, double tStep ) {
+		       double ExternalHeating, double rho, double ZMetal, double tStep ) {
 
   double dEdt,dE,Ein = *E,EMin;
   double t=0,dtused,dtnext,tstop = tStep*(1-1e-8),dtEst;
@@ -944,7 +989,8 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
   if (tStep <= 0) return;
 
   d->rho = rho;
-  d->PdV = PdV;
+  d->ExternalHeating = ExternalHeating;
+  d->ZMetal = ZMetal;
   
   clRates( d->cl, &d->Rate, cl->TMin );
   clAbunds( d->cl, &d->Y, &d->Rate, d->rho );
@@ -1036,6 +1082,9 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 	CoolParam->bDoIonOutput = 1;
 	prmAddParam(prm,"bDoIonOutput",0,&CoolParam->bDoIonOutput,sizeof(int),
 				"Iout","enable/disable Ion outputs (cooling only) = +Iout");
+	CoolParam->bLowTCool = 0;
+	prmAddParam(prm,"bLowTCool",0,&CoolParam->bLowTCool,sizeof(int),
+				"ltc","enable/disable low T cooling = +ltc");
 	}
 	
 void CoolLogParams( COOLPARAM *CoolParam, FILE *fp ) {
@@ -1047,6 +1096,7 @@ void CoolLogParams( COOLPARAM *CoolParam, FILE *fp ) {
     fprintf(fp," dCoolingTmax: %g",CoolParam->dCoolingTmax);
     fprintf(fp," nCoolingTable: %d",CoolParam->nCoolingTable);
     fprintf(fp," bDoIonOutput: %d",CoolParam->bDoIonOutput);
+    fprintf(fp," bLowTCool: %d",CoolParam->bLowTCool);
 	}
 
 void CoolOutputArray( COOLPARAM *CoolParam, int cnt, int *type, char *suffix ) {
@@ -1156,37 +1206,59 @@ void CoolSetTime( COOL *cl, double dTime, double z ) {
 
 /* Integration Routines */
 
-void CoolIntegrateEnergy(COOL *cl, COOLPARTICLE *cp, double *E, 
-		       double PdV, double rho, double tStep ) {
-	PERBARYON Y;
-	
-	CoolPARTICLEtoPERBARYON(&Y,cp,cl->Y_H,cl->Y_He);
-	clIntegrateEnergy(cl, &Y, E, PdV, rho, tStep);
-	CoolPERBARYONtoPARTICLE(&Y, cp);
-	}
+/* Physical units */
+void CoolIntegrateEnergy(COOL *cl, COOLPARTICLE *cp, double *E,
+                       double PdV, double rho, double ZMetal, double tStep ) {
+        PERBARYON Y;
 
-void CoolIntegrateEnergyEPDRCode(COOL *cl, COOLPARTICLE *cp, double *ECode, 
-		       double PdVCode, double rhoCode, double *posCode, double tStep ) {
+        CoolPARTICLEtoPERBARYON(&Y,cp,cl->Y_H,cl->Y_He);
+        clIntegrateEnergy(cl, &Y, E, PdV, rho, ZMetal, tStep);
+        CoolPERBARYONtoPARTICLE(&Y, cp);
+        }
+
+/* Code Units */
+void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *ECode, 
+		       double ExternalHeatingCode, double rhoCode, double ZMetal, double *posCode, double tStep ) {
 	PERBARYON Y;
+	double E;
 	
-	*ECode = CoolCodeEnergyToErgPerGm( cl, *ECode );
+	E = CoolCodeEnergyToErgPerGm( cl, *ECode );
 	CoolPARTICLEtoPERBARYON(&Y, cp,cl->Y_H,cl->Y_He);
-	clIntegrateEnergy(cl, &Y, ECode, CoolCodeWorkToErgPerGmPerSec( cl, PdVCode ), 
-					  CodeDensityToComovingGmPerCc(cl, rhoCode), tStep);
+	clIntegrateEnergy(cl, &Y, &E, CoolCodeWorkToErgPerGmPerSec( cl, ExternalHeatingCode ), 
+					  CodeDensityToComovingGmPerCc(cl, rhoCode), ZMetal, tStep);
 	CoolPERBARYONtoPARTICLE(&Y, cp);
-	*ECode = CoolErgPerGmToCodeEnergy(cl, *ECode);
+	*ECode = CoolErgPerGmToCodeEnergy(cl, E);
 
 	}
 
-double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double T, double dDensity ) {
+/* Deprecated: */
+double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double T, double dDensity, double ZMetal ) {
     PERBARYON Y;
     RATE Rate;
 
     CoolPARTICLEtoPERBARYON(&Y, cp, cl->Y_H, cl->Y_He);
     clRates(cl, &Rate, T);
-	
-	return (-clCoolTotal(cl, &Y, &Rate, dDensity ) + clHeatTotal(cl, &Y));
-	}
+
+    return (-clCoolTotal(cl, &Y, &Rate, dDensity, ZMetal ) + clHeatTotal(cl, &Y));
+    }
+
+/* Code heating - cooling rate excluding external heating (PdV, etc..) */
+double CoolEdotInstantCode(COOL *cl, COOLPARTICLE *cp, double ECode, 
+			  double rhoCode, double ZMetal, double *posCode ) {
+    PERBARYON Y;
+    RATE Rate;
+    double T,E,rho,Edot;
+
+    E = CoolCodeEnergyToErgPerGm( cl, ECode );
+    T = CoolEnergyToTemperature( cl, cp, E );
+    rho = CodeDensityToComovingGmPerCc(cl,rhoCode );
+    CoolPARTICLEtoPERBARYON(&Y, cp, cl->Y_H, cl->Y_He);
+    clRates(cl, &Rate, T);
+    
+    Edot = clEdotInstant( cl, &Y, &Rate, rho, ZMetal );
+
+    return CoolErgPerGmPerSecToCodeWork( cl, Edot );
+    }
 
 #endif /* NOCOOLING */
 #endif /* GASOLINE */

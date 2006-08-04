@@ -52,7 +52,7 @@
 #endif
 
 #ifdef PEAKEDKERNEL
-/* Standard M_4 Kernel */
+/* Standard M_4 Kernel with central peak for dW/du according to Thomas and Couchman 92 (Steinmetz 96) */
 #define BALL2(a) ((a)->fBall2)
 #define KERNEL(ak,ar2) { \
 		ak = 2.0 - sqrt(ar2); \
@@ -62,7 +62,7 @@
 #define DKERNEL(adk,ar2) { \
 		adk = sqrt(ar2); \
 		if (ar2 < 1.0) { \
-            if (adk < 2./3.) { \
+            if (adk < (2./3.)) { \
                if (adk > 0) adk = -1/adk; \
 			   } \
             else { \
@@ -141,16 +141,25 @@ void NullSmooth(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf) {
 void initDensity(void *p)
 {
 	((PARTICLE *)p)->fDensity = 0.0;
+#ifdef DENSITYU
+	((PARTICLE *)p)->fDensityU = 0.0;
+#endif
 	}
 
 void combDensity(void *p1,void *p2)
 {
 	((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
+#ifdef DENSITYU
+	((PARTICLE *)p1)->fDensityU += ((PARTICLE *)p2)->fDensityU;
+#endif
 	}
 
 void Density(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	FLOAT ih2,r2,rs,fDensity;
+#ifdef DENSITYU
+	FLOAT fDensityU = 0;
+#endif
 	int i;
 
 	ih2 = 4.0/BALL2(p);
@@ -159,8 +168,14 @@ void Density(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		r2 = nnList[i].fDist2*ih2;
 		KERNEL(rs,r2);
 		fDensity += rs*nnList[i].pPart->fMass;
+#ifdef DENSITYU
+		p->fDensityU += rs*nnList[i].pPart->fMass*nnList[i].pPart->uPred;
+#endif
 		}
 	p->fDensity = M_1_PI*sqrt(ih2)*ih2*fDensity; 
+#ifdef DENSITYU
+	p->fDensityU = M_1_PI*sqrt(ih2)*ih2*fDensityU;
+#endif
 	}
 
 void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
@@ -178,6 +193,10 @@ void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q = nnList[i].pPart;
 		p->fDensity += rs*q->fMass;
 		q->fDensity += rs*p->fMass;
+#ifdef DENSITYU
+		p->fDensityU += rs*q->fMass*q->uPred;
+		q->fDensityU += rs*p->fMass*p->uPred;
+#endif
 		}
 	}
 
@@ -221,20 +240,33 @@ void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 void initParticleMarkDensity(void *p)
 {
 	((PARTICLE *)p)->fDensity = 0.0;
+#ifdef DENSITYU
+	((PARTICLE *)p)->fDensityU = 0.0;
+#endif
 	TYPESet((PARTICLE *) p,TYPE_DensZeroed);
 	}
 
 void initMarkDensity(void *p)
 {
 	((PARTICLE *)p)->fDensity = 0.0;
+#ifdef DENSITYU
+	((PARTICLE *)p)->fDensityU = 0.0;
+#endif
 	}
 
 void combMarkDensity(void *p1,void *p2)
 {
-	if (TYPETest((PARTICLE *) p1,TYPE_DensZeroed)) 
+        if (TYPETest((PARTICLE *) p1,TYPE_DensZeroed)) {
 		((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
+#ifdef DENSITYU
+		((PARTICLE *)p1)->fDensityU += ((PARTICLE *)p2)->fDensityU;
+#endif
+        }
 	else if (TYPETest((PARTICLE *) p2,TYPE_DensZeroed)) {
 		((PARTICLE *)p1)->fDensity = ((PARTICLE *)p2)->fDensity;
+#ifdef DENSITYU
+		((PARTICLE *)p1)->fDensityU = ((PARTICLE *)p2)->fDensityU;
+#endif
 		}
 	((PARTICLE *)p1)->iActive |= ((PARTICLE *)p2)->iActive;
 	}
@@ -263,10 +295,20 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			q = nnList[i].pPart;
 			assert(TYPETest(q,TYPE_GAS));
 			p->fDensity += rs*q->fMass;
-			if (TYPETest(q,TYPE_DensZeroed)) 
+#ifdef DENSITYU
+			p->fDensityU += rs*q->fMass*q->uPred;
+#endif
+			if (TYPETest(q,TYPE_DensZeroed)) {
 				q->fDensity += rs*p->fMass;
+#ifdef DENSITYU
+				q->fDensityU += rs*p->fMass*p->uPred;
+#endif
+			    }
 			else {
 				q->fDensity = rs*p->fMass;
+#ifdef DENSITYU
+				q->fDensityU = rs*p->fMass*p->uPred;
+#endif
 				TYPESet(q, TYPE_DensZeroed);
 				}
 			TYPESet(q,TYPE_NbrOfACTIVE);
@@ -280,16 +322,30 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			rs *= fNorm;
 			q = nnList[i].pPart;
 			assert(TYPETest(q,TYPE_GAS));
-			if (TYPETest(p,TYPE_DensZeroed)) 
+			if (TYPETest(p,TYPE_DensZeroed)) {
 				p->fDensity += rs*q->fMass;
+#ifdef DENSITYU
+				p->fDensityU += rs*q->fMass*q->uPred;
+#endif
+			    }
 			else {
 				p->fDensity = rs*q->fMass;
+#ifdef DENSITYU
+				p->fDensityU = rs*q->fMass*q->uPred;
+#endif
 				TYPESet(p,TYPE_DensZeroed);
 				}
-			if (TYPETest(q,TYPE_DensZeroed)) 
+			if (TYPETest(q,TYPE_DensZeroed)) {
 				q->fDensity += rs*p->fMass;
+#ifdef DENSITYU
+				q->fDensityU += rs*p->fMass*p->uPred;
+#endif
+			    }
 			else {
 				q->fDensity = rs*p->fMass;
+#ifdef DENSITYU
+				q->fDensityU = rs*p->fMass*p->uPred;
+#endif
 				TYPESet(q, TYPE_DensZeroed);
 				}
 			qiActive |= q->iActive;
@@ -303,6 +359,9 @@ void initParticleMarkIIDensity(void *p)
 	if (TYPEFilter((PARTICLE *) p,TYPE_DensACTIVE|TYPE_DensZeroed,
 				   TYPE_DensACTIVE)) {
 		((PARTICLE *)p)->fDensity = 0.0;
+#ifdef DENSITYU
+		((PARTICLE *)p)->fDensityU = 0.0;
+#endif
 		TYPESet((PARTICLE *)p,TYPE_DensZeroed);
 /*		if (((PARTICLE *)p)->iOrder == CHECKSOFT) fprintf(stderr,"Init Zero Particle 3031A: %g \n",((PARTICLE *) p)->fDensity);*/
 		}
@@ -311,16 +370,26 @@ void initParticleMarkIIDensity(void *p)
 void initMarkIIDensity(void *p)
     {
     ((PARTICLE *) p)->fDensity = 0.0;
+#ifdef DENSITYU
+    ((PARTICLE *)p)->fDensityU = 0.0;
+#endif
 /*    if (((PARTICLE *)p)->iOrder == CHECKSOFT) fprintf(stderr,"Init Cache Zero Particle 3031A: %g \n",((PARTICLE *) p)->fDensity);*/
     }
 
 void combMarkIIDensity(void *p1,void *p2)
     {
     if (TYPETest((PARTICLE *) p1,TYPE_DensACTIVE)) {
-	if (TYPETest((PARTICLE *) p1,TYPE_DensZeroed)) 
+	if (TYPETest((PARTICLE *) p1,TYPE_DensZeroed)) {
 	    ((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
+#ifdef DENSITYU
+	    ((PARTICLE *)p1)->fDensityU += ((PARTICLE *)p2)->fDensityU;
+#endif
+	    }
 	else if (TYPETest((PARTICLE *) p2,TYPE_DensZeroed)) {
 	    ((PARTICLE *)p1)->fDensity = ((PARTICLE *)p2)->fDensity;
+#ifdef DENSITYU
+	    ((PARTICLE *)p1)->fDensityU = ((PARTICLE *)p2)->fDensityU;
+#endif
 	    TYPESet((PARTICLE *)p1,TYPE_DensZeroed);
 	    }
 	}
@@ -350,14 +419,23 @@ void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    KERNEL(rs,r2);
 	    rs *= fNorm;
 	    p->fDensity += rs*q->fMass;
+#ifdef DENSITYU
+	    p->fDensity += rs*q->fMass;
+#endif
 /*	    if (p->iOrder == CHECKSOFT) fprintf(stderr,"DensActive Particle %iA: %g %i  %g\n",p->iOrder,p->fDensity,q->iOrder,q->fMass);*/
 	    if (TYPETest(q,TYPE_DensACTIVE)) {
 		if (TYPETest(q,TYPE_DensZeroed)) {
 		    q->fDensity += rs*p->fMass;
+#ifdef DENSITYU
+		    q->fDensityU += rs*p->fMass*p->uPred;
+#endif
 /*		    if (q->iOrder == CHECKSOFT) fprintf(stderr,"qDensActive Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		    }
 		else {
 		    q->fDensity = rs*p->fMass;
+#ifdef DENSITYU
+		    q->fDensityU = rs*p->fMass*p->uPred;
+#endif
 		    TYPESet(q,TYPE_DensZeroed);
 /*		    if (q->iOrder == CHECKSOFT) fprintf(stderr,"zero qDensActive Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		    }
@@ -377,10 +455,16 @@ void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    rs *= fNorm;
 	    if (TYPETest(q,TYPE_DensZeroed)) {
 		q->fDensity += rs*p->fMass;
+#ifdef DENSITYU
+		q->fDensityU += rs*p->fMass*p->uPred;
+#endif
 /*		if (q->iOrder == CHECKSOFT) fprintf(stderr,"qActive Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		}
 	    else {
 		q->fDensity = rs*p->fMass;
+#ifdef DENSITYU
+		q->fDensityU = rs*p->fMass*p->uPred;
+#endif
 		TYPESet(q,TYPE_DensZeroed);
 /*		if (q->iOrder == CHECKSOFT) fprintf(stderr,"zero qActive Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		}
@@ -397,10 +481,16 @@ void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    rs *= fNorm;
 	    if (TYPETest(q,TYPE_DensZeroed)) {
 		q->fDensity += rs*p->fMass;
+#ifdef DENSITYU
+		q->fDensityU += rs*p->fMass*p->uPred;
+#endif
 /*		if (q->iOrder == CHECKSOFT) fprintf(stderr,"qOther Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		}
 	    else {
 		q->fDensity = rs*p->fMass;
+#ifdef DENSITYU
+		q->fDensityU = rs*p->fMass*p->uPred;
+#endif
 		TYPESet(q,TYPE_DensZeroed);
 /*		if (q->iOrder == CHECKSOFT) fprintf(stderr,"zero qOther Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		}
@@ -444,7 +534,7 @@ void DeltaAccel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2;
-	    if (r2 > 0) {
+		if (r2 > 0) {
 		  q = nnList[i].pPart;
 #ifdef DELTAACCELACTIVE
 		  if (!TYPEQueryACTIVE((PARTICLE *) q)) continue;
@@ -497,11 +587,14 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	/* G = 1 
 	 p is sink particle
 	 q is gas particle */
-	EBO = -0.5*p->fMass/smf->dSinkBoundOrbitRadius;
+        if (smf->dSinkBoundOrbitRadius > 0)
+            EBO = -0.5*p->fMass/smf->dSinkBoundOrbitRadius;
+        else
+            EBO = FLT_MAX;
 
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2;
-        if (r2 > 0 && r2 <= dSinkRadius2) {
+		if (r2 > 0 && r2 <= dSinkRadius2) {
 		  q = nnList[i].pPart;
 		  if (TYPETest( q, TYPE_GAS )) {
 			dvx = p->v[0]-q->v[0];
@@ -788,6 +881,10 @@ void SphPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	if (!TYPEQueryACTIVE(p)) return;
 
+#ifdef PEXT
+	assert(smf->Pext == 0);
+#endif
+
 	pc = p->c;
 	pDensity = p->fDensity;
 	pPoverRho2 = p->PoverRho2;
@@ -855,7 +952,8 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	PARTICLE *q;
 	FLOAT ih2,r2,rs1,rq,rp;
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	FLOAT pPoverRho2,pPdV,pa[3],pMass,pmumax;
+	FLOAT pPoverRho2,pPoverRho2f,pPdV,pa[3],pMass,pmumax;
+	FLOAT qPoverRho2,qPoverRho2f;
 	FLOAT ph,pc,pDensity,visc,hav,absmu;
 	FLOAT fNorm,fNorm1,aFac,vFac;
 	int i;
@@ -868,6 +966,18 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	pDensity = p->fDensity;
 	pMass = p->fMass;
 	pPoverRho2 = p->PoverRho2;
+#ifdef PEXT
+    {
+        FLOAT pd2 = p->fDensity*p->fDensity;
+	pPoverRho2f = (pPoverRho2*pd2-smf->Pext)/pd2;
+/*	if ((p->iOrder %100)==0) {
+	printf("PEXT DIAG: %d: %g,  %g %g,  %g %g\n",p->iOrder,sqrt(p->r[0]*p->r[0]+p->r[1]*p->r[1]+p->r[2]*p->r[2]),pPoverRho2*pd2,smf->Pext,pPoverRho2,pPoverRho2f);
+	}*/
+    }
+#else
+	pPoverRho2f = pPoverRho2;
+#endif
+
 	ph = sqrt(0.25*BALL2(p));
 	ih2 = 4.0/BALL2(p);
 	fNorm = 0.5*M_1_PI*ih2/ph;
@@ -898,6 +1008,15 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz)
 				+ nnList[i].fDist2*smf->H;
 
+			qPoverRho2 = q->PoverRho2;
+#ifdef PEXT
+			{
+			FLOAT qd2 = q->fDensity*q->fDensity;
+			qPoverRho2f = (qPoverRho2*qd2-smf->Pext)/qd2;
+			}
+#else
+			qPoverRho2f = qPoverRho2;
+#endif
 			if (TYPEQueryACTIVE(q)) {
 				/* q active */
 				rp = rs1 * pMass;
@@ -908,14 +1027,14 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 						mdlDiag(smf->pkd->mdl,ach);
 						}
 #endif
-					pPdV += rq*PRES_PDV(pPoverRho2,q->PoverRho2)*dvdotdr;
-					q->PdV += rp*PRES_PDV(q->PoverRho2,pPoverRho2)*dvdotdr;
+					pPdV += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr;
+					q->PdV += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr;
 #ifdef PDVDEBUG
-					p->PdVpres += rq*PRES_PDV(pPoverRho2,q->PoverRho2)*dvdotdr;
-					q->PdVpres += rp*PRES_PDV(q->PoverRho2,pPoverRho2)*dvdotdr;
+					p->PdVpres += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr;
+					q->PdVpres += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr;
 #endif
-					rq *= (PRES_ACC(pPoverRho2,q->PoverRho2));
-					rp *= (PRES_ACC(pPoverRho2,q->PoverRho2));
+					rq *= (PRES_ACC(pPoverRho2f,qPoverRho2f));
+					rp *= (PRES_ACC(pPoverRho2f,qPoverRho2f));
 					rp *= aFac; /* convert to comoving acceleration */
 					rq *= aFac;
 					pa[0] -= rq * dx;
@@ -961,8 +1080,8 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					p->PdVvisc += rq*(0.5*visc)*dvdotdr;
 					q->PdVvisc += rp*(0.5*visc)*dvdotdr;
 #endif
-					rq *= (PRES_ACC(pPoverRho2,q->PoverRho2) + visc);
-					rp *= (PRES_ACC(pPoverRho2,q->PoverRho2) + visc);
+					rq *= (PRES_ACC(pPoverRho2f,qPoverRho2f) + visc);
+					rp *= (PRES_ACC(pPoverRho2f,qPoverRho2f) + visc);
 					rp *= aFac; /* convert to comoving acceleration */
 					rq *= aFac;
 
@@ -994,7 +1113,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef PDVDEBUG
   					p->PdVpres += rq*(PRES_PDV(pPoverRho2,q->PoverRho2))*dvdotdr;
 #endif
-					rq *= (PRES_ACC(pPoverRho2,q->PoverRho2));
+					rq *= (PRES_ACC(pPoverRho2f,qPoverRho2f));
 					rq *= aFac; /* convert to comoving acceleration */
 
 					pa[0] -= rq*dx;
@@ -1032,7 +1151,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   					p->PdVpres += rq*(PRES_PDV(pPoverRho2,q->PoverRho2))*dvdotdr;
 					p->PdVvisc += rq*(0.5*visc)*dvdotdr;
 #endif
-					rq *= (PRES_ACC(pPoverRho2,q->PoverRho2) + visc);
+					rq *= (PRES_ACC(pPoverRho2f,qPoverRho2f) + visc);
 					rq *= aFac; /* convert to comoving acceleration */
 
 					pa[0] -= rq*dx;
@@ -1113,7 +1232,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				q->PdVpres += rp*(PRES_PDV(q->PoverRho2,pPoverRho2))*dvdotdr;
 				q->PdVvisc += rp*(0.5*visc)*dvdotdr;
 #endif
-				rp *= (PRES_ACC(pPoverRho2,q->PoverRho2) + visc);
+				rp *= (PRES_ACC(pPoverRho2f,qPoverRho2f) + visc);
 				rp *= aFac; /* convert to comoving acceleration */
 
 		        ACCEL(q,0) += rp*dx;
@@ -2368,10 +2487,10 @@ void initDistSNEnergy(void *p1)
     /*
      * Warning: kludgery.  We need to accumulate mass in the cached
      * particle, but we also need to keep the original mass around.
-     * Let's use another (hopefully unused) field to hold the original
-     * mass.
+     * Let's use the curlv field in the cached particle copy to hold the original
+     * mass.  Note: original particle curlv's never modified.
      */
-    ((PARTICLE *)p1)->PdV = ((PARTICLE *)p1)->fMass;
+    ((PARTICLE *)p1)->curlv[0] = ((PARTICLE *)p1)->fMass;
 
     /*
      * Zero out accumulated quantities.
@@ -2387,7 +2506,7 @@ void combDistSNEnergy(void *p1,void *p2)
     /*
      * See kludgery notice above.
      */
-    FLOAT fAddedMass = ((PARTICLE *)p2)->fMass - ((PARTICLE *)p2)->PdV;
+    FLOAT fAddedMass = ((PARTICLE *)p2)->fMass - ((PARTICLE *)p2)->curlv[0];
     
     ((PARTICLE *)p1)->fMass += fAddedMass;
     ((PARTICLE *)p1)->fESNrate += ((PARTICLE *)p2)->fESNrate;
