@@ -1191,6 +1191,17 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			dvz = p->vPred[2] - q->vPred[2];
 			dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) +
 				nnList[i].fDist2*smf->H;
+
+			qPoverRho2 = q->PoverRho2;
+#ifdef PEXT
+			{
+			FLOAT qd2 = q->fDensity*q->fDensity;
+			qPoverRho2f = (qPoverRho2*qd2-smf->Pext)/qd2;
+			}
+#else
+			qPoverRho2f = qPoverRho2;
+#endif
+
 			if (dvdotdr>0.0) {
 #ifdef PDVCHECK
 #endif
