@@ -210,7 +210,7 @@ int main(int argc,char **argv)
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
 #endif
-		if (msr->param.bDoSinksAtStart) msrDoSinks(msr,0.0);
+		if (msr->param.bDoSinksAtStart) msrDoSinks(msr, dTime, 0.0);
 		/* 
 		 ** Dump Frame Initialization
 		 */
@@ -358,7 +358,7 @@ int main(int argc,char **argv)
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
 #endif
-		if (msr->param.bDoSinksAtStart) msrDoSinks(msr,0.0);
+		if (msr->param.bDoSinksAtStart) msrDoSinks(msr, dTime, 0.0);
 		/* 
 		 ** Dump Frame Initialization
 		 */

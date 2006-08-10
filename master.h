@@ -244,7 +244,7 @@ void msrCoolVelocity(MSR,double,double);
 void msrGrowMass(MSR msr, double dTime, double dDelta);
 void msrCalcWriteStart(MSR);
 void msrAddDelParticles(MSR msr);
-void msrDoSinks(MSR msr, double dTime);
+void msrDoSinks(MSR msr, double dTime, double dDelta);
 void msrGravStep(MSR msr, double dTime);
 void msrAccelStep(MSR msr, double dTime);
 void msrDensityStep(MSR msr, double dTime);

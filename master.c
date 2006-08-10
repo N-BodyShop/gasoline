@@ -7145,7 +7145,7 @@ void msrTopStepKDK(MSR msr,
                 /* only accrete onto sinks at user defined intervals 
 		   Can I do this after the gas kick and save a treebuild? */
                 if ( iKickRung <= msr->param.iSinkRung )
-                    msrDoSinks(msr, max(dDelta,msr->param.dDeltaSink) );
+                    msrDoSinks(msr, dTime, max(dDelta,msr->param.dDeltaSink) );
 
 		}
     if (msr->param.bVDetails) printf("Kick, iRung: %d\n",iRung);
@@ -7228,7 +7228,7 @@ msrAddDelParticles(MSR msr)
     }
 
 void
-msrDoSinks(MSR msr, double dDelta)
+msrDoSinks(MSR msr, double dTime, double dDelta)
 {
 	double sec,sec1,dsec,dMass;
 	int nAccreted;
@@ -7252,11 +7252,11 @@ msrDoSinks(MSR msr, double dDelta)
     msr->param.dSinkCurrentDelta = dDelta;
     if (msr->param.bBHSink) {
         /* Smooth Bondi-Hoyle Accretion: radius set by nSmooth */
-	msrSmooth(msr,0.0,SMX_BHSINKACCRETE,1);
+	msrSmooth(msr, dTime, SMX_BHSINKACCRETE,1);
 	}
     else {
 	/* Fixed Radius Accretion: particle by particle (cf. Bate) */
-	msrSmooth(msr,0.0,SMX_SINKACCRETE,1);
+	msrSmooth(msr, dTime, SMX_SINKACCRETE,1);
 	}
     
     nAccreted = msr->nGas;
