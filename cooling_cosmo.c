@@ -841,7 +841,7 @@ double clCoolLowT( double T ) {
     /* Returns cooling in erg cm^-3 s^-1 (after multiplied by n_H ^2) */
     /* Code uses erg g^-1 s^-1 so need to multiply the return value by Y_H^2 n_B * B_gm */
     
-    if (T > 1e4) return 0;
+    if (T > 1e4 || T <= 10.001) return 0;
     x = log10(log10(log10(T)));
     return pow(10.0,-27.81 + 2.928*x - 0.6982*x*x);
     }
