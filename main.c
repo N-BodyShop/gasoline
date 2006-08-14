@@ -147,6 +147,7 @@ int main(int argc,char **argv)
 		    }
 		msrInitStep(msr);
 		dMass = msrMassCheck(msr,-1.0,"Initial");
+		msrSetSink(msr);
 		if (msr->param.bVStart) printf("Restart Step:%d\n",iStep);
 		if (msrLogInterval(msr)) {
 			sprintf(achFile,"%s.log",msrOutName(msr));
