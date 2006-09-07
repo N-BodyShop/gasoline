@@ -6314,7 +6314,7 @@ void msrMassMetalsEnergyCheck(MSR msr,double *dTotMass, double *dTotMetals,
 	*dTotMetals = out.dTotMetals;
 	*dTotFe = out.dTotFe;
 	*dTotOx = out.dTotOx;
-	*dTotEnergy = out.dTotEnergy;
+	*dTotEnergy = out.dTotEnergy*msr->param.dDeltaStarForm;
 	return;
 	}
 
