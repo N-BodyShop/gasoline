@@ -5892,6 +5892,8 @@ pstFeedback(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->fbTotals[i].dMassLoss += fbTotals[i].dMassLoss;
 		out->fbTotals[i].dEnergy += fbTotals[i].dEnergy;
 		out->fbTotals[i].dMetals += fbTotals[i].dMetals;
+		out->fbTotals[i].dMIron += fbTotals[i].dMIron;
+		out->fbTotals[i].dMOxygen += fbTotals[i].dMOxygen;
 		}
 	    }
 	else {
