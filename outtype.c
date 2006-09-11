@@ -227,9 +227,9 @@ void VecFilename(char *achFile, int iType)
 		strncat(achFile,"GasDensity",256);
             break;
 #ifndef NOCOOLING
-/*	case OUT_UDOT_ARRAY:
-		return(p->uDot);
-*/
+	case OUT_UDOT_ARRAY:
+		strncat(achFile,"uDot",256);
+		break;
 	case OUT_COOL_ARRAY0:
 		strncat(achFile,"HI",256);
             break;
