@@ -1611,7 +1611,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.bDoSinks = 1;
             /* Units of inverse time -- code units */
 	    msr->param.dBHSinkEddFactor = GCGS*4*M_PI*MHYDR/
-		(SIGMAT*LIGHTSPEED*msr->param.dBHSinkEddEff)/msr->param.dSecUnit;
+		(SIGMAT*LIGHTSPEED*msr->param.dBHSinkEddEff)*msr->param.dSecUnit;
 	    /* c^2 times efficiency factor (ergs per g) -- code units */
 	    msr->param.dBHSinkFeedbackFactor = msr->param.dBHSinkFeedbackEff*msr->param.dBHSinkEddEff*(LIGHTSPEED*LIGHTSPEED)/msr->param.dErgPerGmUnit;
 	    }
@@ -4329,7 +4329,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	    in.smf.dDeltaAccelFac = msr->param.dEtaDeltaAccel/sqrt(dAccFac);
 	    }
 	in.smf.dBHSinkAlphaFactor = msr->param.dBHSinkAlpha*4*M_PI;
-	in.smf.dBHSinkEddFactor = msr->param.dBHSinkEddEff;
+	in.smf.dBHSinkEddFactor = msr->param.dBHSinkEddFactor;
 	in.smf.dBHSinkFeedbackFactor = msr->param.dBHSinkFeedbackFactor;
 	in.smf.dSinkCurrentDelta = msr->param.dSinkCurrentDelta;
 	in.smf.bSinkThermal = msr->param.bSinkThermal;
@@ -4431,7 +4431,7 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	    in.smf.dDeltaAccelFac = msr->param.dEtaDeltaAccel/sqrt(dAccFac);
 	    }
 	in.smf.dBHSinkAlphaFactor = msr->param.dBHSinkAlpha*4*M_PI;
-	in.smf.dBHSinkEddFactor = msr->param.dBHSinkEddEff;
+	in.smf.dBHSinkEddFactor = msr->param.dBHSinkEddFactor;
 	in.smf.dBHSinkFeedbackFactor = msr->param.dBHSinkFeedbackFactor;
 	in.smf.dSinkCurrentDelta = msr->param.dSinkCurrentDelta;
 	in.smf.bSinkThermal = msr->param.bSinkThermal;
