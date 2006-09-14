@@ -633,6 +633,15 @@ void initBHSinkAccrete(void *p)
 {
 #ifdef GASOLINE
     if (TYPEQueryTREEACTIVE((PARTICLE *) p)) {
+    /*
+     * Warning: kludgery.  The BH can eat mass in the cached
+     * particle, and we need to keep track of how much is eaten so we
+     * can remove it from the original particle.
+     * Let's use the curlv field in the cached particle copy to hold
+     * the original mass.
+     * Note: original particle curlv's never modified.
+     */
+	((PARTICLE *)p)->curlv[0] = ((PARTICLE *)p)->fMass;
 	((PARTICLE *)p)->u = 0.0;
 	((PARTICLE *)p)->uPred = 0.0;
 	}
@@ -642,14 +651,26 @@ void initBHSinkAccrete(void *p)
 void combBHSinkAccrete(void *p1,void *p2)
 {
 #ifdef GASOLINE
-    if (!(TYPETest( ((PARTICLE *) p1), TYPE_DELETED )) &&
-        TYPETest( ((PARTICLE *) p2), TYPE_DELETED ) ) {
-	((PARTICLE *) p1)-> fMass = ((PARTICLE *) p2)-> fMass;
-	pkdDeleteParticle( NULL, p1 );
-	    }
-    else if (TYPEQueryTREEACTIVE((PARTICLE *) p1)) {
-	((PARTICLE *)p1)->u += ((PARTICLE *)p2)->u;
-	((PARTICLE *)p1)->uPred += ((PARTICLE *)p2)->uPred;
+    PARTICLE *pp1 = p1;
+    PARTICLE *pp2 = p2;
+    
+    if (!(TYPETest( pp1, TYPE_DELETED )) &&
+        TYPETest( pp2, TYPE_DELETED ) ) {
+	pp1->fMass = pp2->fMass;
+	pkdDeleteParticle( NULL, pp1 );
+	}
+    else if (TYPEQueryTREEACTIVE(pp1)) {
+	/*
+	 * See kludgery notice above: record eaten mass in original
+	 * particle.
+	 */
+	FLOAT fEatenMass = pp2->curlv[0] - pp2->fMass;
+	pp1->fMass -= fEatenMass;
+	assert(pp1->fMass > 0.0); /* This could happen if BHs on two
+				     different processors are eating
+				     gas from a third processor */
+	pp1->u += pp2->u;
+	pp1->uPred += pp2->uPred;
 	}
 #endif
 }
@@ -728,6 +749,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    p->a[0] = ifMass*(p->fMass*p->a[0]+dmq*q->a[0]);
 	    p->a[1] = ifMass*(p->fMass*p->a[1]+dmq*q->a[1]);
 	    p->a[2] = ifMass*(p->fMass*p->a[2]+dmq*q->a[2]);
+	    p->fMetals = ifMass*(p->fMass*p->fMetals+dmq*q->fMetals);
 	    p->fMass += dmq;
 	    q->fMass -= dmq;
 	    dm -= dmq;
