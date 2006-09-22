@@ -666,9 +666,20 @@ void combBHSinkAccrete(void *p1,void *p2)
 	 */
 	FLOAT fEatenMass = pp2->curlv[0] - pp2->fMass;
 	pp1->fMass -= fEatenMass;
-	assert(pp1->fMass > 0.0); /* This could happen if BHs on two
-				     different processors are eating
-				     gas from a third processor */
+	if(pp1->fMass <= 0.0) {
+	    /* This could happen if BHs on two
+	       different processors are eating
+	       gas from a third processor */
+	    fprintf(stderr, "ERROR: Overeaten gas particle %d: %g %g\n",
+		    pp1->iOrder,
+		    pp1->fMass, fEatenMass);
+	    if (!(TYPETest( pp1, TYPE_DELETED ))) {
+		pkdDeleteParticle( NULL, pp1 );
+		}
+	    return;
+	    }
+	
+	/* assert(pp1->fMass > 0.0); */
 	pp1->u += pp2->u;
 	pp1->uPred += pp2->uPred;
 	}
