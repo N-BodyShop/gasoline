@@ -75,10 +75,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
             p->fESNrate = 0.0;
             p->fNSN = 0.0;
 
-            if(fb->dInitStarMass > 0.0)
-                sfEvent.dMass = fb->dInitStarMass*fb->dGmUnit/MSOLG;
-            else
-                sfEvent.dMass = p->fMassForm*fb->dGmUnit/MSOLG;
+	    sfEvent.dMass = p->fMassForm*fb->dGmUnit/MSOLG;
             sfEvent.dTimeForm = p->fTimeForm*fb->dSecUnit/SEC_YR;;
             sfEvent.dMetals = p->fMetals;
             sfEvent.dMFracOxygen = p->fMFracOxygen;
