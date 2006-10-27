@@ -780,20 +780,16 @@ int main(int argc,char **argv)
                     /* This smooth sets dt directly -- hardwired coefficient */
                     msrSmooth(msr,dTime,SMX_DELTAACCEL,0);
                 }
-            /*
-            msrDtToRung(msr,0,msrDelta(msr),1);
-            msrRungStats(msr);
-            */
             msrReorder(msr);
             iNumOutputs = 0;
             OutputList[iNumOutputs++]=OUT_DT_ARRAY;
-            msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
-            /*sprintf(achFile,"%s.dt",msrOutName(msr));
-            msrOutArray(msr,achFile,OUT_DT_ARRAY);*/
-            if(msr->param.iMaxRung > 1 && (msr->param.bDensityStep || msrDoGravity(msr))) {
+            if(msr->param.iMaxRung > 1
+	       && (msr->param.bDensityStep || msrDoGravity(msr))) {
                 msrDtToRung(msr,0,msrDelta(msr),1);
                 msrRungStats(msr);
+		OutputList[iNumOutputs++]=OUT_RUNG_ARRAY;
                 }
+            msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
             }
 	
 	dfFinalize( msr->df );
