@@ -7151,6 +7151,13 @@ void msrTopStepKDK(MSR msr,
                 if ( iKickRung <= msr->param.iSinkRung )
                     msrDoSinks(msr, dTime, max(dDelta,msr->param.dDeltaSink) );
 
+		/* The following KickClose advances the Kick
+		   Hamiltonian from 1/2 way through the timestep to
+		   the end of the timestep.  Set dTime to be at the 1/2
+		   point so that the cosmological kick factor is
+		   integrated correctly.
+		*/
+		dTime -= 0.5*dDelta;
 		}
     if (msr->param.bVDetails) printf("Kick, iRung: %d\n",iRung);
     msrActiveRung(msr,iRung,0);
@@ -7159,7 +7166,7 @@ void msrTopStepKDK(MSR msr,
 #endif
     msrKickKDKClose(msr,dTime,0.5*dDelta);
 
-	}
+    }
 
 int
 msrMaxOrder(MSR msr)
