@@ -157,6 +157,8 @@ double csmTime2Exp(CSM csm,double dTime)
 	    double dExpOld = 0.0;
 	    double dExpNew = dTime*dHubble0;
 	    double dDeltaOld = dExpNew;	/* old change in interval */
+	    double dUpper = 1.0e38; /* bounds on root */
+	    double dLower = 0.0;
 	    
 	    int it = 0;
 	    
@@ -164,18 +166,23 @@ double csmTime2Exp(CSM csm,double dTime)
 	     * Root find with Newton's method.
 	     */
 	    do {
+		double dExpNext;
 	    	double f = dTime - csmExp2Time(csm, dExpNew);
 		double fprime = 1.0/(dExpNew*csmExp2Hub(csm, dExpNew));
-		if(fabs(1.0*f) > fabs(dDeltaOld*fprime)) {
-		    /*
-		     * function is not decreasing fast enough.
-		     * Be less aggressive about step size.
-		     */
-		    fprime *= 2.0;
-		    }
+		
+		if(f*fprime > 0)
+		    dLower = dExpNew;
+		else 
+		    dUpper = dExpNew;
+		
 		dExpOld = dExpNew;
 		dDeltaOld = f/fprime;
-		dExpNew += dDeltaOld;
+		dExpNext = dExpNew + dDeltaOld;
+		/* check if bracketed */
+		if((dExpNext > dLower) && (dExpNext < dUpper))
+		    dExpNew = dExpNext;
+		else
+		    dExpNew = 0.5*(dUpper + dLower);
 		it++;
 		assert(it < 40);
 		}
