@@ -768,7 +768,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q->fMass = 0;
 		pkdDeleteParticle(smf->pkd, q);
 		}
-	    if (dm < 1e-3*dmq) break;
+	    if (dm <= 1e-3*dmq) break;
 	    }   
 
 	/* Recalculate Normalization */

@@ -1592,18 +1592,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    }
 #endif
 
-	if(msr->param.bStarForm || msr->param.bFeedBack) {
+	if (msr->param.bBHSink) {
 	    assert (prmSpecified(msr->prm, "dMsolUnit") &&
 		    prmSpecified(msr->prm, "dKpcUnit"));
 
-		if (!(msr->param.iGasModel == GASMODEL_COOLING)) {
-			fprintf(stderr,"Warning: You are not running a cooling"
-					"EOS with starformation\n");
-			}
-
-	if (msr->param.bBHSink) {
-	    /* For BH sinks -- default to metallicity as sink indicator */
-	    if(!prmSpecified(msr->prm, "dSinkMassMin")) msr->param.dSinkMassMin = FLT_MAX;
+	    /* For BH sinks -- default to negative tform as sink indicator */
+	    if(!prmSpecified(msr->prm, "dSinkMassMin"))
+		msr->param.dSinkMassMin = FLT_MAX;
 #ifndef GASOLINE
 	    fprintf(stderr, "Gas required for BH Sinks\n");
 	    assert(0);
@@ -1615,6 +1610,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    /* c^2 times efficiency factor (ergs per g) -- code units */
 	    msr->param.dBHSinkFeedbackFactor = msr->param.dBHSinkFeedbackEff*msr->param.dBHSinkEddEff*(LIGHTSPEED*LIGHTSPEED)/msr->param.dErgPerGmUnit;
 	    }
+
+	if(msr->param.bStarForm || msr->param.bFeedBack) {
+	    assert (prmSpecified(msr->prm, "dMsolUnit") &&
+		    prmSpecified(msr->prm, "dKpcUnit"));
+
+	    if (!(msr->param.iGasModel == GASMODEL_COOLING)) {
+		fprintf(stderr,"Warning: You are not running a cooling EOS with starformation\n");
+		}
 
 #ifdef STARFORM
 	    assert((msr->param.stfm->dStarEff > 0.0 && 
