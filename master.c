@@ -1566,7 +1566,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	/* Thompson cross-section (cm^2) */
 #define SIGMAT 6.6524e-25
 	/* Speed of Light cm/s */
-#define LIGHTSPEED 3.9979e10
+#define LIGHTSPEED 2.9979e10
 	/*
 	 ** Convert kboltz/mhydrogen to system units, assuming that
 	 ** G == 1.
