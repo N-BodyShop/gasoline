@@ -3690,7 +3690,21 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
     struct inOutput inOut;
     struct outNC out;
     XDR xdrs;
+    double dTimeO;		/* time or expansion depending on comove */
 
+    if (msrComove(msr)) {
+	    dTimeO = csmTime2Exp(msr->param.csm,dTime);
+	    if (msr->param.bCannonical) {
+		    inOut.dvFac = 1.0/(dTimeO*dTimeO);
+		    }
+	    else {
+		    inOut.dvFac = 1.0;
+		    }
+	    }
+    else {
+	    dTimeO = dTime;
+	    inOut.dvFac = 1.0;
+	    }
 #ifdef GASOLINE
     inOut.duTFac = (msr->param.dConstGamma - 1)*msr->param.dMeanMolWeight/
 		msr->param.dGasConst;
@@ -3796,7 +3810,7 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
                 assert(fp != NULL);
                 xdrstdio_create(&xdrs,fp,XDR_ENCODE);
                 xdr_int(&xdrs,&magic);
-                xdr_double(&xdrs,&dTime);
+                xdr_double(&xdrs,&dTimeO);
                 xdr_int(&xdrs,&iHighWord); /* XXX we are currently
 					      limited to 2G particles! */
                 xdr_int(&xdrs,&nTypes[k]);

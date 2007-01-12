@@ -383,6 +383,7 @@ typedef struct pkdContext {
 	KDN *kdNodes;
 	PARTICLE *pStore;
         double duTFac;
+        double dvFac;
 	/*
 	 ** gravitational interaction lists
 	 */

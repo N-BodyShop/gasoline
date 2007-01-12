@@ -2689,7 +2689,10 @@ void pstOutNCVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			strcat(achOutFile,"/");
 			}
 		strcat(achOutFile,in->achOutFile);
-		pkdOutNChilada(plcl->pkd,achOutFile,plcl->nGasWriteStart, plcl->nDarkWriteStart, plcl->nStarWriteStart, in->iType,out->min, out->max, in->duTFac);
+		pkdOutNChilada(plcl->pkd,achOutFile,plcl->nGasWriteStart,
+			       plcl->nDarkWriteStart, plcl->nStarWriteStart,
+			       in->iType,out->min, out->max, in->duTFac,
+			       in->dvFac);
 		}
 	if (pnOut) *pnOut = sizeof(struct outNC);
 	}

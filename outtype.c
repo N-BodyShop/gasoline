@@ -147,7 +147,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_POS_VECTOR:
 		return(p->r[iDim]);
 	case OUT_VEL_VECTOR:
-		return(p->v[iDim]);
+		return(pkd->dvFac*p->v[iDim]);
 	case OUT_MASS_ARRAY:
 		return(p->fMass);
 	case OUT_ACCELG_VECTOR:
@@ -373,7 +373,7 @@ void VecFilename(char *achFile, int iType)
 		}
 	}
 
-void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int nStarStart, int iVecType, float minValue[3][3], float maxValue[3][3], double duTFac)
+void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int nStarStart, int iVecType, float minValue[3][3], float maxValue[3][3], double duTFac, double dvFac)
 {
     FILE *gasFp = NULL, *darkFp = NULL, *starFp = NULL;
     float fOut, min[3][3], max[3][3];
@@ -390,6 +390,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     
     nGas = pkd->nGas; nDark = pkd->nDark; nStar = pkd->nStar;
     pkd->duTFac = duTFac;
+    pkd->dvFac = dvFac;
     switch (iVecType){
         /* Gas only floats */
         case OUT_COOLTURNONTIME_ARRAY:

@@ -402,6 +402,7 @@ struct inOutput {
 	int N;
 	int bStandard;
 	double duTFac;
+	double dvFac;
 	};
 void pstOutVector(PST,void *,int,void *,int *);
 
