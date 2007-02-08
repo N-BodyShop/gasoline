@@ -4727,7 +4727,8 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		    for (j=0;j<3;++j) inExt.aSun[j] = out.aSun[j];
 		inExt.bLogHalo = msr->param.bLogHalo;
 		inExt.bHernquistSpheroid = msr->param.bHernquistSpheroid;
-		if (inExt.bNFWSpheroid == msr->param.bNFWSpheroid) {
+		inExt.bNFWSpheroid = msr->param.bNFWSpheroid;
+		if (inExt.bNFWSpheroid) {
 		  inExt.dNFWm200= msr->param.dNFWm200;
 		  inExt.dNFWr200= msr->param.dNFWr200;
 		  inExt.dNFWconc= msr->param.dNFWconc;
