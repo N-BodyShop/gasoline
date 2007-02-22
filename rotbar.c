@@ -15,11 +15,11 @@ void rotbarAddParams(ROTBAR rotbar, PRM prm)
 	rotbar->bMonopole = 1;
 	prmAddParam(prm,"bBarMonopole",0,&rotbar->bMonopole,
 		    sizeof(int),"barmonopole",
-		    "bar with fixed rotation speed = +barmonopole");
+		    "include monopole potential of bar = +barmonopole");
 	rotbar->dMass = 0;
 	prmAddParam(prm,"dRotBarMass",2,&rotbar->dMass,
 		    sizeof(double), "rbmass","mass of bar = 0");
-	rotbar->dAmplitude = 0.3;
+	rotbar->dAmplitude = 0.0;
 	prmAddParam(prm,"dRotBarAmplitude",2,&rotbar->dAmplitude,
 		    sizeof(double), "rbamp","quadrapole amplitude of bar = 0");
 	rotbar->dLength = 0;
@@ -296,7 +296,7 @@ void rotbarDrift(ROTBAR rotbar, double dTime, double dDelta)
     
     if(rotbar->bMonopole) {
 	for (j=0;j<3;++j) {
-	    rotbar->dPos[j] = dDelta*rotbar->dVel[j];
+	    rotbar->dPos[j] += dDelta*rotbar->dVel[j];
 	    }
 	}
     
