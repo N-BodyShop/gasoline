@@ -55,6 +55,8 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_DENSITYU_ARRAY:
 		return(p->fDensityU);
 #endif
+	case OUT_PRES_ARRAY:
+		return(p->fDensity*p->fDensity*p->PoverRho2);	
         case OUT_TEMPFORM_ARRAY:
 	case OUT_U_ARRAY:
 		return(p->u);
@@ -217,6 +219,9 @@ void VecFilename(char *achFile, int iType)
 	    strncat(achFile,"denu",256);
 	    break;
 #endif
+        case OUT_PRES_ARRAY:
+	    strncat(achFile,"pres",256);
+	    break;
 	case OUT_TEMPFORM_ARRAY:
 		strncat(achFile,"Tform",256);
             break;

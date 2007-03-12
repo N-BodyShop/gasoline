@@ -101,6 +101,16 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		comb = combBHSinkAccrete;
 		smx->fcnPost = NULL;
 		break;
+	case SMX_SINKFORM:
+		smx->fcnSmooth = SinkForm;
+		initParticle = NULL; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
+		init = initSinkForm; /* Cached copies */
+		comb = combSinkForm;
+		smx->fcnPost = NULL;
+		smx->iLowhFix = LOWHFIX_SINKRADIUS;
+		smx->bUseBallMax = 0;
+		break;
 #ifdef SUPERCOOL
 	case SMX_MEANVEL:
 		smx->fcnSmooth = bSymmetric?MeanVelSym:MeanVel;

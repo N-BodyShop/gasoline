@@ -46,7 +46,7 @@
 #define CL_eHeII   (54.42*CL_eV_erg)
 #define CL_E2HeII  (3.0*13.6*CL_eV_erg)
 
-#define EMUL (1.01)
+#define EMUL (1.0001)
 
 COOL *CoolInit( )
 {
@@ -99,6 +99,7 @@ void clInitConstants( COOL *cl, double dGmPerCcUnit, double dComovingGmPerCcUnit
   cl->bUVTableUsesTime = CoolParam.bUVTableUsesTime;
   cl->bUVTableLinear = CoolParam.bUVTableUsesTime; /* Linear if using time */
   cl->bLowTCool = CoolParam.bLowTCool;
+  cl->bSelfShield = CoolParam.bSelfShield;
 
   /* Derivs Data Struct */
   {
@@ -340,7 +341,41 @@ void clRatesRedshift( COOL *cl, double zIn, double dTimeIn ) {
   return;
   }
 
-void clRates ( COOL *cl, RATE *Rate, double T ) {
+double AP_log_den_mp_percm3[] = { -10.25, -9.75, -9.25, -8.75, -8.25, -7.75, -7.25,
+			    -6.75, -6.25, -5.75, -5.25, -4.75, -4.25, -3.75, 
+			    -3.25, -2.75, -2.25,
+			    -1.75, -1.25, -0.75, -0.25, 0.25, 0.75, 1.25, 1.75, 2.25 };
+ 
+ 
+double AP_Gamma_HI_factor[] = { 0.99805271764596307, 0.99877911567687988, 0.99589340865612034,
+			  0.99562060764857702, 0.99165170359332663, 0.9900889877822455,
+			  0.98483276828954668, 0.97387675312245325, 0.97885673164000397,
+			  0.98356305803821331, 0.96655786672182487, 0.9634906824933207,
+			  0.95031917373653985, 0.87967606627349137, 0.79917533618355074,
+			  0.61276011113763151, 0.16315185162187529, 0.02493663181368239,
+			  0.0044013580765645335, 0.00024172553511936628, 1.9576102058649783e-10,
+			  0.0, 0.0, 0.0, 0.0, 0.0 };
+
+double AP_Gamma_HeI_factor[] = { 0.99284882980782224, 0.9946618686265097, 0.98641914356740497,
+			   0.98867015777574848, 0.96519214493135597, 0.97188336387980656,
+			   0.97529866247535113 , 0.97412477991428936, 0.97904139838765991,
+			   0.98368372768570034, 0.96677432842215549, 0.96392622083382651,
+			   0.95145730833093178, 0.88213871255482879, 0.80512823597731886,
+			   0.62474472739578646, 0.17222786134467002, 0.025861959933038869,
+			   0.0045265030237581529, 0.00024724339438128221, 1.3040144591221284e-08,
+			   0.0, 0.0, 0.0, 0.0, 0.0};
+ 
+ 
+double AP_Gamma_HeII_factor[] = { 0.97990208047216765, 0.98606251822654412,
+			0.97657215632444849, 0.97274858503068629, 0.97416108746560681,
+			0.97716929017896703, 0.97743607605974214, 0.97555305775319012,
+			0.97874250764784809, 0.97849791914637996, 0.95135572977973504,
+			0.92948461312852582, 0.89242272355549912, 0.79325512242742746 ,
+			0.6683745597121028, 0.51605924897038324, 0.1840253816147828,
+			0.035905775349044489, 0.0045537756654992923, 0.00035933897136804514,
+			1.2294426136470751e-06, 0.0, 0.0, 0.0, 0.0, 0.0 };
+
+void clRates( COOL *cl, RATE *Rate, double T, double rho ) {
   double Tln;
   double xTln,wTln0,wTln1;
   RATES_T *RT0,*RT1;
@@ -369,16 +404,38 @@ void clRates ( COOL *cl, RATE *Rate, double T ) {
   Rate->Diel_HeII = (wTln0*RT0->Rate_Diel_HeII+wTln1*RT1->Rate_Diel_HeII);
   Rate->Totr_HeII = Rate->Radr_HeII + Rate->Diel_HeII;
   Rate->Radr_HeIII = (wTln0*RT0->Rate_Radr_HeIII+wTln1*RT1->Rate_Radr_HeIII);
+
+  Rate->Phot_HI = cl->R.Rate_Phot_HI;
+  Rate->Phot_HeI = cl->R.Rate_Phot_HeI;
+  Rate->Phot_HeII = cl->R.Rate_Phot_HeII;
+  if (cl->bSelfShield) {
+      double logen_B;
+      logen_B = log10(rho*CL_B_gm);
+      if (logen_B > 2.2499) {
+	  Rate->Phot_HI = 0;
+	  Rate->Phot_HeI = 0;
+	  Rate->Phot_HeII = 0;
+	  }
+      else if (logen_B > -10.25) {
+	  double x = (logen_B+10.25)*2.0;
+	  int ix;
+	  ix = floor(x);
+	  x -= ix;
+	  Rate->Phot_HI *= (AP_Gamma_HI_factor[ix]*(1-x)+AP_Gamma_HI_factor[ix+1]*x);
+	  Rate->Phot_HeI *= (AP_Gamma_HeI_factor[ix]*(1-x)+AP_Gamma_HeI_factor[ix+1]*x);
+	  Rate->Phot_HeII *= (AP_Gamma_HeII_factor[ix]*(1-x)+AP_Gamma_HeII_factor[ix+1]*x);
+	  }
+      }
 }
 
 /* Deprecated except for testing: use EdotInstant */
-double clHeatTotal ( COOL *cl, PERBARYON *Y ) {
+/* Need density in here to make this work with Self-Shielding */
+double clHeatTotal ( COOL *cl, PERBARYON *Y, RATE *Rate ) {
   /* erg /gram /sec
      Note: QQ_* premultiplied by (CL_B_gm*erg_ev) */
-
-  return Y->HI   * cl->R.Heat_Phot_HI * cl->R.Rate_Phot_HI +
-         Y->HeI  * cl->R.Heat_Phot_HeI * cl->R.Rate_Phot_HeI +
-         Y->HeII * cl->R.Heat_Phot_HeII * cl->R.Rate_Phot_HeII;
+    return Y->HI   * cl->R.Heat_Phot_HI * Rate->Phot_HI +
+	Y->HeI  * cl->R.Heat_Phot_HeI * Rate->Phot_HeI +
+	Y->HeII * cl->R.Heat_Phot_HeII * Rate->Phot_HeII;
 }
 
 /* Deprecated except for testing: use EdotInstant */
@@ -548,9 +605,9 @@ void clAbunds( COOL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
   double rcirrHI   = (Rate->Coll_HI)/(Rate->Radr_HII);
   double rcirrHeI  = (Rate->Coll_HeI)/(Rate->Totr_HeII);
   double rcirrHeII = (Rate->Coll_HeII)/(Rate->Radr_HeIII);
-  double rpirrHI   = (cl->R.Rate_Phot_HI)/(Rate->Radr_HII * en_B);
-  double rpirrHeI  = (cl->R.Rate_Phot_HeI)/(Rate->Totr_HeII * en_B);
-  double rpirrHeII = (cl->R.Rate_Phot_HeII)/(Rate->Radr_HeIII * en_B);
+  double rpirrHI   = (Rate->Phot_HI)/(Rate->Radr_HII * en_B);
+  double rpirrHeI  = (Rate->Phot_HeI)/(Rate->Totr_HeII * en_B);
+  double rpirrHeII = (Rate->Phot_HeII)/(Rate->Radr_HeIII * en_B);
   double yHI = 0.;
   double yHeI = 0.;
   double yHeII = 0.;
@@ -866,10 +923,16 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMe
   wTln1 = (xTln-iTln);
   wTln0 = (1-wTln1);
 
-  if (Rate->T > cl->R.Tcmb)
+#define DTFRACLOWTCOOL 0.25
+  if (Rate->T > cl->R.Tcmb*(1+DTFRACLOWTCOOL))
       LowTCool = (wTln0*RT0->Cool_LowT+wTln1*RT1->Cool_LowT)*cl->R.Cool_LowTFactor*en_B*ZMetal;
-  else
-      LowTCool = 0;
+  else if (Rate->T < cl->R.Tcmb*(1-DTFRACLOWTCOOL))
+      LowTCool = -(wTln0*RT0->Cool_LowT+wTln1*RT1->Cool_LowT)*cl->R.Cool_LowTFactor*en_B*ZMetal;
+  else {
+      double x = (Rate->T/cl->R.Tcmb-1)*(1./DTFRACLOWTCOOL);
+      LowTCool = -(wTln0*RT0->Cool_LowT+wTln1*RT1->Cool_LowT)*cl->R.Cool_LowTFactor*en_B*ZMetal
+	  *x*(3-3*fabs(x)+x*x);
+      }
 
   Edot = 
 #ifndef NOCOMPTON
@@ -896,9 +959,9 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMe
     - 
       LowTCool
     +
-    Y->HI   * cl->R.Heat_Phot_HI * cl->R.Rate_Phot_HI +
-    Y->HeI  * cl->R.Heat_Phot_HeI * cl->R.Rate_Phot_HeI +
-    Y->HeII * cl->R.Heat_Phot_HeII * cl->R.Rate_Phot_HeII;
+    Y->HI   * cl->R.Heat_Phot_HI * Rate->Phot_HI +
+    Y->HeI  * cl->R.Heat_Phot_HeI * Rate->Phot_HeI +
+    Y->HeII * cl->R.Heat_Phot_HeII * Rate->Phot_HeII;
 
   return Edot;
 }
@@ -927,7 +990,7 @@ double clfTemp( void *Data, double T )
   clDerivsData *d = Data; 
   
   d->its++;
-  clRates( d->cl, &d->Rate, T );
+  clRates( d->cl, &d->Rate, T, d->rho );
   clAbunds( d->cl, &d->Y, &d->Rate, d->rho );
 
   return d->E-clThermalEnergy( d->Y.Total, T );
@@ -948,7 +1011,7 @@ void clTempIteration( clDerivsData *d )
    T = RootFind( clfTemp, d, TA, TB, EPSTEMP*TA ); 
  } 
  d->its++;
- clRates( d->cl, &d->Rate, T );
+ clRates( d->cl, &d->Rate, T, d->rho );
  clAbunds( d->cl, &d->Y, &d->Rate, d->rho );
 }
 
@@ -992,7 +1055,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
   d->ExternalHeating = ExternalHeating;
   d->ZMetal = ZMetal;
   
-  clRates( d->cl, &d->Rate, cl->TMin );
+  clRates( d->cl, &d->Rate, cl->TMin, d->rho );
   clAbunds( d->cl, &d->Y, &d->Rate, d->rho );
   EMin = clThermalEnergy( d->Y.Total, cl->TMin );
 
@@ -1001,7 +1064,56 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
     int its = 0;
     while (t<tstop) {
       double Eold;
-      if (its++ > MAXINTEGITS) assert(0);
+#ifdef COOLDEBUG
+      if (cl->p->iOrder == 552307) {
+	  d->E = *E;
+	  clTempIteration( d );
+	  clDerivs( d, t, (&d->E)-1, (&dEdt)-1 );
+          fprintf(stderr,"iteration: %d, %g %g, T %g %g,  E %g %g %g,  dE %g %g,  dt %g %g %g, dt_s %g %g\n",its,rho,ZMetal,d->Rate.T,cl->TMin,Ein,*E,EMin,ExternalHeating,dEdt,t,tstop,tStep,dtnext,dtused);
+	  }
+#endif
+      if (its++ > MAXINTEGITS) {
+#ifdef COOLDEBUG
+	  d->E = *E;
+	  clTempIteration( d );
+	  clDerivs( d, t, (&d->E)-1, (&dEdt)-1 );
+          fprintf(stderr,"Too many iterations: %d, %g %g, T %g %g,  E %g %g %g,  dE %g %g,  dt %g %g %g, dt_s %g %g\n",its,rho,ZMetal,d->Rate.T,cl->TMin,Ein,*E,EMin,ExternalHeating,dEdt,t,tstop,tStep,dtnext,dtused);
+          fprintf(stderr,"cool dbg: %d dens %g %g u %g %g du %g %g dt %g\n",cl->p->iOrder,cl->p->fDensity,
+#ifdef DENSITYU
+		  cl->p->fDensityU,
+#else
+		  0,
+#endif		 
+		  cl->p->u,cl->p->uPred,cl->p->PdV,cl->p->fESNrate,cl->p->dt);
+	  d->E = *E+ExternalHeating*tStep;
+	  clTempIteration( d );
+	  clDerivs( d, t, (&d->E)-1, (&dEdt)-1 );
+          fprintf(stderr,"Rate change +dt*dEdt: T %g,  E %g,  dE %g %g\n",d->Rate.T,d->E,ExternalHeating,dEdt);
+	  d->E = (*E+EMin)/2;
+	  clTempIteration( d );
+	  clDerivs( d, t, (&d->E)-1, (&dEdt)-1 );
+          fprintf(stderr,"Rate change (E+EMin)/2: T %g,  E %g,  dE %g %g\n",d->Rate.T,d->E,ExternalHeating,dEdt);
+	  d->E = *E*2;
+	  clTempIteration( d );
+	  clDerivs( d, t, (&d->E)-1, (&dEdt)-1 );
+          fprintf(stderr,"Rate change 2E: T %g,  E %g,  dE %g %g\n",d->Rate.T,d->E,ExternalHeating,dEdt);
+
+	  d->E = *E*10;
+	  clTempIteration( d );
+	  clDerivs( d, t, (&d->E)-1, (&dEdt)-1 );
+          fprintf(stderr,"Rate change 10 E: T %g,  E %g,  dE %g %g\n",d->Rate.T,d->E,ExternalHeating,dEdt);
+	  assert(0);
+#endif
+	  d->E = Ein;
+	  clTempIteration( d );
+	  clDerivs( d, t, (&d->E)-1, (&dEdt)-1 );
+	  assert(dEdt < 0);
+	  fprintf(stderr,"Too many its, T (%g) ->Tcmb (%g), %g %g %g\n",d->Rate.T,cl->R.Tcmb,Ein,dEdt,tStep);
+	  d->Rate.T = cl->R.Tcmb;
+	  clRates( d->cl, &d->Rate, d->Rate.T, d->rho );
+	  clAbunds( d->cl, &d->Y, &d->Rate, d->rho );
+	  *E = d->E = clThermalEnergy( d->Y.Total, d->Rate.T );
+	  }
       d->E = *E;
       clTempIteration( d );
       clDerivs( d, t, E-1, (&dEdt)-1 );
@@ -1085,6 +1197,9 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 	CoolParam->bLowTCool = 0;
 	prmAddParam(prm,"bLowTCool",0,&CoolParam->bLowTCool,sizeof(int),
 				"ltc","enable/disable low T cooling = +ltc");
+	CoolParam->bSelfShield = 0;
+	prmAddParam(prm,"bSelfShield",0,&CoolParam->bSelfShield,sizeof(int),
+				"ssc","enable/disable Self Shielded Cooling = +ssc");
 	}
 	
 void CoolLogParams( COOLPARAM *CoolParam, FILE *fp ) {
@@ -1190,7 +1305,7 @@ void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, doubl
 	cp->Y_HeI = cl->Y_He;
 	cp->Y_HeII = 0.0;
 	CoolPARTICLEtoPERBARYON(&Y, cp, cl->Y_H,cl->Y_He);
-	clRates(cl,&r,dTemp);
+	clRates(cl,&r,dTemp,CodeDensityToComovingGmPerCc(cl,dDensity));
 	clAbunds(cl,&Y,&r,CodeDensityToComovingGmPerCc(cl,dDensity));
 	CoolPERBARYONtoPARTICLE(&Y,cp);
 	*E = clThermalEnergy(Y.Total,dTemp)*cl->diErgPerGmUnit;
@@ -1216,7 +1331,7 @@ void CoolIntegrateEnergy(COOL *cl, COOLPARTICLE *cp, double *E,
         CoolPERBARYONtoPARTICLE(&Y, cp);
         }
 
-/* Code Units */
+/* Code Units ecept for dt */
 void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *ECode, 
 		       double ExternalHeatingCode, double rhoCode, double ZMetal, double *posCode, double tStep ) {
 	PERBARYON Y;
@@ -1237,9 +1352,9 @@ double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double T, double dDensity, d
     RATE Rate;
 
     CoolPARTICLEtoPERBARYON(&Y, cp, cl->Y_H, cl->Y_He);
-    clRates(cl, &Rate, T);
+    clRates(cl, &Rate, T, dDensity);
 
-    return (-clCoolTotal(cl, &Y, &Rate, dDensity, ZMetal ) + clHeatTotal(cl, &Y));
+    return (-clCoolTotal(cl, &Y, &Rate, dDensity, ZMetal ) + clHeatTotal(cl, &Y, &Rate));
     }
 
 /* Code heating - cooling rate excluding external heating (PdV, etc..) */
@@ -1253,7 +1368,7 @@ double CoolEdotInstantCode(COOL *cl, COOLPARTICLE *cp, double ECode,
     T = CoolEnergyToTemperature( cl, cp, E );
     rho = CodeDensityToComovingGmPerCc(cl,rhoCode );
     CoolPARTICLEtoPERBARYON(&Y, cp, cl->Y_H, cl->Y_He);
-    clRates(cl, &Rate, T);
+    clRates(cl, &Rate, T, rho);
     
     Edot = clEdotInstant( cl, &Y, &Rate, rho, ZMetal );
 

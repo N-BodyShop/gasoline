@@ -343,7 +343,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
 #ifndef NOCOOLING		
 		/* Place holders -- later fixed in pkdInitEnergy */
-        CoolDefaultParticleData( &p->CoolParticle );
+		CoolDefaultParticleData( &p->CoolParticle );
 #endif
 		p->c = 0.0;
 		p->fMetals = 0.0;
@@ -4787,15 +4787,19 @@ pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *l)
 #endif
 }
 
-void pkdGrowMass(PKD pkd,int nGrowMass, double dDeltaM)
+void pkdGrowMass(PKD pkd,int nGrowMass, int iGrowType, double dDeltaM, double dMinM, double dMaxM)
 {
     int i;
+    PARTICLE *p;
 
     for(i=0;i<pkdLocal(pkd);++i) {
-		if (pkd->pStore[i].iOrder < nGrowMass) {
-			pkd->pStore[i].fMass += dDeltaM;
-			}
-		}
+	p = pkd->pStore + i;
+	if (TYPETest(p, iGrowType) && p->iOrder < nGrowMass) {
+	    p->fMass += dDeltaM;
+	    if (p->fMass < dMinM) p->fMass = dMinM;
+	    else if (p->fMass > dMaxM) p->fMass = dMaxM;
+	    }
+	}
     }
 
 void pkdInitAccel(PKD pkd)
@@ -4878,9 +4882,11 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 				cl->p = p; /* Send in particle pointer only for temporary debug */
 #endif
 #ifdef DENSITYU
-                                CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensityU, p->fMetals, p->r, dt);
+				if (p->fDensityU < p->fDensity) 
+				    CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensityU, p->fMetals, p->r, dt);
+				else
 #else
-                                CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensity, p->fMetals, p->r, dt);
+				    CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensity, p->fMetals, p->r, dt);
 #endif
 
 				mdlassert(pkd->mdl,E > 0);
@@ -4999,7 +5005,7 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma)
 		}
     }
 
-void pkdGetDensityU(PKD pkd)
+void pkdGetDensityU(PKD pkd, double uMin)
 {
     PARTICLE *p;
     int i;
@@ -5008,7 +5014,7 @@ void pkdGetDensityU(PKD pkd)
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p) && TYPEQueryACTIVE(p)) {
-   			p->fDensityU /= p->uPred;
+   			p->fDensityU /= (p->uPred + uMin);
 		}
 	}
 #endif
@@ -6062,4 +6068,26 @@ int pkdSetSink(PKD pkd, double dSinkMassMin)
     return -1; /* to keep compiler happy */
 #endif
     }
+
+void pkdFormSinks(PKD pkd, int bJeans, int bDensity, double dDensityCut, double dTime, int *nCandidates)
+{
+    int i;
+    PARTICLE *p;
+    int n = pkdLocal(pkd);
+    
+    *nCandidates = 0;
+    
+    for(i = 0; i < n; ++i) {
+        p = &pkd->pStore[i];
+        if(TYPETest( p, TYPE_GAS ) && TYPEQueryACTIVE(p)) {
+	    if (bDensity && p->fDensity > dDensityCut) {
+		TYPESet(p, TYPE_SINK); /* Is now a candidate */
+		p->fTimeForm = dTime;
+
+		(*nCandidates)++;
+		}
+	    }
+	}
+}
+
 

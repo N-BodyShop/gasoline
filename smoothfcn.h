@@ -48,6 +48,7 @@ typedef struct smfParameters {
 	double gamma;
         double algam;
         double Pext;
+        double uMin;
 	int bGeometric;
 	int bCannonical;
 	int bGrowSmoothList;
@@ -109,6 +110,7 @@ enum smx_smoothtype {
   SMX_DELTAACCEL,
   SMX_SINKACCRETE,
   SMX_BHSINKACCRETE,
+  SMX_SINKFORM,
 #ifdef GASOLINE
   SMX_SPHPRESSURETERMS,
   SMX_DIVVORT,
@@ -187,6 +189,11 @@ void combSinkAccrete(void *,void *);
 void BHSinkAccrete(PARTICLE *,int,NN *,SMF *);
 void initBHSinkAccrete(void *);
 void combBHSinkAccrete(void *,void *);
+
+/* SMX_SINKACCRETE */
+void SinkForm(PARTICLE *,int,NN *,SMF *);
+void initSinkForm(void *);
+void combSinkForm(void *,void *);
 
 #ifdef GASOLINE
 

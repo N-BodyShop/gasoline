@@ -244,6 +244,7 @@ void msrCoolVelocity(MSR,double,double);
 void msrGrowMass(MSR msr, double dTime, double dDelta);
 void msrCalcWriteStart(MSR);
 void msrAddDelParticles(MSR msr);
+void msrFormSinks(MSR msr, double dTime);
 void msrDoSinks(MSR msr, double dTime, double dDelta);
 void msrGravStep(MSR msr, double dTime);
 void msrAccelStep(MSR msr, double dTime);
@@ -290,6 +291,7 @@ void msrSphViscosityLimiter(MSR msr, double dTime);
 void msrInitCooling(MSR msr);
 #endif
 #endif
+void msrSph(MSR msr, double dTime, int iKickRung);
 
 int msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart);
 void msrDumpFrame(MSR msr, double, double);

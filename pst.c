@@ -272,7 +272,7 @@ pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inGetGasPressure),0);
 	mdlAddService(mdl,PST_GETDENSITYU,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGetDensityU,
-				  0,0);
+				  sizeof(double),0);
 	mdlAddService(mdl,PST_LOWERSOUNDSPEED,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstLowerSoundSpeed,
 				  sizeof(struct inLowerSoundSpeed),0);
@@ -463,6 +463,9 @@ pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inRubInterpCleanup),
 				  sizeof(struct outRubInterpCleanup));
 #endif /* RUBBLE_ZML */
+	mdlAddService(mdl,PST_FORMSINKS,pst,
+		      (void (*)(void *,void *,int,void *,int *)) pstFormSinks,
+		      sizeof(struct inFormSinks),sizeof(struct outFormSinks));
 #ifdef STARFORM
 	mdlAddService(mdl,PST_FORMSTARS,pst,
 		      (void (*)(void *,void *,int,void *,int *)) pstFormStars,
@@ -4274,7 +4277,7 @@ void pstGrowMass(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdGrowMass(plcl->pkd,in->nGrowMass,in->dDeltaM);
+		pkdGrowMass(plcl->pkd,in->nGrowMass,in->iGrowType,in->dDeltaM,in->dMinM,in->dMaxM);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -4382,6 +4385,7 @@ void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 void pstGetDensityU(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
+	double *uMin = vin;
 	
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_GETDENSITYU,vin,nIn);
@@ -4389,7 +4393,7 @@ void pstGetDensityU(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-  	        pkdGetDensityU(plcl->pkd);
+  	        pkdGetDensityU(plcl->pkd, *uMin);
 		}
 	if (pnOut) *pnOut = 0;
 }
@@ -5851,6 +5855,28 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 #endif
 #endif /* NEED_VPRED */
+
+void
+pstFormSinks(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inFormSinks *in = vin;
+	struct outFormSinks *out = vout;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inFormSinks));
+	if (pst->nLeaves > 1) {
+	    struct outFormSinks fsStats;
+	    
+		mdlReqService(pst->mdl,pst->idUpper,PST_FORMSINKS,in,nIn);
+		pstFormSinks(pst->pstLower,in,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,&fsStats,NULL);
+		out->nCandidates += fsStats.nCandidates;
+		}
+	else {
+		pkdFormSinks(pst->plcl->pkd,in->bJeans,in->bDensity,in->dDensityCut,in->dTime,
+			     &out->nCandidates);
+		}
+	if (pnOut) *pnOut = sizeof(struct outFormSinks);
+	}
 
 #ifdef STARFORM
 void

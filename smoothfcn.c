@@ -169,7 +169,7 @@ void Density(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		KERNEL(rs,r2);
 		fDensity += rs*nnList[i].pPart->fMass;
 #ifdef DENSITYU
-		p->fDensityU += rs*nnList[i].pPart->fMass*nnList[i].pPart->uPred;
+		p->fDensityU += rs*nnList[i].pPart->fMass*(nnList[i].pPart->uPred+smf->uMin);
 #endif
 		}
 	p->fDensity = M_1_PI*sqrt(ih2)*ih2*fDensity; 
@@ -194,8 +194,8 @@ void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		p->fDensity += rs*q->fMass;
 		q->fDensity += rs*p->fMass;
 #ifdef DENSITYU
-		p->fDensityU += rs*q->fMass*q->uPred;
-		q->fDensityU += rs*p->fMass*p->uPred;
+		p->fDensityU += rs*q->fMass*(q->uPred+smf->uMin);
+		q->fDensityU += rs*p->fMass*(p->uPred+smf->uMin);
 #endif
 		}
 	}
@@ -296,18 +296,18 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			assert(TYPETest(q,TYPE_GAS));
 			p->fDensity += rs*q->fMass;
 #ifdef DENSITYU
-			p->fDensityU += rs*q->fMass*q->uPred;
+			p->fDensityU += rs*q->fMass*(q->uPred+smf->uMin);
 #endif
 			if (TYPETest(q,TYPE_DensZeroed)) {
 				q->fDensity += rs*p->fMass;
 #ifdef DENSITYU
-				q->fDensityU += rs*p->fMass*p->uPred;
+				q->fDensityU += rs*p->fMass*(p->uPred+smf->uMin);
 #endif
 			    }
 			else {
 				q->fDensity = rs*p->fMass;
 #ifdef DENSITYU
-				q->fDensityU = rs*p->fMass*p->uPred;
+				q->fDensityU = rs*p->fMass*(p->uPred+smf->uMin);
 #endif
 				TYPESet(q, TYPE_DensZeroed);
 				}
@@ -325,26 +325,26 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			if (TYPETest(p,TYPE_DensZeroed)) {
 				p->fDensity += rs*q->fMass;
 #ifdef DENSITYU
-				p->fDensityU += rs*q->fMass*q->uPred;
+				p->fDensityU += rs*q->fMass*(q->uPred+smf->uMin);
 #endif
 			    }
 			else {
 				p->fDensity = rs*q->fMass;
 #ifdef DENSITYU
-				p->fDensityU = rs*q->fMass*q->uPred;
+				p->fDensityU = rs*q->fMass*(q->uPred+smf->uMin);
 #endif
 				TYPESet(p,TYPE_DensZeroed);
 				}
 			if (TYPETest(q,TYPE_DensZeroed)) {
 				q->fDensity += rs*p->fMass;
 #ifdef DENSITYU
-				q->fDensityU += rs*p->fMass*p->uPred;
+				q->fDensityU += rs*p->fMass*(p->uPred+smf->uMin);
 #endif
 			    }
 			else {
 				q->fDensity = rs*p->fMass;
 #ifdef DENSITYU
-				q->fDensityU = rs*p->fMass*p->uPred;
+				q->fDensityU = rs*p->fMass*(p->uPred+smf->uMin);
 #endif
 				TYPESet(q, TYPE_DensZeroed);
 				}
@@ -420,21 +420,21 @@ void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    rs *= fNorm;
 	    p->fDensity += rs*q->fMass;
 #ifdef DENSITYU
-	    p->fDensity += rs*q->fMass;
+	    p->fDensityU += rs*q->fMass*(q->uPred+smf->uMin);
 #endif
 /*	    if (p->iOrder == CHECKSOFT) fprintf(stderr,"DensActive Particle %iA: %g %i  %g\n",p->iOrder,p->fDensity,q->iOrder,q->fMass);*/
 	    if (TYPETest(q,TYPE_DensACTIVE)) {
 		if (TYPETest(q,TYPE_DensZeroed)) {
 		    q->fDensity += rs*p->fMass;
 #ifdef DENSITYU
-		    q->fDensityU += rs*p->fMass*p->uPred;
+		    q->fDensityU += rs*p->fMass*(p->uPred+smf->uMin);
 #endif
 /*		    if (q->iOrder == CHECKSOFT) fprintf(stderr,"qDensActive Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		    }
 		else {
 		    q->fDensity = rs*p->fMass;
 #ifdef DENSITYU
-		    q->fDensityU = rs*p->fMass*p->uPred;
+		    q->fDensityU = rs*p->fMass*(p->uPred+smf->uMin);
 #endif
 		    TYPESet(q,TYPE_DensZeroed);
 /*		    if (q->iOrder == CHECKSOFT) fprintf(stderr,"zero qDensActive Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
@@ -456,14 +456,14 @@ void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    if (TYPETest(q,TYPE_DensZeroed)) {
 		q->fDensity += rs*p->fMass;
 #ifdef DENSITYU
-		q->fDensityU += rs*p->fMass*p->uPred;
+		q->fDensityU += rs*p->fMass*(p->uPred+smf->uMin);
 #endif
 /*		if (q->iOrder == CHECKSOFT) fprintf(stderr,"qActive Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		}
 	    else {
 		q->fDensity = rs*p->fMass;
 #ifdef DENSITYU
-		q->fDensityU = rs*p->fMass*p->uPred;
+		q->fDensityU = rs*p->fMass*(p->uPred+smf->uMin);
 #endif
 		TYPESet(q,TYPE_DensZeroed);
 /*		if (q->iOrder == CHECKSOFT) fprintf(stderr,"zero qActive Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
@@ -482,14 +482,14 @@ void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    if (TYPETest(q,TYPE_DensZeroed)) {
 		q->fDensity += rs*p->fMass;
 #ifdef DENSITYU
-		q->fDensityU += rs*p->fMass*p->uPred;
+		q->fDensityU += rs*p->fMass*(p->uPred+smf->uMin);
 #endif
 /*		if (q->iOrder == CHECKSOFT) fprintf(stderr,"qOther Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		}
 	    else {
 		q->fDensity = rs*p->fMass;
 #ifdef DENSITYU
-		q->fDensityU = rs*p->fMass*p->uPred;
+		q->fDensityU = rs*p->fMass*(p->uPred+smf->uMin);
 #endif
 		TYPESet(q,TYPE_DensZeroed);
 /*		if (q->iOrder == CHECKSOFT) fprintf(stderr,"zero qOther Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
@@ -793,6 +793,88 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    }
 #endif
 }
+
+void initSinkForm(void *p)
+{
+	}
+
+void combSinkForm(void *p1,void *p2)
+{
+    if (!(TYPETest( ((PARTICLE *) p1), TYPE_DELETED )) &&
+        TYPETest( ((PARTICLE *) p2), TYPE_DELETED ) ) {
+		((PARTICLE *) p1)-> fMass = ((PARTICLE *) p2)-> fMass;
+	    pkdDeleteParticle( NULL, p1 );
+	    }
+    }
+
+void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	int i;
+	double dSinkRadius2 = smf->dSinkRadius*smf->dSinkRadius, 
+	       EBO,Eq,r2,dvx,dv2,ifMass;
+	PARTICLE *q;
+
+	/* Apply Bate tests here -- 
+	   1. thermal energy < 1/2 Grav, 
+	   2. thermal + rot E < Grav,
+	   3. total E < 0 (implies 2.)
+	   4. div.acc < 0 (related to rate of change of total E I guess)  (I will ignore this)
+
+	   Also: If there is a denser particle that is also a sink candidate
+	   defer to it
+	   Need to prevent double counting particles into two sinks
+	*/
+	for (i=0;i<nSmooth;++i) {
+		r2 = nnList[i].fDist2;
+		if (r2 > 0 && r2 <= dSinkRadius2) {
+		  q = nnList[i].pPart;
+		  if (q->fDensity > p->fDensity && TYPETest( q, TYPE_GAS )) {
+		      }
+		    }
+	    }
+	/* G = 1 
+	 p is sink particle
+	 q is gas particle */
+        if (smf->dSinkBoundOrbitRadius > 0)
+            EBO = -0.5*p->fMass/smf->dSinkBoundOrbitRadius;
+        else
+            EBO = FLT_MAX;
+
+	for (i=0;i<nSmooth;++i) {
+		r2 = nnList[i].fDist2;
+		if (r2 > 0 && r2 <= dSinkRadius2) {
+		  q = nnList[i].pPart;
+		  if (TYPETest( q, TYPE_GAS )) {
+			dvx = p->v[0]-q->v[0];
+			dv2 = dvx*dvx;
+			dvx = p->v[1]-q->v[1];
+			dv2 += dvx*dvx;
+			dvx = p->v[2]-q->v[2];
+			dv2 += dvx*dvx;
+			Eq = -p->fMass/sqrt(r2) + 0.5*dv2;
+#ifdef GASOLINE
+			if (smf->bSinkThermal) Eq+= q->u;
+#endif
+			if (Eq < EBO) {
+			   ifMass = 1./(p->fMass + q->fMass);
+			   p->r[0] = ifMass*(p->fMass*p->r[0]+q->fMass*q->r[0]);
+			   p->r[1] = ifMass*(p->fMass*p->r[1]+q->fMass*q->r[1]);
+			   p->r[2] = ifMass*(p->fMass*p->r[2]+q->fMass*q->r[2]);
+			   p->v[0] = ifMass*(p->fMass*p->v[0]+q->fMass*q->v[0]);
+			   p->v[1] = ifMass*(p->fMass*p->v[1]+q->fMass*q->v[1]);
+			   p->v[2] = ifMass*(p->fMass*p->v[2]+q->fMass*q->v[2]);
+			   p->a[0] = ifMass*(p->fMass*p->a[0]+q->fMass*q->a[0]);
+			   p->a[1] = ifMass*(p->fMass*p->a[1]+q->fMass*q->a[1]);
+			   p->a[2] = ifMass*(p->fMass*p->a[2]+q->fMass*q->a[2]);
+			   p->fMass += q->fMass;
+			   assert(q->fMass != 0);
+			   q->fMass = 0;
+			   pkdDeleteParticle(smf->pkd, q);
+			   }
+		    }
+          }   
+	    }
+    }
 
 
 #ifdef SUPERCOOL
@@ -2616,7 +2698,11 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                     r2 = nnList[i].fDist2*ih2;            
                     KERNEL(rs,r2);
                     q = nnList[i].pPart;
+#ifdef VOLUMEFEEDBACK
+                    fNorm_u += q->fMass/q->fDensity*rs;
+#else
                     fNorm_u += q->fMass*rs;
+#endif
                     assert(TYPETest(q, TYPE_GAS));
                     }
                 }
@@ -2631,13 +2717,18 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	     * N.B. This will be NEGATIVE, but that's OK since it will
 	     * cancel out down below.
 	     */
+#ifdef VOLUMEFEEDBACK
+            fNorm_u = nnList[imind].pPart->fMass/nnList[imind].pPart->fDensity*rs;
+#else
             fNorm_u = nnList[imind].pPart->fMass*rs;
+#endif
             }
 	 }
 	assert(fNorm_u != 0.0);
         fNorm_u = 1./fNorm_u;
 counter=0;
 	for (i=0;i<nSmooth;++i) {
+	    FLOAT weight;
             q = nnList[i].pPart;
             if (smf->bSmallSNSmooth) {
                 if ( (nnList[i].fDist2 <= f2h2) || (i == imind) ) {
@@ -2652,11 +2743,16 @@ counter++;
                      * mass, not energy/gram or metals per gram.  
                      * q->fMass is in product to make units work for fNorm_u.
                      */
-                    q->fESNrate += rs*fNorm_u*q->fMass*p->fESNrate;
-                    q->fMetals += rs*fNorm_u*q->fMass*p->fSNMetals;
-                    q->fMFracOxygen += rs*fNorm_u*q->fMass*p->fMOxygenOut;
-                    q->fMFracIron += rs*fNorm_u*q->fMass*p->fMIronOut;
-                    q->fMass += rs*fNorm_u*q->fMass*p->fMSN;
+#ifdef VOLUMEFEEDBACK
+		    weight = rs*fNorm_u*q->fMass/q->fDensity;
+#else
+		    weight = rs*fNorm_u*q->fMass;
+#endif
+                    q->fESNrate += weight*p->fESNrate;
+                    q->fMetals += weight*p->fSNMetals;
+                    q->fMFracOxygen += weight*p->fMOxygenOut;
+                    q->fMFracIron += weight*p->fMIronOut;
+                    q->fMass += weight*p->fMSN;
                     }
             } else {
                 r2 = nnList[i].fDist2*ih2;  
@@ -2665,20 +2761,25 @@ counter++;
                  * mass, not energy/gram or metals per gram.  
                  * q->fMass is in product to make units work for fNorm_u.
                  */
-                q->fESNrate += rs*fNorm_u*q->fMass*p->fESNrate;
-                q->fMetals += rs*fNorm_u*q->fMass*p->fSNMetals;
-                q->fMFracOxygen += rs*fNorm_u*q->fMass*p->fMOxygenOut;
-                q->fMFracIron += rs*fNorm_u*q->fMass*p->fMIronOut;
+#ifdef VOLUMEFEEDBACK
+		weight = rs*fNorm_u*q->fMass/q->fDensity;
+#else
+		weight = rs*fNorm_u*q->fMass;
+#endif
+                q->fESNrate += weight*p->fESNrate;
+                q->fMetals += weight*p->fSNMetals;
+                q->fMFracOxygen += weight*p->fMOxygenOut;
+                q->fMFracIron += weight*p->fMIronOut;
                 
                 if ( p->fESNrate > 0.0 && smf->bSNTurnOffCooling && 
                      (fBlastRadius*fBlastRadius >= nnList[i].fDist2)){
                     q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
                         smf->dTime + fShutoffTime);
-    counter++;
+		    counter++;
                     }
                 /*	update mass after everything else so that distribution
                     is based entirely upon initial mass of gas particle */
-                q->fMass += rs*fNorm_u*q->fMass*p->fMSN;
+                q->fMass += weight*p->fMSN;
                 } 
             }
 /*if(counter>0) printf("%i ",counter);

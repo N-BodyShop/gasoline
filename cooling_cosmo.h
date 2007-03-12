@@ -41,6 +41,7 @@ typedef struct CoolingParametersStruct {
 	int    bUVTableUsesTime;
 	int    bDoIonOutput;
         int    bLowTCool;
+        int    bSelfShield;
 	double dMassFracHelium;
 	double dCoolingTmin;
 	double dCoolingTmax;
@@ -131,6 +132,7 @@ typedef struct CoolingPKDStruct {
    int        bUVTableUsesTime;
    int        bUVTableLinear;
    int        bLowTCool;
+   int        bSelfShield;
 
    double     dGmPerCcUnit;
    double     dComovingGmPerCcUnit;
@@ -161,6 +163,10 @@ typedef struct {
   double   Diel_HeII;
   double   Totr_HeII;
   double   Radr_HeIII;
+
+  double   Phot_HI;
+  double   Phot_HeI;
+  double   Phot_HeII;
 } RATE;
 
 typedef struct {
@@ -205,11 +211,11 @@ void CoolInitRatesTable( COOL *cl, COOLPARAM CoolParam);
 
 void clRatesTableError( COOL *cl );
 void clRatesRedshift( COOL *cl, double z, double dTime );
-double clHeatTotal ( COOL *cl, PERBARYON *Y );
-void clRates ( COOL *cl, RATE *Rate, double T );
-double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal );
+double clHeatTotal ( COOL *cl, PERBARYON *Y, RATE *Rate );
+void clRates( COOL *cl, RATE *Rate, double T, double rho );
+double clCoolTotal( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal );
 COOL_ERGPERSPERGM  clTestCool ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho );
-void clPrintCool ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho );
+void clPrintCool( COOL *cl, PERBARYON *Y, RATE *Rate, double rho );
 
 void clAbunds( COOL *cl, PERBARYON *Y, RATE *Rate, double rho);
 double clThermalEnergy( double Y_Total, double T );

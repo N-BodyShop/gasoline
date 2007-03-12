@@ -231,6 +231,7 @@ enum pst_service {
       PST_MASSINR,
       PST_ROTBARINIT,
       PST_BALLMAX,
+      PST_FORMSINKS,
       PST_FORMSTARS,
       PST_FEEDBACK,
       PST_SIMPLESTARFORM,
@@ -1541,6 +1542,21 @@ struct inUpdateShockTracker {
 
 void pstUpdateShockTracker(PST,void *,int,void *,int *);
 
+struct inFormSinks
+{
+    int bJeans;
+    int bDensity;
+    double dDensityCut;
+    double dTime;
+    };
+
+struct outFormSinks 
+{
+    int nCandidates;
+    };
+
+void pstFormSinks(PST,void *,int,void *,int *);
+
 #ifdef STARFORM
 /* PST_FORMSTARS */
 struct inFormStars
@@ -1631,7 +1647,10 @@ void pstDumpVoxel(PST,void *,int,void *,int *);
 struct inGrowMass 
 {
     int nGrowMass;
+    int iGrowType;
     double dDeltaM;
+    double dMinM;
+    double dMaxM;
     };
 
 void pstGrowMass(PST,void *,int,void *,int *);

@@ -607,7 +607,7 @@ int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll,
 void pkdInitDt(PKD pkd, double dDelta);
 int pkdRungParticles(PKD,int);
 void pkdCoolVelocity(PKD,int,double,double,double);
-void pkdGrowMass(PKD pkd,int nGrowMass, double dDeltaM);
+void pkdGrowMass(PKD pkd,int nGrowMass, int iGrowType, double dDeltaM, double dMinM, double dMaxM);
 void pkdInitAccel(PKD);
 int pkdOrdWeight(PKD,int,int,int,int,int *,int *);
 void pkdUnDeleteParticle(PKD pkd, PARTICLE *p);
@@ -673,7 +673,7 @@ void pkdUpdateuDot(PKD,double,double,double,int,int);
 void pkdUpdateShockTracker(PKD,double, double, double);
 void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma);
 void pkdCoolingGasPressure(PKD, double gammam1, double gamma);
-void pkdGetDensityU(PKD);
+void pkdGetDensityU(PKD, double);
 void pkdLowerSoundSpeed(PKD, double);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime );
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);
@@ -741,4 +741,5 @@ void pkdCOM(PKD pkd, double *com);
 void pkdCOMByType(PKD pkd, int type, double *com);
 void pkdOldestStar(PKD pkd, double *com);
 int pkdSetSink(PKD pkd, double dSinkMassMin);
+void pkdFormSinks(PKD pkd, int bJeans, int bDensity, double dDensityCut, double dTime, int *nCandidates);
 #endif

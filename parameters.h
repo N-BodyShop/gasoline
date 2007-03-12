@@ -97,6 +97,9 @@ struct parameters {
 	int iMaxRung;
 	int nSuperCool;
 	int nGrowMass;
+        int bGrowGas;
+        int bGrowStar;
+        int bGrowDark;
 	int iWallRunTime;
 	int bPhysicalSoft;  
 	int bSoftMaxMul;
@@ -111,6 +114,9 @@ struct parameters {
     int bBHSink;
     int bDoSinksAtStart;
     int bSinkThermal;
+    int bSinkForm;
+    int bSinkFormJeans;
+    int dSinkFormDensity;
     int iSinkRung;
 	double dEta;
         double dEtaDeltaAccel;
@@ -151,6 +157,8 @@ struct parameters {
 	double dCoolFac;
 	double dCoolDens;
 	double dCoolMaxDens;
+        double dGrowMinM;
+        double dGrowMaxM;
 	double dGrowDeltaM;
 	double dGrowStartT;
 	double dGrowEndT;
@@ -229,9 +237,11 @@ struct parameters {
 	int bShortCoolShutoff;
 	int bSmallSNSmooth;
         int iStarFormRung;
+	int nSmoothFeedback;
 #endif
 	double dKBoltzUnit;
         double dPext;
+        double dvturb;
 #ifdef GLASS
 	/*
 	 ** Additional parameters for GLASS.
