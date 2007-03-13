@@ -76,6 +76,12 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 		return(COOL_ARRAY1(&p->CoolParticle));
 	case OUT_COOL_ARRAY2:
 		return(COOL_ARRAY2(&p->CoolParticle));
+	case OUT_COOL_EDOT_ARRAY:
+	    return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
+	case OUT_COOL_COOLING_ARRAY:
+	    return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
+	case OUT_COOL_HEATING_ARRAY:
+	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
 #endif
 	case OUT_BALSARASWITCH_ARRAY:
 		return(p->BalsaraSwitch);
@@ -244,6 +250,15 @@ void VecFilename(char *achFile, int iType)
 	case OUT_COOL_ARRAY2:
 		strncat(achFile,"HeII",256);
             break;
+	case OUT_COOL_EDOT_ARRAY:
+		strncat(achFile,"eDot",256);
+		break;
+	case OUT_COOL_COOLING_ARRAY:
+		strncat(achFile,"eCool",256);
+		break;
+	case OUT_COOL_HEATING_ARRAY:
+		strncat(achFile,"eHeat",256);
+		break;
 #endif
 	case OUT_BALSARASWITCH_ARRAY:
 		strncat(achFile,"BSw",256);

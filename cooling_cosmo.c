@@ -1375,6 +1375,42 @@ double CoolEdotInstantCode(COOL *cl, COOLPARTICLE *cp, double ECode,
     return CoolErgPerGmPerSecToCodeWork( cl, Edot );
     }
 
+/* Code heating - cooling rate excluding external heating (PdV, etc..) */
+double CoolCoolingCode(COOL *cl, COOLPARTICLE *cp, double ECode, 
+			  double rhoCode, double ZMetal, double *posCode ) {
+    PERBARYON Y;
+    RATE Rate;
+    double T,E,rho,Edot;
+
+    E = CoolCodeEnergyToErgPerGm( cl, ECode );
+    T = CoolEnergyToTemperature( cl, cp, E );
+    rho = CodeDensityToComovingGmPerCc(cl,rhoCode );
+    CoolPARTICLEtoPERBARYON(&Y, cp, cl->Y_H, cl->Y_He);
+    clRates(cl, &Rate, T, rho);
+    
+    Edot = clCoolTotal(cl, &Y, &Rate, rho, ZMetal );
+
+    return CoolErgPerGmPerSecToCodeWork( cl, Edot );
+    }
+
+/* Code heating due to atomic/radiative processes only */
+double CoolHeatingCode(COOL *cl, COOLPARTICLE *cp, double ECode, 
+			  double rhoCode, double ZMetal, double *posCode ) {
+    PERBARYON Y;
+    RATE Rate;
+    double T,E,rho,Edot;
+
+    E = CoolCodeEnergyToErgPerGm( cl, ECode );
+    T = CoolEnergyToTemperature( cl, cp, E );
+    rho = CodeDensityToComovingGmPerCc(cl,rhoCode );
+    CoolPARTICLEtoPERBARYON(&Y, cp, cl->Y_H, cl->Y_He);
+    clRates(cl, &Rate, T, rho);
+    
+    Edot = clHeatTotal ( cl, &Y, &Rate );
+
+    return CoolErgPerGmPerSecToCodeWork( cl, Edot );
+    }
+
 #endif /* NOCOOLING */
 #endif /* GASOLINE */
 

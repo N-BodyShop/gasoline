@@ -683,6 +683,13 @@ int main(int argc,char **argv)
 		    }
 #endif		
 #endif
+#ifndef NOCOOLING
+		if (msr->param.bGasCooling) {
+		    OutputList[iNumOutputs++]=OUT_COOL_EDOT_ARRAY;
+		    OutputList[iNumOutputs++]=OUT_COOL_COOLING_ARRAY;
+		    OutputList[iNumOutputs++]=OUT_COOL_HEATING_ARRAY;
+		    }
+#endif
                 msrReorder(msr);
                 if (msr->param.bSphStep) {
                     fprintf(stdout,"Adding SphStep dt\n");

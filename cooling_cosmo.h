@@ -261,6 +261,15 @@ FLOAT COOL_ARRAY1(COOLPARTICLE *cp);
 FLOAT COOL_ARRAY2(COOLPARTICLE *cp);
 #define COOL_ARRAY2( cp ) ((cp)->Y_HeII)
 
+FLOAT COOL_COOLING( COOL *cl_, COOLPARTICLE *cp_, double ECode_, double rhoCode_, double ZMetal_, double *posCode_ );
+#define COOL_COOLING( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_) (CoolCodeWorkToErgPerGmPerSec( cl_, CoolCoolingCode( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_ )))
+
+FLOAT COOL_EDOT( COOL *cl_, COOLPARTICLE *cp_, double ECode_, double rhoCode_, double ZMetal_, double *posCode_ );
+#define COOL_EDOT( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_) (CoolCodeWorkToErgPerGmPerSec( cl_, CoolEdotInstantCode( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_ )))
+
+FLOAT COOL_HEATING( COOL *cl_, COOLPARTICLE *cp_, double ECode_, double rhoCode_, double ZMetal_, double *posCode_ );
+#define COOL_HEATING( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_) (CoolCodeWorkToErgPerGmPerSec( cl_, CoolHeatingCode( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_ )))
+
 void CoolPARTICLEtoPERBARYON(PERBARYON *Y, COOLPARTICLE *cp, double HTotal, double HeTotal);
 
 #define CoolPARTICLEtoPERBARYON(Y, cp, HTotal, HeTotal) { \
@@ -328,6 +337,10 @@ void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, doubl
 double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double E, double dDensity, double ZMetal );
 
 double CoolEdotInstantCode(COOL *cl, COOLPARTICLE *cp, double ECode, 
+			   double rhoCode, double ZMetal, double *posCode );
+double CoolCoolingCode(COOL *cl, COOLPARTICLE *cp, double ECode, 
+			   double rhoCode, double ZMetal, double *posCode );
+double CoolHeatingCode(COOL *cl, COOLPARTICLE *cp, double ECode, 
 			   double rhoCode, double ZMetal, double *posCode );
 
 void CoolCodePressureOnDensitySoundSpeed( COOL *cl, COOLPARTICLE *cp, double uPred, double fDensity, double gamma, double gammam1, double *PoverRho, double *c );
