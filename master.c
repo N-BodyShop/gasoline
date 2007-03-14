@@ -7109,9 +7109,6 @@ void msrTopStepKDK(MSR msr,
 		/* 
 		 ** Calculate Forces (if required)
 		 */
-#if 0
-		msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
-#endif
 		msrActiveMaskRung(msr,TYPE_ACTIVE,iKickRung,1);
 		LogTimingSetN( msr, msr->nActive );
 
@@ -7158,11 +7155,13 @@ void msrTopStepKDK(MSR msr,
      	                    *pdActiveSum += (double)nActive/msr->N;
 			    }
 			
+#ifdef GASOLINE
 			if(msrDoGas(msr) && msrSphCurrRung(msr,iKickRung,1)) {
 			    if (msr->param.bVDetails)
 				printf("SPH: iRung %d to %d\n",iRung,iKickRung);
 			    msrSph(msr, dTime, iKickRung);
 			    }
+#endif
 			
 			}
 
@@ -7770,7 +7769,7 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     msrBallMax(msr,iKickRung,1);
     
 #else
-    fprintf("Attempt to use SPH without -DGASOLINE compile flag.\n");
+    fprintf(stderr, "Attempt to use SPH without -DGASOLINE compile flag.\n");
     assert(0);
 #endif /* GASOLINE */
     }

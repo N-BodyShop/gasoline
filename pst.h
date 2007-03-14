@@ -1542,21 +1542,6 @@ struct inUpdateShockTracker {
 
 void pstUpdateShockTracker(PST,void *,int,void *,int *);
 
-struct inFormSinks
-{
-    int bJeans;
-    int bDensity;
-    double dDensityCut;
-    double dTime;
-    };
-
-struct outFormSinks 
-{
-    int nCandidates;
-    };
-
-void pstFormSinks(PST,void *,int,void *,int *);
-
 #ifdef STARFORM
 /* PST_FORMSTARS */
 struct inFormStars
@@ -1639,6 +1624,21 @@ struct outSetSink
   };
 
 void pstSetSink(PST,void *,int,void *,int *);
+
+struct inFormSinks
+{
+    int bJeans;
+    int bDensity;
+    double dDensityCut;
+    double dTime;
+    };
+
+struct outFormSinks 
+{
+    int nCandidates;
+    };
+
+void pstFormSinks(PST,void *,int,void *,int *);
 
 /* Return is pixmap */
 void pstDumpVoxel(PST,void *,int,void *,int *);

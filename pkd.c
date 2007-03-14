@@ -6071,12 +6071,15 @@ int pkdSetSink(PKD pkd, double dSinkMassMin)
 
 void pkdFormSinks(PKD pkd, int bJeans, int bDensity, double dDensityCut, double dTime, int *nCandidates)
 {
+#ifdef GASOLINE
     int i;
     PARTICLE *p;
     int n = pkdLocal(pkd);
+#endif
     
     *nCandidates = 0;
     
+#ifdef GASOLINE
     for(i = 0; i < n; ++i) {
         p = &pkd->pStore[i];
         if(TYPETest( p, TYPE_GAS ) && TYPEQueryACTIVE(p)) {
@@ -6088,6 +6091,7 @@ void pkdFormSinks(PKD pkd, int bJeans, int bDensity, double dDensityCut, double 
 		}
 	    }
 	}
+#endif
 }
 
 
