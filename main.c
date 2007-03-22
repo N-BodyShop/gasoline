@@ -37,6 +37,7 @@ void main_ch(MDL mdl)
 /*DEBUG Should opaque nature of "msr" be enforced in main()? -- DCR*/ 
 
 #ifdef AMPI
+#include <converse.h>
 #define printf CmiPrintf
 /* Charm MPI requires this name as "main" */
 int AMPI_Main(int argc,char **argv)
@@ -631,41 +632,7 @@ int main(int argc,char **argv)
                 }
 #ifdef GASOLINE
             if (msr->nGas > 0) {
-                msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-                msrDomainDecomp(msr,0,1);
-                msrBuildTree(msr,1,-1.0,1);
-                msrSmooth(msr,dTime,SMX_DENSITY,1);
-                if (msr->param.bBulkViscosity) {
-                    msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-                    msrGetGasPressure(msr);
-#ifdef DENSITYU
-		    msrGetDensityU(msr);
-#endif
-                    msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
-                    } 
-                else {
-                    if (msr->param.bViscosityLimiter || msr->param.bShockTracker)
-                    msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-
-                    msrSphViscosityLimiter(msr, dTime);
-                    msrGetGasPressure(msr);
-#ifdef DENSITYU
-		    msrGetDensityU(msr);
-#endif
-                    /*
-                    msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
-                    */
-                    msrReSmooth(msr,dTime,SMX_SPHPRESSURE,1);
-                    msrUpdateShockTracker(msr, 0.0);
-                    msrReSmooth(msr,dTime,SMX_SPHVISCOSITY,1);
-                    /*
-                    if (msr->param.bShockTracker)
-                    msrReSmooth(msr,dTime,SMX_SHOCKTRACK,1);
-                    */
-                    /*
-                    msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
-                    */
-                    }
+		msrInitSph(msr,dTime);
                 msrCreateGasStepZeroOutputList(msr, &iNumOutputs,OutputList);
 #ifdef DENSITYU
 		OutputList[(iNumOutputs)++]=OUT_DENSITYU_ARRAY;
