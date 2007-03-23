@@ -5376,7 +5376,19 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.duDotLimit = msr->param.duDotLimit;
 #endif /* NEED_VPRED */
 		}
-	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
+	if(!msr->param.bPatch) {
+	    pstKick(msr->pst,&in,sizeof(in),&out,NULL);
+	    }
+	else {
+	    struct inKickPatch inp;
+
+	    inp.bOpen = 1;
+	    inp.dOrbFreq = msr->param.PP.dOrbFreq;
+	    inp.dvFacOne = 1.0;
+	    inp.dvFacTwo = in.dvFacTwo;
+	    pstKickPatch(msr->pst,&inp,sizeof(inp),&out,NULL);
+	    }
+	    
 	if (msr->param.bVDetails) 
 		printf("KickOpen: Avg Wallclock %f, Max Wallclock %f\n",
 			   out.SumTime/out.nSum,out.MaxTime);
@@ -5465,7 +5477,18 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.duDotLimit = msr->param.duDotLimit;
 #endif /* NEED_VPRED */
 		}
-	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
+	if(!msr->param.bPatch) {
+	    pstKick(msr->pst,&in,sizeof(in),&out,NULL);
+	    }
+	else {
+	    struct inKickPatch inp;
+
+	    inp.bOpen = 0;
+	    inp.dOrbFreq = msr->param.PP.dOrbFreq;
+	    inp.dvFacOne = 1.0;
+	    inp.dvFacTwo = in.dvFacTwo;
+	    pstKickPatch(msr->pst,&inp,sizeof(inp),&out,NULL);
+	    }
 	if (msr->param.bVDetails)
 		printf("KickClose: Avg Wallclock %f, Max Wallclock %f\n",
 			   out.SumTime/out.nSum,out.MaxTime);

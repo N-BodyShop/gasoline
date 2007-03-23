@@ -3587,6 +3587,8 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 #ifdef SLIDING_PATCH
 			p->v[1] += fShear;
 			p->vPred[1] += fShear;
+			p->dPy -= fShear/3.0; /* Angular momentum is
+						 also changed. */
 #endif
 			mdlassert(pkd->mdl, bInBox);
 			}
@@ -3620,23 +3622,10 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 					p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
 				}
 				if (iGasModel != GASMODEL_ISOTHERMAL) {
-#ifdef SSFDEBUG
-			    if (p->iOrder==5514) printf("%i: %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta);
-#endif
 #ifndef NOCOOLING				
 				  p->uPred = p->u + p->uDot*duPredDelta;
 				  p->u = p->u + p->uDot*duDelta;
 #else
-#ifdef COOLDEBUG
-				if (p->u+p->uDot*duPredDelta < 0) {
-					fprintf(stderr,"upred from u error %i: %g %g %g -> %g %i\n",p->iOrder,p->u,p->uDot,duPredDelta,p->uPred + p->uDot*duPredDelta,p->iRung);
-					assert(0);
-					}
-				if (p->u+p->uDot*duDelta < 0) {
-					fprintf(stderr,"u error %i: %g %g %g -> %g %i\n",p->iOrder,p->u,p->uDot,duDelta,p->uPred + p->uDot*duDelta,p->iRung);
-					assert(0);
-					}
-#endif
 				  p->uPred = p->u + p->PdV*duPredDelta;
 				  p->u = p->u + p->PdV*duDelta;
 #endif
@@ -3662,6 +3651,48 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	mdlDiag(pkd->mdl, "Done pkdkick\n");
 	}
 
+void pkdKickPatch(PKD pkd, double dvFacOne, double dvFacTwo,
+		  double dOrbFreq, /* Orbital Frequency of Patch */
+		  int bOpen)	/* Is this an opening Kick? */
+
+{
+#ifdef SLIDING_PATCH
+	PARTICLE *p;
+	int i,j,n;
+
+	pkdClearTimer(pkd,1);
+	pkdStartTimer(pkd,1);
+
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i,++p) {
+#ifdef AGGS
+		if (IS_AGG(p)) /* skip aggregate particles; handled in msrAggsKick() */
+			continue;
+#endif
+		if (TYPEQueryACTIVE(p)) {
+		    if(!bOpen) {
+			/* perform Cross Hamiltonian */
+			p->v[0] += 2.0*dvFacTwo*dOrbFreq*p->dPy;
+			p->v[1] = p->dPy - 2*dOrbFreq*p->r[0];
+			}
+		    for (j=0;j<3;++j) {
+			p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
+			}
+		    if(bOpen) {
+			p->dPy = p->v[1] + 2.0*dOrbFreq*p->r[0];
+			/* perform Cross Hamiltonian */
+			p->v[0] += 2.0*dvFacTwo*dOrbFreq*p->dPy;
+			p->v[1] = p->dPy - dOrbFreq*p->r[0]
+			    - dOrbFreq*(p->r[0] + 2.0*dvFacTwo*p->v[0]);
+			}
+		    }
+	    }
+
+	pkdStopTimer(pkd,1);
+	mdlDiag(pkd->mdl, "Done pkdkick\n");
+#endif
+	}
 
 void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 				  int nStart,int nLocal)
@@ -5171,44 +5202,6 @@ void pkdGlassGasPressure(PKD pkd, void *vin)
 
 #endif
 
-/*
-void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,int iGasModel,
-		  double z, double duDotLimit)
-{
-	PARTICLE *p;
-	int i,j,n;
-
-	mdlDiag(pkd->mdl, "Into Vpred\n");
-
-	pkdClearTimer(pkd,1);
-	pkdStartTimer(pkd,1);
-
-	p = pkd->pStore;
-	n = pkdLocal(pkd);
-	for (i=0;i<n;++i,++p) {
-		if (pkdIsGas(pkd,p)) {
-			for (j=0;j<3;++j) {
-				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;
-				}
-			if (iGasModel != GASMODEL_ISOTHERMAL) {
-#ifndef NOCOOLING
-			  p->uPred = p->uPred + p->uDot*duDelta;
-#else
-			  p->uPred = p->uPred + p->PdV*duDelta;
-#endif
-#if defined(PRES_HK) || defined(PRES_MONAGHAN) 
-                          if (p->uPred < 0) p->uPred = 0;
-#endif
-			  mdlassert(pkd->mdl,p->uPred > 0.0);
-                          }
-			}
-		}
-
-	pkdStopTimer(pkd,1);
-	mdlDiag(pkd->mdl, "Done Vpred\n");
-	}
-*/
-
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta)
 {
 	PARTICLE *p;
@@ -5671,10 +5664,10 @@ void pkdPatch(PKD pkd)
 	p = &pkd->pStore[i];
 	if (!TYPEQueryACTIVE(p)) continue;
 	/*
-	** Apply Hill's Equations, using *predicted* velocities...
+	** Apply the velocity independendent part of Hill's Equations
+	** (Kick2 in the symplectic integration paper)
 	*/
-	p->a[0] += PP->dOrbFreq*(2*p->vPred[1] + 3*PP->dOrbFreq*p->r[0]);
-	p->a[1] -= 2*PP->dOrbFreq*p->vPred[0];
+	p->a[0] -= PP->dOrbFreq*PP->dOrbFreq*p->r[0];
 	p->a[2] -= PP->dOrbFreqZ2*p->r[2];
   }
 

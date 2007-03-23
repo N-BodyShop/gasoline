@@ -107,6 +107,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_KICK,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstKick,
 				  sizeof(struct inKick),sizeof(struct outKick));
+	mdlAddService(mdl,PST_KICKPATCH,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstKickPatch,
+				  sizeof(struct inKickPatch),sizeof(struct outKick));
 	mdlAddService(mdl,PST_READCHECK,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstReadCheck,
 				  sizeof(struct inReadCheck), 0);
@@ -3373,6 +3376,34 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = sizeof(struct outKick);
 	}
 
+void pstKickPatch(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inKickPatch *in = vin;
+	struct outKick *out = vout;
+	struct outKick outUp;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inKickPatch));
+
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_KICKPATCH,in,nIn);
+		pstKickPatch(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+
+		out->SumTime += outUp.SumTime;
+		out->nSum += outUp.nSum;
+		if (outUp.MaxTime > out->MaxTime) out->MaxTime = outUp.MaxTime;
+		}
+	else {
+		pkdKickPatch(plcl->pkd,in->dvFacOne,in->dvFacTwo,
+			     in->dOrbFreq, in->bOpen);
+		out->Time = pkdGetTimer(plcl->pkd,1);
+		out->MaxTime = out->Time;
+		out->SumTime = out->Time;
+		out->nSum = 1;
+		}
+	if (pnOut) *pnOut = sizeof(struct outKick);
+	}
 
 void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {

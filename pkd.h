@@ -67,6 +67,9 @@ typedef struct particle {
 	FLOAT fDensity;
 	FLOAT dt;			/* a time step suggestion */
 	FLOAT dtGrav;		/* suggested 1/dt^2 from gravity */
+#ifdef SLIDING_PATCH
+	FLOAT dPy;		/* Canonical momentum for Hill eqn. */
+#endif
 #ifdef SUPERCOOL
 	FLOAT vMean[3];
 #endif
@@ -585,6 +588,8 @@ void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,FLOAT);
 void pkdUpdateUdot(PKD pkd,double,double,double,int,int);
 void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double);
+void pkdKickPatch(PKD pkd, double dvFacOne, double dvFacTwo,
+		  double dOrbFreq, int bOpen);
 void pkdReadCheck(PKD,char *,int,int,int,int);
 void pkdWriteCheck(PKD,char *,int,int);
 void pkdDistribCells(PKD,int,KDN *);

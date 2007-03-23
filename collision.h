@@ -162,7 +162,8 @@ void pkdAggsDoCollision(PKD pkd,double dt,const COLLIDER *c1,const COLLIDER *c2,
 
 void pkdNextCollision(PKD pkd, double *dtCol, int *iOrder1, int *iOrder2);
 void pkdGetColliderInfo(PKD pkd, int iOrder, COLLIDER *c);
-void PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt);
+void PutColliderInfo(PKD pkd, const COLLIDER *c,int iOrder2,PARTICLE *p,
+		     double dt);
 void pkdDoCollision(PKD pkd, double dt, const COLLIDER *c1, const COLLIDER *c2,
  int bPeriodic, int iTime0, double dBaseStep, double dTimeNow,
 const COLLISION_PARAMS *CP, int *piOutcome,double *dT,	COLLIDER *cOut, 
@@ -170,7 +171,6 @@ int *pnOut);
 void pkdResetColliders(PKD pkd, int iOrder1, int iOrder2);
 double LastKickTime(int iRung, double dBaseStep, double dTimeNow);
 void pkdSetBall(PKD pkd,double dDelta,double fac);
-void PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt);
 void pkdFindTightestBinary(PKD pkd,double *dBindEn,int *iOrder1,int *iOrder2,
  int *n);
 void SetMergerRung(const COLLIDER *c1,const COLLIDER *c2,COLLIDER *c,

@@ -105,6 +105,7 @@ enum pst_service {
 	  PST_CALCEANDLEXT,
       PST_DRIFT,
       PST_KICK,
+      PST_KICKPATCH,
       PST_READCHECK,
       PST_WRITECHECK,
       PST_SETSOFT,
@@ -645,6 +646,15 @@ struct outKick {
 	};
 
 void pstKick(PST,void *,int,void *,int *);
+
+/* PST_KICKPATCH */
+struct inKickPatch {
+    int bOpen;
+    double dOrbFreq;
+    double dvFacOne;
+    double dvFacTwo;
+    };
+void pstKickPatch(PST,void *,int,void *,int *);
 
 /* PST_READCHECK */
 struct inReadCheck {

@@ -122,7 +122,7 @@ void MergerReorder(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,const COLLIDER 
   ** the other collider is now gone.
   */
   if (pMrg != NULL) {
-	PutColliderInfo(c,INT_MAX,&pkd->pStore[pMrg->iIndex],dt);
+	PutColliderInfo(pkd, c,INT_MAX,&pkd->pStore[pMrg->iIndex],dt);
 	if (bDiagInfo) cOut->id = *pMrg; /* struct copy */
 #ifdef RUBBLE_ZML
 	{
@@ -360,7 +360,8 @@ void pkdGetColliderInfo(PKD pkd,int iOrder,COLLIDER *c)
 		}
 	}
 
-void PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt)
+void PutColliderInfo(PKD pkd, const COLLIDER *c,int iOrder2,PARTICLE *p,
+		     double dt)
 {
 	/*
 	 ** Stores collider info in particle structure (except id & color).
@@ -394,6 +395,9 @@ void PutColliderInfo(const COLLIDER *c,int iOrder2,PARTICLE *p,double dt)
 		p->vPred[i] = c->v[i] - dt*p->a[i];
 #endif
 		}
+#ifdef SLIDING_PATCH
+	p->dPy = p->v[1] + 2.0*pkd->PP->dOrbFreq*p->r[0];
+#endif
 	p->iRung = c->iRung;
 	p->fBall2 += 2*sqrt(p->fBall2)*r + r*r;
 	p->dtPrevCol = dt; /* N.B. this is set to -1 in a binary merge */
@@ -805,7 +809,7 @@ void pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 			for (i=0;i<3;i++) c1.r[i] -= c1.v[i]*dt;
 			*piOutcome = BOUNCE;
 			}
-		PutColliderInfo(&c1,c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
+		PutColliderInfo(pkd, &c1,c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
 		cOut[0] = c1;
 		cOut[1] = c2;
 		*pnOut = 2;
@@ -892,7 +896,7 @@ void pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 			for (i=0;i<3;i++) c1.r[i] -= c1.v[i]*dt;
 			*piOutcome = BOUNCE;
 			}
-		PutColliderInfo(&c1,c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
+		PutColliderInfo(pkd, &c1,c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
 		cOut[0] = c1;
 		cOut[1] = c2;
 		*pnOut = 2;
@@ -1047,8 +1051,8 @@ void pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 				c1.v[i] += c2.fMass*vr*rn[i]*imr2;
 				c2.v[i] -= c1.fMass*vr*rn[i]*imr2;
 				}
-			PutColliderInfo(&c1,c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
-			PutColliderInfo(&c2,c1.id.iOrder,&pkd->pStore[c2.id.iIndex],dt);
+			PutColliderInfo(pkd, &c1,c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
+			PutColliderInfo(pkd, &c2,c1.id.iOrder,&pkd->pStore[c2.id.iIndex],dt);
 			cOut[0] = c1;
 			cOut[1] = c2;
 			*pnOut = 2;
@@ -1178,7 +1182,7 @@ void pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 			bPeriodic);
 	else if (n == 2) { /* bounce or mass transfer */
 		if (c1.id.iPid == pkd->idSelf)
-			PutColliderInfo(&c[0],c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
+			PutColliderInfo(pkd, &c[0],c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
 		if (c2.id.iPid == pkd->idSelf) {
 			if (bPeriodic) {
 				for (i=0;i<3;i++)
@@ -1187,7 +1191,7 @@ void pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 				c[1].v[1] -= fShear;
 #endif
 				}
-			PutColliderInfo(&c[1],c1.id.iOrder,&pkd->pStore[c2.id.iIndex],dt);
+			PutColliderInfo(pkd, &c[1],c1.id.iOrder,&pkd->pStore[c2.id.iIndex],dt);
 			}
 		}
 	else { /* fragmentation */
@@ -1195,11 +1199,11 @@ void pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 		if (CP->iRubForcedOutcome == RUB_FORCED_NONE) {
 			PARTICLE p;
 			if (c1.id.iPid == pkd->idSelf) {
-				PutColliderInfo(&c[0],c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
+				PutColliderInfo(pkd, &c[0],c2.id.iOrder,&pkd->pStore[c1.id.iIndex],dt);
 				pkd->pStore[c1.id.iIndex].iColor = CP->iRubColor; /* override color */
 				}
 			if (c2.id.iPid == pkd->idSelf) {
-				PutColliderInfo(&c[1],c1.id.iOrder,&pkd->pStore[c2.id.iIndex],dt);
+				PutColliderInfo(pkd, &c[1],c1.id.iOrder,&pkd->pStore[c2.id.iIndex],dt);
 				pkd->pStore[c2.id.iIndex].iColor = CP->iRubColor;
 				}
 			/*
@@ -1215,7 +1219,7 @@ void pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 				p.dtPrevCol = 0;
 				p.iPrevCol = INT_MAX;
 				for (i=2;i<n;i++) {
-					PutColliderInfo(&c[i],-1,&p,dt);
+					PutColliderInfo(pkd, &c[i],-1,&p,dt);
 					/* fix up some things PutColliderInfo() doesn't take care of */
 					p.iOrgIdx = c[i].id.iOrgIdx;
 					pkdNewParticle(pkd,p);
