@@ -7345,7 +7345,8 @@ msrDoSinks(MSR msr, double dTime, double dDelta)
     if (msr->param.bBHSink) {
         /* Smooth Bondi-Hoyle Accretion: radius set by nSmooth */
 	msrSmooth(msr, dTime, SMX_BHDENSITY, 0);
-	msrReSmooth(msr, dTime, SMX_BHSINKACCRETE,1);
+    	msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
+	msrSmooth(msr, dTime, SMX_BHSINKACCRETE,1);
 	}
     else {
 	/* Fixed Radius Accretion: particle by particle (cf. Bate) */
