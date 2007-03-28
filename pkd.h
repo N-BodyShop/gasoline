@@ -20,7 +20,7 @@
  ** configuration header file -- someday...
  */
 
-#if defined(GASOLINE) || defined(ROT_FRAME) || defined(SLIDING_PATCH) || defined(SIMPLE_GAS_DRAG) || defined(GR_DRAG)
+#if defined(GASOLINE) || defined(ROT_FRAME) || defined(SIMPLE_GAS_DRAG) || defined(GR_DRAG)
 #define NEED_VPRED
 #endif
 

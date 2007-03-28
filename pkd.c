@@ -3586,7 +3586,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 				}
 #ifdef SLIDING_PATCH
 			p->v[1] += fShear;
-			p->vPred[1] += fShear;
 			p->dPy -= fShear/3.0; /* Angular momentum is
 						 also changed. */
 #endif
