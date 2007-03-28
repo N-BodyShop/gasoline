@@ -109,6 +109,7 @@ enum smx_smoothtype {
   SMX_MEANVEL,
   SMX_DELTAACCEL,
   SMX_SINKACCRETE,
+  SMX_BHDENSITY,
   SMX_BHSINKACCRETE,
   SMX_SINKFORM,
 #ifdef GASOLINE
@@ -184,6 +185,9 @@ void combDeltaAccel(void *,void *);
 void SinkAccrete(PARTICLE *,int,NN *,SMF *);
 void initSinkAccrete(void *);
 void combSinkAccrete(void *,void *);
+
+/* SMX_BHDENSITY */
+void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf);
 
 /* SMX_BHSINKACCRETE */
 void BHSinkAccrete(PARTICLE *,int,NN *,SMF *);

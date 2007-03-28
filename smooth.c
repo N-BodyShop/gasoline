@@ -93,6 +93,14 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		smx->iLowhFix = LOWHFIX_SINKRADIUS;
 		smx->bUseBallMax = 0;
 		break;
+	case SMX_BHDENSITY:
+		smx->fcnSmooth = BHSinkDensity;
+		initParticle = NULL; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
+		init = initDensity; /* Cached copies */
+		comb = combDensity;
+		smx->fcnPost = NULL;
+		break;
 	case SMX_BHSINKACCRETE:
 		smx->fcnSmooth = BHSinkAccrete;
 		initParticle = NULL; /* Original Particle */

@@ -686,14 +686,18 @@ void combBHSinkAccrete(void *p1,void *p2)
 #endif
 }
 
-void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+/*
+ * Calculate paramters for BH accretion for use in the BHSinkAccrete
+ * function.  This is done separately to even competition between
+ * neighboring Black Holes.
+ */
+void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 #ifdef GASOLINE
 	PARTICLE *q = NULL;
 
 	FLOAT ih2,r2,rs,fDensity;
 	FLOAT v[3],cs,fW,dv2,dv;
-	FLOAT mdot, mdotEdd, dm, dmq, dE, ifMass;
 	int i;
 
 	ih2 = 4.0/BALL2(p);
@@ -717,10 +721,35 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    dv = v[i]/fDensity-p->v[i];
 	    dv2 += dv*dv;
 	    }
-	cs = cs/fDensity;
+	/*
+	 * Store results in particle.
+	 * XXX NB overloading "divv" field of the BH particle.  I am
+	 * assuming it is not used.
+	 */
+	p->c = cs/fDensity;
+	p->divv = dv2;
+	p->fDensity = M_1_PI*sqrt(ih2)*ih2*fDensity; 
+#endif
+    }
 
-        /* Scale density after using it to normalize averages */
-        fDensity = M_1_PI*sqrt(ih2)*ih2*fDensity; 
+void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+#ifdef GASOLINE
+	PARTICLE *q = NULL;
+
+	FLOAT ih2,r2,rs,fDensity;
+	FLOAT cs,fW,dv2;
+	FLOAT mdot, mdotEdd, dm, dmq, dE, ifMass;
+	int i;
+
+	ih2 = 4.0/BALL2(p);
+	/*
+	 * Grab parameters from density calculation.  See above.
+	 */
+	cs = p->c;
+	dv2 = p->divv;
+        fDensity = p->fDensity;
+ 
 	printf("BHSink:  Density: %g C_s: %g dv: %g\n",fDensity,cs,sqrt(dv2));
 
         /* Bondi-Hoyle rate: cf. di Matteo et al 2005 (G=1) */
@@ -2646,8 +2675,8 @@ void combDistSNEnergy(void *p1,void *p2)
 void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	PARTICLE *q;
-	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fNorm_Pres,fAveDens,fNewBall,f2h2;
-        FLOAT delta_m,m_new,f1,f2,fBlastRadius,fShutoffTime,fmind;
+	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fNorm_Pres,fAveDens,f2h2;
+        FLOAT fBlastRadius,fShutoffTime,fmind;
 	int i,counter,imind;
 
 	if ( (p->fMSN == 0.0) && (p->fESNrate == 0.0)){return;}
