@@ -421,12 +421,13 @@ void pkdRotatingBar(PKD pkd, double amp, /* relative amplitude of bar */
 
 	      /* Add bar acceleration to particle */
 		p[i].a[k] += acc[k];
-		p[i].fPot += -ffac*pp*fac
-		    + pkd->rotbar->getPot(pkd->rotbar, rr);
 
 		/* Force on bar (via Newton's 3rd law) */
 		accCom[k] -= p[i].fMass*acc[k];
 		}
+	    p[i].fPot += -ffac*pp*fac;
+	    if(pkd->rotbar->bMonopole)
+		p[i].fPot += pkd->rotbar->getPot(pkd->rotbar, rr);
 	    }
 	}
   for (k=0; k<3; k++) {
