@@ -467,6 +467,7 @@ int main(int argc,char **argv)
 				msrCoolVelocity(msr,dTime,dMass);	/* Supercooling if specified */
 				msrMassCheck(msr,dMass,"After CoolVelocity in KDK");
 				dTime += msrDelta(msr);
+				lSec = time(0) - lSec;
 				/*
 				** Output a log file line if requested.
 				** Note: no extra gravity calculation required.
@@ -474,7 +475,6 @@ int main(int argc,char **argv)
 				if (msrLogInterval(msr) && iStep%msrLogInterval(msr) == 0) {
 				  msrCalcEandL(msr,MSR_STEP_E,dTime,&E,&T,&U,&Eth,L);
 				  msrMassCheck(msr,dMass,"After msrCalcEandL in KDK");
-				  lSec = time(0) - lSec;
 				  (void) fprintf(fpLog,"%e %e %.16e %e %e %e %.16e %.16e "
 								 "%.16e %li %e %e %e %e\n",dTime,
 								 1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
