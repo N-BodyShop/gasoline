@@ -92,6 +92,7 @@ struct parameters {
 	int iEwOrder;
 	int nReplicas;
 	int iStartStep;
+	int iStopStep;
 	int nSteps;
 	int nSmooth;
 	int iMaxRung;
@@ -118,6 +119,8 @@ struct parameters {
     int bSinkFormJeans;
     int dSinkFormDensity;
     int iSinkRung;
+    int iSinkCurrentRung;
+    int nJeans;
 	double dEta;
         double dEtaDeltaAccel;
 	double dExtraStore;
@@ -144,6 +147,7 @@ struct parameters {
     double dSinkBoundOrbitRadius;
     double dDeltaSink;
     double dSinkMassMin;
+    double dJeansConstant;
     double dBHSinkEddEff;
     double dBHSinkFeedbackEff;
     double dBHSinkEddFactor;
@@ -186,6 +190,7 @@ struct parameters {
 	double dConstGamma;
 	double dMeanMolWeight;
 	double dGasConst;
+        double dTuFac;
 	double dMsolUnit;
 	double dKpcUnit;
 	double ddHonHLimit;

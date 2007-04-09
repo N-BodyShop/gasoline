@@ -76,12 +76,21 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 		return(COOL_ARRAY1(&p->CoolParticle));
 	case OUT_COOL_ARRAY2:
 		return(COOL_ARRAY2(&p->CoolParticle));
+#ifdef DENSITYU
+	case OUT_COOL_EDOT_ARRAY:
+	    return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	case OUT_COOL_COOLING_ARRAY:
+	    return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	case OUT_COOL_HEATING_ARRAY:
+	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+#else
 	case OUT_COOL_EDOT_ARRAY:
 	    return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
 	case OUT_COOL_COOLING_ARRAY:
 	    return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
 	case OUT_COOL_HEATING_ARRAY:
 	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
+#endif
 #endif
 	case OUT_BALSARASWITCH_ARRAY:
 		return(p->BalsaraSwitch);

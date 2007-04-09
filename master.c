@@ -458,6 +458,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.iStartStep = 0;
 	prmAddParam(msr->prm,"iStartStep",1,&msr->param.iStartStep,
 				sizeof(int),"nstart","<initial step numbering> = 0");
+	msr->param.iStopStep = 0;
+	prmAddParam(msr->prm,"iStopStep",1,&msr->param.iStopStep,
+				sizeof(int),"nstart","<stop step number> = 0");
 	msr->param.nSteps = 0;
 	prmAddParam(msr->prm,"nSteps",1,&msr->param.nSteps,sizeof(int),"n",
 				"<number of timesteps> = 0");
@@ -665,6 +668,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dSinkBoundOrbitRadius = 0.0;
 	prmAddParam(msr->prm,"dSinkBoundOrbitRadius",2,&msr->param.dSinkBoundOrbitRadius,sizeof(double),"sinkbor",
 				"<Sink Bound Orbit Radius>");
+
 	msr->param.dDeltaSink = msr->param.dDelta;
 	prmAddParam(msr->prm,"dDeltaSink", 2, &msr->param.dDeltaSink,
 		    sizeof(double), "dDeltaSink",
@@ -674,11 +678,19 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		    sizeof(double), "dSinkMassMin", "<Minimum Mass to act as a sink> = 0" );
 	msr->param.iSinkRung = 0; 
 	prmAddParam(msr->prm,"iSinkRung", 2, &msr->param.iSinkRung,
-		    sizeof(double), "iSinkRung",
+		    sizeof(int), "iSinkRung",
 		    "<Sink Rung> = 0");
 	msr->param.bSinkForm = 0;
 	prmAddParam(msr->prm,"bSinkForm",0,&msr->param.bSinkForm,sizeof(int),
 				"sinkform","enable/disable sinks = -sinkform");
+	msr->param.nJeans = 50; 
+	prmAddParam(msr->prm,"nJeans", 2, &msr->param.nJeans,
+		    sizeof(int), "nJeans",
+		    "<no. particle masses inside Jeans mass for good resolution> = 50");
+	msr->param.dJeansConstant = 4/3.*pow(M_PI,2.5);
+	prmAddParam(msr->prm,"dJeansConstant", 2, &msr->param.dJeansConstant,
+		    sizeof(double), "dJeansConstant",
+		    "<Constant to multiply c_s^3 G^-3/2 rho^-1/2 to get Jeans Mass > = 4/3 pi^5/2");
 	msr->param.bSinkFormJeans = 0;
 	prmAddParam(msr->prm,"bSinkFormJeans",0,&msr->param.bSinkFormJeans,sizeof(int),
 				"sinkformjeans","enable/disable sinks = -sinkformjeans");
@@ -2267,6 +2279,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# dEwCut: %f",msr->param.dEwCut);
 	fprintf(fp," dEwhCut: %f",msr->param.dEwhCut);
 	fprintf(fp,"\n# iStartStep: %d",msr->param.iStartStep);
+	fprintf(fp," iStopStep: %d",msr->param.iStopStep);
 	fprintf(fp," nSteps: %d",msr->param.nSteps);
 	fprintf(fp," nSmooth: %d",msr->param.nSmooth);
 	fprintf(fp," dExtraStore: %f",msr->param.dExtraStore);
@@ -2358,6 +2371,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# dConstGamma: %g",msr->param.dConstGamma);
 	fprintf(fp," dMeanMolWeight: %g",msr->param.dMeanMolWeight);
 	fprintf(fp," dGasConst: %g",msr->param.dGasConst);
+	fprintf(fp," dTuFac: %g",msr->param.dTuFac);
 	fprintf(fp," dKBoltzUnit: %g",msr->param.dKBoltzUnit);
 	fprintf(fp," dPext: %g",msr->param.dPext);
 #ifdef DENSITYU
@@ -2944,7 +2958,7 @@ double msrReadTipsy(MSR msr)
 					printf("Badly specified final redshift, check -zto parameter.\n");
 					_msrExit(msr,1);
 					}
-				msr->param.nSteps = (int)ceil((tTo-dTime)/msr->param.dDelta);
+				msr->param.nSteps = (int)ceil((tTo-dTime)/msr->param.dDelta)+msr->param.iStartStep;
 				}
 			else if (!prmArgSpecified(msr->prm,"dDelta") &&
 					 prmArgSpecified(msr->prm,"nSteps")) {
@@ -2976,7 +2990,7 @@ double msrReadTipsy(MSR msr)
 					printf("Badly specified final redshift, check -zto parameter.\n");
 					_msrExit(msr,1);
 					}
-				msr->param.nSteps = (int)ceil((tTo-dTime)/msr->param.dDelta);
+				msr->param.nSteps = (int)ceil((tTo-dTime)/msr->param.dDelta) + msr->param.iStartStep;
 				}
 			else if (!prmSpecified(msr->prm,"dDelta") &&
 					 prmFileSpecified(msr->prm,"nSteps")) {
@@ -2997,7 +3011,7 @@ double msrReadTipsy(MSR msr)
 				}
 			}
 		else {
-			tTo = dTime + msr->param.nSteps*msr->param.dDelta;
+			tTo = dTime + (msr->param.nSteps-msr->param.iStartStep)*msr->param.dDelta;
 			aTo = csmTime2Exp(msr->param.csm,tTo);
 			if (msr->param.bVStart)
 				printf("Simulation to Time:%g Redshift:%g Expansion factor:%g\n",
@@ -3016,7 +3030,7 @@ double msrReadTipsy(MSR msr)
 	else {
 		dTime = h.time;
 		if (msr->param.bVStart) printf("Input file, Time:%g\n",dTime);
-		tTo = dTime + msr->param.nSteps*msr->param.dDelta;
+		tTo = dTime + (msr->param.nSteps-msr->param.iStartStep)*msr->param.dDelta;
 		if (msr->param.bVStart) {
 			printf("Simulation to Time:%g\n",tTo);
 			printf("Reading file...\nN:%d nDark:%d nGas:%d nStar:%d Time:%g\n",
@@ -3024,6 +3038,18 @@ double msrReadTipsy(MSR msr)
 			}
 		in.dvFac = 1.0;
 		}
+
+	if (prmSpecified(msr->prm,"iStopStep")) {
+	    if (msr->param.bVStart) printf("Simulation will halt at step %d of %d (Time:%g)\n",msr->param.iStopStep,msr->param.nSteps,dTime + (msr->param.iStopStep-msr->param.iStartStep)*msr->param.dDelta);
+	    }
+	else
+	    msr->param.iStopStep = msr->param.nSteps;
+
+	if (msr->param.iStopStep <= msr->param.iStartStep) {
+	    fprintf(stderr,"ERROR: iStartStep %d > iStopStep %d (nSteps %d)\n",msr->param.iStartStep,msr->param.iStopStep,msr->param.nSteps);
+	    assert(msr->param.iStopStep > msr->param.iStartStep);
+	    }
+
 	in.nFileStart = 0;
 	in.nFileEnd = msr->N - 1;
 	in.nDark = msr->nDark;
@@ -3033,10 +3059,10 @@ double msrReadTipsy(MSR msr)
 	in.bStandard = msr->param.bStandard;
 	in.iReadIOrder = msr->param.iReadIOrder;
 #ifdef GASOLINE
-	in.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
+	in.dTuFac = msr->param.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
 		msr->param.dMeanMolWeight;
 #else
-	in.dTuFac = 1.0;
+	in.dTuFac = msr->param.dTuFac = 1.0;
 #endif
 	/*
 	 ** Since pstReadTipsy causes the allocation of the local particle
@@ -4411,6 +4437,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.dBHSinkEddFactor = msr->param.dBHSinkEddFactor;
 	in.smf.dBHSinkFeedbackFactor = msr->param.dBHSinkFeedbackFactor;
 	in.smf.dSinkCurrentDelta = msr->param.dSinkCurrentDelta;
+	in.smf.iSinkCurrentRung = msr->param.iSinkCurrentRung;
 	in.smf.bSinkThermal = msr->param.bSinkThermal;
 	in.smf.dSinkRadius = msr->param.dSinkRadius;
 	in.smf.dSinkBoundOrbitRadius = msr->param.dSinkBoundOrbitRadius;
@@ -4522,6 +4549,7 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.dBHSinkEddFactor = msr->param.dBHSinkEddFactor;
 	in.smf.dBHSinkFeedbackFactor = msr->param.dBHSinkFeedbackFactor;
 	in.smf.dSinkCurrentDelta = msr->param.dSinkCurrentDelta;
+	in.smf.iSinkCurrentRung = msr->param.iSinkCurrentRung;
 	in.smf.bSinkThermal = msr->param.bSinkThermal;
 	in.smf.dSinkRadius = msr->param.dSinkRadius;
 	in.smf.dSinkBoundOrbitRadius = msr->param.dSinkBoundOrbitRadius;
@@ -7188,13 +7216,6 @@ void msrTopStepKDK(MSR msr,
 			
 			}
 
-                /* only accrete onto sinks at user defined intervals 
-		   Can I do this after the gas kick and save a treebuild? */
-                if ( iKickRung <= msr->param.iSinkRung )
-                    msrDoSinks(msr, dTime, max(dDelta,msr->param.dDeltaSink) );
-
-		msrFormSinks(msr, dTime);
-
 		/* The following KickClose advances the Kick
 		   Hamiltonian from 1/2 way through the timestep to
 		   the end of the timestep.  Set dTime to be at the 1/2
@@ -7210,6 +7231,15 @@ void msrTopStepKDK(MSR msr,
 #endif
     msrKickKDKClose(msr,dTime,0.5*dDelta);
 
+    /* Accrete onto sinks minimum gas timestep 
+       If I do this after the gas kick I save a treebuild 
+       Note: Cannot delete particles unless they have closed their kick
+       => p->iRung >= iKickRung and iRung == iKickRung (to pick last kick in sequence)
+    */
+    if ( iKickRung == iRung ) {
+	msrDoSinks(msr, dTime, dDelta, iKickRung );
+        msrFormSinks(msr, dTime, dDelta, iKickRung );
+	}
     }
 
 int
@@ -7282,17 +7312,27 @@ msrAddDelParticles(MSR msr)
     free(pColNParts);
     }
 
-void msrFormSinks(MSR msr, double dTime)
+void msrFormSinks(MSR msr, double dTime, double dDelta, int iKickRung)
+/* For momentum conservation, only particles on iKickRung or higher may
+   contribute mass to a sink 
+   This call is timed for just after those particles have completed a full KDK
+*/
     {
     struct inFormSinks in;
     struct outFormSinks outFS;
     
     if (!msr->param.bSinkForm) return;
 
+    msr->param.dSinkCurrentDelta = dDelta;
+    msr->param.iSinkCurrentRung = iKickRung;
+
     in.bJeans = msr->param.bSinkFormJeans;
+    in.dJConst2 = msr->param.dJeansConstant/msr->param.nJeans;
+    in.dJConst2 *= in.dJConst2;
     in.dDensityCut = msr->param.dSinkFormDensity/msr->param.dGmPerCcUnit;
     in.bDensity = (in.dDensityCut >= 0 ? 1 : 0);
     in.dTime = dTime;
+    in.iKickRung = iKickRung;
     pstFormSinks(msr->pst, &in, sizeof(in), &outFS, NULL);
 
     /* Possible issue is momentum conservation for sinks.
@@ -7307,7 +7347,7 @@ void msrFormSinks(MSR msr, double dTime)
 	    msrBuildTree(msr,1,-1.0,1);  /* bTreeActive */
 	    }
 	/* new sinks only */
-	msrActiveExactType(msr, TYPE_SINK|TYPE_STAR, TYPE_SINK, TYPE_ACTIVE|TYPE_SMOOTHACTIVE);
+	msrActiveExactType(msr, TYPE_SINK|TYPE_STAR|TYPE_GAS, TYPE_SINK|TYPE_GAS, TYPE_ACTIVE|TYPE_SMOOTHACTIVE);
 	msrSmooth(msr, dTime, SMX_SINKFORM, 1);
 
         msrAddDelParticles(msr);
@@ -7320,10 +7360,14 @@ void msrFormSinks(MSR msr, double dTime)
     }
 
 void
-msrDoSinks(MSR msr, double dTime, double dDelta)
+msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
+/* For momentum conservation, only particles on iKickRung or higher may
+   contribute mass to a sink 
+   This call is timed for just after those particles have completed a full KDK
+*/
 {
-	double sec,sec1,dsec,dMass;
-	int nAccreted;
+   double sec,sec1,dsec,dMass;
+   int nAccreted;
 
     if(msr->param.bDoSinks == 0 || msr->nSink == 0) return;
     if (msr->param.bBHSink && dDelta <= 0.0) return;
@@ -7339,34 +7383,36 @@ msrDoSinks(MSR msr, double dTime, double dDelta)
 	    }
 
     msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
-    msrActiveType(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE);
+    msrActiveTypeRung(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE,iKickRung,1);
 
-    msr->param.dSinkCurrentDelta = dDelta;
-    if (msr->param.bBHSink) {
-        /* Smooth Bondi-Hoyle Accretion: radius set by nSmooth */
-	msrSmooth(msr, dTime, SMX_BHDENSITY, 0);
-    	msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
-	msrSmooth(msr, dTime, SMX_BHSINKACCRETE,1);
-	}
-    else {
-	/* Fixed Radius Accretion: particle by particle (cf. Bate) */
-	msrSmooth(msr, dTime, SMX_SINKACCRETE,1);
-	}
-    
     nAccreted = msr->nGas;
+    if (msr->nActive > 0) {
+	msr->param.dSinkCurrentDelta = dDelta;
+	msr->param.iSinkCurrentRung = iKickRung;
 
-    msrMassCheck(msr, dMass, "Accrete onto Sinks: before particle adjustment");
-
-    msrAddDelParticles(msr);
-    msrMassCheck(msr, dMass, "Accrete onto Sinks: after particle adjustment");
-
-	nAccreted -= msr->nGas;
-
-	sec1 = msrTime();
-	dsec = sec1 - sec;
-	printf("Sinks Done (%d accreted) Calculated, Wallclock: %f secs\n\n",nAccreted,dsec);
-	LOGTIMINGUPDATE( dsec, TIMING_Sink );
-    }
+	if (msr->param.bBHSink) {
+	    /* Smooth Bondi-Hoyle Accretion: radius set by nSmooth */
+	    msrSmooth(msr, dTime, SMX_BHDENSITY, 1);
+	    msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
+	    msrSmooth(msr, dTime, SMX_BHSINKACCRETE,1);
+	    }
+	else {
+	    /* Fixed Radius Accretion: particle by particle (cf. Bate) */
+	    msrSmooth(msr, dTime, SMX_SINKACCRETE,1);
+	    }
+	
+	msrMassCheck(msr, dMass, "Accrete onto Sinks: before particle adjustment");
+	
+	msrAddDelParticles(msr);
+	msrMassCheck(msr, dMass, "Accrete onto Sinks: after particle adjustment");
+	}
+    nAccreted -= msr->nGas;
+    
+    sec1 = msrTime();
+    dsec = sec1 - sec;
+    printf("Sinks Done (%d accreted) Calculated, Wallclock: %f secs\n\n",nAccreted,dsec);
+    LOGTIMINGUPDATE( dsec, TIMING_Sink );
+}
 
 /* In principle this code is general for any search but for now
    it will be restricted to looking for a nearby star particle */
@@ -7575,8 +7621,7 @@ void msrInitSph(MSR msr,double dTime)
             * the initial density and input temperature and the ionization
             * fraction is the consistent equilibrium state.
             **/
-            in.dTuFac = msr->param.dGasConst/(msr->param.dConstGamma - 1)/
-                    msr->param.dMeanMolWeight;
+            in.dTuFac = msr->param.dTuFac;
             a = csmTime2Exp(msr->param.csm,dTime);
             in.z = 1/a - 1;
             in.dTime = dTime;
@@ -7683,7 +7728,20 @@ void msrSphStep(MSR msr, double dTime)
     in.dEtaCourant = msrEtaCourant(msr);
     in.dEtauDot = msr->param.dEtauDot;
     in.bViscosityLimitdt = msr->param.bViscosityLimitdt;
-    pstSphStep(msr->pst,&in,sizeof(in),NULL,NULL);
+    pstSphStep(msr->pst,&in,sizeof(in),&msr->dtMinGas,NULL);
+
+    msr->iMaxRungGas = pkdOneParticleDtToRung( 0,msrDelta(msr),msr->dtMinGas);
+    if(msr->iMaxRungGas >= msrMaxRung(msr)) msr->iMaxRungGas = msrMaxRung(msr)-1;
+
+    if (msr->param.bDoSinks) {
+	struct inSinkStep inSink;
+
+/* Sinks have maximum timestep of sink step (parameter) or smallest gas step */
+	inSink.dtMax = msr->param.dDeltaSink;
+	if (msr->dtMinGas < inSink.dtMax) inSink.dtMax = msr->dtMinGas;
+
+	pstSinkStep(msr->pst,&inSink,sizeof(inSink),NULL,NULL);
+	}
     }
 
 void msrSphViscosityLimiter(MSR msr, double dTime)

@@ -54,6 +54,7 @@ typedef struct smfParameters {
 	int bGrowSmoothList;
 #endif
     int bSinkThermal;
+    int iSinkCurrentRung;
     int iSmoothFlags; /* Read/Write locally.  Master sets initial value. */
 #if defined(STARFORM) || defined(CHECKSOFT)
 	double dTime;
@@ -188,6 +189,8 @@ void combSinkAccrete(void *,void *);
 
 /* SMX_BHDENSITY */
 void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf);
+void initBHSinkDensity(void *);
+void combBHSinkDensity(void *,void *);
 
 /* SMX_BHSINKACCRETE */
 void BHSinkAccrete(PARTICLE *,int,NN *,SMF *);

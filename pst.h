@@ -223,6 +223,7 @@ enum pst_service {
 	  PST_RUBINTERPCLEANUP,
 	  /* following for SPH, etc. */
       PST_SPHSTEP,
+      PST_SINKSTEP,
       PST_SETBALL,
       PST_SPHVISCOSITYLIMITER,
       PST_INITCOOLING,
@@ -1538,6 +1539,11 @@ struct inSphStep {
     };
 void pstSphStep(PST,void *,int,void *,int *);
 
+struct inSinkStep {
+    double dtMax;
+    };
+void pstSinkStep(PST,void *,int,void *,int *);
+
 struct inSphViscosityLimiter {
     int bOn;
     int bShockTracker;
@@ -1639,8 +1645,10 @@ struct inFormSinks
 {
     int bJeans;
     int bDensity;
+    int iKickRung;
     double dDensityCut;
     double dTime;
+    double dJConst2;
     };
 
 struct outFormSinks 

@@ -65,7 +65,7 @@ typedef struct particle {
 	FLOAT fPot;
 	FLOAT fBall2;
 	FLOAT fDensity;
-	FLOAT dt;			/* a time step suggestion */
+	FLOAT dt;		/* a time step suggestion */
 	FLOAT dtGrav;		/* suggested 1/dt^2 from gravity */
 #ifdef SLIDING_PATCH
 	FLOAT dPy;		/* Canonical momentum for Hill eqn. */
@@ -88,9 +88,9 @@ typedef struct particle {
 	FLOAT PdVvisc;		/* P dV from shock (testing) */
 	FLOAT PdVpres;		/* P dV from adiabatic compression (testing) */
 #endif
-	FLOAT divv;		/* Balsara viscosity reduction */
-	FLOAT curlv[3];         
-	FLOAT BalsaraSwitch;
+	FLOAT divv;		
+        FLOAT curlv[3];         /* Note this is used as workspace and value is not preserved */
+	FLOAT BalsaraSwitch;    /* Balsara viscosity reduction */
 #ifdef DENSITYU
         FLOAT fDensityU;
 #endif
@@ -607,8 +607,10 @@ void pkdGravStep(PKD pkd, double dEta);
 void pkdAccelStep(PKD pkd, double dEta, double dVelFac, double
 				  dAccFac, int bDoGravity, int bEpsAcc, int bSqrtPhi, double dhMinOverSoft);
 void pkdDensityStep(PKD pkd, double dEta, double dRhoFac);
+
+int pkdOneParticleDtToRung( int iRung,double dDelta,double dt);
 int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll,
-		int *pnMaxRung, int *piMaxRungIdeal);
+		int *pnMaxRung, int *piMaxRungIdeal );
 void pkdInitDt(PKD pkd, double dDelta);
 int pkdRungParticles(PKD,int);
 void pkdCoolVelocity(PKD,int,double,double,double);
@@ -683,7 +685,8 @@ void pkdLowerSoundSpeed(PKD, double);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime );
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);
 int pkdSphCurrRung(PKD pkd, int iRung, int bGreater);
-void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int bViscosityLimitdt);
+void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int bViscosityLimitdt, double *pdtMinGas );
+void pkdSinkStep(PKD pkd, double dtMax );
 void pkdSphViscosityLimiter(PKD pkd, int bOn, int bShockTracker);
 
 void pkdDensCheck(PKD pkd, int iRung, int bGreater, int iMeasure, void *data);
@@ -746,5 +749,5 @@ void pkdCOM(PKD pkd, double *com);
 void pkdCOMByType(PKD pkd, int type, double *com);
 void pkdOldestStar(PKD pkd, double *com);
 int pkdSetSink(PKD pkd, double dSinkMassMin);
-void pkdFormSinks(PKD pkd, int bJeans, int bDensity, double dDensityCut, double dTime, int *nCandidates);
+void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDensityCut, double dTime, int iKickRung, int *nCandidates);
 #endif

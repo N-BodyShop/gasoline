@@ -596,7 +596,7 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		r2 = nnList[i].fDist2;
 		if (r2 > 0 && r2 <= dSinkRadius2) {
 		  q = nnList[i].pPart;
-		  if (TYPETest( q, TYPE_GAS )) {
+		  if (TYPETest( q, TYPE_GAS ) && q->iRung >= smf->iSinkCurrentRung) {
 			dvx = p->v[0]-q->v[0];
 			dv2 = dvx*dvx;
 			dvx = p->v[1]-q->v[1];
@@ -629,6 +629,134 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     }
 
 /* Cached Tree Active particles */
+void initBHSinkDensity(void *p)
+{
+#ifdef GASOLINE
+    /*
+     * Original particle curlv's is trashed (JW)
+     */
+    if (TYPEQuerySMOOTHACTIVE( (PARTICLE *) p ))
+	((PARTICLE *)p)->fDensity = 0.0;
+
+    ((PARTICLE *)p)->curlv[1] = 0.0; /* total mass change */
+#endif
+    }
+
+void combBHSinkDensity(void *p1,void *p2)
+{
+#ifdef GASOLINE
+    if (TYPEQuerySMOOTHACTIVE( (PARTICLE *) p1 ))
+	((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
+    
+    ((PARTICLE *)p1)->curlv[1] += ((PARTICLE *)p2)->curlv[0]; /* total mass change */
+#endif
+}
+
+/*
+ * Calculate paramters for BH accretion for use in the BHSinkAccrete
+ * function.  This is done separately to even competition between
+ * neighboring Black Holes.
+ */
+void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+#ifdef GASOLINE
+	PARTICLE *q = NULL;
+
+	FLOAT ih2,r2,rs,fDensity;
+	FLOAT v[3],cs,fW,dv2,dv;
+	FLOAT mdot, mdotEdd, mdotCurr, dm, dmq, dE, ifMass, dtEff;
+	int i,iRung;
+
+	assert(p->iRung >= smf->iSinkCurrentRung);
+
+	ih2 = 4.0/BALL2(p);
+	fDensity = 0.0; cs = 0;
+	v[0] = 0; v[1] = 0; v[2] = 0;
+	for (i=0;i<nSmooth;++i) {
+	    r2 = nnList[i].fDist2*ih2;
+	    KERNEL(rs,r2);
+	    q = nnList[i].pPart;
+	    /* Sink should NOT be part of this list */
+	    assert(TYPETest(q,TYPE_GAS));
+	    fW = rs*q->fMass;
+	    fDensity += fW;
+	    v[0] += fW*q->v[0];
+	    v[1] += fW*q->v[1];
+	    v[2] += fW*q->v[2];
+	    cs += fW*q->c;
+	    q->curlv[2] = 0.0;
+	    }
+        dv2 = 0;
+	for (i=0;i<3;i++) {
+	    dv = v[i]/fDensity-p->v[i];
+	    dv2 += dv*dv;
+	    }
+	/*
+	 * Store results in particle.
+	 * XXX NB overloading "divv" field of the BH particle.  I am
+	 * assuming it is not used.
+	 */
+	p->c = cs = cs/fDensity;
+	p->fDensity = fDensity = M_1_PI*sqrt(ih2)*ih2*fDensity; 
+
+	printf("BHSink %d:  Density: %g C_s: %g dv: %g\n",p->iOrder,fDensity,cs,sqrt(dv2));
+
+        /* Bondi-Hoyle rate: cf. di Matteo et al 2005 (G=1) */
+	mdot = smf->dBHSinkAlphaFactor*p->fMass*p->fMass*fDensity*pow(cs*cs+dv2,-1.5);
+	/* Eddington Limit Rate */
+	mdotEdd = smf->dBHSinkEddFactor*p->fMass;
+	printf("BHSink %d:  mdot (BH): %g mdot (Edd): %g\n",p->iOrder,mdot,mdotEdd);
+
+	if (mdot > mdotEdd) mdot = mdotEdd;
+
+	mdotCurr = p->divv = mdot; /* store mdot in divv of sink */
+
+	for (;;) {
+	    FLOAT r2min = FLOAT_MAXVAL;
+	    q = NULL;
+	    for (i=0;i<nSmooth;++i) {
+		r2 = nnList[i].fDist2;
+		if (r2 < r2min && nnList[i].pPart->curlv[2] == 0.0) {
+		    r2min = r2;
+		    q = nnList[i].pPart;
+		    }
+		}
+	    assert(q != p); /* shouldn't happen because p isn't in
+			       tree */
+	    assert( q != NULL );
+	    /* We have our victim */
+
+	    /* Timestep for accretion is larger of sink and victim timestep */
+	    iRung = q->iRung;
+	    if (iRung < p->iRung) iRung = p->iRung;
+	    dtEff = smf->dSinkCurrentDelta*pow(0.5,iRung-smf->iSinkCurrentRung);
+	    /* If victim has unclosed kick -- don't actually take the mass
+	       If sink has unclosed kick we shouldn't even be here!
+	       When victim is active use his timestep if longer 
+	       Statistically expect to get right effective mdot on average */
+	    dmq = mdotCurr*dtEff;
+	    if (dmq < q->fMass) {
+		mdotCurr = 0.0;
+		}
+	    else {
+		mdotCurr -= mdot*(q->fMass/dmq); /* need an additional victim */
+		dmq = q->fMass;
+		}
+
+	    if (q->iRung >= smf->iSinkCurrentRung) {
+		/* temporarily store mass lost -- to later check for double dipping */
+		q->curlv[1] += dmq;
+		p->curlv[1] += dmq;
+		q->curlv[2] = 1.0; /* flag for pre-used victim particles */
+		}
+	    
+	    if (mdotCurr == 0.0) break;
+	    }   
+
+#endif
+    }
+
+/* Cached Tree Active particles */
 void initBHSinkAccrete(void *p)
 {
 #ifdef GASOLINE
@@ -639,9 +767,11 @@ void initBHSinkAccrete(void *p)
      * can remove it from the original particle.
      * Let's use the curlv field in the cached particle copy to hold
      * the original mass.
-     * Note: original particle curlv's never modified.
+     * Original particle curlv's is trashed (JW)
      */
 	((PARTICLE *)p)->curlv[0] = ((PARTICLE *)p)->fMass;
+
+	/* Heating due to accretion */
 	((PARTICLE *)p)->u = 0.0;
 	((PARTICLE *)p)->uPred = 0.0;
 	}
@@ -666,7 +796,7 @@ void combBHSinkAccrete(void *p1,void *p2)
 	 */
 	FLOAT fEatenMass = pp2->curlv[0] - pp2->fMass;
 	pp1->fMass -= fEatenMass;
-	if(pp1->fMass <= 0.0) {
+	if(pp1->fMass < pp1->curlv[0]*1e-3) {
 	    /* This could happen if BHs on two
 	       different processors are eating
 	       gas from a third processor */
@@ -686,52 +816,6 @@ void combBHSinkAccrete(void *p1,void *p2)
 #endif
 }
 
-/*
- * Calculate paramters for BH accretion for use in the BHSinkAccrete
- * function.  This is done separately to even competition between
- * neighboring Black Holes.
- */
-void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
-{
-#ifdef GASOLINE
-	PARTICLE *q = NULL;
-
-	FLOAT ih2,r2,rs,fDensity;
-	FLOAT v[3],cs,fW,dv2,dv;
-	int i;
-
-	ih2 = 4.0/BALL2(p);
-	fDensity = 0.0; cs = 0;
-	v[0] = 0; v[1] = 0; v[2] = 0;
-	for (i=0;i<nSmooth;++i) {
-	    r2 = nnList[i].fDist2*ih2;
-	    KERNEL(rs,r2);
-	    q = nnList[i].pPart;
-	    /* Sink should NOT be part of this list */
-	    assert(TYPETest(q,TYPE_GAS));
-	    fW = rs*q->fMass;
-	    fDensity += fW;
-	    v[0] += fW*q->v[0];
-	    v[1] += fW*q->v[1];
-	    v[2] += fW*q->v[2];
-	    cs += fW*q->c;
-	    }
-        dv2 = 0;
-	for (i=0;i<3;i++) {
-	    dv = v[i]/fDensity-p->v[i];
-	    dv2 += dv*dv;
-	    }
-	/*
-	 * Store results in particle.
-	 * XXX NB overloading "divv" field of the BH particle.  I am
-	 * assuming it is not used.
-	 */
-	p->c = cs/fDensity;
-	p->divv = dv2;
-	p->fDensity = M_1_PI*sqrt(ih2)*ih2*fDensity; 
-#endif
-    }
-
 void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 #ifdef GASOLINE
@@ -739,30 +823,24 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	FLOAT ih2,r2,rs,fDensity;
 	FLOAT cs,fW,dv2;
-	FLOAT mdot, mdotEdd, dm, dmq, dE, ifMass;
-	int i;
+	FLOAT mdot, mdotEdd, mdotCurr, dmAvg, dm, dmq, dE, ifMass, dtEff;
+	int i,iRung;
 
-	ih2 = 4.0/BALL2(p);
-	/*
-	 * Grab parameters from density calculation.  See above.
-	 */
-	cs = p->c;
-	dv2 = p->divv;
-        fDensity = p->fDensity;
- 
-	printf("BHSink:  Density: %g C_s: %g dv: %g\n",fDensity,cs,sqrt(dv2));
+	mdot = p->divv;	
+	if (p->curlv[1] == 0.0) {
+	    dtEff = smf->dSinkCurrentDelta*pow(0.5,p->iRung-smf->iSinkCurrentRung);
+	    dmAvg = mdot*dtEff;
+	    printf("BHSink %d:  Delta: %g dm: 0 (%g) (victims on wrong step)\n",p->iOrder,dtEff,dmAvg);
+	    return;
+	    }
 
-        /* Bondi-Hoyle rate: cf. di Matteo et al 2005 (G=1) */
-	mdot = smf->dBHSinkAlphaFactor*p->fMass*p->fMass*fDensity*pow(cs*cs+dv2,-1.5);
-	/* Eddington Limit Rate */
-	mdotEdd = smf->dBHSinkEddFactor*p->fMass;
-	printf("BHSink:  mdot (BH): %g mdot (Edd): %g\n",mdot,mdotEdd);
+	for (i=0;i<nSmooth;++i) {
+	    q = nnList[i].pPart;
+	    q->curlv[2] = 0.0;  /* Flag for used victim */
+	    }
 
-	if (mdot > mdotEdd) mdot = mdotEdd;
-	dm = mdot*smf->dSinkCurrentDelta;
-	dE = smf->dBHSinkFeedbackFactor*dm;
-	printf("BHSink:  Delta: %g dm: %g dE %g\n",smf->dSinkCurrentDelta,dm,dE);
-
+	mdotCurr = mdot;
+	dm = 0;
 	for (;;) {
 	    FLOAT r2min = FLOAT_MAXVAL;
 	    q = NULL;
@@ -775,32 +853,66 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	    assert(q != p); /* shouldn't happen because p isn't in
 			       tree */
-	    assert( q != NULL && q->fMass > 0);
+	    assert( q != NULL );
 	    /* We have our victim */
-	    dmq = (dm > q->fMass ? q->fMass : dm);
-	    ifMass = 1./(p->fMass + dmq);
-	    /* Adjust sink properties (conserving momentum etc...) */
-	    p->r[0] = ifMass*(p->fMass*p->r[0]+dmq*q->r[0]);
-	    p->r[1] = ifMass*(p->fMass*p->r[1]+dmq*q->r[1]);
-	    p->r[2] = ifMass*(p->fMass*p->r[2]+dmq*q->r[2]);
-	    p->v[0] = ifMass*(p->fMass*p->v[0]+dmq*q->v[0]);
-	    p->v[1] = ifMass*(p->fMass*p->v[1]+dmq*q->v[1]);
-	    p->v[2] = ifMass*(p->fMass*p->v[2]+dmq*q->v[2]);
-	    p->a[0] = ifMass*(p->fMass*p->a[0]+dmq*q->a[0]);
-	    p->a[1] = ifMass*(p->fMass*p->a[1]+dmq*q->a[1]);
-	    p->a[2] = ifMass*(p->fMass*p->a[2]+dmq*q->a[2]);
-	    p->fMetals = ifMass*(p->fMass*p->fMetals+dmq*q->fMetals);
-	    p->fMass += dmq;
-	    q->fMass -= dmq;
-	    dm -= dmq;
-	    if (q->fMass < 1e-3*dmq) {
-		q->fMass = 0;
-		pkdDeleteParticle(smf->pkd, q);
+
+	    /* Timestep for accretion is larger of sink and victim timestep */
+	    iRung = q->iRung;
+	    if (iRung < p->iRung) iRung = p->iRung;
+	    dtEff = smf->dSinkCurrentDelta*pow(0.5,iRung-smf->iSinkCurrentRung);
+	    /* If victim has unclosed kick -- don't actually take the mass
+	       If sink has unclosed kick we shouldn't even be here!
+	       When victim is active use his timestep if longer 
+	       Statistically expect to get right effective mdot on average */
+	    dmq = mdotCurr*dtEff;
+	    if (dmq < q->curlv[0]) { /* Original mass in q->curlv[0] */
+		mdotCurr = 0.0;
 		}
-	    if (dm <= 1e-3*dmq) break;
-	    }   
+	    else {
+		mdotCurr -= mdot*(q->curlv[0]/dmq); /* need an additional victim */
+		dmq = q->curlv[0];
+		}
+
+	    /* Are the competitors for this victim? -- if so share it out 
+	       Note: this victim should still get consumed */
+	    if (q->curlv[1] > q->curlv[0]) {
+		printf("BHSink %d:  multi sink victim particle %d, dmq %g %g %g\n",p->iOrder,q->iOrder,dmq,q->curlv[1],q->curlv[0]);
+		dmq *= q->curlv[0]/q->curlv[1];
+		}
+
+	    if (q->iRung >= smf->iSinkCurrentRung) {
+		ifMass = 1./(p->fMass + dmq);
+		/* Adjust sink properties (conserving momentum etc...) */
+		p->r[0] = ifMass*(p->fMass*p->r[0]+dmq*q->r[0]);
+		p->r[1] = ifMass*(p->fMass*p->r[1]+dmq*q->r[1]);
+		p->r[2] = ifMass*(p->fMass*p->r[2]+dmq*q->r[2]);
+		p->v[0] = ifMass*(p->fMass*p->v[0]+dmq*q->v[0]);
+		p->v[1] = ifMass*(p->fMass*p->v[1]+dmq*q->v[1]);
+		p->v[2] = ifMass*(p->fMass*p->v[2]+dmq*q->v[2]);
+		p->a[0] = ifMass*(p->fMass*p->a[0]+dmq*q->a[0]);
+		p->a[1] = ifMass*(p->fMass*p->a[1]+dmq*q->a[1]);
+		p->a[2] = ifMass*(p->fMass*p->a[2]+dmq*q->a[2]);
+		p->fMetals = ifMass*(p->fMass*p->fMetals+dmq*q->fMetals);
+		p->fMass += dmq;
+		dm += dmq;
+		q->fMass -= dmq;
+		if (q->fMass < 1e-3*dmq) {
+		    q->fMass = 0;
+		    pkdDeleteParticle(smf->pkd, q);
+		    }
+		}
+
+	    if (mdotCurr == 0.0) break;
+	    }
+
+	dE = smf->dBHSinkFeedbackFactor*dm; /* dE based on actual mass eaten */
+
+	dtEff = smf->dSinkCurrentDelta*pow(0.5,p->iRung-smf->iSinkCurrentRung);
+	dmAvg = mdot*dtEff;
+	printf("BHSink %d:  Delta: %g dm: actual %g (pred %g) (avg %g) dE %g\n",p->iOrder,dtEff,dm,p->curlv[1],dmAvg,dE);
 
 	/* Recalculate Normalization */
+	ih2 = 4.0/BALL2(p);
 	fDensity = 0.0; 
 	for (i=0;i<nSmooth;++i) {
 	    r2 = nnList[i].fDist2*ih2;
@@ -845,7 +957,7 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	/* Apply Bate tests here -- 
 	   1. thermal energy < 1/2 Grav, 
-	   2. thermal + rot E < Grav,
+	   2. thermal + rot E < Grav, 
 	   3. total E < 0 (implies 2.)
 	   4. div.acc < 0 (related to rate of change of total E I guess)  (I will ignore this)
 

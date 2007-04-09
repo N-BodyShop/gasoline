@@ -127,6 +127,8 @@ typedef struct msrContext {
         int nSmoothActive;
         int iRungStat;
         struct RungData *RungStat;
+        double dtMinGas;
+        int iMaxRungGas;
 	} * MSR;
 
 void msrInitialize(MSR *,MDL,int,char **);
@@ -244,8 +246,8 @@ void msrCoolVelocity(MSR,double,double);
 void msrGrowMass(MSR msr, double dTime, double dDelta);
 void msrCalcWriteStart(MSR);
 void msrAddDelParticles(MSR msr);
-void msrFormSinks(MSR msr, double dTime);
-void msrDoSinks(MSR msr, double dTime, double dDelta);
+void msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung);
+void msrFormSinks(MSR msr, double dTime, double dDelta, int iKickRung);
 void msrGravStep(MSR msr, double dTime);
 void msrAccelStep(MSR msr, double dTime);
 void msrDensityStep(MSR msr, double dTime);

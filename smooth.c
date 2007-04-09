@@ -95,10 +95,10 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		break;
 	case SMX_BHDENSITY:
 		smx->fcnSmooth = BHSinkDensity;
-		initParticle = NULL; /* Original Particle */
-		initTreeParticle = NULL; /* Original Particle */
-		init = initDensity; /* Cached copies */
-		comb = combDensity;
+		initParticle = initBHSinkDensity; /* Original Particle */
+		initTreeParticle = initBHSinkDensity; /* Original Particle */
+		init = initBHSinkDensity; /* Cached copies */
+		comb = combBHSinkDensity;
 		smx->fcnPost = NULL;
 		break;
 	case SMX_BHSINKACCRETE:

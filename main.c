@@ -212,7 +212,7 @@ int main(int argc,char **argv)
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
 #endif
-		if (msr->param.bDoSinksAtStart) msrDoSinks(msr, dTime, 0.0);
+		if (msr->param.bDoSinksAtStart) msrDoSinks(msr, dTime, 0.0, 0);
 		/* 
 		 ** Dump Frame Initialization
 		 */
@@ -360,14 +360,14 @@ int main(int argc,char **argv)
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
 #endif
-		if (msr->param.bDoSinksAtStart) msrDoSinks(msr, dTime, 0.0);
+		if (msr->param.bDoSinksAtStart) msrDoSinks(msr, dTime, 0.0, 0);
 		/* 
 		 ** Dump Frame Initialization
 		 */
 		msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep, 0);
 
 		LogTimingZeroCounters( msr );
-		for (iStep=msr->param.iStartStep+1;iStep<=msrSteps(msr);++iStep) {
+		for (iStep=msr->param.iStartStep+1;iStep<=msr->param.iStopStep;++iStep) {
 			if (msrComove(msr)) {
 				msrSwitchTheta(msr,dTime);
 				}
@@ -531,7 +531,7 @@ int main(int argc,char **argv)
 			**           3) we're at an output interval
 			*/
 #ifndef BENCHMARK
-			if (msrOutTime(msr,dTime) || iStep == msrSteps(msr) || iStop ||
+			if (msrOutTime(msr,dTime) || iStep == msr->param.iStopStep || iStop ||
 				(msrOutInterval(msr) > 0 && iStep%msrOutInterval(msr) == 0)) {
 				if (msr->nGas && !msr->param.bKDK) {
 					msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
@@ -571,7 +571,7 @@ int main(int argc,char **argv)
 					iStop = 1;
 					}
 				}
-			if (iStop || iStep == msrSteps(msr) ||
+			if (iStop || iStep == msr->param.iStopStep ||
 				(msrCheckInterval(msr) && iStep%msrCheckInterval(msr) == 0)) {
 				/*
 				 ** Write a checkpoint.

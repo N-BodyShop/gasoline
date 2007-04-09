@@ -4179,11 +4179,35 @@ pkdDensityStep(PKD pkd,double dEta,double dRhoFac)
 		}
     }
 
+
+int
+pkdOneParticleDtToRung( int iRung,double dDelta,double dt)
+    {
+  int iSteps,iTempRung;
+
+  iSteps = floor(dDelta/dt);
+  /* insure that integer boundary goes
+     to the lower rung. */
+  if(fmod(dDelta,dt) == 0.0) iSteps--;
+  
+  iTempRung = iRung;
+  if(iSteps < 0)
+      iSteps = 0;
+
+  while(iSteps) {
+      ++iTempRung;
+      iSteps >>= 1;
+      }
+  
+  return iTempRung;
+    }
+
+
 int
 pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
 	    int bAll, /* 0 => symplectic case */
 	    int *pnMaxRung,	/* number of particles on MaxRung */
-	    int *piMaxRungIdeal) /* preferred max rung */
+	    int *piMaxRungIdeal)  /* preferred max rung */
 {
     int i;
     int iMaxRungOut;
@@ -4201,22 +4225,13 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
 			if(bAll) {          /* Assign all rungs at iRung and above */
 			        assert(pkd->pStore[i].fSoft > 0.0);
 			        assert(pkd->pStore[i].dt > 0.0);
-				iSteps = floor(dDelta/pkd->pStore[i].dt);
-				/* insure that integer boundary goes
-				   to the lower rung. */
-				if(fmod(dDelta,pkd->pStore[i].dt) == 0.0)
-				    iSteps--;
-				iTempRung = iRung;
-				if(iSteps < 0)
-				    iSteps = 0;
-				while(iSteps) {
-					++iTempRung;
-					iSteps >>= 1;
-					}
+				iTempRung = pkdOneParticleDtToRung( iRung,dDelta,pkd->pStore[i].dt);
+
 				if(iTempRung >= iMaxRungIdeal)
 					iMaxRungIdeal = iTempRung+1;
 				if(iTempRung >= iMaxRung)
 					iTempRung = iMaxRung-1;
+
 				pkd->pStore[i].iRung = iTempRung;
 				}
 			else {
@@ -5245,15 +5260,17 @@ int pkdSphCurrRung(PKD pkd, int iRung, int bGreater)
     }
 
 void
-pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int bViscosityLimitdt)
+pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int bViscosityLimitdt, double *pdtMinGas)
 {
     int i;
     PARTICLE *p;    
     double dT,dTu;
 
+    *pdtMinGas = DBL_MAX;
     for(i=0;i<pkdLocal(pkd);++i) {
         p = &pkd->pStore[i];
-        if(pkdIsGas(pkd, p) && TYPEQueryACTIVE(p)) {
+        if(pkdIsGas(pkd, p)) {
+	    if (TYPEQueryACTIVE(p)) {
 			/*
 			 * Courant condition goes here.
 			 */
@@ -5288,9 +5305,25 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 
 		if(dT < p->dt)
 				p->dt = dT;
-			}
 		}
-    }
+	    if (p->dt < *pdtMinGas) *pdtMinGas = p->dt;
+	    }
+	}
+}
+
+void
+pkdSinkStep(PKD pkd, double dtMax)
+{
+    int i;
+    PARTICLE *p;    
+
+    for(i=0;i<pkdLocal(pkd);++i) {
+        p = &pkd->pStore[i];
+        if(TYPETest( p, TYPE_SINK ) && TYPEQueryACTIVE(p)) {
+	    if (dtMax < p->dt) p->dt = dtMax;
+	    }
+	}
+}
 
 void 
 pkdSphViscosityLimiter(PKD pkd, int bOn, int bShockTracker)
@@ -6061,7 +6094,7 @@ int pkdSetSink(PKD pkd, double dSinkMassMin)
 #endif
     }
 
-void pkdFormSinks(PKD pkd, int bJeans, int bDensity, double dDensityCut, double dTime, int *nCandidates)
+void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDensityCut, double dTime, int iKickRung, int *nCandidates)
 {
 #ifdef GASOLINE
     int i;
@@ -6074,11 +6107,11 @@ void pkdFormSinks(PKD pkd, int bJeans, int bDensity, double dDensityCut, double 
 #ifdef GASOLINE
     for(i = 0; i < n; ++i) {
         p = &pkd->pStore[i];
-        if(TYPETest( p, TYPE_GAS ) && TYPEQueryACTIVE(p)) {
-	    if (bDensity && p->fDensity > dDensityCut) {
+        if(TYPETest( p, TYPE_GAS ) && p->iRung >= iKickRung) {
+/* Jeans Mass compared to nJeans particle masses */
+	    if ((bJeans && dJConst2*p->c*p->c*p->c*p->c*p->c*p->c <= p->fMass*p->fMass*p->fDensity)
+		|| (bDensity && p->fDensity >= dDensityCut)) {
 		TYPESet(p, TYPE_SINK); /* Is now a candidate */
-		p->fTimeForm = dTime;
-
 		(*nCandidates)++;
 		}
 	    }

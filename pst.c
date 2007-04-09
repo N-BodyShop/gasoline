@@ -284,7 +284,10 @@ pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inKickRhopred),0);
 	mdlAddService(mdl,PST_SPHSTEP,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSphStep,
-				  sizeof(struct inSphStep),0);
+				  sizeof(struct inSphStep),sizeof(double));
+	mdlAddService(mdl,PST_SINKSTEP,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSinkStep,
+				  sizeof(struct inSinkStep),0);
 	mdlAddService(mdl,PST_SPHVISCOSITYLIMITER,pst,
 				  (void (*)(void *,void *,int,void *,int *)) 
 				  pstSphViscosityLimiter, 
@@ -4028,6 +4031,7 @@ void pstDtToRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		iMaxRung = out->iMaxRung;
 		nMaxRung = out->nMaxRung;
 		iMaxRungIdeal = out->iMaxRungIdeal;
+       
 		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
 		if(iMaxRung > out->iMaxRung) {
 			out->iMaxRung = iMaxRung;
@@ -4038,12 +4042,13 @@ void pstDtToRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		        
 		if(iMaxRungIdeal > out->iMaxRungIdeal)
 		    out->iMaxRungIdeal = iMaxRungIdeal;
-		}
+
+	    }
 	else {
 		out->iMaxRung = pkdDtToRung(plcl->pkd, in->iRung,
 					    in->dDelta, in->iMaxRung, in->bAll,
 					    &(out->nMaxRung),
-					    &(out->iMaxRungIdeal));
+					    &(out->iMaxRungIdeal) );
 		}
 	if (pnOut) *pnOut = sizeof(*out);
 	}
@@ -4548,15 +4553,35 @@ void pstSphStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
 	struct inSphStep *in = vin;
+	double *pdtMinGas = vout;
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inSphStep));
 	if (pst->nLeaves > 1) {
+   	        double dtMinGas;
 		mdlReqService(pst->mdl,pst->idUpper,PST_SPHSTEP,in,nIn);
-		pstSphStep(pst->pstLower,in,nIn,NULL,NULL);
+		pstSphStep(pst->pstLower,in,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,&dtMinGas,pnOut);
+		if (dtMinGas < *pdtMinGas) *pdtMinGas = dtMinGas;
+		}
+	else {
+		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot,in->bViscosityLimitdt,pdtMinGas);
+		}
+	if (pnOut) *pnOut = sizeof(double);
+	}
+
+void pstSinkStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inSinkStep *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inSinkStep));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_SINKSTEP,in,nIn);
+		pstSinkStep(pst->pstLower,in,nIn,NULL,NULL);
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot,in->bViscosityLimitdt);
+		pkdSinkStep(plcl->pkd,in->dtMax);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -5903,8 +5928,8 @@ pstFormSinks(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->nCandidates += fsStats.nCandidates;
 		}
 	else {
-		pkdFormSinks(pst->plcl->pkd,in->bJeans,in->bDensity,in->dDensityCut,in->dTime,
-			     &out->nCandidates);
+	    pkdFormSinks(pst->plcl->pkd,in->bJeans,in->dJConst2,in->bDensity,in->dDensityCut,
+			 in->dTime,in->iKickRung, &out->nCandidates);
 		}
 	if (pnOut) *pnOut = sizeof(struct outFormSinks);
 	}
