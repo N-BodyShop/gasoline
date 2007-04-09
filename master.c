@@ -2457,7 +2457,7 @@ void msrLogParams(MSR msr,FILE *fp)
 		  for ( iRung = 0; iRung < msr->param.iSinkRung ; iRung++ ) 
 		      testDelta *= 0.5;
 		  }
-	      else {
+	      else if (prmSpecified(msr->prm,"dDeltaSink")) {
 		  /* Find associate Rung for dDeltaSink */
 		  /* NB: dDeltaSink is always in code units */
 		  msr->param.iSinkRung = 0;
@@ -2468,6 +2468,10 @@ void msrLogParams(MSR msr,FILE *fp)
 				exit(-1);
 		      }
 		  }		  
+	      else {
+		  msr->param.dDeltaSink = msr->param.dDelta;
+		  msr->param.iSinkRung = 0;
+		  }
 	      fprintf(fp," dDeltaSink (set): %g, effectively: %g = %g yrs, iSinkRung: %i",
 		      msr->param.dDeltaSink, testDelta,
 		      testDelta*msr->param.dSecUnit/SECONDSPERYEAR,
