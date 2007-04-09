@@ -2469,7 +2469,7 @@ void msrLogParams(MSR msr,FILE *fp)
 		      }
 		  }		  
 	      else {
-		  msr->param.dDeltaSink = msr->param.dDelta;
+		  testDelta = msr->param.dDelta;
 		  msr->param.iSinkRung = 0;
 		  }
 	      fprintf(fp," dDeltaSink (set): %g, effectively: %g = %g yrs, iSinkRung: %i",
