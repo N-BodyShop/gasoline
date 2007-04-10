@@ -223,7 +223,7 @@ void rotbarInitValues(ROTBAR rotbar)
 {
     const int nInterp = 100;
   /* Work vectors */
-    double w1[nInterp], w2[nInterp];
+    double *w1, *w2;
     double mfac;
     double mass;
     double a, b, c;
@@ -232,6 +232,9 @@ void rotbarInitValues(ROTBAR rotbar)
     double dr;
     int v;
     INTCTX intctx;
+
+    w1 = malloc(sizeof(double)*nInterp);
+    w2 = malloc(sizeof(double)*nInterp);
 
     rotbar->nBinMono = nInterp;
     rotbar->pdRmono = malloc(rotbar->nBinMono*sizeof(*(rotbar->pdRmono)));
@@ -283,6 +286,8 @@ void rotbarInitValues(ROTBAR rotbar)
     
   rotbar->getMass = &rotbarGetMass;
   rotbar->getPot = &rotbarGetPot;
+    free(w2);
+    free(w1);
     }
 
 void rotbarDrift(ROTBAR rotbar, double dTime, double dDelta)
