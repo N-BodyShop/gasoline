@@ -7381,6 +7381,7 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
     dMass = msrMassCheck(msr, -1, "Accrete onto Sinks: Initial Value");
 
     /* Note: Only gas particles are accreted by sinks */
+/*    printf("Tree: %d %d\n",msr->iTreeType,MSR_TREE_DENSITY);*/
     if (msr->iTreeType != MSR_TREE_DENSITY) {
 	    msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
 	    msrBuildTree(msr,1,-1.0,1);  /* bTreeActive */

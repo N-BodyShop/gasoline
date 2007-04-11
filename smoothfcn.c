@@ -639,6 +639,7 @@ void initBHSinkDensity(void *p)
 	((PARTICLE *)p)->fDensity = 0.0;
 
     ((PARTICLE *)p)->curlv[1] = 0.0; /* total mass change */
+    ((PARTICLE *)p)->curlv[0] = ((PARTICLE *)p)->fMass; /* initial mass */
 #endif
     }
 
@@ -648,7 +649,7 @@ void combBHSinkDensity(void *p1,void *p2)
     if (TYPEQuerySMOOTHACTIVE( (PARTICLE *) p1 ))
 	((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
     
-    ((PARTICLE *)p1)->curlv[1] += ((PARTICLE *)p2)->curlv[0]; /* total mass change */
+    ((PARTICLE *)p1)->curlv[1] += ((PARTICLE *)p2)->curlv[1]; /* total mass change */
 #endif
 }
 
@@ -668,6 +669,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	int i,iRung;
 
 	assert(p->iRung >= smf->iSinkCurrentRung);
+	p->curlv[1] = 0.0;
 
 	ih2 = 4.0/BALL2(p);
 	fDensity = 0.0; cs = 0;
@@ -693,7 +695,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    }
 	/*
 	 * Store results in particle.
-	 * XXX NB overloading "divv" field of the BH particle.  I am
+	 * XXX NB overloading "curlv" field of the BH particle.  I am
 	 * assuming it is not used.
 	 */
 	p->c = cs = cs/fDensity;
@@ -743,12 +745,13 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dmq = q->fMass;
 		}
 
+	    q->curlv[2] = 1.0; /* flag for pre-used victim particles */
 	    if (q->iRung >= smf->iSinkCurrentRung) {
 		/* temporarily store mass lost -- to later check for double dipping */
 		q->curlv[1] += dmq;
 		p->curlv[1] += dmq;
-		q->curlv[2] = 1.0; /* flag for pre-used victim particles */
 		}
+	    printf("BHSink %d:  %d dmq %g %g %g\n",p->iOrder,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
 	    
 	    if (mdotCurr == 0.0) break;
 	    }   
@@ -761,16 +764,6 @@ void initBHSinkAccrete(void *p)
 {
 #ifdef GASOLINE
     if (TYPEQueryTREEACTIVE((PARTICLE *) p)) {
-    /*
-     * Warning: kludgery.  The BH can eat mass in the cached
-     * particle, and we need to keep track of how much is eaten so we
-     * can remove it from the original particle.
-     * Let's use the curlv field in the cached particle copy to hold
-     * the original mass.
-     * Original particle curlv's is trashed (JW)
-     */
-	((PARTICLE *)p)->curlv[0] = ((PARTICLE *)p)->fMass;
-
 	/* Heating due to accretion */
 	((PARTICLE *)p)->u = 0.0;
 	((PARTICLE *)p)->uPred = 0.0;
@@ -846,7 +839,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    q = NULL;
 	    for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2;
-		if (r2 < r2min && nnList[i].pPart->fMass > 0) {
+		if (r2 < r2min && nnList[i].pPart->curlv[2] == 0.0) {
 		    r2min = r2;
 		    q = nnList[i].pPart;
 		    }
@@ -880,6 +873,8 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dmq *= q->curlv[0]/q->curlv[1];
 		}
 
+	    q->curlv[2] = 1.0; /* flag for pre-used victim particles */
+	    printf("BHSink %d:  %d dmq %g %g %g\n",p->iOrder,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
 	    if (q->iRung >= smf->iSinkCurrentRung) {
 		ifMass = 1./(p->fMass + dmq);
 		/* Adjust sink properties (conserving momentum etc...) */
