@@ -564,21 +564,29 @@ void DeltaAccel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    }
     }
 
-void initSinkAccrete(void *p)
+void initSinkTest(void *p) 
 {
+#ifdef GASOLINE
+    ((PARTICLE *) p)->curlv[0] = FLT_MAX;
+    *((int *) (&(((PARTICLE *) p)->curlv[1]))) = -1;
+#endif
+}
+
+void combSinkTest(void *p1,void *p2)
+{
+#ifdef GASOLINE
+/* Particle p1 belongs to sink *((int *) &(((PARTICLE *) p1)->curlv[1])) initially but
+   switch to *((int *) &(((PARTICLE *) p2)->curlv[1])) if more bound to that sink */
+    if (((PARTICLE *) p2)->curlv[0] < ((PARTICLE *) p1)->curlv[0]) {
+	((PARTICLE *) p1)->curlv[0] = ((PARTICLE *) p2)->curlv[0];
+	*((int *) &(((PARTICLE *) p1)->curlv[1])) = *((int *) &(((PARTICLE *) p2)->curlv[1]));
 	}
+#endif
+}
 
-void combSinkAccrete(void *p1,void *p2)
+void SinkTest(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
-    if (!(TYPETest( ((PARTICLE *) p1), TYPE_DELETED )) &&
-        TYPETest( ((PARTICLE *) p2), TYPE_DELETED ) ) {
-		((PARTICLE *) p1)-> fMass = ((PARTICLE *) p2)-> fMass;
-	    pkdDeleteParticle( NULL, p1 );
-	    }
-    }
-
-void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
-{
+#ifdef GASOLINE
 	int i;
 	double dSinkRadius2 = smf->dSinkRadius*smf->dSinkRadius, 
 	       EBO,Eq,r2,dvx,dv2,ifMass;
@@ -593,40 +601,71 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             EBO = FLT_MAX;
 
 	for (i=0;i<nSmooth;++i) {
-		r2 = nnList[i].fDist2;
-		if (r2 > 0 && r2 <= dSinkRadius2) {
-		  q = nnList[i].pPart;
-		  if (TYPETest( q, TYPE_GAS ) && q->iRung >= smf->iSinkCurrentRung) {
-			dvx = p->v[0]-q->v[0];
-			dv2 = dvx*dvx;
-			dvx = p->v[1]-q->v[1];
-			dv2 += dvx*dvx;
-			dvx = p->v[2]-q->v[2];
-			dv2 += dvx*dvx;
-			Eq = -p->fMass/sqrt(r2) + 0.5*dv2;
-#ifdef GASOLINE
-			if (smf->bSinkThermal) Eq+= q->u;
-#endif
-			if (Eq < EBO) {
-			   ifMass = 1./(p->fMass + q->fMass);
-			   p->r[0] = ifMass*(p->fMass*p->r[0]+q->fMass*q->r[0]);
-			   p->r[1] = ifMass*(p->fMass*p->r[1]+q->fMass*q->r[1]);
-			   p->r[2] = ifMass*(p->fMass*p->r[2]+q->fMass*q->r[2]);
-			   p->v[0] = ifMass*(p->fMass*p->v[0]+q->fMass*q->v[0]);
-			   p->v[1] = ifMass*(p->fMass*p->v[1]+q->fMass*q->v[1]);
-			   p->v[2] = ifMass*(p->fMass*p->v[2]+q->fMass*q->v[2]);
-			   p->a[0] = ifMass*(p->fMass*p->a[0]+q->fMass*q->a[0]);
-			   p->a[1] = ifMass*(p->fMass*p->a[1]+q->fMass*q->a[1]);
-			   p->a[2] = ifMass*(p->fMass*p->a[2]+q->fMass*q->a[2]);
-			   p->fMass += q->fMass;
-			   assert(q->fMass != 0);
-			   q->fMass = 0;
-			   pkdDeleteParticle(smf->pkd, q);
-			   }
+	    r2 = nnList[i].fDist2;
+	    if (r2 > 0 && r2 <= dSinkRadius2) {
+		q = nnList[i].pPart;
+		if (TYPETest( q, TYPE_GAS ) && q->iRung >= smf->iSinkCurrentRung) {
+		    dvx = p->v[0]-q->v[0];
+		    dv2 = dvx*dvx;
+		    dvx = p->v[1]-q->v[1];
+		    dv2 += dvx*dvx;
+		    dvx = p->v[2]-q->v[2];
+		    dv2 += dvx*dvx;
+		    Eq = -p->fMass/sqrt(r2) + 0.5*dv2;
+		    if (smf->bSinkThermal) Eq+= q->u;
+		    if (Eq < EBO) {
+			if (Eq < q->curlv[0]) {
+			    q->curlv[0] = Eq;
+			    *( (int *) (&(q->curlv[1])) ) = p->iOrder; /* Particle q belongs to sink p */
+			    }
+			}
 		    }
-          }   
+		}   
 	    }
+#endif
+}
+
+void initSinkAccrete(void *p)
+{
+	}
+
+void combSinkAccrete(void *p1,void *p2)
+{
+    if (!(TYPETest( ((PARTICLE *) p1), TYPE_DELETED )) &&
+        TYPETest( ((PARTICLE *) p2), TYPE_DELETED ) ) {
+	((PARTICLE *) p1)-> fMass = ((PARTICLE *) p2)-> fMass;
+	pkdDeleteParticle( NULL, p1 );
+	}
     }
+
+void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+#ifdef GASOLINE
+	int i;
+	double ifMass;
+	PARTICLE *q;
+
+	for (i=0;i<nSmooth;++i) {
+	    q = nnList[i].pPart;
+	    if ( *( (int *) (&(q->curlv[1])) ) == p->iOrder) {
+		ifMass = 1./(p->fMass + q->fMass);
+		p->r[0] = ifMass*(p->fMass*p->r[0]+q->fMass*q->r[0]);
+		p->r[1] = ifMass*(p->fMass*p->r[1]+q->fMass*q->r[1]);
+		p->r[2] = ifMass*(p->fMass*p->r[2]+q->fMass*q->r[2]);
+		p->v[0] = ifMass*(p->fMass*p->v[0]+q->fMass*q->v[0]);
+		p->v[1] = ifMass*(p->fMass*p->v[1]+q->fMass*q->v[1]);
+		p->v[2] = ifMass*(p->fMass*p->v[2]+q->fMass*q->v[2]);
+		p->a[0] = ifMass*(p->fMass*p->a[0]+q->fMass*q->a[0]);
+		p->a[1] = ifMass*(p->fMass*p->a[1]+q->fMass*q->a[1]);
+		p->a[2] = ifMass*(p->fMass*p->a[2]+q->fMass*q->a[2]);
+		p->fMass += q->fMass;
+		assert(q->fMass != 0);
+		q->fMass = 0;
+		pkdDeleteParticle(smf->pkd, q);
+		}
+	    }
+#endif
+}
 
 /* Cached Tree Active particles */
 void initBHSinkDensity(void *p)
@@ -930,6 +969,70 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 }
 
+void initSinkFormTest(void *p)
+{
+#ifdef GASOLINE
+    ((PARTICLE *) p)->curlv[0] = FLT_MAX;
+    *((int *) (&(((PARTICLE *) p)->curlv[1]))) = -1;
+#endif
+	}
+
+void combSinkFormTest(void *p1,void *p2)
+{
+#ifdef GASOLINE
+/* Particle p1 belongs to candidate *((int *) &(((PARTICLE *) p1)->curlv[1])) initially but
+   switch to *((int *) &(((PARTICLE *) p2)->curlv[1])) if more that candidate is denser */
+    if (((PARTICLE *) p2)->curlv[0] > ((PARTICLE *) p1)->curlv[0]) {
+	((PARTICLE *) p1)->curlv[0] = ((PARTICLE *) p2)->curlv[0];
+	*((int *) &(((PARTICLE *) p1)->curlv[1])) = *((int *) &(((PARTICLE *) p2)->curlv[1]));
+	}
+#endif
+}
+
+
+void SinkFormTest(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+#ifdef GASOLINE
+	int i;
+	double dSinkRadius2 = smf->dSinkRadius*smf->dSinkRadius,r2;
+	PARTICLE *q;
+
+	/* Apply Bate tests in next phase
+	   For now just decide which sink the particle belongs to:
+   	          prefer joining a denser sink candidate
+	   Also: If there is a denser particle that is also a sink candidate
+	         defer to it
+	   Need to prevent double counting particles into two sinks
+	*/
+	for (i=0;i<nSmooth;++i) {
+	    r2 = nnList[i].fDist2;
+	    if (r2 > 0 && r2 <= dSinkRadius2) {
+		q = nnList[i].pPart;
+		if (TYPETest( q, TYPE_GAS ) && q->iRung >= smf->iSinkCurrentRung) {
+		    if (q->fDensity > p->fDensity && TYPETest( q, TYPE_GAS )) {
+			/* Abort without grabbing any particles -- this isn't the densest particle */
+			return;
+			}
+		    }
+		}
+	    }
+
+	for (i=0;i<nSmooth;++i) {
+	    r2 = nnList[i].fDist2;
+	    if (r2 > 0 && r2 <= dSinkRadius2) {
+		q = nnList[i].pPart;
+		if (TYPETest( q, TYPE_GAS ) && q->iRung >= smf->iSinkCurrentRung) {
+		    /* Doesn't have to be bound to this particle -- just more bound to it */
+		    if (p->fDensity > q->curlv[0]) {
+			q->curlv[0] = p->fDensity;
+			*( (int *) (&(q->curlv[1])) ) = p->iOrder; /* Particle q belongs to sink p */
+			}
+		    }
+		}
+	    }
+#endif
+}
+
 void initSinkForm(void *p)
 {
 	}
@@ -945,72 +1048,110 @@ void combSinkForm(void *p1,void *p2)
 
 void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
-	int i;
-	double dSinkRadius2 = smf->dSinkRadius*smf->dSinkRadius, 
-	       EBO,Eq,r2,dvx,dv2,ifMass;
-	PARTICLE *q;
+#ifdef GASOLINE
+	int i,j,nEaten;
+	double mtot,im,Ek,Eth,Eg,r2,dvx,dv2;
+	PARTICLE *q,*q1,*q2;
+	PARTICLE sinkp;
+
+	/* You are accreted */
+	if ( *( (int *) (&(p->curlv[1])) ) != -1 ) return;
+
+	mtot = 0;
+	Ek = 0;
+	Eth = 0;
+	Eg = 0;
+	nEaten = 0;
+	for (i=0;i<nSmooth;++i) {
+	    q1 = nnList[i].pPart;
+	    if (*( (int *) (&(q1->curlv[1])) ) == p->iOrder) {
+		nEaten++;
+		mtot += q1->fMass;
+		dvx = q1->v[0]-q2->v[0];
+		dv2 = dvx*dvx;
+		dvx = q1->v[1]-q2->v[1];
+		dv2 += dvx*dvx;
+		dvx = q1->v[2]-q2->v[2];
+		dv2 += dvx*dvx;
+		Ek += 0.5*q1->fMass*dv2;
+		Eth += q1->fMass*q1->u;
+		for (j=i+1;i<nSmooth;j++) {
+		    q2 = nnList[j].pPart;
+		    if (*( (int *) (&(q2->curlv[1])) ) == p->iOrder) {
+			dvx = q1->r[0]-q2->r[0];
+			dv2 = dvx*dvx;
+			dvx = q1->r[1]-q2->r[1];
+			dv2 += dvx*dvx;
+			dvx = q1->r[2]-q2->r[2];
+			dv2 += dvx*dvx;
+			Eg -= q1->fMass*q2->fMass/sqrt(dv2);
+			}
+		    }
+		}
+	    }
+
+	if (mtot == 0) return;
 
 	/* Apply Bate tests here -- 
 	   1. thermal energy < 1/2 Grav, 
 	   2. thermal + rot E < Grav, 
 	   3. total E < 0 (implies 2.)
 	   4. div.acc < 0 (related to rate of change of total E I guess)  (I will ignore this)
-
-	   Also: If there is a denser particle that is also a sink candidate
-	   defer to it
-	   Need to prevent double counting particles into two sinks
 	*/
-	for (i=0;i<nSmooth;++i) {
-		r2 = nnList[i].fDist2;
-		if (r2 > 0 && r2 <= dSinkRadius2) {
-		  q = nnList[i].pPart;
-		  if (q->fDensity > p->fDensity && TYPETest( q, TYPE_GAS )) {
-		      }
-		    }
-	    }
-	/* G = 1 
-	 p is sink particle
-	 q is gas particle */
-        if (smf->dSinkBoundOrbitRadius > 0)
-            EBO = -0.5*p->fMass/smf->dSinkBoundOrbitRadius;
-        else
-            EBO = FLT_MAX;
 
-	for (i=0;i<nSmooth;++i) {
-		r2 = nnList[i].fDist2;
-		if (r2 > 0 && r2 <= dSinkRadius2) {
-		  q = nnList[i].pPart;
-		  if (TYPETest( q, TYPE_GAS )) {
-			dvx = p->v[0]-q->v[0];
-			dv2 = dvx*dvx;
-			dvx = p->v[1]-q->v[1];
-			dv2 += dvx*dvx;
-			dvx = p->v[2]-q->v[2];
-			dv2 += dvx*dvx;
-			Eq = -p->fMass/sqrt(r2) + 0.5*dv2;
-#ifdef GASOLINE
-			if (smf->bSinkThermal) Eq+= q->u;
-#endif
-			if (Eq < EBO) {
-			   ifMass = 1./(p->fMass + q->fMass);
-			   p->r[0] = ifMass*(p->fMass*p->r[0]+q->fMass*q->r[0]);
-			   p->r[1] = ifMass*(p->fMass*p->r[1]+q->fMass*q->r[1]);
-			   p->r[2] = ifMass*(p->fMass*p->r[2]+q->fMass*q->r[2]);
-			   p->v[0] = ifMass*(p->fMass*p->v[0]+q->fMass*q->v[0]);
-			   p->v[1] = ifMass*(p->fMass*p->v[1]+q->fMass*q->v[1]);
-			   p->v[2] = ifMass*(p->fMass*p->v[2]+q->fMass*q->v[2]);
-			   p->a[0] = ifMass*(p->fMass*p->a[0]+q->fMass*q->a[0]);
-			   p->a[1] = ifMass*(p->fMass*p->a[1]+q->fMass*q->a[1]);
-			   p->a[2] = ifMass*(p->fMass*p->a[2]+q->fMass*q->a[2]);
-			   p->fMass += q->fMass;
-			   assert(q->fMass != 0);
-			   q->fMass = 0;
-			   pkdDeleteParticle(smf->pkd, q);
-			   }
+	if (Eth < 0.5*fabs(Eg) && Ek + Eth + Eg < 0) {
+	    /* Sink approved */	
+	    PARTICLE sinkp = *p;
+	    for (i=0;i<nSmooth;++i) {
+		q = nnList[i].pPart;
+		if (*( (int *) (&(q->curlv[1])) ) == p->iOrder && p!=q) {
+		    sinkp.r[0] += q->fMass*q->r[0];
+		    sinkp.r[1] += q->fMass*q->r[1];
+		    sinkp.r[2] += q->fMass*q->r[2];
+		    sinkp.v[0] += q->fMass*q->v[0];
+		    sinkp.v[1] += q->fMass*q->v[1];
+		    sinkp.v[2] += q->fMass*q->v[2];
+		    sinkp.a[0] += q->fMass*q->a[0];
+		    sinkp.a[1] += q->fMass*q->a[1];
+		    sinkp.a[2] += q->fMass*q->a[2];
+		    sinkp.u += q->fMass*q->u;
+		    sinkp.fMass += q->fMass;
+
+		    q->fMass = 0;
+		    pkdDeleteParticle(smf->pkd, q);
 		    }
-          }   
+		}   
+	    im = 1/mtot;
+	    sinkp.r[0] *= im;
+	    sinkp.r[1] *= im;
+	    sinkp.r[2] *= im;
+	    sinkp.v[0] *= im;
+	    sinkp.v[1] *= im;
+	    sinkp.v[2] *= im;
+	    sinkp.a[0] *= im;
+	    sinkp.a[1] *= im;
+	    sinkp.a[2] *= im;
+	    sinkp.u *= im;
+	    TYPEReset(&sinkp,TYPE_GAS);
+	    TYPESet(&sinkp,TYPE_SINK|TYPE_STAR);
+	    sinkp.fTimeForm = -smf->dTime; /* -ve time is sink indicator */
+#ifdef SINKEXTRADATA
+	    for(j = 0; j < 3; j++) {
+		sinkp.rForm[j] = sinkp.r[j];
+		sinkp.vForm[j] = sinkp.v[j];
+		}
+#endif
+	    printf("Sink Formed %d %g: np %d Mass %g Ek %g Eth %g Eg %g\n",p->iOrder,p->fDensity,nEaten,mtot,Ek,Eth,Eg);
+	    assert(fabs(p->fMass/mtot-1) < 1e-4);
+	    p->fMass = 0;
+	    pkdDeleteParticle(smf->pkd, p);
+	    pkdNewParticle(smf->pkd, sinkp);    
 	    }
-    }
+	else {
+	    printf("Sink Failed Tests %d %g: np %d Mass %g Ek %g Eth %g Eg %g\n",p->iOrder,p->fDensity,nEaten,mtot,Ek,Eth,Eg);
+	    }
+#endif
+}
 
 
 #ifdef SUPERCOOL

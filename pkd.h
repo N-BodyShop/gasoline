@@ -108,11 +108,13 @@ typedef struct particle {
 	FLOAT fMetals;
 	FLOAT fTimeForm;
 #ifdef SIMPLESF
-    FLOAT fMassStar;
+        FLOAT fMassStar;
 	FLOAT fESN;
+	int iGasOrder;		/* gas from which star formed */
+#endif
+#if defined(SIMPLESF) || defined(EXTRASINKDATA)
 	FLOAT rForm[3];		/* record pos and vel of star formation */
 	FLOAT vForm[3];
-	int iGasOrder;		/* gas from which star formed */
 #endif
 #ifdef STARFORM
 	FLOAT fESNrate;
@@ -749,5 +751,5 @@ void pkdCOM(PKD pkd, double *com);
 void pkdCOMByType(PKD pkd, int type, double *com);
 void pkdOldestStar(PKD pkd, double *com);
 int pkdSetSink(PKD pkd, double dSinkMassMin);
-void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDensityCut, double dTime, int iKickRung, int *nCandidates);
+void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDensityCut, double dTime, int iKickRung, int bSimple, int *nCandidates);
 #endif

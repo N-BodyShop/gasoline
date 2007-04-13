@@ -56,9 +56,7 @@ typedef struct smfParameters {
     int bSinkThermal;
     int iSinkCurrentRung;
     int iSmoothFlags; /* Read/Write locally.  Master sets initial value. */
-#if defined(STARFORM) || defined(CHECKSOFT)
-	double dTime;
-#endif
+    double dTime;
 #ifdef STARFORM
         double dMinMassFrac;
         double dRadPreFactor;
@@ -109,9 +107,11 @@ enum smx_smoothtype {
   SMX_MARK,
   SMX_MEANVEL,
   SMX_DELTAACCEL,
+  SMX_SINKTEST,
   SMX_SINKACCRETE,
   SMX_BHDENSITY,
   SMX_BHSINKACCRETE,
+  SMX_SINKFORMTEST,
   SMX_SINKFORM,
 #ifdef GASOLINE
   SMX_SPHPRESSURETERMS,
@@ -182,6 +182,11 @@ void DeltaAccel(PARTICLE *,int,NN *,SMF *);
 void initDeltaAccel(void *);
 void combDeltaAccel(void *,void *);
 
+/* SMX_SINKTEST */
+void SinkTest(PARTICLE *,int,NN *,SMF *);
+void initSinkTest(void *);
+void combSinkTest(void *,void *);
+
 /* SMX_SINKACCRETE */
 void SinkAccrete(PARTICLE *,int,NN *,SMF *);
 void initSinkAccrete(void *);
@@ -197,7 +202,12 @@ void BHSinkAccrete(PARTICLE *,int,NN *,SMF *);
 void initBHSinkAccrete(void *);
 void combBHSinkAccrete(void *,void *);
 
-/* SMX_SINKACCRETE */
+/* SMX_SINKFORMTEST */
+void SinkFormTest(PARTICLE *,int,NN *,SMF *);
+void initSinkFormTest(void *);
+void combSinkFormTest(void *,void *);
+
+/* SMX_SINKFORM */
 void SinkForm(PARTICLE *,int,NN *,SMF *);
 void initSinkForm(void *);
 void combSinkForm(void *,void *);

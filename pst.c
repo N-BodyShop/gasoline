@@ -5929,7 +5929,7 @@ pstFormSinks(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 	    pkdFormSinks(pst->plcl->pkd,in->bJeans,in->dJConst2,in->bDensity,in->dDensityCut,
-			 in->dTime,in->iKickRung, &out->nCandidates);
+			 in->dTime,in->iKickRung, in->bSimple, &out->nCandidates);
 		}
 	if (pnOut) *pnOut = sizeof(struct outFormSinks);
 	}

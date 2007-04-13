@@ -117,7 +117,8 @@ struct parameters {
     int bSinkThermal;
     int bSinkForm;
     int bSinkFormJeans;
-    int dSinkFormDensity;
+    int bSinkFormSimple;
+    double dSinkFormDensity;
     int iSinkRung;
     int iSinkCurrentRung;
     int nJeans;

@@ -6094,7 +6094,7 @@ int pkdSetSink(PKD pkd, double dSinkMassMin)
 #endif
     }
 
-void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDensityCut, double dTime, int iKickRung, int *nCandidates)
+void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDensityCut, double dTime, int iKickRung, int bSimple, int *nCandidates)
 {
 #ifdef GASOLINE
     int i;
@@ -6111,8 +6111,14 @@ void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDe
 /* Jeans Mass compared to nJeans particle masses */
 	    if ((bJeans && dJConst2*p->c*p->c*p->c*p->c*p->c*p->c <= p->fMass*p->fMass*p->fDensity)
 		|| (bDensity && p->fDensity >= dDensityCut)) {
-		TYPESet(p, TYPE_SINK); /* Is now a candidate */
 		(*nCandidates)++;
+		if (bSimple) {
+		    TYPESet(p, TYPE_SINK); /* Is now a sink! */
+		    p->fMetals = -dTime;
+		    }
+		else {
+		    TYPESet(p, TYPE_SMOOTHACTIVE); /* Is now a candidate */
+		    }
 		}
 	    }
 	}

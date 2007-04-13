@@ -83,6 +83,16 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		comb = combDeltaAccel;
 		smx->fcnPost = NULL;
 		break;
+	case SMX_SINKTEST:
+		smx->fcnSmooth = SinkTest;
+		initParticle = NULL; /* Original Particle */
+		initTreeParticle = initSinkTest; /* Original Particle */
+		init = initSinkTest; /* Cached copies */
+		comb = combSinkTest;
+		smx->fcnPost = NULL;
+		smx->iLowhFix = LOWHFIX_SINKRADIUS;
+		smx->bUseBallMax = 0;
+		break;
 	case SMX_SINKACCRETE:
 		smx->fcnSmooth = SinkAccrete;
 		initParticle = NULL; /* Original Particle */
@@ -108,6 +118,16 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		init = initBHSinkAccrete; /* Cached copies */
 		comb = combBHSinkAccrete;
 		smx->fcnPost = NULL;
+		break;
+	case SMX_SINKFORMTEST:
+		smx->fcnSmooth = SinkFormTest;
+		initParticle = initSinkFormTest; /* Original Particle */
+		initTreeParticle = initSinkFormTest; /* Original Particle */
+		init = initSinkFormTest; /* Cached copies */
+		comb = combSinkFormTest;
+		smx->fcnPost = NULL;
+		smx->iLowhFix = LOWHFIX_SINKRADIUS;
+		smx->bUseBallMax = 0;
 		break;
 	case SMX_SINKFORM:
 		smx->fcnSmooth = SinkForm;

@@ -1646,6 +1646,7 @@ struct inFormSinks
     int bJeans;
     int bDensity;
     int iKickRung;
+    int bSimple;
     double dDensityCut;
     double dTime;
     double dJConst2;

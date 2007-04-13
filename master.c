@@ -677,7 +677,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dSinkMassMin", 2, &msr->param.dSinkMassMin,
 		    sizeof(double), "dSinkMassMin", "<Minimum Mass to act as a sink> = 0" );
 	msr->param.iSinkRung = 0; 
-	prmAddParam(msr->prm,"iSinkRung", 2, &msr->param.iSinkRung,
+	prmAddParam(msr->prm,"iSinkRung", 1, &msr->param.iSinkRung,
 		    sizeof(int), "iSinkRung",
 		    "<Sink Rung> = 0");
 	msr->param.bSinkForm = 0;
@@ -697,6 +697,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dSinkFormDensity = -1.0;
 	prmAddParam(msr->prm,"dSinkFormDensity",2,&msr->param.dSinkFormDensity,sizeof(double),
 				"sinkformdensity","sinks density = -sinkformdensity");
+	msr->param.bSinkFormSimple = 0;
+	prmAddParam(msr->prm,"bSinkFormSimple",0,&msr->param.bSinkFormSimple,sizeof(int),
+				"sinkformjeans","enable/disable sinks = -sinkformjeans");
 	msr->param.dPeriod = 1.0;
 	prmAddParam(msr->prm,"dPeriod",2,&msr->param.dPeriod,sizeof(double),"L",
 				"<periodic box length> = 1.0");
@@ -2342,6 +2345,12 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dSinkRadius: %g",msr->param.dSinkRadius);
 	fprintf(fp," dSinkBoundOrbitRadius: %g",msr->param.dSinkBoundOrbitRadius);
 	fprintf(fp," dSinkMassMin: %g",msr->param.dSinkMassMin);
+	fprintf(fp,"\n# bSinkForm: %d",msr->param.bSinkForm);
+	fprintf(fp," bSinkFormSimple: %d",msr->param.bSinkFormSimple);
+	fprintf(fp," bSinkFormJeans: %d",msr->param.bSinkFormJeans);
+	fprintf(fp," nJeans: %d",msr->param.nJeans);
+	fprintf(fp," dJeansConstant: %g",msr->param.dJeansConstant);
+	fprintf(fp," dSinkFormDensity: %g",msr->param.dSinkFormDensity);
 	fprintf(fp,"\n# dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
 	fprintf(fp," dFracNoDomainDimChoice: %g",msr->param.dFracNoDomainDimChoice);
 	fprintf(fp," bFastGas: %d",msr->param.bFastGas);
@@ -4461,9 +4470,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.bCannonical = msr->param.bCannonical;
 	in.smf.bGrowSmoothList = 0;
 #endif
-#if defined(STARFORM) || defined(CHECKSOFT)
 	in.smf.dTime = dTime;
-#endif
 #ifdef STARFORM
         in.smf.dSecUnit = msr->param.dSecUnit;  /*if you want to output feedback shutoff time in years*/
         in.smf.dGmUnit = msr->param.dMsolUnit*MSOLG;  /*if you want to use snCalcSNIIFeedback to calculate feedback*/
@@ -4573,6 +4580,8 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.bCannonical = msr->param.bCannonical;
 	in.smf.bGrowSmoothList = 0;
 #endif
+	in.smf.dTime = dTime;
+
 	if (msr->param.bVStep) {
 		struct outSmooth out;
 
@@ -7242,7 +7251,6 @@ void msrTopStepKDK(MSR msr,
     */
     if ( iKickRung == iRung ) {
 	msrDoSinks(msr, dTime, dDelta, iKickRung );
-        msrFormSinks(msr, dTime, dDelta, iKickRung );
 	}
     }
 
@@ -7324,42 +7332,59 @@ void msrFormSinks(MSR msr, double dTime, double dDelta, int iKickRung)
     {
     struct inFormSinks in;
     struct outFormSinks outFS;
+    int nStarOld,nSink;
+    double sec,dsec;
     
     if (!msr->param.bSinkForm) return;
 
+    /* BH sink formation not implemented yet */
+    if (msr->param.bBHSink) return;
+
+    sec = msrTime();
+ 
+    nStarOld = msr->nStar;
     msr->param.dSinkCurrentDelta = dDelta;
     msr->param.iSinkCurrentRung = iKickRung;
 
     in.bJeans = msr->param.bSinkFormJeans;
+    in.bSimple = msr->param.bSinkFormSimple;
     in.dJConst2 = msr->param.dJeansConstant/msr->param.nJeans;
     in.dJConst2 *= in.dJConst2;
     in.dDensityCut = msr->param.dSinkFormDensity/msr->param.dGmPerCcUnit;
-    in.bDensity = (in.dDensityCut >= 0 ? 1 : 0);
+    in.bDensity = (in.dDensityCut > 0 ? 1 : 0);
     in.dTime = dTime;
     in.iKickRung = iKickRung;
+    msrResetType(msr, TYPE_ALL, TYPE_SMOOTHACTIVE);
+    /* set sink candidates as SMOOTHACTIVE */
     pstFormSinks(msr->pst, &in, sizeof(in), &outFS, NULL);
 
-    /* Possible issue is momentum conservation for sinks.
-       Accreting particles on different rungs means some will
-       have a bigger kicks (so far) than others.  Kicks/velocities are
-       only fully synchronized at the end of major steps 
-       For now, use vpreds I guess */
+    nSink = 0;
     if (outFS.nCandidates) {
+	if (msr->param.bSinkFormSimple) {
+	    nSink = outFS.nCandidates;
+	    msr->nSink += nSink;
+	    } 
+	else {
 	/* Note: Only gas particles are combined into sinks */
-	if (msr->iTreeType != MSR_TREE_DENSITY) {
-	    msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
-	    msrBuildTree(msr,1,-1.0,1);  /* bTreeActive */
+	    if (msr->iTreeType != MSR_TREE_DENSITY) {
+		msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
+		msrBuildTree(msr,1,-1.0,1);  /* bTreeActive */
+		}
+	    msrSmooth(msr, dTime, SMX_SINKFORMTEST, 1);
+	    msrSmooth(msr, dTime, SMX_SINKFORM, 1);
+	    
+	    msrAddDelParticles(msr);
+	    msr->nSink += nSink = msr->nStar-nStarOld;
 	    }
-	/* new sinks only */
-	msrActiveExactType(msr, TYPE_SINK|TYPE_STAR|TYPE_GAS, TYPE_SINK|TYPE_GAS, TYPE_ACTIVE|TYPE_SMOOTHACTIVE);
-	msrSmooth(msr, dTime, SMX_SINKFORM, 1);
-
-        msrAddDelParticles(msr);
 	}
 
 
     if (msr->param.bVDetails)
-	printf("Sinks Formation: %i candidates\n",outFS.nCandidates);
+	printf("Sinks Formation: %i candidates +%d sinks\n",outFS.nCandidates,nSink);
+
+    dsec = msrTime() - sec;
+    printf("Sink Form Done (+%d total) Calculated, Wallclock: %f secs\n\n",nSink,dsec);
+    LOGTIMINGUPDATE( dsec, TIMING_Sink );
 
     }
 
@@ -7373,11 +7398,14 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
    double sec,sec1,dsec,dMass;
    int nAccreted;
 
-    if(msr->param.bDoSinks == 0 || msr->nSink == 0) return;
+    /* I assume sink creation is rarer so the tree will be ok after this call most of the time */
+    msrFormSinks(msr, dTime, dDelta, iKickRung ); 
+   
+    if (msr->param.bDoSinks == 0) return;
+    if (msr->nSink == 0) return;
     if (msr->param.bBHSink && dDelta <= 0.0) return;
-	    
-    sec = msrTime();
 
+    sec = msrTime();
     dMass = msrMassCheck(msr, -1, "Accrete onto Sinks: Initial Value");
 
     /* Note: Only gas particles are accreted by sinks */
@@ -7403,6 +7431,8 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	    }
 	else {
 	    /* Fixed Radius Accretion: particle by particle (cf. Bate) */
+	    msrSmooth(msr, dTime, SMX_SINKTEST,1);
+	    msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
 	    msrSmooth(msr, dTime, SMX_SINKACCRETE,1);
 	    }
 	
