@@ -5926,10 +5926,11 @@ pstFormSinks(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		pstFormSinks(pst->pstLower,in,nIn,vout,pnOut);
 		mdlGetReply(pst->mdl,pst->idUpper,&fsStats,NULL);
 		out->nCandidates += fsStats.nCandidates;
+		if (fsStats.Jvalmin < out->Jvalmin) out->Jvalmin = fsStats.Jvalmin;
 		}
 	else {
 	    pkdFormSinks(pst->plcl->pkd,in->bJeans,in->dJConst2,in->bDensity,in->dDensityCut,
-			 in->dTime,in->iKickRung, in->bSimple, &out->nCandidates);
+			 in->dTime,in->iKickRung, in->bSimple, &out->nCandidates, &out->Jvalmin);
 		}
 	if (pnOut) *pnOut = sizeof(struct outFormSinks);
 	}

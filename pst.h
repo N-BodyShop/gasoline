@@ -1655,6 +1655,7 @@ struct inFormSinks
 struct outFormSinks 
 {
     int nCandidates;
+    double Jvalmin;
     };
 
 void pstFormSinks(PST,void *,int,void *,int *);

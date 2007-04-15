@@ -6094,12 +6094,13 @@ int pkdSetSink(PKD pkd, double dSinkMassMin)
 #endif
     }
 
-void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDensityCut, double dTime, int iKickRung, int bSimple, int *nCandidates)
+void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDensityCut, double dTime, int iKickRung, int bSimple, int *nCandidates, double *pJvalmin)
 {
 #ifdef GASOLINE
     int i;
     PARTICLE *p;
     int n = pkdLocal(pkd);
+    double Jval, Jvalmin = FLT_MAX;
 #endif
     
     *nCandidates = 0;
@@ -6109,8 +6110,10 @@ void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDe
         p = &pkd->pStore[i];
         if(TYPETest( p, TYPE_GAS ) && p->iRung >= iKickRung) {
 /* Jeans Mass compared to nJeans particle masses */
-	    if ((bJeans && dJConst2*p->c*p->c*p->c*p->c*p->c*p->c <= p->fMass*p->fMass*p->fDensity)
-		|| (bDensity && p->fDensity >= dDensityCut)) {
+	    Jval =  dJConst2*(p->c*p->c*p->c*p->c*p->c*p->c)/(p->fMass*p->fMass*p->fDensity);
+	    if (Jval < Jvalmin) Jvalmin = Jval;
+	    if ((bJeans && Jval < 1) ||
+		(bDensity && p->fDensity >= dDensityCut)) {
 		(*nCandidates)++;
 		if (bSimple) {
 		    TYPESet(p, TYPE_SINK); /* Is now a sink! */
@@ -6122,6 +6125,7 @@ void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDe
 		}
 	    }
 	}
+    *pJvalmin = Jvalmin;
 #endif
 }
 

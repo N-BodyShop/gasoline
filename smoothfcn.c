@@ -969,22 +969,25 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 }
 
+#define fDensitySink(_a)    (((PARTICLE *) (_a))->curlv[0] )
+#define iOrderSink(_a)      (*((int *) (&((PARTICLE *) (_a))->curlv[1])) )
+
 void initSinkFormTest(void *p)
 {
 #ifdef GASOLINE
-    ((PARTICLE *) p)->curlv[0] = FLT_MAX;
-    *((int *) (&(((PARTICLE *) p)->curlv[1]))) = -1;
+    fDensitySink(p) = -FLT_MAX;
+    iOrderSink(p) = -1;
 #endif
 	}
 
 void combSinkFormTest(void *p1,void *p2)
 {
 #ifdef GASOLINE
-/* Particle p1 belongs to candidate *((int *) &(((PARTICLE *) p1)->curlv[1])) initially but
-   switch to *((int *) &(((PARTICLE *) p2)->curlv[1])) if more that candidate is denser */
-    if (((PARTICLE *) p2)->curlv[0] > ((PARTICLE *) p1)->curlv[0]) {
-	((PARTICLE *) p1)->curlv[0] = ((PARTICLE *) p2)->curlv[0];
-	*((int *) &(((PARTICLE *) p1)->curlv[1])) = *((int *) &(((PARTICLE *) p2)->curlv[1]));
+/* Particle p1 belongs to candidate stored in iOrderSink of p1 initially but
+   switch to p2's if that candidate is denser */
+    if (fDensitySink(p2) > fDensitySink(p1)) {
+	fDensitySink(p1) = fDensitySink(p2);
+	iOrderSink(p1) = iOrderSink(p2);
 	}
 #endif
 }
@@ -1011,23 +1014,28 @@ void SinkFormTest(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		if (TYPETest( q, TYPE_GAS ) && q->iRung >= smf->iSinkCurrentRung) {
 		    if (q->fDensity > p->fDensity && TYPETest( q, TYPE_GAS )) {
 			/* Abort without grabbing any particles -- this isn't the densest particle */
+/*			printf("Sink aborted %d %g: Denser Neighbour %d %g\n",p->iOrder,p->fDensity,q->iOrder,q->fDensity);*/
 			return;
 			}
 		    }
 		}
 	    }
 
+/*	printf("Sink %d %g: looking...\n",p->iOrder,p->fDensity);*/
+
 	for (i=0;i<nSmooth;++i) {
 	    r2 = nnList[i].fDist2;
 	    if (r2 > 0 && r2 <= dSinkRadius2) {
 		q = nnList[i].pPart;
 		if (TYPETest( q, TYPE_GAS ) && q->iRung >= smf->iSinkCurrentRung) {
-		    /* Doesn't have to be bound to this particle -- just more bound to it */
 		    if (p->fDensity > q->curlv[0]) {
-			q->curlv[0] = p->fDensity;
-			*( (int *) (&(q->curlv[1])) ) = p->iOrder; /* Particle q belongs to sink p */
+			fDensitySink(q) = p->fDensity;
+			iOrderSink(q) = p->iOrder; /* Particle q belongs to sink p */
 			}
 		    }
+/*
+		printf("Sink %d %g: wants %d %d, %g, rungs %d %d, %g %g\n",p->iOrder,p->fDensity,q->iOrder,iOrderSink(q), q->curlv[0], q->iRung, smf->iSinkCurrentRung,r2,dSinkRadius2);
+*/
 		}
 	    }
 #endif
@@ -1050,34 +1058,43 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 #ifdef GASOLINE
 	int i,j,nEaten;
-	double mtot,im,Ek,Eth,Eg,r2,dvx,dv2;
+	double mtot,im,Ek,Eth,Eg,r2,dvx,dv2,vsink[3];
 	PARTICLE *q,*q1,*q2;
 	PARTICLE sinkp;
 
 	/* You are accreted */
-	if ( *( (int *) (&(p->curlv[1])) ) != -1 ) return;
+	if ( iOrderSink(p) != -1 ) {
+/*	    printf("Sink aborted %d %g: Accreted by other %d\n",p->iOrder,p->fDensity,iOrderSink(p) );*/
+	    return;
+	    }
 
+	iOrderSink(p) = p->iOrder;
 	mtot = 0;
 	Ek = 0;
 	Eth = 0;
 	Eg = 0;
+	vsink[0] = 0; 	vsink[1] = 0;	vsink[2] = 0;
 	nEaten = 0;
 	for (i=0;i<nSmooth;++i) {
 	    q1 = nnList[i].pPart;
-	    if (*( (int *) (&(q1->curlv[1])) ) == p->iOrder) {
+/*	    printf("Sink %d %g: trying to use %d %d, rungs %d %d, r %g %g\n",p->iOrder,p->fDensity,q1->iOrder,iOrderSink(q1),q1->iRung,smf->iSinkCurrentRung,nnList[i].fDist2,smf->dSinkRadius);*/
+	    if (iOrderSink(q1) == p->iOrder) {
 		nEaten++;
 		mtot += q1->fMass;
-		dvx = q1->v[0]-q2->v[0];
+		dvx = q1->v[0]-p->v[0];  
+		vsink[0] += q1->fMass*dvx;
 		dv2 = dvx*dvx;
-		dvx = q1->v[1]-q2->v[1];
+		dvx = q1->v[1]-p->v[1];
+		vsink[1] += q1->fMass*dvx;
 		dv2 += dvx*dvx;
-		dvx = q1->v[2]-q2->v[2];
+		dvx = q1->v[2]-p->v[2];
+		vsink[2] += q1->fMass*dvx;
 		dv2 += dvx*dvx;
 		Ek += 0.5*q1->fMass*dv2;
 		Eth += q1->fMass*q1->u;
-		for (j=i+1;i<nSmooth;j++) {
+		for (j=i+1;j<nSmooth;j++) {
 		    q2 = nnList[j].pPart;
-		    if (*( (int *) (&(q2->curlv[1])) ) == p->iOrder) {
+		    if (iOrderSink(q2) == p->iOrder) {
 			dvx = q1->r[0]-q2->r[0];
 			dv2 = dvx*dvx;
 			dvx = q1->r[1]-q2->r[1];
@@ -1090,7 +1107,13 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	    }
 
-	if (mtot == 0) return;
+	if (mtot == 0) {
+/*	    printf("Sink aborted %d %g: np %d Mass %g\n",p->iOrder,p->fDensity,nEaten,mtot);*/
+	    return;
+	    }
+
+/*	printf("Sink %d Corrected Ek %g %g\n",p->iOrder,Ek,Ek - 0.5*(vsink[0]*vsink[0]+vsink[1]*vsink[1]+vsink[2]*vsink[2])/mtot);*/
+	Ek -= 0.5*(vsink[0]*vsink[0]+vsink[1]*vsink[1]+vsink[2]*vsink[2])/mtot;
 
 	/* Apply Bate tests here -- 
 	   1. thermal energy < 1/2 Grav, 
@@ -1104,7 +1127,7 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    PARTICLE sinkp = *p;
 	    for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
-		if (*( (int *) (&(q->curlv[1])) ) == p->iOrder && p!=q) {
+		if (iOrderSink(q) == p->iOrder && p!=q) {
 		    sinkp.r[0] += q->fMass*q->r[0];
 		    sinkp.r[1] += q->fMass*q->r[1];
 		    sinkp.r[2] += q->fMass*q->r[2];

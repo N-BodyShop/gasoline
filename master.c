@@ -7332,7 +7332,7 @@ void msrFormSinks(MSR msr, double dTime, double dDelta, int iKickRung)
     {
     struct inFormSinks in;
     struct outFormSinks outFS;
-    int nStarOld,nSink;
+    int nStarOld,nSinkAdd;
     double sec,dsec;
     
     if (!msr->param.bSinkForm) return;
@@ -7358,11 +7358,11 @@ void msrFormSinks(MSR msr, double dTime, double dDelta, int iKickRung)
     /* set sink candidates as SMOOTHACTIVE */
     pstFormSinks(msr->pst, &in, sizeof(in), &outFS, NULL);
 
-    nSink = 0;
+    nSinkAdd = 0;
     if (outFS.nCandidates) {
 	if (msr->param.bSinkFormSimple) {
-	    nSink = outFS.nCandidates;
-	    msr->nSink += nSink;
+	    nSinkAdd = outFS.nCandidates;
+	    msr->nSink += nSinkAdd;
 	    } 
 	else {
 	/* Note: Only gas particles are combined into sinks */
@@ -7374,16 +7374,16 @@ void msrFormSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	    msrSmooth(msr, dTime, SMX_SINKFORM, 1);
 	    
 	    msrAddDelParticles(msr);
-	    msr->nSink += nSink = msr->nStar-nStarOld;
+	    msr->nSink += nSinkAdd = msr->nStar-nStarOld;
 	    }
 	}
 
 
     if (msr->param.bVDetails)
-	printf("Sinks Formation: %i candidates +%d sinks\n",outFS.nCandidates,nSink);
+	printf("Sinks Formation: %i candidates +%d sinks\n",outFS.nCandidates,nSinkAdd);
 
     dsec = msrTime() - sec;
-    printf("Sink Form Done (+%d total) Calculated, Wallclock: %f secs\n\n",nSink,dsec);
+    printf("Sink Form Done (+%d total, Min Jeans Ratio %g) Calculated, Wallclock: %f secs\n\n",nSinkAdd,sqrt(outFS.Jvalmin),dsec);
     LOGTIMINGUPDATE( dsec, TIMING_Sink );
 
     }
