@@ -769,7 +769,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	    /* Timestep for accretion is larger of sink and victim timestep */
 	    iRung = q->iRung;
-	    if (iRung < p->iRung) iRung = p->iRung;
+	    if (iRung > p->iRung) iRung = p->iRung;
 	    dtEff = smf->dSinkCurrentDelta*pow(0.5,iRung-smf->iSinkCurrentRung);
 	    /* If victim has unclosed kick -- don't actually take the mass
 	       If sink has unclosed kick we shouldn't even be here!
@@ -890,7 +890,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	    /* Timestep for accretion is larger of sink and victim timestep */
 	    iRung = q->iRung;
-	    if (iRung < p->iRung) iRung = p->iRung;
+	    if (iRung > p->iRung) iRung = p->iRung;
 	    dtEff = smf->dSinkCurrentDelta*pow(0.5,iRung-smf->iSinkCurrentRung);
 	    /* If victim has unclosed kick -- don't actually take the mass
 	       If sink has unclosed kick we shouldn't even be here!
@@ -1107,7 +1107,7 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	    }
 
-	if (mtot == 0) {
+	if (nEaten <= 1) {
 /*	    printf("Sink aborted %d %g: np %d Mass %g\n",p->iOrder,p->fDensity,nEaten,mtot);*/
 	    return;
 	    }
@@ -1125,9 +1125,20 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	if (Eth < 0.5*fabs(Eg) && Ek + Eth + Eg < 0) {
 	    /* Sink approved */	
 	    PARTICLE sinkp = *p;
+	    sinkp.r[0] = 0;
+	    sinkp.r[1] = 0;
+	    sinkp.r[2] = 0;
+	    sinkp.v[0] = 0;
+	    sinkp.v[1] = 0;
+	    sinkp.v[2] = 0;
+	    sinkp.a[0] = 0;
+	    sinkp.a[1] = 0;
+	    sinkp.a[2] = 0;
+	    sinkp.u = 0;
+	    sinkp.fMass = 0;
 	    for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
-		if (iOrderSink(q) == p->iOrder && p!=q) {
+		if (iOrderSink(q) == p->iOrder) {
 		    sinkp.r[0] += q->fMass*q->r[0];
 		    sinkp.r[1] += q->fMass*q->r[1];
 		    sinkp.r[2] += q->fMass*q->r[2];
@@ -1140,8 +1151,10 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		    sinkp.u += q->fMass*q->u;
 		    sinkp.fMass += q->fMass;
 
-		    q->fMass = 0;
-		    pkdDeleteParticle(smf->pkd, q);
+		    if (p!=q) {
+			q->fMass = 0;
+			pkdDeleteParticle(smf->pkd, q);
+			}
 		    }
 		}   
 	    im = 1/mtot;
@@ -1164,14 +1177,14 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		sinkp.vForm[j] = sinkp.v[j];
 		}
 #endif
-	    printf("Sink Formed %d %g: np %d Mass %g Ek %g Eth %g Eg %g\n",p->iOrder,p->fDensity,nEaten,mtot,Ek,Eth,Eg);
-	    assert(fabs(p->fMass/mtot-1) < 1e-4);
+	    printf("Sink Formed %d %g: np %d Mass %g Ek %g Eth %g Eg %g, %g %g\n",p->iOrder,p->fDensity,nEaten,mtot,Ek,Eth,Eg,4/3.*pow(M_PI,2.5)/50.*sqrt((p->c*p->c*p->c*p->c*p->c*p->c)/(p->fMass*p->fMass*p->fDensity)),pow(Eth/fabs(Eg),1.5) );
+	    assert(fabs(sinkp.fMass/mtot-1) < 1e-4);
 	    p->fMass = 0;
 	    pkdDeleteParticle(smf->pkd, p);
 	    pkdNewParticle(smf->pkd, sinkp);    
 	    }
 	else {
-	    printf("Sink Failed Tests %d %g: np %d Mass %g Ek %g Eth %g Eg %g\n",p->iOrder,p->fDensity,nEaten,mtot,Ek,Eth,Eg);
+	    printf("Sink Failed Tests %d %g: np %d Mass %g Ek %g Eth %g Eg %g, %g %g\n",p->iOrder,p->fDensity,nEaten,mtot,Ek,Eth,Eg,	    4/3.*pow(M_PI,2.5)/50.*sqrt((p->c*p->c*p->c*p->c*p->c*p->c)/(p->fMass*p->fMass*p->fDensity)),pow(Eth/fabs(Eg),1.5) );
 	    }
 #endif
 }
