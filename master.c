@@ -2790,6 +2790,25 @@ void msrFinish(MSR msr)
 	free(msr);
 	}
 
+void msrSetStopStep(MSR msr, double dTime)
+{
+	if (prmSpecified(msr->prm,"iStopStep")) {
+	    if (msr->param.bVStart)
+		printf("Simulation will halt at step %d of %d (Time:%g)\n",
+		       msr->param.iStopStep, msr->param.nSteps,
+		       dTime + (msr->param.iStopStep-msr->param.iStartStep)*msr->param.dDelta);
+	    }
+	else
+	    msr->param.iStopStep = msr->param.nSteps;
+
+	if (msr->param.iStopStep <= msr->param.iStartStep) {
+	    fprintf(stderr,"ERROR: iStartStep %d > iStopStep %d (nSteps %d)\n",
+		    msr->param.iStartStep,msr->param.iStopStep,
+		    msr->param.nSteps);
+	    assert(msr->param.iStopStep > msr->param.iStartStep);
+	    }
+    }
+
 void msrOneNodeReadTipsy(MSR msr, struct inReadTipsy *in)
 {
     int i,id;
@@ -3052,17 +3071,8 @@ double msrReadTipsy(MSR msr)
 		in.dvFac = 1.0;
 		}
 
-	if (prmSpecified(msr->prm,"iStopStep")) {
-	    if (msr->param.bVStart) printf("Simulation will halt at step %d of %d (Time:%g)\n",msr->param.iStopStep,msr->param.nSteps,dTime + (msr->param.iStopStep-msr->param.iStartStep)*msr->param.dDelta);
-	    }
-	else
-	    msr->param.iStopStep = msr->param.nSteps;
-
-	if (msr->param.iStopStep <= msr->param.iStartStep) {
-	    fprintf(stderr,"ERROR: iStartStep %d > iStopStep %d (nSteps %d)\n",msr->param.iStartStep,msr->param.iStopStep,msr->param.nSteps);
-	    assert(msr->param.iStopStep > msr->param.iStartStep);
-	    }
-
+	msrSetStopStep(msr, dTime);
+	
 	in.nFileStart = 0;
 	in.nFileEnd = msr->N - 1;
 	in.nDark = msr->nDark;
@@ -5816,6 +5826,9 @@ double msrReadCheck(MSR msr,int *piStep)
 		FDL_read(fdl,"nReplicas",&msr->param.nReplicas);
 	if (!prmSpecified(msr->prm,"nSteps"))
 		FDL_read(fdl,"nSteps",&msr->param.nSteps);
+
+	msrSetStopStep(msr, dTime);
+	
 	if (!prmSpecified(msr->prm,"dExtraStore"))
 		FDL_read(fdl,"dExtraStore",&msr->param.dExtraStore);
 	if (!prmSpecified(msr->prm,"dDelta"))
@@ -8398,6 +8411,9 @@ msrReadSS(MSR msr)
 	intype.nSuperCool = msr->param.nSuperCool;
 	assert(intype.nSuperCool == 0); /* better be zero... */
 	pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL);
+
+	msrSetStopStep(msr, dTime);
+	
 	/*
 	 ** Now read in the output points, passing the initial time.
 	 ** We do this only if nSteps is not equal to zero.
