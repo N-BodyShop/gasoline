@@ -69,7 +69,6 @@ typedef struct smfParameters {
         struct snContext sn;
 #endif    
 #ifdef COLLISIONS
-	double dTime;
 	double dDelta;
 	double dCentMass;
 	double dStart; /* collision search time interval */
