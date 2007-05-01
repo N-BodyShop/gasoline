@@ -29,7 +29,7 @@ typedef struct StiffContextStructure {
 } STIFF;
 
 /*
- * Integerator Step Headers
+ * Integrator Step Headers
  */
 
 STIFF *StiffInit( double eps, int nv, void *Data, 

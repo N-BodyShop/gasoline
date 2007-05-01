@@ -668,6 +668,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dSinkBoundOrbitRadius = 0.0;
 	prmAddParam(msr->prm,"dSinkBoundOrbitRadius",2,&msr->param.dSinkBoundOrbitRadius,sizeof(double),"sinkbor",
 				"<Sink Bound Orbit Radius>");
+	msr->param.dSinkMustAccreteRadius = 0.0;
+	prmAddParam(msr->prm,"dSinkMustAccreteRadius",2,&msr->param.dSinkMustAccreteRadius,sizeof(double),"sinkr",
+				"<Sink Radius>");
 
 	msr->param.dDeltaSink = msr->param.dDelta;
 	prmAddParam(msr->prm,"dDeltaSink", 2, &msr->param.dDeltaSink,
@@ -2344,6 +2347,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bSinksThermal: %d",msr->param.bSinkThermal );
 	fprintf(fp," dSinkRadius: %g",msr->param.dSinkRadius);
 	fprintf(fp," dSinkBoundOrbitRadius: %g",msr->param.dSinkBoundOrbitRadius);
+	fprintf(fp," dSinkMustAccreteRadius: %g",msr->param.dSinkMustAccreteRadius);
 	fprintf(fp," dSinkMassMin: %g",msr->param.dSinkMassMin);
 	fprintf(fp,"\n# bSinkForm: %d",msr->param.bSinkForm);
 	fprintf(fp," bSinkFormSimple: %d",msr->param.bSinkFormSimple);
@@ -2801,11 +2805,11 @@ void msrSetStopStep(MSR msr, double dTime)
 	else
 	    msr->param.iStopStep = msr->param.nSteps;
 
-	if (msr->param.iStopStep <= msr->param.iStartStep) {
+	if (msr->param.iStopStep < msr->param.iStartStep) {
 	    fprintf(stderr,"ERROR: iStartStep %d > iStopStep %d (nSteps %d)\n",
 		    msr->param.iStartStep,msr->param.iStopStep,
 		    msr->param.nSteps);
-	    assert(msr->param.iStopStep > msr->param.iStartStep);
+	    assert(msr->param.iStopStep >= msr->param.iStartStep);
 	    }
     }
 
@@ -4464,6 +4468,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.bSinkThermal = msr->param.bSinkThermal;
 	in.smf.dSinkRadius = msr->param.dSinkRadius;
 	in.smf.dSinkBoundOrbitRadius = msr->param.dSinkBoundOrbitRadius;
+	in.smf.dSinkMustAccreteRadius = msr->param.dSinkMustAccreteRadius;
 	in.smf.iSmoothFlags = 0; /* Initial value, return value in outSmooth */
 #ifdef GASOLINE
 	in.smf.alpha = msr->param.dConstAlpha;
@@ -4574,6 +4579,7 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.bSinkThermal = msr->param.bSinkThermal;
 	in.smf.dSinkRadius = msr->param.dSinkRadius;
 	in.smf.dSinkBoundOrbitRadius = msr->param.dSinkBoundOrbitRadius;
+	in.smf.dSinkMustAccreteRadius = msr->param.dSinkMustAccreteRadius;
 	in.smf.iSmoothFlags = 0; /* Initial value, return value in outSmooth */
 #ifdef GASOLINE
 	in.smf.alpha = msr->param.dConstAlpha;

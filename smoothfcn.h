@@ -38,6 +38,7 @@ typedef struct smfParameters {
     double dDeltaAccelFac;
     double dSinkRadius;
     double dSinkBoundOrbitRadius;
+    double dSinkMustAccreteRadius;
     double dBHSinkEddFactor;
     double dBHSinkAlphaFactor;
     double dBHSinkFeedbackFactor;

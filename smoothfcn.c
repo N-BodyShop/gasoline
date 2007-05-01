@@ -613,7 +613,7 @@ void SinkTest(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		    dv2 += dvx*dvx;
 		    Eq = -p->fMass/sqrt(r2) + 0.5*dv2;
 		    if (smf->bSinkThermal) Eq+= q->u;
-		    if (Eq < EBO) {
+		    if (Eq < EBO || r2 < smf->dSinkMustAccreteRadius*smf->dSinkMustAccreteRadius) {
 			if (Eq < q->curlv[0]) {
 			    q->curlv[0] = Eq;
 			    *( (int *) (&(q->curlv[1])) ) = p->iOrder; /* Particle q belongs to sink p */

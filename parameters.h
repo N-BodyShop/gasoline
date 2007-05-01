@@ -146,6 +146,7 @@ struct parameters {
 	double dCentMass;
     double dSinkRadius;
     double dSinkBoundOrbitRadius;
+    double dSinkMustAccreteRadius;
     double dDeltaSink;
     double dSinkMassMin;
     double dJeansConstant;
