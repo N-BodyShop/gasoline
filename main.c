@@ -62,7 +62,7 @@ int main(int argc,char **argv)
 #endif
 
 	/* code to make gasoline core dump if there is a floating point exception 
-	feenableexcept(FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);*/
+	feenableexcept(FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);*/ 
 
 #ifdef TINY_PTHREAD_STACK
 	static int first = 1;
@@ -615,9 +615,7 @@ int main(int argc,char **argv)
             if (msrDoGravity(msr)) {
                 msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
                 msrDomainDecomp(msr,0,1);
-                msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
                 msrUpdateSoft(msr,dTime);
-                msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
                 msrBuildTree(msr,0,dMass,0);
                 msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Gravity");
                 msrGravity(msr,0.0,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
@@ -671,7 +669,6 @@ int main(int argc,char **argv)
             if (msrDoDensity(msr) || msr->param.bDensityStep) {
                     msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
                     msrDomainDecomp(msr,0,1);
-                    msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
                     msrBuildTree(msr,0,-1.0,1);
                     msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Density");
                     msrSmooth(msr,dTime,SMX_DENSITY,1);
@@ -759,6 +756,7 @@ int main(int argc,char **argv)
             OutputList[iNumOutputs++]=OUT_DT_ARRAY;
             if(msr->param.iMaxRung > 1
 	       && (msr->param.bDensityStep || msrDoGravity(msr))) {
+		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
                 msrDtToRung(msr,0,msrDelta(msr),1);
                 msrRungStats(msr);
 		OutputList[iNumOutputs++]=OUT_RUNG_ARRAY;
