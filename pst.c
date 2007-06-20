@@ -3239,7 +3239,7 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			pkdHomogSpheroid(plcl->pkd);
 			}
 		if (in->bBodyForce) {
-			pkdBodyForce(plcl->pkd);
+			pkdBodyForce(plcl->pkd, in->dBodyForceConst);
 			}
 		if (in->bMiyamotoDisk) {
 			pkdMiyamotoDisk(plcl->pkd);

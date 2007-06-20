@@ -70,6 +70,7 @@ struct parameters {
         int bEllipticalDarkNFW;
             int bHomogSpheroid;
         int bBodyForce;
+	double dBodyForceConst;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;

@@ -669,7 +669,7 @@ void pkdHernquistSpheroid(PKD pkd);
 void pkdNFWSpheroid(PKD pkd, double M_200, double r_200, double c, double dSoft);
 void pkdElliptical(PKD pkd, int bEllipticalDarkNFW);
 void pkdHomogSpheroid(PKD pkd);
-void pkdBodyForce(PKD pkd);
+void pkdBodyForce(PKD pkd, double dConst);
 void pkdMiyamotoDisk(PKD pkd);
 void pkdTimeVarying(PKD pkd,double dTime);
 #ifdef ROT_FRAME

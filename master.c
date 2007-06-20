@@ -876,6 +876,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bBodyForce = 0;
 	prmAddParam(msr->prm,"bBodyForce",0,&msr->param.bBodyForce,
 				sizeof(int),"bodyforce","use/don't use body force = -bf");
+	msr->param.dBodyForceConst = 0.0;
+	prmAddParam(msr->prm,"dBodyForceConst",2,&msr->param.dBodyForceConst,
+		    sizeof(double),"bodyforceconst",
+		    "strength of bodyforce = 0");
 	msr->param.bMiyamotoDisk = 0;
 	prmAddParam(msr->prm,"bMiyamotoDisk",0,&msr->param.bMiyamotoDisk,
 				sizeof(int),"mdisk","use/don't use galaxy Miyamoto Disk = -mdisk");
@@ -2330,6 +2334,7 @@ void msrLogParams(MSR msr,FILE *fp)
             }
 	fprintf(fp," bHomogSpheroid: %d",msr->param.bHomogSpheroid );
 	fprintf(fp," bBodyForce: %d",msr->param.bBodyForce );
+	fprintf(fp," dBodyForceConst: %g",msr->param.dBodyForceConst );
 	fprintf(fp," bMiyamotoDisk: %d",msr->param.bMiyamotoDisk );
 	fprintf(fp," bTimeVarying: %d",msr->param.bTimeVarying );
 	fprintf(fp,"\n# bRotatingBar: %d",msr->param.bRotatingBar);
@@ -4876,6 +4881,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bEllipticalDarkNFW = msr->param.bEllipticalDarkNFW;
 		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
 		inExt.bBodyForce = msr->param.bBodyForce;
+		inExt.dBodyForceConst = msr->param.dBodyForceConst;
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		inExt.bTimeVarying = msr->param.bTimeVarying;
 		inExt.bRotatingBar = msr->param.bRotatingBar;
