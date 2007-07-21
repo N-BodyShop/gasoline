@@ -7798,7 +7798,7 @@ void msrSphStep(MSR msr, double dTime)
 
 /* Sinks have maximum timestep of sink step (parameter) or smallest gas step */
 	inSink.dtMax = msr->param.dDeltaSink;
-	if (msr->dtMinGas < inSink.dtMax) inSink.dtMax = msr->dtMinGas;
+	if (msr->dtMinGas > inSink.dtMax) inSink.dtMax = msr->dtMinGas;
 
 	pstSinkStep(msr->pst,&inSink,sizeof(inSink),NULL,NULL);
 	}
