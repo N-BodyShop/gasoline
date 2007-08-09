@@ -1101,7 +1101,7 @@ void smSmooth(SMX smx,SMF *smf)
 		((smx->iLowhFix==LOWHFIX_HOVERSOFT && fBall2 < smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft) ||
  		 (smx->iLowhFix==LOWHFIX_SINKRADIUS && fBall2 < smf->dSinkRadius*smf->dSinkRadius)) ) {
 		/* We ReSmooth for this guy later */
-		p[pi].fBall2 = 0;
+		p[pi].fBall2 = -1.0; /* any value < 0 will do -- see code after "DoneSmooth:" below */
 		TYPESet(&p[pi],TYPE_SMOOTHDONE);
 
 		/* Get the next in line */
@@ -1249,7 +1249,7 @@ void smSmooth(SMX smx,SMF *smf)
 
  DoneSmooth:
 	for (pi=0;pi<nLocal;++pi) {
-	    if (!TYPETest(&(p[pi]),TYPE_SMOOTHACTIVE) || p[pi].fBall2 > 0) continue;
+	    if (!TYPETest(&(p[pi]),TYPE_SMOOTHACTIVE) || p[pi].fBall2 >= 0.0) continue;
 		/*
 		 ** Do a Ball Gather at r^2 = fBall2
 		 */
