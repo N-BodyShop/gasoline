@@ -854,15 +854,15 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	PARTICLE *q = NULL;
 
 	FLOAT ih2,r2,rs,fDensity;
-	FLOAT cs,fW,dv2;
-	FLOAT mdot, mdotEdd, mdotCurr, dmAvg, dm, dmq, dE, ifMass, dtEff;
+	FLOAT fW;
+	FLOAT mdot, mdotCurr, dmAvg, dm, dmq, dE, ifMass, dtEff;
 	int i,iRung;
 
 	mdot = p->divv;	
 	if (p->curlv[1] == 0.0) {
 	    dtEff = smf->dSinkCurrentDelta*pow(0.5,p->iRung-smf->iSinkCurrentRung);
 	    dmAvg = mdot*dtEff;
-	    printf("BHSink %d:  Delta: %g dm: 0 (%g) (victims on wrong step)\n",p->iOrder,dtEff,dmAvg);
+	    printf("BHSink %d:  Delta: %g dm: 0 ( %g ) (victims on wrong step)\n",p->iOrder,dtEff,dmAvg);
 	    return;
 	    }
 
