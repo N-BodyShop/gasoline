@@ -675,7 +675,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dDeltaSink = msr->param.dDelta;
 	prmAddParam(msr->prm,"dDeltaSink", 2, &msr->param.dDeltaSink,
 		    sizeof(double), "dDeltaSink",
-		    "<Minimum sink timestep in years> = dDelta");
+		    "<Maximum sink timestep in years> = dDelta");
 	msr->param.dSinkMassMin = 0;  /* Default reset to FLT_MAX for BH sink */
 	prmAddParam(msr->prm,"dSinkMassMin", 2, &msr->param.dSinkMassMin,
 		    sizeof(double), "dSinkMassMin", "<Minimum Mass to act as a sink> = 0" );
@@ -7798,7 +7798,7 @@ void msrSphStep(MSR msr, double dTime)
 
 /* Sinks have maximum timestep of sink step (parameter) or smallest gas step */
 	inSink.dtMax = msr->param.dDeltaSink;
-	if (msr->dtMinGas > inSink.dtMax) inSink.dtMax = msr->dtMinGas;
+	if (msr->dtMinGas < inSink.dtMax) inSink.dtMax = msr->dtMinGas;
 
 	pstSinkStep(msr->pst,&inSink,sizeof(inSink),NULL,NULL);
 	}
