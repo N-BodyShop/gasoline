@@ -1022,7 +1022,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"fdbk","<Stars provide feedback> = 0");
 	msr->param.bFormOutputs = 1;
 	prmAddParam(msr->prm,"bFormOutputs",0,&msr->param.bFormOutputs,sizeof(int),
-				"fdbk","<Write *form files?> = 0");
+				"formout","<Write *form files?> = 0");
 #ifdef SIMPLESF
 	msr->param.SSF_dComovingDenMin = 200.0;
 	prmAddParam(msr->prm,"SSF_dComovingDenMin", 2, &msr->param.SSF_dComovingDenMin,
@@ -1095,7 +1095,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.stfm->dTempMax = 1.5e4;
 	prmAddParam(msr->prm,"dTempMax", 2, &msr->param.stfm->dTempMax,
 		    sizeof(double), "stTempMax",
-		    "<Maximum temperature at which star formation occurs> = 0.0");
+		    "<Maximum temperature at which star formation occurs> = 1.5e4");
 	msr->param.stfm->dSoftMin = 1.0;
 	prmAddParam(msr->prm,"dSoftMin", 2, &msr->param.stfm->dSoftMin,
 		    sizeof(double), "stSoftMin",
