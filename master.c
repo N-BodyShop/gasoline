@@ -1692,6 +1692,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		else
 			assert(msr->param.stfm->dMinGasMass > 0.0);
 
+	    if (!msrComove(msr) && !prmSpecified(msr->prm, "dOverDenMin")) {
+		/*
+		 * Overdensity criterion makes no sense for
+		 *  non-comoving simulations
+		 */
+		msr->param.stfm->dOverDenMin = 0.0;
+		}
+		
 	    msr->param.stfm->dSecUnit = msr->param.dSecUnit;
 	    msr->param.stfm->dGmPerCcUnit = msr->param.dGmPerCcUnit;
 	    msr->param.stfm->dGmUnit = msr->param.dMsolUnit*MSOLG;
