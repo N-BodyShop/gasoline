@@ -333,6 +333,8 @@ void msrAggsMerge(MSR msr,COLLIDER *c1,COLLIDER *c2,double dImpactTime,COLLIDER 
 void msrAggsBounce(MSR msr,COLLIDER *c1,COLLIDER *c2,double dImpactTime);
 void msrAggsGravity(MSR msr);
 #endif
+void msrInitStarLog(MSR msr);
+void msrFlushStarLog(MSR msr);
 void msrFormStars(MSR msr, double dTime, double dDelta);
 void msrSimpleStarForm(MSR msr, double dTime, double dDelta);
 

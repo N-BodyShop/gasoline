@@ -141,6 +141,8 @@ int main(int argc,char **argv)
 		if (msr->param.iGasModel == GASMODEL_COOLING
 			|| msr->param.bStarForm) 
 		    msrInitCooling(msr);
+		if(msr->param.bStarForm)
+		    msrInitStarLog(msr);
 #endif
 #endif
 		if(msr->param.bRotatingBar) {
@@ -277,6 +279,8 @@ int main(int argc,char **argv)
 	if (msr->param.iGasModel == GASMODEL_COOLING ||
 		msr->param.bStarForm)
 		msrInitCooling(msr);
+	if(msr->param.bStarForm)
+	    msrInitStarLog(msr);
 #endif
 #endif
 	if(msr->param.bRotatingBar)
@@ -556,7 +560,7 @@ int main(int argc,char **argv)
 				        }
                                 msrCreateAllOutputList(msr, &iNumOutputs, OutputList);
                                 msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
-
+				msrFlushStarLog(msr);
 				/*
 				 ** Don't allow duplicate outputs.
 				 */
@@ -577,6 +581,7 @@ int main(int argc,char **argv)
 				 ** Write a checkpoint.
 				 */
 #ifndef BENCHMARK
+				msrFlushStarLog(msr);
 				msrWriteCheck(msr,dTime,iStep);
 				msrMassCheck(msr,dMass,"After msrWriteCheck");
 #endif
@@ -661,6 +666,7 @@ int main(int argc,char **argv)
                     msrSphStep(msr,dTime);
                     }
                 msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+		msrFlushStarLog(msr);
                 }
 #endif
             /*

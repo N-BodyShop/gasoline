@@ -31,6 +31,8 @@ typedef struct stfmContext
 	
 void stfmInitialize(STFM *pstfm);
 
+void pkdStarLogInit(PKD pkd);
+void pkdStarLogFlush(PKD pkd, char *pszFileName);
 
 void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 		   double dTime, /* current time */

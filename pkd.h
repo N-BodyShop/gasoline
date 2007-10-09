@@ -127,8 +127,6 @@ typedef struct particle {
 	FLOAT fSNMetals;
 	FLOAT fNSNtot;
         FLOAT fTimeCoolIsOffUntil;
-	FLOAT rForm[3];		/* record pos and vel of star formation */
-	FLOAT vForm[3];
 	FLOAT fMassForm;	/* record original mass of star */
 	int iGasOrder;		/* gas from which star formed */
 #ifdef CHECKSF
@@ -268,10 +266,7 @@ typedef struct chkParticle {
 #ifdef STARFORM
         FLOAT fTimeCoolIsOffUntil;
 	FLOAT fTimeForm;
-	FLOAT rForm[3];		/* record pos and vel of star formation */
-	FLOAT vForm[3];
 	FLOAT fMassForm;	/* record original mass of star */
-	FLOAT fDenForm;
 	FLOAT fNSN;
 	FLOAT fMFracOxygen;
 	FLOAT fMFracIron;
@@ -359,6 +354,29 @@ typedef struct ewaldTable {
 	double hCfac,hSfac;
 	} EWT;
 
+typedef struct sfEvent 		/* Holds statistics of the star
+				   formation event */
+{
+    int iOrdStar;
+    int iOrdGas;
+    double timeForm;
+    double rForm[3];
+    double vForm[3];
+    double massForm;
+    double rhoForm;
+    double TForm;
+    } SFEVENT;
+
+typedef struct starLog
+{
+    int nLog;			/* number of events in buffer */
+    int nMaxLog;		/* max size of buffer; increase when needed */
+    int nOrdered;		/* The number of events that have been
+				   globally ordered, incremented by
+				   pkdNewOrder() */
+    SFEVENT *seTab;		/* The actual table */
+    } STARLOG;
+
 typedef struct pkdContext {
 	MDL mdl;
 	int idSelf;
@@ -430,6 +448,7 @@ typedef struct pkdContext {
 #ifndef NOCOOLING
 	COOL *Cool;
 #endif
+    STARLOG starLog;
 #endif
 #ifdef SLIDING_PATCH
   /*

@@ -27,9 +27,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	switch (iType) {
 	case OUT_IORDER_ARRAY:
 	    return((FLOAT) p->iOrder);
-#ifdef STARFORM
-	case OUT_DENSITYFORM_ARRAY:
-#endif
 #ifdef GASOLINE
         case OUT_GASDENSITY_ARRAY:
 #endif
@@ -57,7 +54,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #endif
 	case OUT_PRES_ARRAY:
 		return(p->fDensity*p->fDensity*p->PoverRho2);	
-        case OUT_TEMPFORM_ARRAY:
 	case OUT_U_ARRAY:
 		return(p->u);
 	case OUT_TEMP_ARRAY:
@@ -181,12 +177,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_ACCELPRES_VECTOR:
 		return(p->aPres[iDim]);
 #endif
-#if defined(STARFORM)
-	case OUT_RFORM_VECTOR:
-	    return(p->rForm[iDim]);
-	case OUT_VFORM_VECTOR:
-	    return(p->vForm[iDim]);
-#endif
 #endif
 	default:
 		return(0.0);
@@ -237,9 +227,6 @@ void VecFilename(char *achFile, int iType)
         case OUT_PRES_ARRAY:
 	    strncat(achFile,"pres",256);
 	    break;
-	case OUT_TEMPFORM_ARRAY:
-		strncat(achFile,"Tform",256);
-            break;
 	case OUT_TEMP_ARRAY:
 		strncat(achFile,"temperature",256);
             break;
@@ -314,9 +301,6 @@ void VecFilename(char *achFile, int iType)
 	case OUT_MASSFORM_ARRAY:
 	    strncat(achFile,"massform",256);
             break;
-        case OUT_DENSITYFORM_ARRAY:
-		strncat(achFile,"rhoform",256);
-            break;
 	case OUT_COOLTURNONTIME_ARRAY:
 	    strncat(achFile,"coolontime",256);
             break;
@@ -388,14 +372,6 @@ void VecFilename(char *achFile, int iType)
 	    strncat(achFile,"accp",256);
             break;
 #endif
-#if defined(STARFORM)
-	case OUT_RFORM_VECTOR:
-	    strncat(achFile,"rform",256);
-            break;
-	case OUT_VFORM_VECTOR:
-	    strncat(achFile,"vform",256);
-            break;
-#endif
 #endif
 	default:
             assert(1);
@@ -439,10 +415,6 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         case OUT_IGASORDER_ARRAY:
         case OUT_TIMEFORM_ARRAY:
         case OUT_MASSFORM_ARRAY:
-        case OUT_RFORM_VECTOR:
-        case OUT_VFORM_VECTOR:
-        case OUT_DENSITYFORM_ARRAY:
-        case OUT_TEMPFORM_ARRAY:
             nGas=nDark=0;
             break;
         case OUT_METALS_ARRAY:
@@ -499,7 +471,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     
     switch (iVecType) {
 #ifdef STARFORM
-        case OUT_IGASORDER_ARRAY:
+	case OUT_IGASORDER_ARRAY:
 	  if(nStar) {
 	    pkdGenericSeek(pkd,starFp, nStarStart, headerlength, 4);
             for (i=0;i<pkd->nLocal;++i) {
@@ -510,7 +482,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
                     }
                 }
 	    }
-            break;
+	    break;
 #endif
         case OUT_IORDER_ARRAY:
             if(nGas) pkdGenericSeek(pkd,gasFp, nGasStart,headerlength, 4);

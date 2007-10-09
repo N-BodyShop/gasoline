@@ -3,6 +3,9 @@
 #include <math.h>
 #include <assert.h>
 
+#include <rpc/types.h>
+#include <rpc/xdr.h>
+
 #include "pkd.h"
 #include "starform.h"
 #include "millerscalo.h"
@@ -43,6 +46,51 @@ void stfmInitialize(STFM *pstfm)
     *pstfm = stfm;
     }
 
+void pkdStarLogInit(PKD pkd)
+{
+    STARLOG *pStarLog = &pkd->starLog;
+    
+    pStarLog->nLog = 0;
+    pStarLog->nMaxLog = 1000;	/* inital size of buffer */
+    pStarLog->nOrdered = 0;
+    pStarLog->seTab = malloc(pStarLog->nMaxLog*sizeof(SFEVENT));
+    }
+
+void pkdStarLogFlush(PKD pkd, char *pszFileName)
+{
+    FILE *fp;
+    int iLog;
+    XDR xdrs;
+    
+    if(pkd->starLog.nLog == 0)
+	return;
+    
+    assert(pkd->starLog.nLog == pkd->starLog.nOrdered);
+    
+    fp = fopen(pszFileName, "a");
+    assert(fp != NULL);
+    xdrstdio_create(&xdrs,fp,XDR_ENCODE);
+    for(iLog = 0; iLog < pkd->starLog.nLog; iLog++){
+	SFEVENT *pSfEv = &(pkd->starLog.seTab[iLog]);
+	xdr_int(&xdrs, &(pSfEv->iOrdStar));
+	xdr_int(&xdrs, &(pSfEv->iOrdGas));
+	xdr_double(&xdrs, &(pSfEv->timeForm));
+	xdr_double(&xdrs, &(pSfEv->rForm[0]));
+	xdr_double(&xdrs, &(pSfEv->rForm[1]));
+	xdr_double(&xdrs, &(pSfEv->rForm[2]));
+	xdr_double(&xdrs, &(pSfEv->vForm[0]));
+	xdr_double(&xdrs, &(pSfEv->vForm[1]));
+	xdr_double(&xdrs, &(pSfEv->vForm[2]));
+	xdr_double(&xdrs, &(pSfEv->massForm));
+	xdr_double(&xdrs, &(pSfEv->rhoForm));
+	xdr_double(&xdrs, &(pSfEv->TForm));
+	}
+    xdr_destroy(&xdrs);
+    fclose(fp);
+    pkd->starLog.nLog = 0;
+    pkd->starLog.nOrdered = 0;
+    }
+    
 /*
      taken from TREESPH and modified greatly.
      Uses the following formula for the star formation rate:
@@ -215,17 +263,36 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     starp.fTimeForm = dTime;
     starp.fMassForm = dDeltaM;
     starp.fBallMax = 0.0;
-    /*
-     * Save quantities
-     */
-    for(j = 0; j < 3; j++) {
-	starp.rForm[j] = starp.r[j];
-	starp.vForm[j] = starp.v[j];
-	}
-    starp.u = T;
-    starp.fNSNtot = 0.0;
     starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in
 				       NewParticle() */
+    /*
+     * Log Star formation quantities
+     */
+    {
+	STARLOG *pStarLog = &pkd->starLog;
+	SFEVENT *pSfEv;
+	if(pStarLog->nLog >= pStarLog->nMaxLog) {
+	    /* Grow table */
+	    pStarLog->nMaxLog *= 1.4;
+	    pStarLog->seTab = realloc(pStarLog->seTab,
+				      pStarLog->nMaxLog*sizeof(SFEVENT));
+	    assert(pStarLog->seTab != NULL);
+	}
+	/* take care of iOrder assignment later */
+	pSfEv = &(pStarLog->seTab[pStarLog->nLog]);
+	pSfEv->timeForm = dTime;
+	pSfEv->iOrdGas = starp.iOrder;
+	for(j = 0; j < 3; j++) {
+	    pSfEv->rForm[j] = starp.r[j];
+	    pSfEv->vForm[j] = starp.v[j];
+	    }
+	pSfEv->massForm = starp.fMassForm;
+	pSfEv->rhoForm = starp.fDensity;
+	pSfEv->TForm = T;
+	pStarLog->nLog++;
+	}
+    
+    starp.fNSNtot = 0.0;
 
 	/* NB: It is important that the star inherit special properties of the gas
 	   particle such as being a target for movies or other tracing

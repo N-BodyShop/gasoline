@@ -3741,11 +3741,6 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		p->fESNrate = 0.0;
 		p->fTimeForm = cp.fTimeForm;
 		p->fMassForm = cp.fMassForm;
-		for (j=0;j<3;++j) {
-			p->rForm[j] = cp.rForm[j];
-			p->vForm[j] = cp.vForm[j];
-			}
-		p->fDensity = cp.fDenForm;
 		p->iGasOrder = cp.iGasOrder;
                 p->fTimeCoolIsOffUntil = cp.fTimeCoolIsOffUntil;
                 p->fNSN = 0.0;
@@ -3826,11 +3821,6 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 #ifdef STARFORM
 		cp.fTimeForm = pkd->pStore[i].fTimeForm;
 		cp.fMassForm = pkd->pStore[i].fMassForm;
-		for (j=0;j<3;++j) {
-			cp.rForm[j] = pkd->pStore[i].rForm[j];
-			cp.vForm[j] = pkd->pStore[i].vForm[j];
-			}
-		cp.fDenForm = pkd->pStore[i].fDensity;
 		cp.iGasOrder = pkd->pStore[i].iGasOrder;
                 cp.fTimeCoolIsOffUntil = pkd->pStore[i].fTimeCoolIsOffUntil;
                 cp.fMFracOxygen = pkd->pStore[i].fMFracOxygen;
@@ -4212,7 +4202,6 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
     int i;
     int iMaxRungOut;
     int iTempRung;
-    int iSteps;
     int nMaxRung;
     int iMaxRungIdeal;
     
@@ -4391,10 +4380,16 @@ pkdNewOrder(PKD pkd,int nStart)
     int pi;
     
     for(pi=0;pi<pkdLocal(pkd);pi++) {
-		if(pkd->pStore[pi].iOrder == -1) {
-			pkd->pStore[pi].iOrder = nStart++;
-			}
-		}
+	if(pkd->pStore[pi].iOrder == -1) {
+#ifdef STARFORM
+	    /* Also record iOrder in the starLog table. */
+	    pkd->starLog.seTab[pkd->starLog.nOrdered].iOrdStar = nStart;
+	    pkd->starLog.nOrdered++;
+	    assert(pkd->starLog.nOrdered <= pkd->starLog.nLog);
+#endif
+	    pkd->pStore[pi].iOrder = nStart++;
+	    }
+	}
     }
 
 void
@@ -5052,10 +5047,10 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma)
 
 void pkdGetDensityU(PKD pkd, double uMin)
 {
+#ifdef DENSITYU
     PARTICLE *p;
     int i;
 
-#ifdef DENSITYU
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p) && TYPEQueryACTIVE(p)) {

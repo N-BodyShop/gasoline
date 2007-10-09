@@ -244,6 +244,8 @@ enum pst_service {
 	  PST_COMBYTYPE,
 	  PST_OLDESTSTAR,
 	  PST_SETSINK,
+      PST_INITSTARLOG,
+      PST_FLUSHSTARLOG
       };
 
 void pstAddServices(PST,MDL);
@@ -1590,6 +1592,15 @@ struct outFeedback
     };
 
 void pstFeedback(PST,void *,int,void *,int *);
+
+void pstInitStarLog(PST,void *,int,void *,int *);
+
+struct inFlushStarLog 
+{
+    char achStarLogFile[PST_FILENAME_SIZE];
+    };
+
+void pstFlushStarLog(PST,void *,int,void *,int *);
 
 #endif
 

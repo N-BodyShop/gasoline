@@ -3787,10 +3787,6 @@ void msrCreateGasOutputList(MSR msr, int (*iNumOutputs), int OutputList[])
         if(msr->param.bFormOutputs){
             OutputList[(*iNumOutputs)++]=OUT_TIMEFORM_ARRAY;
             OutputList[(*iNumOutputs)++]=OUT_MASSFORM_ARRAY;
-            OutputList[(*iNumOutputs)++]=OUT_DENSITYFORM_ARRAY;
-            OutputList[(*iNumOutputs)++]=OUT_TEMPFORM_ARRAY;
-            OutputList[(*iNumOutputs)++]=OUT_RFORM_VECTOR;
-            OutputList[(*iNumOutputs)++]=OUT_VFORM_VECTOR;
             }
 #ifdef SIMPLESF
         OutputList[(*iNumOutputs)++]=OUT_DIVV_ARRAY;
@@ -3871,10 +3867,6 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
         switch (OutputList[i]){
             case OUT_TIMEFORM_ARRAY:
             case OUT_MASSFORM_ARRAY:
-            case OUT_RFORM_VECTOR:
-            case OUT_VFORM_VECTOR:
-            case OUT_DENSITYFORM_ARRAY:
-            case OUT_TEMPFORM_ARRAY:
                 nTypes[0]=nTypes[1]=0;
                 break;
             case OUT_IGASORDER_ARRAY:
@@ -8024,6 +8016,57 @@ void msrDumpFrame(MSR msr, double dTime, double dStep)
 		}
 	}
 
+void msrInitStarLog(MSR msr)
+{
+#ifdef STARFORM
+    /* check if output file exists.
+       If it doesn't create it and write a magic number.
+       If it does, check magic number.
+    */
+    char achStarLogFile[PST_FILENAME_SIZE];
+    struct stat statbuf;
+    XDR xdrs;
+    int iSize;
+
+    sprintf(achStarLogFile,"%s.starlog",msrOutName(msr));
+    if(!stat(achStarLogFile, &statbuf)) {	/* file exists, check number */
+	FILE *fpLog = fopen(achStarLogFile,"r");
+
+	assert(fpLog != NULL);
+	xdrstdio_create(&xdrs,fpLog,XDR_DECODE);
+	xdr_int(&xdrs, &iSize);
+	assert(iSize == sizeof(SFEVENT));
+	xdr_destroy(&xdrs);
+	fclose(fpLog);
+	}
+    else{			/* Create file and write number */
+	FILE *fpLog = fopen(achStarLogFile,"w");
+
+	assert(fpLog != NULL);
+	xdrstdio_create(&xdrs,fpLog,XDR_ENCODE);
+	iSize = sizeof(SFEVENT);
+	xdr_int(&xdrs, &iSize);
+	xdr_destroy(&xdrs);
+	fclose(fpLog);
+	}
+    pstInitStarLog(msr->pst, NULL, 0, NULL, NULL);
+#endif
+    }
+
+void msrFlushStarLog(MSR msr) 
+{
+#ifdef STARFORM
+    struct inFlushStarLog in;
+
+    sprintf(in.achStarLogFile,"%s.starlog",msrOutName(msr));
+    pstFlushStarLog(msr->pst, &in, sizeof(in), NULL, NULL);
+    
+    if (msr->param.bVDetails) {
+	puts("StarLog file has been flushed.");
+	}
+#endif
+    }
+
 void msrFormStars(MSR msr, double dTime, double dDelta)
 {
 #ifdef STARFORM
@@ -8044,7 +8087,6 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, 
             &dTotFe, &dTotOx, &dTotEnergy, "Form Stars");
     if(msr->param.bStarForm){
-/*		return;*/
     
         in.dTime = dTime;
         msr->param.stfm->dDeltaT = dDelta;
@@ -8062,6 +8104,11 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
             */
         msrBuildTree(msr,1,dTotMass,1);
         pstFormStars(msr->pst, &in, sizeof(in), &outFS, NULL);
+	/*
+	 * N.B. no particle shuffling (e.g. treebuilds) can happen
+         * between here and the msrAddDelParticles() below.
+         * Otherwise, the star formation logging gets fouled up.
+	 */
         if (msr->param.bVDetails)
                     printf("%d Stars formed with mass %g, %d gas deleted\n",
                                outFS.nFormed, outFS.dMassFormed, outFS.nDeleted);

@@ -1,0 +1,23 @@
+Starlog:
+
+We would like to keep track of information concerning star formation
+events.  Much of this information is not needed for the simulation,
+but only for analysis.  Hence we record the star formation information
+in a separate XDR file.  At the start of the file is an XDR int
+containing the length of each record in bytes.  This also serves as a
+"magic number".
+
+The format of each record of the file will be:
+
+iOrderStar, iOrderGas, rform[3], vform[3], massForm, rhoform, Tform.
+
+These records will be appended to the starlog file on a periodic basis
+in order to reduce the amount of I/O.  By default we do this
+everytime we do an output or a checkpoint.
+
+Events will be accumulated on each processor in a buffer, which will
+be flushed to disk (serially) and reset at the above intervals.
+
+A record will be made in stfmFormStars(), except for the iOrderStar.
+iOrderStar will be set in pkdNewOrder().
+

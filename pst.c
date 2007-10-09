@@ -481,6 +481,12 @@ pstAddServices(PST pst,MDL mdl)
 		      (void (*)(void *,void *,int,void *,int *))
 		      pstFeedback, sizeof(struct inFeedback),
 		      sizeof(struct outFeedback));
+	mdlAddService(mdl,PST_INITSTARLOG,pst,
+		      (void (*)(void *,void *,int,void *,int *))
+		      pstInitStarLog, 0, 0);
+	mdlAddService(mdl,PST_FLUSHSTARLOG,pst,
+		      (void (*)(void *,void *,int,void *,int *))
+		      pstFlushStarLog, sizeof(struct inFlushStarLog), 0);
 #endif
 #ifdef SIMPLESF
 	mdlAddService(mdl,PST_SIMPLESTARFORM,pst,
@@ -5988,6 +5994,38 @@ pstFeedback(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	if (pnOut) *pnOut = FB_NFEEDBACKS*sizeof(FBEffects);
 	}
+
+void
+pstInitStarLog(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+    if (pst->nLeaves > 1) {
+	mdlReqService(pst->mdl,pst->idUpper,PST_INITSTARLOG,NULL,0);
+	pstInitStarLog(pst->pstLower,NULL,0, NULL, NULL);
+	mdlGetReply(pst->mdl,pst->idUpper,NULL, NULL);
+    }
+    else {
+	pkdStarLogInit(pst->plcl->pkd);
+	}
+    }
+
+void
+pstFlushStarLog(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+    struct inFlushStarLog *in = vin;
+
+    mdlassert(pst->mdl,nIn == sizeof(struct inFlushStarLog));
+    if (pst->nLeaves > 1) {
+	/*
+	 * N.B. NOT parallel
+	 */
+	pstFlushStarLog(pst->pstLower, in, nIn, NULL, NULL);
+	mdlReqService(pst->mdl,pst->idUpper,PST_FLUSHSTARLOG, in, nIn);
+	mdlGetReply(pst->mdl,pst->idUpper,NULL, NULL);
+    }
+    else {
+	pkdStarLogFlush(pst->plcl->pkd, in->achStarLogFile);
+	}
+    }
 
 #endif
 
