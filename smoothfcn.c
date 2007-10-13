@@ -2785,8 +2785,9 @@ void combDistDeletedGas(void *vp1,void *vp2)
 		if (m_new > 0) {
 			f1 = p1->fMass /m_new;
 			f2 = delta_m  /m_new;
-			if(p1->uDot < 0.0)
-				fTCool = p1->uPred/p1->uDot; 
+			if(p1->uDot < 0.0) /* margin of 1% to avoid roundoff
+					    * problems */
+				fTCool = 1.01*p1->uPred/p1->uDot; 
 			
 			p1->fMass = m_new;
 			p1->u = f1*p1->u + f2*p2->u;
@@ -2852,8 +2853,8 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		f1 = q->fMass /m_new;
 		f2 = delta_m  /m_new;
 		q->fMass = m_new;
-		if(q->uDot < 0.0)
-			fTCool = q->uPred/q->uDot; 
+		if(q->uDot < 0.0) /* margin of 1% to avoid roundoff error */
+			fTCool = 1.01*q->uPred/q->uDot; 
 		
                 /* Only distribute the properties
                  * to the other particles on the "home" machine.
