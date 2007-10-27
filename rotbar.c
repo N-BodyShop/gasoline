@@ -16,6 +16,10 @@ void rotbarAddParams(ROTBAR rotbar, PRM prm)
 	prmAddParam(prm,"bBarMonopole",0,&rotbar->bMonopole,
 		    sizeof(int),"barmonopole",
 		    "include monopole potential of bar = +barmonopole");
+	rotbar->dMonopoleFac = 1.0;
+	prmAddParam(prm,"dRotBarMonopoleFac",2,&rotbar->dMonopoleFac,
+		    sizeof(double), "rbmonofac",
+		    "scaling of monopole strength = 1.0");
 	rotbar->dMass = 0;
 	prmAddParam(prm,"dRotBarMass",2,&rotbar->dMass,
 		    sizeof(double), "rbmass","mass of bar = 0");
@@ -64,6 +68,7 @@ void rotbarLogParams(ROTBAR rotbar, FILE *fp )
 	fprintf(fp," dRotBarLz0: %g",rotbar->dLz0 );
 	fprintf(fp," bFixedBar: %d",rotbar->bFixedBar);
 	fprintf(fp," bBarMonopole: %d",rotbar->bMonopole);
+	fprintf(fp," dRotBarMonoPoleFac: %g",rotbar->dMonopoleFac);
     }
 
 void rotbarCheckWrite(ROTBAR rotbar, FDL_CTX *fdl)
@@ -416,7 +421,8 @@ void pkdRotatingBar(PKD pkd, double amp, /* relative amplitude of bar */
 	    dTorqueTmp[2] -= p[i].fMass*(pos[0] * acc[1] - pos[1]*acc[0]);
 
 	    if(pkd->rotbar->bMonopole)
-		M0 = pkd->rotbar->getMass(pkd->rotbar, rr);
+		M0 = pkd->rotbar->getMass(pkd->rotbar, rr)
+		    *pkd->rotbar->dMonopoleFac;
 	    else
 		M0 = 0.0;
 
@@ -427,12 +433,13 @@ void pkdRotatingBar(PKD pkd, double amp, /* relative amplitude of bar */
 	      /* Add bar acceleration to particle */
 		p[i].a[k] += acc[k];
 
-		/* Force on bar (via Newton's 3rd law) */
+		/* Force on bar (via Newton's 3rd law, and see below) */
 		accCom[k] -= p[i].fMass*acc[k];
 		}
 	    p[i].fPot += -ffac*pp*fac;
 	    if(pkd->rotbar->bMonopole)
-		p[i].fPot += pkd->rotbar->getPot(pkd->rotbar, rr);
+		p[i].fPot += pkd->rotbar->getPot(pkd->rotbar, rr)
+		    *pkd->rotbar->dMonopoleFac;
 	    }
 	}
   for (k=0; k<3; k++) {

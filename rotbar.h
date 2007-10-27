@@ -40,7 +40,8 @@ typedef struct rotbarContext {
     double B;
     double C;
     int bFixedBar;
-    int bMonopole;
+    int bMonopole;		/* include monopole force of bar */
+    double dMonopoleFac;	/* scale monopole force by this amount */
     } *ROTBAR;
 
 void rotbarAddParams(ROTBAR rotbar, PRM prm);
