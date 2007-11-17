@@ -223,6 +223,7 @@ struct parameters {
 	double dSNHeatFraction;
 	double dDumpFrameStep;
 	double dDumpFrameTime;
+        int    iDirector;
 	int    bStarForm;
 	int    bFeedBack;
 	int    bFormOutputs;

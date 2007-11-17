@@ -54,7 +54,7 @@ int main(int argc,char **argv)
 	double E=0,T=0,U=0,Eth=0,L[3]={0,0,0};
 	double dWMax=0,dIMax=0,dEMax=0,dMass=0,dMultiEff=0;
 	long lSec=0,lStart;
-	int i,iStep,iSec=0,iStop=0,nActive,iNumOutputs, OutputList[NUMOUTPUTS];
+	int i,j=0,iStep,iSec=0,iStop=0,nActive,iNumOutputs, OutputList[NUMOUTPUTS];
 	char achBaseMask[256];
 
 #ifdef COLLISIONS
@@ -219,14 +219,41 @@ int main(int argc,char **argv)
 		 ** Dump Frame Initialization
 		 */
 		/* Bring frame count up to correct place for restart. */
-		if( msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep, 1 )
+		/*
+	       *** changing for multiple director outputs
+	       if( msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep, 1 )
                     && msr->df->dDumpFrameStep > 0) {
 			while(msr->df->dStep + msr->df->dDumpFrameStep < iStep) {
 				msr->df->dStep += msr->df->dDumpFrameStep;
 				msr->df->nFrame++;
 			}
 		}
+		*/
+		/* changes made -> df is now an array to allow for more than one
+		   director output frame 
+		*/
 
+		if( msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep, 1 )
+		    && msr->df[0]->dDumpFrameStep > 0) 
+		  {
+		    while(msr->df[0]->dStep + msr->df[0]->dDumpFrameStep < iStep) 
+		      {
+			msr->df[0]->dStep += msr->df[0]->dDumpFrameStep;
+			msr->df[0]->nFrame++;
+		      }
+		    
+		  // initialize the rest of the dumpframes
+
+		    if (msr->param.iDirector > 1) {
+		      for(j=0; j < msr -> param.iDirector; j++)
+			{
+			  msr->df[j]->dStep = msr->df[0]->dStep;
+			  msr->df[j]->dDumpFrameStep = msr->df[0]->dDumpFrameStep;
+			  msr->df[j]->nFrame = msr->df[0]->nFrame;
+			} 
+		    }
+		  }
+		
 		if (msrSteps(msr) == 0) goto CheckForDiagnosticOutput;
 		goto Restart;
 		}
@@ -770,7 +797,7 @@ int main(int argc,char **argv)
             msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
             }
 	
-	dfFinalize( msr->df );
+	dfFinalize( msr->df[0] );
 	msrFinish(msr);
 	mdlFinish(mdl);
 	return 0;

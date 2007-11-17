@@ -346,7 +346,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	assert(msr != NULL);
 
 	msr->bDumpFrame = 0;
-	msr->df = NULL;
+	msr->df[0] = NULL;
 
 	msr->mdl = mdl;
 	msr->pst = NULL;
@@ -473,6 +473,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dDumpFrameTime = -1;
 	prmAddParam(msr->prm,"dDumpFrameTime",2,&msr->param.dDumpFrameTime,sizeof(double),
 				"dft","<number of timesteps between dumped frames> = 0");
+
+	msr->param.iDirector = 1;
+	prmAddParam(msr->prm,"iDirector",1,&msr->param.iDirector,sizeof(int),
+		    "idr","<number of director files: 1, 2, 3> = 1");
+
 	msr->param.iLogInterval = 10;
 	prmAddParam(msr->prm,"iLogInterval",1,&msr->param.iLogInterval,sizeof(int),
 				"ol","<number of timesteps between logfile outputs> = 10");
@@ -6551,7 +6556,7 @@ int msrCurrMaxRung(MSR msr)
 int msrCurrMaxRungInclDF(MSR msr)
 {
 	int iRung = msr->iCurrMaxRung;
-	if (msr->bDumpFrame && iRung < msr->df->iMaxRung) iRung = msr->df->iMaxRung;
+	if (msr->bDumpFrame && iRung < msr->df[0]->iMaxRung) iRung = msr->df[0]->iMaxRung;
     return iRung;
     }
 
@@ -7190,9 +7195,9 @@ void msrTopStepKDK(MSR msr,
 		/* 
 		 ** Dump Frame
 		 */
-		if (msr->param.dDumpFrameTime > 0 && dTime >= msr->df->dTime)
+		if (msr->param.dDumpFrameTime > 0 && dTime >= msr->df[0]->dTime)
 			msrDumpFrame( msr, dTime, dStep );
-		else if (msr->param.dDumpFrameStep > 0 && dStep >= msr->df->dStep) 
+		else if (msr->param.dDumpFrameStep > 0 && dStep >= msr->df[0]->dStep) 
 			msrDumpFrame( msr, dTime, dStep );
 
 		/* 
@@ -7918,103 +7923,127 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     }
 
 int msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart) {
-	/*LCL *plcl = &msr->lcl; -- not used: DCR 12/19/02*/
 	char achFile[160];
-	
+	int i = 0;
+
 	if (msr->param.dDumpFrameStep > 0 || msr->param.dDumpFrameTime > 0) {
-		msr->bDumpFrame = 1;
-		/*
-		 ** Add Data Subpath for local and non-local names.
-		 */
-		achFile[0] = '\0';
+	  msr->bDumpFrame = 1;
+	  /* See master.h: msrContext */
+	  assert(msr->param.iDirector <= 10);
+
+	  for(i = 0; i < msr->param.iDirector; i++)
+	    {
+	      /*
+	      ** Add Data Subpath for local and non-local names.
+	      
+	         Can do any number of director files. Director files 
+		 except for the first one should be numbered starting with 2.
+	      */
+	      achFile[0] = '\0';
+	      
+	      if(i==0) {
 		sprintf(achFile,"%s/%s.director",msr->param.achDataSubPath,
-				msr->param.achOutName);
-		
-		dfInitialize( &msr->df, msr->param.dSecUnit/SECONDSPERYEAR, 
-					 dTime, msr->param.dDumpFrameTime, dStep, 
-					 msr->param.dDumpFrameStep, msr->param.dDelta, 
-					 msr->param.iMaxRung, msr->param.bVDetails,
-					 achFile );
+			msr->param.achOutName);
+	      }
+	      
+	      else {
+		sprintf(achFile,"%s/%s.director%d",msr->param.achDataSubPath,
+			msr->param.achOutName, i+1);
+	      }
+	      
+	      dfInitialize( &msr->df[i], msr->param.dSecUnit/SECONDSPERYEAR, 
+			    dTime, msr->param.dDumpFrameTime, dStep, 
+			    msr->param.dDumpFrameStep, msr->param.dDelta, 
+			    msr->param.iMaxRung, msr->param.bVDetails,
+			    achFile );
+	    }
 
-		/* Read in photogenic particle list */
-		if (msr->df->bGetPhotogenic) {
-		  achFile[0] = 0;
-		  sprintf(achFile,"%s/%s.photogenic",msr->param.achDataSubPath,
-				msr->param.achOutName);
-		  msrSetTypeFromFile( msr, achFile, TYPE_PHOTOGENIC );
-		}
 
-		if(!bRestart)
-			msrDumpFrame( msr, dTime, dStep );
-                return 1;
-		} else { return 0; }
-	}
+	  /* Read in photogenic particle list */
+	  if (msr->df[0]->bGetPhotogenic) {
+	    achFile[0] = 0;
+	    sprintf(achFile,"%s/%s.photogenic",msr->param.achDataSubPath,
+		    msr->param.achOutName);
+	    msrSetTypeFromFile( msr, achFile, TYPE_PHOTOGENIC );
+	  }
+
+	  if(!bRestart)
+	    msrDumpFrame( msr, dTime, dStep );
+	  return 1;
+	} else { return 0; }
+}
 
 void msrDumpFrame(MSR msr, double dTime, double dStep)
 {
-	double sec,dsec1,dsec2,dExp;
-
-	sec = msrTime();
-
-	if (msr->df->iDimension == DF_3D) {
+  double sec,dsec1,dsec2,dExp;
+  int i = 0;
+  
+  sec = msrTime();
+  
+  for(i=0; i < msr->param.iDirector; i++)
+    {
+      
+      if (msr->df[i]->iDimension == DF_3D) {
 #ifdef VOXEL
-		/* 3D Voxel Projection */
-		struct inDumpVoxel in;
-		assert(0);
-
-		dfSetupVoxel( msr->df, dTime, dStep, &in );
-
-		pstDumpVoxel(msr->pst, &in, sizeof(struct inDumpVoxel), NULL, NULL );
-		dsec1 = msrTime() - sec;
-		
-		dfFinishVoxel( msr->df, dTime, dStep, &in );
-		
-		dsec2 = msrTime() - sec;
-		
-		printf("DF Dumped Voxel %i at %g (Wallclock: Render %f tot %f secs).\n",
-			   msr->df->nFrame-1,dTime,dsec1,dsec2);
-		LOGTIMINGUPDATE( dsec2, TIMING_DumpFrame );
+	/* 3D Voxel Projection */
+	struct inDumpVoxel in;
+	assert(0);
+	
+	dfSetupVoxel( msr->df[i], dTime, dStep, &in );
+	
+	pstDumpVoxel(msr->pst, &in, sizeof(struct inDumpVoxel), NULL, NULL );
+	dsec1 = msrTime() - sec;
+	
+	dfFinishVoxel( msr->df[i], dTime, dStep, &in );
+	
+	dsec2 = msrTime() - sec;
+	
+	printf("DF Dumped Voxel %i at %g (Wallclock: Render %f tot %f secs).\n",
+	       msr->df->nFrame-1,dTime,dsec1,dsec2);
+	LOGTIMINGUPDATE( dsec2, TIMING_DumpFrame );
 #endif
-		}
-	else {
-		/* 2D Projection */
-	    struct inDumpFrame in;
-		void *Image; 
-		int nImage;
-		double com[12];
-
-		if (msr->df->bGetCentreOfMass) {
-		  pstCOM(msr->pst, NULL, 0, &com[0], NULL);
-		  }
-
-		if (msr->df->bGetPhotogenic) {
-		  int type = TYPE_PHOTOGENIC;
-		  pstCOMByType(msr->pst, &type, sizeof(int), &com[0], NULL);
-		  }
-
-		if (msr->df->bGetOldestStar) {
-		  pstOldestStar(msr->pst, NULL, 0, &com[0], NULL);
-		  }
-
-		dExp = csmTime2Exp(msr->param.csm,dTime);
-		dfSetupFrame( msr->df, dTime, dStep, dExp, &com[0], &in );
-
-		Image = dfAllocateImage( in.nxPix, in.nyPix );
-		
-		pstDumpFrame(msr->pst, &in, sizeof(struct inDumpFrame), Image, &nImage );
-		dsec1 = msrTime() - sec;
-		
-		dfFinishFrame( msr->df, dTime, dStep, &in, Image );
-		
-		dsec2 = msrTime() - sec;
-		
-		printf("DF Dumped Image %i at %g (Wallclock: Render %f tot %f secs).\n",
-			   msr->df->nFrame-1,dTime,dsec1,dsec2);
-		LOGTIMINGUPDATE( dsec2, TIMING_DumpFrame );
-
-		dfFreeImage( Image );
-		}
+      }
+      
+      else {
+	/* 2D Projection */
+	struct inDumpFrame in;
+	void *Image; 
+	int nImage;
+	double com[12];
+	
+	if (msr->df[i]->bGetCentreOfMass) {
+	  pstCOM(msr->pst, NULL, 0, &com[0], NULL);
 	}
+	
+	if (msr->df[i]->bGetPhotogenic) {
+	  int type = TYPE_PHOTOGENIC;
+	  pstCOMByType(msr->pst, &type, sizeof(int), &com[0], NULL);
+	}
+	
+	if (msr->df[i]->bGetOldestStar) {
+	  pstOldestStar(msr->pst, NULL, 0, &com[0], NULL);
+	}
+	
+	dExp = csmTime2Exp(msr->param.csm,dTime);
+	dfSetupFrame( msr->df[i], dTime, dStep, dExp, &com[0], &in );
+	
+	Image = dfAllocateImage( in.nxPix, in.nyPix );
+	
+	pstDumpFrame(msr->pst, &in, sizeof(struct inDumpFrame), Image, &nImage );
+	dsec1 = msrTime() - sec;
+	
+	dfFinishFrame( msr->df[i], dTime, dStep, &in, Image );
+	
+	dsec2 = msrTime() - sec;
+	
+	printf("DF Dumped Image %i at %g (Wallclock: Render %f tot %f secs).\n",
+	       msr->df[i]->nFrame-1,dTime,dsec1,dsec2);
+	LOGTIMINGUPDATE( dsec2, TIMING_DumpFrame );
+	
+	dfFreeImage( Image );
+      }
+    }
+}
 
 void msrInitStarLog(MSR msr)
 {

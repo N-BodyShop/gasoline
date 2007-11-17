@@ -107,7 +107,7 @@ typedef struct msrContext {
 	 ** Tracking for frame dumping function
 	 */
 	int bDumpFrame;
-	struct DumpFrameContext *df;
+	struct DumpFrameContext *df[10];
 	/*
 	 ** An integer marking the type of tree currently in use.
 	 ** MSR_TREE_NONE: undefined tree type
