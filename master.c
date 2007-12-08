@@ -8087,11 +8087,13 @@ void msrFlushStarLog(MSR msr)
 #ifdef STARFORM
     struct inFlushStarLog in;
 
-    sprintf(in.achStarLogFile,"%s.starlog",msrOutName(msr));
-    pstFlushStarLog(msr->pst, &in, sizeof(in), NULL, NULL);
-    
-    if (msr->param.bVDetails) {
-	puts("StarLog file has been flushed.");
+    if(msr->param.bStarForm) {
+	sprintf(in.achStarLogFile,"%s.starlog",msrOutName(msr));
+	pstFlushStarLog(msr->pst, &in, sizeof(in), NULL, NULL);
+
+	if (msr->param.bVDetails) {
+	    puts("StarLog file has been flushed.");
+	    }
 	}
 #endif
     }
