@@ -287,7 +287,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	    pSfEv->vForm[j] = starp.v[j];
 	    }
 	pSfEv->massForm = starp.fMassForm;
-	pSfEv->rhoForm = starp.fDensity;
+	pSfEv->rhoForm = starp.fDensity/dCosmoFac;
 	pSfEv->TForm = T;
 	pStarLog->nLog++;
 	}

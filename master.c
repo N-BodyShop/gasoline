@@ -8061,7 +8061,8 @@ void msrInitStarLog(MSR msr)
     int iSize;
 
     sprintf(achStarLogFile,"%s.starlog",msrOutName(msr));
-    if(!stat(achStarLogFile, &statbuf)) {	/* file exists, check number */
+    if(msr->param.bRestart && !stat(achStarLogFile, &statbuf)) {
+	/* file exists, check number */
 	FILE *fpLog = fopen(achStarLogFile,"r");
 
 	assert(fpLog != NULL);
