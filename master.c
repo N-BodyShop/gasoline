@@ -2142,11 +2142,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	}
 
 
+#include "version.h"
+
 void msrLogParams(MSR msr,FILE *fp)
 {
 	double z, testDelta;
 	int i;
 
+	fprintf(fp,"# PKDGRAV/GASOLINE %s\n", achVersionString);
 #ifdef __DATE__
 #ifdef __TIME__
 	fprintf(fp,"# Code compiled: %s %s\n",__DATE__,__TIME__);
@@ -2276,7 +2279,7 @@ void msrLogParams(MSR msr,FILE *fp)
 		fprintf(fp,"%s",hostname);
 	}
 	fprintf(fp,"\n# N: %d",msr->N);
-	fprintf(fp," nThreads: %d",msr->param.nThreads);
+	fprintf(fp," nThreads: %d",msr->mdl->nThreads);
 	fprintf(fp," bDiag: %d",msr->param.bDiag);
 	fprintf(fp," Verbosity flags: (%d,%d,%d,%d,%d)",msr->param.bVWarnings,
 			msr->param.bVStart,msr->param.bVStep,msr->param.bVRungStat,
