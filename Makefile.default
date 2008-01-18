@@ -366,6 +366,7 @@ $(OBJ) $(EXTRA_OBJ): Makefile
 cosmo.o: runge.h cosmo.h
 ewald.o: ewald.h pkd.h floattype.h cooling.h meval.h qeval.h
 fdl.o: htable.h fdl.h
+feedback.o: pkd.h feedback.h supernova.h
 grav.o: pkd.h floattype.h cooling.h grav.h meval.h qeval.h
 htable.o: htable.h
 integration.o: linalg.h floattype.h integration.h
@@ -374,7 +375,7 @@ main.o: master.h param.h pst.h pkd.h floattype.h cooling.h smoothfcn.h
 main.o: parameters.h cosmo.h outtype.h
 master.o: master.h param.h pst.h pkd.h floattype.h cooling.h smoothfcn.h
 master.o: parameters.h cosmo.h tipsydefs.h opentype.h fdl.h htable.h
-master.o: outtype.h
+master.o: outtype.h version.h
 millerscalo.o: millerscalo.h
 outtype.o: pkd.h floattype.h cooling.h outtype.h
 param.o: param.h
