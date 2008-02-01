@@ -199,7 +199,7 @@ void clInitRatesTable( COOL *cl, double TMin, double TMax, int nTable ) {
     (cl->RT+i)->Cool_Radr_HeII = clCoolRadrHeII( T );
     (cl->RT+i)->Cool_Radr_HeIII = clCoolRadrHeIII( T );
     (cl->RT+i)->Cool_Line_HI = clCoolLineHI( T );
-    (cl->RT+i)->Cool_Line_HeI = clCoolLineHeII( T );
+    (cl->RT+i)->Cool_Line_HeI = clCoolLineHeI( T );
     (cl->RT+i)->Cool_Line_HeII = clCoolLineHeII( T );
     (cl->RT+i)->Cool_LowT = clCoolLowT( T );
   }    
@@ -1065,7 +1065,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
     while (t<tstop) {
       double Eold;
 #ifdef COOLDEBUG
-      if (cl->p->iOrder == 552307) {
+      if (cl->p->iOrder == 5647) {
 	  d->E = *E;
 	  clTempIteration( d );
 	  clDerivs( d, t, (&d->E)-1, (&dEdt)-1 );
