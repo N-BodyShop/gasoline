@@ -492,6 +492,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
 				xdr_float(&xdrs,&fTmp);
 				p->fMetals = fTmp;
+#ifdef DIFFUSION
+				p->fMetalsPred = fTmp;
+#endif				
 #else
 				xdr_float(&xdrs,&fTmp);
 				xdr_float(&xdrs,&fTmp);
@@ -525,6 +528,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef GASOLINE
 				xdr_float(&xdrs,&fTmp);
 				p->fMetals = fTmp;
+#ifdef DIFFUSION
+				p->fMetalsPred = fTmp;
+#endif				
 				xdr_float(&xdrs,&fTmp);
 				p->fTimeForm = fTmp;
 #else
@@ -619,6 +625,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				assert(p->uPred >= 0.0);
 #endif
 				p->fMetals = gp.metals;
+#ifdef DIFFUSION
+				p->fMetalsPred = gp.metals;
+#endif				
 #endif
 				}
 			else if (pkdIsStarByOrder(pkd,p)) {
@@ -1604,11 +1613,26 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 					fTmp = p->r[j];
 					xdr_float(&xdrs,&fTmp);
 					}
-				for (j=0;j<3;++j) {
+#ifdef SINKINGOUTVPRED
+				if (TYPETest(p,TYPE_SINKING)) {
+#ifdef SINKDBG
+				    if (p->iOrder == 55) printf("SINKINGKICKOUT %d, %g %g  %g %g  %g %g\n",p->iOrder,p->vPred[0],p->v[0],p->vPred[1],p->v[1],p->vPred[2],p->v[2]);
+#endif
+				    for (j=0;j<3;++j) {
+					vTemp = dvFac*p->vPred[j];			
+					fTmp = vTemp;
+					xdr_float(&xdrs,&fTmp);
+					}
+				    }
+				else 
+#endif
+				    {
+				    for (j=0;j<3;++j) {
 					vTemp = dvFac*p->v[j];			
 					fTmp = vTemp;
 					xdr_float(&xdrs,&fTmp);
 					}
+				    }
 				fTmp = p->fDensity;
 				xdr_float(&xdrs,&fTmp);
 #ifdef GASOLINE
@@ -3168,8 +3192,13 @@ void pkdHomogSpheroid(PKD pkd)
 	PARTICLE *p;
 	int i,n;
 
+#ifdef SINKING
+	const double M_s = 1;	
+	const double r_s = 1;
+#else
 	const double M_s = 5;	
 	const double r_s = 10;
+#endif
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;++i) {
@@ -3183,11 +3212,13 @@ void pkdHomogSpheroid(PKD pkd)
 			double r = sqrt(x*x + y*y + z*z);
 			double Mr,A;
 			Mr = (r < r_s ? pow(r/r_s,3.)*M_s : M_s);
-			A = Mr/(r*r*r);
-			p[i].a[0] -= A*x;
-			p[i].a[1] -= A*y;
-			p[i].a[2] -= A*z;
-			p[i].fPot += 2*( r < r_s ? 0.5*(Mr/r-3*M_s/r_s) : -M_s/r );
+			if (r > 0) {
+			    A = Mr/(r*r*r);
+			    p[i].a[0] -= A*x;
+			    p[i].a[1] -= A*y;
+			    p[i].a[2] -= A*z;
+			    p[i].fPot += 2*( r < r_s ? 0.5*(Mr/r-3*M_s/r_s) : -M_s/r );
+			    }
 			}
 		}
 	}
@@ -3519,7 +3550,7 @@ void fg(MDL mdl,double mu,FLOAT *x,FLOAT *v,double dt) {
 
 void
 pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
-		 FLOAT fCentMass)
+		 FLOAT fCentMass, double dTime)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -3553,8 +3584,46 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 			fShear = 0.0;
 			p->bAzWrap = 0; /* reset azimuthal wrap flag */
 #endif
+#ifdef SINKING
+			if (TYPETest( p, TYPE_SINKING)) {
+			    FLOAT r0 = p->rSinking0Mag;
+			    FLOAT r1 = r0 + p->vSinkingr0*(dTime-p->fSinkingTime);
+			    FLOAT r2 = r1 + p->vSinkingr0*dDelta;
+			    FLOAT thfac, th1, th2, costh1, sinth1, costh2, sinth2, sqr01, sqr02;
+			    if (r2 < 0.1*r0) r2 = 0.1*r0; /* HACK */
+			    if (r1 < 0.1*r0) r1 = 0.1*r0; /* HACK */
+			    thfac = p->vSinkingTang0Mag*2/(p->vSinkingr0);
+			    sqr01 = sqrt(r0/r1);
+			    sqr02 = sqrt(r0/r2);
+			    th1 = thfac*(1-sqr01);
+			    th2 = thfac*(1-sqr02);
+			    costh1 = cos(th1);
+			    sinth1 = sin(th1);
+			    costh2 = cos(th2);
+			    sinth2 = sin(th2);
+/*#define SINKFREEZE*/
+#ifndef SINKFREEZE
+			    for (j=0;j<3;j++) {
+				p->r[j] += (r2*costh2-r1*costh1)*p->rSinking0Unit[j]+(r2*sinth2-r1*sinth1)*p->vSinkingTang0Unit[j];
+/* Do vpred adjustment here -- no need to do it in kickvpred */
+				p->vPred[j] += p->vSinkingTang0Mag*(
+				    (-sinth2*sqr02+sinth1*sqr01)*p->rSinking0Unit[j]
+				    +(costh2*sqr02-costh1*sqr01)*p->vSinkingTang0Unit[j])
+				    +p->vSinkingr0*((costh2-costh1)*p->rSinking0Unit[j]
+						    +(sinth2-sinth1)*p->vSinkingTang0Unit[j]);
+				}
+#endif
+#ifdef SINKDBG
+			    if (p->iOrder == 55) {
+				printf("SINKINGDRIFT %d: %g %g %lf %lf, %g %g\n",p->iOrder,th1,th2,r1,r2,dTime,dTime+dDelta);
+				}
+#endif
+			    }
+		    
+#endif
 			for (j=0;j<3;++j) {
-				p->r[j] += dDelta*p->v[j];
+			        p->r[j] += dDelta*p->v[j];
+
 				if (bPeriodic) {
 					if (p->r[j] >= lfCenter[j] + 0.5*pkd->fPeriod[j]) {
 						p->r[j] -= pkd->fPeriod[j];
@@ -3583,7 +3652,14 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 					bInBox = bInBox && (p->r[j] >= lfCenter[j]-0.5*pkd->fPeriod[j]);
 					bInBox = bInBox && (p->r[j] <  lfCenter[j]+0.5*pkd->fPeriod[j]);
 					}
-				}
+			    }
+#ifdef SINKING
+#ifdef SINKDBG
+			if (p->iOrder == 55) {
+			    printf("SINKDRIFT %g, %g %g %g, %g %g %g: %d %g\n",dTime+dDelta,p->v[0],p->v[1],p->v[2],p->r[0],p->r[1],p->r[2],p->iOrder,p->fMass);
+			    }
+#endif
+#endif
 #ifdef SLIDING_PATCH
 			p->v[1] += fShear;
 			p->dPy -= fShear/3.0; /* Angular momentum is
@@ -3598,7 +3674,7 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bFandG,
 
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
-	     double z, double duDotLimit )
+	     double z, double duDotLimit, double dTimeEnd )
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -3619,26 +3695,62 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 			if (pkdIsGas(pkd, p)) {
 				for (j=0;j<3;++j) {
 					p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
-				}
+				    }
+#ifdef SINKING
+				if (TYPETest( p, TYPE_SINKING)) {
+				    FLOAT r0 = p->rSinking0Mag;
+				    /* For kick std dTime is midpoint of kick period, put dTime to end for this exact calc */
+				    FLOAT r2 = r0 + p->vSinkingr0*(dTimeEnd-p->fSinkingTime);
+				    FLOAT thfac, sqr02, th2, costh2, sinth2;
+				    if (r2 < 0.1*r0) r2 = 0.1*r0; /* HACK */
+				    thfac = p->vSinkingTang0Mag*2/(p->vSinkingr0);
+				    sqr02 = sqrt(r0/r2);
+				    th2 = thfac*(1-sqr02);
+				    costh2 = cos(th2);
+				    sinth2 = sin(th2);
+				    /* v does not include motion around sink -- add it back */
+				    for (j=0;j<3;j++) {
+					p->vPred[j] += p->vSinkingTang0Mag*sqr02*(-sinth2*p->rSinking0Unit[j]+costh2*p->vSinkingTang0Unit[j])+p->vSinkingr0*(costh2*p->rSinking0Unit[j]+sinth2*p->vSinkingTang0Unit[j]);
+					}
+				    }
+#ifdef SINKDBG
+				if (p->iOrder == 55) printf("SINKINGKICK %d %g, %g %g  %g %g  %g %g\n",p->iOrder,dTimeEnd,p->vPred[0],p->v[0],p->vPred[1],p->v[1],p->vPred[2],p->v[2]);
+#endif
+#endif /* SINKING */
 				if (iGasModel != GASMODEL_ISOTHERMAL) {
 #ifndef NOCOOLING				
 				  p->uPred = p->u + p->uDot*duPredDelta;
 				  p->u = p->u + p->uDot*duDelta;
-#else
+				  if (p->u < 0) {
+				      FLOAT uold = p->u - p->uDot*duDelta;
+				      p->uPred = uold*exp(p->uDot*duPredDelta/uold);
+				      p->u = uold*exp(p->uDot*duDelta/uold);
+				      }
+#else /* NOCOOLING */
 				  p->uPred = p->u + p->PdV*duPredDelta;
 				  p->u = p->u + p->PdV*duDelta;
-#endif
+#endif /* NOCOOLING */
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) 
 				  if (p->uPred < 0) p->uPred = 0;
-				  if (p->u < 0) p->u = 0;
-#endif
+			          if (p->u < 0) p->u = 0;
+#endif /* PRES_HK  PRES_MONAGHAN */
 				  }
-				}
-#else
+#ifdef DIFFUSION
+				p->fMetalsPred = p->fMetals + p->fMetalsDot*duPredDelta;
+				p->fMetals = p->fMetals + p->fMetalsDot*duDelta;
+#ifdef STARFORM
+				p->fMFracOxygenPred = p->fMFracOxygen + p->fMFracOxygenDot*duPredDelta;
+				p->fMFracOxygen = p->fMFracOxygen + p->fMFracOxygenDot*duDelta;
+				p->fMFracIronPred = p->fMFracIron + p->fMFracIronDot*duPredDelta;
+				p->fMFracIron = p->fMFracIron + p->fMFracIronDot*duDelta;
+#endif /* STARFORM */
+#endif /* DIFFUSION */
+			    }
+#else /* GASOLINE */
 			for (j=0;j<3;++j) {
 				p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
 				}
-#endif
+#endif /* GASOLINE */
 #endif /* NEED_VPRED */
 			for (j=0;j<3;++j) {
 				p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
@@ -3747,6 +3859,10 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
                 p->fNSNtot = 0.0;
                 p->fMFracOxygen = cp.fMFracOxygen;
                 p->fMFracIron = cp.fMFracIron;
+#ifdef DIFFUSION
+                p->fMFracOxygenPred = cp.fMFracOxygen;
+                p->fMFracIronPred = cp.fMFracIron;
+#endif
 #endif
 #ifdef SIMPLESF
 		p->fMassStar = cp.fMassStar;
@@ -3759,6 +3875,9 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		p->iGasOrder = cp.iGasOrder;
 #endif
 		p->fMetals = cp.fMetals;
+#ifdef DIFFUSION
+		p->fMetalsPred = cp.fMetals;
+#endif
 #ifndef NOCOOLING		
 		p->CoolParticle = cp.CoolParticle;
 #endif
@@ -5259,27 +5378,34 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 {
     int i;
     PARTICLE *p;    
-    double dT,dTu;
+    double dT,dTu,dTD,ph;
 
     *pdtMinGas = DBL_MAX;
     for(i=0;i<pkdLocal(pkd);++i) {
         p = &pkd->pStore[i];
         if(pkdIsGas(pkd, p)) {
 	    if (TYPEQueryACTIVE(p)) {
+		ph = sqrt(0.25*p->fBall2);
+#ifdef SINKING
+		if (TYPETest( p, TYPE_SINKING)) {
+		    p->dt = FLT_MAX; /* reset later to min gas step */
+		    continue;
+		    }
+#endif
 			/*
 			 * Courant condition goes here.
 			 */
 	       if (p->mumax>0.0) {
 				if (bViscosityLimitdt) 
-				  dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(p->c + 0.6*(p->c + 2*p->BalsaraSwitch*p->mumax)));
+				  dT = dEtaCourant*dCosmoFac*(ph/(p->c + 0.6*(p->c + 2*p->BalsaraSwitch*p->mumax)));
 				else
-				  dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(p->c + 0.6*(p->c + 2*p->mumax)));
+				  dT = dEtaCourant*dCosmoFac*(ph/(p->c + 0.6*(p->c + 2*p->mumax)));
 	                   }
 	       else
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) || defined(SIMPLESF)
-			   dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(1.6*p->c+(10./FLT_MAX)));
+			   dT = dEtaCourant*dCosmoFac*(ph/(1.6*p->c+(10./FLT_MAX)));
 #else
-			   dT = dEtaCourant*dCosmoFac*(sqrt(0.25*p->fBall2)/(1.6*p->c));
+			   dT = dEtaCourant*dCosmoFac*(ph/(1.6*p->c));
 #endif
 
 	       if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */
@@ -5290,12 +5416,19 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 			    if (p->iOrder==5514) printf("dT1 %i: %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,dT);
 #endif
 			    assert(p->u > 0.0);
-				dTu = dEtauDot*p->u/fabs(p->PdV);
-				if (dTu < dT) 
-					dT = dTu;
-				}
+			    dTu = dEtauDot*p->u/fabs(p->PdV);
+			    if (dTu < dT) 
+				dT = dTu;
+		   }
+#ifdef DIFFUSION
+               /* h^2/(2.77Q) Linear stability from Brookshaw */
+	       if (p->diff > 0) {
+		   dTD = (1/2.8*(dEtaCourant/0.4))*ph*ph/(p->diff);  
+		   if (dTD < dT) dT = dTD;
+		   }
+#endif
 #ifdef SSFDEBUG
-		   if (p->iOrder==5514) printf("dT2 %i: %f %f %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,dT,dTu,p->PdV);
+	       if (p->iOrder==5514) printf("dT2 %i: %f %f %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,dT,dTu,p->PdV);
 #endif
 
 		if(dT < p->dt)
@@ -5314,9 +5447,22 @@ pkdSinkStep(PKD pkd, double dtMax)
 
     for(i=0;i<pkdLocal(pkd);++i) {
         p = &pkd->pStore[i];
-        if(TYPETest( p, TYPE_SINK ) && TYPEQueryACTIVE(p)) {
+        if(TYPETest( p, TYPE_SINK|TYPE_SINKING ) && TYPEQueryACTIVE(p)) {
 	    if (dtMax < p->dt) p->dt = dtMax;
 	    }
+	}
+}
+
+void
+pkdSetSphStep(PKD pkd, double dt)
+{
+    int i;
+    PARTICLE *p;    
+	int n=0;
+
+    for(i=0;i<pkdLocal(pkd);++i) {
+        p = &pkd->pStore[i];
+        if(TYPETest( p, TYPE_GAS )) p->dt = dt;
 	}
 }
 
@@ -5911,7 +6057,7 @@ void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
 #ifdef GASOLINE
 void
 pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
-			 int iGasModel,double z,double duDotLimit)
+			 int iGasModel,double z,double duDotLimit, double dTimeEnd)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -5928,6 +6074,31 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 			for (j=0;j<3;++j) {
 				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;
 				}
+#ifdef SINKING
+#if (0)
+/* Vpred routines can be done in drift so I will do them there -- more efficient 
+   Perhaps pkdkickvpred should be removed completely */
+			if (TYPETest( p, TYPE_SINKING)) {
+			    FLOAT r0 = p->rSinking0Mag;
+			    /* For kick std dTime is midpoint of kick period, put dTime to end for this exact calc */
+			    FLOAT r2 = r0 + p->vSinkingr0*(dTimeEnd-p->fSinkingTime);
+			    FLOAT thfac, sqr02, th2, costh2, sinth2;
+			    if (r2 < 0.1*r0) r2 = 0.1*r0; /* HACK */
+			    thfac = p->vSinkingTang0Mag*2/(p->vSinkingr0);
+			    sqr02 = sqrt(r0/r2);
+			    th2 = thfac*(1-sqr02);
+			    costh2 = cos(th2);
+			    sinth2 = sin(th2);
+			    /* v does not include motion around sink -- add it back */
+			    for (j=0;j<3;j++) {
+				p->vPred[j] += p->vSinkingTang0Mag*sqr02*(-sinth2*p->rSinking0Unit[j]+costh2*p->vSinkingTang0Unit[j])+p->vSinkingr0*(costh2*p->rSinking0Unit[j]+sinth2*p->vSinkingTang0Unit[j]);
+				}
+			    }
+#endif /* (0) */
+#ifdef SINKDBG
+			if (p->iOrder == 55) printf("SINKINGKICKVPRED %d %g, %g %g  %g %g  %g %g\n",p->iOrder,dTimeEnd,p->vPred[0],p->v[0],p->vPred[1],p->v[1],p->vPred[2],p->v[2]);
+#endif
+#endif
 			if (iGasModel != GASMODEL_ISOTHERMAL) {
 #ifndef NOCOOLING
 #ifdef COOLDEBUG
@@ -5938,6 +6109,10 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 			    if (p->iOrder==5514) printf("%i: %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta);
 #endif
 			  p->uPred = p->uPred + p->uDot*duDelta;
+			  if (p->uPred < 0) {
+			      FLOAT uold = p->uPred - p->uDot*duDelta;
+			      p->uPred = uold*exp(p->uDot*duDelta/uold);
+			      }
 #else
 			  p->uPred = p->uPred + p->PdV*duDelta;
 #endif
@@ -5946,7 +6121,14 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 #endif
 			  mdlassert(pkd->mdl,p->uPred >= 0.0);
 			  }
-			}
+#ifdef DIFFUSION
+			p->fMetalsPred = p->fMetalsPred + p->fMetalsDot*duDelta;
+#ifdef STARFORM
+			p->fMFracOxygenPred = p->fMFracOxygenPred + p->fMFracOxygenDot*duDelta;
+			p->fMFracIronPred = p->fMFracIronPred + p->fMFracIronDot*duDelta;
+#endif /* STARFORM */
+#endif /* DIFFUSION */
+		    }
 		}
 
 	pkdStopTimer(pkd,1);

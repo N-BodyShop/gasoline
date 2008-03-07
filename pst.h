@@ -224,6 +224,7 @@ enum pst_service {
 	  /* following for SPH, etc. */
       PST_SPHSTEP,
       PST_SINKSTEP,
+      PST_SETSPHSTEP,
       PST_SETBALL,
       PST_SPHVISCOSITYLIMITER,
       PST_INITCOOLING,
@@ -606,6 +607,7 @@ struct inDrift {
 	int bPeriodic;
 	int bFandG;
 	FLOAT fCentMass;
+        double dTime;
 #ifdef SLIDING_PATCH
   double dTime;
   PATCH_PARAMS PP;
@@ -640,7 +642,8 @@ struct inKick {
 	double duPredDelta;
 	double duDotLimit;
 	int iGasModel;
-	double z;
+        double z;
+        double dTimeEnd;
 	};
 struct outKick {
 	double Time;
@@ -1547,6 +1550,11 @@ struct inSinkStep {
     };
 void pstSinkStep(PST,void *,int,void *,int *);
 
+struct inSetSphStep {
+    double dt;
+    };
+void pstSetSphStep(PST,void *,int,void *,int *);
+
 struct inSphViscosityLimiter {
     int bOn;
     int bShockTracker;
@@ -1723,6 +1731,7 @@ struct inKickVpred {
 	double duDotLimit;
 	int iGasModel;
 	double z;
+        double dTimeEnd;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
 #endif

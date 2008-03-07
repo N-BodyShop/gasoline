@@ -12,24 +12,6 @@
 #include "supernova.h"
 #endif
 
-/* Benz Method (Default) */
-#if !defined(PRES_MONAGHAN) && !defined(PRES_HK)
-#define PRES_PDV(a,b) (a)
-#define PRES_ACC(a,b) (a+b)
-#endif
-
-/* Monaghan Method */
-#ifdef PRES_MONAGHAN
-#define PRES_PDV(a,b) ((a+b)*0.5)
-#define PRES_ACC(a,b) (a+b)
-#endif
-
-/* HK */
-#ifdef PRES_HK
-#define PRES_PDV(a,b) sqrt(a*b)
-#define PRES_ACC(a,b) (sqrt(a*b)*2)
-#endif
-
 #define SMF_SMOOTHAGAIN    1
 
 typedef struct smfParameters {
@@ -55,9 +37,13 @@ typedef struct smfParameters {
 	int bGrowSmoothList;
 #endif
     int bSinkThermal;
+    int nSinkFormMin;
     int iSinkCurrentRung;
     int iSmoothFlags; /* Read/Write locally.  Master sets initial value. */
     double dTime;
+#ifdef DIFFUSION
+    double dMetalDiffusionConstant;
+#endif
 #ifdef STARFORM
         double dMinMassFrac;
         double dRadPreFactor;
@@ -109,12 +95,15 @@ enum smx_smoothtype {
   SMX_DELTAACCEL,
   SMX_SINKTEST,
   SMX_SINKACCRETE,
+  SMX_SINKINGAVERAGE,
+  SMX_SINKINGFORCESHARE,
   SMX_BHDENSITY,
   SMX_BHSINKACCRETE,
   SMX_SINKFORMTEST,
   SMX_SINKFORM,
 #ifdef GASOLINE
   SMX_SPHPRESSURETERMS,
+  SMX_DENDVDX,
   SMX_DIVVORT,
   SMX_SHOCKTRACK,
   SMX_HKPRESSURETERMS,
@@ -192,6 +181,14 @@ void SinkAccrete(PARTICLE *,int,NN *,SMF *);
 void initSinkAccrete(void *);
 void combSinkAccrete(void *,void *);
 
+/* SMX_SINKINGAVERAGE */
+void SinkingAverage(PARTICLE *,int,NN *,SMF *);
+
+/* SMX_SINKINGFORCESHARE */
+void SinkingForceShare(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf);
+void initSinkingForceShare(void *);
+void combSinkingForceShare(void *,void *);
+
 /* SMX_BHDENSITY */
 void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf);
 void initBHSinkDensity(void *);
@@ -220,6 +217,11 @@ void initSphPressureTerms(void *);
 void combSphPressureTerms(void *,void *);
 void SphPressureTerms(PARTICLE *,int,NN *,SMF *);
 void SphPressureTermsSym(PARTICLE *,int,NN *,SMF *);
+
+/* SMX_DENDVDX */
+void initDenDVDX(void *);
+void combDenDVDX(void *,void *);
+void DenDVDX(PARTICLE *,int,NN *,SMF *);
 
 /* SMX_DIVVORT */
 void initDivVort(void *);

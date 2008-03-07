@@ -30,6 +30,7 @@ typedef struct pqNode {
 #define LOWHFIX_NONE         0
 #define LOWHFIX_HOVERSOFT    1 
 #define LOWHFIX_SINKRADIUS   2
+#define LOWHFIX_SINKRADIUS_BUFF   3
 
 typedef struct smContext {
 	PKD pkd;

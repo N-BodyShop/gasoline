@@ -31,6 +31,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
         case OUT_GASDENSITY_ARRAY:
 #endif
 	case OUT_DENSITY_ARRAY:
+	case OUT_DENSITYRFC_ARRAY:
 		return(p->fDensity);
 	case OUT_COLOR_ARRAY:
 #ifdef COLORCODE
@@ -99,9 +100,14 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_DIVONCONX_ARRAY:
 	        return(p->divv/(p->c/pow(p->fMass/p->fDensity,1./3.)));
         case OUT_PDV_ARRAY:
+        case OUT_PDVRFC_ARRAY:
   	        return(p->PdV);
 	case OUT_METALS_ARRAY:
   	        return(p->fMetals);
+#ifdef DIFFUSION
+	case OUT_METALSDOT_ARRAY:
+  	        return(p->fMetalsDot);
+#endif
 #ifdef PDVDEBUG
 	case OUT_PDVPRES_ARRAY:
 	        return(p->PdVpres);
@@ -127,6 +133,14 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return((FLOAT) p->fMFracOxygen);
 	case OUT_IRONMASSFRAC_ARRAY:
 	    return((FLOAT) p->fMFracIron);
+#ifdef DIFFUSION
+	case OUT_OXYGENMASSFRACDOT_ARRAY:
+	    return((FLOAT) p->fMFracOxygenDot);
+	case OUT_IRONMASSFRACDOT_ARRAY:
+	    return((FLOAT) p->fMFracIronDot);
+#endif
+	case OUT_ESNRATE_ARRAY:
+	    return((FLOAT) p->fESNrate);
 #ifdef CHECKSF
 	case OUT_TOFF_YR_ARRAY:
 	    return((FLOAT) p->tOff );
@@ -163,6 +177,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 		return(pkd->dvFac*p->v[iDim]);
 	case OUT_MASS_ARRAY:
 		return(p->fMass);
+	case OUT_ACCELRFC_VECTOR:
 	case OUT_ACCELG_VECTOR:
 	case OUT_ACCEL_VECTOR:
 		return(p->a[iDim]);
@@ -191,6 +206,9 @@ void VecFilename(char *achFile, int iType)
             break;
         case OUT_DENSITY_ARRAY:
 		strncat(achFile,"den",256);
+            break;
+        case OUT_DENSITYRFC_ARRAY:
+		strncat(achFile,"denRFC",256);
             break;
 	case OUT_COLOR_ARRAY:
 #ifdef COLORCODE
@@ -274,6 +292,9 @@ void VecFilename(char *achFile, int iType)
         case OUT_PDV_ARRAY:
             strncat(achFile,"PdV",256);
             break;
+        case OUT_PDVRFC_ARRAY:
+            strncat(achFile,"PdVRFC",256);
+            break;
 	case OUT_PDVPRES_ARRAY:
 	        strncat(achFile,"PdVpres",256);
             break;
@@ -283,6 +304,11 @@ void VecFilename(char *achFile, int iType)
 	case OUT_METALS_ARRAY:
 	    strncat(achFile,"Metals",256);
             break;
+#ifdef DIFFUSION
+	case OUT_METALSDOT_ARRAY:
+	    strncat(achFile,"Metalsdot",256);
+            break;
+#endif
 #ifdef SHOCKTRACK
 	case OUT_SHOCKTRACKER_ARRAY:
 	        strncat(achFile,"ST",256);
@@ -310,6 +336,17 @@ void VecFilename(char *achFile, int iType)
 	case OUT_IRONMASSFRAC_ARRAY:
 	    strncat(achFile,"FeMassFrac",256);
             break;
+#ifdef DIFFUSION
+	case OUT_OXYGENMASSFRACDOT_ARRAY:
+	    strncat(achFile,"OxMassFracdot",256);
+            break;
+	case OUT_IRONMASSFRACDOT_ARRAY:
+	    strncat(achFile,"FeMassFracdot",256);
+            break;
+#endif
+	case OUT_ESNRATE_ARRAY:
+	    strncat(achFile,"ESNRate",256);
+	    break;
 #ifdef CHECKSF
 	case OUT_TOFF_YR_ARRAY:
 	    strncat(achFile,"tcooloff",256);
@@ -357,6 +394,9 @@ void VecFilename(char *achFile, int iType)
             break;
 	case OUT_ACCELG_VECTOR:
 	    strncat(achFile,"accg",256);
+            break;
+	case OUT_ACCELRFC_VECTOR:
+	    strncat(achFile,"accRFC",256);
             break;
 #ifdef NEED_VPRED
 	case OUT_VPRED_VECTOR:
@@ -420,6 +460,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         case OUT_METALS_ARRAY:
         case OUT_OXYGENMASSFRAC_ARRAY:
         case OUT_IRONMASSFRAC_ARRAY:
+        case OUT_ESNRATE_ARRAY:
             nDark=0;
             break;
         }

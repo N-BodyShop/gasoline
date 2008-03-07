@@ -600,6 +600,70 @@ void clPrintCool ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
     (wTln0*RT0->Cool_LowT+wTln1*RT1->Cool_LowT)*cl->R.Cool_LowTFactor*0.001);
 }
 
+void clPrintCoolFile( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, FILE *fp ) {
+  /* Assumes clRates called previously */
+  /* erg /gram /sec */
+
+  double en_B=rho*CL_B_gm;
+  double xTln,wTln0,wTln1;
+  RATES_T *RT0,*RT1;
+  int iTln;
+
+  xTln = (Rate->Tln-cl->TlnMin)*cl->rDeltaTln;
+  iTln = xTln;
+  RT0 = (cl->RT+iTln);
+  RT1 = RT0+1; 
+  wTln1 = xTln-iTln;
+  wTln0 = 1-wTln1;
+
+  /* PUT INTO erg/gm/sec */
+  fprintf(fp,"%e ",
+    Y->e * ( 
+    cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb )));
+  fprintf(fp,"%e ",
+    Y->e * en_B * (
+    (wTln0*RT0->Cool_Brem_1+wTln1*RT1->Cool_Brem_1) * ( Y->HII )) );
+  fprintf(fp,"%e ",
+    Y->e * en_B * (
+    (wTln0*RT0->Cool_Brem_1+wTln1*RT1->Cool_Brem_1) * ( Y->HeII )) );
+  fprintf(fp,"%e ",
+    Y->e * en_B * (
+    (wTln0*RT0->Cool_Brem_2+wTln1*RT1->Cool_Brem_2) * Y->HeIII ) );
+  fprintf(fp,"%e ",
+    Y->e * en_B * 
+    (wTln0*RT0->Cool_Radr_HII+wTln1*RT1->Cool_Radr_HII) * Y->HII * Rate->Radr_HII );
+  fprintf(fp,"%e ",
+    Y->e * en_B * 
+    (wTln0*RT0->Cool_Radr_HeII+wTln1*RT1->Cool_Radr_HeII) * Y->HeII * Rate->Radr_HeII);
+  fprintf(fp,"%e ",
+    Y->e * en_B * 
+    (wTln0*RT0->Cool_Radr_HeIII+wTln1*RT1->Cool_Radr_HeIII) * Y->HeIII * Rate->Radr_HeIII);
+  fprintf(fp,"%e ",
+    Y->e * en_B * 
+    cl->R.Cool_Coll_HI * Y->HI * Rate->Coll_HI);
+  fprintf(fp,"%e ",
+    Y->e * en_B * 
+    cl->R.Cool_Coll_HeI * Y->HeI * Rate->Coll_HeI);
+  fprintf(fp,"%e ",
+    Y->e * en_B * 
+    cl->R.Cool_Coll_HeII * Y->HeII * Rate->Coll_HeII);
+  fprintf(fp,"%e ",
+    Y->e * en_B * cl->R.Cool_Diel_HeII * Y->HeII * Rate->Diel_HeII);
+
+  fprintf(fp,"%e ",
+    Y->e * en_B * 
+    (wTln0*RT0->Cool_Line_HI+wTln1*RT1->Cool_Line_HI) * Y->HI);
+  fprintf(fp,"%e ",
+    Y->e * en_B * 
+    (wTln0*RT0->Cool_Line_HeI+wTln1*RT1->Cool_Line_HeI) * Y->HeI);
+  fprintf(fp,"%e ",
+    Y->e * en_B * 
+    (wTln0*RT0->Cool_Line_HeII+wTln1*RT1->Cool_Line_HeII) * Y->HeII );
+  fprintf(fp,"%e\n",
+    en_B * 
+    (wTln0*RT0->Cool_LowT+wTln1*RT1->Cool_LowT)*cl->R.Cool_LowTFactor*0.001);
+}
+
 void clAbunds( COOL *cl, PERBARYON *Y, RATE *Rate, double rho ) {
   double en_B=rho*CL_B_gm;
   double rcirrHI   = (Rate->Coll_HI)/(Rate->Radr_HII);
@@ -1148,6 +1212,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 	break;
       }
 #endif    
+      cl->its = its;
     }
   }
   /* 

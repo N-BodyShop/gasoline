@@ -119,6 +119,7 @@ struct parameters {
     int bSinkForm;
     int bSinkFormJeans;
     int bSinkFormSimple;
+    int nSinkFormMin;
     double dSinkFormDensity;
     int iSinkRung;
     int iSinkCurrentRung;
@@ -210,8 +211,11 @@ struct parameters {
 	int    bFastGas;
 	double dFracFastGas;
 	double dhMinOverSoft;
+        double dMetalDiffusionConstant;
 	int    bDoGas;
 	int    bSphStep;
+        int    bSphSingleStep;
+        int    iRungForceCheck;
 #if defined(GASOLINE) && !defined(NOCOOLING)
 	COOLPARAM CoolParam;
 #endif

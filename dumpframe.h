@@ -1,8 +1,8 @@
 #ifndef DUMPFRAME_HINCLUDED
 #define DUMPFRAME_HINCLUDED
 
-#define DF_NXPIXMAX 1280
-#define DF_NYPIXMAX 1280
+#define DF_NXPIXMAX 4000
+#define DF_NYPIXMAX 4000
 /* PST */
 
 #ifdef USE_PNG
@@ -111,15 +111,18 @@ struct inDumpFrame {
 	double dGasSoftMul,dDarkSoftMul,dStarSoftMul;
 	double xlim,ylim,hmul;
     double dYearUnit;
-	DFIMAGE ColStar,ColGas,ColDark;
+        float dColStar[10],dColGas[10],dColDark[10];
+	DFIMAGE ColStar[10],ColGas[10],ColDark[10];
+        int nColStar,nColGas,nColDark;
 	int bColMassWeight;
 	int bGasSph;
     int iColStarAge;
+    int bColLogInterp;
 	int iLogScale;
     int iTarget;
 	int iRender;       
 	/* Render Particle interface */
-	int offsetp_r,offsetp_fMass,offsetp_fSoft,offsetp_fBall2,offsetp_iActive,offsetp_fTimeForm;
+	int offsetp_r,offsetp_fMass,offsetp_fSoft,offsetp_fBall2,offsetp_iActive,offsetp_fDensity,offsetp_fTimeForm;
 	int sizeofp;
 	int iTypeGas,iTypeDark,iTypeStar;
 	
@@ -156,10 +159,13 @@ struct dfFrameSetup {
 
 	/* Rendering controllers */
 	double pScale1,pScale2;
-	DFIMAGE ColStar,ColGas,ColDark;
+        float dColStar[10],dColGas[10],dColDark[10];
+	DFIMAGE ColStar[10],ColGas[10],ColDark[10];
+        int nColStar,nColGas,nColDark;
 	int bColMassWeight;
 	int bGasSph;
     int iColStarAge;
+    int bColLogInterp;
 	int iLogScale;
     int iTarget;
 	double dGasSoftMul,dDarkSoftMul,dStarSoftMul;
@@ -228,17 +234,21 @@ void dfMergeImage( struct inDumpFrame *in, void *Image1, int *nImage1, void *Ima
 void dfClearImage( struct inDumpFrame *in, void *Image, int *nImage );
 
 void dfRenderParticlePoint( struct inDumpFrame *in, void *vImage, 
-						   double *r, double fMass, double fSoft, double fBall2, int iActive, double fAge );
+			    double *r, double fMass, double fSoft, double fBall2, int iActive, 
+			    double fDensity, double fAge );
 void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage, 
-						 double *r, double fMass, double fSoft, double fBall2, int iActive, double fAge );
+			  double *r, double fMass, double fSoft, double fBall2, int iActive, 
+			  double fDensity, double fAge );
 void dfRenderParticleSolid( struct inDumpFrame *in, void *vImage, 
-						 double *r, double fMass, double fSoft, double fBall2, int iActive, double fAge );
+			    double *r, double fMass, double fSoft, double fBall2, int iActive, 
+			    double fDensity, double fAge );
 void dfRenderParticleInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark, int iTypeStar );
 void dfRenderParticle( struct inDumpFrame *in, void *vImage, 
-					  double *r, double fMass, double fSoft, double fBall2, int iActive, double fTimeForm );
-
+		       double *r, double fMass, double fSoft, double fBall2, int iActive, 
+		       double fDensity, double fTimeForm );
 void dfRenderParticlesInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark, int iTypeStar,
-							double *pr, double *pfMass, double *pfSoft, double *pfBall2, unsigned int *piActive, double *pfTimeForm, void *p, int sizeofp );
+			    double *pr, double *pfMass, double *pfSoft, double *pfBall2, unsigned int *piActive, 
+			    double *pfDensity, double *pfTimeForm, void *p, int sizeofp );
 
 void dfRenderParticles( struct inDumpFrame *in, void *vImage, void *pStore, int n );
 

@@ -16,12 +16,17 @@
 #include "cooling_cosmo.h"
 #else
 
+#ifdef COOLING_METAL
+#include "cooling_metal.h"
+#else
+
 #ifdef COOLING_BATE
 #include "cooling_bate.h"
 #else
 
 #error "No valid cooling function specified"
 
+#endif
 #endif
 #endif
 #endif

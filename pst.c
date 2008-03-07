@@ -288,6 +288,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_SINKSTEP,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSinkStep,
 				  sizeof(struct inSinkStep),0);
+	mdlAddService(mdl,PST_SETSPHSTEP,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSetSphStep,
+				  sizeof(struct inSetSphStep),0);
 	mdlAddService(mdl,PST_SPHVISCOSITYLIMITER,pst,
 				  (void (*)(void *,void *,int,void *,int *)) 
 				  pstSphViscosityLimiter, 
@@ -3349,7 +3352,7 @@ void pstDrift(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		plcl->pkd->PP = &in->PP;
 #endif
 		pkdDrift(plcl->pkd,in->dDelta,in->fCenter,in->bPeriodic,in->bFandG,
-				 in->fCentMass);
+				 in->fCentMass, in->dTime);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -3376,7 +3379,7 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		pkdKick(plcl->pkd,in->dvFacOne,in->dvFacTwo,
 				in->dvPredFacOne,in->dvPredFacTwo,in->duDelta,in->duPredDelta,
-				in->iGasModel,in->z,in->duDotLimit);
+				in->iGasModel,in->z,in->duDotLimit, in->dTimeEnd);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -4588,6 +4591,23 @@ void pstSinkStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdSinkStep(plcl->pkd,in->dtMax);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void pstSetSphStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inSetSphStep *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inSetSphStep));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_SETSPHSTEP,in,nIn);
+		pstSetSphStep(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdSetSphStep(plcl->pkd,in->dt);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -5890,7 +5910,7 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo,in->duDelta,
-					 in->iGasModel,in->z,in->duDotLimit);
+					 in->iGasModel,in->z,in->duDotLimit,in->dTimeEnd);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -6084,7 +6104,7 @@ pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		PARTICLE *p = pst->plcl->pkd->pStore;
 		dfClearImage( in, vout, pnOut );
 		dfRenderParticlesInit( in, TYPE_GAS, TYPE_DARK, TYPE_STAR,
-							   &p->r[0], &p->fMass, &p->fSoft, &p->fBall2, &p->iActive, 
+				       &p->r[0], &p->fMass, &p->fSoft, &p->fBall2, &p->iActive, &p->fDensity,
 #ifdef GASOLINE 
 							   &p->fTimeForm,
 #else

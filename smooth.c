@@ -103,6 +103,24 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		smx->iLowhFix = LOWHFIX_SINKRADIUS;
 		smx->bUseBallMax = 0;
 		break;
+	case SMX_SINKINGAVERAGE:
+		smx->fcnSmooth = SinkingAverage;
+		initParticle = NULL; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
+		init = NULL; /* Cached copies */
+		comb = NULL;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_SINKINGFORCESHARE:
+		smx->fcnSmooth = SinkingForceShare;
+		initParticle = NULL; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
+		init = initSinkingForceShare; /* Cached copies */
+		comb = combSinkingForceShare;
+		smx->fcnPost = NULL;
+		smx->iLowhFix = LOWHFIX_SINKRADIUS_BUFF;
+		smx->bUseBallMax = 0;
+		break;
 	case SMX_BHDENSITY:
 		smx->fcnSmooth = BHSinkDensity;
 		initParticle = initBHSinkDensity; /* Original Particle */
@@ -156,6 +174,14 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		initTreeParticle = NULL;
 		init = initSphPressureTerms; /* Cached copies */
 		comb = combSphPressureTerms;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_DENDVDX:
+		smx->fcnSmooth = DenDVDX;
+		initParticle = NULL;
+		initTreeParticle = NULL;
+		init = initDenDVDX;
+		comb = combDenDVDX;
 		smx->fcnPost = NULL;
 		break;
 	case SMX_DIVVORT:
@@ -1099,7 +1125,8 @@ void smSmooth(SMX smx,SMF *smf)
 	*/
 	if (smx->iLowhFix && 
 		((smx->iLowhFix==LOWHFIX_HOVERSOFT && fBall2 < smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft) ||
- 		 (smx->iLowhFix==LOWHFIX_SINKRADIUS && fBall2 < smf->dSinkRadius*smf->dSinkRadius)) ) {
+ 		 (smx->iLowhFix==LOWHFIX_SINKRADIUS && fBall2 < smf->dSinkRadius*smf->dSinkRadius) ||
+ 		 (smx->iLowhFix==LOWHFIX_SINKRADIUS_BUFF && fBall2 < smf->dSinkRadius*smf->dSinkRadius*1.1)) ) {		/* We ReSmooth for this guy later */
 		/* We ReSmooth for this guy later */
 		p[pi].fBall2 = -1.0; /* any value < 0 will do -- see code after "DoneSmooth:" below */
 		TYPESet(&p[pi],TYPE_SMOOTHDONE);
@@ -1259,6 +1286,9 @@ void smSmooth(SMX smx,SMF *smf)
 		  break;
 		case LOWHFIX_SINKRADIUS:
 		  fBall2 = smf->dSinkRadius*smf->dSinkRadius;
+		  break;
+		case LOWHFIX_SINKRADIUS_BUFF:
+		  fBall2 = smf->dSinkRadius*smf->dSinkRadius*1.1;
 		  break;
 		default:
 		  fprintf(stderr,"Illegal value for iLowhFix %d in smooth\n",smx->iLowhFix);

@@ -145,7 +145,8 @@ typedef struct CoolingPKDStruct {
    double     Y_He;
    double     Y_eMAX;
    void       *DerivsData;
-
+/* Diagnostic */
+   int        its;
 #if defined(COOLDEBUG) 
    MDL        mdl; /* For diag/debug outputs */
    struct particle *p; /* particle pointer needed for SN feedback */
@@ -216,6 +217,7 @@ void clRates( COOL *cl, RATE *Rate, double T, double rho );
 double clCoolTotal( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal );
 COOL_ERGPERSPERGM  clTestCool ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho );
 void clPrintCool( COOL *cl, PERBARYON *Y, RATE *Rate, double rho );
+void clPrintCoolFile( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, FILE *fp );
 
 void clAbunds( COOL *cl, PERBARYON *Y, RATE *Rate, double rho);
 double clThermalEnergy( double Y_Total, double T );

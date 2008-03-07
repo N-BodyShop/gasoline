@@ -1,10 +1,15 @@
-/*#include <fenv.h>*/
+#ifdef SETTRAPFPE
+#include <fenv.h>
+#endif
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <assert.h>
+#ifdef SINKING
+#include <fenv.h>
+#endif
 #include "mdl.h"
 #include "master.h"
 #include "outtype.h"
@@ -14,9 +19,10 @@
 #include <rpc/xdr.h> /* needed for time stamping terse collision log on restart */
 #endif
 
-/*DEBUG for FPE trapping... (not defined on most systems)
+/*DEBUG for FPE trapping... (not defined on most systems)*/
+#ifdef SETTRAPFPE
 #include <fpu_control.h>
-*/
+#endif
 
 void main_ch(MDL mdl)
 {
@@ -97,11 +103,18 @@ int main(int argc,char **argv)
 	assert(0); /* too dangerous! (gcc compile option) */
 #endif
 
-/*DEBUG following may work to explicitly trap FPEs -- also uncomment #include above
+#ifdef SETTRAPFPE
+	feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
+#endif
+
+/*DEBUG following may work to explicitly trap FPEs -- also uncomment #include above */
+/*
+#ifdef SETTRAPFPE
 	{
 	fpu_control_t cw = 0x1372;
 	_FPU_SETCW(cw);
 	}
+#endif
 */
 
 	lStart=time(0);
@@ -667,7 +680,14 @@ int main(int argc,char **argv)
 #ifdef DENSITYU
 		OutputList[(iNumOutputs)++]=OUT_DENSITYU_ARRAY;
 #endif
+#ifdef DIFFUSION
+		OutputList[(iNumOutputs)++]=OUT_METALSDOT_ARRAY;
+#endif
 #ifdef STARFORM
+#ifdef DIFFUSION
+		OutputList[(iNumOutputs)++]=OUT_OXYGENMASSFRACDOT_ARRAY;
+		OutputList[(iNumOutputs)++]=OUT_IRONMASSFRACDOT_ARRAY;
+#endif
 #ifdef CHECKSF
 		if(msr->param.bStarForm){
 		    msrFormStars(msr, dTime, 1e-6); /* dDelta = 1e-6 not 1e37 */
@@ -788,14 +808,62 @@ int main(int argc,char **argv)
             iNumOutputs = 0;
             OutputList[iNumOutputs++]=OUT_DT_ARRAY;
             if(msr->param.iMaxRung > 1
-	       && (msr->param.bDensityStep || msrDoGravity(msr))) {
+	       && (msr->param.iRungForceCheck || msr->param.bDensityStep || msrDoGravity(msr))) {
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
                 msrDtToRung(msr,0,msrDelta(msr),1);
                 msrRungStats(msr);
 		OutputList[iNumOutputs++]=OUT_RUNG_ARRAY;
                 }
+
             msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
-            }
+
+	    if (msr->param.iRungForceCheck != 0) {
+		if (msr->param.iRungForceCheck > 0) 
+		    msrActiveMaskRung(msr,TYPE_ACTIVE,msr->param.iRungForceCheck,1);
+		else {
+		    assert(msr->param.iRungForceCheck > 0);
+		    /* Set active randomly -- e.g. every second particle */
+		    /* msriOrderToRung(msr,0,msrDelta(msr),1); */
+		    }
+
+
+		printf("Force check on %d particles active on rung %d (max %d)\n",msr->nActive,msr->param.iRungForceCheck,msr->iCurrMaxRung);
+		if (msr->param.iRungForceCheck > msr->iCurrMaxRung) msr->param.iRungForceCheck = msr->iCurrMaxRung;
+
+		if (msr->nActive) {
+		    int nActive;
+		    msrDomainDecomp(msr,msr->param.iRungForceCheck,1);
+		    msrInitAccel(msr);
+
+		    printf("Forces, Step:%f nActive %i\n",0.,msr->nActive);
+		    if(msrDoGravity(msr)) {
+			if (msr->param.bDoSelfGravity) {
+			    msrActiveRung(msr,msr->param.iRungForceCheck,1);
+			    msrUpdateSoft(msr,dTime);
+			    msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
+			    printf("Gravity, iRung: %d to %d\n", msr->param.iRungForceCheck, msr->param.iRungForceCheck);
+			    msrBuildTree(msr,0,dMass,0);
+			    }
+			msrGravity(msr,0.0,msrDoSun(msr),&iSec,&dWMax,&dIMax,&dEMax,&nActive);
+			}
+		    
+#ifdef GASOLINE
+		    if(msrDoGas(msr) && msrSphCurrRung(msr,msr->param.iRungForceCheck,1)) {
+			printf("SPH: iRung %d to %d\n",msr->param.iRungForceCheck,msr->param.iRungForceCheck);
+			msrSph(msr, dTime, msr->param.iRungForceCheck);
+			}
+#endif			 
+		    msrReorder(msr);
+		    iNumOutputs = 2;
+		    OutputList[0]=OUT_ACCELRFC_VECTOR;
+		    OutputList[1]=OUT_PDVRFC_ARRAY;
+		    if (msrDoDensity(msr)) OutputList[iNumOutputs++]=OUT_DENSITYRFC_ARRAY;
+
+		    msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+		    }
+
+		}
+	    }
 	
 	dfFinalize( msr->df[0] );
 	msrFinish(msr);

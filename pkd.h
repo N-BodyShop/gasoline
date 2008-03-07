@@ -91,8 +91,22 @@ typedef struct particle {
 	FLOAT divv;		
         FLOAT curlv[3];         /* Note this is used as workspace and value is not preserved */
 	FLOAT BalsaraSwitch;    /* Balsara viscosity reduction */
+#ifdef DIFFUSION
+        FLOAT diff;
+        FLOAT fMetalsDot;
+        FLOAT fMetalsPred;
+#endif
 #ifdef DENSITYU
         FLOAT fDensityU;
+#endif
+#ifdef SINKING
+        FLOAT rSinking0Unit[3];
+        FLOAT rSinking0Mag;
+        FLOAT vSinkingTang0Unit[3];
+        FLOAT vSinkingTang0Mag;
+        FLOAT vSinkingr0;
+        FLOAT fSinkingTime;  
+        int iSinkingOnto;
 #endif
 #ifdef SHOCKTRACK
         FLOAT aPres[3];
@@ -124,6 +138,12 @@ typedef struct particle {
 	FLOAT fMIronOut;
 	FLOAT fMFracOxygen;
 	FLOAT fMFracIron;
+#ifdef DIFFUSION
+        FLOAT fMFracOxygenDot;
+	FLOAT fMFracIronDot;
+        FLOAT fMFracOxygenPred;
+	FLOAT fMFracIronPred;
+#endif
 	FLOAT fSNMetals;
 	FLOAT fNSNtot;
         FLOAT fTimeCoolIsOffUntil;
@@ -215,6 +235,8 @@ typedef struct particle {
 
 #define TYPE_PHOTOGENIC        (1<<13)
 #define TYPE_SINK              (1<<14)
+#define TYPE_SINKING           (1<<15)
+#define TYPE_NEWSINKING        (1<<16)
 
 /* Combination Masks */
 #define TYPE_ALLACTIVE			(TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
@@ -606,9 +628,9 @@ void pkdGravAll(PKD,int,int,int,int,int,double,double,int,double,double *,int *,
 				double *,double *,double *,CASTAT *,double *);
 void pkdCalcEandL(PKD,double *,double *,double *,double []);
 void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
-void pkdDrift(PKD,double,FLOAT *,int,int,FLOAT);
+void pkdDrift(PKD,double,FLOAT *,int,int,FLOAT,double);
 void pkdUpdateUdot(PKD pkd,double,double,double,int,int);
-void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double);
+void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double, double);
 void pkdKickPatch(PKD pkd, double dvFacOne, double dvFacTwo,
 		  double dOrbFreq, int bOpen);
 void pkdReadCheck(PKD,char *,int,int,int,int);
@@ -708,6 +730,7 @@ void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);
 int pkdSphCurrRung(PKD pkd, int iRung, int bGreater);
 void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int bViscosityLimitdt, double *pdtMinGas );
 void pkdSinkStep(PKD pkd, double dtMax );
+void pkdSetSphStep(PKD pkd, double dt );
 void pkdSphViscosityLimiter(PKD pkd, int bOn, int bShockTracker);
 
 void pkdDensCheck(PKD pkd, int iRung, int bGreater, int iMeasure, void *data);
@@ -751,7 +774,7 @@ void pkdMassInR(PKD pkd, double R, double *pdMass, FLOAT *com);
 #ifdef NEED_VPRED
 #ifdef GASOLINE
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,
-				  int iGasModel, double z, double duDotLimit);
+				  int iGasModel, double z, double duDotLimit,double);
 #else
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
 #endif
