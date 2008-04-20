@@ -1,6 +1,8 @@
 #include <math.h>
 #include <assert.h>
 
+#include "runge.h"
+
 #define MAXDEP 10
 /*
  * Make one R-K step
