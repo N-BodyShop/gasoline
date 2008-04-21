@@ -609,7 +609,6 @@ struct inDrift {
 	FLOAT fCentMass;
         double dTime;
 #ifdef SLIDING_PATCH
-  double dTime;
   PATCH_PARAMS PP;
 #endif
 	};

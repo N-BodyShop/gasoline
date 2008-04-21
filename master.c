@@ -8781,7 +8781,7 @@ msrPlanetsKDK(MSR msr,double dStep,double dTime,double dDelta,double *pdWMax,
 	msrActiveRung(msr,0,1); /* just in case */
 	in.dvFacOne = 1.0;
 	in.dvFacTwo = 0.5*dDelta;
-	in.dTime = dTime;
+	in.dTimeEnd = dTime + 0.5*dDelta;
     if (msr->param.bVDetails) printf("Planets Kick\n");
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
 	printf("Kick: Avg Wallclock %f, Max Wallclock %f\n",
@@ -8803,6 +8803,7 @@ msrPlanetsKDK(MSR msr,double dStep,double dTime,double dDelta,double *pdWMax,
 		msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nDum);
 		}
     if (msr->param.bVDetails) printf("Planets Kick\n");
+	in.dTimeEnd += 0.5*dDelta;
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
 	printf("Kick: Avg Wallclock %f, Max Wallclock %f\n",
 	       out.SumTime/out.nSum,out.MaxTime);
