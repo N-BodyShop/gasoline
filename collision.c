@@ -79,7 +79,9 @@ void MergerReorder(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,const COLLIDER 
   assert(c2 != NULL);
   assert(c != NULL);
   assert(cOut != NULL);
-  assert(CP != NULL);
+#ifdef RUBBLE_ZML
+  assert(CP != NULL);  /* Only used for the Rubble */
+#endif
 
   if (c1->id.iPid == pkd->idSelf) { /* local particle */
 	/*
