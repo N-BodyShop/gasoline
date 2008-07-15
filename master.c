@@ -1127,8 +1127,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		    sizeof(int), "bShortCoolShutoff",
 		    "<Which cooling shutoff time to use> = long one");
 	msr->param.iStarFormRung = 0;
-	prmAddParam(msr->prm,"iStarFormRung", 2, &msr->param.iStarFormRung,
-		    sizeof(double), "iStarFormRung",
+	prmAddParam(msr->prm,"iStarFormRung", 1, &msr->param.iStarFormRung,
+		    sizeof(int), "iStarFormRung",
 		    "<Star Formation Rung> = 0");
 
 /* supernova constants */
