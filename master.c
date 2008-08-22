@@ -3840,9 +3840,11 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
     char dirname[256];
     int i, k, iDim, nDim, code, preminmax, magic=1062053;
     LCL *plcl = msr->pst->plcl;
-    char achOutFile[PST_FILENAME_SIZE];
+    char achOutFile[PST_FILENAME_SIZE], achTmpOutFile[PST_FILENAME_SIZE];
     char *typenames[3];
     int nTypes[3];
+    int iHighWord = 0, iDummy = 0;
+    float fDummy = 0;
     struct inOutput inOut;
     struct outNC out;
     XDR xdrs;
@@ -3900,6 +3902,7 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
     for (i=0; i<iNumOutputs;i++){
         code = FLOAT32;
         nTypes[0] = msr->nGas;nTypes[1] = msr->nDark;nTypes[2] = msr->nStar;
+        nDim = (OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
         switch (OutputList[i]){
             case OUT_TIMEFORM_ARRAY:
             case OUT_MASSFORM_ARRAY:
@@ -3936,14 +3939,42 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
         for (k=0;k<3;k++){
             _msrMakePath(plcl->pszDataPath,inOut.achOutFile,achOutFile);
             if (nTypes[k]) {
-                sprintf(achOutFile,"%s/%s/",achOutFile,typenames[k]);
-                VecFilename(achOutFile,OutputList[i]);
-                fp = fopen(achOutFile,"w");
+                sprintf(achTmpOutFile,"%s/%s/",achOutFile,typenames[k]);
+                VecFilename(achTmpOutFile,OutputList[i]);
+                fp = fopen(achTmpOutFile,"w");
                 assert(fp != NULL);
+                xdrstdio_create(&xdrs,fp,XDR_ENCODE);
+                xdr_int(&xdrs,&magic);
+                xdr_double(&xdrs,&dTimeO);
+                xdr_int(&xdrs,&iHighWord); /* XXX we are currently
+					      limited to 2G particles! */
+                xdr_int(&xdrs,&nTypes[k]);
+                xdr_int(&xdrs,&nDim);
+                xdr_int(&xdrs,&code);
+		switch(code) {
+		case FLOAT32:
+		    for (iDim=0; iDim<nDim; iDim++) 
+			xdr_float(&xdrs,&fDummy);
+		    for (iDim=0; iDim<nDim; iDim++) 
+			xdr_float(&xdrs,&fDummy);
+		    break;
+		case INT32:
+		    for (iDim=0; iDim<nDim; iDim++) {
+			iDummy = out.min[k][iDim];
+			xdr_int(&xdrs,&iDummy);
+			}
+		    for (iDim=0; iDim<nDim; iDim++) {
+			iDummy = out.max[k][iDim];
+			xdr_int(&xdrs,&iDummy);
+			}
+		    break;
+		default:
+		    assert(0);	/* bad output type code */
+		    }
+                xdr_destroy(&xdrs);
 		fclose(fp);
 		}
 	    }
-        nDim = (OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
         inOut.iBinaryOutput = msr->param.iBinaryOutput;
         inOut.N = msr->N;
         inOut.iType=OutputList[i];
@@ -3954,12 +3985,10 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
         for (k=0;k<3;k++){
             _msrMakePath(plcl->pszDataPath,inOut.achOutFile,achOutFile);
             if (nTypes[k]) {
-		int iHighWord = 0;
-		int iDummy;
 		
-                sprintf(achOutFile,"%s/%s/",achOutFile,typenames[k]);
-                VecFilename(achOutFile,OutputList[i]);
-                fp = fopen(achOutFile,"r+");
+                sprintf(achTmpOutFile,"%s/%s/",achOutFile,typenames[k]);
+                VecFilename(achTmpOutFile,OutputList[i]);
+                fp = fopen(achTmpOutFile,"r+");
                 assert(fp != NULL);
                 xdrstdio_create(&xdrs,fp,XDR_ENCODE);
                 xdr_int(&xdrs,&magic);
@@ -4123,89 +4152,90 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
      */
     assert(msr->pMap[0] == 0);
     for (iOut=0; iOut<iNumOutputs;iOut++){
-        if( OutputList[iOut]== BIG_FILE){
-
+      if( OutputList[iOut]== BIG_FILE){
+	
 #ifdef COLLISIONS
-            pkdWriteSS(plcl->pkd,achOutFile,plcl->nWriteStart);
+	pkdWriteSS(plcl->pkd,achOutFile,plcl->nWriteStart);
 #else
-            pkdWriteTipsy(plcl->pkd,achOutFile,plcl->nWriteStart,in->bStandard,
-                                      in->dvFac,in->duTFac,in->iGasModel); 
+	pkdWriteTipsy(plcl->pkd,achOutFile,plcl->nWriteStart,in->bStandard,
+		      in->dvFac,in->duTFac,in->iGasModel); 
 #endif
-            } else {
-            /* Only packed ASCII format supported!
-             * Use readpackedvector in Tipsy */
-			  if ((OutputList[iOut] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
-                pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart, -3,
-							 OutputList[iOut], msr->param.iBinaryOutput,msr->N,
-							 msr->param.bStandard);
-                } else {
-                nDim=(OutputList[iOut] > OUT_1D3DSPLIT) ? 3 : 1;
-                for (iDim=0; iDim<nDim; iDim++) 
-				  pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
-							   iDim, OutputList[iOut],msr->param.iBinaryOutput,
-							   msr->N,msr->param.bStandard);
-                }
-            }
-        } 
-
-	nStart = plcl->pkd->nLocal;
+      } else {
+	/* Only packed ASCII format supported!
+	 * Use readpackedvector in Tipsy */
+	if ((OutputList[iOut] > OUT_1D3DSPLIT) && 
+	    (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
+	  pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart, -3,
+		       OutputList[iOut], msr->param.iBinaryOutput,msr->N,
+		       msr->param.bStandard);
+	} else {
+	  nDim=(OutputList[iOut] > OUT_1D3DSPLIT) ? 3 : 1;
+	  for (iDim=0; iDim<nDim; iDim++) 
+	    pkdOutVector(plcl->pkd,achOutFileVec,plcl->nWriteStart,
+			 iDim, OutputList[iOut],msr->param.iBinaryOutput,
+			 msr->N,msr->param.bStandard);
+	}
+      }
+    } 
+    
+    nStart = plcl->pkd->nLocal;
     /* Write out the particles on all the other nodes */
     for (i=1;i<msr->nThreads;++i) {
-        id = msr->pMap[i];
-        /* 
-         * Swap particles with the remote processor.
-         */
-        inswap = 0;
-        mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-        pkdSwapAll(plcl->pkd, id);
-        mdlGetReply(pst0->mdl,id,NULL,NULL);
-        /* 
-         * Write the swapped particles.
-         */
-        for (iOut=0; iOut<iNumOutputs;iOut++){
-            if( OutputList[iOut]== BIG_FILE){
+      id = msr->pMap[i];
+      /* 
+       * Swap particles with the remote processor.
+       */
+      inswap = 0;
+      mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+      pkdSwapAll(plcl->pkd, id);
+      mdlGetReply(pst0->mdl,id,NULL,NULL);
+      /* 
+       * Write the swapped particles.
+       */
+      for (iOut=0; iOut<iNumOutputs;iOut++){
+	if( OutputList[iOut]== BIG_FILE){
 #ifdef COLLISIONS
-                pkdWriteSS(plcl->pkd,achOutFile,nStart);
+	  pkdWriteSS(plcl->pkd,achOutFile,nStart);
 #else
-                pkdWriteTipsy(plcl->pkd,achOutFile,nStart,in->bStandard,
-							  in->dvFac,in->duTFac,in->iGasModel); 
+	  pkdWriteTipsy(plcl->pkd,achOutFile,nStart,in->bStandard,
+			in->dvFac,in->duTFac,in->iGasModel); 
 #endif
-                } else {
-                /* Only packed ASCII format supported!
-                 * Use readpackedvector in Tipsy */
-                if ((OutputList[iOut] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
-				  pkdOutVector(plcl->pkd,achOutFileVec, nStart,
-							   -3, OutputList[iOut], msr->param.iBinaryOutput,
-							   msr->N,msr->param.bStandard);
-				  } else {
-                  nDim=(OutputList[iOut] > OUT_1D3DSPLIT) ? 3 : 1;
-                  for (iDim=0; iDim<nDim; iDim++) {
+	} else {
+	  /* Only packed ASCII format supported!
+	   * Use readpackedvector in Tipsy */
+	  if ((OutputList[iOut] > OUT_1D3DSPLIT) && (!msr->param.iBinaryOutput || msr->param.bPackedVector)) {
+	    pkdOutVector(plcl->pkd,achOutFileVec, nStart,
+			 -3, OutputList[iOut], msr->param.iBinaryOutput,
+			 msr->N,msr->param.bStandard);
+	  } else {
+	    nDim=(OutputList[iOut] > OUT_1D3DSPLIT) ? 3 : 1;
+	    for (iDim=0; iDim<nDim; iDim++) {
 #ifdef SIMPLESF
-					  /* The SF variables are written in binary no
-						 matter what */
-					  pkdOutVector(plcl->pkd,achOutFileVec,
-								   nStart, iDim, OutputList[iOut],
-								   ((OutputList[iOut]==OUT_TCOOLAGAIN_ARRAY || OutputList[iOut]==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput),
-								   msr->N,msr->param.bStandard);
+	      /* The SF variables are written in binary no
+		 matter what */
+	      pkdOutVector(plcl->pkd,achOutFileVec,
+			   nStart, iDim, OutputList[iOut],
+			   ((OutputList[iOut]==OUT_TCOOLAGAIN_ARRAY || OutputList[iOut]==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput),
+			   msr->N,msr->param.bStandard);
 #else
-					  pkdOutVector(plcl->pkd,achOutFileVec, nStart,
-								   iDim, OutputList[iOut],
-								   msr->param.iBinaryOutput, msr->N,
-								   msr->param.bStandard); 
+	      pkdOutVector(plcl->pkd,achOutFileVec, nStart,
+			   iDim, OutputList[iOut],
+			   msr->param.iBinaryOutput, msr->N,
+			   msr->param.bStandard); 
 #endif
-                      }
-                   }
-                }
-            }
-        nStart += plcl->pkd->nLocal;
-        /* 
-         * Swap them back again.
-         */
-        inswap = 0;
-        mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
-        pkdSwapAll(plcl->pkd, id);
-        mdlGetReply(pst0->mdl,id,NULL,NULL);
-        }
+	    }
+	  }
+	}
+      }
+      nStart += plcl->pkd->nLocal;
+      /* 
+       * Swap them back again.
+       */
+      inswap = 0;
+      mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+      pkdSwapAll(plcl->pkd, id);
+      mdlGetReply(pst0->mdl,id,NULL,NULL);
+    }
     assert(nStart == msr->N);
 
     }
@@ -5704,59 +5734,59 @@ void msrOneNodeReadCheck(MSR msr, struct inReadCheck *in)
     }
 
 int msrFindCheck(MSR msr) {
-	char achCheckFile[PST_FILENAME_SIZE];
-	char achLatestCheckFile[PST_FILENAME_SIZE];
-	time_t latestTime;
-	char extraString[PST_FILENAME_SIZE];
-	int iNotCorrupt;
-	FDL_CTX* fdl;
-	struct stat statbuf;
-	char* suffixes[3] = {"chk0", "chk1", "chk"};
-	int i;
+  char achCheckFile[PST_FILENAME_SIZE];
+  char achLatestCheckFile[PST_FILENAME_SIZE];
+  time_t latestTime;
+  char extraString[PST_FILENAME_SIZE];
+  int iNotCorrupt;
+  FDL_CTX* fdl;
+  struct stat statbuf;
+  char* suffixes[3] = {"chk0", "chk1", "chk"};
+  int i;
 	
-	latestTime = 0;
+  latestTime = 0;
 	
-	for(i = 0; i < 3; ++i) {
-		/* Get the filename of the checkpoint file formatted properly. */
-		sprintf(achCheckFile, "%s/%s.%s", msr->param.achDataSubPath, msr->param.achOutName, suffixes[i]);
-		if(msr->pst->plcl->pszDataPath) {
-			strcpy(extraString, achCheckFile);
-			sprintf(achCheckFile,"%s/%s", msr->pst->plcl->pszDataPath, extraString);
-		}
+  for(i = 0; i < 3; ++i) {
+    /* Get the filename of the checkpoint file formatted properly. */
+    sprintf(achCheckFile, "%s/%s.%s", msr->param.achDataSubPath, msr->param.achOutName, suffixes[i]);
+    if(msr->pst->plcl->pszDataPath) {
+      strcpy(extraString, achCheckFile);
+      sprintf(achCheckFile,"%s/%s", msr->pst->plcl->pszDataPath, extraString);
+    }
 
-		/* Check if the checkpoint file exists. */
-		if(!stat(achCheckFile, &statbuf)) {
-			/* Check if the checkpoint file is corrupt. */
-			fdl = FDL_open(achCheckFile);
-			/* Read and ignore the version number. */
-			FDL_read(fdl, "version" ,&iNotCorrupt);
-			FDL_read(fdl, "not_corrupt_flag", &iNotCorrupt);
-			if(iNotCorrupt == 1) {
-				/* Get the file creation time. */
-				if(statbuf.st_mtime > latestTime) {
-					/* The checkpoint file exists, isn't corrupt, and is more recent, so mark it. */
-					latestTime = statbuf.st_mtime;
-					strcpy(achLatestCheckFile, achCheckFile);
-				}
-			}
-			FDL_finish(fdl);
-		}
+    /* Check if the checkpoint file exists. */
+    if(!stat(achCheckFile, &statbuf)) {
+      /* Check if the checkpoint file is corrupt. */
+      fdl = FDL_open(achCheckFile);
+      /* Read and ignore the version number. */
+      FDL_read(fdl, "version" ,&iNotCorrupt);
+      FDL_read(fdl, "not_corrupt_flag", &iNotCorrupt);
+      if(iNotCorrupt == 1) {
+	/* Get the file creation time. */
+	if(statbuf.st_mtime > latestTime) {
+	  /* The checkpoint file exists, isn't corrupt, and is more recent, so mark it. */
+	  latestTime = statbuf.st_mtime;
+	  strcpy(achLatestCheckFile, achCheckFile);
 	}
+      }
+      FDL_finish(fdl);
+    }
+  }
 	
-	/* Did we find any checkpoint files? */
-	if(latestTime == 0)
-		return 0;
+  /* Did we find any checkpoint files? */
+  if(latestTime == 0)
+    return 0;
 	
-	/* On the Cray XT3, renaming a file to the same name will not return success,
-	 * so check to make sure LatestCheckFile and CheckFile are not the same name. */
-	if (strcmp(achLatestCheckFile, achCheckFile) == 0)
-	     return 1;	     /* They are the same name, so no need to rename */
+  /* On the Cray XT3, renaming a file to the same name will not return success,
+   * so check to make sure LatestCheckFile and CheckFile are not the same name. */
+  if (strcmp(achLatestCheckFile, achCheckFile) == 0)
+    return 1;	     /* They are the same name, so no need to rename */
 
-	/* Rename latest valid checkpoint file to .chk, return success. */
-	if(!rename(achLatestCheckFile, achCheckFile)) /* The last filename checked is the one we want. */
-		return 1;
-	else
-		return 0;
+  /* Rename latest valid checkpoint file to .chk, return success. */
+  if(!rename(achLatestCheckFile, achCheckFile)) /* The last filename checked is the one we want. */
+    return 1;
+  else
+    return 0;
 }
 
 double msrReadCheck(MSR msr,int *piStep)
@@ -7805,41 +7835,41 @@ void msrInitSph(MSR msr,double dTime)
 #ifndef NOCOOLING
 void msrInitCooling(MSR msr)
 {
-	int cntTable;
-	int nTableRows, nTableColumns;
-	void *dTableData = NULL;
-	char TableFileSuffix[20];
-	struct inInitCooling in;
-
-	in.dGmPerCcUnit = msr->param.dGmPerCcUnit;
-	in.dComovingGmPerCcUnit = msr->param.dComovingGmPerCcUnit;
-	in.dErgPerGmUnit = msr->param.dErgPerGmUnit;
-	in.dSecUnit = msr->param.dSecUnit;
-	in.dKpcUnit = msr->param.dKpcUnit;
-	in.z = 60.0; /*dummy value*/
-	in.dTime = 0.0; /* dummy value */
-	in.CoolParam = msr->param.CoolParam;
-
-	pstInitCooling(msr->pst,&in,sizeof(struct inInitCooling),NULL,NULL);
-
-	/* Read in tables from files as necessary */
-	cntTable = 0;
-	for (;;) {
-		CoolTableReadInfo( &msr->param.CoolParam, cntTable, &nTableColumns, TableFileSuffix );
-		if (!nTableColumns) break;
-
-		cntTable++;
-		nTableRows = msrReadASCII(msr, TableFileSuffix, nTableColumns, NULL);
-		if (nTableRows) {
-			assert( sizeof(double)*nTableRows*nTableColumns <= CL_NMAXBYTETABLE );
-			dTableData = malloc(sizeof(double)*nTableRows*nTableColumns);
-			assert( dTableData != NULL );
-			nTableRows = msrReadASCII(msr,TableFileSuffix, 7, dTableData );
-			
-			pstCoolTableRead(msr->pst,dTableData,sizeof(double)*nTableRows*nTableColumns,NULL,NULL);
-			}
-		}
-	}
+  int cntTable;
+  int nTableRows, nTableColumns;
+  void *dTableData = NULL;
+  char TableFileSuffix[20];
+  struct inInitCooling in;
+  
+  in.dGmPerCcUnit = msr->param.dGmPerCcUnit;
+  in.dComovingGmPerCcUnit = msr->param.dComovingGmPerCcUnit;
+  in.dErgPerGmUnit = msr->param.dErgPerGmUnit;
+  in.dSecUnit = msr->param.dSecUnit;
+  in.dKpcUnit = msr->param.dKpcUnit;
+  in.z = 60.0; /*dummy value*/
+  in.dTime = 0.0; /* dummy value */
+  in.CoolParam = msr->param.CoolParam;
+  
+  pstInitCooling(msr->pst,&in,sizeof(struct inInitCooling),NULL,NULL);
+  
+  /* Read in tables from files as necessary */
+  cntTable = 0;
+  for (;;) {
+    CoolTableReadInfo( &msr->param.CoolParam, cntTable, &nTableColumns, TableFileSuffix );
+    if (!nTableColumns) break;
+    
+    cntTable++;
+    nTableRows = msrReadASCII(msr, TableFileSuffix, nTableColumns, NULL);
+    if (nTableRows) {
+      assert( sizeof(double)*nTableRows*nTableColumns <= CL_NMAXBYTETABLE );
+      dTableData = malloc(sizeof(double)*nTableRows*nTableColumns);
+      assert( dTableData != NULL );
+      nTableRows = msrReadASCII(msr,TableFileSuffix, 7, dTableData );
+      
+      pstCoolTableRead(msr->pst,dTableData,sizeof(double)*nTableRows*nTableColumns,NULL,NULL);
+    }
+  }
+}
 #endif
 
 int msrSphCurrRung(MSR msr, int iRung, int bGreater)
@@ -8251,7 +8281,9 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
             * as described in method 2 below.  Does not scale well otherwise.
             * msrDomainDecomp(msr, 0, 1);
             */
+	
         msrBuildTree(msr,1,dTotMass,1);
+	msrSmooth(msr,dTime,SMX_DENSITY,1);
         pstFormStars(msr->pst, &in, sizeof(in), &outFS, NULL);
 	/*
 	 * N.B. no particle shuffling (e.g. treebuilds) can happen
@@ -8296,9 +8328,9 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         msrAddDelParticles(msr);
         msrMassCheck(msr, dTotMass, "Form stars: after particle adjustment");
 
-            dsec = msrTime() - sec;
-            printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
-	    LOGTIMINGUPDATE( dsec, TIMING_StarForm );
+	dsec = msrTime() - sec;
+	printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
+	LOGTIMINGUPDATE( dsec, TIMING_StarForm );
         }
     /*
      * Calculate energy of SN for any stars for the next timestep.  This
