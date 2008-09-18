@@ -2728,6 +2728,7 @@ void msrLogParams(MSR msr,FILE *fp)
 			}
 		fprintf(fp,"\n");
 	    }
+	fprintf(fp, "# Log entries:\n# dTime z E T U Eth Lx Ly Lz WallTime dWMax dImax dEMax dMultiEff\n");
     }
  
 double
