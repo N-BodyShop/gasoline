@@ -119,7 +119,7 @@ typedef struct particle {
 	FLOAT uDot;			/* Rate of change of u -- for predicting u */
 	COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
 #endif
-	FLOAT fMetals;
+	FLOAT fMetals;	/* mass fraction in metals, a.k.a, Z */
 	FLOAT fTimeForm;
 #ifdef SIMPLESF
         FLOAT fMassStar;
