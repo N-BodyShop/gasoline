@@ -481,10 +481,12 @@ struct inGravity {
 	int iOrder;
 	int bEwald;
 	int iEwOrder;
-    int bDoSun;
+	int bComove;
+	int bDoSun;
 	double dSunSoft;
 	double dEwCut;
 	double dEwhCut;
+	double dRhoFac;
 #ifdef SLIDING_PATCH
   double dTime;
   PATCH_PARAMS PP;

@@ -2805,7 +2805,8 @@ void pkdColorCell(PKD pkd,int iCell,FLOAT fColor)
 
 void
 pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
-		   double fEwCut,double fEwhCut,int bDoSun,double dSunSoft,double *aSun,int *nActive,
+	   double fEwCut,double fEwhCut, int bComove, double dRhoFac,
+	   int bDoSun,double dSunSoft, double *aSun,int *nActive,
 		   double *pdPartSum,double *pdCellSum,double *pdSoftSum,CASTAT *pcs,
 		   double *pdFlop)
 {
@@ -2901,6 +2902,31 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
 			    dFlopE = 0.0;
 			    }
 			fWeight = dFlopI + dFlopE;
+			if(bComove && !bPeriodic) {
+			    /* 
+			     * Add gravity from the rest of the
+			     * Universe.  This adds force and
+			     * potential from a uniform (negative!)
+			     * density sphere.
+			     */
+			    KDN *pkdn = &pkd->kdNodes[iCell];
+			    int nP = pkdn->pUpper - pkdn->pLower + 1;
+			    PARTICLE *p = &pkd->pStore[pkdn->pLower];
+			    int jP;
+			    
+			    for(jP=0;jP<nP;++jP) {
+				int k;
+				double r2;
+				
+				if (!TYPEQueryACTIVE(&(p[jP]))) continue;
+				r2 = 0.0;
+				for(k = 0; k < 3; k++) {
+				    r2 += p[jP].r[k]*p[jP].r[k];
+				    p[jP].a[k] += dRhoFac*p[jP].r[k];
+				    }
+				p[jP].fPot -= 0.5*dRhoFac*r2;
+				}
+			    }
 			/*
 			 ** pkdBucketWeight, only updates the weights of the active
 			 ** particles. Although this isn't really a requirement it

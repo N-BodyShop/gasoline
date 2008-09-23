@@ -624,8 +624,11 @@ double pkdCalcOpen(KDN *,int,double,int);
 void pkdBuildLocal(PKD,int,int,double,int,int,int,KDN *);
 void pkdBuildBinary(PKD,int,int,double,int,int,int,KDN *);
 void pkdThreadTree(PKD pkd,int iCell,int iNext);
-void pkdGravAll(PKD,int,int,int,int,int,double,double,int,double,double *,int *,
-				double *,double *,double *,CASTAT *,double *);
+void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder, int bEwald,int iEwOrder,
+	   double fEwCut,double fEwhCut, int bComove, double dRhoFac,
+	   int bDoSun,double dSunSoft, double *aSun,int *nActive,
+	   double *pdPartSum,double *pdCellSum,double *pdSoftSum,CASTAT *pcs,
+	   double *pdFlop);
 void pkdCalcEandL(PKD,double *,double *,double *,double []);
 void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,FLOAT,double);

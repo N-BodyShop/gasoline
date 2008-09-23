@@ -4835,6 +4835,9 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		in.iOrder = msr->param.iOrder;
 		in.bEwald = msr->param.bEwald;
 		in.iEwOrder = msr->param.iEwOrder;
+		in.bComove = msrComove(msr);
+		in.dRhoFac = 0.5*msr->param.csm->dHubble0
+		    *msr->param.csm->dHubble0*msr->param.csm->dOmega0;
 #ifdef SLIDING_PATCH
 		in.dTime = dStep*msr->param.dDelta;
 		in.PP = msr->param.PP; /* struct copy */

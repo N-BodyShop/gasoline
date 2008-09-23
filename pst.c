@@ -3170,9 +3170,11 @@ void pstGravity(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		plcl->pkd->dTime = in->dTime;
 		plcl->pkd->PP = &in->PP;
 #endif
-		pkdGravAll(plcl->pkd,in->nReps,in->bPeriodic,in->iOrder,in->bEwald,
-				   in->iEwOrder,in->dEwCut,in->dEwhCut,in->bDoSun,in->dSunSoft,out->aSun,
-				   &out->nActive,&out->dPartSum,&out->dCellSum,&out->dSoftSum,
+		pkdGravAll(plcl->pkd,in->nReps,in->bPeriodic,in->iOrder,
+			   in->bEwald, in->iEwOrder,in->dEwCut,in->dEwhCut,
+			   in->bComove, in->dRhoFac,
+			   in->bDoSun,in->dSunSoft,out->aSun,
+			   &out->nActive,&out->dPartSum,&out->dCellSum,&out->dSoftSum,
 				   &cs,&out->dFlop);
 		out->dWSum = pkdGetTimer(plcl->pkd,1);
 		out->dISum = pkdGetTimer(plcl->pkd,2);
