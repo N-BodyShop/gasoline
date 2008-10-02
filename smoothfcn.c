@@ -1110,7 +1110,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		mdotCurr = 0.0;
 		}
 	    else {
-		mdotCurr -= mdot*(q->fMass/dmq); /* need an additional victim */
+		mdotCurr -= mdotCurr*(q->fMass/dmq); /* need an additional victim */
 		dmq = q->fMass;
 		}
 
@@ -1231,7 +1231,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		mdotCurr = 0.0;
 		}
 	    else {
-		mdotCurr -= mdot*(q->curlv[0]/dmq); /* need an additional victim */
+		mdotCurr -= mdotCurr*(q->curlv[0]/dmq); /* need an additional victim */
 		dmq = q->curlv[0];
 		}
 
