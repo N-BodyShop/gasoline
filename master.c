@@ -7829,9 +7829,9 @@ void msrInitSph(MSR msr,double dTime)
 				msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1); 
 		        }
 #endif
-		/* First guess at uDot with quite large step size 
+		/* First guess at uDot with quite small step size 
 		   step size irrelevant for adiabatic gas */
-   	        msrUpdateuDot(msr,dTime,0.5*msr->param.dDelta,0);
+   	        msrUpdateuDot(msr,dTime,0.5e-7*msr->param.dDelta,0);
 		}
 
 	}
