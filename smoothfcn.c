@@ -1087,6 +1087,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    q = NULL;
 	    for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2;
+		if(TYPETest(nnList[i].pPart,TYPE_DELETED)) continue;
 		if (r2 < r2min && nnList[i].pPart->curlv[2] == 0.0) {
 		    r2min = r2;
 		    q = nnList[i].pPart;
@@ -1208,6 +1209,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    q = NULL;
 	    for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2;
+		if(TYPETest(nnList[i].pPart,TYPE_DELETED)) continue;
 		if (r2 < r2min && nnList[i].pPart->curlv[2] == 0.0) {
 		    r2min = r2;
 		    q = nnList[i].pPart;
@@ -1227,20 +1229,33 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	       When victim is active use his timestep if longer 
 	       Statistically expect to get right effective mdot on average */
 	    dmq = mdotCurr*dtEff;
+
 	    if (dmq < q->curlv[0]) { /* Original mass in q->curlv[0] */
-		mdotCurr = 0.0;
-		}
+	      if (q->curlv[1] > q->curlv[0]) {
+		 /* Are there competitors for this victim? -- if so share it out 
+		 Note: this victim should still get consumed */
+		 printf("BHSink %d:  multi sink victim particle %d dmq %g %g %g\n",p->iOrder,q->iOrder,dmq,q->curlv[1],q->curlv[0]);
+		 mdotCurr -= mdotCurr*(q->curlv[0]/q->curlv[1]) ;
+		 dmq *= q->curlv[0]/q->curlv[1] ;
+	      }
+	      else mdotCurr = 0.0;
+	    }
 	    else {
+	      if (q->curlv[1] > q->curlv[0]) {
+		     /* Are there competitors for this victim? -- if so share it out 
+		        Note: this victim should still get consumed */
+			printf("BHSink %d:  multi sink victim particle %d dmq %g %g %g\n",p->iOrder,q->iOrder,dmq,q->curlv[1],q->curlv[0]);
+			mdotCurr -= mdotCurr*(q->curlv[0]*q->curlv[0]/q->curlv[1]/dmq);
+		        /* change mdotCurr and sharing JMB 10/16/08. */
+			dmq = q->curlv[0]*q->curlv[0]/q->curlv[1]; 
+			/* eat fraction of particle mass
+			 instead of whole thing */
+	      }
+	      else {	       
 		mdotCurr -= mdotCurr*(q->curlv[0]/dmq); /* need an additional victim */
 		dmq = q->curlv[0];
-		}
-
-	    /* Are the competitors for this victim? -- if so share it out 
-	       Note: this victim should still get consumed */
-	    if (q->curlv[1] > q->curlv[0]) {
-		printf("BHSink %d:  multi sink victim particle %d, dmq %g %g %g\n",p->iOrder,q->iOrder,dmq,q->curlv[1],q->curlv[0]);
-		dmq *= q->curlv[0]/q->curlv[1];
-		}
+	      }
+	    }
 
 	    q->curlv[2] = 1.0; /* flag for pre-used victim particles */
 	    printf("BHSink %d:  %d dmq %g %g %g\n",p->iOrder,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
@@ -1262,7 +1277,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q->fMass -= dmq;
 		if (q->fMass < 1e-3*dmq) {
 		    q->fMass = 0;
-		    pkdDeleteParticle(smf->pkd, q);
+		    if(!(TYPETest(q,TYPE_DELETED))) pkdDeleteParticle(smf->pkd, q);
 		    }
 		}
 
