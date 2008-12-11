@@ -80,6 +80,8 @@ double dSTMStarLtime (PDVAPARAM ppdva, double dStarLtime, double dMetals)
 
 
 #if 0
+#include "supernova.h"
+
 int
 main(int argc, char **argv)
 {
@@ -95,6 +97,7 @@ main(int argc, char **argv)
     double dStarMass;
     double mass[30], time[30];
     PARTICLE *p;
+    double dMetals = 0.0;
     
     assert(argc == 2);
     
@@ -117,14 +120,14 @@ main(int argc, char **argv)
 		lgm = i*dlgm;
 
 		mass[i] = pow(10.0, lgm);
-        time[i] = dSTLtimeMStar (ppdva, sn, mass[i], p);
+        time[i] = dSTLtimeMStar (ppdva, mass[i], dMetals);
 		printf("%g %g\n", mass[i], time[i]);        
 
 		}
 
     for(i = 0; i < nsamp; i++) {
 
-        mass[i] = dSTMStarLtime (ppdva, sn, time[i], p);
+        mass[i] = dSTMStarLtime (ppdva, time[i], dMetals);
 		printf("%g %g\n", mass[i], time[i]);        
 		}
     

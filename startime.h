@@ -1,3 +1,5 @@
+#ifndef STARTIME_H_INCLUDED
+#define STARTIME_H_INCLUDED
 /*
   Uses Raiteri, Villata, and Navarro (A&A, 315, 105, 1996) fit to 
   Padova group stellar models to find stellar lifetimes as a 
@@ -34,4 +36,4 @@ void PadovaInitialize(PDVAPARAM *ppdva);
 void PadovaCoefInit (PDVAPARAM ppdva, double dMetals);
 double dSTLtimeMStar(PDVAPARAM ppdva, double dStarMass, double dMetals);
 double dSTMStarLtime(PDVAPARAM ppdva, double dStarLtime, double dMetals);
-
+#endif
