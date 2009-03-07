@@ -10,6 +10,7 @@ typedef struct StiffContextStructure {
   double *dfdx,**dfdy,*err,*yerr,*ysav,*yseq;
 
   int first,kmax,kopt;
+  int iAbort;
   double xnew;
   double a[IMAXX+1];
   double alf[KMAXX+1][KMAXX+1];

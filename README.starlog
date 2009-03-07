@@ -9,7 +9,9 @@ containing the length of each record in bytes.  This also serves as a
 
 The format of each record of the file will be:
 
-iOrderStar, iOrderGas, rform[3], vform[3], massForm, rhoform, Tform.
+iOrderStar, iOrderGas, timeform, rform[3], vform[3], massForm, rhoform, Tempform
+
+The iOrders are int's and the rest of the values are DOUBLE's.
 
 These records will be appended to the starlog file on a periodic basis
 in order to reduce the amount of I/O.  By default we do this

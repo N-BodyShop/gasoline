@@ -104,14 +104,21 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM );
 void CoolLogParams( COOLPARAM *CoolParam, FILE *fp );
 void CoolOutputArray( COOLPARAM *CoolParam, int, int *, char * );
 
-FLOAT COOL_ARRAY0(COOLPARTICLE *cp);
-#define COOL_ARRAY0( cp ) ((cp)->Y_Total)
+#define COOL_ARRAY0_EXT  "HI"
+FLOAT COOL_ARRAY0(COOL *cl_, COOLPARTICLE *cp,double aa);
+#define COOL_ARRAY0( cl_, cp, aa ) ((cp)->Y_Total)
 
-FLOAT COOL_ARRAY1(COOLPARTICLE *cp);
-#define COOL_ARRAY1( cp ) (0)
+#define COOL_ARRAY1_EXT  "HeI"
+FLOAT COOL_ARRAY1(COOL *cl_, COOLPARTICLE *cp,double aa);
+#define COOL_ARRAY1( cl_, cp, aa ) (0)
 
-FLOAT COOL_ARRAY2(COOLPARTICLE *cp);
-#define COOL_ARRAY2( cp ) (0)
+#define COOL_ARRAY2_EXT  "HeII"
+FLOAT COOL_ARRAY2(COOL *cl_, COOLPARTICLE *cp,double aa);
+#define COOL_ARRAY2( cl_, cp, aa ) (0)
+
+#define COOL_ARRAY3_EXT  "H2"
+FLOAT COOL_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal);
+#define COOL_ARRAY3(cl_, cp, aa ) (0)
 
 FLOAT COOL_EDOT( COOL *cl_, COOLPARTICLE *cp_, double ECode_, double rhoCode_, double ZMetal_, double *posCode_ );
 #define COOL_EDOT( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_) (CoolCodeWorkToErgPerGmPerSec( cl_, CoolEdotInstantCode( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_ )))
@@ -122,7 +129,7 @@ FLOAT COOL_COOLING( COOL *cl_, COOLPARTICLE *cp_, double ECode_, double rhoCode_
 FLOAT COOL_HEATING( COOL *cl_, COOLPARTICLE *cp_, double ECode_, double rhoCode_, double ZMetal_, double *posCode_ );
 #define COOL_HEATING( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_) (0)
 
-double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E );
+double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double fMetal );
 
 /* Note: nod to cosmology (z parameter) unavoidable unless we want to access cosmo.[ch] from here */
 void CoolSetTime( COOL *Cool, double dTime, double z );
@@ -163,7 +170,7 @@ void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *E,
 
 void CoolDefaultParticleData( COOLPARTICLE *cp );
 
-void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp );
+void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp, double fMetal );
 
 /* Deprecated */
 double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double E, double dDensity );

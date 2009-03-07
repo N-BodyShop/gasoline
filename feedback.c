@@ -8,190 +8,183 @@
 #include "feedback.h"
 #include "supernova.h"
 
-
 void snCalcWindFeedback(SN sn, SFEvent sfEvent,
                         double dTime, /* current time in years */
                         double dDelta, /* length of timestep (years) */
                         FBEffects *fbEffects);
 
 void snCalcUVFeedback(SN sn, SFEvent sfEvent,
-					  double dTime, /* current time in years */
-					  double dDelta, /* length of timestep (years) */
-					  FBEffects *fbEffects);
+		      double dTime, /* current time in years */
+		      double dDelta, /* length of timestep (years) */
+		      FBEffects *fbEffects);
 
 /*
  * Feedback module for GASOLINE
  */
 
+double mod(double a, int b) {
+  /* printf("MOD: a=%g, b=%d, floor(a/b)=%g\n",a,b,floor(a/b));*/
+  return (a-b*floor(a/b));
+}
+
 void fbInitialize(FB *pfb)
 {
-    FB fb;
+  FB fb;
     
-    fb = (FB) malloc(sizeof(struct fbContext));
-    assert(fb != NULL);
+  fb = (FB) malloc(sizeof(struct fbContext));
+  assert(fb != NULL);
     
-    fb->dGmUnit = 0.0;
-    fb->dSecUnit = 0.0;
-    fb->dErgPerGmUnit = 0.0;
-    *pfb = fb;
-    }
+  fb->dGmUnit = 0.0;
+  fb->dSecUnit = 0.0;
+  fb->dErgPerGmUnit = 0.0;
+  *pfb = fb;
+}
 
 void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
-				 FBEffects *fbTotals)
+		 FBEffects *fbTotals)
 {
-    int i;
-    PARTICLE *p;
-    int n = pkdLocal(pkd);
-    SFEvent sfEvent;
-    FBEffects fbEffects;
-    double dTotMassLoss;
-    double dTotMetals;
-    double dTotMOxygen;
-    double dTotMIron;
-    double dDeltaYr;
-    double dSNIaMassStore;
-#ifdef STOCHASTICFB
-    double dNSN, dProb;
-#endif
-    int j;
+  int i;
+  PARTICLE *p;
+  int n = pkdLocal(pkd);
+  SFEvent sfEvent;
+  FBEffects fbEffects;
+  double dTotMassLoss;
+  double dTotMetals;
+  double dTotMOxygen;
+  double dTotMIron;
+  double dDeltaYr;
+  double dSNIaMassStore;
+  double dNSNII, dProb, dStarAge, dMinAge;
+  double dRandomNum;
+  int j;
         
-    for(i = 0; i < FB_NFEEDBACKS; i++) {
-		fbTotals[i].dMassLoss = 0.0;
-		fbTotals[i].dEnergy = 0.0;
-		fbTotals[i].dMetals = 0.0;
-		fbTotals[i].dMIron = 0.0;
-		fbTotals[i].dMOxygen = 0.0;
-		}
-    dTime *= fb->dSecUnit/SEC_YR;
-    dDeltaYr = dDelta*fb->dSecUnit/SEC_YR;
+  for(i = 0; i < FB_NFEEDBACKS; i++) {
+    fbTotals[i].dMassLoss = 0.0;
+    fbTotals[i].dEnergy = 0.0;
+    fbTotals[i].dMetals = 0.0;
+    fbTotals[i].dMIron = 0.0;
+    fbTotals[i].dMOxygen = 0.0;
+  }
+  dTime *= fb->dSecUnit/SEC_YR;
+  dDeltaYr = dDelta*fb->dSecUnit/SEC_YR;
     
-    for(i = 0; i < n; ++i) {
-        p = &pkd->pStore[i];
-        if(pkdIsStar(pkd, p) && p->fTimeForm >= 0.0) {
-            dTotMassLoss = 0.0;
-            dTotMetals = 0.0;
-            dTotMOxygen = 0.0;
-            dTotMIron = 0.0;
-            p->fESNrate = 0.0;
-            p->fNSN = 0.0;
+  for(i = 0; i < n; ++i) {
+    p = &pkd->pStore[i];
+    if(pkdIsStar(pkd, p) && p->fTimeForm >= 0.0) {
+      dTotMassLoss = 0.0;
+      dTotMetals = 0.0;
+      dTotMOxygen = 0.0;
+      dTotMIron = 0.0;
+      p->fESNrate = 0.0;
+      p->fNSN = 0.0;
 
-	    sfEvent.dMass = p->fMassForm*fb->dGmUnit/MSOLG;
-            sfEvent.dTimeForm = p->fTimeForm*fb->dSecUnit/SEC_YR;;
-            sfEvent.dMetals = p->fMetals;
-            sfEvent.dMFracOxygen = p->fMFracOxygen;
-            sfEvent.dMFracIron = p->fMFracIron;
+      sfEvent.dMass = p->fMassForm*fb->dGmUnit/MSOLG;
+      sfEvent.dTimeForm = p->fTimeForm*fb->dSecUnit/SEC_YR;
+      dStarAge = dTime - sfEvent.dTimeForm;
+      sfEvent.dMetals = p->fMetals;
+      sfEvent.dMFracOxygen = p->fMFracOxygen;
+      sfEvent.dMFracIron = p->fMFracIron;
 
-            /*
-             * Call all the effects in order and accumulate them.
-             */
-            dSNIaMassStore=0.0;  /* Stores mass loss of Ia so as
-                                    not to double count it in 
-                                    wind feedback */
+      /*
+       * Call all the effects in order and accumulate them.
+       */
+      dSNIaMassStore=0.0;  /* Stores mass loss of Ia so as
+			      not to double count it in 
+			      wind feedback */
                                     
-            for(j = 0; j < FB_NFEEDBACKS; j++) {
-                switch (j) {
-                case FB_SNII:
-                    snCalcSNIIFeedback(sn, sfEvent, dTime,
-                                        dDeltaYr, &fbEffects);
-                    break;
-                case FB_SNIA:
-                    snCalcSNIaFeedback(sn, sfEvent, dTime,
-                                        dDeltaYr, &fbEffects);
-                    dSNIaMassStore=fbEffects.dMassLoss;
-
-                    break;
-                case FB_WIND:
-                    snCalcWindFeedback(sn, sfEvent, dTime,
-                                        dDeltaYr, &fbEffects);
-                    fbEffects.dMassLoss -= dSNIaMassStore;
-                    /*printf("Wind, SNaI Mass Loss: %d   %d\n",fbEffects.dMassLoss,dSNIaMassStore); */
+      for(j = 0; j < FB_NFEEDBACKS; j++) {
+	dNSNII = 0;
+	switch (j) {
+	case FB_SNII:
+	  snCalcSNIIFeedback(sn, sfEvent, dTime,
+			     dDeltaYr, &fbEffects);
+	  if( sn->dESN > 0.0)
+	    dNSNII = fbEffects.dEnergy * MSOLG*fbEffects.dMassLoss/sn->dESN;
+	  break;
+	case FB_SNIA:
+	  snCalcSNIaFeedback(sn, sfEvent, dTime,
+			     dDeltaYr, &fbEffects);
+	  dSNIaMassStore=fbEffects.dMassLoss;
+	  break;
+	case FB_WIND:
+	  snCalcWindFeedback(sn, sfEvent, dTime,
+			     dDeltaYr, &fbEffects);
+	  fbEffects.dMassLoss -= dSNIaMassStore;
+	  /*printf("Wind, SNaI Mass Loss: %d   %d\n",fbEffects.dMassLoss,dSNIaMassStore); */
                     
-                    break;
-                case FB_UV:
-                    snCalcUVFeedback(sn, sfEvent, dTime, dDeltaYr,
-                                                     &fbEffects);
-                    break;
-                default:
-                    assert(0);
-                    }
+	  break;
+	case FB_UV:
+	  snCalcUVFeedback(sn, sfEvent, dTime, dDeltaYr,
+			   &fbEffects);
+	  break;
+	default:
+	  assert(0);
+	}
 
-#ifdef STOCHASTICFB
-		dNSN = fbEffects.dEnergy * MSOLG*fbEffects.dMassLoss/sn->dESN;
-		dProb = dNSN-floor(dNSN);
-		if (dNSN > 0) {
-		    if((rand()/((double) RAND_MAX)) < dProb) {
-			/* SN occurred */
-			fbEffects.dMassLoss += (1-dProb)/dNSN*fbEffects.dMassLoss;
-			}
-		    else  {
-			fbEffects.dMassLoss -= (dProb/dNSN)*fbEffects.dMassLoss;
-			}
-		    }
-#endif
-                if( sn->dESN > 0.0) p->fNSN += fbEffects.dEnergy * MSOLG*fbEffects.dMassLoss/sn->dESN;
-                else p->fNSN += 0.0;
+	/* Blow winds before SN (power of winds ~ power of SN) */
+	dMinAge = dSTLtimeMStar(&sn->ppdva, sn->dMSNIImax, sfEvent.dMetals); 
+	if (dNSNII > 0 && sn->iNSNIIQuantum > 0 && dStarAge > dMinAge) {
+	/* Make sure only a iNSNIIQuantum number of SNII go off at a time */
+	  dProb = mod(dNSNII, sn->iNSNIIQuantum)/sn->iNSNIIQuantum;
+	  dRandomNum = (rand()/((double) RAND_MAX));
+	  /*	  printf("Random Number = %g\n",dRandomNum);*/
+	  if(dRandomNum < dProb) /* SN occurred */ {
+	    /* Adds missing part to make up quantum */
+	    p->fNSN = dNSNII + (1.-dProb)*sn->iNSNIIQuantum;
+	    /*printf("NSN: +factor=%g   dNSNII=%g  result=%g fNSN=%g\n",(1.-dProb)*sn->iNSNIIQuantum,dNSNII,dNSNII + (1.-dProb)*sn->iNSNIIQuantum,p->fNSN);*/
+	  } else {
+	    p->fNSN = dNSNII - dProb*sn->iNSNIIQuantum;
+	    /*printf("NSN: -factor=%g   dNSNII=%g  result=%g fNSN=%g\n",dProb*sn->iNSNIIQuantum,dNSNII,dNSNII - dProb*sn->iNSNIIQuantum,p->fNSN);*/
+	  }
+	  if(p->fNSN < sn->iNSNIIQuantum) p->fNSN = 0;
+	  fbEffects.dEnergy = p->fNSN*sn->dESN/(MSOLG*fbEffects.dMassLoss);   
+	} else if(dStarAge < dMinAge) p->fNSN = dNSNII;
 
-                fbEffects.dMassLoss *= MSOLG/fb->dGmUnit;
-                fbEffects.dEnergy /= fb->dErgPerGmUnit;
+	fbEffects.dMassLoss *= MSOLG/fb->dGmUnit;
+	fbEffects.dEnergy /= fb->dErgPerGmUnit;
 
-#ifdef STOCHASTICFB
-		/* Do not allow more than 75 percent of the original
-		   stellar mass to be lost via feedback 
-		   Note: These cases should be rare
-		   Average is probably ~ 20 percent lost */
-		if (p->fMass - fbEffects.dMassLoss < 0.25*p->fMassForm) {
-		    fbEffects.dMassLoss = p->fMass-0.25*p->fMassForm;
-		    if (fbEffects.dMassLoss < 0) fbEffects.dMassLoss = 0;
-		    }
-#endif
+	dTotMassLoss += fbEffects.dMassLoss;
+	p->fESNrate += fbEffects.dEnergy*fbEffects.dMassLoss;
+	dTotMetals += fbEffects.dMetals*fbEffects.dMassLoss;
+	dTotMOxygen += fbEffects.dMOxygen*fbEffects.dMassLoss;
+	dTotMIron += fbEffects.dMIron*fbEffects.dMassLoss;
 
-                dTotMassLoss += fbEffects.dMassLoss;
-                p->fESNrate += fbEffects.dEnergy*fbEffects.dMassLoss;
-                dTotMetals += fbEffects.dMetals*fbEffects.dMassLoss;
-                dTotMOxygen += fbEffects.dMOxygen*fbEffects.dMassLoss;
-                dTotMIron += fbEffects.dMIron*fbEffects.dMassLoss;
+	fbTotals[j].dMassLoss += fbEffects.dMassLoss;
+	fbTotals[j].dEnergy += fbEffects.dEnergy*fbEffects.dMassLoss;
+	fbTotals[j].dMetals += fbEffects.dMetals*fbEffects.dMassLoss;
+	fbTotals[j].dMIron += fbEffects.dMIron*fbEffects.dMassLoss;
+	fbTotals[j].dMOxygen += fbEffects.dMOxygen*fbEffects.dMassLoss;
+      }
 
-                fbTotals[j].dMassLoss += fbEffects.dMassLoss;
-                fbTotals[j].dEnergy += fbEffects.dEnergy*fbEffects.dMassLoss;
-                fbTotals[j].dMetals += fbEffects.dMetals*fbEffects.dMassLoss;
-                fbTotals[j].dMIron += fbEffects.dMIron*fbEffects.dMassLoss;
-                fbTotals[j].dMOxygen += fbEffects.dMOxygen*fbEffects.dMassLoss;
-                }
+      /*
+       * Modify star particle
+       */
+      assert(p->fMass > dTotMassLoss);
 
-            /*
-             * Modify star particle
-             */
-#ifdef STOCHASTICFB
-	    if (p->fMass <= dTotMassLoss) {
-		fprintf(stderr,"Minit %g M %g dM %g dProb %g dNSN %g\n",p->fMassForm,p->fMass,dTotMassLoss,dProb,dNSN);
-		}
-#endif
-            assert(p->fMass > dTotMassLoss);
-
-            p->fMass -= dTotMassLoss;
-            p->fMSN = dTotMassLoss;
-            /* The SNMetals and ESNrate used to be specific
-               quantities, but we are making them totals as
-               they leave the stars so that they are easier
-               to divvy up among the gas particles in 
-               distSNEnergy in smoothfcn.c.  These quantities
-               will be converted back to specific quantities when
-               they are parts of gas particles. */
-            p->fSNMetals = dTotMetals;
-            p->fMIronOut = dTotMIron;
-            p->fMOxygenOut = dTotMOxygen;
-            p->fESNrate /= dDelta; /* convert to rate */
-            }
+      p->fMass -= dTotMassLoss;
+      p->fMSN = dTotMassLoss;
+      /* The SNMetals and ESNrate used to be specific
+	 quantities, but we are making them totals as
+	 they leave the stars so that they are easier
+	 to divvy up among the gas particles in 
+	 distSNEnergy in smoothfcn.c.  These quantities
+	 will be converted back to specific quantities when
+	 they are parts of gas particles. */
+      p->fSNMetals = dTotMetals;
+      p->fMIronOut = dTotMIron;
+      p->fMOxygenOut = dTotMOxygen;
+      p->fESNrate /= dDelta; /* convert to rate */
+    }
 	    
 	
-		else if(pkdIsGas(pkd, p)){
-                        assert(p->u >= 0.0);
-                        assert(p->uPred >= 0.0);
-			p->fESNrate = 0.0;	/* reset SN heating rate of gas to zero */
-                        }
-		}
+    else if(pkdIsGas(pkd, p)){
+      assert(p->u >= 0.0);
+      assert(p->uPred >= 0.0);
+      p->fESNrate = 0.0;	/* reset SN heating rate of gas to zero */
+    }
+  }
 
-	}
+}
 
 
 void snCalcWindFeedback(SN sn, SFEvent sfEvent,
@@ -208,8 +201,8 @@ void snCalcWindFeedback(SN sn, SFEvent sfEvent,
 
   /* First determine if dying stars are between 1-8 Msolar
 
-   * stellar lifetimes corresponding to beginning and end of 
-   * current timestep with respect to starbirth time in yrs */
+  * stellar lifetimes corresponding to beginning and end of 
+  * current timestep with respect to starbirth time in yrs */
   dMmin=1.0;
   dMmax=8.0;
   dStarLtimeMin = dTime - sfEvent.dTimeForm; 
@@ -220,10 +213,9 @@ void snCalcWindFeedback(SN sn, SFEvent sfEvent,
   assert(dMStarMax >= dMStarMin);
 
   if (((dMStarMin < dMmax) && (dMStarMax > dMmin)) && dMStarMax > dMStarMin) {
-  /*printf("");  Intel optimizer needs this to avoid floating point exception on sharks. */
 
-    /* Mass Fraction returned to ISM taken from Weidermann, 1987, A&A 188 74 
-     then fit to function: MFreturned = 0.86 - exp(-Mass/1.1) */
+    /* Mass Fraction returned to ISM taken from Weidemann, 1987, A&A 188 74 
+       then fit to function: MFreturned = 0.86 - exp(-Mass/1.1) */
     dMassFracReturned=0.86-exp(-((dMStarMax+dMStarMin)/2.)/1.1);
 
     dMCumMin = dMSCumMass(&sn->MSparam, dMStarMin);
@@ -232,16 +224,16 @@ void snCalcWindFeedback(SN sn, SFEvent sfEvent,
     /* Find out mass fraction of dying stars, then multiply by the original
        mass of the star particle */
     if (dMTot == 0.0){
-            dMDying = 0.0;
-        } else { 
-            dMDying = (dMCumMin - dMCumMax)/dMTot;
-        }
+      dMDying = 0.0;
+    } else { 
+      dMDying = (dMCumMin - dMCumMax)/dMTot;
+    }
     dMDying *= sfEvent.dMass;
 
     /* Figure out feedback effects */
     fbEffects->dMassLoss = dMDying * dMassFracReturned;
     fbEffects->dEnergy = 0.0;    
-    /* Use stars metallicity for gas returned */
+    /* Use star's metallicity for gas returned */
     fbEffects->dMetals = sfEvent.dMetals; 
     fbEffects->dMIron = sfEvent.dMFracIron; 
     fbEffects->dMOxygen = sfEvent.dMFracOxygen; 
@@ -255,15 +247,15 @@ void snCalcWindFeedback(SN sn, SFEvent sfEvent,
   }
 }
 void snCalcUVFeedback(SN sn, SFEvent sfEvent,
-					  double dTime, /* current time in years */
-					  double dDelta, /* length of timestep (years) */
-					  FBEffects *fbEffects)
+		      double dTime, /* current time in years */
+		      double dDelta, /* length of timestep (years) */
+		      FBEffects *fbEffects)
 {
-    fbEffects->dMassLoss = 0.0;
-    fbEffects->dEnergy = 0.0;
-    fbEffects->dMetals = 0.0;
-    fbEffects->dMIron = 0.0;
-    fbEffects->dMOxygen = 0.0;
-    }
+  fbEffects->dMassLoss = 0.0;
+  fbEffects->dEnergy = 0.0;
+  fbEffects->dMetals = 0.0;
+  fbEffects->dMIron = 0.0;
+  fbEffects->dMOxygen = 0.0;
+}
 
 #endif

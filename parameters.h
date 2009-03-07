@@ -27,6 +27,7 @@ struct parameters {
         int bLogTimingSubStepTot;
         int bLogTimingStepTot;
 	int bPeriodic;
+        int    bInflowOutflow;
 	int bRestart;
 	int bParaRead;
 	int bParaWrite;
@@ -143,6 +144,10 @@ struct parameters {
 	double dxPeriod;
 	double dyPeriod;
 	double dzPeriod;
+        double dxInflow;
+        double dxOutflow;
+        double drLastInflow;
+        double dxLastInflow;
 	CSM csm;
 	double dRedTo;
 	double dCentMass;
@@ -203,15 +208,19 @@ struct parameters {
 	double dErgPerGmUnit;
 	double dSecUnit;
 	int    bViscosityLimiter;
+	int    iViscosityLimiter;
 	int    bViscosityLimitdt;
 	int    bShockTracker;
+        int    bVariableAlpha;
 	int    bBulkViscosity;
 	int    bGasDomainDecomp;
 	int    bLowerSoundSpeed;
 	int    bFastGas;
 	double dFracFastGas;
 	double dhMinOverSoft;
-        double dMetalDiffusionConstant;
+        double dMetalDiffusionCoeff;
+        double dThermalDiffusionCoeff;
+        int    bConstantDiffusion;
 	int    bDoGas;
 	int    bSphStep;
         int    bSphSingleStep;
@@ -250,6 +259,7 @@ struct parameters {
 	int bShortCoolShutoff;
 	int bSmallSNSmooth;
         int iStarFormRung;
+  int iRandomSeed;
 	int nSmoothFeedback;
 #endif
 	double dKBoltzUnit;

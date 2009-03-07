@@ -1,5 +1,7 @@
-#ifndef COOLING_COSMO_HINCLUDED
-#define COOLING_COSMO_HINCLUDED
+#define COOLDEBUG
+
+#ifndef COOLING_METAL_HINCLUDED
+#define COOLING_METAL_HINCLUDED
 
 /* Global consts */
 #if defined(COOLDEBUG)
@@ -7,9 +9,10 @@
 #endif
 #include "floattype.h"
 #include "param.h"
+#include "rpc/xdr.h"
 
 /* Constants */
-#define CL_B_gm         (6.022e23*(938.7830/931.494))
+#define CL_B_gm         (6.022e23*(938.7830/931.494))/*Avegadro's Number * Mass_Hydrogen/Energy_AMU */
 #define CL_k_Boltzmann  1.38066e-16
 #define CL_eV_erg       1.60219e-12
 #define CL_eV_per_K     (CL_k_Boltzmann/CL_eV_erg)
@@ -32,28 +35,36 @@
 #define CL_MAX_NEG_EXP_ARG  -500.
 
 #define CL_NMAXBYTETABLE   56000
-
+#define MU_METAL  17.6003
+#define ZSOLAR    0.0130215
 
 typedef struct CoolingParametersStruct {
 	int    bIonNonEqm;
 	int    nCoolingTable;
 	int    bUV;
+        int    bMetal;
+        char   *CoolInFile; 
 	int    bUVTableUsesTime;
 	int    bDoIonOutput;
         int    bLowTCool;
         int    bSelfShield;
+        int    bMolecH;  
 	double dMassFracHelium;
-	double dCoolingTmin;
+        double dCoolingTmin;     
 	double dCoolingTmax;
+        
 	} COOLPARAM;
 
 typedef struct CoolingParticleStruct {
-	FLOAT Y_HI,Y_HeI,Y_HeII;	/* Abundance of ions */
+  FLOAT f_HI,f_HeI,f_HeII;
+#ifdef MOLECULARH
+  FLOAT f_H2;	/* Abundance of ions */
+#endif
 	} COOLPARTICLE;
 
 typedef struct { 
   double e,Total;
-  double HI,HII,HeI,HeII,HeIII;
+  double HI,HII,HeI,HeII,HeIII,H2;  
 } PERBARYON;
 
 typedef struct { 
@@ -62,25 +73,31 @@ typedef struct {
   double   Rate_Phot_HI;
   double   Rate_Phot_HeI;
   double   Rate_Phot_HeII;
+  double   Rate_Phot_H2;  
 
   double   Heat_Phot_HI;
   double   Heat_Phot_HeI;
   double   Heat_Phot_HeII;
+  double   Heat_Phot_H2;  
 } UVSPECTRUM;
 
 typedef struct { 
   double   Rate_Phot_HI;
   double   Rate_Phot_HeI;
   double   Rate_Phot_HeII;
+  double   Rate_Phot_H2;  
 
   double   Heat_Phot_HI;
   double   Heat_Phot_HeI;
   double   Heat_Phot_HeII;
+  double   Heat_Phot_H2;  
  
   double   Cool_Coll_HI;
   double   Cool_Coll_HeI;
   double   Cool_Coll_HeII;
   double   Cool_Diel_HeII;
+  double   Cool_Coll_H2;  
+ 
   double   Cool_Comp;
   double   Tcmb;
   double   Cool_LowTFactor;
@@ -91,10 +108,14 @@ typedef struct {
   CL_RT_FLOAT   Rate_Coll_HI;
   CL_RT_FLOAT   Rate_Coll_HeI;
   CL_RT_FLOAT   Rate_Coll_HeII;
+  CL_RT_FLOAT   Rate_Coll_e_H2;  
+  CL_RT_FLOAT   Rate_Coll_H_H2;  
+  CL_RT_FLOAT   Rate_Coll_H2_H2;  
   CL_RT_FLOAT   Rate_Radr_HII;
   CL_RT_FLOAT   Rate_Radr_HeII;
   CL_RT_FLOAT   Rate_Radr_HeIII;
   CL_RT_FLOAT   Rate_Diel_HeII;
+  CL_RT_FLOAT   Rate_Chtr_HeII;
 
   CL_RT_FLOAT   Cool_Brem_1;
   CL_RT_FLOAT   Cool_Brem_2;
@@ -104,26 +125,48 @@ typedef struct {
   CL_RT_FLOAT   Cool_Line_HI;
   CL_RT_FLOAT   Cool_Line_HeI;
   CL_RT_FLOAT   Cool_Line_HeII;
+  CL_RT_FLOAT   Cool_Line_H2;    
   CL_RT_FLOAT   Cool_LowT;
-
+  CL_RT_FLOAT   Rate_GasForm_H2;  
 } RATES_T;
 
 /* Heating Cooling Context */
 
 typedef struct CoolingPKDStruct { 
-   double     z; /* Redshift */
-   double     dTime;
+  double     z; /* Redshift */
+  double     dTime;
  /* Rates independent of Temperature */ 
-   RATES_NO_T  R;
+  RATES_NO_T  R;
  /* Table for Temperature dependent rates */ 
-   int        nTable;
-   double     TMin;
-   double     TMax;
-   double     TlnMin;
-   double     TlnMax;
-   double     rDeltaTln;
-   RATES_T     *RT;
-
+  int        nTable;
+  double     TMin;
+  double     TMax;
+  double     TlnMin;
+  double     TlnMax;
+  double     rDeltaTln;
+  RATES_T     *RT;
+  
+  int         bMetal; 
+  int         nzMetalTable;
+  int         nnHMetalTable;
+  int         nTMetalTable;  
+  double      MetalTMin; 
+  double      MetalTMax; 
+  double      MetalTlogMin;
+  double      MetalTlogMax;
+  double      rDeltaTlog;
+  double      MetalnHMin; 
+  double      MetalnHMax; 
+  double      MetalnHlogMin; 
+  double      MetalnHlogMax; 
+  double      rDeltanHlog;
+  double      MetalzMin; 
+  double      MetalzMax;  
+  double      rDeltaz;
+  float       ***MetalCoolln;
+  float       ***MetalHeatln;  
+  double      *Rate_DustForm_H2;  
+  
    int        nTableRead; /* number of Tables read from files */
 
    int        bUV;
@@ -141,12 +184,11 @@ typedef struct CoolingPKDStruct {
    double     dErgPerGmPerSecUnit;
    double     diErgPerGmUnit;
    double     dKpcUnit;
-   double     Y_H;
-   double     Y_He;
-   double     Y_eMAX;
+   double     dMassFracHelium;
    void       *DerivsData;
+
 /* Diagnostic */
-   int        its;
+    int       its;
 #if defined(COOLDEBUG) 
    MDL        mdl; /* For diag/debug outputs */
    struct particle *p; /* particle pointer needed for SN feedback */
@@ -159,15 +201,25 @@ typedef struct {
   double   Coll_HI;
   double   Coll_HeI;
   double   Coll_HeII;
+  double   Coll_e_H2;  
+  double   Coll_H_H2;  
+  double   Coll_H2_H2;  
   double   Radr_HII;
   double   Radr_HeII;
   double   Diel_HeII;
+  double   Chtr_HeII;
   double   Totr_HeII;
-  double   Radr_HeIII;
+  double   Radr_HeIII; 
+  double   Cool_Metal;
+  double   Heat_Metal;
 
   double   Phot_HI;
   double   Phot_HeI;
   double   Phot_HeII;
+  double   Phot_H2;  
+  double   GasForm_H2; /* CC */
+  double   DustForm_H2; 
+  double   TotrForm_H2; 
 } RATE;
 
 typedef struct {
@@ -181,11 +233,16 @@ typedef struct {
   double collionHI; 
   double collionHeI;
   double collionHeII;
+  double collion_e_H2;  
+  double collion_H_H2;  
+  double collion_H2_H2;  
   double dielrecHeII;
   double lineHI;
   double lineHeI;
   double lineHeII;
+  double lineH2;  
   double lowT;
+  double NetMetalCool; 
 } COOL_ERGPERSPERGM;
 
 
@@ -193,13 +250,21 @@ typedef struct clDerivsDataStruct {
   void *IntegratorContext;
   COOL *cl;
   double rho,ExternalHeating,E,ZMetal;
+/*  double Y_H, Y_He; */  /* will be needed -- also for temperature , Y_MetalIon, Y_eMetal */
   RATE Rate;
   PERBARYON Y;
+  double     Y_H, Y_He, Y_eMax;
   double     Y_Total0, Y_Total1;
   double     dlnE;
   int        its;  /* Debug */
+  int        bCool;
 } clDerivsData;
 
+/*self-sheilding for H2 -- not currently used*/
+typedef struct clSheildStruct { 
+  double dust;
+  double self;
+} clSheild;
 
 COOL *CoolInit( );
 void CoolFinalize( COOL *cl );
@@ -208,26 +273,33 @@ void clInitConstants( COOL *cl, double dGMPerCcunit, double dComovingGmPerCcUnit
 					 double dErgPerGmUnit, double dSecUnit, double dKpcUnit, COOLPARAM CoolParam);
 void clInitUV(COOL *cl, int nTableColumns, int nTableRows, double *dTableData );
 void clInitRatesTable( COOL *cl, double TMin, double TMax, int nTable );
+void clReadMetalTable(COOL *cl, COOLPARAM clParam);
+void clRateMetalTable(COOL *cl, RATE *Rate, double T, double rho, double Y_H, double ZMetal); 
+void clHHeTotal(COOL *cl, double ZMetal); 
 void CoolInitRatesTable( COOL *cl, COOLPARAM CoolParam);
 
 void clRatesTableError( COOL *cl );
 void clRatesRedshift( COOL *cl, double z, double dTime );
 double clHeatTotal ( COOL *cl, PERBARYON *Y, RATE *Rate );
-void clRates( COOL *cl, RATE *Rate, double T, double rho );
+void clRates( COOL *cl, RATE *Rate, double T, double rho, double ZMetal );
 double clCoolTotal( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal );
 COOL_ERGPERSPERGM  clTestCool ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho );
 void clPrintCool( COOL *cl, PERBARYON *Y, RATE *Rate, double rho );
 void clPrintCoolFile( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, FILE *fp );
 
-void clAbunds( COOL *cl, PERBARYON *Y, RATE *Rate, double rho);
+void clAbunds( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal);
 double clThermalEnergy( double Y_Total, double T );
 double clTemperature( double Y_Total, double E );
 double clRateCollHI( double T );
 double clRateCollHeI( double T );
 double clRateCollHeII( double T );
+double clRateColl_e_H2( double T );
+double clRateColl_H_H2( double T );
+double clRateColl_H2_H2( double T );
 double clRateRadrHII( double T );
 double clRateRadrHeII( double T );
 double clRateDielHeII( double T );
+double clRateChtrHeII(double T);
 double clRateRadrHeIII( double T );
 double clCoolBrem1( double T );
 double clCoolBrem2( double T );
@@ -237,8 +309,11 @@ double clCoolRadrHeIII( double T );
 double clCoolLineHI( double T );
 double clCoolLineHeI( double T );
 double clCoolLineHeII( double T );
+double clCoolLineH2_table( double T );  
+double clCoolLineH2( double T, double YH);
 double clCoolLowT( double T );
-
+double clRateDustFormH2(double z); 
+double clRateGasFormH2(double T); 
 double clEdotInstant ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal );
 void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E, 
 		       double ExternalHeating, double rho, double ZMetal, double dt );
@@ -255,20 +330,16 @@ void CoolLogParams( COOLPARAM *CoolParam, FILE *fp );
 void CoolOutputArray( COOLPARAM *CoolParam, int, int *, char * );
 
 #define COOL_ARRAY0_EXT  "HI"
-FLOAT COOL_ARRAY0(COOL *cl_, COOLPARTICLE *cp,double aa);
-#define COOL_ARRAY0( cl_, cp, aa ) ((cp)->Y_HI)
+FLOAT COOL_ARRAY0(COOL *cl, COOLPARTICLE *cp, double ZMetal);
 
 #define COOL_ARRAY1_EXT  "HeI"
-FLOAT COOL_ARRAY1(COOL *cl_, COOLPARTICLE *cp,double aa);
-#define COOL_ARRAY1( cl_, cp, aa ) ((cp)->Y_HeI)
+FLOAT COOL_ARRAY1(COOL *cl, COOLPARTICLE *cp, double ZMetal);
 
 #define COOL_ARRAY2_EXT  "HeII"
-FLOAT COOL_ARRAY2(COOL *cl_, COOLPARTICLE *cp,double aa);
-#define COOL_ARRAY2( cl_, cp, aa ) ((cp)->Y_HeII)
+FLOAT COOL_ARRAY2(COOL *cl, COOLPARTICLE *cp, double ZMetal);
 
 #define COOL_ARRAY3_EXT  "H2"
 FLOAT COOL_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal);
-#define COOL_ARRAY3(cl_, cp, aa ) (0)
 
 FLOAT COOL_EDOT( COOL *cl_, COOLPARTICLE *cp_, double ECode_, double rhoCode_, double ZMetal_, double *posCode_ );
 #define COOL_EDOT( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_) (CoolCodeWorkToErgPerGmPerSec( cl_, CoolEdotInstantCode( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_ )))
@@ -279,27 +350,13 @@ FLOAT COOL_COOLING( COOL *cl_, COOLPARTICLE *cp_, double ECode_, double rhoCode_
 FLOAT COOL_HEATING( COOL *cl_, COOLPARTICLE *cp_, double ECode_, double rhoCode_, double ZMetal_, double *posCode_ );
 #define COOL_HEATING( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_) (CoolCodeWorkToErgPerGmPerSec( cl_, CoolHeatingCode( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_ )))
 
-void CoolPARTICLEtoPERBARYON(COOL *cl_, PERBARYON *Y, COOLPARTICLE *cp, double HTotal, double HeTotal);
-
-#define CoolPARTICLEtoPERBARYON(cl_, Y, cp) { \
-    (Y)->HI = (cp)->Y_HI; \
-    (Y)->HII = (cl_)->Y_H - (Y)->HI; \
-    (Y)->HeI = (cp)->Y_HeI; \
-    (Y)->HeII = (cp)->Y_HeII; \
-    (Y)->HeIII = (cl_)->Y_He - (Y)->HeI - (Y)->HeII; \
-    (Y)->e = (Y)->HII + (Y)->HeII + 2*(Y)->HeIII; \
-    (Y)->Total = (Y)->e + (cl_)->Y_H + (cl_)->Y_He; }
-
-void CoolPERBARYONtoPARTICLE(COOL *cl_, PERBARYON *Y, COOLPARTICLE *cp);
-
-#define CoolPERBARYONtoPARTICLE(cl_, Y, cp) { \
-    (cp)->Y_HI = (Y)->HI; \
-    (cp)->Y_HeI = (Y)->HeI; \
-    (cp)->Y_HeII = (Y)->HeII; }
+void clSetAbundanceTotals(COOL *cl, double ZMetal, double *Y_H, double *Y_He, double *Y_eMAX);
+void CoolPARTICLEtoPERBARYON(COOL *cl_, PERBARYON *Y, COOLPARTICLE *cp, double ZMetal);
+void CoolPERBARYONtoPARTICLE(COOL *cl_, PERBARYON *Y, COOLPARTICLE *cp, double ZMetal);
 
 
-double CoolEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double fMetal );
-double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double fMetal );
+double CoolEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double ZMetal);
+double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double ZMetal);
 
 /* Note: nod to cosmology (z parameter) unavoidable unless we want to access cosmo.[ch] from here */
 void CoolSetTime( COOL *Cool, double dTime, double z );
@@ -340,7 +397,7 @@ void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *E,
 
 void CoolDefaultParticleData( COOLPARTICLE *cp );
 
-void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp, double fMetal );
+void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp, double ZMetal);
 
 /* Deprecated */
 double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double E, double dDensity, double ZMetal );

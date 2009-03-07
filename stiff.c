@@ -41,6 +41,8 @@ STIFF *StiffInit( double eps, int nv, void *Data,
 
   s->nv = nv;  
 
+  s->iAbort = 0;
+
   /* stifbs */
   s->d=matrix(1,KMAXX,1,KMAXX);
   s->dfdx=vector(1,nv);
@@ -138,6 +140,12 @@ void StiffStep(STIFF *s, double y[], double dydx[], double *xx, double htry,
       s->xnew=(*xx)+h;
       if (s->xnew == (*xx)) assert(0); /* nrerror("step size underflow in stifbs"); */
       simpr(s,ysav,dydx,s->dfdx,s->dfdy,*xx,h,s->nseq[k],yseq);
+      if (s->iAbort) {
+	  printf("simpr blow-up (singular matrix?): retry with smaller stepsize\n");
+	  h=h*0.9;
+	  s->iAbort=0;
+	  break;
+	  }
       xest=h*h/(s->nseq[k]*s->nseq[k]);
       assert(xest != 0.0 );
       pzextr(s,k,xest,yseq,y,yerr);
@@ -238,11 +246,13 @@ void simpr(STIFF *s, double y[], double dydx[], double dfdx[], double **dfdy,
   x=xs+h;
   (*(s->derivs))(s->Data,x,ytemp,yout);
   for (nn=2;nn<=nstep;nn++) {
-    for (i=1;i<=n;i++)
+    for (i=1;i<=n;i++) 
       yout[i]=h*yout[i]-del[i];
     lubksb(a,n,indx,yout);
-    for (i=1;i<=n;i++)
-      ytemp[i] += (del[i] += 2.0*yout[i]);
+    for (i=1;i<=n;i++) {
+	if (yout[i] > (y[i]+1e-12)*1e30) { s->iAbort = 1; return; }
+	ytemp[i] += (del[i] += 2.0*yout[i]);
+	}
     x += h;
     (*(s->derivs))(s->Data,x,ytemp,yout);
   }
@@ -745,6 +755,7 @@ double RootFind(double (*func)(void *Data, double), void *Data, double x1, doubl
   nrerror("Maximum number of iterations exceeded in zbrent");
   return 0.0;
 }
+
 #undef ITMAX
 #undef EPS
 #endif

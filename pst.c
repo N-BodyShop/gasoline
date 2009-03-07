@@ -254,6 +254,8 @@ pstAddServices(PST pst,MDL mdl)
 				  sizeof(struct inReSmooth),sizeof(struct outReSmooth));
 	mdlAddService(mdl,PST_INITACCEL,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstInitAccel,0,0);
+	mdlAddService(mdl,PST_MODIFYACCEL,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstModifyAccel,sizeof(struct inModifyAccel),0);
 	mdlAddService(mdl,PST_DTTORUNG,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstDtToRung,
 				  sizeof(struct inDtToRung),sizeof(struct outDtToRung));
@@ -320,7 +322,7 @@ pstAddServices(PST pst,MDL mdl)
 				  0,nThreads*sizeof(struct outColNParts));
 	mdlAddService(mdl,PST_NEWORDER,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstNewOrder,
-				  nThreads*sizeof(int),0);
+				  nThreads*sizeof(struct inNewOrder),0);
 	mdlAddService(mdl,PST_GETNPARTS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGetNParts,
 				  0,sizeof(struct outGetNParts));
@@ -491,6 +493,12 @@ pstAddServices(PST pst,MDL mdl)
 		      (void (*)(void *,void *,int,void *,int *))
 		      pstFlushStarLog, sizeof(struct inFlushStarLog), 0);
 #endif
+	mdlAddService(mdl,PST_GRAVINFLOW,pst,
+		      (void (*)(void *,void *,int,void *,int *)) pstGravInflow,
+		      sizeof(struct inGravInflow), 0);
+	mdlAddService(mdl,PST_CREATEINFLOW,pst,
+		      (void (*)(void *,void *,int,void *,int *)) pstCreateInflow,
+		      sizeof(struct inCreateInflow), 0);
 #ifdef SIMPLESF
 	mdlAddService(mdl,PST_SIMPLESTARFORM,pst,
 		      (void (*)(void *,void *,int,void *,int *)) pstSimpleStarForm,
@@ -692,7 +700,7 @@ void pstOneNodeReadInit(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		nStore = nFileTotal + (int)ceil(nFileTotal*in->fExtraStore);
 		
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,
-					  plcl->nPstLvl,in->fPeriod,in->nDark,in->nGas,in->nStar);
+					  plcl->nPstLvl,in->fPeriod,in->dxInflow,in->dxOutflow,in->nDark,in->nGas,in->nStar);
 		pout[pst->idSelf] = nFileTotal;
 		}
 	if (pnOut) *pnOut = pst->mdl->nThreads*sizeof(*pout);
@@ -734,7 +742,7 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 */
 		nStore = nFileTotal + (int)ceil(nFileTotal*in->fExtraStore);
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
-					  in->fPeriod,in->nDark,in->nGas,in->nStar);
+					  in->fPeriod,in->dxInflow,in->dxOutflow,in->nDark,in->nGas,in->nStar);
 		pkdReadTipsy(plcl->pkd,achInFile,nFileStart,nFileTotal,in->bStandard,in->iReadIOrder,
 					 in->dvFac,in->dTuFac);
 		}
@@ -842,7 +850,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 		   int bDoSplitDimFind, int bSplitWork)
 {
 #ifdef STARFORM
-	int NUM_SAFETY = 64; 	/* Larger margin for extra particles */
+	int NUM_SAFETY = 512; 	/* Larger margin for extra particles */
 #else
 	int NUM_SAFETY = 4; 	/* minimum margin space per processor when
 				   filling up memory */
@@ -1349,7 +1357,12 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 
 void _pstRootSplit_Active_Inactive(PST pst,int iSplitDim,double dMass, int bDoRootFind)
 {
-	int NUM_SAFETY = 4; 	/* slop space when filling up memory */
+#ifdef STARFORM
+	int NUM_SAFETY = 512; 	/* Larger margin for extra particles */
+#else
+	int NUM_SAFETY = 4; 	/* minimum margin space per processor when
+				   filling up memory */
+#endif
 	int nSafeTot;		/* total slop space we have to play with */
 	int d,ittr,nOut;
 	int nLow=-1,nHigh=-1,nLowerStore,nUpperStore;
@@ -3353,7 +3366,7 @@ void pstDrift(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		plcl->pkd->dTime = in->dTime;
 		plcl->pkd->PP = &in->PP;
 #endif
-		pkdDrift(plcl->pkd,in->dDelta,in->fCenter,in->bPeriodic,in->bFandG,
+		pkdDrift(plcl->pkd,in->dDelta,in->fCenter,in->bPeriodic,in->bInflowOutflow,in->bFandG,
 				 in->fCentMass, in->dTime);
 		}
 	if (pnOut) *pnOut = 0;
@@ -3455,7 +3468,7 @@ void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 */
 		nStore = nFileTotal + (int)ceil(nFileTotal*in->fExtraStore);
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
-					  in->fPeriod,in->nDark,in->nGas,in->nStar);
+					  in->fPeriod,in->dxInflow,in->dxOutflow,in->nDark,in->nGas,in->nStar);
 		pkdReadCheck(plcl->pkd,achInFile, in->iVersion,in->iOffset,
 					 nFileStart,nFileTotal);
 		}
@@ -4347,6 +4360,24 @@ void pstInitAccel(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+void pstModifyAccel(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inModifyAccel *in = vin;
+	LCL *plcl = pst->plcl;
+	
+	mdlassert(pst->mdl,nIn == sizeof(struct inModifyAccel));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_MODIFYACCEL,vin,nIn);
+		pstModifyAccel(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdModifyAccel(plcl->pkd,in->a);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
 #ifdef GASOLINE
 
 void pstUpdateuDot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
@@ -4418,7 +4449,7 @@ void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			break;
 		case GASMODEL_GLASS:
 #ifdef GLASS		  
-			pkdGlassGasPressure(plcl->pkd, in);
+			pkdGlassGasPressure(plcl->pkd, &(in->g));
 #else
 			mdlassert(pst->mdl,0);
 #endif
@@ -4700,9 +4731,12 @@ pstColNParts(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
     else {
 		pkdColNParts(plcl->pkd, &out[pst->idSelf].nNew,
-					 &out[pst->idSelf].nDeltaGas,
-					 &out[pst->idSelf].nDeltaDark,
-					 &out[pst->idSelf].nDeltaStar);
+			     &out[pst->idSelf].nAddGas,
+			     &out[pst->idSelf].nAddDark,
+			     &out[pst->idSelf].nAddStar,
+			     &out[pst->idSelf].nDelGas,
+			     &out[pst->idSelf].nDelDark,
+			     &out[pst->idSelf].nDelStar);
 		}
     if(pnOut) *pnOut = pst->mdl->nThreads*sizeof(*out);
     }
@@ -4711,7 +4745,7 @@ void
 pstNewOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
     LCL *plcl = pst->plcl;
-    int *in = vin;
+    struct inNewOrder *in = vin;
     
     if(pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_NEWORDER,vin,nIn);
@@ -4719,7 +4753,7 @@ pstNewOrder(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl, pst->idUpper, vout, pnOut);
 		}
     else {
-		pkdNewOrder(plcl->pkd, in[pst->idSelf]);
+		pkdNewOrder(plcl->pkd, in[pst->idSelf].Gas, in[pst->idSelf].Dark, in[pst->idSelf].Star);
 		}
     if(pnOut) *pnOut = 0;
     }
@@ -6050,6 +6084,41 @@ pstFlushStarLog(PST pst,void *vin,int nIn,void *vout,int *pnOut)
     }
 
 #endif
+
+void pstGravInflow(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inGravInflow *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inGravInflow));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_GRAVINFLOW,in,nIn);
+		pstGravInflow(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdGravInflow(pst->plcl->pkd, in->r );
+		}
+
+	}
+
+
+void pstCreateInflow(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inCreateInflow *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inCreateInflow));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_CREATEINFLOW,in,nIn);
+		pstCreateInflow(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdCreateInflow(pst->plcl->pkd, in->Ny, in->iGasModel, in->dTuFac, in->pmass, in->x, in->vx, in->density, in->temp, in->metals, in->eps, in->dt, in->iRung);
+		}
+
+	}
+
+
 
 #ifdef SIMPLESF
 void

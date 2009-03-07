@@ -277,6 +277,7 @@ int msrFastGas(MSR msr);
 void msrInitStep(MSR msr);
 void msrSetRung(MSR msr, int iRung);
 void msrInitAccel(MSR msr);
+void msrModifyAccel(MSR msr,double);
 void msrSwitchTheta(MSR msr,double);
 int msrMaxOrder(MSR msr);
 
@@ -337,6 +338,9 @@ void msrInitStarLog(MSR msr);
 void msrFlushStarLog(MSR msr);
 void msrFormStars(MSR msr, double dTime, double dDelta);
 void msrSimpleStarForm(MSR msr, double dTime, double dDelta);
+void _msrGetInflowData(MSR msr, double dTime, double *aflow, double *vflow, double *rflow, double *rhoflow, double *Tflow);
+void msrGravInflow(MSR msr,double dTime);
+void msrCreateInflow(MSR msr, double dTime, double dDelta);
 
 #ifdef RUBBLE_ZML
 void msrDustBinsApply(MSR msr);

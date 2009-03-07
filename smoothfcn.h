@@ -12,6 +12,10 @@
 #include "supernova.h"
 #endif
 
+#define VISCOSITYLIMITER_NONE      0
+#define VISCOSITYLIMITER_BALSARA   1
+#define VISCOSITYLIMITER_JW        2
+
 #define SMF_SMOOTHAGAIN    1
 
 typedef struct smfParameters {
@@ -35,6 +39,7 @@ typedef struct smfParameters {
 	int bGeometric;
 	int bCannonical;
 	int bGrowSmoothList;
+        int iViscosityLimiter;
 #endif
     int bSinkThermal;
     int nSinkFormMin;
@@ -42,12 +47,12 @@ typedef struct smfParameters {
     int iSmoothFlags; /* Read/Write locally.  Master sets initial value. */
     double dTime;
 #ifdef DIFFUSION
-    double dMetalDiffusionConstant;
+    double dMetalDiffusionCoeff;
+    double dThermalDiffusionCoeff;
+    int bConstantDiffusion;
 #endif
 #ifdef STARFORM
         double dMinMassFrac;
-        double dRadPreFactor;
-        double dTimePreFactor;
 	int bShortCoolShutoff;
         int bSNTurnOffCooling;
 	int bSmallSNSmooth;
@@ -104,6 +109,9 @@ enum smx_smoothtype {
 #ifdef GASOLINE
   SMX_SPHPRESSURETERMS,
   SMX_DENDVDX,
+  SMX_SURFACENORMAL,
+  SMX_SURFACEAREA,
+  SMX_SMOOTHBSW,
   SMX_DIVVORT,
   SMX_SHOCKTRACK,
   SMX_HKPRESSURETERMS,
@@ -222,6 +230,21 @@ void SphPressureTermsSym(PARTICLE *,int,NN *,SMF *);
 void initDenDVDX(void *);
 void combDenDVDX(void *,void *);
 void DenDVDX(PARTICLE *,int,NN *,SMF *);
+
+/* SMX_SURFACENORMAL */
+void initSurfaceNormal(void *);
+void combSurfaceNormal(void *,void *);
+void SurfaceNormal(PARTICLE *,int,NN *,SMF *);
+
+/* SMX_SURFACEAREA */
+void initSurfaceArea(void *);
+void combSurfaceArea(void *,void *);
+void SurfaceArea(PARTICLE *,int,NN *,SMF *);
+
+/* SMX_DENBSW */
+void initSmoothBSw(void *);
+void combSmoothBSw(void *,void *);
+void SmoothBSw(PARTICLE *,int,NN *,SMF *);
 
 /* SMX_DIVVORT */
 void initDivVort(void *);

@@ -15,6 +15,13 @@
 #include "patch.h"
 #endif
 
+/* Allow for creation of this many new gas particles */
+#ifdef INFLOWOUTFLOW
+#define NGASBUFFER 1000000000
+#else
+#define NGASBUFFER 0
+#endif
+
 /*
  ** The following sort of definition should really be in a global
  ** configuration header file -- someday...
@@ -22,6 +29,11 @@
 
 #if defined(GASOLINE) || defined(ROT_FRAME) || defined(SIMPLE_GAS_DRAG) || defined(GR_DRAG)
 #define NEED_VPRED
+#endif
+
+/* SPH variable ALPHA */
+#ifndef ALPHAMIN
+#define ALPHAMIN 0.01
 #endif
 
 /* this too... */
@@ -89,6 +101,13 @@ typedef struct particle {
 	FLOAT PdVpres;		/* P dV from adiabatic compression (testing) */
 #endif
 	FLOAT divv;		
+#ifdef DODVDS
+        FLOAT dvds;
+#endif
+#ifdef VARALPHA
+        FLOAT alpha;
+        FLOAT alphaPred;
+#endif
         FLOAT curlv[3];         /* Note this is used as workspace and value is not preserved */
 	FLOAT BalsaraSwitch;    /* Balsara viscosity reduction */
 #ifdef DIFFUSION
@@ -107,6 +126,12 @@ typedef struct particle {
         FLOAT vSinkingr0;
         FLOAT fSinkingTime;  
         int iSinkingOnto;
+#endif
+#ifdef SURFACEAREA
+        FLOAT fArea; 
+#ifdef NORMAL
+        FLOAT normal[3];
+#endif
 #endif
 #ifdef SHOCKTRACK
         FLOAT aPres[3];
@@ -237,6 +262,8 @@ typedef struct particle {
 #define TYPE_SINK              (1<<14)
 #define TYPE_SINKING           (1<<15)
 #define TYPE_NEWSINKING        (1<<16)
+#define TYPE_INFLOW            (1<<17)
+#define TYPE_OUTFLOW           (1<<18)
 
 /* Combination Masks */
 #define TYPE_ALLACTIVE			(TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
@@ -414,6 +441,7 @@ typedef struct pkdContext {
 	int nStar;
 	int nMaxOrderDark;
 	int nMaxOrderGas;
+        int nMaxOrder;
 	int nBucket;
 	int nLevels;
 	int nSplit;
@@ -423,6 +451,7 @@ typedef struct pkdContext {
 	int iFreeCell;
 	int iRoot;
 	FLOAT fPeriod[3];
+	FLOAT dxInflow, dxOutflow;
 	int *piLeaf;
 	KDN *kdTop;
 	KDN *kdNodes;
@@ -515,6 +544,20 @@ enum GasModel {
 	GASMODEL_GLASS
 	}; 
 
+#ifdef GLASS
+struct GlassData {
+  /* Glass */
+	double dGlassPoverRhoL;
+	double dGlassPoverRhoR;
+	double dGlassxL;
+	double dGlassxR;
+	double dxBoundL;
+	double dxBoundR;
+        double dGamma;
+    };
+#endif
+
+
 #define PKD_ORDERTEMP	256
 
 #define pkdRoot(iCell,id)\
@@ -581,7 +624,7 @@ double pkdGetWallClockTimer(PKD,int);
 void pkdClearTimer(PKD,int);
 void pkdStartTimer(PKD,int);
 void pkdStopTimer(PKD,int);
-void pkdInitialize(PKD *,MDL,int,int,int,FLOAT *,int,int,int);
+void pkdInitialize(PKD *,MDL,int,int,int,FLOAT *,FLOAT,FLOAT,int,int,int);
 void pkdFinish(PKD);
 void pkdReadTipsy(PKD,char *,int,int,int,int,double,double);
 void pkdSetSoft(PKD pkd,double dSoft);
@@ -631,11 +674,13 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder, int bEwald,int iEwOr
 	   double *pdFlop);
 void pkdCalcEandL(PKD,double *,double *,double *,double []);
 void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
-void pkdDrift(PKD,double,FLOAT *,int,int,FLOAT,double);
+void pkdDrift(PKD,double,FLOAT *,int,int,int,FLOAT,double);
 void pkdUpdateUdot(PKD pkd,double,double,double,int,int);
 void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double, double);
 void pkdKickPatch(PKD pkd, double dvFacOne, double dvFacTwo,
 		  double dOrbFreq, int bOpen);
+void pkdGravInflow(PKD pkd, double r);
+void pkdCreateInflow(PKD pkd, int Ny, int iGasModel, double dTuFac, double pmass, double x, double vx, double density, double temp, double metals, double eps, double dt, int iRung);
 void pkdReadCheck(PKD,char *,int,int,int,int);
 void pkdWriteCheck(PKD,char *,int,int);
 void pkdDistribCells(PKD,int,KDN *);
@@ -662,6 +707,7 @@ int pkdRungParticles(PKD,int);
 void pkdCoolVelocity(PKD,int,double,double,double);
 void pkdGrowMass(PKD pkd,int nGrowMass, int iGrowType, double dDeltaM, double dMinM, double dMaxM);
 void pkdInitAccel(PKD);
+void pkdModifyAccel(PKD pkd, double);
 int pkdOrdWeight(PKD,int,int,int,int,int *,int *);
 void pkdUnDeleteParticle(PKD pkd, PARTICLE *p);
 void pkdDeleteParticle(PKD pkd, PARTICLE *p);
@@ -688,9 +734,10 @@ int pkdSoughtParticleList(PKD pkd, int iTypeSought, int nMax, int *n, struct Sou
 
 void pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *sp);
 
-void pkdColNParts(PKD pkd, int *pnNew, int *nDeltaGas, int *nDeltaDark,
-				  int *nDeltaStar);
-void pkdNewOrder(PKD pkd, int nStart);
+void pkdColNParts(PKD pkd, int *pnNew, int *nAddGas, int *nAddDark,
+	     int *nAddStar, int *nDelGas, int *nDelDark, int *nDelStar);
+
+void pkdNewOrder(PKD pkd, int nStartGas, int nStarDark, int nStartStar);
 void pkdMoveParticle(PKD pkd, double *xcenter,double *xoffset,int iOrder);
 
 

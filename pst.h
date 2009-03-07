@@ -149,6 +149,7 @@ enum pst_service {
       PST_MARKSMOOTH,
       PST_RESMOOTH,
       PST_INITACCEL,
+      PST_MODIFYACCEL,
       PST_DTTORUNG,
       PST_INITDT,
       PST_ORDWEIGHT,
@@ -237,6 +238,8 @@ enum pst_service {
       PST_FORMSINKS,
       PST_FORMSTARS,
       PST_FEEDBACK,
+      PST_GRAVINFLOW,
+      PST_CREATEINFLOW,
       PST_SIMPLESTARFORM,
 	  PST_SSFCREATESTARS,
       PST_DUMPFRAME,
@@ -275,6 +278,7 @@ struct inReadTipsy {
 	int iOrder;
 	float fExtraStore;
 	FLOAT fPeriod[3];
+        FLOAT dxInflow, dxOutflow;
 	int bStandard;
 	int iReadIOrder;
 	double dvFac;
@@ -607,6 +611,7 @@ struct inDrift {
 	double dDelta;
 	FLOAT fCenter[3];
 	int bPeriodic;
+        int bInflowOutflow;
 	int bFandG;
 	FLOAT fCentMass;
         double dTime;
@@ -676,6 +681,7 @@ struct inReadCheck {
 	int iOrder;
 	float fExtraStore;
 	FLOAT fPeriod[3];
+        FLOAT dxInflow, dxOutflow;
 	char achInFile[PST_FILENAME_SIZE];
 	};
 void pstReadCheck(PST,void *,int,void *,int *);
@@ -974,6 +980,12 @@ void pstReSmooth(PST,void *,int,void *,int *);
 /* PST_INITACCEL */
 void pstInitAccel(PST,void *,int,void *,int *);
 
+struct inModifyAccel {
+    double a;
+    };
+
+void pstModifyAccel(PST,void *,int,void *,int *);
+
 /* PST_DTTORUNG */
 struct inDtToRung {
     int iRung;
@@ -1023,13 +1035,19 @@ void pstSetNCWriteStart(PST,void *,int,void *,int *);
 /* PST_COLNPARTS */
 struct outColNParts {
     int nNew;
-    int nDeltaGas;
-    int nDeltaDark;
-    int nDeltaStar;
+    int nAddGas;
+    int nAddDark;
+    int nAddStar;
+    int nDelGas;
+    int nDelDark;
+    int nDelStar;
     };
 void pstColNParts(PST, void *, int, void *, int *);
 
 /* PST_NEWORDER */
+struct inNewOrder {
+    int Gas, Dark, Star;
+    };
 void pstNewOrder(PST, void *, int, void *, int *);
 
 /* PST_GETNPARTS */
@@ -1068,14 +1086,9 @@ struct inGetGasPressure {
 
   /* Ion evolving */
 
+
 #ifdef GLASS
-  /* Glass */
-	double dGlassPoverRhoL;
-	double dGlassPoverRhoR;
-	double dGlassxL;
-	double dGlassxR;
-	double dxBoundL;
-	double dxBoundR;
+    struct GlassData g;
 #endif
 	};
 
@@ -1178,6 +1191,7 @@ struct inReadSS {
 	int iOrder;
 	float fExtraStore;
 	FLOAT fPeriod[3];	/* for compatability */
+        FLOAT dxInflow, dxOutflow;
 	char achInFile[PST_FILENAME_SIZE];
 	};
 void pstReadSS(PST,void *,int,void *,int *);
@@ -1534,6 +1548,23 @@ struct outRubInterpCleanup {
 void pstRubInterpCleanup(PST pst,void *vIn,int nIn,void *vout,int *pnOut);
 
 #endif /* RUBBLE_ZML */
+
+struct inGravInflow
+    {
+    double r;
+    };
+
+void pstGravInflow(PST,void *,int,void *,int *);
+
+struct inCreateInflow
+    {
+    int Ny,iGasModel,iRung;
+    double dTuFac;
+    double pmass, x, vx, density, temp, metals, eps;
+    double dt;
+    };
+
+void pstCreateInflow(PST,void *,int,void *,int *);
 
 #ifdef GASOLINE
 

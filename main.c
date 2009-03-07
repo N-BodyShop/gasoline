@@ -1,3 +1,4 @@
+#define SETTRAPFPE
 #ifdef SETTRAPFPE
 #include <fenv.h>
 #endif
@@ -130,7 +131,7 @@ int main(int argc,char **argv)
 	 we restart. bOverwrite means start from beginning, even if 
 	 checkpoints exist.
 	 */
-	if(!msr->param.bOverwrite && msrFindCheck(msr)) {
+	if (!msr->param.bOverwrite && msrFindCheck(msr)) {
                 msr->param.bRestart = 1;
 		dTime = msrReadCheck(msr,&iStep);
 		msr->param.bRestart = 1;
@@ -226,6 +227,9 @@ int main(int argc,char **argv)
 			}
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
+#endif
+#ifdef INFLOWOUTFLOW
+		if (msr->param.bInflowOutflow) msrModifyAccel(msr, dTime); /* zero acceleration of inflow/outflow particles */
 #endif
 		if (msr->param.bDoSinksAtStart) msrDoSinks(msr, dTime, 0.0, 0);
 		/* 
@@ -403,6 +407,9 @@ int main(int argc,char **argv)
 			}
 #ifdef GASOLINE
 		msrInitSph(msr,dTime);
+#endif
+#ifdef INFLOWOUTFLOW
+		if (msr->param.bInflowOutflow) msrModifyAccel(msr,dTime); /* zero acceleration of inflow/outflow particles */
 #endif
 		if (msr->param.bDoSinksAtStart) msrDoSinks(msr, dTime, 0.0, 0);
 		/* 

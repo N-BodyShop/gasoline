@@ -18,248 +18,267 @@
 
 void snInitialize(SN *psn)
 {
-    SN sn;
+  SN sn;
     
-    sn = (SN) malloc(sizeof(struct snContext));
-    assert(sn != NULL);
+  sn = (SN) malloc(sizeof(struct snContext));
+  assert(sn != NULL);
     
-    sn->bInitialized = 0;
-    sn->dESN = 0.0;
-    sn->dMSNrem = 0.0;
-    sn->dMSNIImin = 0.0;
-    sn->dMSNIImax = 0.0;
-    sn->dMBmin = 0.0;
-    sn->dMBmax = 0.0;
-    sn->dFracBinSNIa = 0.0;
-    sn->dMEjexp = 0;    
-    sn->dMEjconst = 0; 
-    sn->dMFeconst = 0.0;
-    sn->dMFeexp = 0.0;
-    sn->dMOxconst = 0.0;
-    sn->dMOxexp = 0.0;
-    sn->dSNIaMetals = 0.0;
-    *psn = sn;
-    }
+  sn->bInitialized = 0;
+  sn->dESN = 0.0;
+  sn->dMSNrem = 0.0;
+  sn->dMSNIImin = 0.0;
+  sn->dMSNIImax = 0.0;
+  sn->dMBmin = 0.0;
+  sn->dMBmax = 0.0;
+  sn->dFracBinSNIa = 0.0;
+  sn->dMEjexp = 0;    
+  sn->dMEjconst = 0; 
+  sn->dMFeconst = 0.0;
+  sn->dMFeexp = 0.0;
+  sn->dMOxconst = 0.0;
+  sn->dMOxexp = 0.0;
+  sn->dSNIaMetals = 0.0;
+  *psn = sn;
+}
 
 void snFree(SN sn)
 {
-/*    free(sn->MSparam);
-    free(sn->ppdva);*/
+  /*    free(sn->MSparam);
+	free(sn->ppdva);*/
     
-    free(sn);
-    }
+  free(sn);
+}
 
 /*
-   Subroutine to initialize parameters dealing with supernovae feedback
-   */
+  Subroutine to initialize parameters dealing with supernovae feedback
+*/
 void snInitConstants(SN sn) 
 {
-    MSPARAM tempMS;
-    PDVAPARAM tempPDVA;
+  MSPARAM tempMS;
+  PDVAPARAM tempPDVA;
     
-    sn->dMSNrem = 1.4;			/* mass of supernova remnant in solar masses 
+  sn->dMSNrem = 1.4;			/* mass of supernova remnant in solar masses 
                                          * Also used for SNIa ejected mass */
     
-    /*sn->dESN = 1e51;		*/	/* Energy of Supernovae in ergs. */
-    sn->dMSNIImin = 8.0;		/* Mass above which stars
-                                           supernova in solar
-                                           masses */
-    sn->dMSNIImax = 40.;		/* Mass below which stars
-                                           supernova in solar masses */
-    sn->dMBmin = 3.0;			/* Minimum mass of binary that
+  /*sn->dESN = 1e51;		*/	/* Energy of Supernovae in ergs. */
+  sn->dMSNIImin = 8.0;		/* Mass above which stars
+				   supernova in solar
+				   masses */
+  sn->dMSNIImax = 40.;		/* Mass below which stars
+				   supernova in solar masses */
+  sn->dMBmin = 3.0;			/* Minimum mass of binary that
                                            can go SNIa */
     
-    sn->dMBmax = 16.0;			/* Maximum mass of binary that
+  sn->dMBmax = 16.0;			/* Maximum mass of binary that
                                            can go SNIa */
-    sn->dFracBinSNIa = 0.16;/*0.04847;	 fraction of binary systems in
-                                   appropriate mass range that go SNIa =
-                                   0.16 (van den Bergh & McClure, ApJ
-                                   425, 205, 1994) */
-    /* normalization constant and exponent in formulae for masses of
-       ejected Fe and O16 as a function of stellar mass taken from
-       Raiteri, Villata and Navarro, A&A 315, 105, 1996 */
-    sn->dMEjexp = 1.056;    
-    sn->dMEjconst = 0.7682; 
-    sn->dMFeexp = 1.864;    
-    sn->dMFeconst = 2.802e-4;
-    sn->dMOxexp = 2.721;
-    sn->dMOxconst = 4.586e-4; 
-    sn->dSNIaMetals = 0.76;  /* 0.63 Msol Fe + 0.13 Msol Ox (Theilemann 1986)*/
+  sn->dFracBinSNIa = 0.16;/*0.04847;	 fraction of binary systems in
+			    appropriate mass range that go SNIa =
+			    0.16 (van den Bergh & McClure, ApJ
+			    425, 205, 1994) */
+  /* normalization constant and exponent in formulae for masses of
+     ejected Fe and O16 as a function of stellar mass taken from
+     Raiteri, Villata and Navarro, A&A 315, 105, 1996 */
+  sn->dMEjexp = 1.056;    
+  sn->dMEjconst = 0.7682; 
+  sn->dMFeexp = 1.864;    
+  sn->dMFeconst = 2.802e-4;
+  sn->dMOxexp = 2.721;
+  sn->dMOxconst = 4.586e-4; 
+  sn->dSNIaMetals = 0.76;  /* 0.63 Msol Fe + 0.13 Msol Ox (Theilemann 1986)*/
     
-    MSInitialize(&tempMS);
-    sn->MSparam = *tempMS;
-    free(tempMS);
+  MSInitialize(&tempMS);
+  sn->MSparam = *tempMS;
+  free(tempMS);
     
-    PadovaInitialize(&tempPDVA);
-    sn->ppdva = *tempPDVA;
-    free(tempPDVA);
+  PadovaInitialize(&tempPDVA);
+  sn->ppdva = *tempPDVA;
+  free(tempPDVA);
 
-    sn->bInitialized = 1;
-    }
+  sn->bInitialized = 1;
+}
 
 void snCalcSNIIFeedback(SN sn, SFEvent sfEvent,
-						double dTime, /* current time in years */
-						double dDelta, /* length of timestep (years) */
-						FBEffects *fbEffects)
+			double dTime, /* current time in years */
+			double dDelta, /* length of timestep (years) */
+			FBEffects *fbEffects)
 {
-    double dStarLtimeMin, dStarLtimeMax;
-    double dMStarMin, dMStarMax;
-    double dMStarMinII, dMStarMaxII;
-    double dCumMMin, dCumMMax, dMtot;
+  double dStarLtimeMin, dStarLtimeMax;
+  double dMStarMin, dMStarMax;
+  double dMStarMinII, dMStarMaxII;
+  double dCumMMin, dCumMMax, dMtot;
     
-    double dMSNTypeII, dESNTypeII, dNSNTypeII;
-    double dCumNMinII, dCumNMaxII;
-    double dMeanMStar;			/* Average mass of star going
-								   supernovea for metalicity calculation */
-    double  dDeltaMSNrem;
+  double dMSNTypeII, dESNTypeII, dNSNTypeII;
+  double dCumNMinII, dCumNMaxII;
+  double dMeanMStar;/* Average mass of star going
+		       supernovea for metalicity calculation */
+  double  dDeltaMSNrem;
 
 
-	/* stellar lifetimes corresponding to beginning and end of 
-	   current timestep with respect to starbirth time in yrs */
-    dStarLtimeMin = dTime - sfEvent.dTimeForm; 
-    dStarLtimeMax = dStarLtimeMin + dDelta;
+  /* stellar lifetimes corresponding to beginning and end of 
+     current timestep with respect to starbirth time in yrs */
+  dStarLtimeMin = dTime - sfEvent.dTimeForm; 
+  dStarLtimeMax = dStarLtimeMin + dDelta;
 
-    dMStarMin = dSTMStarLtime(&sn->ppdva, dStarLtimeMax, sfEvent.dMetals); 
-    dMStarMax = dSTMStarLtime(&sn->ppdva, dStarLtimeMin, sfEvent.dMetals); 
+  /* masses corresponding to these stellar lifetimes in solar masses */
+  dMStarMin = dSTMStarLtime(&sn->ppdva, dStarLtimeMax, sfEvent.dMetals); 
+  dMStarMax = dSTMStarLtime(&sn->ppdva, dStarLtimeMin, sfEvent.dMetals); 
 
-    dMtot = dMSCumMass(&sn->MSparam, 0.0); /* total mass in stars integrated over IMF */
+  dMtot = dMSCumMass(&sn->MSparam, 0.0); /* total mass in stars integrated over IMF */
 
-	/* masses corresponding to these stellar lifetimes in solar masses */
-    if (dMStarMin > sn->dMSNIImax || dMStarMax < sn->dMSNIImin) {
-		fbEffects->dMassLoss = 0.0;
-		fbEffects->dEnergy = 0.0;
-		fbEffects->dMetals = 0.0;
-                fbEffects->dMIron = 0.0;
-                fbEffects->dMOxygen = 0.0;
-		return;
-		} else {
-			dMStarMinII = max (sn->dMSNIImin, dMStarMin); 
-			dMStarMaxII = min (sn->dMSNIImax, dMStarMax); 
+  if (sn->iNSNIIQuantum && dMStarMin > sn->dMSNIImax && dStarLtimeMin){
+    /* blow wind before SN */
 
-			assert (dMStarMinII < dMStarMaxII && dMStarMinII >0.0 && dMStarMaxII > 0.0);
+    fbEffects->dMetals = 0.0; /* zero enrichment from winds */
+    fbEffects->dMIron = 0.0;
+    fbEffects->dMOxygen = 0.0;
 
-			/* cumulative mass of stars with mass greater than dMStarMinII and dMStarMaxII
-			   in solar masses */
-			dCumMMin = dMSCumMass (&sn->MSparam, dMStarMinII);
-			dCumMMax = dMSCumMass (&sn->MSparam, dMStarMaxII);
+    dNSNTypeII = dMSCumNumber (&sn->MSparam, sn->dMSNIImin);
+    dNSNTypeII *= sfEvent.dMass/dMtot; /* normalize to star particle mass */
+    fbEffects->dMassLoss = dNSNTypeII * dDelta / 1e6; /* 1 M_sol / Myr / SN */
+    fbEffects->dEnergy = dNSNTypeII * 3e42 * dDelta/ /* 1e35 erg/s /SN */
+      (MSOLG*fbEffects->dMassLoss); 
+    
+  } else if (dMStarMin > sn->dMSNIImax  || dMStarMax < sn->dMSNIImin) {
+    /* do nothing */
+    fbEffects->dMassLoss = 0.0;
+    fbEffects->dEnergy = 0.0;
+    fbEffects->dMetals = 0.0;
+    fbEffects->dMIron = 0.0;
+    fbEffects->dMOxygen = 0.0;
+    return;
+  } else {
+    /* supernova */
+    dMStarMinII = max (sn->dMSNIImin, dMStarMin); 
+    dMStarMaxII = min (sn->dMSNIImax, dMStarMax);
 
-			dMSNTypeII = dCumMMin - dCumMMax; /* total mass of stars that go SN II
-                                            in this timestep in solar masses. FAKE MASS 
-                                            (normalized to IMF stuff, REAL MASS is below).*/
-			/* cumulative number of stars with mass greater than dMStarMinII and
-			   dMstarMaxII in solar masses */
-			dCumNMinII = dMSCumNumber (&sn->MSparam, dMStarMinII); 
-			dCumNMaxII = dMSCumNumber (&sn->MSparam, dMStarMaxII);
+    assert (dMStarMinII < dMStarMaxII && 
+	    dMStarMinII >0.0 && dMStarMaxII > 0.0);
 
-			dMSNTypeII /= dMtot; /* convert to mass fraction of stars */
-			dMSNTypeII *= sfEvent.dMass; /* REAL MASS convert to mass of stars that go SNII */
+    /* cumulative mass of stars with mass greater than dMStarMinII 
+       and dMStarMaxII in solar masses */
+    dCumMMin = dMSCumMass (&sn->MSparam, dMStarMinII);
+    dCumMMax = dMSCumMass (&sn->MSparam, dMStarMaxII);
 
-			dNSNTypeII = dCumNMinII - dCumNMaxII;
-			dNSNTypeII /= dMtot; /* convert to number per solar mass of stars */
-			dNSNTypeII *= sfEvent.dMass; /* convert to absolute number of SNII */
+    if(dCumMMax > dCumMMin || dCumMMax < 0) dMSNTypeII = dCumMMin;
+    else dMSNTypeII = dCumMMin - dCumMMax; /* mass of stars that go SN II
+					 in this timestep FAKE MASS 
+					 (normalized to IMF stuff, 
+					 REAL MASS is below).*/
 
-			/* Average Star mass for metalicity calculation. */
-			dMeanMStar = dMSNTypeII/dNSNTypeII;
+    dMSNTypeII *= sfEvent.dMass/dMtot; /* REAL MASS of stars that go SNII */
 
-			dESNTypeII = dNSNTypeII * sn->dESN;
-			}
+    /* cumulative number of stars with mass greater than dMStarMinII and
+       less than dMstarMaxII in solar masses */
+    dCumNMinII = dMSCumNumber (&sn->MSparam, dMStarMinII); 
+    dCumNMaxII = dMSCumNumber (&sn->MSparam, dMStarMaxII);
+
+    if(dCumNMaxII > dCumNMinII || dCumNMaxII < 0) dNSNTypeII = dCumNMinII;
+    else dNSNTypeII = dCumNMinII - dCumNMaxII;
+    dNSNTypeII *= sfEvent.dMass/dMtot; /* number of SNII in star particle */
+
+    /* Average Star mass for metalicity calculation. */
+    if (dNSNTypeII > 0) dMeanMStar = dMSNTypeII/dNSNTypeII;
+    else dMeanMStar =0;
+
+    dESNTypeII = dNSNTypeII * sn->dESN;
     
     /* decrement mass of star particle by mass of stars that go SN
        plus mass of SN remnants */
     dDeltaMSNrem = dNSNTypeII*sn->dMSNrem; /* mass in SN remnants */
     fbEffects->dMassLoss = dMSNTypeII - dDeltaMSNrem;
-
+    
     /* SN specific energy rate to be re-distributed among neighbouring gas
        particles */
     fbEffects->dEnergy = dESNTypeII/(MSOLG*fbEffects->dMassLoss);   
-
-	/* fraction of mass in metals to be re-distributed among neighbouring
-	 * gas particles.  Formula 6-8 of  Raiteri, Villata and Navarro, A&A
-	 * 315, 105, 1996  are used to calculate SNII yields
-         * Integrate over power law from lowest mass progenitor to highest mass.
-	 */
+    
+    /* fraction of mass in metals to be re-distributed among neighbouring
+     * gas particles.  Formula 6-8 of  Raiteri, Villata and Navarro, A&A
+     * 315, 105, 1996  are used to calculate SNII yields
+     * Integrate over power law from lowest mass progenitor to highest mass.
+     */
     fbEffects->dMIron = sn->dMFeconst * pow(dMeanMStar, sn->dMFeexp)
-                    / (sn->dMEjconst * pow(dMeanMStar, sn->dMEjexp));
+      / (sn->dMEjconst * pow(dMeanMStar, sn->dMEjexp));
     fbEffects->dMOxygen = sn->dMOxconst*pow(dMeanMStar, sn->dMOxexp)
-                    / (sn->dMEjconst * pow(dMeanMStar, sn->dMEjexp));
-        
+      / (sn->dMEjconst * pow(dMeanMStar, sn->dMEjexp));
+    
     fbEffects->dMetals = ( fbEffects->dMIron + fbEffects->dMOxygen );
-    }
+  }
+}
 
 void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
-						double dTime, /* current time in years */
-						double dDelta, /* length of timestep (years) */
-						FBEffects *fbEffects)
+			double dTime, /* current time in years */
+			double dDelta, /* length of timestep (years) */
+			FBEffects *fbEffects)
 {
-    double dMStarMin, dMStarMax;
-    double dMStarMinIa, dMStarMaxIa;
-    double dMSNTypeIa, dESNTypeIa, dNSNTypeIa;
-    struct inMSIMFSec mssn;    
-    double dStarLtimeMin, dStarLtimeMax;
-    double dMtot;
-    double  dDeltaMSNrem;
+  double dMStarMin, dMStarMax;
+  double dMStarMinIa, dMStarMaxIa;
+  double dMSNTypeIa, dESNTypeIa, dNSNTypeIa;
+  struct inMSIMFSec mssn;    
+  double dStarLtimeMin, dStarLtimeMax;
+  double dMtot;
+  double  dDeltaMSNrem;
 
-    mssn.ms = sn->MSparam;		/* needed by SN Ia functions */
-    mssn.sn = *sn;				/* needed by SN Ia functions */
+  mssn.ms = sn->MSparam;		/* needed by SN Ia functions */
+  mssn.sn = *sn;				/* needed by SN Ia functions */
 
-	/* stellar lifetimes corresponding to beginning and end of 
-	 * current timestep with respect to starbirth time in yrs */
-    dStarLtimeMin = dTime - sfEvent.dTimeForm; 
-    dStarLtimeMax = dStarLtimeMin + dDelta;
+  /* stellar lifetimes corresponding to beginning and end of 
+   * current timestep with respect to starbirth time in yrs */
+  dStarLtimeMin = dTime - sfEvent.dTimeForm; 
+  dStarLtimeMax = dStarLtimeMin + dDelta;
 
-    dMStarMin = dSTMStarLtime(&sn->ppdva, dStarLtimeMax, sfEvent.dMetals); 
-    dMStarMax = dSTMStarLtime(&sn->ppdva, dStarLtimeMin, sfEvent.dMetals); 
+  dMStarMin = dSTMStarLtime(&sn->ppdva, dStarLtimeMax, sfEvent.dMetals); 
+  dMStarMax = dSTMStarLtime(&sn->ppdva, dStarLtimeMin, sfEvent.dMetals); 
 
-    dMtot = dMSCumMass(&sn->MSparam, 0.0); /* total mass in stars integrated over IMF */
+  dMtot = dMSCumMass(&sn->MSparam, 0.0); /* total mass in stars integrated over IMF */
 
-    if (dMStarMin > sn->dMBmin/2. && dMStarMax < sn->dMBmax/2.) {
+  if (dMStarMin > sn->dMBmin/2. && dMStarMax < sn->dMBmax/2.) {
 
-        dMStarMinIa = max (sn->dMBmin/2., dMStarMin); 
-        dMStarMaxIa = min (sn->dMBmax/2., dMStarMax); 
+    dMStarMinIa = max (sn->dMBmin/2., dMStarMin); 
+    dMStarMaxIa = min (sn->dMBmax/2., dMStarMax); 
 
-        assert (dMStarMinIa < dMStarMaxIa && dMStarMinIa >0.0 && dMStarMaxIa > 0.0);
+    assert (dMStarMinIa < dMStarMaxIa && dMStarMinIa >0.0 && dMStarMaxIa > 0.0);
         
-        /* mass of stars that go SNIa based on normalized IMF */
-/*        dMSNTypeIa = dMSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
-        dMSNTypeIa /= dMtot;	/* convert to mass fraction of stars /
-        /* convert to mass of stars that go SNIa / 
-        dMSNTypeIa *= sfEvent.dMass; */
+    /* mass of stars that go SNIa based on normalized IMF */
+    /*        dMSNTypeIa = dMSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
+	      dMSNTypeIa /= dMtot;	/* convert to mass fraction of stars /
+	      /* convert to mass of stars that go SNIa / 
+	      dMSNTypeIa *= sfEvent.dMass; */
 
-        /* number of stars that go SNIa */        
-        dNSNTypeIa = dNSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
-        dNSNTypeIa /= dMtot;	/* convert to number per solar mass of stars */
-        dNSNTypeIa *= sfEvent.dMass; /* convert to absolute number of SNIa */
+    /* number of stars that go SNIa */        
+    dNSNTypeIa = dNSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
+    dNSNTypeIa /= dMtot;	/* convert to number per solar mass of stars */
+    dNSNTypeIa *= sfEvent.dMass; /* convert to absolute number of SNIa */
 
-        dESNTypeIa = dNSNTypeIa * sn->dESN;
-        } else {
-        fbEffects->dMassLoss = 0.0;
-        fbEffects->dEnergy = 0.0;    
-        fbEffects->dMetals = 0.0; 
-        fbEffects->dMIron = 0.0;
-        fbEffects->dMOxygen = 0.0;
-        return;
-        }
+    dESNTypeIa = dNSNTypeIa * sn->dESN;
+  } else {
+    fbEffects->dMassLoss = 0.0;
+    fbEffects->dEnergy = 0.0;    
+    fbEffects->dMetals = 0.0; 
+    fbEffects->dMIron = 0.0;
+    fbEffects->dMOxygen = 0.0;
+    return;
+  }
     
-    /* decrement mass of star particle by mass of stars that go SN
-       and SN Ia have no remnants.   
-       The MSNrem is the same Chandrasekhar mass that explodes as a SNIa.*/
-    fbEffects->dMassLoss = dNSNTypeIa*sn->dMSNrem;
+  /* decrement mass of star particle by mass of stars that go SN
+     and SN Ia have no remnants.   
+     The MSNrem is the same Chandrasekhar mass that explodes as a SNIa.*/
+  fbEffects->dMassLoss = dNSNTypeIa*sn->dMSNrem;
 
-    /* SN specific energy rate to be re-distributed among neighbouring gas
-       particles */
-    fbEffects->dEnergy = dESNTypeIa/(MSOLG*fbEffects->dMassLoss);   
+  /* SN specific energy rate to be re-distributed among neighbouring gas
+     particles */
+  fbEffects->dEnergy = dESNTypeIa/(MSOLG*fbEffects->dMassLoss);   
 
-    /* Following Raiteri 1996 who follows Thielemann's 1986 W7 model for
-     * SNIa explosions, the same mass of iron and oxygen is released in
-     * every single explosion.  A comparable amount of Silicon is ejected
-     * to the amount of Oxygen that is ejected.
-     */
-    fbEffects->dMIron = dNSNTypeIa*0.63/fbEffects->dMassLoss;
-    fbEffects->dMOxygen = dNSNTypeIa*0.13/fbEffects->dMassLoss;
-    /* Fraction of mass in metals to be re-distributed among neighbouring
-     * gas particles: assumes fixed amount of metals per supernovea independent of
-     * mass. See Raiteri, Villata and Navarro, page 108.
-     */
-    fbEffects->dMetals = dNSNTypeIa*sn->dSNIaMetals/fbEffects->dMassLoss; 
-    }
+  /* Following Raiteri 1996 who follows Thielemann's 1986 W7 model for
+   * SNIa explosions, the same mass of iron and oxygen is released in
+   * every single explosion.  A comparable amount of Silicon is ejected
+   * to the amount of Oxygen that is ejected.
+   */
+  fbEffects->dMIron = dNSNTypeIa*0.63/fbEffects->dMassLoss;
+  fbEffects->dMOxygen = dNSNTypeIa*0.13/fbEffects->dMassLoss;
+  /* Fraction of mass in metals to be re-distributed among neighbouring
+   * gas particles: assumes fixed amount of metals per supernovea independent of
+   * mass. See Raiteri, Villata and Navarro, page 108.
+   */
+  fbEffects->dMetals = dNSNTypeIa*sn->dSNIaMetals/fbEffects->dMassLoss; 
+}
 #endif

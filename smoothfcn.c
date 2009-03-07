@@ -3,6 +3,7 @@
 #include "smoothfcn.h"
 #define max(A,B) ((A) > (B) ? (A) : (B))
 #define min(A,B) ((A) > (B) ? (B) : (A))
+#define SECONDSPERYEAR   31557600.
 
 #ifdef COLLISIONS
 #include "ssdefs.h"
@@ -67,6 +68,9 @@
 #else
 
 #define SWITCHCOMBINE(a,b) (0.5*(a->BalsaraSwitch+b->BalsaraSwitch))
+/* New idea -- upwind combine
+#define SWITCHCOMBINE(a,b) ((a->fDensity < b->fDensity) ? a->BalsaraSwitch : b->BalsaraSwitch)
+*/
 #define SWITCHCOMBINEA(a,b) SWITCHCOMBINE(a,b)
 #define SWITCHCOMBINEB(a,b) SWITCHCOMBINE(a,b)
 
@@ -1660,82 +1664,10 @@ void combSphPressureTerms(void *p1,void *p2)
 		}
 	}
 
-/* Gather only version -- untested */
+/* Gather only version -- never use */
 void SphPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
-	PARTICLE *q;
-	FLOAT ih2,r2,rs1;
-	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
-	FLOAT pPoverRho2,pPdV,pa[3],pmumax;
-	FLOAT ph,pc,pDensity,visc,hav,vFac,absmu;
-	FLOAT fNorm,fNorm1,fNorm2;
-	int i;
-
-	if (!TYPEQueryACTIVE(p)) return;
-
-#ifdef PEXT
-	assert(smf->Pext == 0);
-#endif
-	pc = p->c;
-	pDensity = p->fDensity;
-	pPoverRho2 = p->PoverRho2;
-	pmumax = p->mumax;
-	ph = sqrt(0.25*BALL2(p));
-	ih2 = 4.0/BALL2(p);
-	fNorm = M_1_PI*ih2/ph;
-	fNorm1 = fNorm*ih2;	
-	fNorm2 = fNorm1*(smf->a);    /* Comoving accelerations */
-	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
-
-	pPdV=0.0;
-	pa[0]=0.0;
-	pa[1]=0.0;
-	pa[2]=0.0;
-	for (i=0;i<nSmooth;++i) {
-		q = nnList[i].pPart;
-		r2 = nnList[i].fDist2*ih2;
-		DKERNEL(rs1,r2);
-		rs1 *= q->fMass;
-
-		dx = nnList[i].dx;
-		dy = nnList[i].dy;
-		dz = nnList[i].dz;
-		dvx = p->vPred[0] - q->vPred[0];
-		dvy = p->vPred[1] - q->vPred[1];
-		dvz = p->vPred[2] - q->vPred[2];
-		dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H;
-		if (dvdotdr>0.0) {
-			pPdV += rs1 * PRES_PDV(pPoverRho2,q->PoverRho2) * dvdotdr;
-			rs1 *= PRES_ACC(pPoverRho2,q->PoverRho2);
-			pa[0] -= rs1 * dx;
-			pa[1] -= rs1 * dy;
-			pa[2] -= rs1 * dz;
-			}
-		else {
-			hav = 0.5*(ph+sqrt(0.25*BALL2(q)));
-			/* mu 
-			   multiply by a to be consistent with physical c */
-			absmu = -hav*dvdotdr*smf->a 
-			    / (nnList[i].fDist2+0.01*hav*hav);
-			/* mu terms for gas time step */
-			if (absmu>pmumax) pmumax=absmu;
-			/* viscosity term */
-
-			visc = SWITCHCOMBINE(p,q)*
-				(smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
-					*absmu/(pDensity + q->fDensity);
-		        pPdV += rs1 * (PRES_PDV(pPoverRho2,q->PoverRho2) + 0.5*visc)*dvdotdr;
-			rs1 *= PRES_ACC(pPoverRho2,q->PoverRho2) + visc;
-			pa[0] -= rs1 * dx;
-			pa[1] -= rs1 * dy;
-			pa[2] -= rs1 * dz;
-			}
- 		}
-	p->PdV += fNorm1*pPdV;
-	p->mumax = pmumax;
-	ACCEL(p,0) += fNorm2*pa[0];
-	ACCEL(p,0) += fNorm2*pa[1];
-	ACCEL(p,0) += fNorm2*pa[2];
+        assert(0);
 	}
 
 void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
@@ -1752,12 +1684,14 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	pc = p->c;
 	pDensity = p->fDensity;
 	pMass = p->fMass;
+#ifndef RTF
 	pPoverRho2 = p->PoverRho2;
 #ifdef PEXT
     {   FLOAT pd2 = p->fDensity*p->fDensity;
 	pPoverRho2f = (pPoverRho2*pd2-smf->Pext)/pd2;     }
 #else
 	pPoverRho2f = pPoverRho2;
+#endif
 #endif
 	ph = sqrt(0.25*BALL2(p));
 	ih2 = 4.0/BALL2(p);
@@ -1785,6 +1719,12 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz)
 		+ nnList[i].fDist2*smf->H;
 	    
+#ifdef RTF
+	    pPoverRho2 = p->PoverRho2*pDensity/q->fDensity;
+	    pPoverRho2f = pPoverRho2;
+	    qPoverRho2 = q->PoverRho2*q->fDensity/pDensity;
+	    qPoverRho2f = qPoverRho2;
+#else
 	    qPoverRho2 = q->PoverRho2;
 #ifdef PEXT
 	{   FLOAT qd2 = q->fDensity*q->fDensity;
@@ -1792,21 +1732,42 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #else
 	    qPoverRho2f = qPoverRho2;
 #endif
+#endif	    
 
 #ifdef DIFFUSION
+#ifdef DIFFUSIONPRICE
+#define DIFFUSIONThermal() \
+   { double irhobar = 2/(p->fDensity+q->fDensity); \
+     double vsig = sqrt(fabs(qPoverRho2*q->fDensity*q->fDensity - pPoverRho2*p->fDensity*p->fDensity)*irhobar); \
+     double diff = smf->dThermalDiffusionCoeff*0.5*(ph+sqrt(0.25*BALL2(q)))*irhobar*vsig*(p->uPred-q->uPred); \
+      PACTIVE( p->PdV += diff*rq ); \
+      QACTIVE( q->PdV -= diff*rp ); }
+#else
+#ifdef DIFFUSIONTHERMAL
+#define DIFFUSIONThermal() \
+    { double diff = 2*smf->dThermalDiffusionCoeff*(p->diff+q->diff)*(p->uPred-q->uPred) \
+		/(p->fDensity+q->fDensity); \
+      PACTIVE( p->PdV += diff*rq ); \
+      QACTIVE( q->PdV -= diff*rp ); }
+#else
+/* Default -- no thermal diffusion */
+#define DIFFUSIONThermal()
+#endif
+#endif
+
 #define DIFFUSIONMetals() \
-    { double diff = 2*(p->diff+q->diff)*(p->fMetals - q->fMetals) \
+    { double diff = 2*smf->dMetalDiffusionCoeff*(p->diff+q->diff)*(p->fMetals - q->fMetals) \
 		/(p->fDensity+q->fDensity); \
       PACTIVE( p->fMetalsDot += diff*rq ); \
       QACTIVE( q->fMetalsDot -= diff*rp ); }
 #ifdef STARFORM
 #define DIFFUSIONMetalsOxygen() \
-    { double diff = 2*(p->diff+q->diff)*(p->fMFracOxygen - q->fMFracOxygen) \
+    { double diff = 2*smf->dMetalDiffusionCoeff*(p->diff+q->diff)*(p->fMFracOxygen - q->fMFracOxygen) \
 		/(p->fDensity+q->fDensity); \
       PACTIVE( p->fMFracOxygenDot += diff*rq ); \
       QACTIVE( q->fMFracOxygenDot -= diff*rp ); }
 #define DIFFUSIONMetalsIron() \
-    { double diff = 2*(p->diff+q->diff)*(p->fMFracIron - q->fMFracIron) \
+    { double diff = 2*smf->dMetalDiffusionCoeff*(p->diff+q->diff)*(p->fMFracIron - q->fMFracIron) \
 		/(p->fDensity+q->fDensity); \
       PACTIVE( p->fMFracIronDot += diff*rq ); \
       QACTIVE( q->fMFracIronDot -= diff*rp ); }
@@ -1815,9 +1776,18 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #define DIFFUSIONMetalsIron() 
 #endif /* STARFORM */
 #else /* No diffusion */
+#define DIFFUSIONThermal()
 #define DIFFUSIONMetals() 
 #define DIFFUSIONMetalsOxygen() 
 #define DIFFUSIONMetalsIron() 
+#endif
+
+#ifdef VARALPHA
+#define ALPHA (smf->alpha*0.5*(p->alpha+q->alpha))
+#define BETA  (smf->beta*0.5*(p->alpha+q->alpha))
+#else
+#define ALPHA smf->alpha
+#define BETA  smf->beta
 #endif
 
 #define SphPressureTermsSymACTIVECODE() \
@@ -1825,7 +1795,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		PACTIVE( p->PdV += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; ); \
 		QACTIVE( q->PdV += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; ); \
                 PDVDEBUGLINE( PACTIVE( p->PdVpres += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; ); ); \
-		PDVDEBUGLINE( QACTIVE(q->PdVpres += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; ); ); \
+		PDVDEBUGLINE( QACTIVE( q->PdVpres += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; ); ); \
 		PACTIVE( Accp = (PRES_ACC(pPoverRho2f,qPoverRho2f)); ); \
 		QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f)); ); \
 		} \
@@ -1837,10 +1807,10 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		if (absmu>q->mumax) q->mumax=absmu; \
 		/* viscosity term */ \
 		visc = SWITCHCOMBINE(p,q)* \
-		    (smf->alpha*(pc + q->c) + smf->beta*2*absmu)  \
+		    (ALPHA*(pc + q->c) + BETA*2*absmu)  \
 		    *absmu/(pDensity + q->fDensity); \
-		PACTIVE( p->PdV += rq*(PRES_PDV(pPoverRho2,q->PoverRho2) + 0.5*visc)*dvdotdr; ); \
-		QACTIVE( q->PdV += rp*(PRES_PDV(q->PoverRho2,pPoverRho2) + 0.5*visc)*dvdotdr; ); \
+		PACTIVE( p->PdV += rq*(PRES_PDV(pPoverRho2,qPoverRho2) + 0.5*visc)*dvdotdr; ); \
+		QACTIVE( q->PdV += rp*(PRES_PDV(qPoverRho2,pPoverRho2) + 0.5*visc)*dvdotdr; ); \
 		PDVDEBUGLINE( PACTIVE( p->PdVpres += rq*(PRES_PDV(pPoverRho2,qPoverRho2))*dvdotdr; ); ); \
 		PDVDEBUGLINE( QACTIVE( q->PdVpres += rp*(PRES_PDV(qPoverRho2,pPoverRho2))*dvdotdr; ); ); \
 		PDVDEBUGLINE( PACTIVE( p->PdVvisc += rq*(0.5*visc)*dvdotdr; ); ); \
@@ -1856,6 +1826,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    QACTIVE( ACCEL(q,0) += Accq * dx; ); \
 	    QACTIVE( ACCEL(q,1) += Accq * dy; ); \
 	    QACTIVE( ACCEL(q,2) += Accq * dz; ); \
+            DIFFUSIONThermal(); \
             DIFFUSIONMetals(); \
             DIFFUSIONMetalsOxygen(); \
             DIFFUSIONMetalsIron(); 
@@ -2898,6 +2869,158 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		} 
 	}
 
+void initSurfaceNormal(void *p)
+{
+	}
+
+void combSurfaceNormal(void *p1,void *p2)
+{
+	}
+
+/* Gather only version */
+void SurfaceNormal(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+#ifdef SURFACEAREA
+	FLOAT ih2,r2,rs,rs1,fNorm1;
+	FLOAT dx,dy,dz;
+	FLOAT grx=0,gry=0,grz=0, rcostheta;
+	PARTICLE *q;
+	int i;
+
+	ih2 = 4.0/BALL2(p);
+
+	for (i=0;i<nSmooth;++i) {
+	    r2 = nnList[i].fDist2*ih2;
+	    q = nnList[i].pPart;
+	    DKERNEL(rs1,r2);
+	    rs1 *= q->fMass;
+	    dx = nnList[i].dx;
+	    dy = nnList[i].dy;
+	    dz = nnList[i].dz;
+	    grx += dx*rs1; /* Grad rho estimate */
+	    gry += dy*rs1;
+	    grz += dz*rs1;
+	    }
+
+	fNorm1 = -1/sqrt(grx*grx+gry*gry+grz*grz); /* to unit vector */
+#ifdef NORMAL
+        p->normal[0] = p->curlv[0] = grx *= fNorm1; /*REMOVE */
+	p->normal[1] = p->curlv[1] = gry *= fNorm1;
+	p->normal[2] = p->curlv[2] = grz *= fNorm1;
+#else
+        p->curlv[0] = grx *= fNorm1; /*REMOVE */
+	p->curlv[1] = gry *= fNorm1;
+	p->curlv[2] = grz *= fNorm1;
+#endif
+
+	p->fArea = 1;
+	for (i=0;i<nSmooth;++i) {
+	    r2 = nnList[i].fDist2;
+	    rs = r2*ih2;
+	    q = nnList[i].pPart;
+	    DKERNEL(rs1,rs);
+	    rs1 *= q->fMass;
+	    dx = nnList[i].dx;
+	    dy = nnList[i].dy;
+	    dz = nnList[i].dz;
+	    rcostheta = -(dx*grx + dy*gry + dz*grz);
+	    /* cos^2 =  3/7. corresponds to an angle of about 49 degrees which is
+	       the angle from vertical to the point from p x on hexagonal lattice
+	       q  x  q  x  q 
+	          |   /
+		  | /  
+                  p
+	    */
+/*	    
+	    if ((p->iOrder % 10000)==0) {
+		printf("Particle on Edge? %d %d, %g %g %g  %g %g %g   %g %g\n",p->iOrder,q->iOrder,grx,gry,grz,dx,dy,dz,rcostheta*fabs(rcostheta),r2);
+		}
+*/
+
+	    if (rcostheta > 0 && rcostheta*rcostheta > (3/7.)*r2) {
+		p->fArea = 0; /* You aren't on the edge */
+		break;
+		}
+	    }
+/*
+	    if (p->fArea > 0 ) printf("Particle on Edge %d, %g %g %g\n",p->iOrder,p->r[0],p->r[1],p->r[2]);
+*/
+
+#endif
+}
+
+void initSurfaceArea(void *p)
+{
+	}
+
+void combSurfaceArea(void *p1,void *p2)
+{
+	}
+
+/* Gather only version */
+void SurfaceArea(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+#ifdef SURFACEAREA
+	FLOAT ih2,ih,r2,rs,fColumnDensity,fNorm,fNorm1;
+	FLOAT grx=0,gry=0,grz=0,dx,dy,dz;
+	PARTICLE *q;
+	int i;
+	unsigned int qiActive;
+
+	if (p->fArea > 0) {
+
+	    ih2 = 4.0/BALL2(p);
+	    ih = sqrt(ih2);
+	    fNorm = 10./7.*M_1_PI*ih2;
+	    
+	    for (i=0;i<nSmooth;++i) { /* Average surface normal */
+		q = nnList[i].pPart;
+		if (q->fArea > 0) {
+		    r2 = nnList[i].fDist2;
+		    dx = nnList[i].dx;
+		    dy = nnList[i].dy;
+		    dz = nnList[i].dz;
+		    rs = dx*q->curlv[0]+dy*q->curlv[1]+dz*q->curlv[2];
+		    assert(rs*rs <= r2); /* REMOVE */
+		    r2 = (r2-rs*rs)*ih2;
+		    KERNEL(rs,r2);
+		    r2 *= q->fMass;
+		    grx += rs*q->curlv[0];
+		    gry += rs*q->curlv[1];
+		    grz += rs*q->curlv[2];
+		    }
+		}
+	    
+	    fNorm1 = 1/sqrt(grx*grx+gry*gry+grz*grz); /* to unit vector */
+#ifdef NORMAL 
+	    p->normal[0] = p->curlv[0] = grx *= fNorm1; /*REMOVE */
+	    p->normal[1] = p->curlv[1] = gry *= fNorm1;
+	    p->normal[2] = p->curlv[2] = grz *= fNorm1;
+#else
+	    p->curlv[0] = grx *= fNorm1; /*REMOVE */
+	    p->curlv[1] = gry *= fNorm1;
+	    p->curlv[2] = grz *= fNorm1;
+#endif
+	    fColumnDensity = 0.0;
+	    for (i=0;i<nSmooth;++i) { /* Calculate Column Density */
+		q = nnList[i].pPart;
+		if (q->fArea > 0) {
+		    r2 = nnList[i].fDist2;
+		    dx = nnList[i].dx;
+		    dy = nnList[i].dy;
+		    dz = nnList[i].dz;
+		    rs = dx*grx+dy*gry+dz*grz;
+		    assert(rs*rs <= r2); /* REMOVE */
+		    r2 = (r2-rs*rs)*ih2;
+		    KERNEL(rs,r2);
+		    fColumnDensity += rs*q->fMass;
+		    }
+		}
+	    p->fArea = p->fMass/(fColumnDensity*fNorm);
+	    }
+#endif
+}
+
 void initDenDVDX(void *p)
 {
 	}
@@ -2907,24 +3030,34 @@ void combDenDVDX(void *p1,void *p2)
 	((PARTICLE *)p1)->iActive |= ((PARTICLE *)p2)->iActive;
 	}
 
+#ifndef FITDVDX
 /* Gather only version */
 void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
-	FLOAT ih2,r2,rs,rs1,fDensity,qMass,iden,fNorm,fNorm1,vFac,S;
+	FLOAT ih2,ih,r2,rs,rs1,fDensity,qMass,iden,fNorm,fNorm1,vFac,S;
 	FLOAT dvxdx , dvxdy , dvxdz, dvydx , dvydy , dvydz, dvzdx , dvzdy , dvzdz;
 	FLOAT dvx,dvy,dvz,dx,dy,dz,trace;
+	FLOAT grx,gry,grz,gnorm,dvds,dvdr,c;
+#ifdef RTF
+	FLOAT fDensityU = 0;
+#endif
 	PARTICLE *q;
 	int i;
 	unsigned int qiActive;
 
 	ih2 = 4.0/BALL2(p);
+	ih = sqrt(ih2);
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
-	fNorm = M_1_PI*ih2*sqrt(ih2);
+	fNorm = M_1_PI*ih2*ih;
 	fNorm1 = fNorm*ih2;	
 	fDensity = 0.0;
 	dvxdx = 0; dvxdy = 0; dvxdz= 0;
 	dvydx = 0; dvydy = 0; dvydz= 0;
 	dvzdx = 0; dvzdy = 0; dvzdz= 0;
+
+	grx = 0;
+	gry = 0;
+	grz = 0;
 
 	qiActive = 0;
 	for (i=0;i<nSmooth;++i) {
@@ -2934,6 +3067,9 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		qiActive |= q->iActive;
 		KERNEL(rs,r2);
 		fDensity += rs*q->fMass;
+#ifdef RTF
+		fDensityU += rs*q->fMass*q->uPred;
+#endif
 		DKERNEL(rs1,r2);
 		rs1 *= q->fMass;
 		dx = nnList[i].dx;
@@ -2951,12 +3087,21 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dvzdx += dvz*dx*rs1;
 		dvzdy += dvz*dy*rs1;
 		dvzdz += dvz*dz*rs1;
+		grx += (q->uPred-p->uPred)*dx*rs1; /* Grad P estimate */
+		gry += (q->uPred-p->uPred)*dy*rs1;
+		grz += (q->uPred-p->uPred)*dz*rs1;
 		}
 	if (qiActive & TYPE_ACTIVE) TYPESet(p,TYPE_NbrOfACTIVE);
-		
-/*	printf("TEST %d  %g %g  %g %g %g",p->iOrder,p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]);*/
-	p->fDensity = fNorm*fDensity; 
-	fNorm1 /= p->fDensity;
+
+/*	printf("TEST %d  %g %g  %g %g %g\n",p->iOrder,p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]);*/
+	fDensity*=fNorm;
+#ifdef RTF	
+	fDensityU*=fNorm;
+	p->fDensity = fDensityU/p->uPred; 
+#else
+	p->fDensity = fDensity; 
+#endif
+	fNorm1 /= fDensity;
 /* divv will be used to update density estimates in future */
 	trace = dvxdx+dvydy+dvzdz;
 	p->divv =  fNorm1*trace; /* physical */
@@ -2965,6 +3110,58 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	p->curlv[0] = fNorm1*(dvzdy - dvydz); 
 	p->curlv[1] = fNorm1*(dvxdz - dvzdx);
 	p->curlv[2] = fNorm1*(dvydx - dvxdy);
+
+/* Prior: ALPHAMUL 10 on top -- make pre-factor for c instead then switch is limited to 1 or less */
+#ifndef ALPHACMUL 
+#define ALPHACMUL 0.1
+#endif
+#ifndef DODVDS
+	if (smf->iViscosityLimiter==2) 
+#endif
+	    {
+	    gnorm = (grx*grx+gry*gry+grz*grz);
+	    if (gnorm > 0) gnorm=1/sqrt(gnorm);
+	    grx *= gnorm;
+	    gry *= gnorm;
+	    grz *= gnorm;
+	    dvdr = ((dvxdx*grx+dvxdy*gry+dvxdz*grz)*grx 
+		    +  (dvydx*grx+dvydy*gry+dvydz*grz)*gry 
+		    +  (dvzdx*grx+dvzdy*gry+dvzdz*grz)*grz)*fNorm1;
+#ifdef DODVDS
+	    p->dvds = 
+#endif
+	    dvds = dvdr-(1./3.)*p->divv; 
+	    }
+
+	switch(smf->iViscosityLimiter) {
+	case VISCOSITYLIMITER_NONE:
+	    p->BalsaraSwitch=1;
+	    break;
+	case VISCOSITYLIMITER_BALSARA:
+	    if (p->divv!=0.0) {         	 
+		p->BalsaraSwitch = fabs(p->divv)/
+		    (fabs(p->divv)+sqrt(p->curlv[0]*p->curlv[0]+
+					p->curlv[1]*p->curlv[1]+
+					p->curlv[2]*p->curlv[2]));
+		}
+	    else { 
+		p->BalsaraSwitch = 0;
+		}
+	    break;
+	case VISCOSITYLIMITER_JW:
+	    c = sqrt(smf->gamma*p->uPred*(smf->gamma-1));
+	    if (dvdr < 0 && dvds < 0 ) {         	 
+		p->BalsaraSwitch = -dvds/
+		    (-dvds+sqrt(p->curlv[0]*p->curlv[0]+
+				p->curlv[1]*p->curlv[1]+
+				p->curlv[2]*p->curlv[2])+ALPHACMUL*c*ih)+ALPHAMIN;
+		if (p->BalsaraSwitch > 1) p->BalsaraSwitch = 1;
+		}
+	    else { 
+		p->BalsaraSwitch = ALPHAMIN;
+		}
+	    break;
+	    }
 #ifdef DIFFUSION
         {
 	double onethirdtrace = (1./3.)*trace;
@@ -2976,12 +3173,322 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	double sxz = 0.5*(dvxdz + dvzdx);
 	double syz = 0.5*(dvydz + dvzdy);
 	/* diff coeff., nu ~ C L^2 S (add C via dMetalDiffusionConstant, assume L ~ h) */
-	if (smf->dMetalDiffusionConstant < 0) p->diff = -smf->dMetalDiffusionConstant;
-	else p->diff = smf->dMetalDiffusionConstant*fNorm1*0.25*BALL2(p)*sqrt(2*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz)));
+	if (smf->bConstantDiffusion) p->diff = 1;
+	else p->diff = fNorm1*0.25*BALL2(p)*sqrt(2*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz)));
 /*	printf(" %g %g   %g %g %g  %g\n",p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2],fNorm1*sqrt(2*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz))) );*/
 	}
 #endif
 	
+	}
+
+#else /* FITDVDX */
+
+#include "stiff.h"
+/* Gather only version */
+void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+	FLOAT ih2,ih,r2,rs,rs1,fDensity,qMass,iden,fNorm,fNorm1,vFac,S;
+	FLOAT dvxdx , dvxdy , dvxdz, dvydx , dvydy , dvydz, dvzdx , dvzdy , dvzdz;
+	FLOAT Wdvxdx , Wdvxdy , Wdvxdz, Wdvydx , Wdvydy , Wdvydz, Wdvzdx , Wdvzdy , Wdvzdz;
+	FLOAT Wdxdx, Wdxdy, Wdydy, Wdydz, Wdzdz, Wdxdz;
+	FLOAT Wdvx,Wdvy,Wdvz,Wdx,Wdy,Wdz,W;
+	FLOAT dvx,dvy,dvz,dx,dy,dz,trace;
+	FLOAT grx,gry,grz,gnorm,dvds,dvdr,c;
+	double **a, *x, d;
+	int *indx;
+
+	PARTICLE *q;
+	int i,j;
+	unsigned int qiActive;
+
+	ih2 = 4.0/BALL2(p);
+	ih = sqrt(ih2);
+	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
+	fNorm = M_1_PI*ih2*ih;
+	fNorm1 = fNorm*ih2;	
+	fDensity = 0.0;
+	Wdvxdx = 0; Wdvxdy = 0; Wdvxdz= 0;
+	Wdvydx = 0; Wdvydy = 0; Wdvydz= 0;
+	Wdvzdx = 0; Wdvzdy = 0; Wdvzdz= 0;
+	Wdxdx = 0; Wdxdy = 0; Wdxdz= 0;
+	Wdydy = 0; Wdydz= 0;  Wdzdz= 0;
+	Wdvx = 0; Wdvy = 0; Wdvz = 0;
+	Wdx = 0; Wdy = 0; Wdz = 0;
+	W = 0;
+
+	grx = 0;
+	gry = 0;
+	grz = 0;
+
+	qiActive = 0;
+	for (i=0;i<nSmooth;++i) {
+		r2 = nnList[i].fDist2*ih2;
+		q = nnList[i].pPart;
+		if (TYPETest(p,TYPE_ACTIVE)) TYPESet(q,TYPE_NbrOfACTIVE); /* important for SPH */
+		qiActive |= q->iActive;
+		KERNEL(rs,r2);
+		fDensity += rs*q->fMass;
+		DKERNEL(rs1,r2);
+		rs1 *= q->fMass;
+		dx = nnList[i].dx;
+		dy = nnList[i].dy;
+		dz = nnList[i].dz;
+		dvx = (-p->vPred[0] + q->vPred[0])*vFac - dx*smf->H; /* NB: dx = px - qx */
+		dvy = (-p->vPred[1] + q->vPred[1])*vFac - dy*smf->H;
+		dvz = (-p->vPred[2] + q->vPred[2])*vFac - dz*smf->H;
+
+		grx += (q->uPred-p->uPred)*dx*rs1; /* Grad P estimate */
+		gry += (q->uPred-p->uPred)*dy*rs1;
+		grz += (q->uPred-p->uPred)*dz*rs1;
+
+		rs = 1;
+		Wdvxdx += dvx*dx*rs;
+		Wdvxdy += dvx*dy*rs;
+		Wdvxdz += dvx*dz*rs;
+		Wdvydx += dvy*dx*rs;
+		Wdvydy += dvy*dy*rs;
+		Wdvydz += dvy*dz*rs;
+		Wdvzdx += dvz*dx*rs;
+		Wdvzdy += dvz*dy*rs;
+		Wdvzdz += dvz*dz*rs;
+		Wdxdx += dx*dx*rs;
+		Wdxdy += dx*dy*rs;
+		Wdxdz += dx*dz*rs;
+		Wdydy += dy*dy*rs;
+		Wdydz += dy*dz*rs;
+		Wdzdz += dz*dz*rs;
+		Wdvx += dvx*rs;
+		Wdvy += dvy*rs;
+		Wdvz += dvz*rs;
+		Wdx += dx*rs;
+		Wdy += dy*rs;
+		Wdz += dz*rs;
+		W += rs;
+		}
+	if (qiActive & TYPE_ACTIVE) TYPESet(p,TYPE_NbrOfACTIVE);
+
+/*	printf("TEST %d  %g %g  %g %g %g",p->iOrder,p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]);*/
+	p->fDensity = fNorm*fDensity; 
+	fNorm1 /= p->fDensity;
+
+/* new stuff */
+	a = matrix(1,4,1,4);
+
+	for (i=1;i<=4;i++) for (j=1;j<=4;j++) a[i][j] = 0;
+	a[1][1] = W;
+	a[1][2] = Wdx;
+	a[1][3] = Wdy;
+	a[1][4] = Wdy;
+	a[2][1] = Wdx;
+	a[2][2] = Wdxdx;
+	a[2][3] = Wdxdy;
+	a[2][4] = Wdxdz;
+	a[3][1] = Wdy;
+	a[3][2] = Wdxdy;
+	a[3][3] = Wdydy;
+	a[3][4] = Wdydz;
+	a[4][1] = Wdz;
+	a[4][2] = Wdxdz;
+	a[4][3] = Wdydz;
+	a[4][4] = Wdzdz;
+	
+	indx = ivector(1,4);
+	ludcmp(a,4,indx,&d);
+
+	x = vector(1,4);
+	x[1] = Wdvx;
+	x[2] = Wdvxdx;
+	x[3] = Wdvxdy;
+	x[4] = Wdvxdz;
+	lubksb(a,4,indx,x);
+	dvxdx =  -x[2];
+	dvxdy =  -x[3];
+	dvxdz =  -x[4];
+	x[1] = Wdvy;
+	x[2] = Wdvydx;
+	x[3] = Wdvydy;
+	x[4] = Wdvydz;
+	lubksb(a,4,indx,x);
+	dvydx =  -x[2];
+	dvydy =  -x[3];
+	dvydz =  -x[4];
+	x[1] = Wdvz;
+	x[2] = Wdvzdx;
+	x[3] = Wdvzdy;
+	x[4] = Wdvzdz;
+	lubksb(a,4,indx,x);
+	dvzdx =  -x[2];
+	dvzdy =  -x[3];
+	dvzdz =  -x[4];
+
+/*
+	if ((p->iOrder%400)==0) {
+	    printf("%8d %7.3f %7.3f %7.3f  %f %f %f   %f %f %f   %f %f %f\n",p->iOrder,p->r[0],p->r[1],p->r[2],dvxdx,dvxdy,dvxdz,dvydz,dvydy,dvydz,dvzdx,dvzdy,dvzdz);
+	    printf("%8d                          %f %f %f   %f %f %f   %f %f %f\n",p->iOrder,-2*3.14156*sin(2*3.14156*p->r[0]),0.,0.,0.,2*3.14156*cos(2*3.14156*p->r[1]),0., -2*3.14156*sin(2*3.14156*p->r[0]), 0., 0. );
+	    }
+*/
+	
+	free_ivector(indx,1,4);
+	free_vector(x,1,4);
+	free_matrix(a,1,4,1,4);
+
+/* divv will be used to update density estimates in future */
+	trace = dvxdx+dvydy+dvzdz;
+	p->divv =  trace; /* physical */
+/* Technically we could now dispense with curlv but it is used in several places as
+   a work variable so we will retain it */
+	p->curlv[0] = (dvzdy - dvydz); 
+	p->curlv[1] = (dvxdz - dvzdx);
+	p->curlv[2] = (dvydx - dvxdy);
+
+/* Prior: ALPHAMUL 10 on top -- make pre-factor for c instead then switch is limited to 1 or less */
+#ifndef ALPHACMUL 
+#define ALPHACMUL 0.1
+#endif
+#ifndef DODVDS
+	if (smf->iViscosityLimiter==2) 
+#endif
+	    {
+	    gnorm = (grx*grx+gry*gry+grz*grz);
+	    if (gnorm > 0) gnorm=1/sqrt(gnorm);
+	    grx *= gnorm;
+	    gry *= gnorm;
+	    grz *= gnorm;
+	    dvdr = ((dvxdx*grx+dvxdy*gry+dvxdz*grz)*grx 
+		    +  (dvydx*grx+dvydy*gry+dvydz*grz)*gry 
+		    +  (dvzdx*grx+dvzdy*gry+dvzdz*grz)*grz);
+#ifdef DODVDS
+	    p->dvds = 
+#endif
+	    dvds = dvdr-(1./3.)*p->divv; 
+	    }
+
+	switch(smf->iViscosityLimiter) {
+	case VISCOSITYLIMITER_NONE:
+	    p->BalsaraSwitch=1;
+	    break;
+	case VISCOSITYLIMITER_BALSARA:
+	    if (p->divv!=0.0) {         	 
+		p->BalsaraSwitch = fabs(p->divv)/
+		    (fabs(p->divv)+sqrt(p->curlv[0]*p->curlv[0]+
+					p->curlv[1]*p->curlv[1]+
+					p->curlv[2]*p->curlv[2]));
+		}
+	    else { 
+		p->BalsaraSwitch = 0;
+		}
+	    break;
+	case VISCOSITYLIMITER_JW:
+	    c = sqrt(smf->gamma*p->uPred*(smf->gamma-1));
+	    if (dvdr < 0 && dvds < 0 ) {         	 
+		p->BalsaraSwitch = -dvds/
+		    (-dvds+sqrt(p->curlv[0]*p->curlv[0]+
+				p->curlv[1]*p->curlv[1]+
+				p->curlv[2]*p->curlv[2])+ALPHACMUL*c*ih)+ALPHAMIN;
+		if (p->BalsaraSwitch > 1) p->BalsaraSwitch = 1;
+		}
+	    else { 
+		p->BalsaraSwitch = 0.01;
+		}
+	    break;
+	    }
+#ifdef DIFFUSION
+        {
+	double onethirdtrace = (1./3.)*trace;
+	/* Build Traceless Strain Tensor (not yet normalized) */
+	double sxx = dvxdx - onethirdtrace; /* pure compression/expansion doesn't diffuse */
+	double syy = dvydy - onethirdtrace;
+	double szz = dvzdz - onethirdtrace;
+	double sxy = 0.5*(dvxdy + dvydx); /* pure rotation doesn't diffuse */
+	double sxz = 0.5*(dvxdz + dvzdx);
+	double syz = 0.5*(dvydz + dvzdy);
+	/* diff coeff., nu ~ C L^2 S (add C via dMetalDiffusionConstant, assume L ~ h) */
+	if (smf->bConstantDiffusion) p->diff = 1;
+	else p->diff = fNorm1*0.25*BALL2(p)*sqrt(2*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz)));
+/*	printf(" %g %g   %g %g %g  %g\n",p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2],fNorm1*sqrt(2*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz))) );*/
+	}
+#endif
+	
+	}
+#endif /* FITDVDX */
+
+void initSmoothBSw(void *p)
+{
+	}
+
+void combSmoothBSw(void *p1,void *p2)
+{
+	}
+
+
+
+void SmoothBSw(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+        FLOAT ih2,ih,r2,rs,c;
+	FLOAT curlv[3],divv,fNorm,dvds;
+	PARTICLE *q;
+	int i;
+	unsigned int qiActive;
+
+#ifdef DODVDS
+	ih2 = 4.0/BALL2(p);
+	ih = sqrt(ih2);
+	curlv[0] = 0; curlv[1] = 0; curlv[2] = 0;
+	divv = 0; dvds = 0;
+	fNorm = 0;
+
+	for (i=0;i<nSmooth;++i) {
+		r2 = nnList[i].fDist2*ih2;
+		q = nnList[i].pPart;
+		KERNEL(rs,r2);
+		rs *= q->fMass;
+		curlv[0] += q->curlv[0]*rs;
+		curlv[1] += q->curlv[1]*rs;
+		curlv[2] += q->curlv[2]*rs;
+		divv += q->divv*rs;
+		dvds += q->dvds*rs;
+		fNorm += rs;
+		}
+
+	switch(smf->iViscosityLimiter) {
+	case VISCOSITYLIMITER_NONE:
+	    p->BalsaraSwitch=1;
+	    break;
+	case VISCOSITYLIMITER_BALSARA:
+	    if (p->divv!=0.0) {         	 
+		p->BalsaraSwitch = fabs(divv)/ (fabs(divv)+sqrt(curlv[0]*curlv[0]+
+					curlv[1]*curlv[1]+
+					curlv[2]*curlv[2]));
+		}
+	    else { 
+		p->BalsaraSwitch = 0;
+		}
+	    break;
+	case VISCOSITYLIMITER_JW:
+#ifndef ALPHAMIN
+#define ALPHAMIN 0.01
+#endif
+/* Prior: ALPHAMUL 10 on top -- make pre-factor for c instead then switch is limited to 1 or less */
+#ifndef ALPHACMUL 
+#define ALPHACMUL 0.1
+#endif
+	    c = sqrt(smf->gamma*p->uPred*(smf->gamma-1));
+	    if (divv < 0 && dvds < 0 ) {         	 
+		p->BalsaraSwitch = -dvds/
+		    (-dvds+sqrt(curlv[0]*curlv[0]+
+				curlv[1]*curlv[1]+
+				curlv[2]*curlv[2])+fNorm*ALPHACMUL*c*ih)+ALPHAMIN;
+		if (p->BalsaraSwitch > 1) p->BalsaraSwitch = 1;
+		}
+	    else { 
+		p->BalsaraSwitch = 0.01;
+		}
+	    break;
+	    }
+#else
+	assert(0);
+#endif /* DODVDS */
+
 	}
 
 void initShockTrack(void *p)
@@ -3580,154 +4087,227 @@ void combDistSNEnergy(void *p1,void *p2)
                 ((PARTICLE *)p2)->fTimeCoolIsOffUntil );
     }
 
+void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+  PARTICLE *q;
+  FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fNorm_Pres,fAveDens,f2h2;
+  double dAge, dAgeMyr;
+  int i,counter,imind;
+
+  if ( p->fMSN == 0.0 ){return;} /* Is there any feedback mass? */
+  assert(TYPETest(p, TYPE_STAR));
+  ih2 = 4.0/BALL2(p);
+  f2h2=BALL2(p);
+  rstot = 0.0;  
+  fNorm_u = 0.0;
+  fNorm_Pres = 0.0;
+  fAveDens = 0.0;
+  dAge = smf->dTime - p->fTimeForm;
+  dAgeMyr = dAge* smf->dSecUnit / SECONDSPERYEAR;
+	
+  fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
+  for (i=0;i<nSmooth;++i) {
+    r2 = nnList[i].fDist2*ih2;            
+    KERNEL(rs,r2);
+    q = nnList[i].pPart;
+    fNorm_u += q->fMass*rs;
+    rs *= fNorm;
+    fAveDens += q->fMass*rs;
+    fNorm_Pres += q->fMass*q->uPred*rs;
+    assert(TYPETest(q, TYPE_GAS));
+  }
+  fNorm_Pres *= (smf->gamma-1.0);
+       
+  assert(fNorm_u != 0.0);
+  fNorm_u = 1./fNorm_u;
+  counter=0;
+  for (i=0;i<nSmooth;++i) {
+    FLOAT weight;
+    q = nnList[i].pPart;
+    r2 = nnList[i].fDist2*ih2;  
+    KERNEL(rs,r2);
+    /* Remember: We are dealing with total energy rate and total metal
+     * mass, not energy/gram or metals per gram.  
+     * q->fMass is in product to make units work for fNorm_u.
+     */
+#ifdef VOLUMEFEEDBACK
+    weight = rs*fNorm_u*q->fMass/q->fDensity;
+#else
+    weight = rs*fNorm_u*q->fMass;
+#endif
+    if (p->fNSN == 0.0) q->fESNrate += weight*p->fESNrate;
+    q->fMetals += weight*p->fSNMetals;
+    q->fMFracOxygen += weight*p->fMOxygenOut;
+    q->fMFracIron += weight*p->fMIronOut;
+    q->fMass += weight*p->fMSN;
+  }
+}
+
 void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
-	PARTICLE *q;
-	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fNorm_Pres,fAveDens,f2h2;
-        FLOAT fBlastRadius,fShutoffTime,fmind;
-	int i,counter,imind;
+  PARTICLE *q;
+  FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fNorm_Pres,fAveDens,f2h2;
+  FLOAT fBlastRadius,fShutoffTime,fmind;
+  double dAge, dAgeMyr;
+  int i,counter,imind;
 
-	if ( (p->fMSN == 0.0) && (p->fESNrate == 0.0)){return;}
-	assert(TYPETest(p, TYPE_STAR));
-	ih2 = 4.0/BALL2(p);
-        f2h2=BALL2(p);
-        rstot = 0.0;  
-        fNorm_u = 0.0;
-        fNorm_Pres = 0.0;
-	fAveDens = 0.0;
+  if ( p->fMSN == 0.0 ){return;}
+
+  /* "Simple" ejecta distribution (see function above) */
+  if (smf->sn.iNSNIIQuantum) DistFBMME(p,nSmooth,nnList,smf);
+
+  if (p->fNSN == 0) return;
+  /* The following ONLY deals with SNII Energy distribution */
+  assert(TYPETest(p, TYPE_STAR));
+  ih2 = 4.0/BALL2(p);
+  f2h2=BALL2(p);
+  rstot = 0.0;  
+  fNorm_u = 0.0;
+  fNorm_Pres = 0.0;
+  fAveDens = 0.0;
+  dAge = smf->dTime - p->fTimeForm;
+  if (dAge == 0.0) return;
+  dAgeMyr = dAge* smf->dSecUnit / SECONDSPERYEAR;
 	
-	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
-	for (i=0;i<nSmooth;++i) {
-            r2 = nnList[i].fDist2*ih2;            
-            KERNEL(rs,r2);
-            q = nnList[i].pPart;
-            fNorm_u += q->fMass*rs;
-            rs *= fNorm;
-            fAveDens += q->fMass*rs;
-            fNorm_Pres += q->fMass*q->uPred*rs;
-	    assert(TYPETest(q, TYPE_GAS));
-            }
-        fNorm_Pres *= (smf->gamma-1.0);
-        /* from McKee and Ostriker (1977) ApJ 218 148 */
-        fBlastRadius = smf->dRadPreFactor*pow(p->fNSN,0.32)*pow(fAveDens,-0.16)*pow(fNorm_Pres,-0.2);
-	if (smf->bShortCoolShutoff){
-        /* End of snowplow phase */
-            fShutoffTime = smf->dTimePreFactor*pow(p->fNSN,0.31)*pow(fAveDens,0.27)*pow(fNorm_Pres,-0.64);
-	} else{        /* McKee + Ostriker 1977 t_{max} */
-            fShutoffTime = smf->dTimePreFactor*pow(p->fNSN,0.32)*pow(fAveDens,0.34)*pow(fNorm_Pres,-0.70);
+  fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
+  for (i=0;i<nSmooth;++i) {
+    r2 = nnList[i].fDist2*ih2;            
+    KERNEL(rs,r2);
+    q = nnList[i].pPart;
+    fNorm_u += q->fMass*rs;
+    rs *= fNorm;
+    fAveDens += q->fMass*rs;
+    fNorm_Pres += q->fMass*q->uPred*rs;
+    assert(TYPETest(q, TYPE_GAS));
+  }
+  fNorm_Pres *= (smf->gamma-1.0);
+  if (smf->sn.iNSNIIQuantum > 0) {
+    /* McCray + Kafatos (1987) ApJ 317 190*/
+    fBlastRadius = smf->sn.dRadPreFactor*pow(p->fNSN / fAveDens, 0.2) * 
+      pow(dAge,0.6); /* eq 3 */
+    /* TOO LONG    fShutoffTime = smf->sn.dTimePreFactor*pow(p->fMetals, -1.5)*
+       pow(p->fNSN,0.3) / pow(fAveDens,0.7);*/
+  }
+  else {
+    /* from McKee and Ostriker (1977) ApJ 218 148 */
+    fBlastRadius = smf->sn.dRadPreFactor*pow(p->fNSN,0.32)*
+      pow(fAveDens,-0.16)*pow(fNorm_Pres,-0.2);
+  }
+  if (smf->bShortCoolShutoff){
+    /* End of snowplow phase */
+    fShutoffTime = smf->sn.dTimePreFactor*pow(p->fNSN,0.31)*
+      pow(fAveDens,0.27)*pow(fNorm_Pres,-0.64);
+  } else{        /* McKee + Ostriker 1977 t_{max} */
+    fShutoffTime = smf->sn.dTimePreFactor*pow(p->fNSN,0.32)*
+      pow(fAveDens,0.34)*pow(fNorm_Pres,-0.70);
+  }
+  /* Shut off cooling for 3 Myr for stellar wind */
+  if (p->fNSN < smf->sn.iNSNIIQuantum)
+    fShutoffTime= 3e6 * SECONDSPERYEAR / smf->dSecUnit;
+  
+  fmind = BALL2(p);
+  imind = 0;
+  if ( p->fESNrate > 0.0 ) {
+    if(smf->bSmallSNSmooth) {
+      /* Change smoothing radius to blast radius 
+       * so that we only distribute mass, metals, and energy
+       * over that range. 
+       */
+      f2h2 = fBlastRadius*fBlastRadius;
+      ih2 = 4.0/f2h2;
+    }
+
+    rstot = 0.0;  
+    fNorm_u = 0.0;
+
+    for (i=0;i<nSmooth;++i) {
+      if ( nnList[i].fDist2 < fmind ){imind = i; fmind = nnList[i].fDist2;}
+      if ( nnList[i].fDist2 < f2h2 || !smf->bSmallSNSmooth) {
+	r2 = nnList[i].fDist2*ih2;            
+	KERNEL(rs,r2);
+	q = nnList[i].pPart;
+#ifdef VOLUMEFEEDBACK
+	fNorm_u += q->fMass/q->fDensity*rs;
+#else
+	fNorm_u += q->fMass*rs;
+#endif
+	assert(TYPETest(q, TYPE_GAS));
+      }
+    }
+  }
+       
+  /* If there's no gas particle within blast radius,
+     give mass and energy to nearest gas particle. */
+  if (fNorm_u ==0.0){
+    r2 = nnList[imind].fDist2*ih2;            
+    KERNEL(rs,r2);
+    /*
+     * N.B. This will be NEGATIVE, but that's OK since it will
+     * cancel out down below.
+     */
+#ifdef VOLUMEFEEDBACK
+    fNorm_u = nnList[imind].pPart->fMass/nnList[imind].pPart->fDensity*rs;
+#else
+    fNorm_u = nnList[imind].pPart->fMass*rs;
+#endif
+  }
+       
+  assert(fNorm_u != 0.0);
+  fNorm_u = 1./fNorm_u;
+  counter=0;
+  for (i=0;i<nSmooth;++i) {
+    FLOAT weight;
+    q = nnList[i].pPart;
+    if (smf->bSmallSNSmooth) {
+      if ( (nnList[i].fDist2 <= f2h2) || (i == imind) ) {
+	if( smf->bSNTurnOffCooling && 
+	    (fBlastRadius*fBlastRadius >= nnList[i].fDist2)) {
+	  q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
+				       smf->dTime + fShutoffTime);
 	}
-	
-        fmind = BALL2(p);
-        imind = 0;
-        if ( p->fESNrate > 0.0 ) {
-	    if(smf->bSmallSNSmooth) {
-		/* Change smoothing radius to blast radius 
-		 * so that we only distribute mass, metals, and energy
-		 * over that range. 
-		 */
-		f2h2 = fBlastRadius*fBlastRadius;
-		ih2 = 4.0/f2h2;
-		}
 
-            rstot = 0.0;  
-            fNorm_u = 0.0;
-
-            for (i=0;i<nSmooth;++i) {
-                if ( nnList[i].fDist2 < fmind ){imind = i; fmind = nnList[i].fDist2;}
-                if ( nnList[i].fDist2 < f2h2 || !smf->bSmallSNSmooth) {
-                    r2 = nnList[i].fDist2*ih2;            
-                    KERNEL(rs,r2);
-                    q = nnList[i].pPart;
+	counter++;  
+	r2 = nnList[i].fDist2*ih2;
+	KERNEL(rs,r2);
+	/* Remember: We are dealing with total energy rate and total metal
+	 * mass, not energy/gram or metals per gram.  
+	 * q->fMass is in product to make units work for fNorm_u.
+	 */
 #ifdef VOLUMEFEEDBACK
-                    fNorm_u += q->fMass/q->fDensity*rs;
+	weight = rs*fNorm_u*q->fMass/q->fDensity;
 #else
-                    fNorm_u += q->fMass*rs;
+	weight = rs*fNorm_u*q->fMass;
 #endif
-                    assert(TYPETest(q, TYPE_GAS));
-                    }
-                }
-            }
-       
-	
-
-        /* If there's no gas particle within blast radius,
-           give mass and energy to nearest gas particle. */
-        if (fNorm_u ==0.0){
-            r2 = nnList[imind].fDist2*ih2;            
-            KERNEL(rs,r2);
-	    /*
-	     * N.B. This will be NEGATIVE, but that's OK since it will
-	     * cancel out down below.
-	     */
+	q->fESNrate += weight*p->fESNrate;
+      }
+    } else {
+      r2 = nnList[i].fDist2*ih2;  
+      KERNEL(rs,r2);
+      /* Remember: We are dealing with total energy rate and total metal
+       * mass, not energy/gram or metals per gram.  
+       * q->fMass is in product to make units work for fNorm_u.
+       */
 #ifdef VOLUMEFEEDBACK
-            fNorm_u = nnList[imind].pPart->fMass/nnList[imind].pPart->fDensity*rs;
+      weight = rs*fNorm_u*q->fMass/q->fDensity;
 #else
-            fNorm_u = nnList[imind].pPart->fMass*rs;
+      weight = rs*fNorm_u*q->fMass;
 #endif
-            }
-       
-	assert(fNorm_u != 0.0);
-        fNorm_u = 1./fNorm_u;
-counter=0;
-	for (i=0;i<nSmooth;++i) {
-	    FLOAT weight;
-            q = nnList[i].pPart;
-            if (smf->bSmallSNSmooth) {
-                if ( (nnList[i].fDist2 <= f2h2) || (i == imind) ) {
-                    if( p->fNSN > 0.0 && smf->bSNTurnOffCooling && 
-                       (fBlastRadius*fBlastRadius >= nnList[i].fDist2)) {
-                        q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
-                            smf->dTime + fShutoffTime);}
-counter++;  
-                    r2 = nnList[i].fDist2*ih2;  
-                    KERNEL(rs,r2);
-                    /* Remember: We are dealing with total energy rate and total metal
-                     * mass, not energy/gram or metals per gram.  
-                     * q->fMass is in product to make units work for fNorm_u.
-                     */
-#ifdef VOLUMEFEEDBACK
-		    weight = rs*fNorm_u*q->fMass/q->fDensity;
-#else
-		    weight = rs*fNorm_u*q->fMass;
-#endif
-                    q->fESNrate += weight*p->fESNrate;
-                    q->fMetals += weight*p->fSNMetals;
-                    q->fMFracOxygen += weight*p->fMOxygenOut;
-                    q->fMFracIron += weight*p->fMIronOut;
-                    q->fMass += weight*p->fMSN;
-                    }
-            } else {
-                r2 = nnList[i].fDist2*ih2;  
-                KERNEL(rs,r2);
-                /* Remember: We are dealing with total energy rate and total metal
-                 * mass, not energy/gram or metals per gram.  
-                 * q->fMass is in product to make units work for fNorm_u.
-                 */
-#ifdef VOLUMEFEEDBACK
-		weight = rs*fNorm_u*q->fMass/q->fDensity;
-#else
-		weight = rs*fNorm_u*q->fMass;
-#endif
-                q->fESNrate += weight*p->fESNrate;
-                q->fMetals += weight*p->fSNMetals;
-                q->fMFracOxygen += weight*p->fMOxygenOut;
-                q->fMFracIron += weight*p->fMIronOut;
-/*		printf("SNTEST: %d %g %g %g %g\n",q->iOrder,weight,sqrt(q->r[0]*q->r[0]+q->r[1]*q->r[1]+q->r[2]*q->r[2]),q->fESNrate,q->fDensity);*/
+      q->fESNrate += weight*p->fESNrate;
+      /*		printf("SNTEST: %d %g %g %g %g\n",q->iOrder,weight,sqrt(q->r[0]*q->r[0]+q->r[1]*q->r[1]+q->r[2]*q->r[2]),q->fESNrate,q->fDensity);*/
                 
-                if ( p->fESNrate > 0.0 && smf->bSNTurnOffCooling && 
-                     (fBlastRadius*fBlastRadius >= nnList[i].fDist2)){
-                    q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
-                        smf->dTime + fShutoffTime);
-		    counter++;
-                    }
-                /*	update mass after everything else so that distribution
-                    is based entirely upon initial mass of gas particle */
-                q->fMass += weight*p->fMSN;
-                } 
-            }
-/*if(counter>0) printf("%i ",counter);
-if (p->fNSN >0) printf("%i E51:  %g  Dens:  %g  P:  %g  R:  %g shutoff time: %g   \n",counter,p->fNSN,fAveDens,fNorm_Pres,fBlastRadius,fShutoffTime);
-if(p->fNSN!= 0.0)printf("E51:  %g  Dens:  %g  P:  %g  R:  %g shutoff time: %g  \n",p->fNSN,fAveDens,fNorm_Pres,fBlastRadius,fShutoffTime);*/
+      if ( p->fESNrate > 0.0 && smf->bSNTurnOffCooling && 
+	   (fBlastRadius*fBlastRadius >= nnList[i].fDist2)){
+	q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
+				     smf->dTime + fShutoffTime);
+	counter++;
+      }
+      /*	update mass after everything else so that distribution
+		is based entirely upon initial mass of gas particle */
+    } 
+  }
+  /*if(counter>0) printf("%i ",counter);
+  if (p->fNSN >0) printf("%i E51:  %g  Dens:  %g  P:  %g  R:  %g shutoff time: %g   StarAge: %g  \n",counter,p->fNSN,fAveDens,fNorm_Pres,fBlastRadius,fShutoffTime,dAge);
+  /*if(p->fNSN!= 0.0)printf("E51:  %g  Dens:  %g  P:  %g  R:  %g shutoff time: %g  \n",p->fNSN,fAveDens,fNorm_Pres,fBlastRadius,fShutoffTime);*/
 }
 
 void postDistSNEnergy(PARTICLE *p1, SMF *smf)

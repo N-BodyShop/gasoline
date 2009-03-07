@@ -295,7 +295,7 @@ void CoolDefaultParticleData( COOLPARTICLE *cp )
 	cp->Y_Total = 2;
 	}
 
-void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp )
+void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp, double fMetal )
 {
 	cp->Y_Total = cl->Y_Total;
 	*E = clThermalEnergy(cp->Y_Total,dTemp)*cl->diErgPerGmUnit;
@@ -315,7 +315,8 @@ double CoolEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E ) {
 	return clTemperature( cp->Y_Total, E );
 	}
 
-double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E ) {
+double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E,
+				    double fMetal) {
 	return CoolEnergyToTemperature( Cool, cp, E*Cool->dErgPerGmUnit );
 	}
 

@@ -59,7 +59,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 		return(p->u);
 	case OUT_TEMP_ARRAY:
 #ifndef NOCOOLING
-                vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u );
+                vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
 #else
                 vTemp = pkd->duTFac*p->u;
 #endif
@@ -68,11 +68,13 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_UDOT_ARRAY:
 		return(p->uDot);
 	case OUT_COOL_ARRAY0:
-		return(COOL_ARRAY0(&p->CoolParticle));
+		return(COOL_ARRAY0(pkd->Cool, &p->CoolParticle,p->fMetals));
 	case OUT_COOL_ARRAY1:
-		return(COOL_ARRAY1(&p->CoolParticle));
+		return(COOL_ARRAY1(pkd->Cool, &p->CoolParticle,p->fMetals));
 	case OUT_COOL_ARRAY2:
-		return(COOL_ARRAY2(&p->CoolParticle));
+		return(COOL_ARRAY2(pkd->Cool, &p->CoolParticle,p->fMetals));
+	case OUT_COOL_ARRAY3:
+	        return(COOL_ARRAY3(pkd->Cool, &p->CoolParticle,p->fMetals)); /*H2*/
 #ifdef DENSITYU
 	case OUT_COOL_EDOT_ARRAY:
 	    return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
@@ -91,8 +93,18 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #endif
 	case OUT_BALSARASWITCH_ARRAY:
 		return(p->BalsaraSwitch);
+#ifdef VARALPHA
+	case OUT_ALPHA_ARRAY:
+		return(p->alpha);
+#endif
 	case OUT_DIVV_ARRAY:
 		return(p->divv);
+#ifdef DODVDS
+	case OUT_DVDS_ARRAY:
+		return(p->dvds);
+#endif
+	case OUT_CSOUND_ARRAY:
+		return(p->c);
 	case OUT_MUMAX_ARRAY:
 		return(p->mumax);
 	case OUT_DIVONCONH_ARRAY:
@@ -166,6 +178,10 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #endif
 	case OUT_H_ARRAY:
 		return(sqrt(p->fBall2*0.25));
+#ifdef SURFACEAREA
+	case OUT_SURFACEAREA_ARRAY:
+   	        return(p->fArea);
+#endif
 #ifdef COLLISIONS
 	case OUT_REJECTS_ARRAY:
 		/* Rejected particles indicated by their iOrder, otherwise -1 */
@@ -186,6 +202,12 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 		return(p->vPred[iDim]);
 #endif
 #if defined(GASOLINE)
+	case OUT_CURLV_VECTOR:
+		return(p->curlv[iDim]);
+#ifdef NORMAL
+	case OUT_NORMAL_VECTOR:
+ 	        return(p->normal[iDim]);
+#endif
 #if defined(SHOCKTRACK)
 	case OUT_GRADRHO_VECTOR:
 		return(p->gradrho[iDim]);
@@ -256,13 +278,16 @@ void VecFilename(char *achFile, int iType)
 		strncat(achFile,"uDot",256);
 		break;
 	case OUT_COOL_ARRAY0:
-		strncat(achFile,"HI",256);
+		strncat(achFile,COOL_ARRAY0_EXT,256);
             break;
 	case OUT_COOL_ARRAY1:
-		strncat(achFile,"HeI",256);
+		strncat(achFile,COOL_ARRAY1_EXT,256);
             break;
 	case OUT_COOL_ARRAY2:
-		strncat(achFile,"HeII",256);
+		strncat(achFile,COOL_ARRAY2_EXT,256);
+            break;
+	case OUT_COOL_ARRAY3: /*CC*/
+		strncat(achFile,COOL_ARRAY3_EXT,256);
             break;
 	case OUT_COOL_EDOT_ARRAY:
 		strncat(achFile,"eDot",256);
@@ -277,8 +302,20 @@ void VecFilename(char *achFile, int iType)
 	case OUT_BALSARASWITCH_ARRAY:
 		strncat(achFile,"BSw",256);
             break;
+	case OUT_ALPHA_ARRAY:
+		strncat(achFile,"alpha",256);
+            break;
 	case OUT_DIVV_ARRAY:
             strncat(achFile,"divv",256);
+            break;
+	case OUT_DVDS_ARRAY:
+            strncat(achFile,"dvds",256);
+            break;
+	case OUT_SURFACEAREA_ARRAY:
+            strncat(achFile,"area",256);
+            break;
+	case OUT_CSOUND_ARRAY:
+            strncat(achFile,"c",256);
             break;
 	case OUT_MUMAX_ARRAY:
             strncat(achFile,"mumax",256);
@@ -398,6 +435,12 @@ void VecFilename(char *achFile, int iType)
 	case OUT_ACCELRFC_VECTOR:
 	    strncat(achFile,"accRFC",256);
             break;
+	case OUT_CURLV_VECTOR:
+	    strncat(achFile,"curl",256);
+            break;
+	case OUT_NORMAL_VECTOR:
+	    strncat(achFile,"norm",256);
+            break;
 #ifdef NEED_VPRED
 	case OUT_VPRED_VECTOR:
 	    strncat(achFile,"vpred",256);
@@ -440,11 +483,13 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         /* Gas only floats */
         case OUT_COOLTURNONTIME_ARRAY:
         case OUT_DIVV_ARRAY:
+        case OUT_DVDS_ARRAY:
         case OUT_TCOOLAGAIN_ARRAY:
         case OUT_MSTAR_ARRAY:
         case OUT_COOL_ARRAY0:
         case OUT_COOL_ARRAY1:
         case OUT_COOL_ARRAY2:
+        case OUT_COOL_ARRAY3:
         case OUT_SPHH_ARRAY:
         case OUT_TEMP_ARRAY:
         case OUT_GASDENSITY_ARRAY:

@@ -147,7 +147,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      */
 
 
-    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u );
+    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fMetals );
 #if (0)
     E = CoolCodeEnergyToErgPerGm( cl, p->u );
     tcool = E/(-CoolHeatingRate( cl, &p->CoolParticle, T, 
@@ -363,7 +363,7 @@ void pkdSimpleStarForm(PKD pkd, double dRateCoeff, double dTMax, double dDenMin,
 			/* Is particle in convergent part of flow?  */
 			if (p->fDensity < dDenMin || (bdivv && p->divv >= 0.0)) continue;
 			
-			if ((T = CoolCodeEnergyToTemperature(pkd->Cool,&p->CoolParticle, p->u)) > dTMax) continue; 
+			if ((T = CoolCodeEnergyToTemperature(pkd->Cool,&p->CoolParticle, p->u, p->fMetals)) > dTMax) continue; 
 			
 			mstardot = dRateCoeff*sqrt(p->fDensity)*(p->fMass-p->fMassStar); /* Predictor corrector for second order? */
 

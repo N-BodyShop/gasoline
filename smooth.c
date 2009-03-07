@@ -184,7 +184,34 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		comb = combDenDVDX;
 		smx->fcnPost = NULL;
 		break;
+	case SMX_SURFACENORMAL:
+	    printf("Surface Normal\n");
+		smx->fcnSmooth = SurfaceNormal;
+		initParticle = NULL;
+		initTreeParticle = NULL;
+		init = initSurfaceNormal;
+		comb = combSurfaceNormal;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_SURFACEAREA:
+	    printf("Surface Area\n");
+		smx->fcnSmooth = SurfaceArea;
+		initParticle = NULL;
+		initTreeParticle = NULL;
+		init = initSurfaceArea;
+		comb = combSurfaceArea;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_SMOOTHBSW:
+		smx->fcnSmooth = SmoothBSw;
+		initParticle = NULL;
+		initTreeParticle = NULL;
+		init = initSmoothBSw;
+		comb = combSmoothBSw;
+		smx->fcnPost = NULL;
+		break;
 	case SMX_DIVVORT:
+	    printf("Div vort\n");
 		smx->fcnSmooth = bSymmetric?DivVortSym:DivVort;
 		initParticle = initDivVort;
 		initTreeParticle = NULL;
@@ -1207,6 +1234,7 @@ void smSmooth(SMX smx,SMF *smf)
 
 #else /* SLIDING_PATCH && INTERNAL_WARNINGS */
 
+#define LARGEFBALL
 #ifndef LARGEFBALL
 		assert(!smx->bPeriodic ||
 			   ((lx == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lx*lx) &&
