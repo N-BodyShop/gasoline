@@ -4154,7 +4154,7 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   if ( p->fMSN == 0.0 ){return;}
 
   /* "Simple" ejecta distribution (see function above) */
-  if (smf->sn.iNSNIIQuantum) DistFBMME(p,nSmooth,nnList,smf);
+  DistFBMME(p,nSmooth,nnList,smf);
 
   if (p->fNSN == 0) return;
   /* The following ONLY deals with SNII Energy distribution */
