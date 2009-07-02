@@ -5934,7 +5934,10 @@ int msrFindCheck(MSR msr) {
 	  latestTime = statbuf.st_mtime;
 	  strcpy(achLatestCheckFile, achCheckFile);
 	}
+      } else {
+	  fprintf(stderr, "WARNING: corrupt checkpoint file found; ignoring\n");
       }
+      
       FDL_finish(fdl);
     }
   }
