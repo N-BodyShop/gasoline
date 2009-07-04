@@ -1556,11 +1556,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	if (msr->param.dxPeriod == 0) msr->param.dxPeriod = FLOAT_MAXVAL;
 	if (msr->param.dyPeriod == 0) msr->param.dyPeriod = FLOAT_MAXVAL;
 	if (msr->param.dzPeriod == 0) msr->param.dzPeriod = FLOAT_MAXVAL;
+
+#ifdef GASOLINE
 #ifndef INFLOWOUTFLOW
 	assert(msr->param.bInflowOutflow == 0);
 #endif
-
-#ifdef GASOLINE
 	assert(msr->param.duDotLimit <= 0.0);
 	if (msr->param.bBulkViscosity) {
 		if (!prmSpecified(msr->prm,"dConstAlpha"))
