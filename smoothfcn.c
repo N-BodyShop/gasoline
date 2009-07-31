@@ -4148,7 +4148,7 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   PARTICLE *q;
   FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fNorm_Pres,fAveDens,f2h2;
   FLOAT fBlastRadius,fShutoffTime,fmind;
-  double dAge, dAgeMyr;
+  double dAge, dAgeMyr, aFac, dCosmoDenFac;
   int i,counter,imind;
 
   if ( p->fMSN == 0.0 ){return;}
@@ -4160,6 +4160,8 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   /* The following ONLY deals with SNII Energy distribution */
   assert(TYPETest(p, TYPE_STAR));
   ih2 = 4.0/BALL2(p);
+    aFac = smf->a;
+    dCosmoDenFac = aFac*aFac*aFac;
   f2h2=BALL2(p);
   rstot = 0.0;  
   fNorm_u = 0.0;
@@ -4180,18 +4182,19 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     fNorm_Pres += q->fMass*q->uPred*rs;
     assert(TYPETest(q, TYPE_GAS));
   }
-  fNorm_Pres *= (smf->gamma-1.0);
+  fNorm_Pres *= (smf->gamma-1.0)/dCosmoDenFac;
+    fAveDens /= dCosmoDenFac;
   if (smf->sn.iNSNIIQuantum > 0) {
     /* McCray + Kafatos (1987) ApJ 317 190*/
     fBlastRadius = smf->sn.dRadPreFactor*pow(p->fNSN / fAveDens, 0.2) * 
-      pow(dAge,0.6); /* eq 3 */
+	    pow(dAge,0.6)/aFac; /* eq 3 */
     /* TOO LONG    fShutoffTime = smf->sn.dTimePreFactor*pow(p->fMetals, -1.5)*
        pow(p->fNSN,0.3) / pow(fAveDens,0.7);*/
   }
   else {
     /* from McKee and Ostriker (1977) ApJ 218 148 */
     fBlastRadius = smf->sn.dRadPreFactor*pow(p->fNSN,0.32)*
-      pow(fAveDens,-0.16)*pow(fNorm_Pres,-0.2);
+	    pow(fAveDens,-0.16)*pow(fNorm_Pres,-0.2)/aFac;
   }
   if (smf->bShortCoolShutoff){
     /* End of snowplow phase */
