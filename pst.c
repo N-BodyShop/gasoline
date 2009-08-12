@@ -4936,7 +4936,7 @@ pstReadSS(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		 */
 		nStore = nFileTotal + (int)ceil(nFileTotal*in->fExtraStore);
 		pkdInitialize(&plcl->pkd,pst->mdl,in->iOrder,nStore,plcl->nPstLvl,
-					  in->fPeriod,in->nDark,in->nGas,in->nStar);
+			      in->fPeriod,in->dxInflow,in->dxOutflow,in->nDark,in->nGas,in->nStar);
 		pkdReadSS(plcl->pkd,achInFile,nFileStart,nFileTotal);
 		}
 	if (pnOut) *pnOut = 0;
