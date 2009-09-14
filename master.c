@@ -1568,7 +1568,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		if (!prmSpecified(msr->prm,"dConstBeta"))
 			msr->param.dConstBeta=0.5;
 		}
-	if (!prmSpecified(msr->prm,"bViscosityLimiter")) {
+	if (!prmSpecified(msr->prm,"iViscosityLimiter")) {
 	        if (!msr->param.bViscosityLimiter) msr->param.iViscosityLimiter=0;
 		}
 #ifndef SHOCKTRACK
