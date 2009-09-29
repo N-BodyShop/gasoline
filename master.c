@@ -652,6 +652,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bBHSink = 0;
 	prmAddParam(msr->prm,"bBHSink",0,&msr->param.bBHSink,sizeof(int),
 				"bhsink","Bondi-Hoyle type sink = -bhsink");
+	msr->param.bSmallBHSmooth = 0;
+	prmAddParam(msr->prm,"bSmallBHSmooth",0,&msr->param.bSmallBHSmooth,sizeof(int),	"smallbhsmooth","smooth BH feedback over blastwave or smoothing radius = -smallbhsmooth");
+	msr->param.bBHTurnOffCooling = 0;
+	prmAddParam(msr->prm,"bBHTurnOffCooling",0,&msr->param.bBHTurnOffCooling,sizeof(int),	"bhturnoffcooling","turn off cooling for BHs = -bhturnoffcooling");
+	msr->param.bDoBHKick = 0;
+	prmAddParam(msr->prm,"bDoBHKick",0,&msr->param.bDoBHKick,sizeof(int),"dobhkick","turn on grav recoil for mergers = -dobhkick");
 	msr->param.dBHSinkEddEff = 0.1;
 	prmAddParam(msr->prm,"dBHSinkEddEff",2,&msr->param.dBHSinkEddEff,sizeof(double),"bhsinkeddeff",
 				"<BHSink Eddington Efficiency>");
@@ -1160,6 +1166,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dSoftMin", 2, &msr->param.stfm->dSoftMin,
 		    sizeof(double), "stSoftMin",
 		    "<Minimum softening for star formation> = 0.0");
+	msr->param.stfm->bBHForm = 0;
+	prmAddParam(msr->prm,"bBHForm",0,&msr->param.stfm->bBHForm,
+		    sizeof(int),"stBhForm","<enable seed BH formation> = 0");
+	msr->param.stfm->dBHFormProb = 0.0;
+	prmAddParam(msr->prm,"dBHFormProb",2,&msr->param.stfm->dBHFormProb,
+		    sizeof(double),"stBhFormProb", "<seed BH formation probability> = 0.0");
+	msr->param.stfm->dInitBHMass = 0.0;
+	prmAddParam(msr->prm,"dInitBHMass",2,&msr->param.stfm->dInitBHMass,
+		    sizeof(double),"bhm0", "<initial BH mass> = 0.0");
 	msr->param.dDeltaStarForm = 1e6;
 	prmAddParam(msr->prm,"dDeltaStarForm", 2, &msr->param.dDeltaStarForm,
 		    sizeof(double), "dDeltaStarForm",
@@ -2495,6 +2510,9 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dBHSinkEddEff: %g",msr->param.dBHSinkEddEff);
 	fprintf(fp," dBHSinkFeedbackEff: %g",msr->param.dBHSinkFeedbackEff);
 	fprintf(fp," dBHSinkAlpha: %g",msr->param.dBHSinkAlpha);
+	fprintf(fp," bDoBHKick: %g",msr->param.bDoBHKick);
+	fprintf(fp," bBHTurnOffCooling: %g",msr->param.bBHTurnOffCooling);
+	fprintf(fp," bSmallBHSmooth: %g",msr->param.bSmallBHSmooth);
 	fprintf(fp," bDoSinksAtStart: %d",msr->param.bDoSinksAtStart );
 	fprintf(fp," bSinksThermal: %d",msr->param.bSinkThermal );
 	fprintf(fp," dSinkRadius: %g",msr->param.dSinkRadius);
@@ -2590,6 +2608,9 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bSNTurnOffCooling: %i",msr->param.bSNTurnOffCooling);
 	fprintf(fp," bShortCoolShutoff: %i",msr->param.bShortCoolShutoff);
 	fprintf(fp," bSmallSNSmooth: %i",msr->param.bSmallSNSmooth);
+	fprintf(fp," bBHForm: %i",msr->param.bBHForm);
+	fprintf(fp," dBHFormProb: %g",msr->param.dBHFormProb);
+	fprintf(fp," dInitBHMass: %g",msr->param.dInitBHMass);
 	if (!prmSpecified(msr->prm,"nSmoothFeedback") ) 
 	    msr->param.nSmoothFeedback = msr->param.nSmooth;
 	fprintf(fp," nSmoothFeedback: %i",msr->param.nSmoothFeedback);
@@ -4693,6 +4714,10 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   in.smf.dBHSinkAlphaFactor = msr->param.dBHSinkAlpha*4*M_PI;
   in.smf.dBHSinkEddFactor = msr->param.dBHSinkEddFactor;
   in.smf.dBHSinkFeedbackFactor = msr->param.dBHSinkFeedbackFactor;
+  in.smf.dBHSinkFeedbackEff = msr->param.dBHSinkFeedbackEff;
+  in.smf.bBHTurnOffCooling = msr->param.bBHTurnOffCooling;
+  in.smf.bSmallBHSmooth = msr->param.bSmallBHSmooth;
+  in.smf.bDoBHKick = msr->param.bDoBHKick;
   in.smf.dSinkCurrentDelta = msr->param.dSinkCurrentDelta;
   in.smf.nSinkFormMin = msr->param.nSinkFormMin;
   in.smf.iSinkCurrentRung = msr->param.iSinkCurrentRung;
@@ -4701,6 +4726,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   in.smf.dSinkBoundOrbitRadius = msr->param.dSinkBoundOrbitRadius;
   in.smf.dSinkMustAccreteRadius = msr->param.dSinkMustAccreteRadius;
   in.smf.iSmoothFlags = 0; /* Initial value, return value in outSmooth */
+  in.smf.dDeltaStarForm = msr->param.dDeltaStarForm;
 #ifdef GASOLINE
 #ifdef DIFFUSION
 	in.smf.dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
@@ -4732,6 +4758,8 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   in.smf.bSNTurnOffCooling = msr->param.bSNTurnOffCooling;
   in.smf.bSmallSNSmooth = msr->param.bSmallSNSmooth;
   in.smf.bShortCoolShutoff = msr->param.bShortCoolShutoff;
+  in.smf.dErgUnit = GCGS*pow(msr->param.dMsolUnit*MSOLG, 2.0)/(msr->param.dKpcUnit*KPCCM); /*9/19/08 */
+  in.smf.dKmPerSecUnit = sqrt(GCGS*msr->param.dMsolUnit*MSOLG/(msr->param.dKpcUnit*KPCCM))/1e5 ;
 #endif /*STARFORM*/
 #ifdef COLLISIONS
 	in.smf.dCentMass = msr->param.dCentMass; /* for Hill sphere checks */
@@ -4797,7 +4825,11 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	    }
 	in.smf.dBHSinkAlphaFactor = msr->param.dBHSinkAlpha*4*M_PI;
 	in.smf.dBHSinkEddFactor = msr->param.dBHSinkEddFactor;
+	in.smf.dBHSinkFeedbackEff = msr->param.dBHSinkFeedbackEff;
 	in.smf.dBHSinkFeedbackFactor = msr->param.dBHSinkFeedbackFactor;
+	in.smf.bBHTurnOffCooling = msr->param.bBHTurnOffCooling;
+	in.smf.bSmallBHSmooth = msr->param.bSmallBHSmooth;
+	in.smf.bDoBHKick = msr->param.bDoBHKick;
 	in.smf.dSinkCurrentDelta = msr->param.dSinkCurrentDelta;
 	in.smf.nSinkFormMin = msr->param.nSinkFormMin;
 	in.smf.iSinkCurrentRung = msr->param.iSinkCurrentRung;
@@ -4806,6 +4838,7 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.dSinkBoundOrbitRadius = msr->param.dSinkBoundOrbitRadius;
 	in.smf.dSinkMustAccreteRadius = msr->param.dSinkMustAccreteRadius;
 	in.smf.iSmoothFlags = 0; /* Initial value, return value in outSmooth */
+	in.smf.dDeltaStarForm = msr->param.dDeltaStarForm;
 #ifdef GASOLINE
 #ifdef DIFFUSION
 	in.smf.dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
@@ -7550,7 +7583,7 @@ void msrTopStepKDK(MSR msr,
        Note: Cannot delete particles unless they have closed their kick
        => p->iRung >= iKickRung and iRung == iKickRung (to pick last kick in sequence)
     */
-    if ( iKickRung == iRung ) {
+    if ( iKickRung == iRung) {
 	msrDoSinks(msr, dTime, dDelta, iKickRung );
 	}
     }
@@ -7643,11 +7676,8 @@ void msrFormSinks(MSR msr, double dTime, double dDelta, int iKickRung)
     struct outFormSinks outFS;
     int nStarOld,nSinkAdd;
     double sec,dsec;
-    
-    if (!msr->param.bSinkForm) return;
 
-    /* BH sink formation not implemented yet */
-    if (msr->param.bBHSink) return;
+    if (!msr->param.bSinkForm) return;
 
     sec = msrTime();
  
@@ -7705,7 +7735,7 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 */
 {
    double sec,sec1,dsec,dMass;
-   int nAccreted;
+   int nAccreted,nSmoothTemp;
 
     /* I assume sink creation is rarer so the tree will be ok after this call most of the time */
     msrFormSinks(msr, dTime, dDelta, iKickRung ); 
@@ -7737,6 +7767,21 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	    msrSmooth(msr, dTime, SMX_BHDENSITY, 1);
 	    msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
 	    msrSmooth(msr, dTime, SMX_BHSINKACCRETE,1);
+	    /* build new tree of BHs for merging JMB 11/14/08  */
+	    msrActiveType(msr,TYPE_SINK,TYPE_TREEACTIVE);
+	    if (msr->nTreeActive > 1) { /* no need to merge if there is only one! */
+	      msrBuildTree(msr,1,-1.0,1);  /* bTreeActive */
+	      msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
+	      msrActiveTypeRung(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE,iKickRung,1);
+	      /* need to change nSmooth to number of BHs.  */
+	      nSmoothTemp = msr->param.nSmooth;
+	      msr->param.nSmooth = msr->nTreeActive;
+	      msrSmooth(msr,dTime, SMX_BHSINKIDENTIFY,1);
+      	      msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
+	      msrSmooth(msr,dTime, SMX_BHSINKMERGE,0);
+	      /* now change it back to what it was before JMB 12/10/08  */
+	      msr->param.nSmooth = nSmoothTemp;
+	    }
 	    }
 	else {
 	    /* Fixed Radius Accretion: particle by particle (cf. Bate) */
@@ -8590,6 +8635,12 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		printf("Feedback Calculated, Wallclock: %f secs\n\n",dsec);
 		LOGTIMINGUPDATE( dsec, TIMING_Feedback );
 		}
+    /* BH count output JMB */
+    if (msr->param.stfm->bBHForm) {
+      msrActiveType(msr,TYPE_SINK,TYPE_TREEACTIVE);
+      msr->nSink = msr->nTreeActive;
+      if(msr->nSink != 0) printf("BHSink number of BHs: nSink = %i \n",msr->nSink);
+    }
 
 #endif
     }

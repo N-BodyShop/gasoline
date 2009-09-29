@@ -168,6 +168,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return((FLOAT) p->small_jeans );
 #endif
 #endif
+
 #ifdef SIMPLESF
 	case OUT_TCOOLAGAIN_ARRAY:
 		return(p->fTimeForm);
@@ -405,6 +406,7 @@ void VecFilename(char *achFile, int iType)
 	    break;
 #endif
 #endif
+
 #ifdef SIMPLESF
 	case OUT_TCOOLAGAIN_ARRAY:
 		strncat(achFile,"tCoolAgain",256);

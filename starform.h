@@ -26,6 +26,9 @@ typedef struct stfmContext
     double dMinGasMass;		/* minimum mass gas before we delete
 				   the particle. */
     double dMaxStarMass;	/* maximum mass star particle to form */
+    double dBHFormProb;         /* Probability star will become a BH */
+    int bBHForm;                /* are BH seeds allowed to form */ 
+    double dInitBHMass;         /* Initial BH mass */
 
 } * STFM;
 	

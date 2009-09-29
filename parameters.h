@@ -162,7 +162,13 @@ struct parameters {
     double dBHSinkEddFactor;
     double dBHSinkFeedbackFactor;
     double dBHSinkAlpha;
-    double dSinkCurrentDelta;
+  double dSinkCurrentDelta;
+  int bBHTurnOffCooling;
+  int bSmallBHSmooth;
+  int bDoBHKick;
+  int bBHForm;
+  double dBHFormProb;
+  double dInitBHMass;
 	char achDigitMask[MAXPATHLEN];
 	char achInFile[MAXPATHLEN];
 	char achOutName[MAXPATHLEN];

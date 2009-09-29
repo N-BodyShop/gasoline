@@ -43,6 +43,9 @@ void stfmInitialize(STFM *pstfm)
     stfm->dMinGasMass = 0.0;
     stfm->dMinMassFrac = 0.0;
     stfm->dMaxStarMass = 0.0;
+    stfm->dBHFormProb = 0.0; /* new BH params */
+    stfm->bBHForm = 0;
+    stfm->dInitBHMass = 0.0;
     *pstfm = stfm;
     }
 
@@ -54,7 +57,8 @@ void pkdStarLogInit(PKD pkd)
     pStarLog->nMaxLog = 1000;	/* inital size of buffer */
     pStarLog->nOrdered = 0;
     pStarLog->seTab = malloc(pStarLog->nMaxLog*sizeof(SFEVENT));
-    }
+    srand(pkd->idSelf);
+}
 
 void pkdStarLogFlush(PKD pkd, char *pszFileName)
 {
@@ -120,6 +124,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     double l_jeans2;
     int small_jeans = 0;
     int j;
+    int newbh; /* tracking whether a new seed BH has formed JMB  */
     
     /*  This version of the code has only three conditions unless 
 	-D SFCONDITIONS is set:
@@ -237,9 +242,6 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     if(dMprob*p->fMass < dDeltaM*(rand()/((double) RAND_MAX)))
 	return;
 
-    p->fMass -= dDeltaM;
-	assert(p->fMass >= 0.0);
-
     /* 
      * Note on number of stars formed:
      * n = log(dMinGasMass/dInitMass)/log(1-dStarEff) = max no. stars 
@@ -250,21 +252,45 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 
     starp = *p; 		/* grab copy before possible deletion */
 
+    /*
+     * form star
+     */
+
+    starp.fTimeForm = dTime;
+    starp.fBallMax = 0.0;
+    starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in
+				       NewParticle() */
+
+    /* Seed BH Formation JMB 1/19/09*/
+     newbh = 0;  /* BH tracker */
+     if (stfm->bBHForm == 1 && starp.fMetals <= 1.0e-10 && stfm->dBHFormProb > (rand()/((double) RAND_MAX ))) {
+       starp.fTimeForm = -1.0*starp.fTimeForm;
+       newbh = 1;      
+       /* Decrement mass of particle.*/
+       if (stfm->dInitBHMass > 0) 
+	 dDeltaM = stfm->dInitBHMass;  /* reassigning dDeltaM to be initBHmass JMB 6/16/09 */
+       else 
+	 dDeltaM = p->fMass*stfm->dStarEff;
+       /* No negative or very tiny masses please! */
+       if ( (dDeltaM > p->fMass) ) dDeltaM = p->fMass;
+       p->fMass -= dDeltaM;
+       assert(p->fMass >= 0.0);
+       starp.fMass = dDeltaM;
+       starp.fMassForm = dDeltaM;
+	 }
+     else {
+       p->fMass -= dDeltaM;
+       assert(p->fMass >= 0.0);
+       starp.fMass = dDeltaM;
+       starp.fMassForm = dDeltaM;
+     }
+
     if(p->fMass < stfm->dMinGasMass) {
 		(*nDeleted)++;
 		pkdDeleteParticle(pkd, p);
 		}
 
-    /*
-     * form star
-     */
 
-    starp.fMass = dDeltaM;
-    starp.fTimeForm = dTime;
-    starp.fMassForm = dDeltaM;
-    starp.fBallMax = 0.0;
-    starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in
-				       NewParticle() */
     /*
      * Log Star formation quantities
      */
@@ -280,7 +306,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	}
 	/* take care of iOrder assignment later */
 	pSfEv = &(pStarLog->seTab[pStarLog->nLog]);
-	pSfEv->timeForm = dTime;
+	pSfEv->timeForm = starp.fTimeForm;
 	pSfEv->iOrdGas = starp.iOrder;
 	for(j = 0; j < 3; j++) {
 	    pSfEv->rForm[j] = starp.r[j];
@@ -298,7 +324,8 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	   particle such as being a target for movies or other tracing
 	   Thus: Do not remove all the TYPE properties -- just the gas specific ones */
     TYPEReset(&starp, TYPE_GAS|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
-    TYPESet(&starp, TYPE_STAR);
+    if(newbh == 0) TYPESet(&starp, TYPE_STAR) ; /* if it's a BH make it a SINK  JMB  */
+    else TYPESet(&starp, TYPE_SINK);
     TYPEReset(&starp, TYPE_NbrOfACTIVE); /* just a precaution */
     
     (*nFormed)++;

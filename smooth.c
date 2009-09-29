@@ -124,7 +124,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_BHDENSITY:
 		smx->fcnSmooth = BHSinkDensity;
 		initParticle = initBHSinkDensity; /* Original Particle */
-		initTreeParticle = initBHSinkDensity; /* Original Particle */
+		initTreeParticle = initTreeParticleBHSinkDensity; /* Original Particle */
 		init = initBHSinkDensity; /* Cached copies */
 		comb = combBHSinkDensity;
 		smx->fcnPost = NULL;
@@ -132,9 +132,25 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 	case SMX_BHSINKACCRETE:
 		smx->fcnSmooth = BHSinkAccrete;
 		initParticle = NULL; /* Original Particle */
-		initTreeParticle = NULL; /* Original Particle */
+		initTreeParticle = initTreeParticleBHSinkAccrete; /* Original Particle */
 		init = initBHSinkAccrete; /* Cached copies */
 		comb = combBHSinkAccrete;
+		smx->fcnPost = postBHSinkAccrete;
+		break;
+	case SMX_BHSINKIDENTIFY:
+		smx->fcnSmooth = BHSinkIdentify;
+		initParticle = NULL; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
+		init = initBHSinkIdentify; /* Cached copies */
+		comb = combBHSinkIdentify;
+		smx->fcnPost = NULL;
+		break;
+	case SMX_BHSINKMERGE:
+		smx->fcnSmooth = BHSinkMerge;
+		initParticle = NULL; /* Original Particle */
+		initTreeParticle = NULL; /* Original Particle */
+		init = NULL; /* Cached copies */
+		comb = NULL;
 		smx->fcnPost = NULL;
 		break;
 	case SMX_SINKFORMTEST:

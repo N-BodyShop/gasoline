@@ -26,9 +26,14 @@ typedef struct smfParameters {
     double dSinkBoundOrbitRadius;
     double dSinkMustAccreteRadius;
     double dBHSinkEddFactor;
+    double dBHSinkFeedbackEff;
     double dBHSinkAlphaFactor;
     double dBHSinkFeedbackFactor;
+    int bSmallBHSmooth;
+    int bBHTurnOffCooling;
+    int bDoBHKick;
     double dSinkCurrentDelta;
+  double dDeltaStarForm;
 #ifdef GASOLINE
 	double alpha;
 	double beta;
@@ -57,6 +62,8 @@ typedef struct smfParameters {
         int bSNTurnOffCooling;
 	int bSmallSNSmooth;
         double dSecUnit;
+        double dErgUnit;
+        double dKmPerSecUnit;
         double dGmUnit;
         struct snContext sn;
 #endif    
@@ -104,6 +111,8 @@ enum smx_smoothtype {
   SMX_SINKINGFORCESHARE,
   SMX_BHDENSITY,
   SMX_BHSINKACCRETE,
+  SMX_BHSINKIDENTIFY,
+  SMX_BHSINKMERGE,
   SMX_SINKFORMTEST,
   SMX_SINKFORM,
 #ifdef GASOLINE
@@ -198,14 +207,26 @@ void initSinkingForceShare(void *);
 void combSinkingForceShare(void *,void *);
 
 /* SMX_BHDENSITY */
+void initTreeParticleBHSinkDensity(void *);
 void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf);
 void initBHSinkDensity(void *);
 void combBHSinkDensity(void *,void *);
 
 /* SMX_BHSINKACCRETE */
+void initTreeParticleBHSinkAccrete(void *p1);
 void BHSinkAccrete(PARTICLE *,int,NN *,SMF *);
 void initBHSinkAccrete(void *);
 void combBHSinkAccrete(void *,void *);
+void postBHSinkAccrete(PARTICLE *p1, SMF *smf);
+
+/* SMX_BHSINKIDENTIFY */
+void BHSinkIdentify(PARTICLE *,int,NN *,SMF *);
+void initBHSinkIdentify(void *);
+void combBHSinkIdentify(void *,void *);
+
+/* SMX_BHSINKMERGE */
+void BHSinkMerge(PARTICLE *,int,NN *,SMF *);
+void initBHSinkMerge(void *,SMF *);
 
 /* SMX_SINKFORMTEST */
 void SinkFormTest(PARTICLE *,int,NN *,SMF *);

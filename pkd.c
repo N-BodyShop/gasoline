@@ -4397,7 +4397,7 @@ void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, double *dTotMetals,
                 *dTotOx += pkd->pStore[i].fMass*pkd->pStore[i].fMFracOxygen;
                 *dTotFe += pkd->pStore[i].fMass*pkd->pStore[i].fMFracIron;
                 if ( TYPETest(&pkd->pStore[i], TYPE_GAS) ){
-                    *dTotEnergy += pkd->pStore[i].fMass*pkd->pStore[i].fESNrate;
+		  *dTotEnergy += pkd->pStore[i].fMass*pkd->pStore[i].fESNrate;
                     }
 #endif
 #endif
@@ -5771,6 +5771,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 	    if (p->dt < *pdtMinGas) { *pdtMinGas = p->dt; }
 	    }
 	}
+    if(p->dt < 2.0e-11) printf("EVIL %i: dt %f u %f PdV %f cs %f\n",p->iOrder,p->dt,p->u,p->PdV,p->c);
 }
 
 void
