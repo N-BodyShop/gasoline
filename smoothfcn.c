@@ -1480,7 +1480,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             fNorm_u += q->fMass*rs;
             rs *= fNorm;
             fAveDens += q->fMass*rs;
-            fNorm_Pres += q->fMass*q->uPred*rs;
+            fNorm_Pres += q->fMass*(q->uPred/q->curlv[0])*rs;
 	    assert(TYPETest(q, TYPE_GAS));
 	  }
 
