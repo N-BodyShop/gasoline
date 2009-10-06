@@ -5771,7 +5771,6 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 	    if (p->dt < *pdtMinGas) { *pdtMinGas = p->dt; }
 	    }
 	}
-    if(p->dt < 2.0e-11) printf("EVIL %i: dt %f u %f PdV %f cs %f\n",p->iOrder,p->dt,p->u,p->PdV,p->c);
 }
 
 void
