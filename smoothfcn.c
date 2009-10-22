@@ -1207,14 +1207,14 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 void initTreeParticleBHSinkAccrete(void *p1)
 {
+#ifdef GASOLINE
     /* Convert energy and metals to non-specific quantities (not per mass)
      * to make it easier to divvy up SN energy and metals.  
      */
     
        if(TYPETest((PARTICLE *)p1, TYPE_GAS))  ((PARTICLE *)p1)->u *= ((PARTICLE *)p1)->fMass;    
     if(TYPETest((PARTICLE *)p1, TYPE_GAS))  ((PARTICLE *)p1)->uPred *= ((PARTICLE *)p1)->fMass;    
-    
-        
+#endif
     }
 
 /* Cached Tree Active particles */
@@ -1618,11 +1618,13 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 void postBHSinkAccrete(PARTICLE *p1, SMF *smf)
 {
+#ifdef GASOLINE
     /* Convert energy and metals back to specific quantities (per mass)
        because we are done with our conservative calculations */
     
   if(TYPETest(p1, TYPE_GAS) && p1->fMass != 0 && !(TYPETest(p1,TYPE_DELETED))) p1->u /= p1->fMass;  
   if(TYPETest(p1, TYPE_GAS) && p1->fMass != 0 && !(TYPETest(p1,TYPE_DELETED))) p1->uPred /= p1->fMass;            
+#endif
 }
 
 

@@ -2510,9 +2510,9 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dBHSinkEddEff: %g",msr->param.dBHSinkEddEff);
 	fprintf(fp," dBHSinkFeedbackEff: %g",msr->param.dBHSinkFeedbackEff);
 	fprintf(fp," dBHSinkAlpha: %g",msr->param.dBHSinkAlpha);
-	fprintf(fp," bDoBHKick: %g",msr->param.bDoBHKick);
-	fprintf(fp," bBHTurnOffCooling: %g",msr->param.bBHTurnOffCooling);
-	fprintf(fp," bSmallBHSmooth: %g",msr->param.bSmallBHSmooth);
+	fprintf(fp," bDoBHKick: %d",msr->param.bDoBHKick);
+	fprintf(fp," bBHTurnOffCooling: %d",msr->param.bBHTurnOffCooling);
+	fprintf(fp," bSmallBHSmooth: %d",msr->param.bSmallBHSmooth);
 	fprintf(fp," bDoSinksAtStart: %d",msr->param.bDoSinksAtStart );
 	fprintf(fp," bSinksThermal: %d",msr->param.bSinkThermal );
 	fprintf(fp," dSinkRadius: %g",msr->param.dSinkRadius);
@@ -4726,8 +4726,8 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   in.smf.dSinkBoundOrbitRadius = msr->param.dSinkBoundOrbitRadius;
   in.smf.dSinkMustAccreteRadius = msr->param.dSinkMustAccreteRadius;
   in.smf.iSmoothFlags = 0; /* Initial value, return value in outSmooth */
-  in.smf.dDeltaStarForm = msr->param.dDeltaStarForm;
 #ifdef GASOLINE
+	in.smf.dDeltaStarForm = msr->param.dDeltaStarForm;
 #ifdef DIFFUSION
 	in.smf.dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
 	in.smf.dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
@@ -4838,8 +4838,8 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.dSinkBoundOrbitRadius = msr->param.dSinkBoundOrbitRadius;
 	in.smf.dSinkMustAccreteRadius = msr->param.dSinkMustAccreteRadius;
 	in.smf.iSmoothFlags = 0; /* Initial value, return value in outSmooth */
-	in.smf.dDeltaStarForm = msr->param.dDeltaStarForm;
 #ifdef GASOLINE
+	in.smf.dDeltaStarForm = msr->param.dDeltaStarForm;
 #ifdef DIFFUSION
 	in.smf.dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
 	in.smf.dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
