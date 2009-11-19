@@ -1209,11 +1209,14 @@ void initTreeParticleBHSinkAccrete(void *p1)
 {
 #ifdef GASOLINE
     /* Convert energy and metals to non-specific quantities (not per mass)
-     * to make it easier to divvy up SN energy and metals.  
+     * to make it easier to divvy up BH energy.  
      */
     
        if(TYPETest((PARTICLE *)p1, TYPE_GAS))  ((PARTICLE *)p1)->u *= ((PARTICLE *)p1)->fMass;    
-    if(TYPETest((PARTICLE *)p1, TYPE_GAS))  ((PARTICLE *)p1)->uPred *= ((PARTICLE *)p1)->fMass;    
+     if(TYPETest((PARTICLE *)p1, TYPE_GAS))  ((PARTICLE *)p1)->fNSN = 0.0;
+  /* fNSN will hold the place of FB energy because uPred is needed for
+   *  calculations. it should be zero anyways.  JMB 10/5/09  */
+
 #endif
     }
 
@@ -1222,7 +1225,7 @@ void initBHSinkAccrete(void *p)
 {
 #ifdef GASOLINE
     if (TYPEQueryTREEACTIVE((PARTICLE *) p)) ((PARTICLE *)p)->u = 0.0; /*added 6/10/08*/    
-    if (TYPEQueryTREEACTIVE((PARTICLE *) p)) ((PARTICLE *)p)->uPred = 0.0; /*added 6/10/08*/
+  if (TYPEQueryTREEACTIVE((PARTICLE *) p)) ((PARTICLE *)p)->fNSN = 0.0; 
 
 	/* Heating due to accretion */	
 #endif
@@ -1251,6 +1254,8 @@ void combBHSinkAccrete(void *p1,void *p2)
 	       different processors are eating
 	       gas from a third processor */
 	    fprintf(stderr, "ERROR: Overeaten gas particle %d: %g %g\n",
+  if(TYPETest(p1, TYPE_GAS) && p1->fMass != 0 && !(TYPETest(p1,TYPE_DELETED))) p1->u /= p1->fMass;  
+  if(TYPETest(p1, TYPE_GAS) && p1->fMass != 0 && !(TYPETest(p1,TYPE_DELETED))) p1->u /= p1->fMass;  
 		    pp1->iOrder,
 		    pp1->fMass, fEatenMass);
 	    if (!(TYPETest( pp1, TYPE_DELETED ))) {
@@ -1263,7 +1268,7 @@ void combBHSinkAccrete(void *p1,void *p2)
 	    assert(pp1->fMass > 0.0); 
 	}
 	pp1->u += pp2->u; /*added 6/10/08 for BH blastwave FB*/
-	pp1->u += pp2->uPred; /*added 6/10/08 for BH blastwave FB*/
+	pp1->fNSN += pp2->fNSN;  /* (this is uPred) JMB 10/5/09  */
         pp1->fTimeCoolIsOffUntil = max( (pp1)->fTimeCoolIsOffUntil,
                 (pp2)->fTimeCoolIsOffUntil );
 	
@@ -1579,8 +1584,8 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		weight = rs*fNorm_u*q->fMass;
 #endif
 		q->u += weight*dE;
-		q->uPred += weight*dE;		
-		printf("BHSink %i: FB Energy to %i dE %g\n",p->iOrder,q->iOrder,weight*dE);
+		q->fNSN += weight*dE;
+		printf("BHSink %i:  FB Energy to %i dE %g\n",p->iOrder,q->iOrder,weight*dE);
 	      }
             } else {
 	      r2 = nnList[i].fDist2*ih2;  
@@ -1595,8 +1600,8 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      weight = rs*fNorm_u*q->fMass;
 #endif
 		q->u += weight*dE;
-		q->uPred += weight*dE;		
-		printf("BHSink %i: FB Energy to %i dE %g\n",p->iOrder,q->iOrder,weight*dE);	      
+		q->fNSN += weight*dE;
+		printf("BHSink %i:  FB Energy to %i dE %g\n",p->iOrder,q->iOrder,weight*dE);	      
 
 	      if ( smf->bBHTurnOffCooling && 
 		   (fBHBlastRadius*fBHBlastRadius >= nnList[i].fDist2)){
@@ -1619,12 +1624,14 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 void postBHSinkAccrete(PARTICLE *p1, SMF *smf)
 {
 #ifdef GASOLINE
-    /* Convert energy and metals back to specific quantities (per mass)
+    /* Convert energy  back to specific quantities (per mass)
        because we are done with our conservative calculations */
-    
-  if(TYPETest(p1, TYPE_GAS) && p1->fMass != 0 && !(TYPETest(p1,TYPE_DELETED))) p1->u /= p1->fMass;  
-  if(TYPETest(p1, TYPE_GAS) && p1->fMass != 0 && !(TYPETest(p1,TYPE_DELETED))) p1->uPred /= p1->fMass;            
-#endif
+    if(TYPETest(p1, TYPE_GAS) && p1->fMass != 0 && !(TYPETest(p1,TYPE_DELETED))) {
+    p1->u /= p1->fMass;  
+    p1->fNSN /= p1->fMass;
+  }  
+        
+#endif    
 }
 
 
@@ -1696,7 +1703,8 @@ void initBHSinkMerge(void *p, SMF *smf)
 
   PARTICLE *pp = p;
   /* undelete BHs in case they were already deleted  */
-  if(TYPETest(pp,TYPE_DELETED)) pkdUnDeleteParticle(smf->pkd,pp);
+  /*if(TYPETest(pp,TYPE_DELETED)) pkdUnDeleteParticle(smf->pkd,pp);*/
+ /* this init function should be deleted!  JMB */
 
 #endif
 }
