@@ -1627,6 +1627,7 @@ void postBHSinkAccrete(PARTICLE *p1, SMF *smf)
     if(TYPETest(p1, TYPE_GAS) && p1->fMass != 0 && !(TYPETest(p1,TYPE_DELETED))) {
     p1->u /= p1->fMass;  
     p1->fNSN /= p1->fMass;
+    p1->uPred += p1->fNSN; /* now combine fNSN to uPred.  JMB 10/5/09  */
   }  
         
 #endif    
