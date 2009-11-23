@@ -1254,8 +1254,6 @@ void combBHSinkAccrete(void *p1,void *p2)
 	       different processors are eating
 	       gas from a third processor */
 	    fprintf(stderr, "ERROR: Overeaten gas particle %d: %g %g\n",
-  if(TYPETest(p1, TYPE_GAS) && p1->fMass != 0 && !(TYPETest(p1,TYPE_DELETED))) p1->u /= p1->fMass;  
-  if(TYPETest(p1, TYPE_GAS) && p1->fMass != 0 && !(TYPETest(p1,TYPE_DELETED))) p1->u /= p1->fMass;  
 		    pp1->iOrder,
 		    pp1->fMass, fEatenMass);
 	    if (!(TYPETest( pp1, TYPE_DELETED ))) {
