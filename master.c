@@ -437,6 +437,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoDensity = 1;
 	prmAddParam(msr->prm,"bDoDensity",0,&msr->param.bDoDensity,sizeof(int),
 				"den","enable/disable density outputs = +den");
+	msr->param.iOrbitOutInterval = 1;
+	prmAddParam(msr->prm,"iOrbitOutInterval",1,
+		    &msr->param.iOrbitOutInterval,sizeof(int), "ooi",
+		    "<number of timsteps between orbit outputs> = 1");
 	msr->param.iReadIOrder = 0;
 	prmAddParam(msr->prm,"iReadIOrder",1,&msr->param.iReadIOrder,sizeof(int),
 				"iordin","<array outputs 0 NO, 1 int, 2 long, 3 int (internal)> = 0");
@@ -7586,6 +7590,35 @@ void msrTopStepKDK(MSR msr,
     if ( iKickRung == iRung) {
 	msrDoSinks(msr, dTime, dDelta, iKickRung );
 	}
+    }
+
+void msrOutputBlackHoles(MSR msr, double dTime)
+{
+    char achOutFile[PST_FILENAME_SIZE];
+    FILE *fp;
+    struct inWriteTipsy in;
+
+    sprintf(achOutFile,"%s.orbit", msrOutName(msr));
+    _msrMakePath(msr->param.achDataSubPath,achOutFile,in.achOutFile);
+
+    fp = fopen(in.achOutFile,"a");
+    assert(fp != NULL);
+
+    fprintf(fp, "%d %g\n", msr->nSink, dTime);
+    fclose(fp);
+    if (msrComove(msr)) {
+        dTime = csmTime2Exp(msr->param.csm,dTime);
+        if (msr->param.bCannonical) {
+            in.dvFac = 1.0/(dTime*dTime);
+            }
+        else {
+            in.dvFac = 1.0;
+            }
+        }
+    else {
+        in.dvFac = 1.0;
+        }
+    pstOutputBlackHoles(msr->pst,&in,sizeof(in),NULL,NULL);
     }
 
 int

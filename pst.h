@@ -108,6 +108,7 @@ enum pst_service {
       PST_KICKPATCH,
       PST_READCHECK,
       PST_WRITECHECK,
+      PST_OUTPUTBLACKHOLES,
       PST_SETSOFT,
       PST_PHYSICALSOFT,
       PST_PREVARIABLESOFT,
@@ -692,6 +693,9 @@ struct inWriteCheck {
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteCheck(PST,void *,int,void *,int *);
+
+/* PST_OUTPUTBLACKHOLES */
+void pstOutputBlackHoles(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
 /* PST_SETSOFT */
 struct inSetSoft {

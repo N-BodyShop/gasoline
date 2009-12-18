@@ -627,6 +627,7 @@ void pkdStopTimer(PKD,int);
 void pkdInitialize(PKD *,MDL,int,int,int,FLOAT *,FLOAT,FLOAT,int,int,int);
 void pkdFinish(PKD);
 void pkdReadTipsy(PKD,char *,int,int,int,int,double,double);
+void pkdOutputBlackHoles(PKD pkd,char *pszFileName, double dvFac);
 void pkdSetSoft(PKD pkd,double dSoft);
 #ifdef CHANGESOFT
 void pkdPhysicalSoft(PKD pkd,double, double, int);

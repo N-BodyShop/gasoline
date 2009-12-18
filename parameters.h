@@ -115,6 +115,7 @@ struct parameters {
 	int bDoSoftOutput;
     int bDoSinks;
     int bBHSink;
+    int iOrbitOutInterval;
     int bDoSinksAtStart;
     int bSinkThermal;
     int bSinkForm;

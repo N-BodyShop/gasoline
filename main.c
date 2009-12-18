@@ -518,6 +518,10 @@ int main(int argc,char **argv)
 				msrCoolVelocity(msr,dTime,dMass);	/* Supercooling if specified */
 				msrMassCheck(msr,dMass,"After CoolVelocity in KDK");
 				dTime += msrDelta(msr);
+				if(iStep%msr->param.iOrbitOutInterval == 0) {
+				    msrOutputBlackHoles(msr, dTime);
+				    }
+
 				lSec = time(0) - lSec;
 				/*
 				** Output a log file line if requested.

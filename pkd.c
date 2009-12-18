@@ -1862,6 +1862,30 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
   mdlassert(pkd->mdl,nout == 0);
 }
 
+void pkdOutputBlackHoles(PKD pkd,char *pszFileName, double dvFac)
+{
+#ifdef STARFORM
+        PARTICLE *p;
+        FILE *fp;
+        int i;
+        int nout;
+
+        fp = fopen(pszFileName,"a");
+        mdlassert(pkd->mdl,fp != NULL);
+                /*
+                 ** Write Stuff!
+                 */
+        for (i=0; i<pkd->nLocal; i++) {
+            p = &pkd->pStore[i];
+	    if(p->fTimeForm < 0.0)
+		fprintf(fp, "%i %g %g %g %g %g %g %g %g\n", p->iOrder,
+			p->fMass, p->r[0], p->r[1], p->r[2], dvFac*p->v[0],
+			dvFac*p->v[1], dvFac*p->v[2], p->fPot);
+            }
+        nout = fclose(fp);
+        mdlassert(pkd->mdl,nout == 0);
+#endif
+        }
 
 void pkdSetSoft(PKD pkd,double dSoft)
 {

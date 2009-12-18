@@ -82,6 +82,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_WRITETIPSY,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstWriteTipsy,
 				  sizeof(struct inWriteTipsy),0);
+        mdlAddService(mdl,PST_OUTPUTBLACKHOLES,pst,
+                      (void (*)(void *,void *,int,void *,int *)) pstOutputBlackHoles,
+		      sizeof(struct inWriteTipsy),0);
 	mdlAddService(mdl,PST_BUILDTREE,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstBuildTree,
 				  sizeof(struct inBuildTree),sizeof(struct outBuildTree));
@@ -2788,6 +2791,32 @@ void pstWriteTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
+void pstOutputBlackHoles(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+        LCL *plcl = pst->plcl;
+        struct inWriteTipsy *in = vin;
+        char achOutFile[PST_FILENAME_SIZE];
+
+        mdlassert(pst->mdl,nIn == sizeof(struct inWriteTipsy));
+        if (pst->nLeaves > 1) {  /* NOTE: not parallel */
+                pstOutputBlackHoles(pst->pstLower,in,nIn,NULL,NULL);
+                mdlReqService(pst->mdl,pst->idUpper,PST_OUTPUTBLACKHOLES,in,nIn);
+                mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+                }
+        else {
+                /*
+                 ** Add the local Data Path to the provided filename.
+                 */
+                achOutFile[0] = 0;
+                if (plcl->pszDataPath) {
+                        strcat(achOutFile,plcl->pszDataPath);
+                        strcat(achOutFile,"/");
+                        }
+                strcat(achOutFile,in->achOutFile);
+                pkdOutputBlackHoles(plcl->pkd,achOutFile, in->dvFac);
+                }
+        if (pnOut) *pnOut = 0;
+        }
 
 void pstSetSoft(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
