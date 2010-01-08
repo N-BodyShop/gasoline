@@ -1,5 +1,24 @@
 #ifndef MILLERSCALO_HINCLUDED
 #define MILLERSCALO_HINCLUDED
+#ifdef CHABRIER
+#include "romberg.h"
+/*
+  Use the log normal + power law fit of Chabrier, 2003, Galactic
+  Stellar and Substellar Initial Mass Function", PASP 115, 763.
+*/
+
+typedef struct MillerScaloContext
+{
+    /*
+      Chabrier low mass formula:
+       \xi(log m) = A exp [ - (log m - log m_c)^2/2 \sigma^2]
+     */
+    double a1, sigma, mc;
+    /* For high mass: normalization, index, minimum mass */
+    double a2, b2, m2;
+    double mmax;
+    } * MSPARAM;
+#else
 /*
     Uses the 3 segment power law fit for the Miller-Scalo IMF
     (Ap.J. Supp., 41,1979).
@@ -17,6 +36,7 @@ typedef struct MillerScaloContext
     double a3, b3, m3;
     double mmax;
     } * MSPARAM;
+#endif
 
 
 void MSInitialize(MSPARAM *pms);

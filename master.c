@@ -2283,8 +2283,12 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef STARFORM
 	fprintf(fp," STARFORM");
 #endif
+#ifdef CHABRIER
+	fprintf(fp," CHABRIER");
+#else
 #ifdef KROUPA
 	fprintf(fp," KROUPA");
+#endif
 #endif
 #ifdef SFCONDITIONS
 	fprintf(fp," SFCONDITIONS");
