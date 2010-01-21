@@ -2326,6 +2326,12 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef COOLING_COSMO
  	fprintf(fp," COOLING_COSMO");
 #endif
+#ifdef COOLING_METAL
+ 	fprintf(fp," COOLING_METAL");
+#endif
+#ifdef MOLECULARH
+ 	fprintf(fp," MOLECULARH");
+#endif
 #ifdef COOLING_PLANET
  	fprintf(fp," COOLING_PLANET");
 #endif
