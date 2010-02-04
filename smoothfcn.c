@@ -1207,7 +1207,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 void initTreeParticleBHSinkAccrete(void *p1)
 {
-#ifdef GASOLINE
+#ifdef STARFORM
     /* Convert energy and metals to non-specific quantities (not per mass)
      * to make it easier to divvy up BH energy.  
      */
@@ -1223,7 +1223,7 @@ void initTreeParticleBHSinkAccrete(void *p1)
 /* Cached Tree Active particles */
 void initBHSinkAccrete(void *p)
 {
-#ifdef GASOLINE
+#ifdef STARFORM
     if (TYPEQueryTREEACTIVE((PARTICLE *) p)) ((PARTICLE *)p)->u = 0.0; /*added 6/10/08*/    
   if (TYPEQueryTREEACTIVE((PARTICLE *) p)) ((PARTICLE *)p)->fNSN = 0.0; 
 
@@ -1233,7 +1233,7 @@ void initBHSinkAccrete(void *p)
 
 void combBHSinkAccrete(void *p1,void *p2)
 {
-#ifdef GASOLINE
+#ifdef STARFORM
     PARTICLE *pp1 = p1;
     PARTICLE *pp2 = p2;
     
@@ -1276,7 +1276,7 @@ void combBHSinkAccrete(void *p1,void *p2)
 
 void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
-#ifdef GASOLINE
+#ifdef STARFORM
 	PARTICLE *q = NULL;
 
 	FLOAT ih2,r2,rs,fDensity;
@@ -1621,7 +1621,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 void postBHSinkAccrete(PARTICLE *p1, SMF *smf)
 {
-#ifdef GASOLINE
+#ifdef STARFORM
     /* Convert energy  back to specific quantities (per mass)
        because we are done with our conservative calculations */
     if(TYPETest(p1, TYPE_GAS) && p1->fMass != 0 && !(TYPETest(p1,TYPE_DELETED))) {
@@ -1637,7 +1637,7 @@ void postBHSinkAccrete(PARTICLE *p1, SMF *smf)
 
 void initBHSinkIdentify(void *p)
 {
-#ifdef GASOLINE
+#ifdef STARFORM
   PARTICLE *pp = p;
   pp->fNSNtot = 0;
   /*  fNSNtot is a placeholder for merging info*/
@@ -1646,7 +1646,7 @@ void initBHSinkIdentify(void *p)
 
 void combBHSinkIdentify(void *p1, void *p2)
 {
-#ifdef GASOLINE
+#ifdef STARFORM
     PARTICLE *pp1 = p1;
     PARTICLE *pp2 = p2;
     if(pp2->fNSNtot > pp1->fNSNtot) pp1->fNSNtot = pp2->fNSNtot;
@@ -1658,7 +1658,7 @@ void BHSinkIdentify(PARTICLE *p,int nSmooth,NN *nnList, SMF *smf)
 {
   /* Identify BHs for merging JMB */
 
-#ifdef GASOLINE
+#ifdef STARFORM
 	PARTICLE *q = NULL;
 	int i;
 	FLOAT ifMass, deltaa, deltar, deltav;
@@ -1713,7 +1713,7 @@ void BHSinkMerge(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   /* Makes BHs merge together, based on the criteria
      set in BHSinkIdentify above  */
 
-#ifdef GASOLINE
+#ifdef STARFORM
 
 	PARTICLE *q = NULL;
 	FLOAT ifMass, deltaa, deltar, deltav;

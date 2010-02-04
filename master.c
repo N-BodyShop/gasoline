@@ -4741,7 +4741,9 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   in.smf.dSinkMustAccreteRadius = msr->param.dSinkMustAccreteRadius;
   in.smf.iSmoothFlags = 0; /* Initial value, return value in outSmooth */
 #ifdef GASOLINE
+#ifdef STARFORM
 	in.smf.dDeltaStarForm = msr->param.dDeltaStarForm;
+#endif
 #ifdef DIFFUSION
 	in.smf.dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
 	in.smf.dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
@@ -4853,7 +4855,9 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.dSinkMustAccreteRadius = msr->param.dSinkMustAccreteRadius;
 	in.smf.iSmoothFlags = 0; /* Initial value, return value in outSmooth */
 #ifdef GASOLINE
+#ifdef STARFORM
 	in.smf.dDeltaStarForm = msr->param.dDeltaStarForm;
+#endif
 #ifdef DIFFUSION
 	in.smf.dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
 	in.smf.dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
