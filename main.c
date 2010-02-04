@@ -1,4 +1,3 @@
-#define SETTRAPFPE
 #ifdef SETTRAPFPE
 #include <fenv.h>
 #endif
