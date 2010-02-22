@@ -7612,28 +7612,31 @@ void msrOutputBlackHoles(MSR msr, double dTime)
     FILE *fp;
     struct inWriteTipsy in;
 
-    sprintf(achOutFile,"%s.orbit", msrOutName(msr));
-    _msrMakePath(msr->param.achDataSubPath,achOutFile,in.achOutFile);
+    if (msr->param.bBHSink) {
 
-    fp = fopen(in.achOutFile,"a");
-    assert(fp != NULL);
+      sprintf(achOutFile,"%s.orbit", msrOutName(msr));
+      _msrMakePath(msr->param.achDataSubPath,achOutFile,in.achOutFile);
 
-    fprintf(fp, "%d %g\n", msr->nSink, dTime);
-    fclose(fp);
-    if (msrComove(msr)) {
+      fp = fopen(in.achOutFile,"a");
+      assert(fp != NULL);
+
+      fprintf(fp, "%d %g\n", msr->nSink, dTime);
+      fclose(fp);
+      if (msrComove(msr)) {
         dTime = csmTime2Exp(msr->param.csm,dTime);
         if (msr->param.bCannonical) {
-            in.dvFac = 1.0/(dTime*dTime);
-            }
+	  in.dvFac = 1.0/(dTime*dTime);
+	}
         else {
-            in.dvFac = 1.0;
-            }
-        }
-    else {
+	  in.dvFac = 1.0;
+	}
+      }
+      else {
         in.dvFac = 1.0;
-        }
-    pstOutputBlackHoles(msr->pst,&in,sizeof(in),NULL,NULL);
+      }
+      pstOutputBlackHoles(msr->pst,&in,sizeof(in),NULL,NULL);
     }
+}
 
 int
 msrMaxOrder(MSR msr)
@@ -8683,7 +8686,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		LOGTIMINGUPDATE( dsec, TIMING_Feedback );
 		}
     /* BH count output JMB */
-    if (msr->param.stfm->bBHForm) {
+    if (msr->param.bBHSink) {
       msrActiveType(msr,TYPE_SINK,TYPE_TREEACTIVE);
       msr->nSink = msr->nTreeActive;
       if(msr->nSink != 0) printf("BHSink number of BHs: nSink = %i \n",msr->nSink);
