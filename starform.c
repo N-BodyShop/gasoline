@@ -124,6 +124,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     double l_jeans2;
     int small_jeans = 0;
     int j;
+    double mach; /*find the mach number for use when making molec H CRC*/
     int newbh; /* tracking whether a new seed BH has formed JMB  */
     
     /*  This version of the code has only three conditions unless 
@@ -157,15 +158,26 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     E = CoolCodeEnergyToErgPerGm( cl, p->u );
     tcool = E/(-CoolHeatingRate( cl, &p->CoolParticle, T, 
 		 CodeDensityToComovingGmPerCc(cl,p->fDensity ), p->fMetals )
-                    -CoolCodeWorkToErgPerGmPerSec( cl, p->PdV ));
+                   -CoolCodeWorkToErgPerGmPerSec( cl, p->PdV ));
     tcool = CoolSecondsToCodeTime( cl, tcool ); 
     printf("tcool %i: %g %g %g\n",p->iOrder,T,p->fDensity,tcool);
 #endif
+    if ( sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2]) < p->c || (p->c == 0)) mach = 1.0;
+    else mach = sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2])/p->c;
+
     tcool = p->u/(
 #ifdef DENSITYU
-	-CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r )
+#ifdef  COOLING_METAL
+		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensityU, p->fMetals,  p->r,mach )
 #else
-	-CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r )
+		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensityU, p->fMetals,  p->r)
+#endif
+#else
+#ifdef  COOLING_METAL
+		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r,mach )
+#else
+		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals,  p->r)
+#endif
 #endif
 	-p->PdV );
 #ifdef CHECKSF

@@ -4554,8 +4554,13 @@ void pstInitCooling(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 #if defined(COOLDEBUG)
 		(plcl->pkd->Cool)->mdl = plcl->pkd->mdl;
 #endif
+#ifdef  COOLING_METAL
 		clInitConstants((plcl->pkd->Cool),in->dGmPerCcUnit,in->dComovingGmPerCcUnit,
-						in->dErgPerGmUnit,in->dSecUnit,in->dKpcUnit,in->CoolParam);
+				in->dErgPerGmUnit,in->dSecUnit,in->dKpcUnit,in->dMsolUnit,in->CoolParam);
+#else
+		clInitConstants((plcl->pkd->Cool),in->dGmPerCcUnit,in->dComovingGmPerCcUnit,
+				in->dErgPerGmUnit,in->dSecUnit,in->dKpcUnit,in->CoolParam);
+#endif
 		CoolInitRatesTable((plcl->pkd->Cool),in->CoolParam);
 		/* NOT DONE HERE: must be done before use: */
         /* CoolSetTime( (plcl->pkd->Cool), in->dTime, in->z  );*/
@@ -6066,7 +6071,7 @@ pstFeedback(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	    pstFeedback(pst->pstLower,in,nIn, vout, pnOut);
 	    mdlGetReply(pst->mdl,pst->idUpper,fbTotals, NULL);
 	    for(i = 0; i < FB_NFEEDBACKS; i++){
-		out->fbTotals[i].dMassLoss += fbTotals[i].dMassLoss;
+	        out->fbTotals[i].dMassLoss += fbTotals[i].dMassLoss;
 		out->fbTotals[i].dEnergy += fbTotals[i].dEnergy;
 		out->fbTotals[i].dMetals += fbTotals[i].dMetals;
 		out->fbTotals[i].dMIron += fbTotals[i].dMIron;

@@ -73,22 +73,46 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 		return(COOL_ARRAY1(pkd->Cool, &p->CoolParticle,p->fMetals));
 	case OUT_COOL_ARRAY2:
 		return(COOL_ARRAY2(pkd->Cool, &p->CoolParticle,p->fMetals));
+#ifdef MOLECULARH
 	case OUT_COOL_ARRAY3:
 	        return(COOL_ARRAY3(pkd->Cool, &p->CoolParticle,p->fMetals)); /*H2*/
+#endif
+#ifdef COOLING_METAL
+	case OUT_COOL_SHEAR_ARRAY:
+	  return(COOL_SHEAR_ARRAY(p->c, p->curlv[0], p->curlv[1], p->curlv[2], p->iOrder)); /*Gas shear in terms of mach number, used when calculating column density*/
+#endif
 #ifdef DENSITYU
+#ifdef COOLING_METAL
+	case OUT_COOL_EDOT_ARRAY:
+	  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, sqrt(cl->p->curlv[0]*cl->p->curlv[0] + cl->p->curlv[1]*cl->p->curlv[1] + cl->p->curlv[2]*cl->p->curlv[2])/cl->p->c) );
+	case OUT_COOL_COOLING_ARRAY:
+	  return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	case OUT_COOL_HEATING_ARRAY:
+	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+#else
 	case OUT_COOL_EDOT_ARRAY:
 	    return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
 	case OUT_COOL_COOLING_ARRAY:
 	    return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
 	case OUT_COOL_HEATING_ARRAY:
 	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+#endif
+#else
+#ifdef COOLING_METAL
+	case OUT_COOL_EDOT_ARRAY:
+	  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r, sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1]+ p->curlv[2]*p->curlv[2])/p->c) );
+	case OUT_COOL_COOLING_ARRAY:
+	    return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals,p->r) );
+	case OUT_COOL_HEATING_ARRAY:
+	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
 #else
 	case OUT_COOL_EDOT_ARRAY:
-	    return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
+	  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
 	case OUT_COOL_COOLING_ARRAY:
 	    return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
 	case OUT_COOL_HEATING_ARRAY:
 	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
+#endif
 #endif
 #endif
 	case OUT_BALSARASWITCH_ARRAY:
@@ -287,9 +311,16 @@ void VecFilename(char *achFile, int iType)
 	case OUT_COOL_ARRAY2:
 		strncat(achFile,COOL_ARRAY2_EXT,256);
             break;
-	case OUT_COOL_ARRAY3: /*CC*/
+#ifdef MOLECULARH
+	case OUT_COOL_ARRAY3: /*Fraction in Molecular Hydrogen*/
 		strncat(achFile,COOL_ARRAY3_EXT,256);
             break;
+#endif	
+#ifdef COOLING_METAL
+	case OUT_COOL_SHEAR_ARRAY: /*Gas Shear in terms of the Mach number -- used when calculating the column density of gas*/
+		strncat(achFile,'shear',256);
+		break;
+#endif
 	case OUT_COOL_EDOT_ARRAY:
 		strncat(achFile,"eDot",256);
 		break;
@@ -492,6 +523,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         case OUT_COOL_ARRAY1:
         case OUT_COOL_ARRAY2:
         case OUT_COOL_ARRAY3:
+        case OUT_COOL_SHEAR_ARRAY: 
         case OUT_SPHH_ARRAY:
         case OUT_TEMP_ARRAY:
         case OUT_GASDENSITY_ARRAY:

@@ -533,7 +533,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoSoftOutput = 0;
 	prmAddParam(msr->prm,"bDoSoftOutput",0,&msr->param.bDoSoftOutput,sizeof(int),
 				"softout","enable/disable soft outputs = -softout");
-
+	msr->param.bDoCSound = 0;
+	prmAddParam(msr->prm,"bDoCSound",0,&msr->param.bDoCSound,sizeof(int),
+				"csound","enable/disable sound speed outputs = -csound");
 	msr->param.dDelta = 0.0;
 	prmAddParam(msr->prm,"dDelta",2,&msr->param.dDelta,sizeof(double),"dt",
 				"<time step>");
@@ -954,6 +956,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"bGasIsothermal",0,&msr->param.bGasIsothermal,
 				sizeof(int),"GasIsothermal",
 				"<Gas is Isothermal> = +GasIsothermal");
+	msr->param.bDoShear = 0;
+	prmAddParam(msr->prm,"bDoShear",0,&msr->param.bDoShear,sizeof(int),
+				"shear","enable/disable gas shear (in mach number) outputs = -shear");
 	msr->param.bGasCooling = 0;
 	prmAddParam(msr->prm,"bGasCooling",0,&msr->param.bGasCooling,
 				sizeof(int),"GasCooling",
@@ -3978,6 +3983,7 @@ void msrCreateGasOutputList(MSR msr, int (*iNumOutputs), int OutputList[])
 #ifdef GASOLINE				
     if (msr->param.bDoSphhOutput) OutputList[(*iNumOutputs)++]=OUT_SPHH_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*iNumOutputs)++]=OUT_ALPHA_ARRAY;
+    if (msr->param.bDoCSound) OutputList[(*iNumOutputs)++]=OUT_CSOUND_ARRAY;
 #ifdef PDVDEBUG
     OutputList[(*iNumOutputs)++]=OUT_PDVPRES_ARRAY;
     OutputList[(*iNumOutputs)++]=OUT_PDVVISC_ARRAY;
@@ -4111,6 +4117,7 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
             case OUT_COOL_ARRAY1:
             case OUT_COOL_ARRAY2:
 	    case OUT_COOL_ARRAY3:
+	    case OUT_COOL_SHEAR_ARRAY:/*Gas shear in terms of mach number, used when calculating column density*/
             case OUT_SPHH_ARRAY:
             case OUT_TEMP_ARRAY:
             case OUT_GASDENSITY_ARRAY:
@@ -8136,10 +8143,14 @@ void msrInitCooling(MSR msr)
   in.dErgPerGmUnit = msr->param.dErgPerGmUnit;
   in.dSecUnit = msr->param.dSecUnit;
   in.dKpcUnit = msr->param.dKpcUnit;
+#ifdef COOLING_METAL
+  in.dMsolUnit = msr->param.dMsolUnit;
+  in.dhMinOverSoft = msr->param.dhMinOverSoft;
+#endif
   in.z = 60.0; /*dummy value*/
   in.dTime = 0.0; /* dummy value */
   in.CoolParam = msr->param.CoolParam;
-  
+
   pstInitCooling(msr->pst,&in,sizeof(struct inInitCooling),NULL,NULL);
   
   /* Read in tables from files as necessary */
@@ -8652,7 +8663,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		if(msr->param.bVDetails) {
 			printf("Feedback totals: mass, energy, metalicity\n");
 			for(i = 0; i < FB_NFEEDBACKS; i++){
-				printf("feedback %d: %g %g %g\n", i,
+			  printf("feedback %d: %g %g %g\n", i,
 					   outFB.fbTotals[i].dMassLoss,
 					   outFB.fbTotals[i].dEnergy,
 					   outFB.fbTotals[i].dMassLoss != 0.0 ?

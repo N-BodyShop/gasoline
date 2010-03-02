@@ -53,6 +53,8 @@ struct parameters {
  	int bDoSphhOutput;
 	int bDodtOutput;
 	int bDoIonOutput;
+  int bDoShear;
+  int bDoCSound;
 	int bDoDminOutput;
 	int bSymCool;
         int bDoGravity;
