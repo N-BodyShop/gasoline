@@ -1196,6 +1196,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"iStarFormRung", 1, &msr->param.iStarFormRung,
 		    sizeof(int), "iStarFormRung",
 		    "<Star Formation Rung> = 0");
+#ifdef MOLECULARH
+	msr->param.stfm->dStarFormEfficiencyH2 = 0;
+	prmAddParam(msr->prm,"dStarFormEfficiencyH2", 2, &msr->param.stfm->dStarFormEfficiencyH2,
+		    sizeof(double), "dStarFormEfficiencyH2",
+		    "<Star Formation efficiency as a function of H2> = 0");
+#endif
 
 /* supernova constants */
 	fbInitialize(&msr->param.fb);
@@ -2630,6 +2636,9 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bBHForm: %i",msr->param.bBHForm);
 	fprintf(fp," dBHFormProb: %g",msr->param.dBHFormProb);
 	fprintf(fp," dInitBHMass: %g",msr->param.dInitBHMass);
+#ifdef MOLECULARH
+	fprintf(fp," dStarFormEfficiencyH2: %g",msr->param.stfm->dStarFormEfficiencyH2);
+#endif
 	if (!prmSpecified(msr->prm,"nSmoothFeedback") ) 
 	    msr->param.nSmoothFeedback = msr->param.nSmooth;
 	fprintf(fp," nSmoothFeedback: %i",msr->param.nSmoothFeedback);

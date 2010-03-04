@@ -236,9 +236,13 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	tform = tdyn;
     else
 	tform = tcool;
-    
+ #ifdef MOLECULARH
+    if (stfm->dStarFormEfficiencyH2 == 0) dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
+    else dMprob = 1.0 - exp(-stfm->dCStar*stfm->dStarFormEfficiencyH2*(2.0*p->CoolParticle.f_H2/p->CoolParticle.f_HI)*stfm->dDeltaT/tform);
+#else   
     dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
-    
+#endif    
+
     /*
      * Decrement mass of particle.
      */

@@ -29,6 +29,9 @@ typedef struct stfmContext
     double dBHFormProb;         /* Probability star will become a BH */
     int bBHForm;                /* are BH seeds allowed to form */ 
     double dInitBHMass;         /* Initial BH mass */
+#ifdef MOLECULARH
+  double dStarFormEfficiencyH2; /* Star formation efficiency, CStar, is multiplied by dStarFormEfficiencyH2 times the fraction of hydrogen in molecular form  */
+#endif
 
 } * STFM;
 	
