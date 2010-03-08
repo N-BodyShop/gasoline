@@ -318,7 +318,7 @@ void VecFilename(char *achFile, int iType)
 #endif	
 #ifdef COOLING_METAL
 	case OUT_COOL_SHEAR_ARRAY: /*Gas Shear in terms of the Mach number -- used when calculating the column density of gas*/
-		strncat(achFile,'shear',256);
+		strncat(achFile,"shear",256);
 		break;
 #endif
 	case OUT_COOL_EDOT_ARRAY:
