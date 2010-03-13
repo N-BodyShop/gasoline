@@ -1192,6 +1192,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"bShortCoolShutoff", 0, &msr->param.bShortCoolShutoff,
 		    sizeof(int), "bShortCoolShutoff",
 		    "<Which cooling shutoff time to use> = long one");
+	msr->param.dExtraCoolShutoff = 1.0;
+	prmAddParam(msr->prm,"dExtraCoolShutoff", 2, &msr->param.dExtraCoolShutoff,
+		    sizeof(double), "dExtraCoolShutoff",
+		    "<Extra Cooling shutoff time> = 1.0");
 	msr->param.iStarFormRung = 0;
 	prmAddParam(msr->prm,"iStarFormRung", 1, &msr->param.iStarFormRung,
 		    sizeof(int), "iStarFormRung",
@@ -2632,6 +2636,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," iNSNIIQuantum: %d",msr->param.sn->iNSNIIQuantum);
 	fprintf(fp," bSNTurnOffCooling: %i",msr->param.bSNTurnOffCooling);
 	fprintf(fp," bShortCoolShutoff: %i",msr->param.bShortCoolShutoff);
+	fprintf(fp," dExtraCoolShutoff: %g",msr->param.dExtraCoolShutoff);
 	fprintf(fp," bSmallSNSmooth: %i",msr->param.bSmallSNSmooth);
 	fprintf(fp," bBHForm: %i",msr->param.bBHForm);
 	fprintf(fp," dBHFormProb: %g",msr->param.dBHFormProb);
@@ -2689,7 +2694,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	    pow(MSOLG*msr->param.dMsolUnit/(msr->param.dMeanMolWeight*MHYDR*pow(KPCCM*msr->param.dKpcUnit,3)),0.27)*
 	    pow(0.0001*GCGS*pow(MSOLG*msr->param.dMsolUnit,2)/(pow(KPCCM*msr->param.dKpcUnit,4)*KBOLTZ),-0.64);
 	} else {       /* t_{max}*/
-	  msr->param.sn->dTimePreFactor = SECONDSPERYEAR*pow(10,6.85)/(msr->param.dSecUnit)*
+	  msr->param.sn->dTimePreFactor = msr->param.dExtraCoolShutoff*
+	      SECONDSPERYEAR*pow(10,6.85)/(msr->param.dSecUnit)*
 	    pow(MSOLG*msr->param.dMsolUnit/(msr->param.dMeanMolWeight*MHYDR*pow(KPCCM*msr->param.dKpcUnit,3)),0.32)*
 	    pow(0.0001*GCGS*pow(MSOLG*msr->param.dMsolUnit,2)/(pow(KPCCM*msr->param.dKpcUnit,4)*KBOLTZ),-0.70);
 	}
