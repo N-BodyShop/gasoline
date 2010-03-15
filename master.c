@@ -4131,7 +4131,9 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
             case OUT_COOL_ARRAY0:
             case OUT_COOL_ARRAY1:
             case OUT_COOL_ARRAY2:
+#ifdef MOLECULARH
 	    case OUT_COOL_ARRAY3:
+#endif
 	    case OUT_COOL_SHEAR_ARRAY:/*Gas shear in terms of mach number, used when calculating column density*/
             case OUT_SPHH_ARRAY:
             case OUT_TEMP_ARRAY:
