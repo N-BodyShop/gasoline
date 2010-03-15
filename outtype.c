@@ -522,7 +522,9 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         case OUT_COOL_ARRAY0:
         case OUT_COOL_ARRAY1:
         case OUT_COOL_ARRAY2:
+#ifdef MOLECULARH
         case OUT_COOL_ARRAY3:
+#endif
         case OUT_COOL_SHEAR_ARRAY: 
         case OUT_SPHH_ARRAY:
         case OUT_TEMP_ARRAY:
