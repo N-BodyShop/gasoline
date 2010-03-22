@@ -266,7 +266,7 @@ struct parameters {
         double dDeltaStarForm;
         int bSNTurnOffCooling;
 	int bShortCoolShutoff;
-	int dExtraCoolShutoff;
+	double dExtraCoolShutoff;
 	int bSmallSNSmooth;
         int iStarFormRung;
   int iRandomSeed;
