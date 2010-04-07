@@ -2812,8 +2812,9 @@ void clSetyscale( COOL *cl, double Y_H, double Y_He, double *y, double *yscale) 
 #endif
       if (yscale[1] < YSCALEMIN) yscale[1] = YSCALEMIN; 
 
+#ifdef MOLECULARH
     yscale[4] = yscale[1];
-
+#endif
     /*#ifdef CONTROLYHII
     #ifdef MOLECULARH
     if ((YHII = Y_H - y[1] - 2.0*y[4]) < YeSCALEMIN) YHII = YeSCALEMIN; If HII<YeSCALEMIN, HII = YeSCALEMIN, adding in molec H
@@ -3052,7 +3053,14 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 	if (d->Y_He - y[2] - y[3] < YHeMIN) y[2] = d->Y_He - y[3] - YHeMIN;
       }
 
-      YTotal = (d->Y_H - y[4]) + (d->Y_H - y[1] - 2.0*y[4]) + d->Y_He + y[3] + 2.0*(d->Y_He - y[2] - y[3]) + d->ZMetal/MU_METAL;
+
+#ifdef MOLECULARH
+      YTotal = (d->Y_H - y[4]) + (d->Y_H - y[1] - 2.0*y[4]) + d->Y_He + y[3] + 
+	2.0*(d->Y_He - y[2] - y[3]) + d->ZMetal/MU_METAL;
+#else
+      YTotal = (d->Y_H) + (d->Y_H - y[1]) + d->Y_He + y[3] +
+	2.0*(d->Y_He - y[2] - y[3]) + d->ZMetal/MU_METAL;
+#endif
       EMin = clThermalEnergy( YTotal, cl->TMin );
 
 
