@@ -5493,7 +5493,8 @@ printf("r %g PdV %g a %g %g %g SW %g %g %g\n",sqrt(p->r[0]*p->r[0]+p->r[1]*p->r[
         }
 
 /* Note: Uses uPred */
-void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma)
+void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
+			     double dResolveJeans)
 {
     PARTICLE *p;
     double PoverRho;
@@ -5504,7 +5505,19 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma)
 		if (pkdIsGas(pkd,p)) {
 			PoverRho = gammam1*p->uPred;
 			p->PoverRho2 = PoverRho/p->fDensity;
-   			p->c = sqrt(gamma*PoverRho);
+			/*
+			 * Add pressure floor to keep Jeans Mass
+			 * resolved.  In comparison with Agertz et
+			 * al. 2009, dResolveJeans should be 3.0:
+			 * P_min = 3*G*h^2*rho^2
+			 * Note that G = 1 in our code
+			 */
+			if(p->PoverRho2 < dResolveJeans*0.25*p->fBall2) {
+			    p->PoverRho2 = dResolveJeans*0.25*p->fBall2;
+			    p->c = sqrt(gamma*p->fDensity*p->PoverRho2);
+			    }
+			else
+			    p->c = sqrt(gamma*PoverRho);
 			}
 #ifdef DEBUG
 		if (pkdIsGas(pkd,p) && (p->iOrder % 1000)==0) {
@@ -5534,7 +5547,8 @@ void pkdGetDensityU(PKD pkd, double uMin)
 
 #ifndef NOCOOLING
 /* Note: Uses uPred */
-void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma)
+void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma,
+			   double dResolveJeans)
 {
     PARTICLE *p;
 	COOL *cl = pkd->Cool;
@@ -5549,6 +5563,17 @@ void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma)
 		if (pkdIsGas(pkd,p)) {
 		    CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, &PoverRho, &(p->c) );
 			p->PoverRho2 = PoverRho/p->fDensity;
+			/*
+			 * Add pressure floor to keep Jeans Mass
+			 * resolved.  In comparison with Agertz et
+			 * al. 2009, dResolveJeans should be 3.0:
+			 * P_min = 3*G*h^2*rho^2
+			 * Note that G = 1 in our code
+			 */
+			if(p->PoverRho2 < dResolveJeans*0.25*p->fBall2) {
+			    p->PoverRho2 = dResolveJeans*0.25*p->fBall2;
+			    p->c = sqrt(gamma*p->fDensity*p->PoverRho2);
+			    }
 			}
 #ifdef DEBUG
 		if (pkdIsGas(pkd,p) && (p->iOrder % 1000)==0) {

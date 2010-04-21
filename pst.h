@@ -1086,6 +1086,8 @@ struct inGetGasPressure {
   /* Adiabatic */
 	double gamma;
 	double gammam1;
+	double dResolveJeans;
+    
   /* Isothermal */
 
   /* Ion evolving */

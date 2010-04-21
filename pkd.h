@@ -772,8 +772,10 @@ void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);
 
 void pkdUpdateuDot(PKD,double,double,double,int,int);
 void pkdUpdateShockTracker(PKD,double, double, double);
-void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma);
-void pkdCoolingGasPressure(PKD, double gammam1, double gamma);
+void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma,
+			     double dResolveJeans);
+void pkdCoolingGasPressure(PKD, double gammam1, double gamma,
+			   double dResolveJeans);
 void pkdGetDensityU(PKD, double);
 void pkdLowerSoundSpeed(PKD, double);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime );

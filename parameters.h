@@ -227,6 +227,7 @@ struct parameters {
 	int    bFastGas;
 	double dFracFastGas;
 	double dhMinOverSoft;
+	double dResolveJeans;
         double dMetalDiffusionCoeff;
         double dThermalDiffusionCoeff;
         int    bConstantDiffusion;

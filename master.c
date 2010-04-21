@@ -843,6 +843,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dhMinOverSoft",2,&msr->param.dhMinOverSoft,
 				sizeof(double),"hmin",
 				"<Minimum h as a fraction of Softening> = 0.0");
+	msr->param.dResolveJeans = 0.0;
+	prmAddParam(msr->prm,"dResolveJeans",2,&msr->param.dResolveJeans,
+				sizeof(double),"resjeans",
+				"<Fraction of pressure to resolve minimum Jeans mass> = 0.0");
 	msr->param.bDoGravity = 1;
 	prmAddParam(msr->prm,"bDoGravity",0,&msr->param.bDoGravity,sizeof(int),"g",
 				"enable/disable gravity (interparticle and external potentials) = +g");
@@ -2560,6 +2564,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bFastGas: %d",msr->param.bFastGas);
 	fprintf(fp," dFracFastGas: %g",msr->param.dFracFastGas);
 	fprintf(fp," dhMinOverSoft: %g",msr->param.dhMinOverSoft);
+	fprintf(fp," dResolveJeans: %g",msr->param.dResolveJeans);
 	fprintf(fp," bSplitWork: %d",msr->param.bSplitWork);
 	fprintf(fp," bRungDD: %d",msr->param.bRungDD);
 	fprintf(fp," dRungDDWeight: %g ",msr->param.dRungDDWeight);
@@ -7996,6 +8001,13 @@ void msrGetGasPressure(MSR msr)
 	case  GASMODEL_COOLING:
 		in.gamma = msr->param.dConstGamma;
 		in.gammam1 = in.gamma-1;
+		/*
+		 * If self gravitating, resolve the Jeans Mass
+		 */
+		if(msr->param.bDoGravity && msr->param.bDoSelfGravity)
+		    in.dResolveJeans = msr->param.dResolveJeans;
+		else
+		    in.dResolveJeans = 0.0;
 		break;
 	case GASMODEL_GLASS:
 #ifdef GLASS
