@@ -1057,10 +1057,11 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT ih2,r2,rs,fDensity;
 	FLOAT v[3],cs,fW,dv2,dv;
 	double mdot, mdotEdd, mdotCurr, dm, dmq, dE, ifMass, dtEff;
-	int i,iRung,naccreted;
+	int i,iRung,naccreted, ieat;
 	FLOAT mdotsum, weat;
-	FLOAT weight;
+	FLOAT weight,wrs;
 	double aFac, dCosmoDenFac,dCosmoVel2Fac;
+	float dvmin,dvx,dvy,dvz;
 
 	assert(p->iRung >= smf->iSinkCurrentRung);
 	p->curlv[1] = 0.0;
@@ -1075,6 +1076,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	ih2 = 4.0/BALL2(p);
 	fDensity = 0.0; cs = 0;
 	v[0] = 0; v[1] = 0; v[2] = 0;
+	
 	for (i=0;i<nSmooth;++i) {
 	    r2 = nnList[i].fDist2*ih2;
 	    KERNEL(rs,r2);
@@ -1084,18 +1086,23 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      q->curlv[1] = 0;
 	      q->curlv[2] = 0;
 	    /*}*/
-	    /*assert(q->curlv[0] == q->fMass);*/
-	    /* Sink should NOT be part of this list */
-	    assert(TYPETest(q,TYPE_GAS));
-	    fW = rs*q->fMass;
-	    weight = rs*pow(q->c*q->c+((p->v[0]-q->v[0])*(p->v[0]-q->v[0])+(p->v[1]-q->v[1])*(p->v[1]-q->v[1])+(p->v[2]-q->v[2])*(p->v[2]-q->v[2]))/dCosmoVel2Fac,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
+
+	      /* Sink should NOT be part of this list */
+	      assert(TYPETest(q,TYPE_GAS));
+	      fW = rs*q->fMass;
+	      dvx = p->v[0]-q->v[0];
+	      dvy = p->v[1]-q->v[1];
+	      dvz = p->v[2]-q->v[2];
+	      weight = rs*pow(q->c*q->c+(dvx*dvx+dvy*dvy+dvz*dvz)/dCosmoVel2Fac,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
 	    /* cosmo factors put in 7/7/09  JMB */
 
-           /* if (weight > weat)  {   select best candidate particle 
-                weat = weight;
-                 ieat = i; does nothing!!! 
-                }*/
-            mdotsum += weight*q->fMass;
+	      if (weight > weat)  {   
+		weat = weight;
+		ieat = i; 
+		wrs = rs;
+		dvmin = (dvx*dvx+dvy*dvy+dvz*dvz)/dCosmoVel2Fac;
+	      }
+	      mdotsum += weight*q->fMass;
 
 
 	    fDensity += fW;
@@ -1104,6 +1111,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    v[2] += fW*q->v[2];
 	    cs += fW*q->c;
 	    }
+
 	dv2 = 0;
 	for (i=0;i<3;i++) {
 	    dv = v[i]/fDensity-p->v[i];
@@ -1119,7 +1127,10 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	p->fDensity = fDensity = M_1_PI*sqrt(ih2)*ih2*fDensity; 
 	fDensity /= dCosmoDenFac;
 
-	printf("BHSink %d:  Density: %g C_s: %g dv: %g\n",p->iOrder,fDensity,cs,sqrt(dv2));
+	printf("BHSink %d:  Time: %g Selected Particle Density: %g SPH: %g C_s: %g dv: %g dist: %g\n",p->iOrder,smf->dTime,nnList[ieat].pPart->fDensity,wrs,nnList[ieat].pPart->c,sqrt(dvmin),sqrt(nnList[ieat].fDist2));
+
+	printf("BHSink %d:  Time: %g Mean Particle Density: %g C_s: %g dv: %g\n",p->iOrder,smf->dTime,fDensity,cs,sqrt(dv2));
+
 
 	mdot = mdotsum*smf->dBHSinkAlphaFactor*p->fMass*p->fMass*M_1_PI*sqrt(ih2)*ih2; /* new mdot! */
 
@@ -1132,6 +1143,9 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	mdotCurr = p->divv = mdot; /* store mdot in divv of sink */
 
+        weight = -1e37;
+	weat = -1e37;
+
 	for (;;) {
 	    FLOAT r2min = FLOAT_MAXVAL;
 	    q = NULL;
@@ -1141,11 +1155,14 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		    /* don't accrete a deleted particle!  JMB 10/1/08 */
 		KERNEL(rs,r2);
 		fW = rs*nnList[i].pPart->fMass;
-		if(r2 > 0.25*nnList[i].pPart->fBall2) continue; 
+		if(r2 > nnList[i].pPart->fBall2) continue; 
 		/* don't accrete gas that doesn't have the BH
 		 * in its smoothing length  JMB 10/22/08 */
 		if (nnList[i].pPart->iRung < smf->iSinkCurrentRung) continue; /* JMB 7/9/09 */
 		weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(p->v[0]-nnList[i].pPart->v[0])*(p->v[0]-nnList[i].pPart->v[0])+(p->v[1]-nnList[i].pPart->v[1])*(p->v[1]-nnList[i].pPart->v[1])+(p->v[2]-nnList[i].pPart->v[2])*(p->v[2]-nnList[i].pPart->v[2]),-1.5); /* weight particles by mdot quantities */
+	         /* weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5);
+
+
 		/* weight calculation here doesn't need cosmo factors JMB 7/7/09 */
 
 		if (weight > weat && nnList[i].pPart->curlv[2] != p->iOrder) {
@@ -1159,7 +1176,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	    if(q != NULL) {	    
 	      /* Timestep for accretion is larger of sink and victim timestep */
-	      iRung = q->iRung;
+	      iRung = q->iRung; 
 	      if (iRung > p->iRung) iRung = p->iRung;
 	      dtEff = smf->dSinkCurrentDelta*pow(0.5,iRung-smf->iSinkCurrentRung);
 	      /* If victim has unclosed kick -- don't actually take the mass
@@ -1195,7 +1212,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      naccreted += 1;
 	      weat = -1e37; /* reset so other particles can be selected JMB 7/9/09 */
 
-		printf("BHSink %d:  %d dmq %g %g %g\n",p->iOrder,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
+	      printf("BHSink %d:  Time %g %d dmq %g %g %g\n",p->iOrder,smf->dTime,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
 
 		}
 	    
@@ -1269,7 +1286,8 @@ void combBHSinkAccrete(void *p1,void *p2)
 	pp1->fNSN += pp2->fNSN;  /* (this is uPred) JMB 10/5/09  */
         pp1->fTimeCoolIsOffUntil = max( (pp1)->fTimeCoolIsOffUntil,
                 (pp2)->fTimeCoolIsOffUntil );
-	
+	pp1->fMassForm = max( (pp1)->fMassForm,
+			      (pp2)->fMassForm ); /* propagate FB time JMB 2/24/10 */
 	}
 #endif
 }
@@ -1288,7 +1306,6 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT weat;
 	FLOAT weight;
 	double aFac, dCosmoDenFac,dCosmoVel2Fac;
-
 
         weat = -1e37;
 	aFac = smf->a;
@@ -1312,7 +1329,6 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    q = NULL;
 	    if (nnList[i].pPart->curlv[2] == 0) continue;
 	    if(TYPETest(nnList[i].pPart,TYPE_DELETED)) continue;
-	    /*printf("BHSink p = %d gas = %g gas iord = %d \n",p->iOrder,nnList[i].pPart->curlv[2],nnList[i].pPart->iOrder);*/
 	    if (nnList[i].pPart->curlv[2] == p->iOrder) q = nnList[i].pPart;
 	    else continue; /* won't work if selected by another BH */
 	    assert(q != NULL);
@@ -1337,7 +1353,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    }
 	    assert(mdotCurr >= 0.0);
 
-	    printf("BHSink %d:  %d dmq %g %g %g\n",p->iOrder,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
+	    printf("BHSink %d:  Time %g %d dmq %g %g %g\n",p->iOrder,smf->dTime,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
 	    if (q->iRung >= smf->iSinkCurrentRung) {
 		ifMass = 1./(p->fMass + dmq);
 		/* Adjust sink properties (conserving momentum etc...) */
@@ -1356,7 +1372,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q->fMass -= dmq;
 		/*assert(q->fMass >= 0.0);*/
 		naccreted += 1;  /* running tally of how many are accreted JMB 10/23/08 */
-		printf("BHSink %d:  Time %g square dist to eaten gas %d %g gas smooth: %g\n",p->iOrder,smf->dTime,q->iOrder,r2min,q->fBall2);
+		printf("BHSink %d:  Time %g square dist: %d %g gas smooth: %g eatenmass %g \n",p->iOrder,smf->dTime,q->iOrder,r2min,q->fBall2,dmq);
 		if (q->fMass <= 1e-3*dmq) { /* = added 8/21/08 */
 		    q->fMass = 0;
 		    if(!(TYPETest(q,TYPE_DELETED))) pkdDeleteParticle(smf->pkd, q);
@@ -1372,7 +1388,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	if (mdotCurr == 0.0) goto dofeedback;
 	else{	  
 	  /* go looking for more particles, sharing must happen */
-	    /****** SHARING CODE HERE ***********/
+	    /****** SHARING CODE HERE ***********/ 
 
 	  for (;;) {
 	    FLOAT r2min = FLOAT_MAXVAL;
@@ -1385,10 +1401,12 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      if(nnList[i].pPart->iRung < smf->iSinkCurrentRung) continue;
 	      /* has to be on the right timestep */
 	      r2 = nnList[i].fDist2;
-	      if(r2 > 0.25*nnList[i].pPart->fBall2) continue;
+	      if(r2 > nnList[i].pPart->fBall2) continue;
 	      /* has to be nearby! */
 	      KERNEL(rs,r2);
 	      weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(p->v[0]-nnList[i].pPart->v[0])*(p->v[0]-nnList[i].pPart->v[0])+(p->v[1]-nnList[i].pPart->v[1])*(p->v[1]-nnList[i].pPart->v[1])+(p->v[2]-nnList[i].pPart->v[2])*(p->v[2]-nnList[i].pPart->v[2]),-1.5); /* weight particles by mdot quantities */	
+
+	      
 	      if (weight > weat) {
 		r2min = r2; /* note r2min is not really the min r2 anymore */
 		weat = weight;
@@ -1421,7 +1439,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      }
 
 	    
-	      printf("BHSink %d:  %d dmq %g %g %g sharing \n",p->iOrder,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
+	    printf("BHSink %d:  Time: %g %d dmq %g %g %g sharing \n",p->iOrder,smf->dTime,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
 	      if (q->iRung >= smf->iSinkCurrentRung) {
 		ifMass = 1./(p->fMass + dmq);
 		/* Adjust sink properties (conserving momentum etc...) */
@@ -1439,7 +1457,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dm += dmq;
 		q->fMass -= dmq;		   
 		naccreted += 1;  /* running tally of how many are accreted JMB 10/23/08 */
-		printf("BHSink %d:  Time %g square dist to eaten gas %d %g gas smooth: %g\n",p->iOrder,smf->dTime,q->iOrder,r2min,q->fBall2);
+		printf("BHSink %d:  Time %g square dist %d %g gas smooth: %g meaten %g\n",p->iOrder,smf->dTime,q->iOrder,r2min,q->fBall2,dmq);
 		if (q->fMass <= 1e-3*dmq) { /* = added 8/21/08 */
 		    q->fMass = 0;
 		    if(!(TYPETest(q,TYPE_DELETED))) pkdDeleteParticle(smf->pkd, q);
@@ -1459,7 +1477,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	if(smf->dBHSinkFeedbackFactor != 0.0) {  /* allows FB to be turned off JMB 7/20/09 */
 	  dE = smf->dBHSinkFeedbackFactor*dm; /* dE based on actual mass eaten */
-	  dEwave =  dE / smf->dBHSinkFeedbackEff; /* dE for blastwave equations.  assume excess is radiated away. JMB 9/10/09  */
+	  dEwave =  dE / smf->dBHSinkFeedbackEff; /* dE for blastwave equations.  assume excess is radiated away. this makes the blastwave bigger. JMB 9/10/09  */
 
 	  dtEff = smf->dSinkCurrentDelta*pow(0.5,p->iRung-smf->iSinkCurrentRung);
 	  dmAvg = mdot*dtEff;    
@@ -1500,9 +1518,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	  } else{        /* McKee + Ostriker 1977 t_{max} */
             fBHShutoffTime = smf->sn.dTimePreFactor*pow(dEwave*smf->dErgUnit/1e51,0.32)*pow(fAveDens,0.34)*pow(fNorm_Pres,-0.70);
 	  }
-       
-	  printf("BHSink %d: de: %g BlastRadius: %g\n",p->iOrder,dE,fBHBlastRadius); 
-
+      
 
 	  fmind = BALL2(p);
 	  imind = 0;
@@ -1583,7 +1599,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 		q->u += weight*dE;
 		q->fNSN += weight*dE;
-		printf("BHSink %i:  FB Energy to %i dE %g\n",p->iOrder,q->iOrder,weight*dE);
+		printf("BHSink %i:  FB Energy to %i dE %g BlastRadius: %g \n",p->iOrder,q->iOrder,weight*dE,fBHBlastRadius);
 	      }
             } else {
 	      r2 = nnList[i].fDist2*ih2;  
@@ -1599,7 +1615,8 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 		q->u += weight*dE;
 		q->fNSN += weight*dE;
-		printf("BHSink %i:  FB Energy to %i dE %g\n",p->iOrder,q->iOrder,weight*dE);	      
+		printf("BHSink %i:  FB Energy to %i dE %g BlastRadius: %g \n",p->iOrder,q->iOrder,weight*dE,fBHBlastRadius);
+
 
 	      if ( smf->bBHTurnOffCooling && 
 		   (fBHBlastRadius*fBHBlastRadius >= nnList[i].fDist2)){
@@ -4573,6 +4590,8 @@ void combDistSNEnergy(void *p1,void *p2)
     ((PARTICLE *)p1)->fMFracIron += ((PARTICLE *)p2)->fMFracIron;
     ((PARTICLE *)p1)->fTimeCoolIsOffUntil = max( ((PARTICLE *)p1)->fTimeCoolIsOffUntil,
                 ((PARTICLE *)p2)->fTimeCoolIsOffUntil );
+    ((PARTICLE *)p1)->fTimeForm = max( ((PARTICLE *)p1)->fTimeForm,
+                ((PARTICLE *)p2)->fTimeForm ); /* propagate FB time JMB 2/24/10 */
     }
 
 void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
@@ -4757,6 +4776,7 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    (fBlastRadius*fBlastRadius >= nnList[i].fDist2)) {
 	  q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
 				       smf->dTime + fShutoffTime);
+	  q->fTimeForm = smf->dTime; /* store SN FB time here JMB 2/24/10 */
 	}
 
 	counter++;  
@@ -4791,7 +4811,8 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
       if ( p->fESNrate > 0.0 && smf->bSNTurnOffCooling && 
 	   (fBlastRadius*fBlastRadius >= nnList[i].fDist2)){
 	q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
-				     smf->dTime + fShutoffTime);
+				     smf->dTime + fShutoffTime);       
+	q->fTimeForm = smf->dTime;  /* store SN FB time here JMB 2/24/10 */
 	counter++;
       }
       /*	update mass after everything else so that distribution
