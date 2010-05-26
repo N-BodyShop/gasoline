@@ -5387,9 +5387,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 			if ( bCool ) {
 				cp = p->CoolParticle;
 				E = p->u;
-#ifdef COOLDEBUG
-				cl->p = p; /* Send in particle pointer only for temporary debug */
-#endif
+				cl->p = p;
 				dtUse = dt;
 #ifdef STARFORM
                                 if ( dTime < p->fTimeCoolIsOffUntil) {

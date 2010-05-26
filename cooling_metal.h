@@ -364,8 +364,10 @@ FLOAT COOL_ARRAY1(COOL *cl, COOLPARTICLE *cp, double ZMetal);
 #define COOL_ARRAY2_EXT  "HeII"
 FLOAT COOL_ARRAY2(COOL *cl, COOLPARTICLE *cp, double ZMetal);
 
+#ifdef MOLECULARH
 #define COOL_ARRAY3_EXT  "H2"
 FLOAT COOL_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal);
+#endif
 
 /*#define COOL_ARRAY4_EXT  "mach_shear"*/
 FLOAT COOL_SHEAR_ARRAY(double c, double curlv0, double curlv1, double curlv2, int iOrd);

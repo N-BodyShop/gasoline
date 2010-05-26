@@ -241,15 +241,13 @@ FLOAT COOL_ARRAY2(COOL *cl, COOLPARTICLE *cp, double ZMetal) {
     return (cp->f_HeII*Y_He);
 }
 
+#ifdef MOLECULARH
 FLOAT COOL_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal) {
     double Y_H, Y_He, Y_eMax;
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
-#ifdef MOLECULARH
     return (cp->f_H2/2.0*Y_H);
-#else
-    return 0.0;
-#endif
 }
+#endif
 
 /*Stupid array to print out Column denisties*/ 
 FLOAT COOL_SHEAR_ARRAY(double c, double curlv0, double curlv1, double curlv2, int iOrd) {
@@ -545,7 +543,7 @@ void clInitRatesTable( COOL *cl, double TMin, double TMax, int nTable ) {
     (cl->RT+i)->Cool_Line_HI = ( clCoolLineHI( Tup )-clCoolLineHI( Tdn ))*Tfac;
     (cl->RT+i)->Cool_Line_HeI = ( clCoolLineHeI( Tup )-clCoolLineHeI( Tdn ))*Tfac; 
     (cl->RT+i)->Cool_Line_HeII = ( clCoolLineHeII( Tup )-clCoolLineHeII( Tdn ))*Tfac;
-    // (cl->RT+i)->Cool_Line_H2 =  ( clCoolLineH2_table( Tup )-clCoolLineH2_table( Tdn ))*Tfac; /*H2 Rot-Vib transitions CC */
+    /* (cl->RT+i)->Cool_Line_H2 =  ( clCoolLineH2_table( Tup )-clCoolLineH2_table( Tdn ))*Tfac;*/ /*H2 Rot-Vib transitions CC */
     (cl->RT+i)->Cool_Line_H2_H = ( clCoolLineH2_H( Tup ) - clCoolLineH2_H( Tdn ))*Tfac; /*H2 Rot-Vib transitions out of collisionally-induced excited states. H2-H collisions*/
     (cl->RT+i)->Cool_Line_H2_H2 = ( clCoolLineH2_H2( Tup ) - clCoolLineH2_H2( Tdn ))*Tfac; /*H2 Rot-Vib transitions out of collisionally-induced excited states. H2-H2 collisions*/
     (cl->RT+i)->Cool_Line_H2_He = ( clCoolLineH2_He( Tup ) - clCoolLineH2_He( Tdn ))*Tfac; /*H2 Rot-Vib transitions out of collisionally-induced excited states. H2-He collisions*/
@@ -680,7 +678,7 @@ void clRatesRedshift( COOL *cl, double zIn, double dTimeIn ) {
 		   ** Table in order of high to low redshift 
 		   */
 		  zTime = zIn;
-		  for ( i=0; i < cl->nUV && zTime <= UV->zTime ; i++,UV++ );//printf("i: %d, cl->nUV: %d, zTime: %f, UV->zTime %f\n",i, cl->nUV,zTime, UV->zTime);
+		  for ( i=0; i < cl->nUV && zTime <= UV->zTime ; i++,UV++ );/*printf("i: %d, cl->nUV: %d, zTime: %f, UV->zTime %f\n",i, cl->nUV,zTime, UV->zTime);*/
 		  }
 	  }
 
@@ -2611,8 +2609,12 @@ double clfTemp( void *Data, double T )
   clDerivsData *d = Data; 
   double  mach; 
   d->its++;
+#ifdef MOLECULARH
   if ( sqrt(d->cl->p->curlv[0]*d->cl->p->curlv[0] + d->cl->p->curlv[1]*d->cl->p->curlv[1] + d->cl->p->curlv[2]*d->cl->p->curlv[2]) < d->cl->p->c || (d->cl->p->c == 0)) mach = 1.0;
   else  mach = sqrt(d->cl->p->curlv[0]*d->cl->p->curlv[0] + d->cl->p->curlv[1]*d->cl->p->curlv[1] + d->cl->p->curlv[2]*d->cl->p->curlv[2])/d->cl->p->c;
+#else
+  mach = 1.0;
+#endif
   CLRATES( d->cl, &d->Rate, T, d->rho, d->ZMetal, mach);
   clRateMetalTable(d->cl, &d->Rate, T, d->rho, d->Y_H, d->ZMetal); 
   clAbunds( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal);
@@ -2637,8 +2639,12 @@ void clTempIteration( clDerivsData *d )
    T = RootFind( clfTemp, d, TA, TB, EPSTEMP*TA ); 
  } 
  d->its++;
+#ifdef MOLECULARH
  if ( sqrt(d->cl->p->curlv[0]*d->cl->p->curlv[0] + d->cl->p->curlv[1]*d->cl->p->curlv[1] + d->cl->p->curlv[2]*d->cl->p->curlv[2]) < d->cl->p->c  || (d->cl->p->c == 0)) mach = 1.0;
  else  mach = sqrt(d->cl->p->curlv[0]*d->cl->p->curlv[0] + d->cl->p->curlv[1]*d->cl->p->curlv[1] + d->cl->p->curlv[2]*d->cl->p->curlv[2])/d->cl->p->c;
+#else
+ mach = 1.0;
+#endif
  CLRATES( d->cl, &d->Rate, T, d->rho, d->ZMetal, mach );
  clRateMetalTable(d->cl, &d->Rate, T, d->rho, d->Y_H, d->ZMetal); 
  clAbunds( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal);
@@ -2646,17 +2652,19 @@ void clTempIteration( clDerivsData *d )
 
 void clDerivs(void *Data, double x, double *y, double *dydx) {
   clDerivsData *d = Data;
-  double T,ne,s_dust, s_self, nHI, nH2, internalheat = 0, externalheat = 0, nHminus; /*Add dust */
+  double T,ne, s_dust, s_self,nHI, nH2, internalheat = 0, externalheat = 0, nHminus; /*Add dust */
   double en_B = d->rho*CL_B_gm;
   double  mach; 
-
+  /* printf("clDeriv\n");*/
   d->E = y[1];
   d->Y.HI = y[2];
+  /*printf("E: %e, HI: %e\n",y[1],y[2]); */
 #ifdef MOLECULARH
   d->Y.H2 = y[5];
 #else
   d->Y.H2 = 0;
 #endif
+  /*printf("E: %e, HI: %e\n",y[1],y[2]);*/
   d->Y.HII = d->Y_H - d->Y.HI - d->Y.H2*2.0; /*Don't forget about molec H CC*/
   if(d->Y.HII < 0) d->Y.HII = 0;  
  
@@ -2671,12 +2679,21 @@ void clDerivs(void *Data, double x, double *y, double *dydx) {
 #endif
   
   d->Y.Total = d->Y.e + d->Y_H + d->Y_He + d->ZMetal/MU_METAL - d->Y.H2;  /* H total from cl now -- in future from particle */ 
+  /*printf("d->E %e, d->Y.HI %e, d->Y.H2 %e, d->Y.HI %e, d->Y.HeI %e, d->Y.HeII %e, d->Y.HeIII %e, d->Y.e %e\n",d->E,d->Y.HI,d->Y.H2,d->Y.HI,d->Y.HeI,d->Y.HeII,d->Y.HeIII,d->Y.e);*/
   T = clTemperature( d->Y.Total, d->E );
-   if ( sqrt(d->cl->p->curlv[0]*d->cl->p->curlv[0] + d->cl->p->curlv[1]*d->cl->p->curlv[1] + d->cl->p->curlv[2]*d->cl->p->curlv[2]) < d->cl->p->c || (d->cl->p->c == 0)) mach = 1.0;
+  /*printf("temp %e\n",T);*/
+#ifdef MOLECULARH
+  if ( sqrt(d->cl->p->curlv[0]*d->cl->p->curlv[0] + d->cl->p->curlv[1]*d->cl->p->curlv[1] + d->cl->p->curlv[2]*d->cl->p->curlv[2]) < d->cl->p->c || (d->cl->p->c == 0)) mach = 1.0;
   else  mach = sqrt(d->cl->p->curlv[0]*d->cl->p->curlv[0] + d->cl->p->curlv[1]*d->cl->p->curlv[1] + d->cl->p->curlv[2]*d->cl->p->curlv[2])/d->cl->p->c;
+  /*printf("mach %e\n",mach);*/
+#else
+  mach = 1.0;
+#endif
   CLRATES( d->cl, &d->Rate, T, d->rho, d->ZMetal, mach); 
+  /*printf("clrates \n");*/
   s_dust = clDustShield(d->Y.HI*en_B, d->Y.H2*en_B, d->ZMetal, d->Rate.CorreLength);
   s_self = clSelfShield(d->Y.H2*en_B, d->Rate.CorreLength);
+  /*printf("shield \n");*/
   externalheat = d->ExternalHeating;
   dydx[1] = externalheat;
   if (d->bCool) {
@@ -2684,7 +2701,7 @@ void clDerivs(void *Data, double x, double *y, double *dydx) {
     internalheat = CLEDOTINSTANT( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal );
     dydx[1] = internalheat + externalheat;
   }
-
+  /*printf("cool \n");*/
   ne =  en_B*d->Y.e;
   nHI = en_B*d->Y.HI;
   nH2 = en_B*d->Y.H2;
@@ -2705,8 +2722,8 @@ void clDerivs(void *Data, double x, double *y, double *dydx) {
 	     d->Y.HI*d->Rate.Coll_HI) - 
              d->Y.HI*d->Rate.Phot_HI - 2.0*dydx[5]; /*Adding in molec H and shielding, should possibly add shielding for others*/
 #endif
-
 #else
+  /*printf("dH2 \n");*/
   dydx[2] = ne*(d->Y.HII*d->Rate.Radr_HII - 
 	     d->Y.HI*d->Rate.Coll_HI) - 
              d->Y.HI*d->Rate.Phot_HI;
@@ -2719,6 +2736,7 @@ void clDerivs(void *Data, double x, double *y, double *dydx) {
 	     d->Y.HeII*d->Rate.Coll_HeII) - 
              d->Y.HeII*d->Rate.Phot_HeII - 
              dydx[3];
+  /*printf(" dE %e, dHI %e, dH2 %e, dHeI %e, dHeII %e", dydx[1],dydx[2],0.0,dydx[3],dydx[4]); */
 }
 
 void clJacobn(void *Data, double x, double y[], double dfdx[], double **dfdy) {
@@ -3103,12 +3121,16 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
      double  T = clTemperature( Y->Total, *E ), ne = en_B*Y->e;
      RATE *Rate = &d->Rate;
      double  mach;
+#ifdef MOLECULARH
      if ( sqrt(d->cl->p->curlv[0]*d->cl->p->curlv[0] + d->cl->p->curlv[1]*d->cl->p->curlv[1] + d->cl->p->curlv[2]*d->cl->p->curlv[2]) < d->cl->p->c || (d->cl->p->c == 0)) mach = 1.0;
-  else  mach = sqrt(d->cl->p->curlv[0]*d->cl->p->curlv[0] + d->cl->p->curlv[1]*d->cl->p->curlv[1] + d->cl->p->curlv[2]*d->cl->p->curlv[2])/d->cl->p->c;
+     else  mach = sqrt(d->cl->p->curlv[0]*d->cl->p->curlv[0] + d->cl->p->curlv[1]*d->cl->p->curlv[1] + d->cl->p->curlv[2]*d->cl->p->curlv[2])/d->cl->p->c;
+#else
+     mach = 1.0;
+#endif
      CLRATES( d->cl, &d->Rate, T, d->rho, d->ZMetal, mach);
      s_dust = clDustShield(Y->HI*en_B, Y->H2*en_B, d->ZMetal, Rate->CorreLength);
      s_self = clSelfShield(Y->H2*en_B, Rate->CorreLength);
-     #define DTFRACLOWTCOOL 0.25
+#define DTFRACLOWTCOOL 0.25
      if (Rate->T > cl->R.Tcmb*(1+DTFRACLOWTCOOL))
        LowTCool = clCoolLowT(Rate->T)*cl->R.Cool_LowTFactor*en_B*ZMetal;
      else if (Rate->T < cl->R.Tcmb*(1-DTFRACLOWTCOOL))
@@ -3243,11 +3265,13 @@ void CoolOutputArray( COOLPARAM *CoolParam, int cnt, int *type, char *suffix ) {
 		*type = OUT_COOL_ARRAY2;
 		sprintf(suffix,".HeII");
 		return;
+#ifdef MOLECULARH 
         case 3:
 		if (!CoolParam->bDoIonOutput) return;
 		*type = OUT_COOL_ARRAY3;
 		sprintf(suffix,".H2");
 		return;
+#endif
 	}
 }
 
@@ -3405,8 +3429,12 @@ double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double T, double dDensity, d
     double Y_H, Y_He, Y_eMax;
     double mach;
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
+#ifdef MOLECULARH
     if ( sqrt(cl->p->curlv[0]*cl->p->curlv[0] + cl->p->curlv[1]*cl->p->curlv[1] + cl->p->curlv[2]*cl->p->curlv[2]) < cl->p->c  || (cl->p->c == 0)) mach = 1.0;
     else  mach = sqrt(cl->p->curlv[0]*cl->p->curlv[0] + cl->p->curlv[1]*cl->p->curlv[1] + cl->p->curlv[2]*cl->p->curlv[2])/cl->p->c;
+#else
+    mach = 1.0;
+#endif
     CoolPARTICLEtoPERBARYON(cl, &Y, cp, ZMetal);
     CLRATES(cl, &Rate, T, dDensity, ZMetal, mach);
     clRateMetalTable(cl, &Rate, T, dDensity, Y_H, ZMetal); 
@@ -3447,8 +3475,12 @@ double CoolCoolingCode(COOL *cl, COOLPARTICLE *cp, double ECode,
     T = CoolEnergyToTemperature( cl, cp, E, ZMetal );
     rho = CodeDensityToComovingGmPerCc(cl,rhoCode );
     CoolPARTICLEtoPERBARYON(cl, &Y, cp, ZMetal);
+#ifdef MOLECULARH
     if ( sqrt(cl->p->curlv[0]*cl->p->curlv[0] + cl->p->curlv[1]*cl->p->curlv[1] + cl->p->curlv[2]*cl->p->curlv[2]) < cl->p->c  || (cl->p->c == 0)) mach = 1.0;
     else  mach = sqrt(cl->p->curlv[0]*cl->p->curlv[0] + cl->p->curlv[1]*cl->p->curlv[1] + cl->p->curlv[2]*cl->p->curlv[2])/cl->p->c;
+#else
+    mach = 1.0;
+#endif
     CLRATES(cl, &Rate, T, rho, ZMetal, mach);
     clRateMetalTable(cl, &Rate, T, rho, Y_H, ZMetal);
 
@@ -3471,8 +3503,12 @@ double CoolHeatingCode(COOL *cl, COOLPARTICLE *cp, double ECode,
     T = CoolEnergyToTemperature( cl, cp, E, ZMetal );
     rho = CodeDensityToComovingGmPerCc(cl,rhoCode );
     CoolPARTICLEtoPERBARYON(cl, &Y, cp, ZMetal);
+#ifdef MOLECULARH
     if ( sqrt(cl->p->curlv[0]*cl->p->curlv[0] + cl->p->curlv[1]*cl->p->curlv[1] + cl->p->curlv[2]*cl->p->curlv[2]) < cl->p->c  || (cl->p->c == 0)) mach = 1.0;
     else  mach = sqrt(cl->p->curlv[0]*cl->p->curlv[0] + cl->p->curlv[1]*cl->p->curlv[1] + cl->p->curlv[2]*cl->p->curlv[2])/cl->p->c;
+#else
+    mach = 1.0;
+#endif
     CLRATES(cl, &Rate, T, rho, ZMetal, mach);
     clRateMetalTable(cl, &Rate, T, rho, Y_H, ZMetal);
 
