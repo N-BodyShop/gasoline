@@ -5387,7 +5387,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 			if ( bCool ) {
 				cp = p->CoolParticle;
 				E = p->u;
-				cl->p = p;
 				dtUse = dt;
 #ifdef STARFORM
                                 if ( dTime < p->fTimeCoolIsOffUntil) {
@@ -5401,8 +5400,9 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 				    if (p->uDot<p->PdV) p->uDot = p->PdV;
 				    }
 #endif
-
-
+#ifdef COOLING_BOLEY
+				cp->mrho = pow(p->fMass/p->fDensity, 1./3.);
+#endif
 #ifdef DENSITYU
 				if (p->fDensityU < p->fDensity) 
 				    CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensityU, p->fMetals, p->r, dtUse);
@@ -5492,7 +5492,7 @@ printf("r %g PdV %g a %g %g %g SW %g %g %g\n",sqrt(p->r[0]*p->r[0]+p->r[1]*p->r[
 
 /* Note: Uses uPred */
 void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
-			     double dResolveJeans)
+			     double dResolveJeans, double dCosmoFac)
 {
     PARTICLE *p;
     double PoverRho;
@@ -5510,8 +5510,8 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
 			 * P_min = 3*G*h^2*rho^2
 			 * Note that G = 1 in our code
 			 */
-			if(p->PoverRho2 < dResolveJeans*0.25*p->fBall2) {
-			    p->PoverRho2 = dResolveJeans*0.25*p->fBall2;
+			if(p->PoverRho2*dCosmoFac < dResolveJeans*0.25*p->fBall2) {
+			    p->PoverRho2 = dResolveJeans*0.25*p->fBall2/dCosmoFac;
 			    p->c = sqrt(gamma*p->fDensity*p->PoverRho2);
 			    }
 			else
@@ -5546,7 +5546,7 @@ void pkdGetDensityU(PKD pkd, double uMin)
 #ifndef NOCOOLING
 /* Note: Uses uPred */
 void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma,
-			   double dResolveJeans)
+			   double dResolveJeans, double dCosmoFac)
 {
     PARTICLE *p;
 	COOL *cl = pkd->Cool;
@@ -5568,8 +5568,8 @@ void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma,
 			 * P_min = 3*G*h^2*rho^2
 			 * Note that G = 1 in our code
 			 */
-			if(p->PoverRho2 < dResolveJeans*0.25*p->fBall2) {
-			    p->PoverRho2 = dResolveJeans*0.25*p->fBall2;
+			if(p->PoverRho2*dCosmoFac < dResolveJeans*0.25*p->fBall2) {
+			    p->PoverRho2 = dResolveJeans*0.25*p->fBall2/dCosmoFac;
 			    p->c = sqrt(gamma*p->fDensity*p->PoverRho2);
 			    }
 			}

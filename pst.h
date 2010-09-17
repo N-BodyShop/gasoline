@@ -1087,6 +1087,7 @@ struct inGetGasPressure {
 	double gamma;
 	double gammam1;
 	double dResolveJeans;
+	double dCosmoFac;
     
   /* Isothermal */
 

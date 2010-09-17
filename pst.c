@@ -4470,12 +4470,14 @@ void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		case GASMODEL_ADIABATIC: 
 		case GASMODEL_ISOTHERMAL:
 			pkdAdiabaticGasPressure(plcl->pkd, in->gammam1,
-						in->gamma, in->dResolveJeans);
+						in->gamma, in->dResolveJeans,
+						in->dCosmoFac);
 			break;
 		case GASMODEL_COOLING:
 #ifndef NOCOOLING
 			pkdCoolingGasPressure(plcl->pkd, in->gammam1,in->gamma,
-					      in->dResolveJeans);
+					      in->dResolveJeans,
+					      in->dCosmoFac);
 #endif
 			break;
 		case GASMODEL_GLASS:

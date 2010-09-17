@@ -7201,7 +7201,7 @@ void msrTopStepSym(MSR msr, double dStep, double dTime, double dDelta,
            	        msrActiveType(msr, TYPE_GAS, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
 			msrBuildTree(msr,1,-1.0,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
-			msrGetGasPressure(msr);
+			msrGetGasPressure(msr, dTime);
 			if (msrDoGas(msr)) {
 			  if (msr->param.bBulkViscosity) {
   			    msrReSmooth(msr,dTime,SMX_DIVVORT,1);
@@ -7313,7 +7313,7 @@ void msrTopStepNS(MSR msr, double dStep, double dTime, double dDelta, int
 			msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 			msrBuildTree(msr,1,-1.0,1);
 			msrSmooth(msr,dTime,SMX_DENSITY,1);
-			msrGetGasPressure(msr);
+			msrGetGasPressure(msr, dTime);
 			if (msrDoGas(msr)) {
  			   if (msr->param.bBulkViscosity) {
   			       msrReSmooth(msr,dTime,SMX_DIVVORT,1);
@@ -7988,7 +7988,7 @@ void msrInitTimeSteps(MSR msr,double dTime,double dDelta)
 
 #ifdef GASOLINE
 
-void msrGetGasPressure(MSR msr)
+void msrGetGasPressure(MSR msr, double dTime)
 {
 	struct inGetGasPressure in;
   
@@ -8001,6 +8001,7 @@ void msrGetGasPressure(MSR msr)
 	case  GASMODEL_COOLING:
 		in.gamma = msr->param.dConstGamma;
 		in.gammam1 = in.gamma-1;
+		in.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
 		/*
 		 * If self gravitating, resolve the Jeans Mass
 		 */
@@ -8134,7 +8135,7 @@ void msrInitSph(MSR msr,double dTime)
 			}
 		msrSphViscosityLimiter(msr, dTime);
 
-		msrGetGasPressure(msr);
+		msrGetGasPressure(msr, dTime);
 			
 		if (msr->param.bShockTracker) { 
 			msrReSmooth(msr,dTime,SMX_SPHPRESSURE,1);
@@ -8378,7 +8379,7 @@ void msrSph(MSR msr, double dTime, int iKickRung)
 #ifdef DENSITYU
     msrGetDensityU(msr);
 #endif
-    msrGetGasPressure(msr);
+    msrGetGasPressure(msr, dTime);
 
     if (msr->param.bShockTracker) { 
 	msrReSmooth(msr,dTime,SMX_SPHPRESSURE,1);
