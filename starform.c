@@ -279,7 +279,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 
     /* Seed BH Formation JMB 1/19/09*/
      newbh = 0;  /* BH tracker */
-     if (stfm->bBHForm == 1 && starp.fMetals <= 1.0e-10 && stfm->dBHFormProb > (rand()/((double) RAND_MAX ))) {
+     if (stfm->bBHForm == 1 && starp.fMetals <= 1.0e-6 && stfm->dBHFormProb > (rand()/((double) RAND_MAX ))) {
        starp.fTimeForm = -1.0*starp.fTimeForm;
        newbh = 1;      
        /* Decrement mass of particle.*/

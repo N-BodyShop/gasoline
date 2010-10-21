@@ -172,6 +172,7 @@ struct parameters {
   int bBHForm;
   double dBHFormProb;
   double dInitBHMass;
+  int bBHMindv;
 	char achDigitMask[MAXPATHLEN];
 	char achInFile[MAXPATHLEN];
 	char achOutName[MAXPATHLEN];

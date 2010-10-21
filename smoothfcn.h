@@ -31,6 +31,7 @@ typedef struct smfParameters {
     double dBHSinkFeedbackFactor;
     int bSmallBHSmooth;
     int bBHTurnOffCooling;
+    int bBHMindv;
     int bDoBHKick;
     double dSinkCurrentDelta;
   double dDeltaStarForm;

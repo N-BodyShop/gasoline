@@ -673,6 +673,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dBHSinkAlpha = 1;
 	prmAddParam(msr->prm,"dBHSinkAlpha",2,&msr->param.dBHSinkAlpha,sizeof(double),"bhsinkalpha",
 				"<BHSink Alpha>");
+	msr->param.bBHMindv = 0;
+	prmAddParam(msr->prm,"bBHMindv",0,&msr->param.bBHMindv,sizeof(int),"bhmindv","use mindeltav for BH accretion = -bhmindv");
 	msr->param.bDoSinksAtStart = 0;
 	prmAddParam(msr->prm,"bDoSinksAtStart",0,&msr->param.bDoSinksAtStart,sizeof(int),
 				"sinksas","enable/disable sinks at start = -sinksas");
@@ -2546,6 +2548,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bDoBHKick: %d",msr->param.bDoBHKick);
 	fprintf(fp," bBHTurnOffCooling: %d",msr->param.bBHTurnOffCooling);
 	fprintf(fp," bSmallBHSmooth: %d",msr->param.bSmallBHSmooth);
+	fprintf(fp," bBHMindv: %d",msr->param.bBHMindv);
 	fprintf(fp," bDoSinksAtStart: %d",msr->param.bDoSinksAtStart );
 	fprintf(fp," bSinksThermal: %d",msr->param.bSinkThermal );
 	fprintf(fp," dSinkRadius: %g",msr->param.dSinkRadius);
@@ -4760,6 +4763,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   in.smf.dBHSinkFeedbackEff = msr->param.dBHSinkFeedbackEff;
   in.smf.bBHTurnOffCooling = msr->param.bBHTurnOffCooling;
   in.smf.bSmallBHSmooth = msr->param.bSmallBHSmooth;
+  in.smf.bBHMindv = msr->param.bBHMindv;
   in.smf.bDoBHKick = msr->param.bDoBHKick;
   in.smf.dSinkCurrentDelta = msr->param.dSinkCurrentDelta;
   in.smf.nSinkFormMin = msr->param.nSinkFormMin;
@@ -4874,6 +4878,7 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.dBHSinkFeedbackFactor = msr->param.dBHSinkFeedbackFactor;
 	in.smf.bBHTurnOffCooling = msr->param.bBHTurnOffCooling;
 	in.smf.bSmallBHSmooth = msr->param.bSmallBHSmooth;
+	in.smf.bBHMindv = msr->param.bBHMindv;
 	in.smf.bDoBHKick = msr->param.bDoBHKick;
 	in.smf.dSinkCurrentDelta = msr->param.dSinkCurrentDelta;
 	in.smf.nSinkFormMin = msr->param.nSinkFormMin;
