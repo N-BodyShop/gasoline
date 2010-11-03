@@ -2482,7 +2482,7 @@ void _pstOrdSplit(PST pst,int iMaxOrder)
 	struct outFreeStore outFree;
 	struct inOrdWeight inWt;
 	struct outOrdWeight outWtLow,outWtHigh;
-	int im=-1,imm,il,iu;
+	int64_t im=-1,imm,il,iu;
 	int nLowerStore,nUpperStore,nLow=-1,nHigh=-1;
 	struct inColOrdRejects inCol;
 	OREJ *pLowerRej,*pUpperRej;
@@ -2520,9 +2520,6 @@ void _pstOrdSplit(PST pst,int iMaxOrder)
 		 */
 		nLow = outWtLow.nLow + outWtHigh.nLow;
 		nHigh = outWtLow.nHigh + outWtHigh.nHigh;
-		/*
-		printf("ittr:%d l:%d u:%d\n",ittr,nLow,nHigh);
-		*/
 		if(nLow == 1 && nHigh == 1) /* break on trivial case */
 		    break;
 		else {		/* split on number */
