@@ -1382,6 +1382,9 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    printf("BHSink %d:  Time %g %d dmq %g %g %g\n",p->iOrder,smf->dTime,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
 	    if (q->iRung >= smf->iSinkCurrentRung) {
 		ifMass = 1./(p->fMass + dmq);
+		/* to record angular momentum JMB 11/9/10 */
+		printf("BHSink %d:  Gas: %d  dx: %g dy: %g dz: %g \n",p->iOrder,q->iOrder,p->r[0]-q->r[0],p->r[1]-q->r[1],p->r[2]-q->r[2]);
+		printf("BHSink %d:  Gas: %d  dvx: %g dvy: %g dvz: %g \n",p->iOrder,q->iOrder,p->v[0]-q->v[0],p->v[1]-q->v[1],p->v[2]-q->v[2]);
 		/* Adjust sink properties (conserving momentum etc...) */
 		p->r[0] = ifMass*(p->fMass*p->r[0]+dmq*q->r[0]);
 		p->r[1] = ifMass*(p->fMass*p->r[1]+dmq*q->r[1]);
@@ -1399,6 +1402,9 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		/*assert(q->fMass >= 0.0);*/
 		naccreted += 1;  /* running tally of how many are accreted JMB 10/23/08 */
 		printf("BHSink %d:  Time %g dist2: %d %g gas smooth: %g eatenmass %g \n",p->iOrder,smf->dTime,q->iOrder,r2min,q->fBall2,dmq);
+		/* to record angular momentum JMB 11/9/10 */
+		printf("BHSink %d:  Gas: %d  dx: %g dy: %g dz: %g \n",p->iOrder,q->iOrder,p->r[0]-q->r[0],p->r[1]-q->r[1],p->r[2]-q->r[2]);
+		printf("BHSink %d:  Gas: %d  dvx: %g dvy: %g dvz: %g \n",p->iOrder,q->iOrder,p->v[0]-q->v[0],p->v[1]-q->v[1],p->v[2]-q->v[2]);
 		if (q->fMass <= 1e-3*dmq) { /* = added 8/21/08 */
 		    q->fMass = 0;
 		    if(!(TYPETest(q,TYPE_DELETED))) pkdDeleteParticle(smf->pkd, q);
@@ -1488,6 +1494,9 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    printf("BHSink %d:  Time: %g %d dmq %g %g %g sharing \n",p->iOrder,smf->dTime,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
 	      if (q->iRung >= smf->iSinkCurrentRung) {
 		ifMass = 1./(p->fMass + dmq);
+		/* to record angular momentum JMB 11/9/10 */
+		printf("BHSink %d:  Gas: %d  dx: %g dy: %g dz: %g \n",p->iOrder,q->iOrder,p->r[0]-q->r[0],p->r[1]-q->r[1],p->r[2]-q->r[2]);
+		printf("BHSink %d:  Gas: %d  dvx: %g dvy: %g dvz: %g \n",p->iOrder,q->iOrder,p->v[0]-q->v[0],p->v[1]-q->v[1],p->v[2]-q->v[2]);
 		/* Adjust sink properties (conserving momentum etc...) */
 		p->r[0] = ifMass*(p->fMass*p->r[0]+dmq*q->r[0]);
 		p->r[1] = ifMass*(p->fMass*p->r[1]+dmq*q->r[1]);
@@ -1528,7 +1537,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	  dtEff = smf->dSinkCurrentDelta*pow(0.5,p->iRung-smf->iSinkCurrentRung);
 	  dmAvg = mdot*dtEff;    
 	  /*printf("BHSink %d:  Delta: %g Time: %g  dm: actual %g (pred %g) (avg %g) dE %g\n",p->iOrder,dtEff,smf->dTime,dm,p->curlv[1],dmAvg,dE); */
-	  printf("BHSink %d:  Delta: %g Time: %g dm: %g dE %g\n",p->iOrder,dtEff,smf->dTime,dm,p->curlv[1],dmAvg,dE);
+	  printf("BHSink %d:  Delta: %g Time: %g dm: %g dE %g\n",p->iOrder,dtEff,smf->dTime,dm,dE);
 
 	  /* Recalculate Normalization */
 	  ih2 = 4.0/BALL2(p);
