@@ -296,7 +296,7 @@ void pkdGenericSeek(PKD pkd,FILE *fp,int nStart,int iHeader,int iElement)
 {
   long lStart;
   
-  lStart = iHeader + nStart*iElement;
+  lStart = iHeader + ((long)nStart)*((long)iElement);
   fseek(fp,lStart,0);
 }
 
@@ -2681,7 +2681,6 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	if(pkd->nNodes == 0) {
 	    pkd->nNodes = 1;
 	    bEmpty = 1;
-	    printf("id:%d has an empty local tree\n",pkd->idSelf);
 	}
 
 	/*
