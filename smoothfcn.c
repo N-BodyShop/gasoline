@@ -1061,8 +1061,8 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT mdotsum, weat;
 	FLOAT weight,wrs;
 	double aFac, dCosmoDenFac,dCosmoVel2Fac;
-	float dvmin,dvx,dvy,dvz;
-	float ddvx,ddvy,ddvz,dvv; /* measure mindeltav */
+	FLOAT dvmin,dvx,dvy,dvz;
+	FLOAT ddvx,ddvy,ddvz,dvv; /* measure mindeltav */
 
 	assert(p->iRung >= smf->iSinkCurrentRung);
 	p->curlv[1] = 0.0;
@@ -1079,7 +1079,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	v[0] = 0; v[1] = 0; v[2] = 0;
 	
 	/* for mindv accretion method JMB 8/5/10 */
-	if(smf->bBHMindv = 1){
+	if(smf->bBHMindv == 1){
 	  dvmin = FLOAT_MAXVAL;
 	  for (i=0;i<nSmooth;++i) {
 	    ddvx = p->v[0] - nnList[i].pPart->v[0];
@@ -1107,7 +1107,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    assert(TYPETest(q,TYPE_GAS));
 	    fW = rs*q->fMass;
 
-	    if(smf->bBHMindv = 1) weight = rs*pow(q->c*q->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5)/dCosmoDenFac;
+	    if(smf->bBHMindv == 1) weight = rs*pow(q->c*q->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5)/dCosmoDenFac;
 	    else {
 	      dvx = p->v[0]-q->v[0];
 	      dvy = p->v[1]-q->v[1];
@@ -1145,7 +1145,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	p->fDensity = fDensity = M_1_PI*sqrt(ih2)*ih2*fDensity; 
 	fDensity /= dCosmoDenFac;
 
-	if(smf->bBHMindv = 1) printf("BHSink %d:  Time: %g Selected Particle Density: %g SPH: %g C_s: %g dv: %g dist: %g\n",p->iOrder,smf->dTime,nnList[ieat].pPart->fDensity,wrs,nnList[ieat].pPart->c,dvmin,sqrt(nnList[ieat].fDist2));
+	if(smf->bBHMindv == 1) printf("BHSink %d:  Time: %g Selected Particle Density: %g SPH: %g C_s: %g dv: %g dist: %g\n",p->iOrder,smf->dTime,nnList[ieat].pPart->fDensity,wrs,nnList[ieat].pPart->c,dvmin,sqrt(nnList[ieat].fDist2));
 	else printf("BHSink %d:  Time: %g Selected Particle Density: %g SPH: %g C_s: %g dv: %g dist: %g\n",p->iOrder,smf->dTime,nnList[ieat].pPart->fDensity,wrs,nnList[ieat].pPart->c,sqrt(dv2),sqrt(nnList[ieat].fDist2));
 
 	printf("BHSink %d:  Time: %g Mean Particle Density: %g C_s: %g dv: %g\n",p->iOrder,smf->dTime,fDensity,cs,sqrt(dv2));
@@ -1179,11 +1179,11 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		 * in its smoothing length  JMB 10/22/08 */
 		if (nnList[i].pPart->iRung < smf->iSinkCurrentRung) continue; /* JMB 7/9/09 */
 
-		if(smf->bBHMindv = 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5)/dCosmoDenFac;
+		if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5)/dCosmoDenFac;
 		else {
-		  dvx = p->v[0]-q->v[0];
-		  dvy = p->v[1]-q->v[1];
-		  dvz = p->v[2]-q->v[2];
+		  dvx = p->v[0]-nnList[i].pPart->v[0];
+		  dvy = p->v[1]-nnList[i].pPart->v[1];
+		  dvz = p->v[2]-nnList[i].pPart->v[2];
 		  weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvx*dvx+dvy*dvy+dvz*dvz)/dCosmoVel2Fac,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
 	    /* cosmo factors put in 7/7/09  JMB */
 		}
@@ -1402,9 +1402,6 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		/*assert(q->fMass >= 0.0);*/
 		naccreted += 1;  /* running tally of how many are accreted JMB 10/23/08 */
 		printf("BHSink %d:  Time %g dist2: %d %g gas smooth: %g eatenmass %g \n",p->iOrder,smf->dTime,q->iOrder,r2min,q->fBall2,dmq);
-		/* to record angular momentum JMB 11/9/10 */
-		printf("BHSink %d:  Gas: %d  dx: %g dy: %g dz: %g \n",p->iOrder,q->iOrder,p->r[0]-q->r[0],p->r[1]-q->r[1],p->r[2]-q->r[2]);
-		printf("BHSink %d:  Gas: %d  dvx: %g dvy: %g dvz: %g \n",p->iOrder,q->iOrder,p->v[0]-q->v[0],p->v[1]-q->v[1],p->v[2]-q->v[2]);
 		if (q->fMass <= 1e-3*dmq) { /* = added 8/21/08 */
 		    q->fMass = 0;
 		    if(!(TYPETest(q,TYPE_DELETED))) pkdDeleteParticle(smf->pkd, q);
@@ -1422,7 +1419,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	  /* go looking for more particles, sharing must happen */
 	    /****** SHARING CODE HERE ***********/ 
 
-	  if(smf->bBHMindv = 1){
+	  if(smf->bBHMindv == 1){
 	    dvmin = FLOAT_MAXVAL;
 	    for (i=0;i<nSmooth;++i) {
 	      dvx = p->v[0] - nnList[i].pPart->v[0];
@@ -1451,11 +1448,11 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      /* has to be nearby! */
 	      KERNEL(rs,r2);
 
-	      if(smf->bBHMindv = 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5)/dCosmoDenFac;
+	      if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5)/dCosmoDenFac;
 	      else {
-		dvx = p->v[0]-q->v[0];
-		dvy = p->v[1]-q->v[1];
-		dvz = p->v[2]-q->v[2];
+		dvx = p->v[0]-nnList[i].pPart->v[0];
+		dvy = p->v[1]-nnList[i].pPart->v[1];
+		dvz = p->v[2]-nnList[i].pPart->v[2];
 		weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvx*dvx+dvy*dvy+dvz*dvz)/dCosmoVel2Fac,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
 		/* cosmo factors put in 7/7/09  JMB */
 	      }	    	      
@@ -1605,7 +1602,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					       smf->dTime + fBHShutoffTime);
 	   printf("BHSink %d: Time %g tCoolOffUntil %g \n",p->iOrder,smf->dTime,q->fTimeCoolIsOffUntil);
 	  
-	  q->fMassForm = (float) smf->dTime;
+	  q->fMassForm = (FLOAT) smf->dTime;
 	  /* track BHFB time in MassForm
 		     JMB 11/19/08 */
 	  counter++;  
@@ -1727,12 +1724,12 @@ void BHSinkMerge(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT ifMass, deltaa, deltar, deltav;
 	int i;
 	/*  for kicks */
-	const float A = 12000.0;
-	const float B = -0.93;
-	const float H = 7300.0;
-	const float K = 60000.0;  /* BH kick parameters in km/s  */
-	float vkick, vm, vpar, vkx, vky, vkz;
-	float vperp, mratio, mfactor, cosine, spin1, spin2, angle1, angle2, xi;
+	const FLOAT A = 12000.0;
+	const FLOAT B = -0.93;
+	const FLOAT H = 7300.0;
+	const FLOAT K = 60000.0;  /* BH kick parameters in km/s  */
+	FLOAT vkick, vm, vpar, vkx, vky, vkz;
+	FLOAT vperp, mratio, mfactor, cosine, spin1, spin2, angle1, angle2, xi;
 	double xrand, yrand, zrand;
 #define SECONDSPERYEAR   31557600.
 
