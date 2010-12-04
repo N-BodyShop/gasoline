@@ -1936,7 +1936,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		  _msrExit(msr,1);
 		}
 	  }
-v	  if (PP->bRandAzWrap) {
+	  if (PP->bRandAzWrap) {
 		if (PP->iStripOption != STRIP_LEFT_ONLY && PP->iStripOption !=
 			STRIP_RIGHT_ONLY && PP->iStripOption != STRIP_BOTH) {
 		  puts("ERROR: invalid strip option");
