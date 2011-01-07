@@ -2170,7 +2170,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
 	FLOAT pPoverRho2,pPoverRho2f,pMass;
 	FLOAT qPoverRho2,qPoverRho2f;
-	FLOAT ph,pc,pDensity,visc,hav,absmu,Accp,Accq;
+	FLOAT ph,pc,pDensity,visc,hav,absmu,Accp,Accq,gammam1 = smf->gamma-1;
 	FLOAT fNorm,fNorm1,aFac,vFac;
 	int i;
 
@@ -2184,6 +2184,9 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	pPoverRho2f = (pPoverRho2*pd2-smf->Pext)/pd2;     }
 #else
 	pPoverRho2f = pPoverRho2;
+#endif
+#ifdef JEANSFIXPDV
+	pPoverRho2 = gammam1*p->uPred/p->fDensity;
 #endif
 #endif
 	ph = sqrt(0.25*BALL2(p));
@@ -2224,6 +2227,9 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    qPoverRho2f = (qPoverRho2*qd2-smf->Pext)/qd2; }
 #else
 	    qPoverRho2f = qPoverRho2;
+#endif
+#ifdef JEANSFIXPDV
+	    qPoverRho2 = gammam1*q->uPred/q->fDensity;
 #endif
 #endif	    
 

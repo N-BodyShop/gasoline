@@ -5491,10 +5491,10 @@ printf("r %g PdV %g a %g %g %g SW %g %g %g\n",sqrt(p->r[0]*p->r[0]+p->r[1]*p->r[
 
 /* Note: Uses uPred */
 void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
-			     double dResolveJeans, double dCosmoFac)
+			     double dResolveJeans0, double dCosmoFac)
 {
     PARTICLE *p;
-    double PoverRho;
+    double PoverRho,e2,l2,PoverRho2Jeans,dResolveJeans=dResolveJeans0/dCosmoFac;
     int i;
 
     p = pkd->pStore;
@@ -5506,12 +5506,18 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
 			 * Add pressure floor to keep Jeans Mass
 			 * resolved.  In comparison with Agertz et
 			 * al. 2009, dResolveJeans should be 3.0:
-			 * P_min = 3*G*h^2*rho^2
+			 * P_min = 3*G*max(h,eps)^2*rho^2
 			 * Note that G = 1 in our code
 			 */
-			if(p->PoverRho2*dCosmoFac < dResolveJeans*0.25*p->fBall2) {
-			    p->PoverRho2 = dResolveJeans*0.25*p->fBall2/dCosmoFac;
-			    p->c = sqrt(gamma*p->fDensity*p->PoverRho2);
+			l2 = 0.25*p->fBall2; 
+#ifdef JEANSSOFT
+			e2 = p->fSoft*p->fSoft; 
+			if (l2 < e2) l2 = e2; /* Jeans scale can't be smaller than softening */
+#endif
+			PoverRho2Jeans = l2*dResolveJeans;
+			if(p->PoverRho2 < PoverRho2Jeans) {
+			    p->PoverRho2 = PoverRho2Jeans;
+			    p->c = sqrt(gamma*p->fDensity*PoverRho2Jeans);
 			    }
 			else
 			    p->c = sqrt(gamma*PoverRho);

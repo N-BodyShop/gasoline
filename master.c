@@ -1777,6 +1777,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    assert(0);
 	    }
 #endif
+#ifndef JEANSFIXPDV
+	if (msr->param.dResolveJeans > 0) {
+	    fprintf(stderr,"WARNING: dResolveJeans > 0 but not compiled with -DJEANSFIXPDV.  PdV work may be crazy.\n");
+	    }
+#endif
 #ifndef DIFFUSION
 	if (prmSpecified(msr->prm,"dMetalDiffusionCoeff")) {
 	    fprintf(stderr,"Metal Diffusion Rate specified but not compiled for\nUse -DDIFFUSION during compilation\n");
@@ -2418,6 +2423,12 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif 
 #ifdef PEXT
 	fprintf(fp, " PEXT");
+#endif
+#ifdef JEANSSOFT
+	fprintf(fp, " JEANSSOFT");
+#endif
+#ifdef JEANSFIXPDV
+	fprintf(fp, " JEANSFIXPDV");
 #endif
 #ifdef DIFFUSION
 	fprintf(fp, " DIFFUSION");
