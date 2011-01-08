@@ -7893,6 +7893,10 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	msrMassCheck(msr, dMass, "Accrete onto Sinks: before particle adjustment");
 	
 	msrAddDelParticles(msr);
+	if (msr->param.bBHSink) { /* reset nSinks in case of merger */
+	    msrActiveType(msr,TYPE_SINK,TYPE_TREEACTIVE);
+	    msr->nSink = msr->nTreeActive;
+	    }
 	msrMassCheck(msr, dMass, "Accrete onto Sinks: after particle adjustment");
 	}
     nAccreted -= msr->nGas;
