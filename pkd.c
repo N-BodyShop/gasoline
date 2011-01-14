@@ -617,7 +617,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef STARFORM
 			    if (fptCoolAgain!=NULL) {
 			      xdr_float(&tocxdrs,&fTmp);
-			      if (pkdIsGasByOrder(pkd,p)) p->fTimeForm = fTmp;
+			      if (pkdIsGasByOrder(pkd,p)) p->fTimeCoolIsOffUntil = fTmp;
 			    }
 #endif
 
@@ -744,7 +744,11 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #if defined(SIMPLESF) || defined(STARFORM)
       if (fptCoolAgain!=NULL) {
 	fread(&fTmp,sizeof(float),1,fptCoolAgain);
+#if defined(STARFORM)
+	if (pkdIsGasByOrder(pkd,p)) p->fTimeCoolIsOffUntil = fTmp;
+#else
 	if (pkdIsGasByOrder(pkd,p)) p->fTimeForm = fTmp;
+#endif
       }
       if (fpmStar!=NULL) {
 	fread(&fTmp,sizeof(float),1,fpmStar);
@@ -5400,7 +5404,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 				    }
 #endif
 #ifdef COOLING_BOLEY
-				cp->mrho = pow(p->fMass/p->fDensity, 1./3.);
+				cp.mrho = pow(p->fMass/p->fDensity, 1./3.);
 #endif
 #ifdef DENSITYU
 				if (p->fDensityU < p->fDensity) 
