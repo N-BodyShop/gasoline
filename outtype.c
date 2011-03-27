@@ -645,11 +645,11 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
             break;
 #endif
         default:
-            if(nGas) pkdGenericSeek(pkd,gasFp, nGasStart*nDim,
+            if(nGas) pkdGenericSeek(pkd,gasFp, ((long)nGasStart)*nDim,
                                 headerlength,sizeof(fOut));
-            if(nDark) pkdGenericSeek(pkd,darkFp, nDarkStart*nDim,
+            if(nDark) pkdGenericSeek(pkd,darkFp, ((long)nDarkStart)*nDim,
                                 headerlength,sizeof(fOut));
-            if(nStar) pkdGenericSeek(pkd,starFp, nStarStart*nDim,
+            if(nStar) pkdGenericSeek(pkd,starFp, ((long)nStarStart)*nDim,
                                 headerlength,sizeof(fOut));
             for (i=0;i<pkd->nLocal;++i) {
                 for (iDim = 0; iDim <nDim; iDim++) {
@@ -724,7 +724,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
         switch (iBinaryOutput) {
             case 1:
                 if (iDim < 0) {
-                    pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(FloatOut));
+                    pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(FloatOut));
                     for (i=0;i<pkd->nLocal;++i) {
                         FloatOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
                         xdr_float(&xdrs,&FloatOut);
@@ -750,7 +750,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                                 }
                             break;
                         default:
-                            pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(FloatOut));
+                            pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(FloatOut));
                             for (i=0;i<pkd->nLocal;++i) {
                                 FloatOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
                                 xdr_float(&xdrs,&FloatOut);
@@ -760,7 +760,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                     break;
             case 2:
                 if (iDim < 0) {
-                    pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(DoubleOut));
+                    pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(DoubleOut));
                     for (i=0;i<pkd->nLocal;++i) {
                         DoubleOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
                         xdr_double(&xdrs,&DoubleOut);
@@ -789,7 +789,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                                 }
                             break;
                         default:
-                            pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(DoubleOut));
+                            pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(DoubleOut));
                             for (i=0;i<pkd->nLocal;++i) {
                                 DoubleOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
                                 xdr_double(&xdrs,&DoubleOut);
@@ -799,7 +799,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                 break;
             case 3:
                 if (iDim < 0) {
-                    pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(fOut));
+                    pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(fOut));
                     for (i=0;i<pkd->nLocal;++i) {
                         fOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
                         xdr_FLOAT(&xdrs,&fOut);
@@ -825,7 +825,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                                 }
                             break;
                         default:
-                                pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(fOut));
+                                pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(fOut));
                                 for (i=0;i<pkd->nLocal;++i) {
                                         fOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
                                         xdr_FLOAT(&xdrs,&fOut);
@@ -856,7 +856,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                     break;
             case 1:
                 if (iDim < 0) {
-                    pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(FloatOut));
+                    pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(FloatOut));
                     for (i=0;i<pkd->nLocal;++i) {
                         FloatOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
                         fwrite(&FloatOut, sizeof(float), 1, fp );
@@ -882,7 +882,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                                 }
                             break;
                         default:
-                            pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(FloatOut));
+                            pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(FloatOut));
                             for (i=0;i<pkd->nLocal;++i) {
                                 FloatOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
                                 fwrite(&FloatOut, sizeof(float), 1, fp );
@@ -892,7 +892,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                     break;
             case 2:
                 if (iDim < 0) {
-                    pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(DoubleOut));
+                    pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(DoubleOut));
                     for (i=0;i<pkd->nLocal;++i) {
                         DoubleOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
                         fwrite(&DoubleOut, sizeof(double), 1, fp );
@@ -921,7 +921,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                                 }
                             break;
                         default:
-                            pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(DoubleOut));
+                            pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(DoubleOut));
                             for (i=0;i<pkd->nLocal;++i) {
                                 DoubleOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
                                 fwrite(&DoubleOut, sizeof(double), 1, fp );
@@ -931,7 +931,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                 break;
             case 3:
                 if (iDim < 0) {
-                    pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(fOut));
+                    pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(fOut));
                     for (i=0;i<pkd->nLocal;++i) {
                         fOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
                         fwrite(&fOut, sizeof(FLOAT), 1, fp );
@@ -957,7 +957,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                                 }
                             break;
                         default:
-                                pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(fOut));
+                                pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(fOut));
                                 for (i=0;i<pkd->nLocal;++i) {
                                         fOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
                                         fwrite(&fOut, sizeof(FLOAT), 1, fp );

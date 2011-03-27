@@ -292,11 +292,11 @@ void pkdSeek(PKD pkd,FILE *fp,int nStart,int bStandard)
 	}
 
 
-void pkdGenericSeek(PKD pkd,FILE *fp,int nStart,int iHeader,int iElement)
+void pkdGenericSeek(PKD pkd,FILE *fp,long nStart,int iHeader,int iElement)
 {
   long lStart;
   
-  lStart = iHeader + ((long)nStart)*((long)iElement);
+  lStart = iHeader + nStart*((long)iElement);
   fseek(fp,lStart,0);
 }
 
@@ -2771,9 +2771,6 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	pkd->nBucket = nBucket;
 	if (bTreeActiveOnly) n = pkd->nTreeActive;
 	else n = pkd->nLocal;
-	if (n == 0) {
-		printf("id:%d has an empty local tree\n",pkd->idSelf);
-		}
 	pkd->nLevels = 1;
 	l = 1;
 	while (n > nBucket) {

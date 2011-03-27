@@ -106,6 +106,6 @@ enum outtype_arraytype {
 /*void pkdOutArray(PKD pkd,char *pszFileName,int nStart, int iArrType, int iBinaryOutput);*/
 void VecFilename(char *achFile, int iType);
 void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,int iBinaryOutput, int N, int bStandard);
-void pkdGenericSeek(PKD pkd,FILE *fp,int nStart,int iHeader, int iElement);
+void pkdGenericSeek(PKD pkd,FILE *fp,long nStart,int iHeader, int iElement);
 void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int nStarStart, int iVecType, float minValue[3][3], float maxValue[3][3], double duTFac, double dvFac);
 #endif
