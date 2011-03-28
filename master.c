@@ -1514,6 +1514,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		_msrExit(msr,1);
 		}
 
+	if (msr->param.bOverwrite && msr->param.bRestart) {
+		puts("ERROR: bOverwrite is incompatible with bRestart");
+		_msrExit(msr,1);
+		}
 	if (msr->param.dTheta <= 0) {
 		if (msr->param.dTheta == 0 && msr->param.bVWarnings)
 			fprintf(stderr,"WARNING: Zero opening angle may cause numerical problems\n");
