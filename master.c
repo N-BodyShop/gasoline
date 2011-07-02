@@ -1165,6 +1165,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dMinGasMass", 2, &msr->param.stfm->dMinGasMass,
 		    sizeof(double), "stMinGas",
 		    "<Minimum mass of a gas particle> = 0.0");
+	msr->param.stfm->dMaxGasMass = FLOAT_MAXVAL;
+	prmAddParam(msr->prm,"dMaxGasMass", 2, &msr->param.stfm->dMaxGasMass,
+		    sizeof(double), "stMaxGas",
+		    "<Maximum mass of a gas particle> = FLOAT_MAX");
 	msr->param.stfm->dMaxStarMass = 0.0;
 	prmAddParam(msr->prm,"dMaxStarMass", 2, &msr->param.stfm->dMaxStarMass,
 		    sizeof(double), "stMaxStarMass",
@@ -2654,6 +2658,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dSoftMin: %g",msr->param.stfm->dSoftMin);
 	fprintf(fp," dMinMassFrac: %g",msr->param.stfm->dMinMassFrac);
 	fprintf(fp," dMinGasMass: %g",msr->param.stfm->dMinGasMass);
+	fprintf(fp," dMaxGasMass: %g",msr->param.stfm->dMaxGasMass);
 	fprintf(fp," dMaxStarMass: %g",msr->param.stfm->dMaxStarMass);
 	fprintf(fp," dESN: %g",msr->param.sn->dESN);
 	fprintf(fp," iNSNIIQuantum: %d",msr->param.sn->iNSNIIQuantum);
@@ -4818,6 +4823,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   in.smf.dGmUnit = msr->param.dMsolUnit*MSOLG;  /*if you want to use snCalcSNIIFeedback to calculate feedback*/
   in.smf.sn = *msr->param.sn;
   in.smf.dMinMassFrac = msr->param.stfm->dMinMassFrac;
+  in.smf.dMaxGasMass = msr->param.stfm->dMaxGasMass;
   in.smf.dTime = dTime;
   in.smf.bSNTurnOffCooling = msr->param.bSNTurnOffCooling;
   in.smf.bSmallSNSmooth = msr->param.bSmallSNSmooth;

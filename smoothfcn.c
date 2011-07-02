@@ -4608,15 +4608,19 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	
   fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
   for (i=0;i<nSmooth;++i) {
-    r2 = nnList[i].fDist2*ih2;            
+    r2 = nnList[i].fDist2*ih2;
     KERNEL(rs,r2);
     q = nnList[i].pPart;
+    if(q->fMass > smf->dMaxGasMass) {
+	continue;		/* Skip heavy particles */
+	}
     fNorm_u += q->fMass*rs;
     rs *= fNorm;
     fAveDens += q->fMass*rs;
     fNorm_Pres += q->fMass*q->uPred*rs;
     assert(TYPETest(q, TYPE_GAS));
   }
+  assert(fNorm_u > 0.0);  /* be sure we have at least one neighbor */
   fNorm_Pres *= (smf->gamma-1.0);
        
   assert(fNorm_u != 0.0);
@@ -4625,6 +4629,8 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   for (i=0;i<nSmooth;++i) {
     FLOAT weight;
     q = nnList[i].pPart;
+    if(q->fMass > smf->dMaxGasMass)
+	  continue;		/* Skip heavy particles */
     r2 = nnList[i].fDist2*ih2;  
     KERNEL(rs,r2);
     /* Remember: We are dealing with total energy rate and total metal
