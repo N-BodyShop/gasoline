@@ -1796,15 +1796,13 @@ void BHSinkMerge(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    else vkick = 0.0;
 
 	    printf("BHSink Merge %d eating %d  Time %g kick velocity %g mass ratio %g \n",p->iOrder,q->iOrder,smf->dTime,vkick,mratio);
-	    continue;
-	    /* return; why was this here?  JMB 7/27/09 */
-	  }
-	  if(p->fNSNtot > 0 && !(TYPETest(p,TYPE_DELETED))) {
-	    pkdDeleteParticle(smf->pkd,p);
-	    printf("BHSink Merge %d eaten Time %g \n",p->iOrder,smf->dTime);
+
+	    if(q->fNSNtot > 0 && !(TYPETest(q,TYPE_DELETED))) {
+	      printf("BHSink Merge %d eaten Time %g \n",q->iOrder,smf->dTime);
+	      pkdDeleteParticle(smf->pkd,q);
+	    }
 	  }
 	}
-
 #endif
 }
 
