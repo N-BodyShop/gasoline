@@ -83,12 +83,12 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		comb = combDeltaAccel;
 		smx->fcnPost = NULL;
 		break;
-	case SMX_SINKTEST:
-		smx->fcnSmooth = SinkTest;
-		initParticle = NULL; /* Original Particle */
-		initTreeParticle = initSinkTest; /* Original Particle */
-		init = initSinkTest; /* Cached copies */
-		comb = combSinkTest;
+	case SMX_SINKACCRETETEST:
+		smx->fcnSmooth = SinkAccreteTest;
+		initParticle = initSinkAccreteTest; /* Original Particle */
+		initTreeParticle = initSinkAccreteTest; /* Original Particle */
+		init = initSinkAccreteTest; /* Cached copies */
+		comb = combSinkAccreteTest;
 		smx->fcnPost = NULL;
 		smx->iLowhFix = LOWHFIX_SINKRADIUS;
 		smx->bUseBallMax = 0;
@@ -1169,10 +1169,10 @@ void smSmooth(SMX smx,SMF *smf)
 	if (smx->iLowhFix && 
 		((smx->iLowhFix==LOWHFIX_HOVERSOFT && fBall2 < smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft) ||
  		 (smx->iLowhFix==LOWHFIX_SINKRADIUS && fBall2 < smf->dSinkRadius*smf->dSinkRadius) ||
- 		 (smx->iLowhFix==LOWHFIX_SINKRADIUS_BUFF && fBall2 < smf->dSinkRadius*smf->dSinkRadius*1.1)) ) {		/* We ReSmooth for this guy later */
-		/* We ReSmooth for this guy later */
-		p[pi].fBall2 = -1.0; /* any value < 0 will do -- see code after "DoneSmooth:" below */
-		TYPESet(&p[pi],TYPE_SMOOTHDONE);
+ 		 (smx->iLowhFix==LOWHFIX_SINKRADIUS_BUFF && fBall2 < smf->dSinkRadius*smf->dSinkRadius*1.1)) ) {
+	        /* We ReSmooth for this guy later */
+	        p[pi].fBall2 = -1.0; /* any value < 0 will do -- see code after "DoneSmooth:" below */
+	        TYPESet(&p[pi],TYPE_SMOOTHDONE);
 
 		/* Get the next in line */
 		for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
@@ -1338,10 +1338,11 @@ void smSmooth(SMX smx,SMF *smf)
 		  fprintf(stderr,"Illegal value for iLowhFix %d in smooth\n",smx->iLowhFix);
 		  assert(0);
 		}
-		p[pi].fBall2 = fBall2;
-		p[pi].cpStart = 0;
-		cp = 0;
-		if (cp) {
+		for (;;) {
+		    p[pi].fBall2 = fBall2;
+		    p[pi].cpStart = 0;
+		    cp = 0;
+		    if (cp) {
 			nCnt = smBallGatherNP(smx,fBall2,p[pi].r,cp);
 			smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
 			/*
@@ -1349,72 +1350,76 @@ void smSmooth(SMX smx,SMF *smf)
 			*/
 			mdlCacheCheck(mdl);
 			}
-		else {
+		    else {
 			if (smx->bPeriodic) {
-				nCnt = smBallGather(smx,fBall2,p[pi].r);
-				}
+			    nCnt = smBallGather(smx,fBall2,p[pi].r);
+			    }
 			else {
-				nCnt = smBallGatherNP(smx,fBall2,p[pi].r,ROOT);
-				}
+			    nCnt = smBallGatherNP(smx,fBall2,p[pi].r,ROOT);
+			    }
 			/*
-			 ** Start non-local search.
-			 */
+			** Start non-local search.
+			*/
 			x = p[pi].r[0];
 			y = p[pi].r[1];
 			z = p[pi].r[2];
 			cp = ROOT;
 			id = -1;	/* We are in the LTT now ! */
 			while (1) {
-				if (id == pkd->idSelf) goto SkipLocal;
-				if (id >= 0) pkdn = mdlAquire(mdl,CID_CELL,cp,id);
-				else pkdn = &pkd->kdTop[cp];
-				if (pkdn->pUpper < 0) goto GetNextCell;
-				INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNextCell);
-				if (pkdn->iDim >= 0 || id == -1) {
-					if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
-					pkdLower(pkd,cp,id);
-					continue;
-					}
-				for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
-					pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
-					dx = sx - pPart->r[0];
-					dy = sy - pPart->r[1];
-					dz = sz - pPart->r[2];
-					fDist2 = dx*dx + dy*dy + dz*dz;
-					if (fDist2 <= fBall2) {
-						if(nCnt >= smx->nListSize)
-						    smGrowList(smx);
-						smx->nnList[nCnt].fDist2 = fDist2;
-						smx->nnList[nCnt].dx = dx;
-						smx->nnList[nCnt].dy = dy;
-						smx->nnList[nCnt].dz = dz;
-						smx->nnList[nCnt].pPart = pPart;
-						smx->nnList[nCnt].iIndex = pj;
-						smx->nnList[nCnt].iPid = id;
-						smx->pbRelease[nCnt++] = 1;
-						continue;
-						}
-					mdlRelease(mdl,CID_PARTICLE,pPart);
-					}
-			GetNextCell:
+			    if (id == pkd->idSelf) goto SkipLocal;
+			    if (id >= 0) pkdn = mdlAquire(mdl,CID_CELL,cp,id);
+			    else pkdn = &pkd->kdTop[cp];
+			    if (pkdn->pUpper < 0) goto GetNextCell;
+			    INTERSECT(pkdn,fBall2,lx,ly,lz,x,y,z,sx,sy,sz,iDum,GetNextCell);
+			    if (pkdn->iDim >= 0 || id == -1) {
 				if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
-			SkipLocal:
-				pkdNext(pkd,cp,id);
-				if (pkdIsRoot(cp,id)) break;
+				pkdLower(pkd,cp,id);
+				continue;
 				}
-
+			    for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
+				pPart = mdlAquire(mdl,CID_PARTICLE,pj,id);
+				dx = sx - pPart->r[0];
+				dy = sy - pPart->r[1];
+				dz = sz - pPart->r[2];
+				fDist2 = dx*dx + dy*dy + dz*dz;
+				if (fDist2 <= fBall2) {
+				    if(nCnt >= smx->nListSize)
+					smGrowList(smx);
+				    smx->nnList[nCnt].fDist2 = fDist2;
+				    smx->nnList[nCnt].dx = dx;
+				    smx->nnList[nCnt].dy = dy;
+				    smx->nnList[nCnt].dz = dz;
+				    smx->nnList[nCnt].pPart = pPart;
+				    smx->nnList[nCnt].iIndex = pj;
+				    smx->nnList[nCnt].iPid = id;
+				    smx->pbRelease[nCnt++] = 1;
+				    continue;
+				    }
+				mdlRelease(mdl,CID_PARTICLE,pPart);
+				}
+			GetNextCell:
+			    if (id >= 0) mdlRelease(mdl,CID_CELL,pkdn);
+			SkipLocal:
+			    pkdNext(pkd,cp,id);
+			    if (pkdIsRoot(cp,id)) break;
+			    }
+			
 			smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
 			/*
-			 ** Release non-local particle pointers.
-			 */
+			** Release non-local particle pointers.
+			*/
 			for (i=0;i<nCnt;++i) {
-				if (smx->pbRelease[i]) {
-					mdlRelease(mdl,CID_PARTICLE,smx->nnList[i].pPart);
-					}
+			    if (smx->pbRelease[i]) {
+				mdlRelease(mdl,CID_PARTICLE,smx->nnList[i].pPart);
 				}
+			    }
 			}
-		}
-	/*
+		    if (p[pi].fBall2 > 0) break;
+		    fBall2 *= 1.2;
+		    printf("INFO: Particle %d: Redoing search with fBall2 %g\n",p[pi].iOrder,fBall2);
+		    }
+	    }
+		/*
 	printf("nSmoothed: %d\n",nSmoothed);
 	*/
 	}

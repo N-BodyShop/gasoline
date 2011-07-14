@@ -122,9 +122,16 @@ struct parameters {
     int bSinkThermal;
     int bSinkForm;
     int bSinkFormJeans;
+    int bSinkFormDivV;
+    int bSinkFormDivAcc;
+    int bSinkFormDV;
+    int bSinkFormPotMin;
     int bSinkFormSimple;
     int nSinkFormMin;
+    double dSinkFormDivVCoeff;
+    double dSinkFormDivAccCoeff;
     double dSinkFormDensity;
+    double dSinkTimeEligible;
     int iSinkRung;
     int iSinkCurrentRung;
     int nJeans;
@@ -247,6 +254,8 @@ struct parameters {
 	double dSNHeatFraction;
 	double dDumpFrameStep;
 	double dDumpFrameTime;
+	int iTreeZipStep;
+        int bTreeZipLocal;
         int    iDirector;
 	int    bStarForm;
 	int    bFeedBack;

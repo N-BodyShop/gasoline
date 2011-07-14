@@ -48,9 +48,16 @@ typedef struct smfParameters {
         int iViscosityLimiter;
 #endif
     int bSinkThermal;
+    int bSinkFormDivV;
+    int bSinkFormDivAcc;
+    int bSinkFormDV;
+    int bSinkFormPotMin;
     int nSinkFormMin;
     int iSinkCurrentRung;
     int iSmoothFlags; /* Read/Write locally.  Master sets initial value. */
+    double dSinkFormDivVCoeff;
+    double dSinkFormDivAccCoeff;
+    double dSinkTimeEligible;
     double dTime;
 #ifdef DIFFUSION
     double dMetalDiffusionCoeff;
@@ -107,7 +114,7 @@ enum smx_smoothtype {
   SMX_MARK,
   SMX_MEANVEL,
   SMX_DELTAACCEL,
-  SMX_SINKTEST,
+  SMX_SINKACCRETETEST,
   SMX_SINKACCRETE,
   SMX_SINKINGAVERAGE,
   SMX_SINKINGFORCESHARE,
@@ -190,10 +197,10 @@ void DeltaAccel(PARTICLE *,int,NN *,SMF *);
 void initDeltaAccel(void *);
 void combDeltaAccel(void *,void *);
 
-/* SMX_SINKTEST */
-void SinkTest(PARTICLE *,int,NN *,SMF *);
-void initSinkTest(void *);
-void combSinkTest(void *,void *);
+/* SMX_SINKACCRETETEST */
+void SinkAccreteTest(PARTICLE *,int,NN *,SMF *);
+void initSinkAccreteTest(void *);
+void combSinkAccreteTest(void *,void *);
 
 /* SMX_SINKACCRETE */
 void SinkAccrete(PARTICLE *,int,NN *,SMF *);

@@ -246,6 +246,7 @@ void msrCoolVelocity(MSR,double,double);
 void msrGrowMass(MSR msr, double dTime, double dDelta);
 void msrCalcWriteStart(MSR);
 void msrAddDelParticles(MSR msr);
+void msrOutputBlackHoles(MSR msr, double dTime);
 void msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung);
 void msrFormSinks(MSR msr, double dTime, double dDelta, int iKickRung);
 void msrGravStep(MSR msr, double dTime);
@@ -298,6 +299,7 @@ void msrSph(MSR msr, double dTime, int iKickRung);
 
 int msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart);
 void msrDumpFrame(MSR msr, double, double);
+void msrTreeZip(MSR msr, int iStep);
 
 
 #ifdef GLASS

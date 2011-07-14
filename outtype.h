@@ -100,7 +100,8 @@ enum outtype_arraytype {
 	OUT_NORMAL_VECTOR,
 	OUT_VPRED_VECTOR,
 	OUT_GRADRHO_VECTOR,
-	OUT_ACCELPRES_VECTOR
+	OUT_ACCELPRES_VECTOR,
+	OUT_ANGMOM_VECTOR
 	};
 
 /*void pkdOutArray(PKD pkd,char *pszFileName,int nStart, int iArrType, int iBinaryOutput);*/

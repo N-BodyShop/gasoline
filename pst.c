@@ -82,6 +82,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_WRITETIPSY,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstWriteTipsy,
 				  sizeof(struct inWriteTipsy),0);
+	mdlAddService(mdl,PST_TREEZIP,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstTreeZip,
+				  sizeof(struct inTreeZip),0);
         mdlAddService(mdl,PST_OUTPUTBLACKHOLES,pst,
                       (void (*)(void *,void *,int,void *,int *)) pstOutputBlackHoles,
 		      sizeof(struct inWriteTipsy),0);
@@ -2783,7 +2786,41 @@ void pstWriteTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 		strcat(achOutFile,in->achOutFile);
 		pkdWriteTipsy(plcl->pkd,achOutFile,plcl->nWriteStart,
-					  in->bStandard,in->dvFac,in->duTFac,in->iGasModel);
+                                          in->bStandard,in->dvFac,in->duTFac,in->iGasModel);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+void pstTreeZip(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inTreeZip *in = vin;
+	double dmin[3],dmax[3];
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inTreeZip));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_TREEZIP,in,nIn);
+		pstTreeZip(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+	        if (in->bLocal) {
+		    dmin[0] = pst->bnd.fMin[0];
+		    dmin[1] = pst->bnd.fMin[1];
+		    dmin[2] = pst->bnd.fMin[2];
+		    dmax[0] = pst->bnd.fMax[0];
+		    dmax[1] = pst->bnd.fMax[1];
+		    dmax[2] = pst->bnd.fMax[2];
+		    }
+		else {
+		    dmin[0] = in->bnd.fMin[0];
+		    dmin[1] = in->bnd.fMin[1];
+		    dmin[2] = in->bnd.fMin[2];
+		    dmax[0] = in->bnd.fMax[0];
+		    dmax[1] = in->bnd.fMax[1];
+		    dmax[2] = in->bnd.fMax[2];
+		    }
+	        pkdTreeZip(plcl->pkd,in->achFile,dmin,dmax);
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -6026,7 +6063,7 @@ pstFormSinks(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (fsStats.Jvalmin < out->Jvalmin) out->Jvalmin = fsStats.Jvalmin;
 		}
 	else {
-	    pkdFormSinks(pst->plcl->pkd,in->bJeans,in->dJConst2,in->bDensity,in->dDensityCut,
+	    pkdFormSinks(pst->plcl->pkd,in->bJeans, in->dJConst2,in->bDensity,in->dDensityCut,
 			 in->dTime,in->iKickRung, in->bSimple, &out->nCandidates, &out->Jvalmin);
 		}
 	if (pnOut) *pnOut = sizeof(struct outFormSinks);

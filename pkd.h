@@ -5,6 +5,7 @@
 #include <sys/resource.h>
 #include "mdl.h"
 #include "floattype.h"
+#include "treezip.h"
 
 #ifdef GASOLINE
 #include "cooling.h"
@@ -34,6 +35,11 @@
 /* SPH variable ALPHA */
 #ifndef ALPHAMIN
 #define ALPHAMIN 0.01
+#endif
+
+#ifdef RTF
+#define RTDENSITY
+#define RTFORCE
 #endif
 
 /* this too... */
@@ -90,11 +96,11 @@ typedef struct particle {
 #endif
 	FLOAT fBallMax;		/* SPH 2h Max value */
 #ifdef GASOLINE
-	FLOAT uPred;		/* predicted thermal energy */
-	FLOAT PoverRho2;	/* P/rho^2 */
-	FLOAT u;	        /* thermal energy */ 
-	FLOAT c;			/* sound speed */
-	FLOAT mumax;		/* sound speed like viscosity term */
+	FLOAT c;		/* sound speed */
+	FLOAT u; 	        /* thermal energy  */ 
+	FLOAT uPred;		/* predicted thermal energy, Lx sink */
+	FLOAT PoverRho2;	/* P/rho^2, Ly sink */
+	FLOAT mumax;		/* sound speed like viscosity term, Lz sink */
 	FLOAT PdV;	        /* P dV heating (includes shocking) */
 #ifdef PDVDEBUG
 	FLOAT PdVvisc;		/* P dV from shock (testing) */
@@ -114,6 +120,10 @@ typedef struct particle {
         FLOAT diff;
         FLOAT fMetalsDot;
         FLOAT fMetalsPred;
+#ifdef MASSDIFF
+        FLOAT fMassDot;
+        FLOAT fMass0;
+#endif
 #endif
 #ifdef DENSITYU
         FLOAT fDensityU;
@@ -125,6 +135,7 @@ typedef struct particle {
         FLOAT vSinkingTang0Mag;
         FLOAT vSinkingr0;
         FLOAT fSinkingTime;  
+        FLOAT fTrueMass;
         int iSinkingOnto;
 #endif
 #ifdef SURFACEAREA
@@ -226,6 +237,10 @@ typedef struct particle {
 #endif
 } PARTICLE;
 
+#define SINK_Lx(_a) (((PARTICLE *) (_a))->uPred)
+#define SINK_Ly(_a) (((PARTICLE *) (_a))->PoverRho2)
+#define SINK_Lz(_a) (((PARTICLE *) (_a))->mumax)
+
 /* Active Type Masks */
 
 /* Active: -- eg. Calculate new acceleration, PdV, etc... for this particle */
@@ -308,13 +323,19 @@ typedef struct chkParticle {
 	FLOAT v[3];
 #ifdef GASOLINE
 	FLOAT u;
+#ifdef STARSINK
+        FLOAT Lx,Ly,Lz;
+#endif
+#ifdef VARALPHA
+        FLOAT alpha;
+#endif
 	FLOAT fMetals;
 #ifndef NOCOOLING
 	COOLPARTICLE CoolParticle;
 #endif
+	FLOAT fTimeForm;
 #ifdef STARFORM
         FLOAT fTimeCoolIsOffUntil;
-	FLOAT fTimeForm;
 	FLOAT fMassForm;	/* record original mass of star */
 	FLOAT fNSN;
 	FLOAT fMFracOxygen;
@@ -323,11 +344,20 @@ typedef struct chkParticle {
 #endif
 #ifdef SIMPLESF
 	FLOAT fMassStar;
-	FLOAT fTimeForm;
 	FLOAT rForm[3];		/* record pos and vel of star formation */
 	FLOAT vForm[3];
 	FLOAT fDenForm;
 	int iGasOrder;
+#endif
+#ifdef SINKING
+        FLOAT rSinking0Unit[3];
+        FLOAT rSinking0Mag;
+        FLOAT vSinkingTang0Unit[3];
+        FLOAT vSinkingTang0Mag;
+        FLOAT vSinkingr0;
+        FLOAT fSinkingTime;  
+        FLOAT fTrueMass;
+        int iSinkingOnto; /* used for nSinkingOnto for sink itself */
 #endif
 #endif
 #ifdef COLLISIONS
@@ -662,6 +692,7 @@ void pkdDomainColor(PKD);
 int pkdColOrdRejects(PKD,int,int);
 void pkdLocalOrder(PKD);
 void pkdWriteTipsy(PKD,char *,int,int,double,double,int);
+void pkdTreeZip(PKD pkd,char *pszFileName, double *dmin, double *dmax);
 void pkdCombine(KDN *,KDN *,KDN *);
 void pkdCalcCell(PKD,KDN *,FLOAT *,int,struct pkdCalcCellStruct *);
 double pkdCalcOpen(KDN *,int,double,int);

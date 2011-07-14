@@ -68,7 +68,7 @@ int main(int argc,char **argv)
 #endif
 
 	/* code to make gasoline core dump if there is a floating point exception 
-	feenableexcept(FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);*/ 
+	   feenableexcept(FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);*/
 
 #ifdef TINY_PTHREAD_STACK
 	static int first = 1;
@@ -208,6 +208,9 @@ int main(int argc,char **argv)
 				fclose(fp);
 				}
 			}
+#endif
+#ifdef SINKING
+		msrDrift(msr,dTime,0); /* Need to set up vPred for sinking particles on restarts */
 #endif
 		if(msrKDK(msr) || msr->param.bGravStep || msr->param.bAccelStep) {
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE);
@@ -386,6 +389,9 @@ int main(int argc,char **argv)
 		msrInitAccel(msr);
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
 		msrUpdateSoft(msr,dTime);
+#ifdef SINKING
+		msrDrift(msr,dTime,0); /* Need to set up vPred for sinking particles on restarts */
+#endif
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
 		msrBuildTree(msr,0,dMass,0);
 		msrMassCheck(msr,dMass,"After msrBuildTree");
@@ -585,6 +591,9 @@ int main(int argc,char **argv)
 			**           3) we're at an output interval
 			*/
 #ifndef BENCHMARK
+			printf("Treezip?\n");
+			if (msr->param.iTreeZipStep && (iStep % msr->param.iTreeZipStep)==0) msrTreeZip(msr,iStep);
+
 			if (msrOutTime(msr,dTime) || iStep == msr->param.iStopStep || iStop ||
 				(msrOutInterval(msr) > 0 && iStep%msrOutInterval(msr) == 0)) {
 				if (msr->nGas && !msr->param.bKDK) {
@@ -667,6 +676,9 @@ int main(int argc,char **argv)
 #endif
                 }
 
+#ifdef SINKING
+	    msrDrift(msr,dTime,0); /* Need to set up vPred for sinking particles on restarts */
+#endif
             if (msrDoGravity(msr)) {
                 msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
                 msrDomainDecomp(msr,0,1);

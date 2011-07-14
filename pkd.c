@@ -331,6 +331,11 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef GASOLINE
     p->u = 0.0;
     p->uPred = 0.0;
+#ifdef STARSINK
+    SINK_Lx(p) = 0.0;
+    SINK_Ly(p) = 0.0;
+    SINK_Lz(p) = 0.0;
+#endif
 #ifdef STARFORM
     p->fESNrate = 0.0;
     p->fNSN = 0.0;
@@ -365,7 +370,12 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
     p->c = 0.0;
     p->fMetals = 0.0;
-    p->fTimeForm = 0.0;
+    p->fTimeForm = 1e37;
+#ifdef SINKING
+    p->fTrueMass = 0;
+    p->fSinkingTime = 1e37;  
+    p->iSinkingOnto = -1;
+#endif
 #endif
 #ifdef NEED_VPRED
     for (j=0;j<3;++j) {
@@ -474,6 +484,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
 				assert(p->fMass > 0.0);
+#ifdef SINKING
+				p->fTrueMass = fTmp;
+#endif
 				for (j=0;j<3;++j) {
 					xdr_float(&xdrs,&fTmp);
 					p->r[j] = fTmp;
@@ -510,6 +523,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->fMetals = fTmp;
 #ifdef DIFFUSION
 				p->fMetalsPred = fTmp;
+#ifdef MASSDIFF
+				p->fMass0 = p->fMass;
+#endif
 #endif				
 #ifdef STARFORM
 				/* 75% alphas + 25% Fe??? */
@@ -541,6 +557,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
 				assert(p->fMass >= 0.0);
+#ifdef SINKING
+				p->fTrueMass = fTmp;
+#endif
 				for (j=0;j<3;++j) {
 					xdr_float(&xdrs,&fTmp);
 					p->r[j] = fTmp;
@@ -566,6 +585,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->fMassForm = fTmp;
 #endif
 				assert(p->fMass >= 0.0);
+#ifdef SINKING
+				p->fTrueMass = fTmp;
+#endif
 				for (j=0;j<3;++j) {
 				  xdr_float(&xdrs,&fTmp);
 				  p->r[j] = fTmp;
@@ -580,6 +602,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->fMetals = fTmp;
 #ifdef DIFFUSION
 				p->fMetalsPred = fTmp;
+#ifdef MASSDIFF
+				p->fMass0 = p->fMass;
+#endif
 #endif				
 				xdr_float(&xdrs,&fTmp);
 				p->fTimeForm = fTmp;
@@ -657,6 +682,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	}
 	p->fMass = gp.mass;
 	assert(p->fMass >= 0.0);
+#ifdef SINKING
+	p->fTrueMass = gp.mass;
+#endif
 	p->fSoft = gp.hsmooth;
 #ifdef CHANGESOFT
 	p->fSoft0 = gp.hsmooth;
@@ -674,6 +702,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	p->fMetals = gp.metals;
 #ifdef DIFFUSION
 	p->fMetalsPred = gp.metals;
+#ifdef MASSDIFF
+	p->fMass0 = p->fMass;
+#endif
 #endif				
 #endif
 				}
@@ -690,6 +721,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					}
 				p->fMass = dp.mass;
 				assert(p->fMass >= 0.0);
+#ifdef SINKING
+				p->fTrueMass = dp.mass;
+#endif
 				p->fSoft = dp.eps;
 #ifdef CHANGESOFT
 				p->fSoft0 = dp.eps;
@@ -705,17 +739,20 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					}
 				p->fMass = sp.mass;
 #ifdef STARFORM
-	p->fMassForm = sp.mass;
+				p->fMassForm = sp.mass;
 #endif
-	assert(p->fMass >= 0.0);
-	p->fSoft = sp.eps;
+				assert(p->fMass >= 0.0);
+#ifdef SINKING
+				p->fTrueMass = sp.mass;
+#endif
+				p->fSoft = sp.eps;
 #ifdef CHANGESOFT
-	p->fSoft0 = sp.eps;
+				p->fSoft0 = sp.eps;
 #endif
-	p->fPot = sp.phi;
+				p->fPot = sp.phi;
 #ifdef GASOLINE
-	p->fMetals = sp.metals;
-	p->fTimeForm = sp.tform;		
+				p->fMetals = sp.metals;
+				p->fTimeForm = sp.tform;		
 #endif
 				}
 			    else mdlassert(pkd->mdl,0);
@@ -1684,7 +1721,12 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	xdr_float(&xdrs,&fTmp);
       }
       else if (pkdIsGas(pkd,p)) {
-	fTmp = p->fMass;
+#ifdef SINKING
+	if (TYPETest(p,TYPE_SINK)) 
+	    fTmp = p->fTrueMass;
+	else
+#endif
+	    fTmp = p->fMass;
 	xdr_float(&xdrs,&fTmp);
 	for (j=0;j<3;++j) {
 	  fTmp = p->r[j];
@@ -1736,13 +1778,22 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	fTmp = p->fSoft;
 #endif
 	xdr_float(&xdrs,&fTmp);
-#ifdef DEBUG
-	/* Store divv in metals for now */
-	fTmp = p->divv;
+#ifdef SINKING
+	if (TYPETest( p, TYPE_SINKING)) {
+	    xdr_int(&xdrs,&p->iSinkingOnto); /* output sinkingonto integer in place of metals */
+	    }
+	else if (TYPETest( p, TYPE_SINK)) {
+	    fTmp = p->fMass;
+	    xdr_float(&xdrs,&fTmp);
+	    }
+	else {
+	    fTmp = p->fMetals;
+	    xdr_float(&xdrs,&fTmp);
+	    }
 #else
 	fTmp = p->fMetals;
-#endif
 	xdr_float(&xdrs,&fTmp);
+#endif
 #else /* not gasoline */
 	fTmp = 0.0;
 	xdr_float(&xdrs,&fTmp);
@@ -1759,7 +1810,12 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	xdr_float(&xdrs,&fTmp);
       }
       else if (pkdIsStar(pkd,p)) {
-	fTmp = p->fMass;
+#ifdef SINKING
+	if (TYPETest(p,TYPE_SINK)) 
+	    fTmp = p->fTrueMass;
+	else
+#endif
+	    fTmp = p->fMass;
 	xdr_float(&xdrs,&fTmp);
 	for (j=0;j<3;++j) {
 	  fTmp = p->r[j];
@@ -1771,7 +1827,12 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	  xdr_float(&xdrs,&fTmp);
 	}
 #ifdef GASOLINE
-	fTmp = p->fMetals;
+#ifdef SINKING
+	if (TYPETest( p, TYPE_SINK)) 
+	    fTmp = p->fMass;
+	else
+#endif
+	    fTmp = p->fMetals;
 	xdr_float(&xdrs,&fTmp);
 	fTmp = p->fTimeForm;
 	xdr_float(&xdrs,&fTmp);
@@ -1819,7 +1880,12 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	  gp.pos[j] = p->r[j];
 	  gp.vel[j] = dvFac*p->v[j];
 	}
-	gp.mass = p->fMass;
+#ifdef SINKING
+	if (TYPETest(p,TYPE_SINK)) 
+	    gp.mass = p->fTrueMass;
+	else
+#endif
+	    gp.mass = p->fMass;
 #ifdef CHANGESOFT
 	gp.hsmooth = p->fSoft0;
 #else
@@ -1829,7 +1895,14 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	gp.rho = p->fDensity;
 #ifdef GASOLINE
 	gp.temp = duTFac*p->u;
+#ifdef SINKING
+	if (TYPETest( p, TYPE_SINK)) 
+	    gp.metals = p->fMass;
+	else 
+	    *((int *) (&gp.metals)) = p->iSinkingOnto;
+#else
 	gp.metals = p->fMetals;
+#endif
 #else
 	gp.temp = 0.0;
 	gp.metals = 0.0;
@@ -1842,7 +1915,12 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	  sp.pos[j] = p->r[j];
 	  sp.vel[j] = dvFac*p->v[j];
 	}
-	sp.mass = p->fMass;
+#ifdef SINKING
+	if (TYPETest(p,TYPE_SINK)) 
+	    sp.mass = p->fTrueMass;
+	else
+#endif
+	    sp.mass = p->fMass;
 #ifdef CHANGESOFT
 	sp.eps = p->fSoft0;
 #else
@@ -1850,7 +1928,13 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 #endif
 	sp.phi = p->fPot;
 #ifdef GASOLINE
-	sp.metals = p->fMetals;
+#ifdef SINKING
+	if (TYPETest(p,TYPE_SINK)) 
+	    sp.metals = p->fMass;
+	else
+#endif
+	    sp.metals = p->fMetals;
+
 	sp.tform = p->fTimeForm;
 #else
 	sp.metals = 0.0;
@@ -1865,6 +1949,44 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
   nout = fclose(fp);
   mdlassert(pkd->mdl,nout == 0);
 }
+
+void pkdTreeZip(PKD pkd,char *pszFileName, double *dmin, double *dmax) 
+    {
+    char file[500];
+    FILE *fp;
+    TZX *tz;
+    int nBits_nPerBucket = 4;
+    int nBits_Position = 6;
+    int nBitsMaxPrecision_PerDirection = TZNBITS_IN_KEY/3;
+    int nBitsMinPrecision_PerDirection = 0;
+
+    PARTICLE *p;
+    int i;
+
+    printf("id %d: TreeZip: Building tree %d\n",pkd->idSelf,pkd->nLocal);
+    if (!pkd->nLocal) return;
+
+    tz = tzInit( &dmin[0], &dmax[0], nBits_nPerBucket, nBits_Position, nBitsMaxPrecision_PerDirection, nBitsMinPrecision_PerDirection );
+    for (i=0; i<pkd->nLocal; i++) {
+	p = &pkd->pStore[i];
+        tzAddPos( tz, &(p->r[0]), p->iOrder );
+	}
+
+    sprintf(file,"%s/p.%d",pszFileName,pkd->idSelf);
+    fp = fopen(file,"a");
+    printf("id %d: TreeZip: Opening %s\n",pkd->idSelf,file);
+    assert(fp!=NULL);
+    tzOutputFile( tz, fp );
+    tzWriteHeader( tz );
+    tzWriteTreeZip( tz ) ;
+    fclose(fp);
+
+    printf("id %d: Leftovers:  nParticle %i, nBucket %i, nNode %i\n",pkd->idSelf,tz->nParticle,tz->nBucket,tz->nNode);
+    printf("id %d: nBits Particle %i, Total %i, Written %i (%i)\n",pkd->idSelf,tz->nParticlebits,tz->nTotalbits,tz->nWritebits,tz->nWritebits/8);
+
+    tzFinalize( tz );
+
+    }
 
 void pkdOutputBlackHoles(PKD pkd,char *pszFileName, double dvFac)
 {
@@ -3909,6 +4031,10 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #ifdef DIFFUSION
 				p->fMetalsPred = p->fMetals + p->fMetalsDot*duPredDelta;
 				p->fMetals = p->fMetals + p->fMetalsDot*duDelta;
+#ifdef MASSDIFF
+				p->fMass = p->fMass0 + p->fMassDot*duPredDelta;
+				p->fMass0 = p->fMass0 + p->fMassDot*duDelta;
+#endif
 #ifdef STARFORM
 				p->fMFracOxygenPred = p->fMFracOxygen + p->fMFracOxygenDot*duPredDelta;
 				p->fMFracOxygen = p->fMFracOxygen + p->fMFracOxygenDot*duDelta;
@@ -4132,8 +4258,19 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #endif
 #ifdef GASOLINE
 		p->u = cp.u;
+#ifdef STARSINK
+		SINK_Lx(p) = cp.Lx;
+		SINK_Ly(p) = cp.Ly;
+		SINK_Lz(p) = cp.Lz;
+#else
 		p->uPred = cp.u;
 		assert(p->u >= 0);
+#endif
+
+#ifdef VARALPHA
+		p->alpha = cp.alpha;
+		p->alphaPred = cp.alpha;
+#endif
 #ifdef COOLDEBUG
 		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
 #endif
@@ -4165,9 +4302,27 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		p->fMetals = cp.fMetals;
 #ifdef DIFFUSION
 		p->fMetalsPred = cp.fMetals;
+
+#ifdef MASSDIFF
+		p->fMass0 = cp.fMass;
+#endif
 #endif
 #ifndef NOCOOLING		
 		p->CoolParticle = cp.CoolParticle;
+#endif
+#ifdef SINKING
+		p->rSinking0Unit[0] = cp.rSinking0Unit[0];
+		p->rSinking0Unit[1] = cp.rSinking0Unit[1];
+		p->rSinking0Unit[2] = cp.rSinking0Unit[2];
+		p->rSinking0Mag = cp.rSinking0Mag;
+		p->vSinkingTang0Unit[0] = cp.vSinkingTang0Unit[0];
+		p->vSinkingTang0Unit[1] = cp.vSinkingTang0Unit[1];
+		p->vSinkingTang0Unit[2] = cp.vSinkingTang0Unit[2];
+		p->vSinkingTang0Mag = cp.vSinkingTang0Mag;
+		p->vSinkingr0 = cp.vSinkingr0;
+		p->fSinkingTime = cp.fSinkingTime;  
+		p->iSinkingOnto = cp.iSinkingOnto;
+		p->fTrueMass = cp.fTrueMass;
 #endif
 #endif
 #ifdef COLLISIONS
@@ -4192,6 +4347,7 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 {
 	FILE *fp;
 	CHKPART cp;
+	PARTICLE *p;
 	long lStart;
 	int i,j,nLocal;
 	int nout;
@@ -4209,47 +4365,70 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 	 */
 	nLocal = pkdLocal(pkd);
 	for (i=0;i<nLocal;++i) {
-		cp.iOrder = pkd->pStore[i].iOrder;
-		cp.fMass = pkd->pStore[i].fMass;
+    	        p = &pkd->pStore[i];
+		cp.iOrder = p->iOrder;
+		cp.fMass = p->fMass;
 #ifdef CHANGESOFT
-		cp.fSoft = pkd->pStore[i].fSoft0;
+		cp.fSoft = p->fSoft0;
 #else
-		cp.fSoft = pkd->pStore[i].fSoft;
+		cp.fSoft = p->fSoft;
 #endif
 		for (j=0;j<3;++j) {
-			cp.r[j] = pkd->pStore[i].r[j];
-			cp.v[j] = pkd->pStore[i].v[j];
+			cp.r[j] = p->r[j];
+			cp.v[j] = p->v[j];
 			}
 #ifdef GASOLINE
-		cp.u = pkd->pStore[i].u;
-		cp.fMetals = pkd->pStore[i].fMetals;
+		cp.u = p->u;
+#ifdef STARSINK
+		cp.Lx = SINK_Lx(p);
+		cp.Ly = SINK_Ly(p);
+		cp.Lz = SINK_Lz(p);
+#endif
+#ifdef VARALPHA
+		cp.alpha = p->alpha;
+#endif
+		cp.fMetals = p->fMetals;
 #ifndef NOCOOLING		
-		cp.CoolParticle = pkd->pStore[i].CoolParticle;
+		cp.CoolParticle = p->CoolParticle;
 #endif
 #ifdef STARFORM
-		cp.fTimeForm = pkd->pStore[i].fTimeForm;
-		cp.fMassForm = pkd->pStore[i].fMassForm;
-		cp.iGasOrder = pkd->pStore[i].iGasOrder;
-                cp.fTimeCoolIsOffUntil = pkd->pStore[i].fTimeCoolIsOffUntil;
-                cp.fMFracOxygen = pkd->pStore[i].fMFracOxygen;
-                cp.fMFracIron = pkd->pStore[i].fMFracIron;
+		cp.fTimeForm = p->fTimeForm;
+		cp.fMassForm = p->fMassForm;
+		cp.iGasOrder = p->iGasOrder;
+                cp.fTimeCoolIsOffUntil = p->fTimeCoolIsOffUntil;
+                cp.fMFracOxygen = p->fMFracOxygen;
+                cp.fMFracIron = p->fMFracIron;
 #endif
 #ifdef SIMPLESF
-		cp.fMassStar = pkd->pStore[i].fMassStar;
-		cp.fTimeForm = pkd->pStore[i].fTimeForm;
+		cp.fMassStar = p->fMassStar;
+		cp.fTimeForm = p->fTimeForm;
 		for (j=0;j<3;++j) {
-			cp.rForm[j] = pkd->pStore[i].rForm[j];
-			cp.vForm[j] = pkd->pStore[i].vForm[j];
+			cp.rForm[j] = p->rForm[j];
+			cp.vForm[j] = p->vForm[j];
 			}
-		cp.fDenForm = pkd->pStore[i].fDensity;
-		cp.iGasOrder = pkd->pStore[i].iGasOrder;
+		cp.fDenForm = p->fDensity;
+		cp.iGasOrder = p->iGasOrder;
+#endif
+#ifdef SINKING
+		cp.rSinking0Unit[0] = p->rSinking0Unit[0];
+		cp.rSinking0Unit[1] = p->rSinking0Unit[1];
+		cp.rSinking0Unit[2] = p->rSinking0Unit[2];
+		cp.rSinking0Mag = p->rSinking0Mag;
+		cp.vSinkingTang0Unit[0] = p->vSinkingTang0Unit[0];
+		cp.vSinkingTang0Unit[1] = p->vSinkingTang0Unit[1];
+		cp.vSinkingTang0Unit[2] = p->vSinkingTang0Unit[2];
+		cp.vSinkingTang0Mag = p->vSinkingTang0Mag;
+		cp.vSinkingr0 = p->vSinkingr0;
+		cp.fSinkingTime = p->fSinkingTime;  
+		cp.iSinkingOnto = p->iSinkingOnto;
+		cp.fTrueMass = p->fTrueMass;
 #endif
 #endif
 #ifdef COLLISIONS
-		cp.iOrgIdx = pkd->pStore[i].iOrgIdx;
+		cp.iOrgIdx = p->iOrgIdx;
 		for (j=0;j<3;++j)
-			cp.w[j] = pkd->pStore[i].w[j];
-		cp.iColor = pkd->pStore[i].iColor;
+			cp.w[j] = p->w[j];
+		cp.iColor = p->iColor;
 #endif /* COLLISIONS */
 		nout = fwrite(&cp,sizeof(CHKPART),1,fp);
 		mdlassert(pkd->mdl,nout == 1);
@@ -5191,7 +5370,18 @@ void pkdSetParticleTypes(PKD pkd, int nSuperCool)
 		if (pkdIsDarkByOrder(pkd,p)) iSetMask |= TYPE_DARK;
 		if (pkdIsStarByOrder(pkd,p)) iSetMask |= TYPE_STAR;
 		if (p->iOrder < nSuperCool) iSetMask |= TYPE_SUPERCOOL;
-
+#ifdef STARSINK
+		if (iSetMask & TYPE_STAR) {
+		    iSetMask |= TYPE_SINK;
+#ifdef SINKING
+		    if (p->iSinkingOnto < 0) p->iSinkingOnto=0;
+		    
+#endif
+		    }
+#endif
+#ifdef SINKING
+		if ((iSetMask&TYPE_GAS) && p->iSinkingOnto >= 0) iSetMask |= TYPE_SINKING;
+#endif
 		TYPESet(p,iSetMask);
 		}
     } 
@@ -5823,6 +6013,11 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 		}
 	    if (p->dt < *pdtMinGas) { *pdtMinGas = p->dt; }
 	    }
+#ifdef SINKING
+	else if (TYPETest( p, TYPE_SINK )) {
+	    if (p->dt < *pdtMinGas) { *pdtMinGas = p->dt; }
+	    }
+#endif
 	}
 }
 
@@ -6468,6 +6663,9 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 			  }
 #ifdef DIFFUSION
 			p->fMetalsPred = p->fMetalsPred + p->fMetalsDot*duDelta;
+#ifdef MASSDIFF
+			p->fMass = p->fMass + p->fMassDot*duDelta;
+#endif
 #ifdef STARFORM
 			p->fMFracOxygenPred = p->fMFracOxygenPred + p->fMFracOxygenDot*duDelta;
 			p->fMFracIronPred = p->fMFracIronPred + p->fMFracIronDot*duDelta;
@@ -6630,7 +6828,11 @@ void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDe
 #ifdef GASOLINE
     for(i = 0; i < n; ++i) {
         p = &pkd->pStore[i];
+    
         if(TYPETest( p, TYPE_GAS ) && p->iRung >= iKickRung) {
+#ifdef SINKING
+	    if (TYPETest( p, TYPE_SINKING )) continue;
+#endif
 /* Jeans Mass compared to nJeans particle masses */
 	    Jval =  dJConst2*(p->c*p->c*p->c*p->c*p->c*p->c)/(p->fMass*p->fMass*p->fDensity);
 	    if (Jval < Jvalmin) Jvalmin = Jval;

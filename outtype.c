@@ -84,7 +84,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #ifdef DENSITYU
 #ifdef COOLING_METAL
 	case OUT_COOL_EDOT_ARRAY:
-	  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, sqrt(cl->p->curlv[0]*cl->p->curlv[0] + cl->p->curlv[1]*cl->p->curlv[1] + cl->p->curlv[2]*cl->p->curlv[2])/cl->p->c) );
+	  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2])/p->c) );
 	case OUT_COOL_COOLING_ARRAY:
 	  return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
 	case OUT_COOL_HEATING_ARRAY:
@@ -239,6 +239,8 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_ACCELPRES_VECTOR:
 		return(p->aPres[iDim]);
 #endif
+	case OUT_ANGMOM_VECTOR:
+	        return(((FLOAT *) (&(SINK_Lx(p))))[iDim]);
 #endif
 	default:
 		return(0.0);
@@ -488,6 +490,9 @@ void VecFilename(char *achFile, int iType)
 	    strncat(achFile,"accp",256);
             break;
 #endif
+	case OUT_ANGMOM_VECTOR:
+	    strncat(achFile,"angmom",256);
+            break;
 #endif
 	default:
             assert(1);

@@ -598,30 +598,43 @@ void DeltaAccel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 /* Indicator for r,v,a update */
 #define bRVAUpdate(_a)         (((PARTICLE *) (_a))->curlv[2])
 
-void initSinkTest(void *p) 
+void initSinkAccreteTest(void *p) 
 {
 #ifdef GASOLINE
     fBindingEnergy(p) = FLT_MAX;
     iOrderSink(p) = -1;
+#ifdef SINKING
+    if (TYPETest((PARTICLE *) p, TYPE_SINKING)) {
+	iOrderSink(p) = ((PARTICLE *) p)->iSinkingOnto;
+	}
+#endif
 #endif
 }
 
-void combSinkTest(void *p1,void *p2)
+void combSinkAccreteTest(void *p1,void *p2)
 {
 #ifdef GASOLINE
 /* Particle p1 belongs to sink iOrderSink(p1) initially but will
    switch to iOrderSink(p2) if more bound to that sink */
+#ifdef SINKING
+    if (TYPETest((PARTICLE *) p1, TYPE_SINKING)) return;
+#endif
     if (fBindingEnergy(p2) < fBindingEnergy(p1)) {
 	fBindingEnergy(p1) = fBindingEnergy(p2);
 	iOrderSink(p1) = iOrderSink(p2);
 	}
-#ifdef SINKINGAVERAGE
+
     if (TYPETest( ((PARTICLE *) p2), TYPE_NEWSINKING)) TYPESet( ((PARTICLE *) p1), TYPE_NEWSINKING);
-#endif
 #endif
 }
 
-void SinkTest(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+#ifdef SINKING
+#define TRUEMASS(p__) (p__)->fTrueMass
+#else
+#define TRUEMASS(p__) (p__)->fMass
+#endif
+
+void SinkAccreteTest(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 #ifdef GASOLINE
 	int i;
@@ -629,11 +642,15 @@ void SinkTest(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	       EBO,Eq,r2,dvx,dv2,ifMass;
 	PARTICLE *q;
 
+#ifdef SINKING
+	assert(TYPETest(p, TYPE_SINK));
+	assert(!TYPETest(p, TYPE_SINKING));
+#endif
 	/* G = 1 
 	 p is sink particle
 	 q is gas particle */
         if (smf->dSinkBoundOrbitRadius > 0)
-            EBO = -0.5*p->fMass/smf->dSinkBoundOrbitRadius;
+            EBO = -0.5*TRUEMASS(p)/smf->dSinkBoundOrbitRadius;
         else
             EBO = FLT_MAX;
 
@@ -641,22 +658,31 @@ void SinkTest(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    r2 = nnList[i].fDist2;
 	    if (r2 > 0 && r2 <= dSinkRadius2) {
 		q = nnList[i].pPart;
-		if (TYPETest( q, TYPE_GAS ) && q->iRung >= smf->iSinkCurrentRung) {
+#ifdef SINKING
+/*		    if (TYPETest(q, TYPE_SINKING)) continue;*/
+		if (TYPETest(q, TYPE_SINKING)) {
+		    FLOAT r0 = q->rSinking0Mag;
+		    FLOAT r2 = r0 + q->vSinkingr0*(smf->dTime-q->fSinkingTime);
+/*
+  if (p->iOrder == 2000000 && q->iSinkingOnto == 2000000) printf("SINKACCRETETEST %d eats sinking %d %g %g %g\n",p->iOrder,q->iOrder,sqrt((p->r[0]-q->r[0])*(p->r[0]-q->r[0])+(p->r[1]-q->r[1])*(p->r[1]-q->r[1])+(p->r[2]-q->r[2])*(p->r[2]-q->r[2])), r0,r2 );*/
+		    continue;
+		    }
+#endif
+		if (TYPETest( q, TYPE_GAS ) && (q->iRung >= smf->iSinkCurrentRung || TYPETest(q, TYPE_NEWSINKING))) {
 		    dvx = p->v[0]-q->v[0];
 		    dv2 = dvx*dvx;
 		    dvx = p->v[1]-q->v[1];
 		    dv2 += dvx*dvx;
 		    dvx = p->v[2]-q->v[2];
 		    dv2 += dvx*dvx;
-		    Eq = -p->fMass/sqrt(r2) + 0.5*dv2;
+		    Eq = -TRUEMASS(p)/sqrt(r2) + 0.5*dv2;
 		    if (smf->bSinkThermal) Eq+= q->u;
-		    if (Eq < EBO || r2 < smf->dSinkMustAccreteRadius*smf->dSinkMustAccreteRadius) {
+		    /* Being labelled NEWSINKING forces accretion to somebody even if unbound */
+		    if (Eq < EBO || r2 < smf->dSinkMustAccreteRadius*smf->dSinkMustAccreteRadius || TYPETest(q, TYPE_NEWSINKING)) {
 			if (Eq < fBindingEnergy(q)) {
 			    fBindingEnergy(q) = Eq;
 			    iOrderSink(q) = p->iOrder; /* Particle q belongs to sink p */
-#ifdef SINKINGAVERAGE
 			    TYPESet(q, TYPE_NEWSINKING);
-#endif
 #ifdef SINKDBG
 			    if (q->iOrder == 80) printf("FORCETESTACCRETE %d with %d \n",p->iOrder,q->iOrder);
 #endif
@@ -716,20 +742,54 @@ void combSinkAccrete(void *p1,void *p2)
     if (!(TYPETest( ((PARTICLE *) p1), TYPE_DELETED )) &&
         TYPETest( ((PARTICLE *) p2), TYPE_DELETED ) ) {
 	((PARTICLE *) p1)-> fMass = ((PARTICLE *) p2)-> fMass;
+	TYPEReset(((PARTICLE *) p1),TYPE_SINKING);
 	pkdDeleteParticle( NULL, p1 );
 	}
 #ifdef SINKING
+    else if (TYPETest( ((PARTICLE *) p2), TYPE_SINKING ) && !TYPETest( ((PARTICLE *) p1), TYPE_SINKING ))  {
+	PARTICLE *p=p1,*q=p2;
+	int j;
+#ifdef SINKDBG
+	printf("SINKING Sinking particle on other processor -- sinking properties combined %d %g\n",p->iOrder,p->fMetals);
+#endif
+	bRVAUpdate(p) = 1;
+	assert(!TYPETest(p,TYPE_SINK));
+	assert(!TYPETest(q,TYPE_SINK));
+	p->fTrueMass = q->fTrueMass;
+	TYPESet(p, TYPE_SINKING);
+	p->fMetals = -1; /* HACK -- flag in output for sinking state */
+	p->iSinkingOnto = q->iSinkingOnto;
+	p->dt = q->dt;
+	p->iRung = q->iRung;
+	p->fSinkingTime = q->fSinkingTime;
+
+	p->vSinkingr0 = q->vSinkingr0;
+        p->rSinking0Mag = q->rSinking0Mag;
+	p->vSinkingTang0Mag = q->vSinkingTang0Mag;
+	assert(q->vSinkingr0 < 0);
+	for (j=0;j<3;j++) {
+	    p->rSinking0Unit[j] = q->rSinking0Unit[j];
+	    p->vSinkingTang0Unit[j] = q->vSinkingTang0Unit[j];
+	    }
+	}
     if (TYPETest( ((PARTICLE *) p1), TYPE_SINKING )) {
+#ifdef SINKINGAVERAGE
+	TYPEReset(((PARTICLE *) p1),TYPE_NEWSINKING);
+#endif
 	if (bRVAUpdate(p2)) {
-	    ((PARTICLE *)p1)->r[0] = ((PARTICLE *)p2)->r[0];
-	    ((PARTICLE *)p1)->r[1] = ((PARTICLE *)p2)->r[1];
-	    ((PARTICLE *)p1)->r[2] = ((PARTICLE *)p2)->r[2];
-	    ((PARTICLE *)p1)->v[0] = ((PARTICLE *)p2)->v[0];
-	    ((PARTICLE *)p1)->v[1] = ((PARTICLE *)p2)->v[1];
-	    ((PARTICLE *)p1)->v[2] = ((PARTICLE *)p2)->v[2];
-	    ((PARTICLE *)p1)->a[0] = ((PARTICLE *)p2)->a[0];
-	    ((PARTICLE *)p1)->a[1] = ((PARTICLE *)p2)->a[1];
-	    ((PARTICLE *)p1)->a[2] = ((PARTICLE *)p2)->a[2];
+	    PARTICLE *p=p1,*q=p2;
+	    p->r[0] = q->r[0];
+	    p->r[1] = q->r[1];
+	    p->r[2] = q->r[2];
+	    p->v[0] = q->v[0];
+	    p->v[1] = q->v[1];
+	    p->v[2] = q->v[2];
+	    p->vPred[0] = q->vPred[0];
+	    p->vPred[1] = q->vPred[1];
+	    p->vPred[2] = q->vPred[2];
+	    p->a[0] = q->a[0];
+	    p->a[1] = q->a[1];
+	    p->a[2] = q->a[2];
 #ifdef SINKDBG
 	    if (((PARTICLE *)p1)->iOrder == 80) printf("FORCESINKACCRETECOMB %d with %d \n",-1,((PARTICLE *)p1)->iOrder);
 #endif
@@ -737,6 +797,9 @@ void combSinkAccrete(void *p1,void *p2)
 	}
 #endif
     }
+
+/*#define DBGIORDER 2000000 */
+#define DBGIORDER -1
 
 void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
@@ -751,176 +814,249 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	for (j=0;j<3;j++) drSink[j] = -p->r[j];
 #endif
 
+#ifdef STARSINK
+	/* Convert to total angular momentum for additions */
+	SINK_Lx(p) += TRUEMASS(p)*(p->r[1]*p->v[2] - p->r[2]*p->v[1]); 
+	SINK_Ly(p) += TRUEMASS(p)*(p->r[2]*p->v[0] - p->r[0]*p->v[2]);
+	SINK_Lz(p) += TRUEMASS(p)*(p->r[0]*p->v[1] - p->r[1]*p->v[0]);
+#endif
 	for (i=0;i<nSmooth;++i) {
 	    q = nnList[i].pPart;
 	    if ( iOrderSink(q) == p->iOrder) {
-#ifdef SINKING
-#ifdef SINKDBG
-		if (q->iOrder == 55) printf("FORCESINKACCRETE0 %d with %d \n",p->iOrder,q->iOrder);
+#ifndef SINKING
+		FLOAT mp,mq,rx,ry,rz,vx,vy,vz;
+		mp = p->fMass; mq = q->fMass;
+		rx = q->r[0]; ry = q->r[1]; rz = q->r[2];
+		vx = q->v[0]; vy = q->v[1]; vz = q->v[2];
+		ifMass = 1./(mp+mq);
+		for (j=0;j<3;j++) {
+		    p->r[j] = ifMass*(mp*p->r[j]+mq*q->r[j]);
+		    p->v[j] = ifMass*(mp*p->v[j]+mq*q->v[j]);
+		    p->a[j] = ifMass*(mp*p->a[j]+mq*q->a[j]);
+		    }
+#ifdef STARSINK
+		SINK_Lx(p) += mq*(ry*vz - rz*vy); /* add to total L */
+  	        SINK_Ly(p) += mq*(rz*vx - rx*vz);
+		SINK_Lz(p) += mq*(rx*vy - ry*vx);
 #endif
+		p->u += ifMass*(mp*p->u+mq*q->u);
+		p->fMass += mq;
+		bEat = 1;
+		assert(q->fMass != 0);
+		q->fMass = 0;
+		pkdDeleteParticle(smf->pkd, q);
+#endif
+#ifdef SINKING
+		assert(TYPETest(q, TYPE_GAS));
+		assert(!TYPETest(q, TYPE_SINK));
 		r2 = nnList[i].fDist2;
-		if (r2 < smf->dSinkMustAccreteRadius*smf->dSinkMustAccreteRadius) {
+		if (r2 < smf->dSinkMustAccreteRadius*smf->dSinkMustAccreteRadius || 
+		    (TYPETest(q, TYPE_SINKING) && 
+		     q->rSinking0Mag + q->vSinkingr0*(smf->dTime-q->fSinkingTime) < smf->dSinkMustAccreteRadius)) {
+#ifdef SINKDBG
+		    if (q->iOrder == 55) printf("FORCESINKACCRETE0 %d with %d \n",p->iOrder,q->iOrder);
+#endif
 		    if (!TYPETest(q, TYPE_SINKING)) {
-#endif		
+			FLOAT mp,mq,rx,ry,rz,vx,vy,vz;
+			mp = p->fTrueMass; mq = q->fMass;
+			rx = q->r[0]; ry = q->r[1]; rz = q->r[2];
+			vx = q->v[0]; vy = q->v[1]; vz = q->v[2];
 			/* Do a standard accrete -- no sinking stage */
-			ifMass = 1./(p->fMass + q->fMass);
+			ifMass = 1./(mp+mq);
 			for (j=0;j<3;j++) {
-			    p->r[j] = ifMass*(p->fMass*p->r[j]+q->fMass*q->r[j]);
-			    p->v[j] = ifMass*(p->fMass*p->v[j]+q->fMass*q->v[j]);
-			    p->a[j] = ifMass*(p->fMass*p->a[j]+q->fMass*q->a[j]);
+			    p->r[j] = ifMass*(mp*p->r[j]+mq*q->r[j]);
+			    p->v[j] = ifMass*(mp*p->v[j]+mq*q->v[j]);
+			    p->a[j] = ifMass*(mp*p->a[j]+mq*q->a[j]);
 			    }
-			p->fMass += q->fMass;
+#ifdef STARSINK
+			SINK_Lx(p) += mq*(ry*vz - rz*vy); /* add to total L */
+			SINK_Ly(p) += mq*(rz*vx - rx*vz);
+			SINK_Lz(p) += mq*(rx*vy - ry*vx);
+#endif
+			p->u += ifMass*(mp*p->u+mq*q->u);
+			p->fMass += mq;
+			p->fTrueMass += q->fMass;
+			if (p->iOrder==DBGIORDER) printf("SINKING %d Direct Delete of %d +%g %g %g\n",p->iOrder,q->iOrder,q->fMass,p->fMass,p->fTrueMass);
 			bEat = 1;
 			assert(q->fMass != 0);
 			q->fMass = 0;
 			pkdDeleteParticle(smf->pkd, q);
-#ifdef SINKING
 			}
-		    else {
+		    else if (q->iSinkingOnto == p->iOrder) {
 			/* Already sinking -- now do final accrete */
-			p->fMass += q->fMass;
+			p->fMass += q->fMass; /* Note: p->fTrueMass NOT modified */
+			p->iSinkingOnto--; /* One less sinking onto this sink */
+			if (p->iOrder==DBGIORDER) printf("SINKING %d Final Delete of %d +%g %g %g %d\n",p->iOrder,q->iOrder,q->fMass,p->fMass,p->fTrueMass,p->iSinkingOnto);
 			bEat = 1;
 			assert(q->fMass != 0);
 			q->fMass = 0;
+			TYPEReset(q,TYPE_SINKING); /* Don't want it to participate later */
 			pkdDeleteParticle(smf->pkd, q);
 			}
 		    }
 		else if (!TYPETest(q, TYPE_SINKING)) {
+		    FLOAT mp,mq,rx,ry,rz,vx,vy,vz;
+		    mp = p->fTrueMass; mq = q->fMass;
+		    rx = q->r[0]; ry = q->r[1]; rz = q->r[2];
+		    vx = q->v[0]; vy = q->v[1]; vz = q->v[2];
 		    /* Enter sinking stage */
-		    FLOAT r0, dx[3], dv[3], vr, vt, norm;
-		    
 		    assert(r2 < smf->dSinkRadius*smf->dSinkRadius);
-		    /* Not sure how to cope with accretion of particles not 
-		       actually infalling -- ignore them for now */
-		    vr = 0;
+		    /* If this code is active, ignore non-infalling particles */
+/*		    vr = 0;
 		    for (j=0;j<3;j++) {
 			vr +=  (q->r[j]-p->r[j])*(q->v[j]-p->v[j]);
 			}
-		    if (vr >= 0) continue;
+			if (vr >= 0) continue;*/
 
 		    /* All force, velocity, position info associated
-		       with particle now belongs to sink instead.
+		       with particle now belong to sink instead.
 		       Note: If we want accurate estimate of L for the sink
 		       we should adjust the sink L now */
-		    /* Everything short of eating the particle */
-		    ifMass = 1./(p->fMass + q->fMass);
+		    /* Everything short of eating the particle 
+		       If many additional particles are added sink position could vary wildly 
+		       -- defer trajectory calculation until after */
+		    ifMass = 1./(p->fTrueMass+q->fMass);
 		    for (j=0;j<3;j++) {
-			p->r[j] = ifMass*(p->fMass*p->r[j]+q->fMass*q->r[j]);
-			p->v[j] = ifMass*(p->fMass*p->v[j]+q->fMass*q->v[j]);
-			p->a[j] = ifMass*(p->fMass*p->a[j]+q->fMass*q->a[j]);
+			p->r[j] = ifMass*(mp*p->r[j]+q->fMass*q->r[j]);
+			p->v[j] = ifMass*(mp*p->v[j]+q->fMass*q->v[j]);
+			p->a[j] = ifMass*(mp*p->a[j]+q->fMass*q->a[j]);
 			}
-		    /* Initialize sinking trajectory */
-		    r0 = 0;
-		    for (j=0;j<3;j++) {
-			dx[j] = (q->r[j]-p->r[j]);
-			r0 += dx[j]*dx[j];
-			}
-		    r0 = sqrt(r0);
-		    norm = 1/r0;
-		    for (j=0;j<3;j++) dx[j] *= norm;
-#ifdef SINKINGAVERAGE
-		    assert(TYPETest(q,TYPE_NEWSINKING));
-		    TYPEReset(q,TYPE_NEWSINKING);
-
-		    /* See if smoothed velocity is still infalling */
-		    vr = 0;
-		    for (j=0;j<3;j++) {
-			dv[j] = p->vSinkingTang0Unit[j]+q->v[j]-p->v[j];
-			vr += dv[j]*dx[j];
-			}
-		    if (vr >= 0)
-			/* otherwise ... */
+#ifdef STARSINK
+		    SINK_Lx(p) += mq*(ry*vz - rz*vy); /* Add to total L */
+		    SINK_Ly(p) += mq*(rz*vx - rx*vz);
+		    SINK_Lz(p) += mq*(rx*vy - ry*vx);
 #endif
-  		    /* use raw velocity for sinking */
-			{
-			vr = 0;
-			for (j=0;j<3;j++) {
-			    dv[j] = q->v[j]-p->v[j];
-			    vr += dv[j]*dx[j];
-			    }
-			}
-
+		    p->u += ifMass*(mp*p->u+mq*q->u);
+		    p->fTrueMass += q->fMass;
+		    p->iSinkingOnto++; /* One more sinking onto this sink */
+		    q->fTrueMass = 0; /* Sinking particles retain mass to act as ghost particles for forces g+SPH */
+		    assert(!TYPETest(q,TYPE_SINK));
+		    assert(TYPETest(q,TYPE_NEWSINKING));
 		    TYPESet(q, TYPE_SINKING);
 		    q->fMetals = -1; /* HACK -- flag for sinking state */
 		    q->iSinkingOnto = p->iOrder;
 		    q->dt = p->dt;
 		    q->iRung = p->iRung;
 		    q->fSinkingTime = smf->dTime;
-
-		    q->rSinking0Mag = r0;
-		    if (vr >= 0) { 
-			/* Trouble 
-			 I calculate that if it was infalling before it should be 
-			still infalling after it adds to the sink position,v */
-			fprintf(stderr,"Sinking particle leaving sink area! %g %d %d\n",vr,q->iOrder,p->iOrder);
-			assert(vr<0);
-			}
-		    /* Should we impose a minimum radial infall rate? */
-		    q->vSinkingr0 = vr;
-		    vt = 0;
-		    for (j=0;j<3;j++) {
-			dv[j] -= vr*dx[j];
-			vt += dv[j]*dv[j];
-			}
-		    vt = sqrt(vt);
-		    q->vSinkingTang0Mag = vt;
-		    norm = 1/vt;
-		    for (j=0;j<3;j++) {
-			q->rSinking0Unit[j] = dx[j];
-			q->vSinkingTang0Unit[j] = dv[j]*norm;
-			}
+		    q->vSinkingr0 = 1e30;
+		    if (p->iOrder==DBGIORDER) printf("SINKING %d Add Sinking %d +%g %g %g %d\n",p->iOrder,q->iOrder,q->fMass,p->fMass,p->fTrueMass,p->iSinkingOnto);
 		    bEat = 1;
 		    }
 #endif /*SINKING*/
 		}
 	    }
+#ifdef STARSINK
+	/* Store Internal angular momentum only as it is invariant under motions  */
+	SINK_Lx(p) -= TRUEMASS(p)*(p->r[1]*p->v[2] - p->r[2]*p->v[1]); 
+	SINK_Ly(p) -= TRUEMASS(p)*(p->r[2]*p->v[0] - p->r[0]*p->v[2]);
+	SINK_Lz(p) -= TRUEMASS(p)*(p->r[0]*p->v[1] - p->r[1]*p->v[0]);
+#endif
 
 #ifdef SINKING
 	if (bEat) {
-	    for (j=0;j<3;j++) drSink[j] += p->r[j]; /* Did sink move? If so follow */
+	    for (j=0;j<3;j++) drSink[j] += p->r[j]; /* If sink ate it moved: old sinking particles must follow */
 
 	    for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
 		if (TYPETest( q, TYPE_SINKING ) && q->iSinkingOnto == p->iOrder) {
-		    q->curlv[2] = 1; /* Indicator for r,v,a update */
-		    for (j=0;j<3;j++) {
-			q->r[j] += drSink[j];
-			q->a[j] = p->a[j];
-			if (!TYPETest(q, TYPE_NEWSINKING)) {
+		    if (TYPETest(q,TYPE_NEWSINKING)) {
+			double r0, dx[3], dv[3], vr, vrraw, vrmin, vt, norm, dot;
+			/* Initialize sinking trajectory */
+			r0 = 0;
+			for (j=0;j<3;j++) {
+			    dx[j] = (q->r[j]-p->r[j]);
+			    r0 += dx[j]*dx[j];
+			    }
+			r0 = sqrt(r0);
+			norm = 1/r0;
+			for (j=0;j<3;j++) dx[j] *= norm;
+
+			vr = 0;
+			for (j=0;j<3;j++) {
+			    dv[j] = q->v[j]-p->v[j];  /* dv = raw relative velocity */
+			    vr += dv[j]*dx[j];
+			    } /* raw infall v */
+#ifdef SINKINGAVERAGE
+			vrraw = vr;
+			    /* See if smoothed velocity is still infalling 
+			       q->vSinkingTang0Unit temporarily contains mean of (q'-q) */
+			vr = 0;
+			for (j=0;j<3;j++) {
+			    dv[j] = q->vSinkingTang0Unit[j]+q->v[j]-p->v[j]; /* dv now smoothed relative vel */
+			    vr += dv[j]*dx[j];
+			    }
+			if (p->iOrder==DBGIORDER) printf("SINKING %d Add Sinking Trajectory vr %d %g %g %g\n",p->iOrder,q->iOrder,vr,vrraw,-q->c);
+/*                    printf("Infall vr avg %g ",vr);*/
+#endif
+			vt = 0;
+			for (j=0;j<3;j++) {
+			    dv[j] -= vr*dx[j]; /*subtract off radial part*/
+			    vt += dv[j]*dv[j];
+			    }
+			vt = sqrt(vt); /* Averaged tangential motion */
+#ifdef SINKINGAVERAGE
+			if (vr >= 0) vr=vrraw;
+#endif
+			vrmin = -q->c; /* Bondi-Hoyle minimum inflow speed -- perhaps not ideal for rotating case */
+			if (vr > vrmin) vr = vrmin;
+/*                    printf("min %g : %g   vt %g \n",-vrmin,vr,vt);*/
+			
+			q->rSinking0Mag = r0;
+			if (r0 > smf->dSinkRadius) printf("WARNING: %i outside sink r=%g %g %g\n",q->iOrder,r0,sqrt(nnList[i].fDist2),smf->dSinkRadius);
+			q->vSinkingr0 = vr;
+			q->vSinkingTang0Mag = vt;
+			norm = 1/(vt+1e-37);
+			dot = 0;
+			for (j=0;j<3;j++) {
+			    q->rSinking0Unit[j] = dx[j];
+			    q->vSinkingTang0Unit[j] = dv[j]*norm;
+			    dot += q->rSinking0Unit[j]*q->vSinkingTang0Unit[j]; /* sanity check */
+			    q->a[j] = p->a[j];
+			    q->v[j] = p->v[j]; /* move with sink now */
+			    }
+			assert(fabs(dot) < 1e-4);
+			}
+		    else {
+			assert(q->vSinkingr0 < 0);
+			for (j=0;j<3;j++) {
+			    q->r[j] += drSink[j];
+			    q->a[j] = p->a[j];
 			    q->v[j] = p->v[j];
 			    }
 			}
 		    }
 		}
 	    }    
-
+	
+	/* Make sure sinking particles are still on their trajectories */
 	for (i=0;i<nSmooth;++i) {
 	    q = nnList[i].pPart;
-	    if (TYPEFilter( q, TYPE_SINKING|TYPE_NEWSINKING, TYPE_SINKING ) && q->iSinkingOnto == p->iOrder) {
+	    if (TYPETest(q,TYPE_SINKING) && q->iSinkingOnto == p->iOrder) {
 		FLOAT r0 = q->rSinking0Mag;
 		FLOAT r2 = r0 + q->vSinkingr0*(smf->dTime-q->fSinkingTime);
-		FLOAT thfac, th2, costh2, sinth2, dr2;
+		FLOAT thfac, th2, costh2, sinth2, dr2, sqr02;
 		FLOAT dr[3];
 
+		assert(q->vSinkingr0 < 0);
 		if (r2 < 0.1*r0) r2 = 0.1*r0; /* HACK */
-		dr2 = 0;
+		thfac = q->vSinkingTang0Mag*2/(q->vSinkingr0);
+		sqr02 = sqrt(r0/r2);
+		th2 = thfac*(1-sqr02);
+		costh2 = cos(th2);
+		sinth2 = sin(th2);
 		for (j=0;j<3;j++) {
-		    dr[j] = q->r[j]-p->r[j];
-		    dr2 += dr[j]*dr[j];
+		    q->r[j] = p->r[j]+r2*costh2*q->rSinking0Unit[j]+r2*sinth2*q->vSinkingTang0Unit[j];
+		    q->vPred[j] = p->v[j]+q->vSinkingTang0Mag*sqr02*
+			(-sinth2*q->rSinking0Unit[j]+costh2*q->vSinkingTang0Unit[j])
+			+q->vSinkingr0*(costh2*q->rSinking0Unit[j]+sinth2*q->vSinkingTang0Unit[j]);
 		    }
-		
-		if (fabs(dr2-r2*r2) > 1e-2*dr2) {
-		    thfac = q->vSinkingTang0Mag*2/(q->vSinkingr0);
-		    th2 = thfac*(1-sqrt(r0/r2));
-		    costh2 = cos(th2);
-		    sinth2 = sin(th2);
-		    for (j=0;j<3;j++) {
-			q->r[j] = p->r[j]+r2*costh2*q->rSinking0Unit[j]+r2*sinth2*q->vSinkingTang0Unit[j];
-			}
-		    q->curlv[2] = 1; /* Indicator for r,v,a update */
-		    printf("SINKPOS CORRECTION %d (%d) %g: %g %g,  %g %g %g\n",q->iOrder,p->iOrder,smf->dTime,sqrt(dr2),r2,(q->r[0]-p->r[0])-dr[0],(q->r[1]-p->r[1])-dr[1],dr[2]-(q->r[2]-p->r[2])-dr[2]);
-		    }
+		bRVAUpdate(q) = 1; /* Indicator for r,v,a update */
+#ifdef SINKDBG
+		if (q->iOrder == 160460) printf("SINKINGFORCESHARE %d  %g %g %g  %g %g %g  %g %g %g (%g)\n",q->iOrder,smf->dTime,r2,sqrt(pow(q->r[0]-p->r[0],2.)+pow(q->r[1]-p->r[1],2.)+pow(q->r[2]-p->r[2],2.)), q->r[0]-p->r[0],q->r[1]-p->r[1],q->r[2]-p->r[2],q->vPred[0]-p->v[0],q->vPred[1]-p->v[1],q->vPred[2]-p->v[2],(q->vPred[0]-p->v[0])*(q->r[0]-p->r[0])+(q->vPred[1]-p->v[1])*(q->r[1]-p->r[1])+(q->vPred[2]-p->v[2])*(q->r[2]-p->r[2]));
+#endif
+		TYPEReset(q,TYPE_NEWSINKING);
 		}
+
 	    }
 #endif
 #endif
@@ -930,7 +1066,7 @@ void initSinkingForceShare(void *p)
     { /* cached copies only */
 #ifdef SINKING
     if (TYPETest( ((PARTICLE *) p), TYPE_SINKING )) {
-	((PARTICLE *) p)->curlv[2] = 0; /* Indicator for r,v,a update */
+	bRVAUpdate((PARTICLE *) p) = 0; /* Indicator for r,v,a update */
 	}
 #endif
     }
@@ -939,15 +1075,22 @@ void combSinkingForceShare(void *p1,void *p2)
 {
 #ifdef SINKING
     if (TYPETest( ((PARTICLE *) p1), TYPE_SINKING )) {
-	if (((PARTICLE *) p2)->curlv[2]==1) {
-	    ((PARTICLE *)p1)->v[0] = ((PARTICLE *)p2)->v[0];
-	    ((PARTICLE *)p1)->v[1] = ((PARTICLE *)p2)->v[1];
-	    ((PARTICLE *)p1)->v[2] = ((PARTICLE *)p2)->v[2];
-	    ((PARTICLE *)p1)->a[0] = ((PARTICLE *)p2)->a[0];
-	    ((PARTICLE *)p1)->a[1] = ((PARTICLE *)p2)->a[1];
-	    ((PARTICLE *)p1)->a[2] = ((PARTICLE *)p2)->a[2];
+	if (bRVAUpdate((PARTICLE *) p2)) {; /* Indicator for r,v,a update */
+	    PARTICLE *p=p1,*q=p2;
+	    p->r[0] = q->r[0];
+	    p->r[1] = q->r[1];
+	    p->r[2] = q->r[2];
+	    p->v[0] = q->v[0];
+	    p->v[1] = q->v[1];
+	    p->v[2] = q->v[2];
+	    p->vPred[0] = q->vPred[0];
+	    p->vPred[1] = q->vPred[1];
+	    p->vPred[2] = q->vPred[2];
+	    p->a[0] = q->a[0];
+	    p->a[1] = q->a[1];
+	    p->a[2] = q->a[2];
 #ifdef SINKDBG
-	    if (((PARTICLE *)p1)->iOrder == 80) printf("FORCESHARECOMB %d with %d \n",-1,((PARTICLE *)p1)->iOrder);
+	    if (((PARTICLE *)p1)->iOrder == 160460) printf("SINKFORCESHARECOMB %d with %d \n",-1,((PARTICLE *)p1)->iOrder);
 #endif
 	    }
 	}
@@ -956,46 +1099,92 @@ void combSinkingForceShare(void *p1,void *p2)
 void SinkingForceShare(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 #if defined(GASOLINE) && defined(SINKING)
-	int i,j;
+	int i,j,nSinking;
 	double totmass,norm,ma[3];
 	PARTICLE *q;
+
+	assert(TYPETest(p, TYPE_SINK));
+	assert(!TYPETest(p, TYPE_SINKING));
 
 	/* Only do this if sink is active */
 	if (!TYPEQueryACTIVE(p)) return;
 
 	totmass = 0;
+	nSinking = 0;
 	for (j=0;j<3;j++) ma[j] = 0;
 
 	for (i=0;i<nSmooth;++i) {
 	    q = nnList[i].pPart;
 	    if (TYPETest( q, TYPE_SINKING ) && q->iSinkingOnto == p->iOrder) {
 		assert(p->iRung == q->iRung);
+		assert(!TYPETest(q,TYPE_NEWSINKING));
+
 		totmass += q->fMass;
+		nSinking++;
+		assert(q->vSinkingr0 < 0);
+		if (p->iOrder==DBGIORDER) {
+		    FLOAT r0 = q->rSinking0Mag;
+		    FLOAT r2 = r0 + q->vSinkingr0*(smf->dTime-q->fSinkingTime);
+		    if (p->iOrder == 2000000 && q->iSinkingOnto == 2000000) printf("FORCESHARE %d eats sinking %d %g %g %g\n",p->iOrder,q->iOrder,sqrt((p->r[0]-q->r[0])*(p->r[0]-q->r[0])+(p->r[1]-q->r[1])*(p->r[1]-q->r[1])+(p->r[2]-q->r[2])*(p->r[2]-q->r[2])), r0,r2 );
+		    if (q->iOrder == 105639) assert(0);
+		    }
+		if (p->iOrder==DBGIORDER) printf("%d ForceShare with %d +%g %g  %g\n",p->iOrder,q->iOrder,q->fMass,totmass,sqrt(nnList[i].fDist2)/smf->dSinkRadius);
 		ma[0] += q->fMass*q->a[0];
 		ma[1] += q->fMass*q->a[1];
 		ma[2] += q->fMass*q->a[2];
 		}
 	    }
+	if (p->iOrder==DBGIORDER) printf("%d ForceShCount: %d %d\n",p->iOrder,nSinking,p->iSinkingOnto);
+	if (nSinking < p->iSinkingOnto) {
+	    p->fBall2 = -1.0; /* redo smooth */
+	    return;
+	    }
+	assert(nSinking == p->iSinkingOnto);
 
 	if (totmass > 0) {
 	    totmass += p->fMass;
+	    assert(fabs(totmass-p->fTrueMass) < 1e-7*totmass); /* sanity check on true mass 
+								  Fails if: sinking particle missed or true mass incorrect */
 	    norm = 1/totmass;
 	    for (j=0;j<3;j++) p->a[j] = (p->a[j]*p->fMass+ma[j])*norm;
 
-	    /* Stricly, only a should need to be set but doing v makes v's exact */
+	    /* Strictly, only a should need to be set but doing v makes v's exact */
 	    for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
 		if (TYPETest( q, TYPE_SINKING ) && q->iSinkingOnto == p->iOrder) {
-		    q->curlv[2] = 1;
+
+		    assert(TYPETest(q, TYPE_INFLOW)); /* Each sinking should appear here exactly once */
+		    TYPEReset(q, TYPE_INFLOW ); /* DEBUG -- detect unfound particles */
+		    TYPESet(q, TYPE_OUTFLOW );
+
+		    bRVAUpdate( q ) = 1; /* Indicator for r,v,a update */
 		    q->v[0] = p->v[0];
 		    q->v[1] = p->v[1];
 		    q->v[2] = p->v[2];
 		    q->a[0] = p->a[0];
 		    q->a[1] = p->a[1];
 		    q->a[2] = p->a[2];
-#ifdef SINKDBG
-		    if (q->iOrder == 80) printf("FORCESHARE %d with %d \n",p->iOrder,q->iOrder);
-#endif
+		    /* set absolute offset and velocity of sinking particles
+		       strictly speaking, relative corrections in drift should be enough */
+			{
+			FLOAT r0 = q->rSinking0Mag;
+			FLOAT r2 = r0 + q->vSinkingr0*(smf->dTime-q->fSinkingTime);
+			FLOAT thfac, th2, costh2, sinth2, dr2, sqr02;
+			FLOAT dr[3];
+			
+			if (r2 < 0.1*r0) r2 = 0.1*r0; /* HACK */
+			thfac = q->vSinkingTang0Mag*2/(q->vSinkingr0);
+			sqr02 = sqrt(r0/r2);
+			th2 = thfac*(1-sqr02);
+			costh2 = cos(th2);
+			sinth2 = sin(th2);
+			for (j=0;j<3;j++) {
+			    q->r[j] = p->r[j]+r2*costh2*q->rSinking0Unit[j]+r2*sinth2*q->vSinkingTang0Unit[j];
+			    q->vPred[j] = p->v[j]+q->vSinkingTang0Mag*sqr02*
+				(-sinth2*q->rSinking0Unit[j]+costh2*q->vSinkingTang0Unit[j])
+				+q->vSinkingr0*(costh2*q->rSinking0Unit[j]+sinth2*q->vSinkingTang0Unit[j]);
+			    }
+			}
 		    }
 		}
 	    }
@@ -1809,13 +1998,16 @@ void BHSinkMerge(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 
 
-#define fDensitySink(_a)    (((PARTICLE *) (_a))->curlv[0] )
+#define fSinkRating(_a)    (((PARTICLE *) (_a))->curlv[0] )
 
 void initSinkFormTest(void *p)
 {
 #ifdef GASOLINE
-    fDensitySink(p) = -FLT_MAX;
+    fSinkRating(p) = -FLT_MAX;
     iOrderSink(p) = -1;
+#ifdef SINKING
+    TYPEReset(((PARTICLE *) p),TYPE_NEWSINKING);
+#endif
 #endif
 	}
 
@@ -1824,8 +2016,11 @@ void combSinkFormTest(void *p1,void *p2)
 #ifdef GASOLINE
 /* Particle p1 belongs to candidate stored in iOrderSink of p1 initially but
    switch to p2's if that candidate is denser */
-    if (fDensitySink(p2) > fDensitySink(p1)) {
-	fDensitySink(p1) = fDensitySink(p2);
+#ifdef SINKING
+    if (TYPETest((PARTICLE *) p1, TYPE_SINKING)) return;
+#endif
+    if (fSinkRating(p2) > fSinkRating(p1)) {
+	fSinkRating(p1) = fSinkRating(p2);
 	iOrderSink(p1) = iOrderSink(p2);
 	}
 #endif
@@ -1841,34 +2036,51 @@ void SinkFormTest(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	/* Apply Bate tests in next phase
 	   For now just decide which sink the particle belongs to:
-   	          prefer joining a denser sink candidate
-	   Also: If there is a denser particle that is also a sink candidate
-	         defer to it
+   	          prefer joining a denser (or deeper potential) sink candidate
+
+		  Must be local extremum to be a candidate or abort
 	   Need to prevent double counting particles into two sinks
 	*/
 	for (i=0;i<nSmooth;++i) {
 	    r2 = nnList[i].fDist2;
 	    if (r2 > 0 && r2 <= dSinkRadius2) {
 		q = nnList[i].pPart;
-		if (TYPETest( q, TYPE_GAS ) && q->fDensity > p->fDensity) {
-		    /* Abort without grabbing any particles -- this isn't the densest particle */
-/*			printf("Sink aborted %d %g: Denser Neighbour %d %g\n",p->iOrder,p->fDensity,q->iOrder,q->fDensity);*/
+		if (TYPETest( q, TYPE_GAS ) && ((smf->bSinkFormPotMin ? q->fPot < p->fPot : q->fDensity > p->fDensity))) {
+		    /* Abort without grabbing any particles -- this isn't an extremum particle */
+/*		    printf("Sink aborted %d %g: Denser Neighbour %d %g\n",p->iOrder,p->fDensity,q->iOrder,q->fDensity);*/
 		    return;
 			
 		    }
 		}
 	    }
 
+	fSinkRating(p) =  (smf->bSinkFormPotMin ? -p->fPot : p->fDensity); /* rate yourself */
+	
 /*	printf("Sink %d %g: looking...\n",p->iOrder,p->fDensity);*/
 
+	/* Identify all nbrs as to be eaten unless those nbrs already belong to a "higher rated" sink 
+	   Thus sink quality is rated by density or potential depth
+	*/
 	for (i=0;i<nSmooth;++i) {
 	    r2 = nnList[i].fDist2;
 	    if (r2 > 0 && r2 <= dSinkRadius2) {
 		q = nnList[i].pPart;
+#ifdef SINKING
+		if (TYPETest(q, TYPE_SINKING)) continue;
+#endif
 		if (TYPETest( q, TYPE_GAS ) && q->iRung >= smf->iSinkCurrentRung) {
-		    if (p->fDensity > q->curlv[0]) {
-			fDensitySink(q) = p->fDensity;
-			iOrderSink(q) = p->iOrder; /* Particle q belongs to sink p */
+		    if (smf->bSinkFormPotMin) {
+			if (-p->fPot > fSinkRating(q)) {
+			    fSinkRating(q) = -p->fPot;
+			    iOrderSink(q) = p->iOrder; /* Particle q belongs to sink p */
+			    }
+
+			}
+		    else {
+			if (p->fDensity > fSinkRating(q)) {
+			    fSinkRating(q) = p->fDensity;
+			    iOrderSink(q) = p->iOrder; /* Particle q belongs to sink p */
+			    }
 			}
 		    }
 /*
@@ -1878,6 +2090,148 @@ void SinkFormTest(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    }
 #endif
 }
+
+#define SIGN(a,b) ((b) > 0.0 ? fabs(a) : -fabs(a))
+
+void tred3(double a[][3], double d[], double e[])
+{
+  int l,k,j,i,n=3;
+  double scale,hh,h,g,f;
+
+  for (i=n-1;i>=1;i--) {
+    l=i-1;
+    h=scale=0.0;
+    if (l > 0) {
+      for (k=0;k<=l;k++)
+        scale += fabs(a[i][k]);
+      if (scale == 0.0)
+        e[i]=a[i][l];
+      else {
+        for (k=0;k<=l;k++) {
+          a[i][k] /= scale;
+          h += a[i][k]*a[i][k];
+        }
+        f=a[i][l];
+        g=(f > 0.0 ? -sqrt(h) : sqrt(h));
+        e[i]=scale*g;
+        h -= f*g;
+        a[i][l]=f-g;
+        f=0.0;
+        for (j=0;j<=l;j++) {
+          a[j][i]=a[i][j]/h;
+          g=0.0;
+          for (k=0;k<=j;k++)
+            g += a[j][k]*a[i][k];
+          for (k=j+1;k<=l;k++)
+            g += a[k][j]*a[i][k];
+          e[j]=g/h;
+          f += e[j]*a[i][j];
+        }
+        hh=f/(h+h);
+        for (j=0;j<=l;j++) {
+          f=a[i][j];
+          e[j]=g=e[j]-hh*f;
+          for (k=0;k<=j;k++)
+            a[j][k] -= (f*e[k]+g*a[i][k]);
+        }
+      }
+    } else
+      e[i]=a[i][l];
+    d[i]=h;
+  }
+  d[0]=0.0;
+  e[0]=0.0;
+  /* Contents of this loop can be omitted if eigenvectors not
+      wanted except for statement d[i]=a[i][i]; */
+  for (i=0;i<n;i++) {
+    l=i-1;
+    if (d[i]) {
+      for (j=0;j<=l;j++) {
+        g=0.0;
+        for (k=0;k<=l;k++)
+          g += a[i][k]*a[k][j];
+        for (k=0;k<=l;k++)
+          a[k][j] -= g*a[k][i];
+      }
+    }
+    d[i]=a[i][i];
+    a[i][i]=1.0;
+    for (j=0;j<=l;j++) a[j][i]=a[i][j]=0.0;
+  }
+}
+
+double pythag(double a, double b)
+{
+  double absa,absb;
+  absa=fabs(a);
+  absb=fabs(b);
+  if (absa > absb) {
+      double xxx = absb/absa;
+      return absa*sqrt(1.0+xxx*xxx);
+//      return absa*sqrt(1.0+SQR(absb/absa));
+      }
+  else if (absb == 0) return 0.;
+  else {
+      double xxx = absa/absb;
+      return absb*sqrt(1.0+xxx*xxx);
+//    return (absb == 0.0 ? 0.0 : absb*sqrt(1.0+SQR(absa/absb)));
+      }
+}
+
+void tqli3(double d[], double e[], double z[][3])
+{
+  double pythag(double a, double b);
+  int m,l,iter,i,k,n=3;
+  double s,r,p,g,f,dd,c,b;
+
+  for (i=1;i<n;i++) e[i-1]=e[i];
+  e[n-1]=0.0;
+  for (l=0;l<n;l++) {
+    iter=0;
+    do {
+      for (m=l;m<n-1;m++) {
+        dd=fabs(d[m])+fabs(d[m+1]);
+        if ((double)(fabs(e[m])+dd) == dd) break;
+      }
+      if (m != l) {
+	  if (iter++ == 30) assert(iter<30); /* "Too many iterations in tqli" */
+        g=(d[l+1]-d[l])/(2.0*e[l]);
+        r=pythag(g,1.0);
+        g=d[m]-d[l]+e[l]/(g+SIGN(r,g));
+        s=c=1.0;
+        p=0.0;
+        for (i=m-1;i>=l;i--) {
+          f=s*e[i];
+          b=c*e[i];
+          e[i+1]=(r=pythag(f,g));
+          if (r == 0.0) {
+            d[i+1] -= p;
+            e[m]=0.0;
+            break;
+          }
+          s=f/r;
+          c=g/r;
+          g=d[i+1]-p;
+          r=(d[i]-g)*s+2.0*c*b;
+          d[i+1]=g+(p=s*r);
+          g=c*r-b;
+          for (k=0;k<n;k++) {
+            f=z[k][i+1];
+            z[k][i+1]=s*z[k][i]+c*f;
+            z[k][i]=c*z[k][i]-s*f;
+          }
+        }
+        if (r == 0.0 && i >= l) continue;
+        d[l] -= p;
+        e[l]=g;
+        e[m]=0.0;
+      }
+    } while (m != l);
+  }
+}
+
+
+
 
 void initSinkForm(void *p)
 {
@@ -1895,30 +2249,133 @@ void combSinkForm(void *p1,void *p2)
 void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 #ifdef GASOLINE
-	int i,j,nEaten;
-	double mtot,im,Ek,Eth,Eg,r2,dvx,dv2,vsink[3];
+	int i,j,nEaten,nEatNow;
+	double mtot,im,Ek,Eth,Eg,dvx,dv2,vsink[3];
+	double diva,ih2,r2,rs1;
 	PARTICLE *q,*q1,*q2;
 	PARTICLE sinkp;
 
 	/* You are accreted */
 	if ( iOrderSink(p) != -1 ) {
+	    /* What if it was temporarily a candidate -- are it's nbrs confused? 
+	     Shouldn't be -- they should go to a new better candidate if they are near one */
+
 /*	    printf("Sink aborted %d %g: Accreted by other %d\n",p->iOrder,p->fDensity,iOrderSink(p) );*/
 	    return;
 	    }
-
+#ifdef SINKING
+	assert(!TYPETest(p,TYPE_SINKING));
+#endif
 	iOrderSink(p) = p->iOrder;
+
+	nEaten=0;
 	mtot = 0;
+	for (i=0;i<nSmooth;++i) {
+	    q1 = nnList[i].pPart;
+	    if (iOrderSink(q1) == p->iOrder) {
+		nEaten++;
+		mtot += q1->fMass;
+		}
+	    }
+
+	if (nEaten < smf->nSinkFormMin) {
+/*	    printf("Sink aborted %d %g: np %d Mass %g\n",p->iOrder,p->fDensity,nEaten,mtot); */
+	    return;
+	    }
+
+	if (smf->bSinkFormDivAcc) {
+	    diva = 0;
+	    ih2 = 1./(smf->dSinkRadius*smf->dSinkRadius);
+	    for (i=0;i<nSmooth;++i) {
+		q1 = nnList[i].pPart;
+		if (iOrderSink(q1) == p->iOrder) {
+		    double dax,day,daz,dx,dy,dz;
+		    
+		    r2 = nnList[i].fDist2*ih2;  /* Calculate div a (un-normalized) */
+		    if (r2 < 4) {
+			DKERNEL(rs1,r2);
+			rs1 *= q1->fMass;
+			dx = nnList[i].dx;
+			dy = nnList[i].dy;
+			dz = nnList[i].dz;
+			dax = (-p->a[0] + q1->a[0]);
+			day = (-p->a[1] + q1->a[1]);
+			daz = (-p->a[2] + q1->a[2]);
+			diva += (dax*dx+day*dy+daz*dz)*rs1;
+			}
+		    }
+		}
+	    if (diva > 0) return;
+	    }
+
+
+	if (smf->bSinkFormDV || smf->bSinkFormDivV) {
+	    double dvdx[3][3];
+	    double d[3],e[3];
+	    double vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
+
+	    dvdx[0][0]=0; dvdx[0][1]=0; dvdx[0][2]=0;
+	    dvdx[1][0]=0; dvdx[1][1]=0; dvdx[1][2]=0;
+	    dvdx[2][0]=0; dvdx[2][1]=0; dvdx[2][2]=0;
+
+	    ih2 = 1./(smf->dSinkRadius*smf->dSinkRadius);
+	    for (i=0;i<nSmooth;++i) {
+		q1 = nnList[i].pPart;
+		if (iOrderSink(q1) == p->iOrder) {
+		    double dvx,dvy,dvz,dx,dy,dz;
+		    
+		    r2 = nnList[i].fDist2*ih2;  /* Calculate dv_i/dx_j (un-normalized) */
+		    if (r2 < 4) {
+			DKERNEL(rs1,r2);
+			rs1 *= q1->fMass;
+			dx = nnList[i].dx;
+			dy = nnList[i].dy;
+			dz = nnList[i].dz;
+			dvx = ((-p->vPred[0] + q1->vPred[0])*vFac - dx*smf->H)*rs1; /* NB: dx = px - qx */
+			dvy = ((-p->vPred[1] + q1->vPred[1])*vFac - dy*smf->H)*rs1;
+			dvz = ((-p->vPred[2] + q1->vPred[2])*vFac - dz*smf->H)*rs1;
+			dvdx[0][0] += dvx*dx;
+			dvdx[0][1] += dvx*dy;
+			dvdx[0][2] += dvx*dz;
+			dvdx[1][0] += dvy*dx;
+			dvdx[1][1] += dvy*dy;
+			dvdx[1][2] += dvy*dz;
+			dvdx[2][0] += dvz*dx;
+			dvdx[2][1] += dvz*dy;
+			dvdx[2][2] += dvz*dz;
+			}
+		    }
+		}
+		
+	    dvdx[0][1] = 0.5*(dvdx[0][1]+dvdx[1][0]); dvdx[1][0]=dvdx[0][1];
+	    dvdx[2][1] = 0.5*(dvdx[2][1]+dvdx[1][2]); dvdx[1][2]=dvdx[2][1];
+	    dvdx[2][0] = 0.5*(dvdx[2][0]+dvdx[0][2]); dvdx[0][2]=dvdx[2][0];
+//	    if (dvdx[0][0] != 0) {
+//		printf("Sink dvxd %d: %g %g %g\n",p->iOrder,dvdx[0][0],dvdx[0][1],dvdx[0][2]);
+//		printf("Sink dvyd %d: %g %g %g\n",p->iOrder,dvdx[1][0],dvdx[1][1],dvdx[1][2]);
+//		printf("Sink dvzd %d: %g %g %g   nEaten %d\n",p->iOrder,dvdx[2][0],dvdx[2][1],dvdx[2][2],nEaten);
+//		}
+
+	    if (smf->bSinkFormDivV) {
+		if (dvdx[0][0]+dvdx[1][1]+dvdx[2][2] > 0) return; /* not converging */
+		}
+	    if (smf->bSinkFormDV) {
+		tred3(dvdx,d,e);
+		tqli3(d,e,dvdx);
+	    
+		if (d[0] > 0 || d[1] > 0 || d[2] > 0) return; /* not converging in all directions */
+		}
+	    }
+
 	Ek = 0;
 	Eth = 0;
 	Eg = 0;
 	vsink[0] = 0; 	vsink[1] = 0;	vsink[2] = 0;
-	nEaten = 0;
+
 	for (i=0;i<nSmooth;++i) {
 	    q1 = nnList[i].pPart;
 /*	    printf("Sink %d %g: trying to use %d %d, rungs %d %d, r %g %g\n",p->iOrder,p->fDensity,q1->iOrder,iOrderSink(q1),q1->iRung,smf->iSinkCurrentRung,nnList[i].fDist2,smf->dSinkRadius);*/
 	    if (iOrderSink(q1) == p->iOrder) {
-		nEaten++;
-		mtot += q1->fMass;
 		dvx = q1->v[0]-p->v[0];  
 		vsink[0] += q1->fMass*dvx;
 		dv2 = dvx*dvx;
@@ -1945,11 +2402,6 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	    }
 
-	if (nEaten < smf->nSinkFormMin) {
-/*	    printf("Sink aborted %d %g: np %d Mass %g\n",p->iOrder,p->fDensity,nEaten,mtot);*/
-	    return;
-	    }
-
 /*	printf("Sink %d Corrected Ek %g %g\n",p->iOrder,Ek,Ek - 0.5*(vsink[0]*vsink[0]+vsink[1]*vsink[1]+vsink[2]*vsink[2])/mtot);*/
 	Ek -= 0.5*(vsink[0]*vsink[0]+vsink[1]*vsink[1]+vsink[2]*vsink[2])/mtot;
 
@@ -1957,11 +2409,26 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	   1. thermal energy < 1/2 |Grav|, 
 	   2. thermal + rot E < |Grav|, 
 	   3. total E < 0 (implies 2.)
-	   4. div.acc < 0 (related to rate of change of total E I guess)  (I will ignore this)
+	   4. div.acc < 0 (related to rate of change of total E I guess)  (optional see above)
+           5. NEW eigenvalues of dvi/dxj all negative (Federrath) (optional see above)
+           6. NEW div.v < 0 (Whitworth group)
 	*/
 
 	if (Eth < 0.5*fabs(Eg) && Ek + Eth + Eg < 0) {
 	    /* Sink approved */	
+	    if (smf->dSinkTimeEligible > 0) {
+		/* Check that formation conditions persisted for minimum time */
+		/* This cannot work in its simplest form because the sink candidate
+                   for a given density peak changes randomly from step to step as
+                   densities etc.. fluctuate.  Need to code in some way to continuously
+                   refer to the same pre-sink blob (inherit properties of particles inside 1/2 SinkRadius?) */
+		if (p->fTimeForm > 1e36) {
+		    p->fTimeForm = smf->dTime;
+		    return;
+		    }
+		if (smf->dTime-p->fTimeForm < smf->dSinkTimeEligible) return;
+		}
+
 	    PARTICLE sinkp = *p;
 	    sinkp.r[0] = 0;
 	    sinkp.r[1] = 0;
@@ -1973,29 +2440,62 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    sinkp.a[1] = 0;
 	    sinkp.a[2] = 0;
 	    sinkp.u = 0;
+#ifdef STARSINK
+	    SINK_Lx(&sinkp) = 0;
+	    SINK_Ly(&sinkp) = 0;
+	    SINK_Lz(&sinkp) = 0;
+#endif
 	    sinkp.fMass = 0;
+#ifdef SINKING
+	    sinkp.fTrueMass = 0;
+	    sinkp.iSinkingOnto = 0; /* Must start at zero -- it records the number of assoc. sinking particles */
+#endif
+	    nEatNow = 0;
 	    for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
+		r2 = nnList[i].fDist2;
 		if (iOrderSink(q) == p->iOrder) {
-		    sinkp.r[0] += q->fMass*q->r[0];
-		    sinkp.r[1] += q->fMass*q->r[1];
-		    sinkp.r[2] += q->fMass*q->r[2];
-		    sinkp.v[0] += q->fMass*q->v[0];
-		    sinkp.v[1] += q->fMass*q->v[1];
-		    sinkp.v[2] += q->fMass*q->v[2];
-		    sinkp.a[0] += q->fMass*q->a[0];
-		    sinkp.a[1] += q->fMass*q->a[1];
-		    sinkp.a[2] += q->fMass*q->a[2];
-		    sinkp.u += q->fMass*q->u;
-		    sinkp.fMass += q->fMass;
-
-		    if (p!=q) {
-			q->fMass = 0;
-			pkdDeleteParticle(smf->pkd, q);
+#ifdef SINKING
+		    if (r2 > smf->dSinkMustAccreteRadius*smf->dSinkMustAccreteRadius) {
+			/* Make sinking -- can't force sink choice b/c sink iOrder isn't known yet */
+			TYPESet(q, TYPE_NEWSINKING);
+			}
+		    else 
+#endif /*SINKING*/
+			{
+			FLOAT mq,rx,ry,rz,vx,vy,vz;
+			mq = q->fMass;
+			rx = q->r[0]; ry = q->r[1]; rz = q->r[2];
+			vx = q->v[0]; vy = q->v[1]; vz = q->v[2];
+			nEatNow++;
+			sinkp.r[0] += mq*rx;
+			sinkp.r[1] += mq*ry;
+			sinkp.r[2] += mq*rz;
+			sinkp.v[0] += mq*vx;
+			sinkp.v[1] += mq*vy;
+			sinkp.v[2] += mq*vz;
+			sinkp.a[0] += mq*q->a[0];
+			sinkp.a[1] += mq*q->a[1];
+			sinkp.a[2] += mq*q->a[2];
+			sinkp.u += q->fMass*q->u;
+#ifdef STARSINK
+			SINK_Lx(&sinkp) += mq*(ry*vz - rz*vy); /* Add to total L */
+			SINK_Ly(&sinkp) += mq*(rz*vx - rx*vz);
+			SINK_Lz(&sinkp) += mq*(rx*vy - ry*vx);
+#endif
+			sinkp.fMass += mq; 
+#ifdef SINKING
+			sinkp.fTrueMass += mq;
+#endif
+			if (p!=q) {
+			    q->fMass = 0;
+			    pkdDeleteParticle(smf->pkd, q);
+			    }
 			}
 		    }
 		}   
-	    im = 1/mtot;
+
+	    im = 1/sinkp.fMass;
 	    sinkp.r[0] *= im;
 	    sinkp.r[1] *= im;
 	    sinkp.r[2] *= im;
@@ -2006,8 +2506,14 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    sinkp.a[1] *= im;
 	    sinkp.a[2] *= im;
 	    sinkp.u *= im;
-	    TYPEReset(&sinkp,TYPE_GAS);
-	    TYPESet(&sinkp,TYPE_SINK|TYPE_STAR);
+#ifdef STARSINK
+            /* Store Internal angular momentum only */
+	    SINK_Lx(&sinkp) -= sinkp.fMass*(sinkp.r[1]*sinkp.v[2] - sinkp.r[2]*sinkp.v[1]); 
+	    SINK_Ly(&sinkp) -= sinkp.fMass*(sinkp.r[2]*sinkp.v[0] - sinkp.r[0]*sinkp.v[2]);
+	    SINK_Lz(&sinkp) -= sinkp.fMass*(sinkp.r[0]*sinkp.v[1] - sinkp.r[1]*sinkp.v[0]);
+#endif
+	    TYPEClear(&sinkp);
+	    TYPESet(&sinkp,TYPE_SINK|TYPE_STAR|TYPE_ACTIVE);
 	    sinkp.fTimeForm = -smf->dTime; /* -ve time is sink indicator */
 #ifdef SINKEXTRADATA
 	    for(j = 0; j < 3; j++) {
@@ -2015,14 +2521,20 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		sinkp.vForm[j] = sinkp.v[j];
 		}
 #endif
-	    printf("Sink Formed %d %g: np %d Mass %g Ek %g Eth %g Eg %g, %g %g\n",p->iOrder,p->fDensity,nEaten,mtot,Ek,Eth,Eg,4/3.*pow(M_PI,2.5)/50.*sqrt((p->c*p->c*p->c*p->c*p->c*p->c)/(p->fMass*p->fMass*p->fDensity)),pow(Eth/fabs(Eg),1.5) );
+	    printf("Sink Formed %d %g: np (%d) %d Mass (%g) %g Ek %g Eth %g Eg %g, %g %g\n",p->iOrder,p->fDensity,nEaten,nEatNow,mtot,sinkp.fMass,Ek,Eth,Eg,4/3.*pow(M_PI,2.5)/50.*sqrt((p->c*p->c*p->c*p->c*p->c*p->c)/(p->fMass*p->fMass*p->fDensity)),pow(Eth/fabs(Eg),1.5) );
+#ifndef SINKING
 	    assert(fabs(sinkp.fMass/mtot-1) < 1e-4);
+#else
+/*	    printf("Sink Made %g %g\n",sinkp.fMass,sinkp.fTrueMass);*/
+	    assert(fabs(sinkp.fMass/sinkp.fTrueMass-1) < 1e-7);
+	    assert(!TYPETest(p, TYPE_SINKING));
+#endif
 	    p->fMass = 0;
 	    pkdDeleteParticle(smf->pkd, p);
 	    pkdNewParticle(smf->pkd, sinkp);    
 	    }
 	else {
-	    printf("Sink Failed Tests %d %g: np %d Mass %g Ek %g Eth %g Eg %g, %g %g\n",p->iOrder,p->fDensity,nEaten,mtot,Ek,Eth,Eg,	    4/3.*pow(M_PI,2.5)/50.*sqrt((p->c*p->c*p->c*p->c*p->c*p->c)/(p->fMass*p->fMass*p->fDensity)),pow(Eth/fabs(Eg),1.5) );
+	    printf("Sink Failed Tests %d %g: np (%d) Mass (%g) Ek %g Eth %g Eg %g, %g %g\n",p->iOrder,p->fDensity,nEaten,mtot,Ek,Eth,Eg,	    4/3.*pow(M_PI,2.5)/50.*sqrt((p->c*p->c*p->c*p->c*p->c*p->c)/(p->fMass*p->fMass*p->fDensity)),pow(Eth/fabs(Eg),1.5) );
 	    }
 #endif
 }
@@ -2105,6 +2617,9 @@ void initSphPressureTermsParticle(void *p)
 		((PARTICLE *)p)->fMFracOxygenDot = 0.0;
 		((PARTICLE *)p)->fMFracIronDot = 0.0;
 #endif /* STARFORM */
+#ifdef MASSDIFF
+		((PARTICLE *)p)->fMassDot = 0.0;
+#endif 
 #endif /* DIFFUSION */
 		}
 	}
@@ -2128,6 +2643,9 @@ void initSphPressureTerms(void *p)
 		((PARTICLE *)p)->fMFracOxygenDot = 0.0;
 		((PARTICLE *)p)->fMFracIronDot = 0.0;
 #endif /* STARFORM */
+#ifdef MASSDIFF
+		((PARTICLE *)p)->fMassDot = 0.0;
+#endif 
 #endif /* DIFFUSION */
 		}
 	}
@@ -2151,6 +2669,9 @@ void combSphPressureTerms(void *p1,void *p2)
 		((PARTICLE *)p1)->fMFracOxygenDot += ((PARTICLE *)p2)->fMFracOxygenDot;
 		((PARTICLE *)p1)->fMFracIronDot += ((PARTICLE *)p2)->fMFracIronDot;
 #endif /* STARFORM */
+#ifdef MASSDIFF
+		((PARTICLE *)p1)->fMassDot += ((PARTICLE *)p2)->fMassDot;
+#endif 
 #endif /* DIFFUSION */
 		}
 	}
@@ -2175,7 +2696,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	pc = p->c;
 	pDensity = p->fDensity;
 	pMass = p->fMass;
-#ifndef RTF
+#ifndef RTFORCE
 	pPoverRho2 = p->PoverRho2;
 #ifdef PEXT
     {   FLOAT pd2 = p->fDensity*p->fDensity;
@@ -2213,7 +2734,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz)
 		+ nnList[i].fDist2*smf->H;
 	    
-#ifdef RTF
+#ifdef RTFORCE
 	    pPoverRho2 = p->PoverRho2*pDensity/q->fDensity;
 	    pPoverRho2f = pPoverRho2;
 	    qPoverRho2 = q->PoverRho2*q->fDensity/pDensity;
@@ -2231,6 +2752,40 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 #endif	    
 
+#ifdef DIFFUSION 
+#ifdef MASSDIFF
+#define MASSDIFFFAC(pother_) ((pother_)->fMass)
+#define DIFFUSIONBase() double diffbase = 4*smf->dMetalDiffusionCoeff*(p->diff+q->diff) \
+	 /((p->fDensity+q->fDensity)*(p->fMass+q->fMass)); 
+#define DIFFUSIONMass() \
+    { double diff = diffbase*(p->fMass - q->fMass); \
+      PACTIVE( p->fMassDot += diff*p->fMass*rq ); \
+      QACTIVE( q->fMassDot -= diff*q->fMass*rp ); \
+    }
+#define DIFFUSIONVelocity() \
+    { double diff0 = diffbase*(p->v[0] - q->v[0]); \
+      double diff1 = diffbase*(p->v[1] - q->v[1]); \
+      double diff2 = diffbase*(p->v[2] - q->v[2]); \
+      PACTIVE( ACCEL(p,0) += diff0*rq*MASSDIFFFAC(q) ); \
+      QACTIVE( ACCEL(q,0) -= diff0*rp*MASSDIFFFAC(p) ); \
+      PACTIVE( ACCEL(p,1) += diff1*rq*MASSDIFFFAC(q) ); \
+      QACTIVE( ACCEL(q,1) -= diff1*rp*MASSDIFFFAC(p) ); \
+      PACTIVE( ACCEL(p,2) += diff2*rq*MASSDIFFFAC(q) ); \
+      QACTIVE( ACCEL(q,2) -= diff2*rp*MASSDIFFFAC(p) ); \
+    }
+#else
+#define MASSDIFFFAC(pother_) 1
+#define DIFFUSIONBase() double diffbase = 2*smf->dMetalDiffusionCoeff*(p->diff+q->diff) \
+	 /(p->fDensity+q->fDensity); 
+#define DIFFUSIONMass()
+#define DIFFUSIONVelocity()
+#endif
+#else
+#define DIFFUSIONBase()
+#define DIFFUSIONMass()
+#define DIFFUSIONVelocity()
+#endif
+
 #ifdef DIFFUSION
 #ifdef DIFFUSIONPRICE
 #define DIFFUSIONThermal() \
@@ -2244,8 +2799,8 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #define DIFFUSIONThermal() \
     { double diff = 2*smf->dThermalDiffusionCoeff*(p->diff+q->diff)*(p->uPred-q->uPred) \
 		/(p->fDensity+q->fDensity); \
-      PACTIVE( p->PdV += diff*rq ); \
-      QACTIVE( q->PdV -= diff*rp ); }
+      PACTIVE( p->PdV += diff*rq*MASSDIFFFAC(q) ); \
+      QACTIVE( q->PdV -= diff*rp*MASSDIFFFAC(p) ); }
 #else
 /* Default -- no thermal diffusion */
 #define DIFFUSIONThermal()
@@ -2253,21 +2808,18 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 
 #define DIFFUSIONMetals() \
-    { double diff = 2*smf->dMetalDiffusionCoeff*(p->diff+q->diff)*(p->fMetals - q->fMetals) \
-		/(p->fDensity+q->fDensity); \
-      PACTIVE( p->fMetalsDot += diff*rq ); \
-      QACTIVE( q->fMetalsDot -= diff*rp ); }
+    { double diff = diffbase*(p->fMetals - q->fMetals); \
+      PACTIVE( p->fMetalsDot += diff*rq*MASSDIFFFAC(q) ); \
+      QACTIVE( q->fMetalsDot -= diff*rp*MASSDIFFFAC(p) ); }
 #ifdef STARFORM
 #define DIFFUSIONMetalsOxygen() \
-    { double diff = 2*smf->dMetalDiffusionCoeff*(p->diff+q->diff)*(p->fMFracOxygen - q->fMFracOxygen) \
-		/(p->fDensity+q->fDensity); \
-      PACTIVE( p->fMFracOxygenDot += diff*rq ); \
-      QACTIVE( q->fMFracOxygenDot -= diff*rp ); }
+    { double diff = diffbase*(p->fMFracOxygen - q->fMFracOxygen); \
+      PACTIVE( p->fMFracOxygenDot += diff*rq*MASSDIFFFAC(q) ); \
+      QACTIVE( q->fMFracOxygenDot -= diff*rp*MASSDIFFFAC(p) ); }
 #define DIFFUSIONMetalsIron() \
-    { double diff = 2*smf->dMetalDiffusionCoeff*(p->diff+q->diff)*(p->fMFracIron - q->fMFracIron) \
-		/(p->fDensity+q->fDensity); \
-      PACTIVE( p->fMFracIronDot += diff*rq ); \
-      QACTIVE( q->fMFracIronDot -= diff*rp ); }
+    { double diff = diffbase*(p->fMFracIron - q->fMFracIron); \
+      PACTIVE( p->fMFracIronDot += diff*rq*MASSDIFFFAC(q) ); \
+      QACTIVE( q->fMFracIronDot -= diff*rp*MASSDIFFFAC(p) ); }
 #else 
 #define DIFFUSIONMetalsOxygen() 
 #define DIFFUSIONMetalsIron() 
@@ -2323,10 +2875,14 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    QACTIVE( ACCEL(q,0) += Accq * dx; ); \
 	    QACTIVE( ACCEL(q,1) += Accq * dy; ); \
 	    QACTIVE( ACCEL(q,2) += Accq * dz; ); \
+            { DIFFUSIONBase(); \
             DIFFUSIONThermal(); \
             DIFFUSIONMetals(); \
             DIFFUSIONMetalsOxygen(); \
-            DIFFUSIONMetalsIron(); 
+            DIFFUSIONMetalsIron(); \
+            DIFFUSIONMass(); \
+ 	    DIFFUSIONVelocity(); }
+
 /*            if (p->iOrder == 0 || q->iOrder == 0) { if (p->iOrder == 0) printf("sph%d%d  %d-%d %g %g\n",p->iActive&1,q->iActive&1,p->iOrder,q->iOrder,Accp,p->a[0]); else printf("sph%d%d  %d -%d %g %g\n",p->iActive&1,q->iActive&1,p->iOrder,q->iOrder,Accq,q->a[0]); } */
 
 
@@ -3535,7 +4091,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT dvxdx , dvxdy , dvxdz, dvydx , dvydy , dvydz, dvzdx , dvzdy , dvzdz;
 	FLOAT dvx,dvy,dvz,dx,dy,dz,trace;
 	FLOAT grx,gry,grz,gnorm,dvds,dvdr,c;
-#ifdef RTF
+#ifdef RTDENSITY
 	FLOAT fDensityU = 0;
 #endif
 	PARTICLE *q;
@@ -3564,7 +4120,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		qiActive |= q->iActive;
 		KERNEL(rs,r2);
 		fDensity += rs*q->fMass;
-#ifdef RTF
+#ifdef RTDENSITY
 		fDensityU += rs*q->fMass*q->uPred;
 #endif
 		DKERNEL(rs1,r2);
@@ -3592,7 +4148,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 /*	printf("TEST %d  %g %g  %g %g %g\n",p->iOrder,p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]);*/
 	fDensity*=fNorm;
-#ifdef RTF	
+#ifdef RTDENSITY	
 	fDensityU*=fNorm;
 	p->fDensity = fDensityU/p->uPred; 
 #else
@@ -4846,7 +5402,7 @@ void initSimpleSF_Feedback(void *p1)
      */
     ((PARTICLE *)p1)->u = 0.0;
     ((PARTICLE *)p1)->fMetals = 0.0;
-    ((PARTICLE *)p1)->fTimeForm = 0.0;
+    ((PARTICLE *)p1)->fTimeForm= 0.0;
     }
 
 void combSimpleSF_Feedback(void *p1,void *p2)

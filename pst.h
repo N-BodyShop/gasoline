@@ -97,6 +97,7 @@ enum pst_service {
       PST_OUTVECTOR,
       PST_OUTNCVECTOR,
       PST_WRITETIPSY,
+      PST_TREEZIP,
       PST_BUILDTREE,
       PST_SMOOTH,
       PST_GRAVITY,
@@ -426,6 +427,13 @@ struct inWriteTipsy {
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteTipsy(PST,void *,int,void *,int *);
+
+struct inTreeZip {
+        char achFile[PST_FILENAME_SIZE];
+        int bLocal;
+        BND bnd;
+        };
+void pstTreeZip(PST,void *,int,void *,int *);
 
 /* PST_BUILDTREE */
 struct inBuildTree {

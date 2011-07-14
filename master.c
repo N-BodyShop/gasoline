@@ -434,7 +434,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bPackedVector = 0;
 	prmAddParam(msr->prm,"bPackedVector",0,&msr->param.bPackedVector,sizeof(int),
 				"pvec","enable/disable packed vector outputs = +pvec");
+#ifdef GASOLINE
+	msr->param.bDoDensity = 0;
+#else
 	msr->param.bDoDensity = 1;
+#endif
 	prmAddParam(msr->prm,"bDoDensity",0,&msr->param.bDoDensity,sizeof(int),
 				"den","enable/disable density outputs = +den");
 	msr->param.iOrbitOutInterval = 1;
@@ -477,6 +481,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dDumpFrameTime = -1;
 	prmAddParam(msr->prm,"dDumpFrameTime",2,&msr->param.dDumpFrameTime,sizeof(double),
 				"dft","<number of timesteps between dumped frames> = 0");
+	msr->param.iTreeZipStep = 0;
+	prmAddParam(msr->prm,"iTreeZipStep",1,&msr->param.iTreeZipStep,sizeof(int),
+				"tzi","<number of steps between treezip outputs> = 0");
+	msr->param.bTreeZipLocal = 1;
+	prmAddParam(msr->prm,"bTreeZipLocal",0,&msr->param.bTreeZipLocal,sizeof(int),
+				"tzl","<Treezip Local or Global domain> = 1");
 
 	msr->param.iDirector = 1;
 	prmAddParam(msr->prm,"iDirector",1,&msr->param.iDirector,sizeof(int),
@@ -716,9 +726,30 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bSinkFormJeans = 0;
 	prmAddParam(msr->prm,"bSinkFormJeans",0,&msr->param.bSinkFormJeans,sizeof(int),
 				"sinkformjeans","enable/disable sinks = -sinkformjeans");
+	msr->param.bSinkFormDivV = 0;
+	prmAddParam(msr->prm,"bSinkFormDivV",0,&msr->param.bSinkFormDivV,sizeof(int),
+				"sinkformdivv","enable/disable sinks = -sinkformdivv");
+	msr->param.dSinkFormDivVCoeff = 0;
+	prmAddParam(msr->prm,"dSinkFormDivVCoeff",2,&msr->param.dSinkFormDivVCoeff,sizeof(double),
+				"sinkformdivvcoeff","sinks form div v coeff = -sinkformdivvcoeff");
+	msr->param.bSinkFormDivAcc = 0;
+	prmAddParam(msr->prm,"bSinkFormDivAcc",0,&msr->param.bSinkFormDivAcc,sizeof(int),
+				"sinkformdivacc","enable/disable sinks = -sinkformdivacc");
+	msr->param.dSinkFormDivAccCoeff = 0;
+	prmAddParam(msr->prm,"dSinkFormDivAccCoeff",2,&msr->param.dSinkFormDivAccCoeff,sizeof(double),
+				"sinkformdivvacccoeff","sinks form div acc coeff = -sinkformdivacccoeff");
+	msr->param.bSinkFormDV = 0;
+	prmAddParam(msr->prm,"bSinkFormDV",0,&msr->param.bSinkFormDV,sizeof(int),
+				"sinkformdv","enable/disable sinks = -sinkformdv");
+	msr->param.bSinkFormPotMin = 0;
+	prmAddParam(msr->prm,"bSinkFormPotMin",0,&msr->param.bSinkFormPotMin,sizeof(int),
+				"sinkformpotmin","enable/disable sinks = -sinkformpotmin");
 	msr->param.dSinkFormDensity = -1.0;
 	prmAddParam(msr->prm,"dSinkFormDensity",2,&msr->param.dSinkFormDensity,sizeof(double),
 				"sinkformdensity","sinks density = -sinkformdensity");
+	msr->param.dSinkTimeEligible = 0;
+	prmAddParam(msr->prm,"dSinkTimeEligible",2,&msr->param.dSinkTimeEligible,sizeof(double),
+				"sinktimeligible","sink time eligible = -sinktimeeligible");
 	msr->param.bSinkFormSimple = 0;
 	prmAddParam(msr->prm,"bSinkFormSimple",0,&msr->param.bSinkFormSimple,sizeof(int),
 				"sinkformsimple","enable/disable sinks = -sinkformjeans");
@@ -2330,8 +2361,11 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef DENSITYU
 	fprintf(fp," DENSITYU");
 #endif
-#ifdef RTF
-	fprintf(fp," RTF");
+#ifdef RTDENSITY
+	fprintf(fp," RTDENSITY");
+#endif
+#ifdef RTFORCE
+	fprintf(fp," RTFORCE");
 #endif
 #ifdef VOLUMEFEEDBACK
 	fprintf(fp," VOLUMEFEEDBACK");
@@ -2447,6 +2481,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef DIFFUSIONPRICE
 	fprintf(fp, " DIFFUSIONPRICE");
 #endif
+#ifdef MASSDIFF
+	fprintf(fp, " MASSDIFF");
+#endif
 #ifdef VARALPHA
         fprintf(fp, " VARALPHA");
 #endif
@@ -2458,6 +2495,12 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef STARSINK
 	fprintf(fp, " STARSINK");
+#endif
+#ifdef SINKING
+	fprintf(fp, " SINKING");
+#endif
+#ifdef SINKINGAVERAGE
+	fprintf(fp, " SINKINGAVERAGE");
 #endif
 	{
 	time_t timep;
@@ -2489,6 +2532,7 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 	fprintf(fp,"\n# bParaRead: %d",msr->param.bParaRead);
 	fprintf(fp," bParaWrite: %d",msr->param.bParaWrite);
+	fprintf(fp," iBinaryOutput: %d",msr->param.iBinaryOutput);
 	fprintf(fp," bCannonical: %d",msr->param.bCannonical);
 	fprintf(fp," bStandard: %d",msr->param.bStandard);
 	fprintf(fp,"\n# bKDK: %d",msr->param.bKDK);
@@ -2496,6 +2540,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," iOutInterval(%d,%d): %d",msr->param.iBinaryOutput,msr->param.bPackedVector,msr->param.iOutInterval);
 	fprintf(fp," dDumpFrameStep: %g",msr->param.dDumpFrameStep);
 	fprintf(fp," dDumpFrameTime: %g",msr->param.dDumpFrameTime);
+	fprintf(fp," iTreeZipStep: %d",msr->param.iTreeZipStep);
+	fprintf(fp," bTreeZipLocal: %d",msr->param.bTreeZipLocal);
 	fprintf(fp," iLogInterval: %d",msr->param.iLogInterval);
 	fprintf(fp," bLogTiming: %d (%d%d%d%d)",msr->param.bLogTiming,msr->param.bLogTimingSubStep,msr->param.bLogTimingStep,msr->param.bLogTimingSubStepTot,msr->param.bLogTimingStepTot);
 	fprintf(fp,"\n# iCheckInterval: %d",msr->param.iCheckInterval);
@@ -2577,10 +2623,15 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# bSinkForm: %d",msr->param.bSinkForm);
 	fprintf(fp," bSinkFormSimple: %d",msr->param.bSinkFormSimple);
 	fprintf(fp," bSinkFormJeans: %d",msr->param.bSinkFormJeans);
+	fprintf(fp," bSinkFormDivV: %d (%g)",msr->param.bSinkFormDivV,msr->param.dSinkFormDivVCoeff);
+	fprintf(fp," bSinkFormDivAcc: %d (%g)",msr->param.bSinkFormDivAcc,msr->param.dSinkFormDivAccCoeff);
+	fprintf(fp," bSinkFormDV: %d",msr->param.bSinkFormDV);
+	fprintf(fp," bSinkFormPotMin: %d",msr->param.bSinkFormPotMin);
 	fprintf(fp," nSinkFormMin: %d",msr->param.nSinkFormMin);
 	fprintf(fp," nJeans: %d",msr->param.nJeans);
 	fprintf(fp," dJeansConstant: %g",msr->param.dJeansConstant);
 	fprintf(fp," dSinkFormDensity: %g",msr->param.dSinkFormDensity);
+	fprintf(fp," dSinkTimeEligible: %g",msr->param.dSinkTimeEligible);
 	fprintf(fp,"\n# dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
 	fprintf(fp," dFracNoDomainDimChoice: %g",msr->param.dFracNoDomainDimChoice);
 	fprintf(fp," bFastGas: %d",msr->param.bFastGas);
@@ -3606,6 +3657,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	    pstWriteTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
 	    msrOneNodeWriteTipsy(msr, &in);
+
 	if (msr->param.bVDetails) {
 	     dsec = msrTime() - sec;
 	     printf("Data write complete, Wallclock: %f secs\n",dsec);
@@ -4039,6 +4091,9 @@ void msrCreateGasOutputList(MSR msr, int (*iNumOutputs), int OutputList[])
         OutputList[(*iNumOutputs)++]=OUT_DIVRHOV_ARRAY;
         OutputList[(*iNumOutputs)++]=OUT_GRADRHO_VECTOR;
     }
+#ifdef STARSINK
+        OutputList[(*iNumOutputs)++]=OUT_ANGMOM_VECTOR;
+#endif
 #ifndef NOCOOLING				
     {
     int ArrayCnt = 0;
@@ -4277,6 +4332,7 @@ void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, 
     int i, iDim, nDim;
     LCL *plcl = msr->pst->plcl;
     char achOutFile[PST_FILENAME_SIZE];
+    double sec,dsec;
     struct inOutput inOut;
 #ifdef COLLISIONS
     struct inWriteSS in;
@@ -4284,10 +4340,17 @@ void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, 
     struct inWriteTipsy in;
 #endif
 
+    if (!iNumOutputs) return;
+
+    if (msr->param.bVDetails) {
+	printf("Writing output file data (%d) ...\n",iNumOutputs);
+	sec = msrTime();
+	}
+
     if (msr->param.iBinaryOutput == 6) {
         msrWriteNCOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
-        return;
-        }
+	}
+    else {
 
     /*
      ** Calculate where to start writing.
@@ -4363,6 +4426,12 @@ void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, 
             msrOneNodeWriteOutputs(msr, OutputList, iNumOutputs, &in);
         } else  /* ASCII:  NO PARALLEL OPTION! Only packed vectors supported. */
         msrOneNodeWriteOutputs(msr, OutputList, iNumOutputs, &in);
+    }
+
+    if (msr->param.bVDetails) {
+	dsec = msrTime() - sec;
+	printf("Data writes complete, Wallclock: %f secs\n",dsec);
+	}
     }
     
 void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
@@ -4787,6 +4856,13 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   in.smf.bDoBHKick = msr->param.bDoBHKick;
   in.smf.dSinkCurrentDelta = msr->param.dSinkCurrentDelta;
   in.smf.nSinkFormMin = msr->param.nSinkFormMin;
+  in.smf.bSinkFormDivV = msr->param.bSinkFormDivV;
+  in.smf.dSinkFormDivVCoeff = msr->param.dSinkFormDivVCoeff;
+  in.smf.bSinkFormDivAcc = msr->param.bSinkFormDivAcc;
+  in.smf.dSinkFormDivAccCoeff = msr->param.dSinkFormDivAccCoeff;
+  in.smf.bSinkFormDV = msr->param.bSinkFormDV;
+  in.smf.bSinkFormPotMin = msr->param.bSinkFormPotMin;
+  in.smf.dSinkTimeEligible = msr->param.dSinkTimeEligible;
   in.smf.iSinkCurrentRung = msr->param.iSinkCurrentRung;
   in.smf.bSinkThermal = msr->param.bSinkThermal;
   in.smf.dSinkRadius = msr->param.dSinkRadius;
@@ -4903,6 +4979,13 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 	in.smf.bDoBHKick = msr->param.bDoBHKick;
 	in.smf.dSinkCurrentDelta = msr->param.dSinkCurrentDelta;
 	in.smf.nSinkFormMin = msr->param.nSinkFormMin;
+	in.smf.bSinkFormDivV = msr->param.bSinkFormDivV;
+	in.smf.dSinkFormDivVCoeff = msr->param.dSinkFormDivVCoeff;
+	in.smf.bSinkFormDivAcc = msr->param.bSinkFormDivAcc;
+	in.smf.dSinkFormDivAccCoeff = msr->param.dSinkFormDivAccCoeff;
+	in.smf.bSinkFormDV = msr->param.bSinkFormDV;
+	in.smf.bSinkFormPotMin = msr->param.bSinkFormPotMin;
+	in.smf.dSinkTimeEligible = msr->param.dSinkTimeEligible;
 	in.smf.iSinkCurrentRung = msr->param.iSinkCurrentRung;
 	in.smf.bSinkThermal = msr->param.bSinkThermal;
 	in.smf.dSinkRadius = msr->param.dSinkRadius;
@@ -7456,7 +7539,7 @@ void msrTopStepKDK(MSR msr,
 
 #ifdef GASOLINE
 		if (msr->param.bSphStep) {
-			msrSphStep(msr,dTime);
+		    msrSphStep(msr,dTime); /* Important that this is last step criterion for gas/sinks */
 			}
 #endif
 #ifdef RUBBLE_ZML
@@ -7559,7 +7642,6 @@ void msrTopStepKDK(MSR msr,
 			msrDumpFrame( msr, dTime, dStep );
 		else if (msr->param.dDumpFrameStep > 0 && dStep >= msr->df[0]->dStep) 
 			msrDumpFrame( msr, dTime, dStep );
-
 		/* 
 		 ** Calculate Forces (if required)
 		 */
@@ -7622,6 +7704,7 @@ void msrTopStepKDK(MSR msr,
 				msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 				msrBuildTree(msr,1,-1.0,1);
 				}
+			    msrSetType(msr, TYPE_SINKING, TYPE_INFLOW);
 			    msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
 			    msrActiveTypeRung(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE,iKickRung,1);
 			    msrSmooth(msr,dTime,SMX_SINKINGFORCESHARE,1); 
@@ -7655,6 +7738,7 @@ void msrTopStepKDK(MSR msr,
        If I do this after the gas kick I save a treebuild 
        Note: Cannot delete particles unless they have closed their kick
        => p->iRung >= iKickRung and iRung == iKickRung (to pick last kick in sequence)
+       Note: If accel is being tested need a good accel for this
     */
     if ( iKickRung == iRung) {
 	msrDoSinks(msr, dTime, dDelta, iKickRung );
@@ -7814,7 +7898,7 @@ void msrFormSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 		msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
 		msrBuildTree(msr,1,-1.0,1);  /* bTreeActive */
 		}
-	    msrSmooth(msr, dTime, SMX_SINKFORMTEST, 1);
+	    msrSmooth(msr, dTime, SMX_SINKFORMTEST, 1); /* should exclude some who fail this test? */
 	    msrSmooth(msr, dTime, SMX_SINKFORM, 1);
 	    
 	    msrAddDelParticles(msr);
@@ -7890,7 +7974,7 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	    }
 	else {
 	    /* Fixed Radius Accretion: particle by particle (cf. Bate) */
-	    msrSmooth(msr, dTime, SMX_SINKTEST,1);
+	    msrSmooth(msr, dTime, SMX_SINKACCRETETEST,1);
 	    msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
 #ifdef SINKINGAVERAGE
 	    msrActiveType(msr,TYPE_NEWSINKING, TYPE_SMOOTHACTIVE);
@@ -8505,7 +8589,7 @@ void msrDumpFrame(MSR msr, double dTime, double dStep)
       
       if (msr->df[i]->iDimension == DF_3D) {
 #ifdef VOXEL
-	/* 3D Voxel Projection */
+	/* 3D Voxel Projection  -- superceded by TreeZip */
 	struct inDumpVoxel in;
 	assert(0);
 	
@@ -8564,6 +8648,40 @@ void msrDumpFrame(MSR msr, double dTime, double dStep)
       }
     }
 }
+
+void msrTreeZip(MSR msr, int iStep) {
+    PST pst0;
+    LCL *plcl;
+    char achFile[PST_FILENAME_SIZE];
+    double sec,dsec;
+    struct inTreeZip in;
+
+    if (msr->param.bVDetails) {
+	sec = msrTime();
+	}
+
+    pst0 = msr->pst;
+    in.bnd = pst0->bnd; /* Global bound */
+    while(pst0->nLeaves > 1)
+	pst0 = pst0->pstLower;
+
+    plcl = pst0->plcl;
+
+    sprintf(in.achFile,msr->param.achDigitMask,msrOutName(msr),iStep);
+    sprintf(achFile,"%s.treezip",in.achFile);
+    _msrMakePath(plcl->pszDataPath,achFile,in.achFile);
+    
+    assert(mkdir(in.achFile, 0775)<1);
+
+    if (msr->param.bVDetails) printf("Tree Zipping to directory: %s\n",in.achFile);
+    
+    pstTreeZip(msr->pst,&in,sizeof(in),NULL,NULL);
+
+    if (msr->param.bVDetails) {
+	dsec = msrTime() - sec;
+	printf("Treezip write complete, Wallclock: %f secs\n",dsec);
+	}
+    }
 
 void msrInitStarLog(MSR msr)
 {

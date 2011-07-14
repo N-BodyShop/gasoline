@@ -1,8 +1,8 @@
 #ifndef DUMPFRAME_HINCLUDED
 #define DUMPFRAME_HINCLUDED
 
-#define DF_NXPIXMAX 4000
-#define DF_NYPIXMAX 4000
+#define DF_NXPIXMAX 1024
+#define DF_NYPIXMAX 1024
 /* PST */
 
 #ifdef USE_PNG
@@ -14,7 +14,7 @@ typedef struct dfImage {
 	float r,g,b;
 	} DFIMAGE;
 
-#define DF_NBYTEDUMPFRAME (3*sizeof(DFIMAGE)*DF_NXPIXMAX*DF_NYPIXMAX)
+#define DF_NBYTEDUMPFRAME (sizeof(DFIMAGE)*DF_NXPIXMAX*DF_NYPIXMAX)
 
 /* 
    Projection can be 2D or voxels

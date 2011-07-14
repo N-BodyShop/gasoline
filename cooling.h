@@ -24,6 +24,10 @@
 #include "cooling_metal.h"
 #else
 
+#ifdef COOLING_METAL_NOH2
+#include "cooling_metal_noH2.h"
+#else
+
 #ifdef COOLING_BATE
 #include "cooling_bate.h"
 #else
@@ -41,3 +45,5 @@
 #endif
 
 #endif
+#endif
+
