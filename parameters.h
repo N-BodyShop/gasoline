@@ -31,6 +31,7 @@ struct parameters {
 	int bRestart;
 	int bParaRead;
 	int bParaWrite;
+	int nIOProcessor;
 	int bCannonical;
 	int bStandard;
 	int bKDK;

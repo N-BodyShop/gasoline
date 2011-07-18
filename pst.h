@@ -278,6 +278,7 @@ struct inReadTipsy {
 	int nGas;
 	int nStar;
 	int iOrder;
+	int nIOProcessor;
 	float fExtraStore;
 	FLOAT fPeriod[3];
         FLOAT dxInflow, dxOutflow;
@@ -413,6 +414,7 @@ struct inOutput {
 	int iBinaryOutput;
 	int N;
 	int bStandard;
+	int nIOProcessor;
 	double duTFac;
 	double dvFac;
 	};
@@ -421,6 +423,7 @@ void pstOutVector(PST,void *,int,void *,int *);
 /* PST_WRITETIPSY */
 struct inWriteTipsy {
 	int bStandard;
+	int nIOProcessor;
 	double dvFac;
 	double duTFac;
 	int iGasModel;
@@ -688,6 +691,7 @@ struct inReadCheck {
 	int nGas;
 	int nStar;
 	int iOrder;
+	int nIOProcessor;
 	float fExtraStore;
 	FLOAT fPeriod[3];
         FLOAT dxInflow, dxOutflow;
@@ -698,6 +702,7 @@ void pstReadCheck(PST,void *,int,void *,int *);
 /* PST_WRITECHECK */
 struct inWriteCheck {
 	int iOffset;
+	int nIOProcessor;
 	char achOutFile[PST_FILENAME_SIZE];
 	};
 void pstWriteCheck(PST,void *,int,void *,int *);

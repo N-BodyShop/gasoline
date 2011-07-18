@@ -419,6 +419,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bParaWrite = 1;
 	prmAddParam(msr->prm,"bParaWrite",0,&msr->param.bParaWrite,sizeof(int),"paw",
 				"enable/disable parallel writing of files = +paw");
+	msr->param.nIOProcessor = 0;
+	prmAddParam(msr->prm,"nIOProcessor",1,&msr->param.nIOProcessor,
+		    sizeof(int),"npio",
+		    "number of simultaneous I/O processors = 0 (all)");
 	msr->param.bCannonical = 1;
 	prmAddParam(msr->prm,"bCannonical",0,&msr->param.bCannonical,sizeof(int),"can",
 				"enable/disable use of cannonical momentum = +can");
@@ -3436,6 +3440,7 @@ double msrReadTipsy(MSR msr)
 	     sec = msrTime();
 	}
 
+	in.nIOProcessor = msr->param.nIOProcessor;
 	if(msr->param.bParaRead)
 	    pstReadTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
@@ -3653,6 +3658,7 @@ void msrWriteTipsy(MSR msr,char *pszFileName,double dTime)
 	     puts("Writing output file data...");
 	     sec = msrTime();
 	     }
+	in.nIOProcessor = msr->param.nIOProcessor;
 	if(msr->param.bParaWrite)
 	    pstWriteTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
@@ -3750,8 +3756,9 @@ void msrWriteTipsyBody(MSR msr,char *pszFileName,double dTime, struct inWriteTip
 	     puts("Writing output file data...");
 	     sec = msrTime();
 	     }
+	in->nIOProcessor = msr->param.nIOProcessor;
 	if(msr->param.bParaWrite)
-	    pstWriteTipsy(msr->pst,in,sizeof(in),NULL,NULL);
+	    pstWriteTipsy(msr->pst,in,sizeof(*in),NULL,NULL);
 	else
 	    msrOneNodeWriteTipsy(msr, in);
 	if (msr->param.bVDetails) {
@@ -4278,6 +4285,7 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
         inOut.iBinaryOutput = msr->param.iBinaryOutput;
         inOut.N = msr->N;
         inOut.iType=OutputList[i];
+	inOut.nIOProcessor = msr->param.nIOProcessor;
         pstOutNCVector(msr->pst,&inOut,sizeof(inOut),&out,NULL);
 	/*
 	 * Write headers with min/max data
@@ -4398,6 +4406,7 @@ void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, 
     /* Write Data */
     inOut.iBinaryOutput = msr->param.iBinaryOutput;
     inOut.N = msr->N;
+    inOut.nIOProcessor = msr->param.nIOProcessor;
     if (msr->param.iBinaryOutput) {
         if(msr->param.bParaWrite) {
             for (i=0; i<iNumOutputs;i++){
@@ -4405,6 +4414,7 @@ void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs, 
 #ifdef COLLISIONS
                     pstWriteSS(msr->pst,&in,sizeof(in),NULL,NULL);
 #else
+    		    in.nIOProcessor = msr->param.nIOProcessor;
                     pstWriteTipsy(msr->pst,&in,sizeof(in),NULL,NULL);
 #endif
                     } 
@@ -4793,6 +4803,7 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	 */
 	in.iType = iType;
 	in.iBinaryOutput = msr->param.iBinaryOutput;
+	in.nIOProcessor = msr->param.nIOProcessor;
 	if (msr->param.iBinaryOutput) {
             fwrite(&msr->N,sizeof(int),1,fp);
             fclose(fp);
@@ -6435,6 +6446,7 @@ double msrReadCheck(MSR msr,int *piStep)
 	in.iVersion = iVersion;
 	in.iOffset = FDL_offset(fdl,"particle_array");
 	FDL_finish(fdl);
+	in.nIOProcessor = msr->param.nIOProcessor;
 	if(msr->param.bParaRead)
 	    pstReadCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	else
@@ -6665,6 +6677,7 @@ void msrWriteCheck(MSR msr,double dTime,int iStep)
 	 */
 	msrCalcWriteStart(msr);
 	in.iOffset = FDL_offset(fdl,"particle_array");
+	in.nIOProcessor = msr->param.nIOProcessor;
 	if(msr->param.bParaWrite)
 	    pstWriteCheck(msr->pst,&in,sizeof(in),NULL,NULL);
 	else

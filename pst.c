@@ -724,15 +724,28 @@ void pstReadTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	nFileEnd = in->nFileEnd;
 	nFileTotal = nFileEnd - nFileStart + 1;
 	if (pst->nLeaves > 1) {
-		nFileSplit = nFileStart + pst->nLower*(nFileTotal/pst->nLeaves);
+	    nFileSplit = nFileStart + pst->nLower*(nFileTotal/pst->nLeaves);
+	    if(in->nIOProcessor > 0 && pst->nLeaves > in->nIOProcessor) {
+		/* NOT Parallel at this point */
+		in->nFileStart = nFileStart;
+		in->nFileEnd = nFileSplit - 1;
+		pstReadTipsy(pst->pstLower,in,nIn,NULL,NULL);
+		in->nFileStart = nFileSplit;
+		in->nFileEnd = nFileEnd;
+		mdlReqService(pst->mdl,pst->idUpper,PST_READTIPSY,in,nIn);
+		}
+	    else {
+		/* Now parallel */
 		in->nFileStart = nFileSplit;
 		mdlReqService(pst->mdl,pst->idUpper,PST_READTIPSY,in,nIn);
 		in->nFileStart = nFileStart;
 		in->nFileEnd = nFileSplit - 1;
 		pstReadTipsy(pst->pstLower,in,nIn,NULL,NULL);
-		in->nFileEnd = nFileEnd;
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
+	    in->nFileStart = nFileStart;
+	    in->nFileEnd = nFileEnd;
+	    mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+	    }
 	else {
 		/*
 		 ** Add the local Data Path to the provided filename.
@@ -2698,11 +2711,15 @@ void pstOutNCVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inOutput));
 	if (pst->nLeaves > 1) {
-		/*
-		 ** Non-Recursive Text output.
-		 */
+	    if(in->nIOProcessor > 0 && pst->nLeaves > in->nIOProcessor) {
+		/* NOT parallel */
+		pstOutNCVector(pst->pstLower,in,nIn,out,NULL);
+		mdlReqService(pst->mdl,pst->idUpper,PST_OUTNCVECTOR,in,nIn);
+		}
+	    else {
 		mdlReqService(pst->mdl,pst->idUpper,PST_OUTNCVECTOR,in,nIn);
 		pstOutNCVector(pst->pstLower,in,nIn,out,NULL);
+		}
 		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
                 if (out != NULL){
                     for(i=0; i<3; i++){
@@ -2740,13 +2757,17 @@ void pstOutVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inOutput));
 	if (pst->nLeaves > 1) {
-		/*
-		 ** Non-Recursive Text output.
-		 */
+	    if(in->nIOProcessor > 0 && pst->nLeaves > in->nIOProcessor) {
+		/* NOT parallel */
+		pstOutVector(pst->pstLower,in,nIn,NULL,NULL);
+		mdlReqService(pst->mdl,pst->idUpper,PST_OUTVECTOR,in,nIn);
+		}
+	    else {
 		mdlReqService(pst->mdl,pst->idUpper,PST_OUTVECTOR,in,nIn);
 		pstOutVector(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
+	    mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+	    }
 	else {
 		/*
 		 ** Add the local Data Path to the provided filename.
@@ -2771,10 +2792,17 @@ void pstWriteTipsy(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inWriteTipsy));
 	if (pst->nLeaves > 1) {
+	    if(in->nIOProcessor > 0 && pst->nLeaves > in->nIOProcessor) {
+		/* NOT parallel */
+		pstWriteTipsy(pst->pstLower,in,nIn,NULL,NULL);
+		mdlReqService(pst->mdl,pst->idUpper,PST_WRITETIPSY,in,nIn);
+		}
+	    else {
 		mdlReqService(pst->mdl,pst->idUpper,PST_WRITETIPSY,in,nIn);
 		pstWriteTipsy(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
+	    mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+	    }
 	else {
 		/*
 		 ** Add the local Data Path to the provided filename.
@@ -3507,15 +3535,27 @@ void pstReadCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	nFileEnd = in->nFileEnd;
 	nFileTotal = nFileEnd - nFileStart + 1;
 	if (pst->nLeaves > 1) {
-		nFileSplit = nFileStart + pst->nLower*(nFileTotal/pst->nLeaves);
+	    nFileSplit = nFileStart + pst->nLower*(nFileTotal/pst->nLeaves);
+	    if(in->nIOProcessor > 0 && pst->nLeaves > in->nIOProcessor) {
+		/* NOT parallel */
+		printf("With %d leaves, splitting parallel IO\n", pst->nLeaves);
+		in->nFileEnd = nFileSplit - 1;
+		pstReadCheck(pst->pstLower,in,nIn,vout,pnOut);
+		in->nFileStart = nFileSplit;
+		in->nFileEnd = nFileEnd;
+		mdlReqService(pst->mdl,pst->idUpper,PST_READCHECK,in,nIn);
+		}
+	    else {
 		in->nFileStart = nFileSplit;
 		mdlReqService(pst->mdl,pst->idUpper,PST_READCHECK,in,nIn);
 		in->nFileStart = nFileStart;
 		in->nFileEnd = nFileSplit - 1;
 		pstReadCheck(pst->pstLower,in,nIn,vout,pnOut);
-		in->nFileEnd = nFileEnd;
-		mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
 		}
+	    in->nFileStart = nFileStart;
+	    in->nFileEnd = nFileEnd;
+	    mdlGetReply(pst->mdl,pst->idUpper,vout,pnOut);
+	    }
 	else {
 		/*
 		 ** Add the local Data Path to the provided filename.
@@ -3653,10 +3693,16 @@ void pstWriteCheck(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inWriteCheck));
 	if (pst->nLeaves > 1) {
+	    if(in->nIOProcessor > 0 && pst->nLeaves > in->nIOProcessor) {
+		pstWriteCheck(pst->pstLower,in,nIn,NULL,NULL);
+		mdlReqService(pst->mdl,pst->idUpper,PST_WRITECHECK,in,nIn);
+		}
+	    else {
 		mdlReqService(pst->mdl,pst->idUpper,PST_WRITECHECK,in,nIn);
 		pstWriteCheck(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
+	    mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+	    }
 	else {
 		/*
 		 ** Add the local Data Path to the provided filename.
