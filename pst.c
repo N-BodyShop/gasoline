@@ -303,6 +303,10 @@ pstAddServices(PST pst,MDL mdl)
 				  (void (*)(void *,void *,int,void *,int *)) 
 				  pstSphViscosityLimiter, 
 				  sizeof(struct inSphViscosityLimiter),0);
+#ifdef RADIATIVEBOX
+	mdlAddService(mdl,PST_FINISHLWTREE,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstFinishLWTree,0,0);
+#endif
 #ifndef NOCOOLING
 	mdlAddService(mdl,PST_INITENERGY,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstInitEnergy,
@@ -3726,6 +3730,9 @@ void pstCalcCell(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	struct outCalcCell *out = vout;
 	struct outCalcCell occ;
 	struct pkdCalcCellStruct pcc;
+#ifdef RADIATIVEBOX
+	int j;
+#endif
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inCalcCell));
 	if (pst->nLeaves > 1) {
@@ -3774,6 +3781,22 @@ void pstCalcCell(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			out->mom.B4 += occ.mom.B4;
 			}
 		if (occ.mom.Bmax > out->mom.Bmax) out->mom.Bmax = occ.mom.Bmax;
+#ifdef RADIATIVEBOX
+		/* LW summation here */
+		out->mom.gmom = out->mom.gmom*out->mom.gmass + occ.mom.gmom*occ.mom.gmass;
+		out->mom.gmass += occ.mom.gmass;
+		if (out->mom.gmass > 0) out->mom.gmom = out->mom.gmom/out->mom.gmass; /*renormalize*/
+
+		for (j=0; j<3; ++j) {
+		  out->mom.cLumLW[j] = out->mom.cLumLW[j]*out->mom.fLW + occ.mom.cLumLW[j]*occ.mom.fLW;
+		}
+		out->mom.fLW += occ.mom.fLW;
+		if (out->mom.fLW > 0) {
+		  for (j=0; j<3; ++j) {
+		    out->mom.cLumLW[j] = out->mom.cLumLW[j]/out->mom.fLW; /*renormalize*/
+		  }
+		}
+#endif
 		}
 	else {
 		pkdCalcCell(plcl->pkd,NULL,in->rcm,in->iOrder,&pcc);
@@ -3819,10 +3842,39 @@ void pstCalcCell(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			out->mom.B4 = pcc.B4;
 			}
 		out->mom.Bmax = pcc.Bmax;
+		
+#ifdef RADIATIVEBOX
+		/*LW Assignment here*/
+		out->mom.fLW = pcc.fLW;
+		out->mom.gmass = pcc.gmass;
+		out->mom.gmom = pcc.gmom;
+		for (j=0;j<3;++j) {
+		  out->mom.cLumLW[j] = pcc.cLumLW[j];
+		}		
+#endif
 		}
 	if (pnOut) *pnOut = sizeof(struct outCalcCell);
 	}
 
+#ifdef RADIATIVEBOX
+void pstFinishLWTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+/* Finds the maximum LW flux for each branch of the tree and assigns that to all leaves*/
+{
+	LCL *plcl = pst->plcl;
+	mdlassert(pst->mdl,nIn == 0);
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_FINISHLWTREE,vin,nIn);
+		pstFinishLWTree(pst->pstLower,vin,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		pkdFinishLWTree(plcl->pkd);
+		}
+	if (pnOut) *pnOut = 0;
+
+
+}
+#endif
 
 void pstColCells(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
@@ -4638,9 +4690,9 @@ void pstInitCooling(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 #if defined(COOLDEBUG)
 		(plcl->pkd->Cool)->mdl = plcl->pkd->mdl;
 #endif
-#ifdef  COOLING_METAL
+#ifdef COOLING_MOLECULARH /* Initialize Constants.  Include the InitialStarMass for calculating LW radiation when doing H2 */
 		clInitConstants((plcl->pkd->Cool),in->dGmPerCcUnit,in->dComovingGmPerCcUnit,
-				in->dErgPerGmUnit,in->dSecUnit,in->dKpcUnit,in->dMsolUnit,in->CoolParam);
+				in->dErgPerGmUnit,in->dSecUnit,in->dKpcUnit,in->dMsolUnit,in->dInitStarMass,in->CoolParam);
 #else
 		clInitConstants((plcl->pkd->Cool),in->dGmPerCcUnit,in->dComovingGmPerCcUnit,
 				in->dErgPerGmUnit,in->dSecUnit,in->dKpcUnit,in->CoolParam);

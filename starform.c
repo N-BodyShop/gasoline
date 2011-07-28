@@ -13,6 +13,7 @@
 #define max(A,B) ((A) > (B) ? (A) : (B))
 #define min(A,B) ((A) < (B) ? (A) : (B))
 
+#define MHYDR 1.67e-24 	/* mass of hydrogen atom in grams */
 #ifdef STARFORM
 
 #ifdef NOCOOLING
@@ -88,6 +89,9 @@ void pkdStarLogFlush(PKD pkd, char *pszFileName)
 	xdr_double(&xdrs, &(pSfEv->massForm));
 	xdr_double(&xdrs, &(pSfEv->rhoForm));
 	xdr_double(&xdrs, &(pSfEv->TForm));
+#ifdef COOLING_MOLECULARH
+	xdr_double(&xdrs, &(pSfEv->H2fracForm));
+#endif
 	}
     xdr_destroy(&xdrs);
     fclose(fp);
@@ -124,9 +128,12 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     double l_jeans2;
     int small_jeans = 0;
     int j;
-    double mach; /*find the mach number for use when making molec H CRC*/
     int newbh; /* tracking whether a new seed BH has formed JMB  */
-    
+ #ifdef COOLING_MOLECULARH
+    double correL = 1.0;/*correlation length used for H2 shielding, CC*/
+    double yH;
+#endif
+   
     /*  This version of the code has only three conditions unless 
 	-D SFCONDITIONS is set:
 	  converging flow (p->divv < 0)
@@ -138,11 +145,15 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     /*
      * Is particle in convergent part of flow?
      */
-    
+
 #ifndef DIVVOFF
     if(p->divv >= 0.0)
 	return;
 #endif /*DIVVOFF*/
+#ifdef JEANSSF
+    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fMetals );
+    l_jeans2 = M_PI*p->c*p->c/p->fDensity*dCosmoFac;
+#endif
     /*
      * Determine dynamical time.
      */
@@ -154,27 +165,49 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 
 
     T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fMetals );
+#ifdef  COOLING_MOLECULARH
+ #ifdef NEWSHEAR
+    /***** particle diffusion method ******/
+    if (p->diff != 0) 
+      correL = p->c * (0.25*p->fBall2)/p->diff; 
+    if (correL > sqrt(0.25*p->fBall2) || p->diff == 0) 
+      correL = sqrt(0.25*p->fBall2);
+#else/*NEWSHEAR*/
+    /***** particle shear method********/ 
+    if ((p->curlv[0] != 0) && (p->curlv[1] != 0) && (p->curlv[2] != 0)) 
+      correL = p->c/sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2]);    
+#endif/*NEWSHEAR*/
+#ifdef COLUMNLENGTH
+    /***** From particle smoothing.  This works best for determining the correlation length.  CC 7/20/11 ******/
+    correL = sqrt(0.25*p->fBall2);
+#endif /*COLUMNLENGTH*/
+#endif/* COOLING_MOLECULARH */
+
 #if (0)
     E = CoolCodeEnergyToErgPerGm( cl, p->u );
+#ifdef  COOLING_MOLECULARH
+    tcool = E/(-CoolHeatingRate( cl, &p->CoolParticle, T, 
+				 CodeDensityToComovingGmPerCc(cl,p->fDensity ), p->fMetals, correL )
+	       -CoolCodeWorkToErgPerGmPerSec( cl, p->PdV ), correL);
+#else
     tcool = E/(-CoolHeatingRate( cl, &p->CoolParticle, T, 
 		 CodeDensityToComovingGmPerCc(cl,p->fDensity ), p->fMetals )
-                   -CoolCodeWorkToErgPerGmPerSec( cl, p->PdV ));
+	       -CoolCodeWorkToErgPerGmPerSec( cl, p->PdV ));
+#endif
     tcool = CoolSecondsToCodeTime( cl, tcool ); 
     printf("tcool %i: %g %g %g\n",p->iOrder,T,p->fDensity,tcool);
 #endif
-    if ( sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2]) < p->c || (p->c == 0)) mach = 1.0;
-    else mach = sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2])/p->c;
 
     tcool = p->u/(
 #ifdef DENSITYU
-#ifdef  COOLING_METAL
-		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensityU, p->fMetals,  p->r,mach )
+#ifdef COOLING_MOLECULARH
+		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensityU, p->fMetals,  p->r, correL )
 #else
 		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensityU, p->fMetals,  p->r)
 #endif
 #else
-#ifdef  COOLING_METAL
-		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r,mach )
+#ifdef  COOLING_MOLECULARH
+		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r, correL )
 #else
 		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals,  p->r)
 #endif
@@ -185,7 +218,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     p->tcool = CoolCodeTimeToSeconds( cl, tcool)/3.1557e7;
     p->tdyn = CoolCodeTimeToSeconds( cl, tdyn)/3.1557e7;
     p->ratiosounddyn = sqrt(0.25*p->fBall2)/p->c/tdyn;
-    p->l_jeans = sqrt(M_PI*p->c*p->c/p->fDensity*dCosmoFac); /* Why not comoving? */
+    p->l_jeans = sqrt(M_PI*p->c*p->c/p->fDensity*dCosmoFac);
     p->small_jeans = small_jeans;
 #endif
 #ifdef SFCONDITIONS
@@ -204,23 +237,22 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 /* Old code: problem -- compares physics L_J to comoving softening */
     if (l_jeans2 < p->fSoft*p->fSoft*stfm->dSoftMin*stfm->dSoftMin) 
         small_jeans = 1;
-    /*printf("tsound:  %g  c_sound:  %g  Temp:  %g  tdyn:  %g\n",tsound,p->c,T,tdyn);*/
 #ifdef CHECKSF
     p->small_jeans = small_jeans;
-#endif
+#endif /*CHECKSF*/
     if (!small_jeans && tsound <= tdyn)
         return;
 
-#else
+#else /* old code (0) */
 /* New code: physical L_J vs. physics smoothing length (with multiplier) */
     if (l_jeans2 >= 0.25*p->fBall2*dExp*dExp*stfm->dSoftMin*stfm->dSoftMin) return;
 
 #ifdef CHECKSF
     p->small_jeans = 1;
 #endif
-#endif
+#endif /* old code (0) */
 
-#else
+#else /* CHECKSF */
     if(T > stfm->dTempMax) return;
 #endif /*SFCONDITIONS*/
 
@@ -236,12 +268,31 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	tform = tdyn;
     else
 	tform = tcool;
- #ifdef MOLECULARH
-    if (stfm->dStarFormEfficiencyH2 == 0) dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
-    else dMprob = 1.0 - exp(-stfm->dCStar*stfm->dStarFormEfficiencyH2*(2.0*p->CoolParticle.f_H2/p->CoolParticle.f_HI)*stfm->dDeltaT/tform);
-#else   
+#ifdef COOLING_MOLECULARH
+    if (p->fMetals <= 0.1) yH = 1.0 - 4.0*((0.236 + 2.1*p->fMetals)/4.0) - p->fMetals;
+    else yH = 1.0 - 4.0*((-0.446*(p->fMetals - 0.1)/0.9 + 0.446)/4.0) - p->fMetals;
+
+    /* For non-zero values of dStarFormEfficiencyH2, set SF efficiency as a multiple of H2 fractional abundance and dStarFormEfficiencyH2, CC*/
+    if (stfm->dStarFormEfficiencyH2 == 0) 
+         dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
+    else dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform*
+         stfm->dStarFormEfficiencyH2*(2.0*p->CoolParticle.f_H2/yH));
+#ifdef MOLECFRAC_SF_CUTOFF /*Flag to limit star formation to particles with an H2 abundance greater than a threshold value (0.1 below) */
+    if (2.0*p->CoolParticle.f_H2/yH < 0.1) dMprob = 0;
+#endif /* MOLECULAR_SF_CUTOFF */
+#ifdef RHOSF
+    /* This is an implementation of SF in which it scales linearly with density above a certain threshold (100 amu/cc below)*/
+    if (p->fDensity/dCosmoFac > 100*MHYDR/stfm->dGmPerCcUnit) tform = 1.0/sqrt(4.0*M_PI*100.0*MHYDR/stfm->dGmPerCcUnit);
+    dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform*
+		       stfm->dStarFormEfficiencyH2*(2.0*p->CoolParticle.f_H2/yH));
+#endif /* RHOSF */
+#else  /* COOLING_MOLECULARH */  
     dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
-#endif    
+#ifdef RHOSF
+    tform = 1.0/sqrt(4.0*M_PI*stfm->dPhysDenMin);
+    dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
+#endif /* RHOSF */
+#endif /* COOLING_MOLECULARH */    
 
     /*
      * Decrement mass of particle.
@@ -331,6 +382,9 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	pSfEv->massForm = starp.fMassForm;
 	pSfEv->rhoForm = starp.fDensity/dCosmoFac;
 	pSfEv->TForm = T;
+#ifdef COOLING_MOLECULARH /* Output the H2 fractional abundance in the gas particle*/
+	pSfEv->H2fracForm = 2.0*p->CoolParticle.f_H2/yH;
+#endif
 	pStarLog->nLog++;
 	}
     

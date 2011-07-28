@@ -382,6 +382,12 @@ struct pkdCalcCellStruct {
 	double Hxxxx,Hxyyy,Hxxxy,Hyyyy,Hxxxz,Hyyyz,Hxxyy,Hxxyz,Hxyyz;
 	double Hxxzz, Hxyzz, Hxzzz, Hyyzz, Hyzzz, Hzzzz;
 	double Bmax,B2,B3,B4,B5,B6;
+#ifdef  RADIATIVEBOX
+        double fLW;
+        double gmass;
+        double gmom;
+        FLOAT cLumLW[3];
+#endif
 	};
 
 typedef struct kdNode {
@@ -444,6 +450,9 @@ typedef struct sfEvent 		/* Holds statistics of the star
     double massForm;
     double rhoForm;
     double TForm;
+#ifdef COOLING_MOLECULARH
+    double H2fracForm;
+#endif
     } SFEVENT;
 
 typedef struct starLog
@@ -862,6 +871,11 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,
 #else
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
 #endif
+#endif
+
+#ifdef RADIATIVEBOX
+void pkdLocalFinishLWTree(PKD pkd,int iCell, double fPrevLW, FLOAT *PrevcLumLW);
+void pkdFinishLWTree(PKD pkd);
 #endif
 
 void pkdInitRotBar(PKD pkd, ROTBAR rotbar);

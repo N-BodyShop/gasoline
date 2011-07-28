@@ -723,9 +723,6 @@ int main(int argc,char **argv)
 #endif		
 #endif
 #ifndef NOCOOLING
-#ifdef  COOLING_METAL
-		if (msr->param.bDoShear) OutputList[iNumOutputs++]=OUT_COOL_SHEAR_ARRAY;
-#endif
 		if (msr->param.bGasCooling) {
 		    OutputList[iNumOutputs++]=OUT_COOL_EDOT_ARRAY;
 		    OutputList[iNumOutputs++]=OUT_COOL_COOLING_ARRAY;

@@ -24,8 +24,8 @@
 #include "cooling_metal.h"
 #else
 
-#ifdef COOLING_METAL_NOH2
-#include "cooling_metal_noH2.h"
+#ifdef COOLING_MOLECULARH
+#include "cooling_metal_H2.h"
 #else
 
 #ifdef COOLING_BATE

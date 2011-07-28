@@ -997,9 +997,16 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"bGasIsothermal",0,&msr->param.bGasIsothermal,
 				sizeof(int),"GasIsothermal",
 				"<Gas is Isothermal> = +GasIsothermal");
-	msr->param.bDoShear = 0;
-	prmAddParam(msr->prm,"bDoShear",0,&msr->param.bDoShear,sizeof(int),
-				"shear","enable/disable gas shear (in mach number) outputs = -shear");
+#ifdef COOLING_MOLECULARH
+	msr->param.bDoCorreL = 0; /* Output the correlation length used when calculating H2 shielding*/
+	prmAddParam(msr->prm,"bDoCorreL",0,&msr->param.bDoCorreL,sizeof(int),
+				"correL","enable/disable correlation length outputs = -correL");
+#endif
+#ifdef  RADIATIVEBOX
+	msr->param.bDoStellarLW = 0; /* Output LW radiation from each star and flux at each gas particle */
+	prmAddParam(msr->prm,"bDoStellarLW",0,&msr->param.bDoStellarLW,sizeof(int),
+				"stellarLW","enable/disable stellar Lyman Werner outputs = -stellarLW");
+#endif
 	msr->param.bGasCooling = 0;
 	prmAddParam(msr->prm,"bGasCooling",0,&msr->param.bGasCooling,
 				sizeof(int),"GasCooling",
@@ -1008,10 +1015,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"iGasModel",0,&msr->param.iGasModel,
 				sizeof(int),"GasModel",
 				"<Gas model employed> = 0 (Adiabatic)");
-	/*	msr->param.bMolecH = 0;
-	prmAddParam(msr->prm,"bMolecH",0,&msr->param.bMolecH,
-				sizeof(int),"MolecH",
-		                "<Molecular Hydrogen Included> = +MolecH");    CC */
 #ifndef NOCOOLING
 	CoolAddParams( &msr->param.CoolParam, msr->prm );
 #endif
@@ -1245,8 +1248,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"iStarFormRung", 1, &msr->param.iStarFormRung,
 		    sizeof(int), "iStarFormRung",
 		    "<Star Formation Rung> = 0");
-#ifdef MOLECULARH
-	msr->param.stfm->dStarFormEfficiencyH2 = 0;
+#ifdef COOLING_MOLECULARH
+	msr->param.stfm->dStarFormEfficiencyH2 = 0; /* Set such that SF depends on H2 abundance. Usually 1 to make SF efficiency based off of H2 abundance.  Set to zero for standard, non-H2 SF recipe.*/
 	prmAddParam(msr->prm,"dStarFormEfficiencyH2", 2, &msr->param.stfm->dStarFormEfficiencyH2,
 		    sizeof(double), "dStarFormEfficiencyH2",
 		    "<Star Formation efficiency as a function of H2> = 0");
@@ -2401,8 +2404,23 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef COOLING_METAL
  	fprintf(fp," COOLING_METAL");
 #endif
-#ifdef MOLECULARH
- 	fprintf(fp," MOLECULARH");
+#ifdef COOLING_MOLECULARH
+ 	fprintf(fp," COOLING_MOLECULARH");
+#endif
+#ifdef COLUMNLENGTH
+ 	fprintf(fp," COLUMNLENGTH"); /* Use smoothing length for correlation length*/
+#endif
+#ifdef NEWSHEAR
+ 	fprintf(fp," NEWSHEAR"); /* Use diffusion length for correlation length*/
+#endif
+#ifdef RADIATIVEBOX
+ 	fprintf(fp," RADIATIVEBOX");/* Estimate local LW radiation from the tree*/
+#endif
+#ifdef COOLDEBUG
+ 	fprintf(fp," COOLDEBUG");
+#endif
+#ifdef NOEXTHEAT
+ 	fprintf(fp," NOEXTHEAT");
 #endif
 #ifdef COOLING_PLANET
  	fprintf(fp," COOLING_PLANET");
@@ -2724,7 +2742,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bBHForm: %i",msr->param.bBHForm);
 	fprintf(fp," dBHFormProb: %g",msr->param.dBHFormProb);
 	fprintf(fp," dInitBHMass: %g",msr->param.dInitBHMass);
-#ifdef MOLECULARH
+#ifdef COOLING_MOLECULARH
 	fprintf(fp," dStarFormEfficiencyH2: %g",msr->param.stfm->dStarFormEfficiencyH2);
 #endif
 	if (!prmSpecified(msr->prm,"nSmoothFeedback") ) 
@@ -3944,6 +3962,9 @@ void msrBuildTree(MSR msr,int bTreeActiveOnly, double dMass,int bSmooth)
 		msrMassCheck(msr,dMass,"After pstCalcRoot in msrBuildTree");
 		pstDistribRoot(msr->pst,&root,sizeof(struct ioCalcRoot),NULL,NULL);
 		msrMassCheck(msr,dMass,"After pstDistribRoot in msrBuildTree");
+#ifdef RADIATIVEBOX
+		pstFinishLWTree(msr->pst,NULL,0,NULL,NULL);
+#endif
 	    }
     }
 
@@ -4044,6 +4065,12 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *iNumOutputs, int OutputList[])
         OutputList[(*iNumOutputs)++]=OutType;
         ArrayCnt++;
         }
+#ifdef  RADIATIVEBOX
+    if (&msr->param.bDoStellarLW) OutputList[(*iNumOutputs)++]=OUT_COOL_LYMANWERNER_ARRAY;
+#endif
+#ifdef  COOLING_MOLECULARH
+    if (&msr->param.bDoCorreL) OutputList[(*iNumOutputs)++]=OUT_CORREL_ARRAY;
+#endif
     }
 #endif
 #endif
@@ -4114,6 +4141,12 @@ void msrCreateGasOutputList(MSR msr, int (*iNumOutputs), int OutputList[])
         ArrayCnt++;
         }
     }
+#ifdef  RADIATIVEBOX
+    if (msr->param.bDoStellarLW) OutputList[(*iNumOutputs)++]=OUT_COOL_LYMANWERNER_ARRAY;
+#endif
+#ifdef COOLING_MOLECULARH
+    if (msr->param.bDoCorreL) OutputList[(*iNumOutputs)++]=OUT_CORREL_ARRAY;
+#endif
 #endif
 
 #ifdef STARFORM
@@ -4221,10 +4254,13 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int iNumOutputs
             case OUT_COOL_ARRAY0:
             case OUT_COOL_ARRAY1:
             case OUT_COOL_ARRAY2:
-#ifdef MOLECULARH
-	    case OUT_COOL_ARRAY3:
+#ifdef COOLING_MOLECULARH
+	    case OUT_COOL_ARRAY3: /* H2*/
+	    case OUT_CORREL_ARRAY:/*correlation length, used when calculating shielding*/
 #endif
-	    case OUT_COOL_SHEAR_ARRAY:/*Gas shear in terms of mach number, used when calculating column density*/
+#ifdef  RADIATIVEBOX
+	    case OUT_COOL_LYMANWERNER_ARRAY:
+#endif
             case OUT_SPHH_ARRAY:
             case OUT_TEMP_ARRAY:
             case OUT_GASDENSITY_ARRAY:
@@ -8300,9 +8336,13 @@ void msrInitCooling(MSR msr)
   in.dErgPerGmUnit = msr->param.dErgPerGmUnit;
   in.dSecUnit = msr->param.dSecUnit;
   in.dKpcUnit = msr->param.dKpcUnit;
-#ifdef COOLING_METAL
+#ifdef COOLING_MOLECULARH
   in.dMsolUnit = msr->param.dMsolUnit;
-  in.dhMinOverSoft = msr->param.dhMinOverSoft;
+#ifdef RADIATIVEBOX
+  in.dInitStarMass = msr->param.stfm->dInitStarMass;
+#else
+  in.dInitStarMass = 1.0;
+#endif
 #endif
   in.z = 60.0; /*dummy value*/
   in.dTime = 0.0; /* dummy value */

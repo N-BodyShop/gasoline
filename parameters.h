@@ -54,8 +54,13 @@ struct parameters {
  	int bDoSphhOutput;
 	int bDodtOutput;
 	int bDoIonOutput;
-  int bDoShear;
+#ifdef COOLING_MOLECULARH 
+  int bDoCorreL; /* Output the correlation length used for calculating H2 shielding*/
+#endif
   int bDoCSound;
+#ifdef  RADIATIVEBOX
+  int bDoStellarLW; /*Turn this on to have the LW radiation outputted*/
+#endif
 	int bDoDminOutput;
 	int bSymCool;
         int bDoGravity;

@@ -230,6 +230,7 @@ enum pst_service {
       PST_SETSPHSTEP,
       PST_SETBALL,
       PST_SPHVISCOSITYLIMITER,
+      PST_FINISHLWTREE,
       PST_INITCOOLING,
       PST_COOLTABLEREAD,
       PST_GROWMASS,
@@ -1613,12 +1614,15 @@ struct inSphViscosityLimiter {
     };
 void pstSphViscosityLimiter(PST,void *,int,void *,int *);
 
+#ifdef RADIATIVEBOX
+void pstFinishLWTree(PST,void *,int,void *,int *);
+#endif
+
 struct inUpdateShockTracker {
     double dDelta;
     double dShockTrackerA;
     double dShockTrackerB;
 };
-
 void pstUpdateShockTracker(PST,void *,int,void *,int *);
 
 #ifdef STARFORM
