@@ -34,11 +34,21 @@ void MSInitialize(MSPARAM *pms)
                  0.3029, -1.7, 1.0,
                  100.0};
 #else
+#ifdef KROUPA01
+    struct MillerScaloContext initms = 
+	 {       0.22038*2.0, -0.3, .08,    /* parameters from eq. 2 of
+					       Kroupa 2001, ignoring
+					       brown dwarfs. */
+                 0.22038, -1.3, 0.5,
+                 0.22038, -1.3, 1.0,
+                 100.0};
+#else
     struct MillerScaloContext initms = 
 	{ 	42.0,	-0.4, .1, /* parameters from Ap.J. Supp., 41,1979 */
 		42.0,	-1.5, 1.0,
 		240.0,	-2.3, 10.0, /* This is discontinuous, but is what */
 		100.0};		    /* they report in paper, so we leave it.*/
+#endif
 #endif
 #endif
 

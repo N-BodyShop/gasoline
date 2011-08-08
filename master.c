@@ -2358,6 +2358,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef CHABRIER
 	fprintf(fp," CHABRIER");
 #else
+#ifdef KROUPA01
+	fprintf(fp," KROUPA01");
+#endif
 #ifdef KROUPA
 	fprintf(fp," KROUPA");
 #endif
