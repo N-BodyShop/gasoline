@@ -8019,7 +8019,7 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	      msr->param.nSmooth = msr->nTreeActive;
 	      msrSmooth(msr,dTime, SMX_BHSINKIDENTIFY,1);
       	      msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
-	      msrSmooth(msr,dTime, SMX_BHSINKMERGE,0);
+	      msrSmooth(msr,dTime, SMX_BHSINKMERGE,1);
 	      /* now change it back to what it was before JMB 12/10/08  */
 	      msr->param.nSmooth = nSmoothTemp;
 	    }

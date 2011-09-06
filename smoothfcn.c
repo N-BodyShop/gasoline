@@ -1512,7 +1512,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT ih2,r2,rs,fDensity;
 	FLOAT fW;
 	double mdot, mdotCurr, dmAvg, dm, dmq, dE, ifMass, dtEff, dEwave;
-	FLOAT fNorm,rstot,fNorm_u,fNorm_Pres,fAveDens,f2h2;
+	FLOAT fNorm,rstot,fNorm_new,fNorm_Pres,fAveDens,f2h2;
         FLOAT fBHBlastRadius,fBHShutoffTime,fmind;
 	int i,iRung,counter,imind,naccreted,ieat;
 	FLOAT weat;
@@ -1727,89 +1727,39 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	  /* Recalculate Normalization */
 	  ih2 = 4.0/BALL2(p);
-	  fDensity = 0.0; 
 	  f2h2=BALL2(p);
 	  rstot = 0.0;  
-	  fNorm_u = 0.0;
-	  fNorm_Pres = 0.0;
-	  fAveDens = 0.0;
 	  fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
 
 	  for (i=0;i<nSmooth;++i) {
 	    r2 = nnList[i].fDist2*ih2;
 	    KERNEL(rs,r2);
-	    fDensity += rs*nnList[i].pPart->fMass;
-	    q = nnList[i].pPart;
-            fNorm_u += q->fMass*rs;
+            fNorm_new += rs;
             rs *= fNorm;
-            fAveDens += q->fMass*rs;
-            fNorm_Pres += q->fMass*(q->uPred/q->curlv[0])*rs;
-	    assert(TYPETest(q, TYPE_GAS));
 	  }
 
-	  fNorm_Pres *= (smf->gamma-1.0)/dCosmoDenFac;
-	  fAveDens /= dCosmoDenFac;
-
-
-	  /* eliminating the blast wave feedback here.  just give dE to nearest particle and shut off cooling for deltat.
-	     JMB 8/25/10 */
+	  /* spread feedback to nearest 32 particles across the kernel.  JMB 8/29/22 */
 	
-	  fmind = BALL2(p);
-	  imind = 0;
-	  rstot = 0.0;  
-	  fNorm_u = 0.0;
+	  assert(fNorm_new != 0.0);
+          fNorm_new = 1./fNorm_new;
+          counter = 0;
 
-	  /* find the closest gas particle */
-	  for (i=0;i<nSmooth;++i) {
-	    q = nnList[i].pPart;
-	    if(TYPETest(q,TYPE_DELETED)) continue;
-	    if(q->fMass == 0.0) continue;
-	    if ( nnList[i].fDist2 < fmind ){imind = i; fmind = nnList[i].fDist2;}	    
-	  }
+          for(i=0;i<nSmooth;++i) {
+            r2 = nnList[i].fDist2*ih2;
+            KERNEL(rs,r2);
+            fbweight = rs*fNorm_new;
+            nnList[i].pPart->u += fbweight*dE;
+            nnList[i].pPart->fNSN += fbweight*dE;
+            counter ++;
+            /* now turn off cooling */
+            if(  smf->bBHTurnOffCooling) nnList[i].pPart->fTimeCoolIsOffUntil = max(nnList[i].pPart->fTimeCoolIsOffUntil,smf->dTime + nnList[i].pPart->dt);
+            printf("BHSink %d: Time %g FB Energy to %i dE %g tCoolOffUntil %g \n",p->iOrder,smf->dTime,nnList[i].pPart->iOrder,fbweight*dE,nnList[i].pPart->fTimeCoolIsOffUntil);
+	    if(smf->bBHTurnOffCooling) assert(nnList[i].pPart->fTimeCoolIsOffUntil > smf->dTime);
+            nnList[i].pPart->fMassForm = (FLOAT) smf->dTime;
+            /* track BHFB time in MassForm  JMB 11/19/08 */
+          }
+        }
 
-          /* give mass and energy to nearest gas particle. */
-
-          r2 = nnList[imind].fDist2*ih2;            
-           KERNEL(rs,r2);
-	    /*
-	     * N.B. This will be NEGATIVE, but that's OK since it will
-	     * cancel out down below.
-	     */
-#ifdef VOLUMEFEEDBACK
-           fNorm_u = nnList[imind].pPart->fMass/nnList[imind].pPart->fDensity*rs;
-#else
-           fNorm_u = nnList[imind].pPart->fMass*rs;
-#endif
-	 
-	  assert(fNorm_u != 0.0);
-	  fNorm_u = 1./fNorm_u;
-	  counter=0;
-	  q = nnList[imind].pPart;
-	  fBHShutoffTime = q->dt;
-	  /*  if (TYPETest(q,TYPE_DELETED)) continue;           	*/
-	  if(  smf->bBHTurnOffCooling) q->fTimeCoolIsOffUntil = max(q->fTimeCoolIsOffUntil,
-					       smf->dTime + fBHShutoffTime);
-	   printf("BHSink %d: Time %g tCoolOffUntil %g \n",p->iOrder,smf->dTime,q->fTimeCoolIsOffUntil);
-	  
-	  q->fMassForm = (FLOAT) smf->dTime;
-	  /* track BHFB time in MassForm
-		     JMB 11/19/08 */
-	  counter++;  
-
-                    /* Remember: We are dealing with total energy rate and total metal
-                     * mass, not energy/gram or metals per gram.  
-                     * q->fMass is in product to make units work for fNorm_u.
-                     */
-#ifdef VOLUMEFEEDBACK
-	  fbweight = rs*fNorm_u*q->fMass/q->fDensity;
-#else
-	  fbweight = rs*fNorm_u*q->fMass;
-#endif
-	  q->u += fbweight*dE;
-	  q->fNSN += fbweight*dE;
-	  printf("BHSink %i:  FB Energy to %i dE %g\n",p->iOrder,q->iOrder,fbweight*dE);	
-	  /* printf("BHSink %d:  Time: %g counter: %i within blast radius \n",p->iOrder,smf->dTime,counter);*/
-	}
 #endif
 }
 
@@ -1995,6 +1945,18 @@ void BHSinkMerge(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 }
 
+void combBHSinkMerge(void *p1,void *p2)
+{
+#ifdef STARFORM
+    PARTICLE *pp1 = p1;
+    PARTICLE *pp2 = p2;
+    
+    if (!(TYPETest( pp1, TYPE_DELETED )) &&
+        TYPETest( pp2, TYPE_DELETED ) ) {
+	pkdDeleteParticle( NULL, pp1 );
+	}
+#endif
+}
 
 
 

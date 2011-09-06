@@ -150,7 +150,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		initParticle = NULL; /* Original Particle */
 		initTreeParticle = NULL; /* Original Particle */
 		init = NULL; /* Cached copies */
-		comb = NULL;
+		comb = combBHSinkMerge;
 		smx->fcnPost = NULL;
 		break;
 	case SMX_SINKFORMTEST:
