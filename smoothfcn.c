@@ -1840,14 +1840,13 @@ void BHSinkIdentify(PARTICLE *p,int nSmooth,NN *nnList, SMF *smf)
 
 }
 
-void initBHSinkMerge(void *p, SMF *smf)
+void initBHSinkMerge(void *p)
 {
 #ifdef GASOLINE
 
   PARTICLE *pp = p;
-  /* undelete BHs in case they were already deleted  */
-  /*if(TYPETest(pp,TYPE_DELETED)) pkdUnDeleteParticle(smf->pkd,pp);*/
- /* this init function should be deleted!  JMB */
+
+ /* this init function does nothing.  JMB */
 
 #endif
 }

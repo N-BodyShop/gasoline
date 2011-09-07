@@ -235,7 +235,7 @@ void combBHSinkIdentify(void *,void *);
 
 /* SMX_BHSINKMERGE */
 void BHSinkMerge(PARTICLE *,int,NN *,SMF *);
-void initBHSinkMerge(void *,SMF *);
+void initBHSinkMerge(void *);
 void combBHSinkMerge(void *,void *);
 
 /* SMX_SINKFORMTEST */

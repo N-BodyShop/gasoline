@@ -149,7 +149,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
 		smx->fcnSmooth = BHSinkMerge;
 		initParticle = NULL; /* Original Particle */
 		initTreeParticle = NULL; /* Original Particle */
-		init = NULL; /* Cached copies */
+		init = initBHSinkMerge; /* Cached copies */
 		comb = combBHSinkMerge;
 		smx->fcnPost = NULL;
 		break;
