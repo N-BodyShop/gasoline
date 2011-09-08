@@ -1728,7 +1728,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	  /* Recalculate Normalization */
 	  ih2 = 4.0/BALL2(p);
 	  f2h2=BALL2(p);
-	  rstot = 0.0;  
+          fNorm_new = 0.0;  
 	  fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
 
 	  for (i=0;i<nSmooth;++i) {
