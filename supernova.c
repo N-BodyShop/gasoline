@@ -201,7 +201,9 @@ void snCalcSNIIFeedback(SN sn, SFEvent sfEvent,
     fbEffects->dMOxygen = sn->dMOxconst*pow(dMeanMStar, sn->dMOxexp)
       / (sn->dMEjconst * pow(dMeanMStar, sn->dMEjexp));
     
-    fbEffects->dMetals = ( fbEffects->dMIron + fbEffects->dMOxygen );
+    /* Use ratio of Fe to total iron group and O to total non-iron
+       group derived from Asplund et al 2009 */
+    fbEffects->dMetals = ( 1.06*fbEffects->dMIron + 1.48*fbEffects->dMOxygen );
   }
 }
 
@@ -276,9 +278,11 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
   fbEffects->dMIron = dNSNTypeIa*0.63/fbEffects->dMassLoss;
   fbEffects->dMOxygen = dNSNTypeIa*0.13/fbEffects->dMassLoss;
   /* Fraction of mass in metals to be re-distributed among neighbouring
-   * gas particles: assumes fixed amount of metals per supernovea independent of
-   * mass. See Raiteri, Villata and Navarro, page 108.
+   * gas particles: assumes fixed amount of metals per supernovea
+   * independent of mass. See Raiteri, Villata and Navarro, page 108.
    */
-  fbEffects->dMetals = dNSNTypeIa*sn->dSNIaMetals/fbEffects->dMassLoss; 
+  /* Use total metals to Fe and O based on Asplund et al 2009 */
+  fbEffects->dMetals = dNSNTypeIa*(0.63*1.06 + 0.13*1.48)
+      /fbEffects->dMassLoss; 
 }
 #endif
