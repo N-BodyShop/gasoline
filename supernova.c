@@ -71,10 +71,11 @@ void snInitConstants(SN sn)
     
   sn->dMBmax = 16.0;			/* Maximum mass of binary that
                                            can go SNIa */
-  sn->dFracBinSNIa = 0.16;/*0.04847;	 fraction of binary systems in
-			    appropriate mass range that go SNIa =
-			    0.16 (van den Bergh & McClure, ApJ
-			    425, 205, 1994) */
+  sn->dFracBinSNIa = 0.05;/* fraction of binary systems in
+			    appropriate mass range that go SNIa.
+			    .05 is inline with chemical evolution
+			    models of the Milky Way (Francois et al 2004) */
+
   /* normalization constant and exponent in formulae for masses of
      ejected Fe and O16 as a function of stellar mass taken from
      Raiteri, Villata and Navarro, A&A 315, 105, 1996 */
@@ -233,9 +234,9 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
 
   dMtot = dMSCumMass(&sn->MSparam, 0.0); /* total mass in stars integrated over IMF */
 
-  if (dMStarMin > sn->dMBmin/2. && dMStarMax < sn->dMBmax/2.) {
+  if (dMStarMin < sn->dMBmax/2.) {
 
-    dMStarMinIa = max (sn->dMBmin/2., dMStarMin); 
+    dMStarMinIa = dMStarMin; 
     dMStarMaxIa = min (sn->dMBmax/2., dMStarMax); 
 
     assert (dMStarMinIa < dMStarMaxIa && dMStarMinIa >0.0 && dMStarMaxIa > 0.0);

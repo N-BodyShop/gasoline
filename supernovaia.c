@@ -19,12 +19,11 @@
 
 #define EPSSNIA 1e-7
 
-double dRombergO(void *CTX, double (*func)(void *, double), double a,
-				 double b, double eps);
+#include "romberg.h"
 
 double dNSNIa (MSSN mssn, double dMassT1, double dMassT2)
 {
-    assert (dMassT1 < dMassT2 && dMassT1 >= mssn->sn.dMBmin/2. && dMassT2 <= mssn->sn.dMBmax/2.);
+    assert (dMassT1 < dMassT2 && dMassT2 <= mssn->sn.dMBmax/2.);
     
 	/* calculate number of SN Type Ia a la Raiteri, Villata, Navarro, A&A
 	   315, 105, 1996) Returns number of SN Type Ia that occur during
@@ -33,6 +32,8 @@ double dNSNIa (MSSN mssn, double dMassT1, double dMassT2)
     return dRombergO(mssn, (double (*)(void *, double)) dMSIMFSec, dMassT1, dMassT2, EPSSNIA);
 	}
 
+#if 0
+/* XXX The following is wrong and not used */
 double dMSNIa (MSSN mssn, double dMassT1, double dMassT2)
 {
     assert (dMassT1 < dMassT2 && dMassT1 >= mssn->sn.dMBmin/2. && dMassT2 <= mssn->sn.dMBmax/2.);
@@ -69,23 +70,36 @@ double dMSIMFSecM(MSSN mssn, double dMass2)
     dIMFSec *= mssn->sn.dFracBinSNIa * imf1to8PreFactor(&mssn->ms) * dMass2*dMass2*dMass2 / dIMFSecIntExp;
     return dIMFSec;
     }
+#endif
+
+/** IMF of secondary in binary system that goes SN Ia
+ * The distribution of secondary mass ratios is assumed to be a power
+ * law, mu^dGamma as in Matteucci & Greggio (1986)
+ */
 
 double dMSIMFSec(MSSN mssn, double dMass2)
 {
-	/* IMF of secondary in binary system that goes SN Ia */
     double dIMFSecExp, dIMFSecIntExp, dIMFSec;
     double dMass2_2, Msup, Minf;
+    const double dGamma_2nd = 2.0;
+    /* Normalization of 2ndary */
+    const double dNorm_2nd = pow(2.0, 1 + dGamma_2nd)*(1 + dGamma_2nd);
+
     
-    dIMFSecExp = imf1to8Exp(&mssn->ms) - 3.; /* subtract 1 from exponent in integrand
-                                      because MS IMF is per unit log mass,
-                                      subtract 2 because of square of ratio of mass
-                                      of secondary to mass of binary */
+    /* subtract 1 from exponent in integrand because MS IMF is per
+       unit log mass.  Also multiply in ratio of masses */
+    dIMFSecExp = imf1to8Exp(&mssn->ms) - (1. + dGamma_2nd);
     dIMFSecIntExp = dIMFSecExp + 1.; /* exponent of anti-derivative is +1 */
-    Msup = dMass2 + 8;
-    dMass2_2 = 2.*dMass2;    
-    Minf = (dMass2_2 > 3)?dMass2_2:3;
+    Msup = dMass2 + 8; /* Mass where primary would have gone
+			  supernova. */
+    dMass2_2 = 2.*dMass2;  /* Minimum mass of binary */    
+    Minf = (dMass2_2 > 3.0)?dMass2_2:3.0;
     dIMFSec = pow (Msup, dIMFSecIntExp) - pow(Minf, dIMFSecIntExp);
-    dIMFSec *= mssn->sn.dFracBinSNIa * imf1to8PreFactor(&mssn->ms) * dMass2*dMass2 / dIMFSecIntExp;
+    /* Factor of log(10) because mass functions are per log10 mass
+       interval. */
+    dIMFSec *= mssn->sn.dFracBinSNIa * dNorm_2nd
+	* imf1to8PreFactor(&mssn->ms) * dMass2*dMass2 / dIMFSecIntExp
+	/pow(log(10.0), 2.0);
     return dIMFSec;
     }
 

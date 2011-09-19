@@ -135,9 +135,8 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 		case FB_WIND:
 		    snCalcWindFeedback(sn, sfEvent, dTime,
 				       dDeltaYr, &fbEffects);
-		    fbEffects.dMassLoss -= dSNIaMassStore;
-		    /*printf("Wind, SNaI Mass Loss: %d   %d\n",fbEffects.dMassLoss,dSNIaMassStore); */
-                    
+		    if(dSNIaMassStore < fbEffects.dMassLoss)
+			fbEffects.dMassLoss -= dSNIaMassStore;
 		    break;
 		case FB_UV:
 		    snCalcUVFeedback(sn, sfEvent, dTime, dDeltaYr,
