@@ -6989,10 +6989,6 @@ void msrMassMetalsEnergyCheck(MSR msr,double *dTotMass, double *dTotMetals,
 			 printf("ERROR: Oxygen mass not conserved (%s): %.15e != %.15e!\n",
 			 pszWhere,*dTotOx,out.dTotOx);
 			 }
-                if ( fabs(out.dTotMetals - out.dTotOx - out.dTotFe) > 1e-12*(out.dTotMetals) ) {
-			 printf("ERROR: Oxygen and Iron do not add up to total metals (%s): %.15e != %.15e!\n",
-			 pszWhere,(out.dTotOx + out.dTotFe),out.dTotMetals);
-			 }
 		if ( fabs(*dTotEnergy - out.dTotEnergy*msr->param.dDeltaStarForm) > 1e-12*(*dTotEnergy) ) {
 			printf("ERROR: SN Energy not conserved (%s): %.15e != %.15e!\n",
 				   pszWhere,*dTotEnergy,out.dTotEnergy*msr->param.dDeltaStarForm);
