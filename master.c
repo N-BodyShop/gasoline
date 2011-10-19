@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 
 #define max(A,B) ((A) > (B) ? (A) : (B))
+#define min(A,B) ((A) < (B) ? (A) : (B))
 
 #include <sys/param.h> /* for MAXPATHLEN, if available */
 #ifndef MAXPATHLEN
