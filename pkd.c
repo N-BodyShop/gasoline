@@ -4275,7 +4275,16 @@ void pkdKickPatch(PKD pkd, double dvFacOne, double dvFacTwo,
 		    if(bOpen) {
 			p->dPy = p->v[1] + 2.0*dOrbFreq*p->r[0];
 			/* perform Cross Hamiltonian */
+			/* note that the y velocity is being set up
+			 * so that the subsequent "Drift" will advance
+			 * the positions all the way to the end of the
+			 * closing cross Hamiltonian.
+			 */
 			p->v[0] += 2.0*dvFacTwo*dOrbFreq*p->dPy;
+			/* The terms are: the drift (py), the cross
+			 * term at the beginning of the drift, and the
+			 * cross term at the end of the drift.
+			 */
 			p->v[1] = p->dPy - dOrbFreq*p->r[0]
 			    - dOrbFreq*(p->r[0] + 2.0*dvFacTwo*p->v[0]);
 			}

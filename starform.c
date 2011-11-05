@@ -103,7 +103,7 @@ void pkdStarLogFlush(PKD pkd, char *pszFileName)
      taken from TREESPH and modified greatly.
      Uses the following formula for the star formation rate:
 
-              d(ln(rhostar))/dt=cstar/tdyn
+              d(ln(rhostar))/dt=cstar*rhogas/tdyn
 
 */
 
