@@ -4958,8 +4958,11 @@ int
 pkdOneParticleDtToRung( int iRung,double dDelta,double dt)
     {
   int iSteps,iTempRung;
+  double dSteps = dDelta/dt;
 
-  iSteps = floor(dDelta/dt);
+  assert(dSteps < 2.1e9); /* avoid integer overflow */
+  
+  iSteps = floor(dSteps);
   /* insure that integer boundary goes
      to the lower rung. */
   if(fmod(dDelta,dt) == 0.0) iSteps--;
