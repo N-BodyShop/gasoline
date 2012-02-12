@@ -530,8 +530,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				/* O and Fe ratio based on Asplund et al 2009 */
 				if (p->fMetals && !p->fMFracOxygen && 
 				    !p->fMFracIron) {
-				  p->fMFracOxygen = 0.58 * p->fMetals;
-				  p->fMFracIron = 0.13 * p->fMetals;
+				  p->fMFracOxygen = 0.43 * p->fMetals;
+				  p->fMFracIron = 0.098 * p->fMetals;
 				}
 #endif
 #else
@@ -609,8 +609,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				/* O and Fe ratio based on Asplund et al 2009 */
 				if (p->fMetals && !p->fMFracOxygen && 
 				    !p->fMFracIron) {
-				  p->fMFracOxygen = 0.58 * p->fMetals;
-				  p->fMFracIron = 0.13 * p->fMetals;
+				  p->fMFracOxygen = 0.43 * p->fMetals;
+				  p->fMFracIron = 0.098 * p->fMetals;
 				}
 #endif
 				xdr_float(&xdrs,&fTmp);
@@ -715,8 +715,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef STARFORM
 	/* O and Fe ratio based on Asplund et al 2009 */
 	if (p->fMetals && !p->fMFracOxygen && !p->fMFracIron) {
-	    p->fMFracOxygen = 0.58 * p->fMetals;
-	    p->fMFracIron = 0.13 * p->fMetals;
+	    p->fMFracOxygen = 0.43 * p->fMetals;
+	    p->fMFracIron = 0.098 * p->fMetals;
 	    }
 #endif
 #endif
@@ -770,8 +770,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				/* O and Fe ratio based on Asplund et al 2009 */
 				if (p->fMetals && !p->fMFracOxygen
 				    && !p->fMFracIron) {
-				    p->fMFracOxygen = 0.58 * p->fMetals;
-				    p->fMFracIron = 0.13 * p->fMetals;
+				    p->fMFracOxygen = 0.43 * p->fMetals;
+				    p->fMFracIron = 0.098 * p->fMetals;
 				    }
 #endif
 #endif
