@@ -430,7 +430,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
       pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
     }
     else {
-      fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+      if(pkd->idSelf == 0)
+	fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
     }
   }
 #endif
