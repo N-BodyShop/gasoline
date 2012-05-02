@@ -196,7 +196,6 @@ typedef struct clDerivsDataStruct {
   RATE Rate;
   PERBARYON Y;
   double     Y_Total0, Y_Total1;
-  double     dlnE;
   int        its;  /* Debug */
 } clDerivsData;
 

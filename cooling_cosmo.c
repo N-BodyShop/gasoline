@@ -110,7 +110,6 @@ void clInitConstants( COOL *cl, double dGmPerCcUnit, double dComovingGmPerCcUnit
     Data->cl = cl;
     Data->Y_Total0 = (cl->Y_H+cl->Y_He)*.9999; /* neutral */
     Data->Y_Total1 = (cl->Y_eMAX+cl->Y_H+cl->Y_He)*1.0001; /* Full Ionization */
-    Data->dlnE = (log(EMUL)-log(1/EMUL));
   }
 }
 
@@ -158,9 +157,16 @@ void clInitRatesTable( COOL *cl, double TMin, double TMax, int nTable ) {
  *-----------------------------------------------------------------*/
   int i;
   double DeltaTln, Tln, T;
+  clDerivsData *Data;
+  double dEMin;
 
   assert(cl!=NULL);
   assert(cl->RT == NULL);
+
+  /* Set minimum temperature in integrator */
+  Data = cl->DerivsData;
+  dEMin =  clThermalEnergy(Data->Y_Total0, TMin);
+  StiffSetYMin(Data->IntegratorContext, &dEMin);
 
   cl->R.Cool_Coll_HI = CL_eHI*CL_B_gm;
   cl->R.Cool_Coll_HeI = CL_eHeI*CL_B_gm;

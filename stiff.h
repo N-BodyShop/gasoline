@@ -42,6 +42,7 @@ STIFF *StiffInit(double eps, 	/* relative accuracy parameter */
 		   
 void StiffFinalize( STIFF *s );
 void StiffStep(STIFF *s, double y[], double tstart, double htry) ;
+void StiffSetYMin(STIFF *s, const double *ymin);
 
 /* 
  * Root Finder Header
