@@ -226,7 +226,6 @@ typedef struct clDerivsDataStruct {
   PERBARYON Y;
   double     Y_H, Y_He, Y_eMax;
   double     Y_Total0, Y_Total1;
-  double     dlnE;
   int        its;  /* Debug */
   int        bCool;
 } clDerivsData;
@@ -272,17 +271,17 @@ double clCoolLineHI( double T );
 double clCoolLineHeI( double T );
 double clCoolLineHeII( double T );
 double clCoolLowT( double T );
-double clEdotInstant ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal );
+double clEdotInstant ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
+		       double ZMetal, double *dEdotHeat, double *EdotCool );
 void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E, 
 		       double ExternalHeating, double rho, double ZMetal, double dt );
 void clIntegrateEnergyDEBUG(COOL *cl, PERBARYON *Y, double *E, 
 		       double ExternalHeating, double rho, double ZMetal,  double dt );
 
 
-void clDerivs(void *Data, double x, double *y, double *dydx) ;
+void clDerivs(void *Data, double x, const double *y, double *yheat,
+	      double *ycool) ;
 
-void clJacobn(void *Data, double x, double y[], double dfdx[], double **dfdy) ;
-  
 void CoolAddParams( COOLPARAM *CoolParam, PRM );
 void CoolLogParams( COOLPARAM *CoolParam, FILE *fp );
 void CoolOutputArray( COOLPARAM *CoolParam, int, int *, char * );
