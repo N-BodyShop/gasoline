@@ -1921,10 +1921,10 @@ void clDerivs(void *Data, double x, const double *y, double *dGain,
   dGain[2] = ne*d->Y.HeII*d->Rate.Totr_HeII;
   dLoss[2] = ne*d->Y.HeI*d->Rate.Coll_HeI + 
              d->Y.HeI*d->Rate.Phot_HeI;
-  dGain[3] = ne*d->Y.HeIII*d->Rate.Radr_HeIII -
+  dGain[3] = ne*d->Y.HeIII*d->Rate.Radr_HeIII +
 	     dLoss[2];
   dLoss[3] = ne*d->Y.HeII*d->Rate.Coll_HeII + 
-             d->Y.HeII*d->Rate.Phot_HeII - 
+             d->Y.HeII*d->Rate.Phot_HeII + 
              dGain[2];
 }
 
