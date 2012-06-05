@@ -2413,6 +2413,10 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef COLUMNLENGTH
  	fprintf(fp," COLUMNLENGTH"); /* Use smoothing length for correlation length*/
+/*Made using the smoothing length the default, as it has been used that way in all production runs to Jun 4th, 2012, CC*/
+#endif
+#ifdef PARTSHEAR
+ 	fprintf(fp," PARTSHEAR"); /* Use the particle shear for correlation length*/
 #endif
 #ifdef NEWSHEAR
  	fprintf(fp," NEWSHEAR"); /* Use diffusion length for correlation length*/
