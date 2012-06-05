@@ -5831,10 +5831,10 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 				if (p->fDensityU < p->fDensity) 
 				    CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensityU, p->fMetals, p->r, dtUse);
 				else
-#else
+#else /*DENSITYU*/
 				    CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensity, p->fMetals, p->r, dtUse);
-#endif
-#endif
+#endif /*DENSITYU*/
+#endif /*COOLING_MOLECULARH*/
 
 				mdlassert(pkd->mdl,E > 0);
 
@@ -5846,7 +5846,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 				}
 			}
 		}
-#endif /*COOLING_MOLECULARH*/
+#endif /*NOT NOCOOLING*/
 	pkdStopTimer(pkd,1);
 	}
 

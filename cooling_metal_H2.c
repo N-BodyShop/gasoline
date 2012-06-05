@@ -3051,7 +3051,7 @@ if(cl->p->iOrder == PARTICLEIORD)
    cl->its = its;
    }
 
- assert(its<MAXINTEGITS);
+ /* assert(its<MAXINTEGITS);*/
  /* if (its > MAXINTEGITS) printf("No convergence in clIntegrateEnergy %d\n", its);*/
 
 #ifdef COOLDEBUG
