@@ -1928,6 +1928,7 @@ void clDerivs(void *Data, double x, const double *y, double *dGain,
              dGain[2];
 }
 
+#if 0
 void clSetyscale( COOL *cl, double Y_H, double Y_He, double *y, double *yscale) {
     double YHII, YHeIII;
 
@@ -1972,6 +1973,7 @@ void clSetyscale( COOL *cl, double Y_H, double Y_He, double *y, double *yscale) 
 	if (yscale[3] < YSCALEMIN) yscale[3] = YSCALEMIN;
 
 }
+#endif
 
 void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E, 
 		       double ExternalHeating, double rho, double ZMetal, double tStep ) {
