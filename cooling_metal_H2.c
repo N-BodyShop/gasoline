@@ -2462,7 +2462,7 @@ double clEdotInstant_Table( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, doub
       Rate->Heat_Metal
 #endif
     +
-    Y->H2 * cl->R.Heat_Phot_H2 * Rate->Phot_H2*s_dust*s_self - /*photon heating and dissociation CC*/
+    Y->H2 * cl->R.Heat_Phot_H2 * Rate->Phot_H2*s_dust*s_self + /*photon heating and dissociation CC*/
     Y->HI   * cl->R.Heat_Phot_HI * Rate_Phot_HI +
     Y->HeI  * cl->R.Heat_Phot_HeI * Rate->Phot_HeI +
     Y->HeII * cl->R.Heat_Phot_HeII * Rate->Phot_HeII;
