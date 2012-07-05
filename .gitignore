@@ -1,0 +1,6 @@
+*.~
+.#*
+gasoline.*
+*.tar
+*.tar.gz
+*.o

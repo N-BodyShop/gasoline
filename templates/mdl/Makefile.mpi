@@ -1,0 +1,15 @@
+#
+# Makefile build template for mpi mdl
+#
+
+VPATH	= ..
+CC	= BUILD_CC # usually mpicc, but not always
+CFLAGS	= BUILD_CFLAGS
+
+default: mdl.o
+
+clean:
+	-rm -f $(OBJ)
+
+mdl.o: ../Makefile.tmpl ../../../pkdgrav/build
+

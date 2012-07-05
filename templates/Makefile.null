@@ -1,0 +1,30 @@
+#
+# Makefile build template for null pkdgrav
+#
+
+VPATH	= ../..
+MDL	= $(VPATH)/../mdl/null
+OS	= BUILD_OS
+MAKE	= BUILD_MAKE
+EXE	= BUILD_EXE
+CC	= BUILD_CC
+CFLAGS	= BUILD_CFLAGS BUILD_CODEDEF -I$(MDL)
+LDFLAGS	= BUILD_LDFLAGS
+MDLOBJ	= $(MDL)/$(OS)/mdl.o
+XOBJ	= erf.o v_sqrt1.o
+
+OBJ	= BUILD_OBJ
+
+default:	
+	cd $(MDL)/$(OS); $(MAKE)
+	$(MAKE) $(EXE)
+
+clean:
+	cd $(MDL)/$(OS); $(MAKE) clean
+	-rm -f $(OBJ) $(XOBJ)
+
+$(EXE): $(MDLOBJ) $(OBJ) $(XOBJ)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(MDLOBJ) $(OBJ) $(XOBJ) -lm
+
+$(OBJ) $(XOBJ): ../Makefile.tmpl ../../build
+

@@ -1,0 +1,4 @@
+The vsnprintf() function in mdl.c may not be supported in OSF1/Digital UNIX.
+The following #define may work but is potentially dangerous:
+
+#define vsnprintf(a,b,c,d) vsprintf((a),(c),(d));
