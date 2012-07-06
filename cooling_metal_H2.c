@@ -73,7 +73,7 @@
 #define MAXINTEGITS 10000
 
 /* Debugging Information */
-#define PARTICLEIORD    88140
+#define PARTICLEIORD    100
 
 #define CL_eH2     (4.476*CL_eV_erg) /*Energy lost during H2 dissociation, Shapira & Kang (1987) through Abel 1997, page 194 */
 #define CL_eHI     (13.60*CL_eV_erg)
@@ -252,7 +252,7 @@ void clReadMetalTable(COOL *cl, COOLPARAM clParam)
   XDR xdrs; 
   
   /* fp = fopen(clParam.CoolInFile, "r"); */ 
-  fp = fopen("cooltable_xdr", "r"); 
+  fp = fopen("/home/christensen/Storage1/UW/MolecH/st_glass/glass_newintegrator/zsol0.01_rho1_ni/cooltable_xdr", "r"); 
   assert(fp != NULL); 
   fscanf(fp, "%d %lf %lf %lf \n",&nz, &zmin, &zmax, &dz);
   fscanf(fp, "%d %lf %lf %lf \n",&nnH, &nHminlog ,&nHmaxlog,&dnH);
@@ -2817,9 +2817,6 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
   
   const int array_length=5; /*Arrays expanded for H2*/
 
-#ifdef COOLDEBUG
-  if(cl->p->iOrder == PARTICLEIORD) printf("tStep: %e",tStep);
-#endif
   double y[array_length-1],yin[array_length-1],EMin,YTotal ;
   double dHeat, dCool;
   double t=0;
@@ -2861,12 +2858,13 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 #ifdef COOLDEBUG
   if (cl->p->iOrder == PARTICLEIORD) { 
     printf("\ny[0]: %e, y[1]: %e, y[2]: %e, y[3]: %e, y[4] %e\n",y[0],y[1],y[2],y[3],y[4]);
-    clDerivs( d, t, yin-1, dydt-1); /*, sqrt(cl->p->fBall2/2.0) );*/
+    /*    clDerivs( d, t, yin, &dHeat, &dCool ); *//*, sqrt(cl->p->fBall2/2.0) );*/
     printf("tStep %g \n", tStep);
     printf("%d: rho %g \n", cl->p->iOrder,rho*CL_B_gm); 
     printf("Temperature %g \n", d->Rate.T);
     printf("Y e:%g Total:%g H2:%g HI:%g HII:%g HeI:%g HeII:%g HeIII:%g\n",Y->e, YTotal, Y->H2, Y->HI, Y->HII, Y->HeI, Y->HeII, Y->HeIII);
-    printf("dydt[0]: %e, dydt[1]: %e, dydt[2]: %e, dydt[3]: %e, dydt[4] %e\n",dydt[0],dydt[1],dydt[2],dydt[3],dydt[4]);
+    /*   printf("dHeat[0]: %e, dHeat[1]: %e, dHeat[2]: %e, dHeat[3]: %e, dHeat[4] %e\n",dHeat[0],dHeat[1],dHeat[2],dHeat[3],dHeat[4]);
+	 printf("dCool[0]: %e, dCool[1]: %e, dCool[2]: %e, dCool[3]: %e, dCool[4] %e\n",dCool[0],dCool[1],dCool[2],dCool[3],dCool[4]);*/
 /*  printf("Cooling p %i: %f %f %g %g %g %g %f %f %g %g %g %g \n",cl->p->iOrder,cl->z,d->Rate.T,rho,cl->p->fMass,cl->p->fBall2,*E,ExternalHeating, ZMetal, d->Rate.Cool_Metal, d->Rate.Heat_Metal, clCoolTotal(cl, Y, &d->Rate, rho, ZMetal), clHeatTotal(cl, Y, &d->Rate, rho) ); 
     printf("Cooling p %i \n", cl->p->iOrder); 
     printf("temperature %g \n", d->Rate.T);
@@ -2883,7 +2881,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
     printf("metalheat %g \n", d->Rate.Heat_Metal); */
     printf("Internal %e \n",CLEDOTINSTANT( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal, &dHeat, &dCool ));
     printf("PdV %e \n",ExternalHeating); 
-    printf("Edot %g \n", dydt[0]);
+    /*    printf("Edot %g, %g \n", dHeat[0], dCool[0]);*/
     printf("dbCool %d \n",d->bCool);
     printf("E %g \n", *E); 
 
@@ -2900,7 +2898,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
     fprintf(fpdebug, "Y %g %g %g %g %g %g %g %g\n",Y->e, Y->Total, Y->H2, Y->HI, Y->HII, Y->HeI, Y->HeII, Y->HeIII); 
     fprintf(fpdebug, "Internal %e \n",CLEDOTINSTANT( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal, &dHeat, &dCool ));
     fprintf(fpdebug, "PdV %e \n",ExternalHeating);
-    fprintf(fpdebug, "Edot %e \n", dydt[0]);  
+    /*    fprintf(fpdebug, "Edot %e, %e \n", dHeat[0], dCool[0] );  */
     fprintf(fpdebug, "E %g \n", *E); 
     /*fprintf(fpdebug, "units %e %e %e %e %e \n", cl->dGmPerCcUnit, cl->dComovingGmPerCcUnit, cl->dErgPerGmUnit, cl->dSecUnit, cl->dKpcUnit );*/
     fclose(fpdebug);
@@ -2998,7 +2996,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 	       d->dLymanWerner,
 	       Y->H2,
 	       y[4],
-	       dydt[4],
+	       0, /*dydt[4],*/
           -1.0*d->Y.H2*d->Rate.Phot_H2,
           -1.0*d->Y.H2*d->Rate.Coll_e_H2*rho*CL_B_gm*Y->e,
           -1.0*d->Y.H2*d->Rate.Coll_H2_H2*rho*CL_B_gm*Y->H2,
@@ -3043,7 +3041,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 	 *x*(3-3*fabs(x)+x*x);
       }
 
-     Edot = clEdotInstant( cl, &d->Y, &d->Rate, d->rho, d->ZMetal );
+     Edot = clEdotInstant( cl, &d->Y, &d->Rate, d->rho, d->ZMetal, &dHeat, &dCool );
      /*T [K]  Density  e  H2  HI  HII  HeI  HeII  HeIII  shield  Edot  Cool_Comp  Brem  Diel  Radr  LineHI  LineHeI  LineHeII  LineH2_H  LineH2_H2  LineH2_He  LineH2_e  LineH2_HII  Coll  CollH2  LowT  MCool  Cool  Phot  PhotH2  MHeat     */
      fprintf(cooldebug,"%15f, %15e, %15f, %15e, %15g, %15g, %15g, %15g, %15g, %15g, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e\n",
              T, y[0], en_B, ne, Y->H2, Y->HI, Y->HII, Y->HeI, Y->HeII, Y->HeIII, s_dust*s_self, Edot,
