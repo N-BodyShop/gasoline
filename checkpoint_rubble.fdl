@@ -1,0 +1,342 @@
+FDL checkpoint_81 (
+	ELEMENT version (
+		TYPE int
+		)
+	ELEMENT not_corrupt_flag (
+		TYPE int
+		)
+	ELEMENT checkpoint_header (
+		ELEMENT number_of_particles (
+			TYPE int
+			)
+		ELEMENT number_of_gas_particles (
+			TYPE int
+			)
+		ELEMENT number_of_dark_particles (
+			TYPE int
+			)
+		ELEMENT number_of_star_particles (
+			TYPE int
+			)
+		ELEMENT max_order (
+			TYPE int
+			)
+		ELEMENT max_order_gas (
+			TYPE int
+			)
+		ELEMENT max_order_dark (
+			TYPE int
+			)
+		ELEMENT current_timestep (
+			TYPE int
+			)
+		ELEMENT current_time (
+			TYPE double
+			)
+		ELEMENT current_ecosmo (
+			TYPE double
+			)
+		ELEMENT old_time (
+			TYPE double
+			)
+		ELEMENT old_potentiale (
+			TYPE double
+			)
+		ELEMENT opening_type (
+			TYPE int
+			)
+		ELEMENT opening_criterion (
+			TYPE double
+			)
+		ELEMENT number_of_outs (
+			TYPE int
+			)
+		ARRAY redout_array (
+			INDEX out_time_index
+			SIZE number_of_outs
+			ELEMENT out_time (
+				TYPE double
+				)
+			)
+		ELEMENT num_rub_events (
+		    TYPE int
+			)
+		ARRAY rub_clock_array (
+		    INDEX rub_event_index
+			SIZE num_rub_events
+			ELEMENT rub_iColor (
+				TYPE int
+				)
+			ELEMENT rub_dTStartMergePhase (
+			    TYPE double
+				)
+			ELEMENT rub_dTEndRubblePhase (
+				TYPE double
+				)
+			)
+		ELEMENT num_dust_bins (
+			TYPE int
+			)
+		ARRAY dust_bin_array (
+			INDEX dust_bins_index
+			SIZE num_dust_bins
+			ELEMENT dust_bins_mass (
+				TYPE double
+				)
+			ELEMENT dust_bins_volume (
+				TYPE double
+				)
+			)
+		ELEMENT dust_bins_trash (
+			TYPE double
+			)
+		ELEMENT parameters (
+			ELEMENT bPeriodic (
+				TYPE int
+				)
+			ELEMENT bComove (
+				TYPE int
+				)
+			ELEMENT bParaRead (
+				TYPE int
+				)
+			ELEMENT bParaWrite (
+				TYPE int
+				)
+			ELEMENT bCannonical (
+				TYPE int
+				)
+			ELEMENT bStandard (
+				TYPE int
+				)
+			ELEMENT bKDK (
+				TYPE int
+				)		
+			ELEMENT bBinary (
+				TYPE int
+				)	
+			ELEMENT bDoGravity (
+				TYPE int
+				)	
+			ELEMENT bDoGas (
+				TYPE int
+				)	
+			ELEMENT bFandG (
+				TYPE int
+				)	
+			ELEMENT bHeliocentric (
+				TYPE int
+				)	
+			ELEMENT bLogHalo (
+				TYPE int
+				)	
+			ELEMENT bHernquistSpheroid (
+				TYPE int
+				)	
+			ELEMENT bMiyamotoDisk (
+				TYPE int
+				)	
+			ELEMENT bRotatingBar (
+				TYPE int
+				)
+			ELEMENT dRotBarMass (
+				TYPE double
+				)
+			ELEMENT dRotBarLength (
+				TYPE double
+				)	
+			ELEMENT dRotBarCorotFac (
+				TYPE double
+				)
+			ELEMENT dRotBarTurnOff (
+				TYPE double
+				)
+			ELEMENT dRotBarTurnOn (
+				TYPE double
+				)
+			ELEMENT dRotBarAmpFac (
+				TYPE double
+				)
+			ELEMENT dRotBarDuration (
+				TYPE double
+				)
+			ELEMENT dRotBarPosAng (
+				TYPE double
+				)
+			ELEMENT dRotBarPosX (
+				TYPE double
+				)
+			ELEMENT dRotBarPosY (
+				TYPE double
+				)
+			ELEMENT dRotBarPosZ (
+				TYPE double
+				)
+			ELEMENT dRotBarVelX (
+				TYPE double
+				)
+			ELEMENT dRotBarVelY (
+				TYPE double
+				)
+			ELEMENT dRotBarVelZ (
+				TYPE double
+				)
+			ELEMENT dRotBarTime0 (
+				TYPE double
+				)
+			ELEMENT dRotBarOmega (
+				TYPE double
+				)
+			ELEMENT dRotBarB5 (
+				TYPE double
+				)
+			ELEMENT dRotBarIz (
+				TYPE double
+				)
+			ELEMENT dRotBarLz (
+				TYPE double
+				)
+			ELEMENT dRotBarLz0 (
+				TYPE double
+				)
+			ELEMENT nBucket (
+				TYPE int
+				)
+			ELEMENT iOutInterval (
+				TYPE int
+				)
+			ELEMENT iLogInterval (
+				TYPE int
+				)
+			ELEMENT iCheckInterval (
+				TYPE int
+				)
+			ELEMENT iExpOrder (
+				TYPE int
+				)
+			ELEMENT iEwOrder (
+				TYPE int
+				)
+			ELEMENT nReplicas (
+				TYPE int
+				)
+			ELEMENT iStartStep (
+				TYPE int
+				)
+			ELEMENT nSteps (
+				TYPE int
+				)
+			ELEMENT dExtraStore (
+				TYPE double
+				)
+			ELEMENT dDelta (
+				TYPE double
+				)
+			ELEMENT dEta (
+				TYPE double
+				)
+			ELEMENT dEtaCourant (
+				TYPE double
+				)
+			ELEMENT bEpsAccStep (
+				TYPE int
+				)
+			ELEMENT bNonSymp (
+				TYPE int
+				)
+			ELEMENT iMaxRung (
+				TYPE int
+				)
+			ELEMENT dEwCut (
+				TYPE double
+				)
+			ELEMENT dEwhCut (
+				TYPE double
+				)
+			ELEMENT dPeriod (
+				TYPE double
+				)
+			ELEMENT dxPeriod (
+				TYPE double
+				)
+			ELEMENT dyPeriod (
+				TYPE double
+				)
+			ELEMENT dzPeriod (
+				TYPE double
+				)
+			ELEMENT dHubble0 (
+				TYPE double
+				)
+			ELEMENT dOmega0 (
+				TYPE double
+				)
+			ELEMENT dLambda (
+				TYPE double
+				)
+			ELEMENT dOmegaRad (
+				TYPE double
+				)
+			ELEMENT dQuintess (
+				TYPE double
+				)
+			ELEMENT dTheta (
+				TYPE double
+				)
+			ELEMENT dTheta2 (
+				TYPE double
+				)
+			ELEMENT dCentMass (
+				TYPE double
+				)
+			ELEMENT dMassFracHelium (
+				TYPE double
+				)
+			ELEMENT dFracNoDomainDecomp (
+				TYPE double
+				)
+			)
+		)
+	ARRAY particle_array (
+		INDEX particle_index
+		SIZE number_of_particles
+		ELEMENT particle (
+			ELEMENT iOrder (
+				TYPE int
+				)
+			ELEMENT fMass (
+				TYPE float
+				)
+			ELEMENT fSoft (
+				TYPE float
+				)
+			ARRAY pos_array (
+				INDEX pos_index
+				SIZE 3
+				ELEMENT pos (
+					TYPE float
+					)
+				)
+			ARRAY vel_array (
+				INDEX vel_index
+				SIZE 3
+				ELEMENT vel (
+					TYPE float
+					)
+				)
+			ARRAY spin_array (
+				INDEX spin_index
+				SIZE 3
+				ELEMENT spin (
+					TYPE float
+					)
+				)
+			ELEMENT iColor (
+				TYPE int
+				)
+			ELEMENT iOrgIdx (
+				TYPE int
+				)
+			)
+		)
+	)
