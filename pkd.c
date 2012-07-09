@@ -5159,7 +5159,6 @@ pkdDeleteParticle(PKD pkd, PARTICLE *p)
 void
 pkdNewParticle(PKD pkd, PARTICLE p)
 {
-    printf("%d %d %d\n", pkd->mdl,pkd->nLocal, pkd->nStore);
     mdlassert(pkd->mdl,pkd->nLocal < pkd->nStore);
     pkd->pStore[pkd->nLocal] = p;
     pkd->pStore[pkd->nLocal].iOrder = -1;
