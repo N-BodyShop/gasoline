@@ -5297,8 +5297,8 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q->v[1] = f1*q->v[1]+f2*p->v[1];            
 		q->v[2] = f1*q->v[2]+f2*p->v[2];            
 		q->fMetals = f1*q->fMetals + f2*p->fMetals;
-                q->fMFracOxygen = f1*q->fMFracOxygen + f2*p->fMFracOxygen;
-                q->fMFracIron = f1*q->fMFracIron + f2*p->fMFracIron;
+        q->fMFracOxygen = f1*q->fMFracOxygen + f2*p->fMFracOxygen;
+        q->fMFracIron = f1*q->fMFracIron + f2*p->fMFracIron;
 		if(q->uDot < 0.0) /* make sure we don't shorten cooling time */
 			q->uDot = q->uPred/fTCool;
         }
@@ -5425,7 +5425,8 @@ void DistIonize(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
   for (i=0;i<nSmooth;++i) {
       q = isort[i].pNN->pPart;
-      T = CoolCodeEnergyToTemperature(smf->pkd->Cool,&q->CoolParticle, q->u, q->fMetals);
+      T = CoolCodeEnergyToTemperature(smf->pkd->Cool,&q->CoolParticle, q->u, q->fMetals/q->fMass);
+      printf("DEBUGION: %e %e %e\n", q->u, T, q->fMetals/q->fMass);
       if (T > smf->dIonizeTMin) continue;
       /* Stop once we have enough cold mass ionized 
 	 -- currently only checks nSmooth neighbours max so may truncate if in a hot region 
@@ -5437,9 +5438,9 @@ void DistIonize(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
       tCoolAgain = smf->dIonizeTime+smf->dTime;
       if (tCoolAgain > q->fTimeCoolIsOffUntil) q->fTimeCoolIsOffUntil=tCoolAgain;
       if (T < smf->dIonizeT) {
-	  CoolInitEnergyAndParticleData( smf->pkd->Cool, &q->CoolParticle, &q->u, q->fDensity, smf->dIonizeT, q->fMetals );
+	  CoolInitEnergyAndParticleData( smf->pkd->Cool, &q->CoolParticle, &q->u, q->fDensity, smf->dIonizeT, q->fMetals/q->fMass);
 	  }
-      }
+  }
   printf("Ionize: Star %d: %g %g %d\n",p->iOrder,mgot,mwanted,ngot);
 }
 
