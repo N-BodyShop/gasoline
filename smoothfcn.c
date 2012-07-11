@@ -1258,7 +1258,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	naccreted = 0;
 	aFac = smf->a;
 	dCosmoDenFac = aFac*aFac*aFac;
-	dCosmoVel2Fac = aFac*aFac*aFac*aFac;
+	dCosmoVel2Fac = aFac*aFac;
 
         mdotsum = 0.;
         weat = -1e37;
@@ -1345,7 +1345,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	/* Eddington Limit Rate */
 	mdotEdd = smf->dBHSinkEddFactor*p->fMass;
-	printf("BHSink %d:  Time: %g mdot (BH): %g mdot (Edd): %g a: %g\n",p->iOrder,smf->dTime,mdot,mdotEdd, smf->a);
+	printf("BHSink %d:  Time: %.8f mdot (BH): %g mdot (Edd): %g a: %g\n",p->iOrder,smf->dTime,mdot,mdotEdd, smf->a);
 
 	if (mdot > mdotEdd) mdot = mdotEdd;
 
@@ -1524,7 +1524,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         weat = -1e37;
 	aFac = smf->a;
 	dCosmoDenFac = aFac*aFac*aFac;
-        dCosmoVel2Fac = aFac*aFac*aFac*aFac;
+        dCosmoVel2Fac = aFac*aFac;
 
 	mdot = p->divv;	
 	if (p->curlv[1] == 0.0) {
@@ -1723,7 +1723,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	  dtEff = smf->dSinkCurrentDelta*pow(0.5,p->iRung-smf->iSinkCurrentRung);
 	  dmAvg = mdot*dtEff;    
 	  /*printf("BHSink %d:  Delta: %g Time: %g  dm: actual %g (pred %g) (avg %g) dE %g\n",p->iOrder,dtEff,smf->dTime,dm,p->curlv[1],dmAvg,dE); */
-	  printf("BHSink %d:  Delta: %g Time: %g dm: %g dE %g\n",p->iOrder,dtEff,smf->dTime,dm,dE);
+	  printf("BHSink %d:  Delta: %g Time: %.8f dm: %g dE %g\n",p->iOrder,dtEff,smf->dTime,dm,dE);
 
 	  /* Recalculate Normalization */
 	  ih2 = 4.0/BALL2(p);
@@ -1824,8 +1824,8 @@ void BHSinkIdentify(PARTICLE *p,int nSmooth,NN *nnList, SMF *smf)
 	   AND 
 	   * within the softening  */
 
-	  if(p->iOrder > q->iOrder) {
-	    if(p->iOrder > q->fNSNtot) {
+	  if(p->iOrder < q->iOrder) {
+	    if(p->iOrder < q->fNSNtot || q->fNSNtot == 0) {
 	      q->fNSNtot = p->iOrder;
 	      printf("BHSink MergeID %d will be eaten by %d \n",q->iOrder,p->iOrder);
 
