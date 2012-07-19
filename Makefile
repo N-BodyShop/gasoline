@@ -6,86 +6,14 @@
 # null, sgi, pvm, pthread, pthread_dec, pthread_sgi, ampi, lam_mpi, qmpi, mpi,
 # spx, t3d, t3dmpi, t3empi, ksr, charm
 #
-PNG_INCL =
-PNG_LIB = 
-PNG_OBJ =
-PNG_DEF = 
-
-#If you do dump frame stuff with png you need these libs ( -DUSE_PNG )
-#PNG_INCL = -I/usr/include
-#PNG_LIB = -L/usr/lib -lpng -lz
-#PNG_OBJ = writepng.o
-#PNG_DEF = $(PNG_INCL) -DUSE_PNG
-
-#COOLING_OBJ = cooling_cosmo.o
-#COOLING_DEF = -DCOOLING_COSMO
-
-#COOLING_OBJ = cooling_bate.o
-#COOLING_DEF = -DCOOLING_BATE
 
 COOLING_OBJ = cooling_metal.o
 COOLING_DEF = -DCOOLING_METAL
 
-#COOLING_OBJ = cooling_metal_H2.o
-#COOLING_DEF = -DCOOLING_MOLECULARH
-
-#COOLING_OBJ = cooling_metal_noH2.o
-#COOLING_DEF = -DCOOLING_METAL_NOH2
-
-#COOLING_OBJ = cooling_planet.o
-#COOLING_DEF = -DCOOLING_PLANET
-
-#COOLING_OBJ = cooling_disk.o
-#COOLING_DEF = -DCOOLING_DISK
-
-#COOLING_OBJ = 
-#COOLING_DEF = -DNOCOOLING
-
-#BASE_LD_FLAGS = $(PNG_LIB) -static
-BASE_LD_FLAGS = $(PNG_LIB) 
-
 CC = icc 
-#CC = ecc
-##CC = icc
-#CC = gcc -Wall
-#CC = pgcc 
-#CC = gcc
 
-CC_DEF = 
-
-CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DCHANGESOFT -DSTARFORM -DKROUPA -DVOLUMEFEEDBACK
-EXE = gasoline
-
-#mass diff
-CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DCHANGESOFT -DSTARFORM -DKROUPA -DVOLUMEFEEDBACK -DMASSDIFF
-# -DVARALPHA
-EXE = gasoline.massdiff
-#CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DCHANGESOFT -DSTARFORM -DKROUPA -DVOLUMEFEEDBACK -DMASSDIFF -DRTF
-#EXE = gasoline.massdiff.rtf
-#CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DCHANGESOFT -DSTARFORM -DKROUPA -DVOLUMEFEEDBACK -DMASSDIFF -DRTDENSITY
-#EXE = gasoline.massdiff.rtdensity
-
-CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DCHANGESOFT -DSTARFORM -DKROUPA -DVOLUMEFEEDBACK -DDODVDS -DRTF
-#CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE
-CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DCHANGESOFT -DSTARFORM -DKROUPA -DRTF 
 CODE_DEF = -DGASOLINE -DCHANGESOFT -DSTARFORM -DKROUPA -DDIVVOFF -DDIFFUSION -DDIFFUSIONTHERMAL
 EXE = gasoline.NORT
-
-#CODE_DEF = -DGASOLINE -DSTARSINK -DPEXT -DMODBATEPOLY
-#CODE_DEF = -DGASOLINE -DSTARSINK -DPEXT -DMODBATEPOLY -DSINKING -DSINKINGAVERAGE
-#EXE = gasoline.sinking
-
-#CODE_DEF = -DGASOLINE -DSTARSINK -DPEXT -DMODBATEPOLY
-#EXE = gasoline.sink
-
-#CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE
-#EXE = gasoline.diff.rtforce
-
-#Basic Gravity only code
-#CODE_DEF =
-#EXE = pkdgrav
-
-
 
 BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 
@@ -93,22 +21,7 @@ BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 #       NULL defines
 #
 NULL_MDL		= ../mdl/null
-#NULL_CFLAGS		= -D__GNUC__ -O3 -static -I$(NULL_MDL) $(BASE_DEF)
-
-#ev6 flags:
-#NULL_CFLAGS		= -O3 -g3 -fast -arch ev6 -I$(NULL_MDL) $(BASE_DEF)
-NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(BASE_DEF)
-#NULL_CFLAGS            = -fast -I$(NULL_MDL) $(BASE_DEF)
-#imp
-NULL_CFLAGS		= -O3 -ipo -xW -I$(NULL_MDL) $(BASE_DEF)
-#sse3
-#NULL_CFLAGS		= -O3 -ipo -no-prec-div -xP -I$(NULL_MDL) $(BASE_DEF)
-#core2 duo (imp 2007)
 NULL_CFLAGS		= -O3 -ipo -no-prec-div -xT -I$(NULL_MDL) $(BASE_DEF)
-#NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(BASE_DEF)
-#
-NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF) 
-#NULL_LD_FLAGS	= -Wl,-s
 NULL_LD_FLAGS	= $(BASE_LD_FLAGS) -L/usr/lib -L/lib
 NULL_XOBJ		= erf.o v_sqrt1.o
 NULL_LIBMDL		= $(NULL_MDL)/mdl.o -lm
@@ -147,12 +60,10 @@ AMPI_LIBMDL              = $(AMPI_MDL)/mdl.o -language ampi $(CHARMLINK) -lm
 #       LINUX LAM MPI defines
 #
 LAM_MDL			= ../mdl/mpi
-#LAM_CFLAGS		= -O3 -malign-double -mstack-align-double -mpentiumpro -I$(LAM_MDL) $(BASE_DEF)
 LAM_CFLAGS		= -fast -I$(LAM_MDL) $(BASE_DEF) -DMPI_LINUX
 LAM_LD_FLAGS		=  $(BASE_LD_FLAGS)
 LAM_XOBJ                = erf.o v_sqrt1.o
 LAM_LIBMDL              = $(LAM_MDL)/mdl.o -lm
-#LAM_MDL_CFLAGS = -O3 -malign-double -mstack-align-double -mpentiumpro -I$(LAM_MDL) $(BASE_DEF)
 LAM_MDL_CFLAGS  = -fast -I$(LAM_MDL) $(BASE_DEF)
 
 ##
@@ -160,12 +71,10 @@ LAM_MDL_CFLAGS  = -fast -I$(LAM_MDL) $(BASE_DEF)
 #
 QMPI_MDL                        = ../mdl/mpi
 QMPI_CFLAGS             = -O5 -arch ev6 -fast -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX -DCCC
-#QMPI_CFLAGS            = -g -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX -DCCC
 QMPI_LD_FLAGS           =  $(BASE_LD_FLAGS)
 QMPI_XOBJ                = erf.o 
 QMPI_LIBMDL              = $(QMPI_MDL)/mdl.o -lmpi -lelan -lelan3 -lm
 QMPI_MDL_CFLAGS  = -O5 -arch ev6 -fast -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX 
-#QMPI_MDL_CFLAGS  = -g -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX 
 
 
 #       SP1/2 defines
@@ -187,7 +96,6 @@ XDIR	= $(BDIR)/$(PVM_ARCH)
 
 PVM_MDL		= ../mdl/pvm
 PVM_CFLAGS	= -O3 -I$(PVMDIR)/include -I$(PVM_MDL) $(BASE_DEF)
-#PVM_CFLAGS	= -mips4 -g -I$(PVMDIR)/include -I$(PVM_MDL) $(BASE_DEF)
 PVM_XOBJ	= v_sqrt1.o
 PVM_LIBMDL	= $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
 PVM_LD_FLAGS	= $(BASE_LD_FLAGS)
