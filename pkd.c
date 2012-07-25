@@ -43,13 +43,6 @@ int SGN(double x);
 #define fseek fseeko
 #endif
 
-/*
- BalsaraSwitch hackery
-*/
-/*
-#define VISCSWITCHCUT 0.6
-*/
-
 double pkdGetTimer(PKD pkd,int iTimer)
 {
 	return(pkd->ti[iTimer].sec);
@@ -327,6 +320,11 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
     p->iRung = 0;
     p->fWeight = 1.0;
     p->fDensity = 0.0;
+#ifdef DRHODT
+    p->fDensity_t = 0.0;
+    p->fDensity_PdV = 0.0;
+    p->fDensity_PdVcorr = 0.0;
+#endif
     p->fBall2 = 0.0;
     p->fBallMax = 0.0;
 #ifdef GASOLINE
@@ -343,6 +341,18 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
     p->fNSNtot = 0.0;
     p->fMOxygenOut = 0.0;
     p->fMIronOut = 0.0;
+#ifdef MORE_METALS
+    p->fMCOut = 0.0;
+    p->fMNOut = 0.0;
+    p->fMNeOut = 0.0;
+    p->fMMgOut = 0.0;
+    p->fMSiOut = 0.0;
+    p->fMFracC = 0.0;
+    p->fMFracN = 0.0;
+    p->fMFracNe = 0.0;
+    p->fMFracMg = 0.0;
+    p->fMFracSi = 0.0;
+#endif /*MORE_METALS*/
     p->fMFracOxygen = 0.0;
     p->fMFracIron = 0.0;
     p->fTimeCoolIsOffUntil = 0.0;
@@ -433,14 +443,14 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
       pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
     }
     else {
-      fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+	if (pkd->idSelf ==1) fprintf(stderr, "Could not open %s,  skipped.  Ignore if timestep 0.\n",atmp);
     }
   }
 #endif
 
 #ifdef SIMPLESF
   {
-    char atmp[512];
+    char atmp[160];
     sprintf(atmp,"%s.tCoolAgain",pszFileName);
     fptCoolAgain = fopen(atmp,"r");
     if (fptCoolAgain!=NULL) {
@@ -532,11 +542,26 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
 #endif				
 #ifdef STARFORM
-				/* O and Fe ratio based on Asplund et al 2009 */
+				/* Asplund et al (2009) ARA&A solar
+				 * abundances (Table 1)
+				 * m_frac = 10.0^([X/H] - 12)*M_X/M_H
+				 * *0.74         OR
+	 * http://en.wikipedia.org/wiki/Abundance_of_the_chemical_elements
+	 * puts stuff more straighforwardly
+				 */
 				if (p->fMetals && !p->fMFracOxygen && 
 				    !p->fMFracIron) {
-				  p->fMFracOxygen = 0.58 * p->fMetals;
-				  p->fMFracIron = 0.13 * p->fMetals;
+				  p->fMFracOxygen = 0.43 * p->fMetals;
+				  p->fMFracIron = 0.098 * p->fMetals;
+#ifdef MORE_METALS
+				  p->fMFracOxygen = 0.495 * p->fMetals;
+				  p->fMFracIron = 0.05 * p->fMetals;
+				  p->fMFracC = 0.22 * p->fMetals;
+				  p->fMFracN = 0.046 * p->fMetals;
+				  p->fMFracNe = 0.064* p->fMetals;
+				  p->fMFracMg = 0.028* p->fMetals;
+				  p->fMFracSi = 0.031* p->fMetals;
+#endif
 				}
 #endif
 #else
@@ -614,8 +639,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				/* O and Fe ratio based on Asplund et al 2009 */
 				if (p->fMetals && !p->fMFracOxygen && 
 				    !p->fMFracIron) {
-				  p->fMFracOxygen = 0.58 * p->fMetals;
-				  p->fMFracIron = 0.13 * p->fMetals;
+				  p->fMFracOxygen = 0.43 * p->fMetals;
+				  p->fMFracIron = 0.098 * p->fMetals;
 				}
 #endif
 				xdr_float(&xdrs,&fTmp);
@@ -729,8 +754,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef STARFORM
 	/* O and Fe ratio based on Asplund et al 2009 */
 	if (p->fMetals && !p->fMFracOxygen && !p->fMFracIron) {
-	    p->fMFracOxygen = 0.58 * p->fMetals;
-	    p->fMFracIron = 0.13 * p->fMetals;
+	    p->fMFracOxygen = 0.43 * p->fMetals;
+	    p->fMFracIron = 0.098 * p->fMetals;
 	    }
 #endif
 #endif
@@ -784,8 +809,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				/* O and Fe ratio based on Asplund et al 2009 */
 				if (p->fMetals && !p->fMFracOxygen
 				    && !p->fMFracIron) {
-				    p->fMFracOxygen = 0.58 * p->fMetals;
-				    p->fMFracIron = 0.13 * p->fMetals;
+				    p->fMFracOxygen = 0.43 * p->fMetals;
+				    p->fMFracIron = 0.098 * p->fMetals;
 				    }
 #endif
 #endif
@@ -839,7 +864,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	}
 
 
-void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pbndBall)
+void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pbndBall,BNDDT *pbndDt)
 {
         /* Faster by assuming active order */
 
@@ -887,6 +912,28 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pb
 		pbndTreeActive->fMin[j] = pbndActive->fMin[j];
 		pbndTreeActive->fMax[j] = pbndActive->fMax[j];
 		}
+
+	if (pbndDt != NULL) {
+	    DIAGDIST2(pbndDt->drMax2,pbnd->fMin,pbnd->fMax);
+	    pbndDt->cMax = -FLOAT_MAXVAL;
+	    for (j=0;j<3;++j) {
+		pbndDt->vMin[j] = FLOAT_MAXVAL;
+		pbndDt->vMax[j] = -FLOAT_MAXVAL;
+		}
+	    for (i=0;i<pkd->nLocal;++i) {
+		double v2;
+		if (TYPETest(&(pkd->pStore[i]),TYPE_GAS)) {
+		    if (pkd->pStore[i].c > pbndDt->cMax)
+			pbndDt->cMax = pkd->pStore[i].c;
+		    for (j=0;j<3;++j) {
+			if (pkd->pStore[i].vPred[j] < pbndDt->vMin[j]) 
+			    pbndDt->vMin[j] = pkd->pStore[i].vPred[j];
+			if (pkd->pStore[i].vPred[j] > pbndDt->vMax[j])
+			    pbndDt->vMax[j] = pkd->pStore[i].vPred[j];
+			}
+		    }
+		}
+	    }
 	}
 
 
@@ -959,7 +1006,8 @@ void pkdCalcBound_old(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND
 				}
 			}
 		}
-	}
+    
+    }
 
 
 void pkdGasWeight(PKD pkd)
@@ -1813,6 +1861,14 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 #else
 	fTmp = p->fSoft;
 #endif
+#ifdef DRHODT 
+	/* Horrible hack -- overwrite soft output */
+#ifdef DRHODTDIVOUT
+	fTmp = p->fDivv_PdV;
+#else
+	fTmp = p->fDensity_PdV;
+#endif
+#endif
 	xdr_float(&xdrs,&fTmp);
 #ifdef SINKING
 	if (TYPETest( p, TYPE_SINKING)) {
@@ -2179,7 +2235,23 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 			pOut->bndBall.fMax[j] = p2->bndBall.fMax[j];
 		else
 			pOut->bndBall.fMax[j] = p1->bndBall.fMax[j];
+
+		if (p2->bndDt.vMin[j] < p1->bndDt.vMin[j])
+			pOut->bndDt.vMin[j] = p2->bndDt.vMin[j];
+		else
+			pOut->bndDt.vMin[j] = p1->bndDt.vMin[j];
+		if (p2->bndDt.vMax[j] > p1->bndDt.vMax[j])
+			pOut->bndDt.vMax[j] = p2->bndDt.vMax[j];
+		else
+			pOut->bndDt.vMax[j] = p1->bndDt.vMax[j];
 		}
+
+	DIAGDIST2(pOut->bndDt.drMax2,pOut->bnd.fMin,pOut->bnd.fMax);
+	if (p2->bndDt.cMax > p1->bndDt.cMax)
+	    pOut->bndDt.cMax = p2->bndDt.cMax;
+	else
+	    pOut->bndDt.cMax = p1->bndDt.cMax;
+
 	/*
 	 ** Find the center of mass and mass weighted softening.
 	 */
@@ -2526,9 +2598,14 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 			c[iCell].bnd.fMax[j] = -FLOAT_MAXVAL;
 			c[iCell].bndBall.fMin[j] = FLOAT_MAXVAL;
 			c[iCell].bndBall.fMax[j] = -FLOAT_MAXVAL;
+			c[iCell].bndDt.vMin[j] = FLOAT_MAXVAL;
+			c[iCell].bndDt.vMax[j] = -FLOAT_MAXVAL;
 			c[iCell].r[j] = 0.0;
 			}
+		c[iCell].bndDt.cMax = -FLOAT_MAXVAL;
 		for (pj=l;pj<=u;++pj) {
+		        if (p[pj].c > c[iCell].bndDt.cMax)
+			        c[iCell].bndDt.cMax = p[pj].c;
 			for (j=0;j<3;++j) {
 				if (p[pj].r[j] < c[iCell].bnd.fMin[j])
 					c[iCell].bnd.fMin[j] = p[pj].r[j];
@@ -2539,6 +2616,11 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 					c[iCell].bndBall.fMin[j] = p[pj].r[j]-p[pj].fBallMax;
 				if (p[pj].r[j]+p[pj].fBallMax > c[iCell].bndBall.fMax[j])
 					c[iCell].bndBall.fMax[j] = p[pj].r[j]+p[pj].fBallMax;
+				if (p[pj].vPred[j] < c[iCell].bndDt.vMin[j])
+					c[iCell].bndDt.vMin[j] = p[pj].vPred[j];
+				if (p[pj].vPred[j] > c[iCell].bndDt.vMax[j])
+					c[iCell].bndDt.vMax[j] = p[pj].vPred[j];
+
 				}
 			/*
 			 ** Find center of mass and total mass and mass weighted softening.
@@ -2549,6 +2631,7 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 				c[iCell].r[j] += p[pj].fMass*p[pj].r[j];
 				}
 			}
+		DIAGDIST2(c[iCell].bndDt.drMax2,c[iCell].bnd.fMin,c[iCell].bnd.fMax);
 		if (c[iCell].fMass > 0) {
 			for (j=0;j<3;++j) {
 				c[iCell].r[j] /= c[iCell].fMass;
@@ -3018,10 +3101,10 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	 ** determine the local bound of the particles.
 	 */
 	if (bTreeActiveOnly) {
-		pkdCalcBound(pkd,&bndDum,&bndDum,&c[pkd->iRoot].bnd,&bndDum);
+	    pkdCalcBound(pkd,&bndDum,&bndDum,&c[pkd->iRoot].bnd,&bndDum,NULL);
 		}
 	else {
-		pkdCalcBound(pkd,&c[pkd->iRoot].bnd,&bndDum,&bndDum,&bndDum);
+	    pkdCalcBound(pkd,&c[pkd->iRoot].bnd,&bndDum,&bndDum,&bndDum,NULL);
 		}
 	i = pkd->iRoot;
 	while (1) {
@@ -3677,29 +3760,7 @@ void pkdHomogSpheroid(PKD pkd)
 			}
 		}
 	}
-void pkdChrisDiskForce(PKD pkd, double Vc, double R)
-{
-	/*
-	This is the external disk potential that is used together with Chris 
-	Gatopolous' Enzo initial conditions for a disk slice.  The initial 
-	values Chris used for Vc and R were 220 km/s and 6 kpc respectively.
-	*/
-	PARTICLE *p;
-	int i,n;
-	
-	p = pkd->pStore;
-	n = pkdLocal(pkd);
-	for (i=0;i<n;++i) 
-	{
-		if (TYPEQueryACTIVE(&(p[i]))) 
-		{
-			double z = p[i].r[2];
-			double g = Vc*Vc*z/(R*R+z*z);
-            p[i].a[2] -= g;
-            p[i].fPot += g*z;
-		}
-	}
-}
+
 void pkdBodyForce(PKD pkd, double dConst)
 {
 	PARTICLE *p;
@@ -4112,9 +4173,14 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 			    }
 #endif
 
+			p->fDensity *= exp(-p->fDivv_t*dDelta); // Predictor for density
+#ifdef DRHODT
+			p->fDensity_t *= exp(-p->fDivv_t*dDelta);
+			p->fDensity_PdV *= exp(-p->fDivv_PdV*dDelta);
+			p->fDensity_PdVcorr *= exp(-p->fDivv_PdVcorr*dDelta);
+#endif
 			for (j=0;j<3;++j) {
 			        p->r[j] += dDelta*p->v[j];
-
 				if (bPeriodic) {
 					if (p->r[j] >= lfCenter[j] + 0.5*pkd->fPeriod[j]) {
 						p->r[j] -= pkd->fPeriod[j];
@@ -4142,8 +4208,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 						}
 					bInBox = bInBox && (p->r[j] >= lfCenter[j]-0.5*pkd->fPeriod[j]);
 					bInBox = bInBox && (p->r[j] <  lfCenter[j]+0.5*pkd->fPeriod[j]);
-					if(!bInBox) 
-						printf("%d %f %f %f\n", j, p->r[0], p->r[1], p->r[2]);
 					assert(bInBox);
 					}
 			    }
@@ -4280,10 +4344,22 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				p->fMFracOxygen = p->fMFracOxygen + p->fMFracOxygenDot*duDelta;
 				p->fMFracIronPred = p->fMFracIron + p->fMFracIronDot*duPredDelta;
 				p->fMFracIron = p->fMFracIron + p->fMFracIronDot*duDelta;
+#ifdef MORE_METALS
+				p->fMFracCPred = p->fMFracC + p->fMFracCDot*duPredDelta;
+				p->fMFracC = p->fMFracC + p->fMFracCDot*duDelta;
+				p->fMFracNPred = p->fMFracN + p->fMFracNDot*duPredDelta;
+				p->fMFracN = p->fMFracN + p->fMFracNDot*duDelta;
+				p->fMFracNePred = p->fMFracNe + p->fMFracNeDot*duPredDelta;
+				p->fMFracNe = p->fMFracNe + p->fMFracNeDot*duDelta;
+				p->fMFracMgPred = p->fMFracMg + p->fMFracMgDot*duPredDelta;
+				p->fMFracMg = p->fMFracMg + p->fMFracMgDot*duDelta;
+				p->fMFracSiPred = p->fMFracSi + p->fMFracSiDot*duPredDelta;
+				p->fMFracSi = p->fMFracSi + p->fMFracSiDot*duDelta;
+#endif /* MORE_METALS */
 #endif /* STARFORM */
 #endif /* DIFFUSION */
 			    }
-			else 
+			else
 #endif /* GASOLINE */
 			    { /* Not gas or not -DGASOLINE */
 			    for (j=0;j<3;++j) {
@@ -4293,11 +4369,11 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #ifdef FREEZENONGAS
 				p->v[j] = 0.;
 #else
-				p->v[j] = p->v[j]*dvFacOneSTD + p->a[j]*dvFacTwo;
+				p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
 #endif
-			        }
-			    }
-		    }
+				}
+				}
+			}
 	    }
 
 	pkdStopTimer(pkd,1);
@@ -4446,6 +4522,18 @@ void pkdCreateInflow(PKD pkd, int Ny, int iGasModel, double dTuFac, double pmass
 	    p.fMIronOut = 0.0;
 	    p.fMFracOxygen = 0.0;
 	    p.fMFracIron = 0.0;
+#if MORE_METALS
+	    p.fMSiOut = 0.0;
+	    p.fMFracSi = 0.0;
+	    p.fMSiOut = 0.0;
+	    p.fMFracSi = 0.0;
+	    p.fMCOut = 0.0;
+	    p.fMFracC = 0.0;
+	    p.fMNOut = 0.0;
+	    p.fMFracN = 0.0;
+	    p.fMNeOut = 0.0;
+	    p.fMFracNe = 0.0;
+#endif
 	    p.fTimeCoolIsOffUntil = 0.0;
 #endif
 #ifdef SIMPLESF
@@ -4541,9 +4629,23 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
                 p->fNSNtot = 0.0;
                 p->fMFracOxygen = cp.fMFracOxygen;
                 p->fMFracIron = cp.fMFracIron;
+#ifdef MORE_METALS
+                p->fMFracSi = cp.fMFracSi;
+                p->fMFracC = cp.fMFracC;
+                p->fMFracN = cp.fMFracN;
+                p->fMFracNe = cp.fMFracNe;
+                p->fMFracMg = cp.fMFracMg;
+#endif
 #ifdef DIFFUSION
                 p->fMFracOxygenPred = cp.fMFracOxygen;
                 p->fMFracIronPred = cp.fMFracIron;
+#ifdef MORE_METALS
+		p->fMFracSiPred = cp.fMFracSi;
+		p->fMFracCPred = cp.fMFracC;
+		p->fMFracNPred = cp.fMFracN;
+		p->fMFracNePred = cp.fMFracNe;
+		p->fMFracMgPred = cp.fMFracMg;
+#endif
 #endif
 #endif
 #ifdef SIMPLESF
@@ -4655,6 +4757,13 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
                 cp.fTimeCoolIsOffUntil = p->fTimeCoolIsOffUntil;
                 cp.fMFracOxygen = p->fMFracOxygen;
                 cp.fMFracIron = p->fMFracIron;
+#ifdef MORE_METALS
+                cp.fMFracMg = p->fMFracMg;
+                cp.fMFracC = p->fMFracC;
+                cp.fMFracN = p->fMFracN;
+                cp.fMFracNe = p->fMFracNe;
+                cp.fMFracSi = p->fMFracSi;
+#endif
 #endif
 #ifdef SIMPLESF
 		cp.fMassStar = p->fMassStar;
@@ -4840,13 +4949,13 @@ double pkdMassCheck(PKD pkd)
 	}
 
 void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, double *dTotMetals, 
-                    double *dTotOx, double *dTotFe, double *dTotEnergy) 
+                    double *dTotOxygen, double *dTotIron, double *dTotEnergy) 
 {
 	int i;
 	*dTotMass=0.0;
 	*dTotMetals=0.0;
-	*dTotOx=0.0;
-	*dTotFe=0.0;
+	*dTotOxygen=0.0;
+	*dTotIron=0.0;
 	*dTotEnergy=0.0;
 
 	for (i=0;i<pkdLocal(pkd);++i) {
@@ -4854,8 +4963,8 @@ void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, double *dTotMetals,
 #ifdef GASOLINE 
                 *dTotMetals += pkd->pStore[i].fMass*pkd->pStore[i].fMetals;
 #ifdef STARFORM
-                *dTotOx += pkd->pStore[i].fMass*pkd->pStore[i].fMFracOxygen;
-                *dTotFe += pkd->pStore[i].fMass*pkd->pStore[i].fMFracIron;
+                *dTotOxygen += pkd->pStore[i].fMass*pkd->pStore[i].fMFracOxygen;
+                *dTotIron += pkd->pStore[i].fMass*pkd->pStore[i].fMFracIron;
                 if ( TYPETest(&pkd->pStore[i], TYPE_GAS) ){
 		  *dTotEnergy += pkd->pStore[i].fMass*pkd->pStore[i].fESNrate;
                     }
@@ -5858,6 +5967,12 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 	COOL *cl = NULL;
 	COOLPARTICLE cp;
 	double E,dt = 0,dtUse,ExternalHeating;
+#ifdef DEBUG_RADPRES
+	double vTemp, dExp, dCosmoDenFac;
+	dExp  = 1.0 / (1+z);
+	dCosmoDenFac = dExp*dExp*dExp;
+	int its=0, ldcoits=0, hdcoits=0;
+#endif
 #ifdef COOLING_MOLECULARH
 	double correL = 1.0; /* Correlation length used when calculating shielding*/
 #endif
@@ -5932,29 +6047,51 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
 
 #ifdef COOLING_BOLEY
 				cp.mrho = pow(p->fMass/p->fDensity, 1./3.);
-#endif
+#endif /* COOLING_BOLEY */
 #ifdef DENSITYU
 				if (p->fDensityU < p->fDensity) 
 				    CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensityU, p->fMetals, p->r, dtUse);
 				else
-#else
+#else /* DENSITYU */
 				    CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensity, p->fMetals, p->r, dtUse);
-#endif
-#endif
-
+#endif /* DENSITYU */
+#endif	/* COOLING_MOLECULARH */
 				mdlassert(pkd->mdl,E > 0);
-
+#ifdef DEBUG_RADPRES
+				printf("DBRP:  low dens particles w/o cooling:  %d\n",ldcoits);
+				printf("DBRP:  high dens particles w/o cooling:  %d\n",hdcoits);
+#endif
+	
 				if (dtUse > 0 || ExternalHeating*duDelta + p->u < 0) p->uDot = (E - p->u)/duDelta;
 				if (bUpdateState) p->CoolParticle = cp;
-				}
-			else { 
-				p->uDot = ExternalHeating;
-				}
-			}
-		}
-#endif /*COOLING_MOLECULARH*/
-	pkdStopTimer(pkd,1);
+#ifdef DEBUG_RADPRES
+#define SEC_YR 3.15576e07
+	/* had feedback within last Myr + 
+	   cooling not turned off */
+	/*(p->fTimeForm - dTime < 5e6*SEC_YR/pkd->Cool->dSecUnit) && */
+	if (p->fTimeForm > 0) {
+	  if (dTime < p->fTimeCoolIsOffUntil) {
+	    if (p->fDensity < 3) {
+	      ldcoits++;
+	  
+	      vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
+	  /*if ( vTemp > 1.5e4) {
+	    its++;*/
+	      printf("RPDB:  %g %g %g %d %g %g \n",dTime,p->fTimeForm,p->fTimeCoolIsOffUntil,p->iOrder,vTemp, p->fDensity/dCosmoDenFac);
+	    }
+	    else hdcoits++;
+	  }
 	}
+#endif /* DEBUG_RADPRES */
+      }
+      else { 
+	p->uDot = ExternalHeating;
+      }
+    }
+  }
+#endif /* NOCOOLING */
+  pkdStopTimer(pkd,1);
+    }
 
 void pkdUpdateShockTracker(PKD pkd, double dDelta, double dShockTrackerA, double dShockTrackerB )
 {
@@ -6316,6 +6453,9 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 			/*
 			 * Courant condition goes here.
 			 */
+#ifdef DRHODT
+		dT = p->dtNew;
+#else
 	       if (p->mumax>0.0) {
 				if (bViscosityLimitdt) 
 				  dT = dEtaCourant*dCosmoFac*(ph/(p->c + 0.6*(p->c + 2*p->BalsaraSwitch*p->mumax)));
@@ -6327,6 +6467,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 			   dT = dEtaCourant*dCosmoFac*(ph/(1.6*p->c+(10./FLT_MAX)));
 #else
 			   dT = dEtaCourant*dCosmoFac*(ph/(1.6*p->c));
+#endif
 #endif
 
 	       if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */
@@ -7014,6 +7155,13 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 #ifdef STARFORM
 			p->fMFracOxygenPred = p->fMFracOxygenPred + p->fMFracOxygenDot*duDelta;
 			p->fMFracIronPred = p->fMFracIronPred + p->fMFracIronDot*duDelta;
+#ifdef MORE_METALS
+			p->fMFracCPred = p->fMFracCPred + p->fMFracCDot*duDelta;
+			p->fMFracNPred = p->fMFracNPred + p->fMFracNDot*duDelta;
+			p->fMFracNePred = p->fMFracNePred + p->fMFracNeDot*duDelta;
+			p->fMFracMgPred = p->fMFracMgPred + p->fMFracMgDot*duDelta;
+			p->fMFracSiPred = p->fMFracSiPred + p->fMFracSiDot*duDelta;
+#endif /* MORE_METALS */
 #endif /* STARFORM */
 #endif /* DIFFUSION */
 		    }

@@ -36,7 +36,7 @@ double dNSNIa (MSSN mssn, double dMassT1, double dMassT2)
 /* XXX The following is wrong and not used */
 double dMSNIa (MSSN mssn, double dMassT1, double dMassT2)
 {
-    assert (dMassT1 < dMassT2 && dMassT1 >= mssn->sn.dMBmin/2. && dMassT2 <= mssn->sn.dMBmax/2.);
+    assert (dMassT1 < dMassT2 && dMassT1 >= mssn->sn.dMBmin && dMassT2 <= mssn->sn.dMBmax/2.);
     
 	/* calculate mass of stars that go SN Type Ia a la Raiteri, Villata,
 	   Navarro, A&A 315, 105, 1996) Returns total mass in stars that go SN

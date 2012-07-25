@@ -14,6 +14,13 @@ typedef struct sfevent {
     double dMetals;           /*  metallicity of stars in event */
     double dMFracOxygen;           /*  metallicity of stars in event */
     double dMFracIron;           /*  metallicity of stars in event */
+#ifdef MORE_METALS
+    double dMFracC;           /*  metallicity of stars in event */
+    double dMFracN;           /*  metallicity of stars in event */
+    double dMFracNe;           /*  metallicity of stars in event */
+    double dMFracMg;           /*  metallicity of stars in event */
+    double dMFracSi;           /*  metallicity of stars in event */
+#endif
     } SFEvent;
 
 /*
@@ -28,6 +35,13 @@ typedef struct fbeffects {
 				   elements heavier than Helium */
     double dMIron;              /* Solar masses of iron ejected */
     double dMOxygen;            /* Solar masses of oxygen ejected */
+#ifdef MORE_METALS
+    double dMMg;              /* Solar masses of Iron ejected */  
+    double dMC;              /* Solar masses of C ejected */
+    double dMN;              /* Solar masses of N ejected */
+    double dMNe;              /* Solar masses of Ne ejected */
+    double dMSi;              /* Solar masses of Si ejected */
+#endif
     } FBEffects;
 
 #define FB_SNII 0
@@ -48,6 +62,11 @@ void fbInitialize(FB *pfb);
 
 void pkdFeedback(PKD pkd, FB fb, struct snContext * sn, double dTime, double dDelta,
 		 FBEffects *fbTotals);
+void snCalcWindFeedback(struct snContext * sn, SFEvent sfEvent,
+                        double dTime, /* current time in years */
+                        double dDelta, /* length of timestep (years) */
+                        FBEffects *fbEffects);
+
 
 	/* solar mass in grams */
 #define MSOLG 1.99e33

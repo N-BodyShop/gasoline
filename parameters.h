@@ -46,6 +46,7 @@ struct parameters {
 	int bDensityStep;
     int bDeltaAccelStep;
     int bDeltaAccelStepGasTree;
+        int bLongRangeStep;
 	int nTruncateRung;
 	int bNonSymp;
     int iBinaryOutput;
@@ -84,9 +85,6 @@ struct parameters {
             int bHomogSpheroid;
         int bBodyForce;
 	double dBodyForceConst;
-	int bChrisDisk;
-	double dChrisDiskVc;
-	double dChrisDiskR;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
@@ -142,6 +140,7 @@ struct parameters {
     int bSinkFormPotMin;
     int bSinkFormSimple;
     int nSinkFormMin;
+    int bSinkMerge;
     int bSinkAngMomOutput;
     double dSinkFormDivVCoeff;
     double dSinkFormDivAccCoeff;
@@ -232,6 +231,7 @@ struct parameters {
 	int iGasModel;
 	double dEtaCourant;
 	double dEtauDot;
+	double dEtaCourantLong;
 	double duDotLimit;
 	double dShockTrackerA;
 	double dShockTrackerB;
@@ -306,6 +306,8 @@ struct parameters {
         double dDeltaStarForm;
         int bSNTurnOffCooling;
 	int bShortCoolShutoff;
+    double dESFBlastRadius;     /* Extent of early stellar feedback
+				   (kpc) */
 	double dExtraCoolShutoff;
 	int bSmallSNSmooth;
         int iStarFormRung;

@@ -180,6 +180,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_MASSMETALSENERGYCHECK,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstMassMetalsEnergyCheck,
 				  0,sizeof(struct outMassMetalsEnergyCheck));
+	mdlAddService(mdl,PST_MINMAXPOT,pst,
+		      (void (*)(void *,void *,int,void *,int *)) pstMinMaxPot,
+		      0,sizeof(struct outMinMaxPot));
 	mdlAddService(mdl,PST_ACTIVETYPEORDER,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstActiveTypeOrder,
 				  sizeof(struct inActiveTypeOrder),sizeof(int));
@@ -255,6 +258,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_MARKSMOOTH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstMarkSmooth,
 				  sizeof(struct inMarkSmooth),0);
+	mdlAddService(mdl,PST_DTSMOOTH,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDtSmooth,
+				  sizeof(struct inDtSmooth),0);
 	mdlAddService(mdl,PST_RESMOOTH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstReSmooth,
 				  sizeof(struct inReSmooth),sizeof(struct outReSmooth));
@@ -2076,7 +2082,7 @@ void pstCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 		}
 	else {
-		pkdCalcBound(plcl->pkd,&out->bnd,&out->bndActive,&out->bndTreeActive,&out->bndBall);
+	    pkdCalcBound(plcl->pkd,&out->bnd,&out->bndActive,&out->bndTreeActive,&out->bndBall,NULL);
 		}
 	if (pnOut) *pnOut = sizeof(struct outCalcBound); 
 	}
@@ -2732,7 +2738,6 @@ void pstOutNCVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
                 if (out != NULL){
-		    out->nOut += outUp.nOut;
                     for(i=0; i<3; i++){
                         for(iDim=0;iDim<3;iDim++){
                             out->min[i][iDim]=(out->min[i][iDim] < outUp.min[i][iDim]) ? out->min[i][iDim]: outUp.min[i][iDim];
@@ -2752,9 +2757,9 @@ void pstOutNCVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 		strcat(achOutFile,in->achOutFile);
 		pkdOutNChilada(plcl->pkd,achOutFile,plcl->nGasWriteStart,
-		    plcl->nDarkWriteStart, plcl->nStarWriteStart,
- 		    in->iType,&out->nOut,out->min, out->max, in->duTFac,
-		    in->dvFac);
+			       plcl->nDarkWriteStart, plcl->nStarWriteStart,
+			       in->iType,out->min, out->max, in->duTFac,
+			       in->dvFac);
 		}
 	if (pnOut) *pnOut = sizeof(struct outNC);
 	}
@@ -3119,6 +3124,37 @@ void pstMarkSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+void pstDtSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inDtSmooth *in = vin;
+	struct outDtSmooth *out = vout;
+	struct outDtSmooth outUp;
+	CASTAT cs;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inDtSmooth));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DTSMOOTH,in,nIn);
+		pstDtSmooth(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+		if (out != NULL) 
+		    if (outUp.dtMin < out->dtMin) out->dtMin = outUp.dtMin;
+		}
+	else {
+		LCL *plcl = pst->plcl;
+		SMX smx;
+
+		(&in->smf)->pkd = pst->plcl->pkd;
+		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
+					 in->bSymmetric,in->iSmoothType,0,0.0);
+		smDtSmooth(smx,&in->smf);
+		smFinish(smx,&in->smf, &cs);
+		if (out != NULL) out->dtMin = in->smf.dtMin;
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
+
 void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	struct inReSmooth *in = vin;
@@ -3366,9 +3402,6 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 		if (in->bBodyForce) {
 			pkdBodyForce(plcl->pkd, in->dBodyForceConst);
-			}
-		if (in->bChrisDisk) {
-			pkdChrisDiskForce(plcl->pkd, in->dChrisDiskVc, in->dChrisDiskR);
 			}
 		if (in->bMiyamotoDisk) {
 			pkdMiyamotoDisk(plcl->pkd);
@@ -6262,6 +6295,29 @@ pstFlushStarLog(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	pkdStarLogFlush(pst->plcl->pkd, in->achStarLogFile);
 	}
     }
+
+void pstMinMaxPot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inMinMaxPot *in = vin;
+	struct outMinMaxPot *out = vout;
+	struct outMinMaxPot outUp;
+	
+	mdlassert(pst->mdl,nIn == sizeof(struct inMinMaxPot));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_MINMAXPOT,NULL,0);
+		pstMassMetalsEnergyCheck(pst->pstLower,NULL,0,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,pnOut);
+		out->dMinPot = (outUp.dMinPot < out->dMinPot) ? 
+		    outUp.dMinPot : out->dMinPot;
+		out->dMaxPot = (outUp.dMaxPot > out->dMaxPot) ? 
+		    outUp.dMaxPot : out->dMaxPot;
+		}
+	else {
+	    pkdMinMaxPot(plcl->pkd,&in->stfm,&out->dMinPot,&out->dMaxPot);
+		}
+	if (pnOut) *pnOut = sizeof(struct outMinMaxPot);
+	}
 
 #endif
 

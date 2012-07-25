@@ -44,6 +44,7 @@ void MSInitialize(MSPARAM *pms);
 double dMSIMF(MSPARAM p, double mass);
 double dMSCumNumber(MSPARAM p, double mass);
 double dMSCumMass(MSPARAM p, double mass);
+double imfCumLuminosity(MSPARAM p, double mass);
 double imf1to8Exp(MSPARAM p);
 double imf1to8PreFactor(MSPARAM p);
 

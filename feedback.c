@@ -8,11 +8,6 @@
 #include "feedback.h"
 #include "supernova.h"
 
-void snCalcWindFeedback(SN sn, SFEvent sfEvent,
-                        double dTime, /* current time in years */
-                        double dDelta, /* length of timestep (years) */
-                        FBEffects *fbEffects);
-
 void snCalcUVFeedback(SN sn, SFEvent sfEvent,
 		      double dTime, /* current time in years */
 		      double dDelta, /* length of timestep (years) */
@@ -52,6 +47,9 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
     double dTotMetals;
     double dTotMOxygen;
     double dTotMIron;
+#ifdef MORE_METALS
+    double dTotMC, dTotMN, dTotMNe, dTotMMg, dTotMSi;
+#endif
     double dDeltaYr;
     double dSNIaMassStore;
     double dNSNII, dProb, dStarAge, dMinAge;
@@ -64,6 +62,13 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	fbTotals[i].dMetals = 0.0;
 	fbTotals[i].dMIron = 0.0;
 	fbTotals[i].dMOxygen = 0.0;
+#ifdef MORE_METALS
+	fbTotals[i].dMC = 0.0;
+	fbTotals[i].dMN = 0.0;
+	fbTotals[i].dMNe = 0.0;
+	fbTotals[i].dMMg = 0.0;
+	fbTotals[i].dMSi = 0.0;
+#endif
 	}
     dTime *= fb->dSecUnit/SEC_YR;
     dDeltaYr = dDelta*fb->dSecUnit/SEC_YR;
@@ -75,6 +80,13 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    dTotMetals = 0.0;
 	    dTotMOxygen = 0.0;
 	    dTotMIron = 0.0;
+#ifdef MORE_METALS
+	    dTotMC = 0.0;
+	    dTotMN = 0.0;
+	    dTotMNe = 0.0;
+	    dTotMMg = 0.0;
+	    dTotMSi = 0.0;
+#endif
 	    p->fESNrate = 0.0;
 	    p->fNSN = 0.0;
 
@@ -84,7 +96,13 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    sfEvent.dMetals = p->fMetals;
 	    sfEvent.dMFracOxygen = p->fMFracOxygen;
 	    sfEvent.dMFracIron = p->fMFracIron;
-
+#ifdef MORE_METALS
+	    sfEvent.dMFracC = p->fMFracC;
+	    sfEvent.dMFracN = p->fMFracN;
+	    sfEvent.dMFracNe = p->fMFracNe;
+	    sfEvent.dMFracMg = p->fMFracMg;
+	    sfEvent.dMFracSi = p->fMFracSi;
+#endif
 	    /*
 	     * Call all the effects in order and accumulate them.
 	     */
@@ -115,12 +133,11 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 			if(dRandomNum < dProb) /* SN occurred */ {
 			    /* Adds missing part to make up quantum */
 			    p->fNSN = dNSNII + (1.-dProb)*sn->iNSNIIQuantum;
-/*			    printf("NSN: +factor=%g   dNSNII=%g  result=%g fNSN=%g\n",(1.-dProb)*sn->iNSNIIQuantum,dNSNII,dNSNII + (1.-dProb)*sn->iNSNIIQuantum,p->fNSN);*/
-			    } 
-			else {
-			    p->fNSN = dNSNII - dProb*sn->iNSNIIQuantum;
-/*			    printf("NSN: -factor=%g   dNSNII=%g  result=%g fNSN=%g\n",dProb*sn->iNSNIIQuantum,dNSNII,dNSNII - dProb*sn->iNSNIIQuantum,p->fNSN);*/
-			    }
+			    /*printf("NSN: +factor=%g   dNSNII=%g  result=%g fNSN=%g\n",(1.-dProb)*sn->iNSNIIQuantum,dNSNII,dNSNII + (1.-dProb)*sn->iNSNIIQuantum,p->fNSN);*/
+			    } else {
+				p->fNSN = dNSNII - dProb*sn->iNSNIIQuantum;
+				/*printf("NSN: -factor=%g   dNSNII=%g  result=%g fNSN=%g\n",dProb*sn->iNSNIIQuantum,dNSNII,dNSNII - dProb*sn->iNSNIIQuantum,p->fNSN);*/
+				}
 			if(p->fNSN < sn->iNSNIIQuantum) p->fNSN = 0;
 			fbEffects.dEnergy = p->fNSN*sn->dESN/(MSOLG*fbEffects.dMassLoss);   
 			} 
@@ -155,12 +172,26 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 		dTotMetals += fbEffects.dMetals*fbEffects.dMassLoss;
 		dTotMOxygen += fbEffects.dMOxygen*fbEffects.dMassLoss;
 		dTotMIron += fbEffects.dMIron*fbEffects.dMassLoss;
+#ifdef MORE_METALS
+		dTotMC += fbEffects.dMC*fbEffects.dMassLoss;
+		dTotMN += fbEffects.dMN*fbEffects.dMassLoss;
+		dTotMNe += fbEffects.dMNe*fbEffects.dMassLoss;
+		dTotMMg += fbEffects.dMMg*fbEffects.dMassLoss;
+		dTotMSi += fbEffects.dMSi*fbEffects.dMassLoss;
+#endif
 
 		fbTotals[j].dMassLoss += fbEffects.dMassLoss;
 		fbTotals[j].dEnergy += fbEffects.dEnergy*fbEffects.dMassLoss;
 		fbTotals[j].dMetals += fbEffects.dMetals*fbEffects.dMassLoss;
 		fbTotals[j].dMIron += fbEffects.dMIron*fbEffects.dMassLoss;
 		fbTotals[j].dMOxygen += fbEffects.dMOxygen*fbEffects.dMassLoss;
+#ifdef MORE_METALS
+		fbTotals[j].dMC += fbEffects.dMC*fbEffects.dMassLoss;
+		fbTotals[j].dMN += fbEffects.dMN*fbEffects.dMassLoss;
+		fbTotals[j].dMNe += fbEffects.dMNe*fbEffects.dMassLoss;
+		fbTotals[j].dMMg += fbEffects.dMMg*fbEffects.dMassLoss;
+		fbTotals[j].dMSi += fbEffects.dMSi*fbEffects.dMassLoss;
+#endif
 		}
 
 	    /*
@@ -180,6 +211,13 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    p->fSNMetals = dTotMetals;
 	    p->fMIronOut = dTotMIron;
 	    p->fMOxygenOut = dTotMOxygen;
+#ifdef MORE_METALS
+	    p->fMCOut = dTotMC;
+	    p->fMNOut = dTotMN;
+	    p->fMNeOut = dTotMNe;
+	    p->fMMgOut = dTotMMg;
+	    p->fMSiOut = dTotMSi;
+#endif
 	    p->fESNrate /= dDelta; /* convert to rate */
 #ifdef  RADIATIVEBOX /* Calculates LW radiation from a stellar particle of a given age and mass (assumes Kroupa IMF), CC */
 	    double  a0 = -84550.812,
@@ -227,66 +265,6 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 
     }
 
-
-void snCalcWindFeedback(SN sn, SFEvent sfEvent,
-                        double dTime, /* current time in years */
-                        double dDelta, /* length of timestep (years) */
-                        FBEffects *fbEffects)
-{
-    double dMStarMin, dMStarMax;
-    double dStarLtimeMin, dStarLtimeMax;
-    double dMCumMin, dMCumMax,dMTot;
-    double dMmin, dMmax;
-    double dMassFracReturned;
-    double dMDying;
-
-    /* First determine if dying stars are between 1-8 Msolar
-
-    * stellar lifetimes corresponding to beginning and end of 
-    * current timestep with respect to starbirth time in yrs */
-    dMmin=1.0;
-    dMmax=8.0;
-    dStarLtimeMin = dTime - sfEvent.dTimeForm; 
-    dStarLtimeMax = dStarLtimeMin + dDelta;
-
-    dMStarMin = dSTMStarLtime(&sn->ppdva, dStarLtimeMax, sfEvent.dMetals); 
-    dMStarMax = dSTMStarLtime(&sn->ppdva, dStarLtimeMin, sfEvent.dMetals); 
-    assert(dMStarMax >= dMStarMin);
-
-    if (((dMStarMin < dMmax) && (dMStarMax > dMmin)) && dMStarMax > dMStarMin) {
-
-	/* Mass Fraction returned to ISM taken from Weidemann, 1987, A&A 188 74 
-	   then fit to function: MFreturned = 0.86 - exp(-Mass/1.1) */
-	dMassFracReturned=0.86-exp(-((dMStarMax+dMStarMin)/2.)/1.1);
-
-	dMCumMin = dMSCumMass(&sn->MSparam, dMStarMin);
-	dMCumMax = dMSCumMass(&sn->MSparam, dMStarMax);
-	dMTot = dMSCumMass(&sn->MSparam,0.0);
-	/* Find out mass fraction of dying stars, then multiply by the original
-	   mass of the star particle */
-	if (dMTot == 0.0){
-	    dMDying = 0.0;
-	    } else { 
-		dMDying = (dMCumMin - dMCumMax)/dMTot;
-		}
-	dMDying *= sfEvent.dMass;
-
-	/* Figure out feedback effects */
-	fbEffects->dMassLoss = dMDying * dMassFracReturned;
-	fbEffects->dEnergy = 0.0;    
-	/* Use star's metallicity for gas returned */
-	fbEffects->dMetals = sfEvent.dMetals; 
-	fbEffects->dMIron = sfEvent.dMFracIron; 
-	fbEffects->dMOxygen = sfEvent.dMFracOxygen; 
-
-	} else {
-	    fbEffects->dMassLoss = 0.0;
-	    fbEffects->dEnergy = 0.0;    
-	    fbEffects->dMetals = 0.0; 
-	    fbEffects->dMIron = 0.0;
-	    fbEffects->dMOxygen = 0.0;
-	    }
-    }
 void snCalcUVFeedback(SN sn, SFEvent sfEvent,
 		      double dTime, /* current time in years */
 		      double dDelta, /* length of timestep (years) */
@@ -297,6 +275,13 @@ void snCalcUVFeedback(SN sn, SFEvent sfEvent,
     fbEffects->dMetals = 0.0;
     fbEffects->dMIron = 0.0;
     fbEffects->dMOxygen = 0.0;
+#ifdef MORE_METALS
+    fbEffects->dMC = 0.0;
+    fbEffects->dMN = 0.0;
+    fbEffects->dMNe = 0.0;
+    fbEffects->dMMg = 0.0;
+    fbEffects->dMSi = 0.0;
+#endif
     }
 
 #endif

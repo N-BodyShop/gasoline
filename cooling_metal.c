@@ -958,7 +958,6 @@ void clRateMetalTable(COOL *cl, RATE *Rate, double T, double rho, double Y_H, do
     /* convert unit to erg/g/sec, time a factor of nH^2/nH, also scale with metalicity */ 
   Rate->Cool_Metal = exp(Cool)*nH*Y_H/M_H * ZMetal/ZSOLAR; 
   Rate->Heat_Metal = exp(Heat)*nH*Y_H/M_H * ZMetal/ZSOLAR;   
-
   /* This addition to the metal cooling code adds a fit to the metal cooling table to be used when temperatures extend below the table range -- Charlotte C*/
 #ifndef NOCOOLTABLEFIT
   if (T < cl->MetalTMin || nH >= cl->MetalnHMax) {
@@ -970,7 +969,6 @@ void clRateMetalTable(COOL *cl, RATE *Rate, double T, double rho, double Y_H, do
     Rate->Heat_Metal = pow(10,Rate->Heat_Metal);
   }
 #endif
-  
 }
 
 /* Deprecated except for testing: use EdotInstant */
@@ -2351,6 +2349,21 @@ double CoolCodeEnergyToTemperature( COOL *cl, COOLPARTICLE *cp, double E, double
     return CoolEnergyToTemperature( cl, cp, E*cl->dErgPerGmUnit, ZMetal );
     }
 
+double CoolTemperatureToEnergy( COOL *cl, COOLPARTICLE *cp, double T, double ZMetal ) {
+    double Y_H, Y_He, Y_eMax, Y_H2;
+    clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
+#ifdef MOLECULARH
+    /*Total - electrons in H2 - half the number of atoms in H2 */
+    Y_H2 = cp->f_H2*Y_H + (cp->f_H2*Y_H)/2.0;
+#else
+    Y_H2 = 0;
+#endif
+    return clThermalEnergy(2*Y_H - cp->f_HI*Y_H - Y_H2
+		    + 3*Y_He - 2*cp->f_HeI*Y_He - 
+		    cp->f_HeII*Y_He + ZMetal/MU_METAL, T ) / 
+	cl->dErgPerGmUnit;
+    }
+
 /* Initialization Routines */
 
 void CoolTableReadInfo( COOLPARAM *CoolParam, int cntTable, int *nTableColumns, char *suffix )
@@ -2403,8 +2416,8 @@ void CoolTableRead( COOL *Cool, int nData, void *vData)
 void CoolDefaultParticleData( COOLPARTICLE *cp )
 {
  
-	cp->f_HI = 1.0;
-	cp->f_HeI = 1.0;
+	cp->f_HI = 0.75;
+	cp->f_HeI = 0.06;
 	cp->f_HeII = 0.0;
 }
 

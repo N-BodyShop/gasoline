@@ -24,9 +24,9 @@
 #endif
 
 /*
- ** The following sort of definition should really be in a global
- ** configuration header file -- someday...
- */
+** The following sort of definition should really be in a global
+** configuration header file -- someday...
+*/
 
 #if defined(GASOLINE) || defined(ROT_FRAME) || defined(SIMPLE_GAS_DRAG) || defined(GR_DRAG)
 #define NEED_VPRED
@@ -49,193 +49,216 @@
 #define INTERNAL_WARNINGS 1 /* 0=none,1=once,2=always */
 #define INTERNAL_WARNINGS_ONCE (INTERNAL_WARNINGS == 1)
 
-#define CID_TOP			0
-#define CID_PARTICLE	0
-#define CID_CELL		1
+#define CID_TOP                 0
+#define CID_PARTICLE    0
+#define CID_CELL                1
 
-#define ROOT		1
-#define LOWER(i)	(i<<1)
-#define UPPER(i)	((i<<1)+1)
-#define PARENT(i)	(i>>1)
-#define SIBLING(i) 	((i&1)?i-1:i+1)
-#define SETNEXT(i)\
-{\
-	while (i&1) i=i>>1;\
-	++i;\
-	}
+#define ROOT            1
+#define LOWER(i)        (i<<1)
+#define UPPER(i)        ((i<<1)+1)
+#define PARENT(i)       (i>>1)
+#define SIBLING(i)      ((i&1)?i-1:i+1)
+#define SETNEXT(i)				\
+    {						\
+        while (i&1) i=i>>1;			\
+        ++i;					\
+        }
 
-#define MAX_TIMERS		10
+#define MAX_TIMERS              10
 
 typedef struct particle {
-	int iOrder;
-	unsigned int iActive;  
-	int iRung;
-	int cpStart;
-	FLOAT fWeight;
-	FLOAT fMass;
-	FLOAT fSoft;
+    int iOrder;
+    unsigned int iActive;  
+    int iRung;
+    int cpStart;
+    FLOAT fWeight;
+    FLOAT fMass;
+    FLOAT fSoft;
 #ifdef CHANGESOFT
-	FLOAT fSoft0;
+    FLOAT fSoft0;
 #endif
-	FLOAT r[3];
-	FLOAT v[3];
-	FLOAT a[3];
-	FLOAT fPot;
-	FLOAT fBall2;
-	FLOAT fDensity;
-	FLOAT dt;		/* a time step suggestion */
-	FLOAT dtGrav;		/* suggested 1/dt^2 from gravity */
+    FLOAT r[3];
+    FLOAT v[3];
+    FLOAT a[3];
+    FLOAT fPot;
+    FLOAT fBall2;
+    FLOAT fDensity;
+    FLOAT dt;               /* a time step suggestion */
+    FLOAT dtNew;            /* SPH new dt estimate */
+    FLOAT dtGrav;           /* suggested 1/dt^2 from gravity */
 #ifdef SLIDING_PATCH
-	FLOAT dPy;		/* Canonical momentum for Hill eqn. */
+    FLOAT dPy;              /* Canonical momentum for Hill eqn. */
 #endif
 #ifdef SUPERCOOL
-	FLOAT vMean[3];
+    FLOAT vMean[3];
 #endif
 #ifdef COLORCODE
-	FLOAT fColor;
+    FLOAT fColor;
 #endif
-	FLOAT fBallMax;		/* SPH 2h Max value */
+    FLOAT fBallMax;         /* SPH 2h Max value */
 #ifdef GASOLINE
-	FLOAT c;		/* sound speed */
-	FLOAT u; 	        /* thermal energy  */ 
-	FLOAT uPred;		/* predicted thermal energy, Lx sink */
-	FLOAT PoverRho2;	/* P/rho^2, Ly sink */
-	FLOAT mumax;		/* sound speed like viscosity term, Lz sink */
-	FLOAT PdV;	        /* P dV heating (includes shocking) */
+    FLOAT c;                /* sound speed */
+    FLOAT u;                /* thermal energy  */ 
+    FLOAT uPred;            /* predicted thermal energy, Lx sink */
+    FLOAT PoverRho2;        /* P/rho^2, Ly sink */
+    FLOAT mumax;            /* sound speed like viscosity term, Lz sink */
+    FLOAT PdV;              /* P dV heating (includes shocking) */
 #ifdef PDVDEBUG
-	FLOAT PdVvisc;		/* P dV from shock (testing) */
-	FLOAT PdVpres;		/* P dV from adiabatic compression (testing) */
+    FLOAT PdVvisc;          /* P dV from shock (testing) */
+    FLOAT PdVpres;          /* P dV from adiabatic compression (testing) */
 #endif
-	FLOAT divv;		
+    FLOAT divv;             
 #ifdef DODVDS
-        FLOAT dvds;
+    FLOAT dvds;
 #endif
 #ifdef VARALPHA
-        FLOAT alpha;
-        FLOAT alphaPred;
+    FLOAT alpha;
+    FLOAT alphaPred;
 #endif
-        FLOAT curlv[3];         /* Note this is used as workspace and value is not preserved */
-	FLOAT BalsaraSwitch;    /* Balsara viscosity reduction */
+    FLOAT curlv[3];         /* Note this is used as workspace and value is not preserved */
+    FLOAT BalsaraSwitch;    /* Balsara viscosity reduction */
 #ifdef DIFFUSION
-        FLOAT diff;
-        FLOAT fMetalsDot;
-        FLOAT fMetalsPred;
+    FLOAT diff;
+    FLOAT fMetalsDot;
+    FLOAT fMetalsPred;
 #ifdef MASSDIFF
-        FLOAT fMassDot;
-        FLOAT fMass0;
+    FLOAT fMassDot;
+    FLOAT fMass0;
 #endif
 #endif
 #ifdef DENSITYU
-        FLOAT fDensityU;
+    FLOAT fDensityU;
 #endif
+#ifdef DRHODT
+    FLOAT fDensity_t;
+    FLOAT fDensity_PdV;
+    FLOAT fDensity_PdVcorr;
+    FLOAT fDivv_PdV;
+    FLOAT fDivv_PdVcorr;
+#endif
+    FLOAT fDivv_t;
+    FLOAT fDivv_Corrector;
 #ifdef SINKING
-        FLOAT rSinking0Unit[3];
-        FLOAT rSinking0Mag;
-        FLOAT vSinkingTang0Unit[3];
-        FLOAT vSinkingTang0Mag;
-        FLOAT vSinkingr0;
-        FLOAT fSinkingTime;  
-        FLOAT fTrueMass;
-        int iSinkingOnto;
+    FLOAT rSinking0Unit[3];
+    FLOAT rSinking0Mag;
+    FLOAT vSinkingTang0Unit[3];
+    FLOAT vSinkingTang0Mag;
+    FLOAT vSinkingr0;
+    FLOAT fSinkingTime;  
+    FLOAT fTrueMass;
+    int iSinkingOnto;
 #endif
 #ifdef SURFACEAREA
-        FLOAT fArea; 
+    FLOAT fArea; 
 #ifdef NORMAL
-        FLOAT normal[3];
+    FLOAT normal[3];
 #endif
 #endif
 #ifdef SHOCKTRACK
-        FLOAT aPres[3];
-        FLOAT ShockTracker;     /* Shock tracker */
-        FLOAT divrhov;          /* debug */
-        FLOAT gradrho[3];       /* debug */
+    FLOAT aPres[3];
+    FLOAT ShockTracker;     /* Shock tracker */
+    FLOAT divrhov;          /* debug */
+    FLOAT gradrho[3];       /* debug */
 #endif
-/*	FLOAT fDensSave;*/	/* Used by diagnostic DensCheck funcs */
+    /*	FLOAT fDensSave;*/	/* Used by diagnostic DensCheck funcs */
 #ifndef NOCOOLING
-	FLOAT uDot;			/* Rate of change of u -- for predicting u */
-	COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
+    FLOAT uDot;			/* Rate of change of u -- for predicting u */
+    COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
 #endif
-	FLOAT fMetals;	/* mass fraction in metals, a.k.a, Z */
-	FLOAT fTimeForm;
+    FLOAT fMetals;	/* mass fraction in metals, a.k.a, Z */
+    FLOAT fTimeForm;
 #ifdef SIMPLESF
-        FLOAT fMassStar;
-	FLOAT fESN;
-	int iGasOrder;		/* gas from which star formed */
+    FLOAT fMassStar;
+    FLOAT fESN;
+    int iGasOrder;		/* gas from which star formed */
 #endif
 #if defined(SIMPLESF) || defined(EXTRASINKDATA)
-	FLOAT rForm[3];		/* record pos and vel of star formation */
-	FLOAT vForm[3];
+    FLOAT rForm[3];		/* record pos and vel of star formation */
+    FLOAT vForm[3];
 #endif
 #ifdef STARFORM
-	FLOAT fESNrate;
-	FLOAT fMSN;
-	FLOAT fNSN;           
-	FLOAT fMOxygenOut;
-	FLOAT fMIronOut;
-	FLOAT fMFracOxygen;
-	FLOAT fMFracIron;
-#ifdef DIFFUSION
-        FLOAT fMFracOxygenDot;
-	FLOAT fMFracIronDot;
-        FLOAT fMFracOxygenPred;
-	FLOAT fMFracIronPred;
+#ifdef BIGSTARLOG
+    int nSmooth;
 #endif
-	FLOAT fSNMetals;
-	FLOAT fNSNtot;
-        FLOAT fTimeCoolIsOffUntil;
-	FLOAT fMassForm;	/* record original mass of star */
-	int iGasOrder;		/* gas from which star formed */
+    FLOAT fESNrate;
+    FLOAT fMSN;
+    FLOAT fNSN;           
+    FLOAT fMOxygenOut, fMFracOxygen;
+    FLOAT fMIronOut, fMFracIron;
+#ifdef MORE_METALS
+    FLOAT fMSiOut, fMFracSi;
+    FLOAT fMCOut, fMFracC;
+    FLOAT fMNOut, fMFracN;
+    FLOAT fMNeOut, fMFracNe;
+    FLOAT fMMgOut, fMFracMg;
+#endif
+#ifdef DIFFUSION
+    FLOAT fMFracOxygenDot, fMFracOxygenPred;
+    FLOAT fMFracIronDot, fMFracIronPred;
+#ifdef MORE_METALS
+    FLOAT fMFracMgDot, fMFracMgPred;
+    FLOAT fMFracCDot, fMFracCPred;
+    FLOAT fMFracNDot, fMFracNPred;
+    FLOAT fMFracNeDot, fMFracNePred;
+    FLOAT fMFracSiDot, fMFracSiPred;
+#endif
+#endif
+    FLOAT fSNMetals;
+    FLOAT fNSNtot;
+    FLOAT fTimeCoolIsOffUntil;
+    FLOAT fMassForm;	/* record original mass of star */
+    int iGasOrder;		/* gas from which star formed */
 #ifdef CHECKSF
-        FLOAT tOff;
-        FLOAT tcool;
-        FLOAT tdyn;
-        FLOAT ratiosounddyn;
-        FLOAT l_jeans;
-        int   small_jeans;
+    FLOAT tOff;
+    FLOAT tcool;
+    FLOAT tdyn;
+    FLOAT ratiosounddyn;
+    FLOAT l_jeans;
+    int   small_jeans;
 #endif
 #endif
 #endif  /* GASOLINE */
 #ifdef COLLISIONS
-	int iOrgIdx;		/* for tracking of mergers, aggregates etc. */
-	FLOAT w[3];			/* spin vector */
-	int iColor;			/* handy color tag */
-	int iDriftType;		/* either NORMAL or KEPLER */
-	double dtCol;		/* time to next encounter or collision */
-	int iOrderCol;		/* neighbour or collider iOrder */
-	double dtPrevCol;	/* time of previous collision */
-	int iPrevCol;		/* iOrder of previous collider */
-	int bTinyStep;		/* flag for imminent collapse */
-	FLOAT mindist2;		/* record min dist for all encounters */
+    int iOrgIdx;            /* for tracking of mergers, aggregates etc. */
+    FLOAT w[3];                     /* spin vector */
+    int iColor;                     /* handy color tag */
+    int iDriftType;         /* either NORMAL or KEPLER */
+    double dtCol;           /* time to next encounter or collision */
+    int iOrderCol;          /* neighbour or collider iOrder */
+    double dtPrevCol;       /* time of previous collision */
+    int iPrevCol;           /* iOrder of previous collider */
+    int bTinyStep;          /* flag for imminent collapse */
+    FLOAT mindist2;         /* record min dist for all encounters */
 #endif /* COLLISIONS */
 #ifdef SPECIAL_PARTICLES
-	int bGhostExclude;	/* particle not included in ghost cells */
+    int bGhostExclude;      /* particle not included in ghost cells */
 #endif /* SPECIAL_PARTICLES */ 
 #ifdef SLIDING_PATCH
     int bAzWrap;        /* flag set on azimuthal boundary wrap */
 #endif
 #ifdef SAND_PILE
-	int bStuck;
+    int bStuck;
 #endif
 #ifdef NEED_VPRED
-	FLOAT vPred[3];		/* predicted velocity (time centered) */
+    FLOAT vPred[3];         /* predicted velocity (time centered) */
 #endif
 #ifdef AGGS
-	/*
-	 ** Position of particle in principal frame of the aggregate
-	 ** (normally).  We temporarily store the COM frame position
-	 ** here during the process of computing the aggregate
-	 ** parameters.
-	 */
-	FLOAT r_agg[3];
+    /*
+    ** Position of particle in principal frame of the aggregate
+    ** (normally).  We temporarily store the COM frame position
+    ** here during the process of computing the aggregate
+    ** parameters.
+    */
+    FLOAT r_agg[3];
 #endif
 #ifdef RUBBLE_ZML
-	double dDustMass;	/* predicted mass increase from dust */
-	int iBin;				/* dust bin that planetesimal is in */
-	int bMayCollide;	/* true if planetesimal is predicted to
-						   collide with another planetesimal during
-						   the top step interval */
+    double dDustMass;       /* predicted mass increase from dust */
+    int iBin;                               /* dust bin that planetesimal is in */
+    int bMayCollide;        /* true if planetesimal is predicted to
+			       collide with another planetesimal during
+			       the top step interval */
 #endif
-} PARTICLE;
+    } PARTICLE;
 
 #define SINK_Lx(_a) (((PARTICLE *) (_a))->uPred)
 #define SINK_Ly(_a) (((PARTICLE *) (_a))->PoverRho2)
@@ -282,8 +305,8 @@ typedef struct particle {
 #define TYPE_OUTFLOW           (1<<18)
 
 /* Combination Masks */
-#define TYPE_ALLACTIVE			(TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
-#define TYPE_ALL				(TYPE_GAS|TYPE_DARK|TYPE_STAR)
+#define TYPE_ALLACTIVE                  (TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
+#define TYPE_ALL                                (TYPE_GAS|TYPE_DARK|TYPE_STAR)
 
 /* Type Macros */
 int TYPEQueryACTIVE      ( PARTICLE *a );
@@ -317,128 +340,149 @@ int TYPEClear( PARTICLE *a );
 #endif
 
 typedef struct chkParticle {
-	int iOrder;
-	FLOAT fMass;
-	FLOAT fSoft;
-	FLOAT r[3];
-	FLOAT v[3];
+    int iOrder;
+    FLOAT fMass;
+    FLOAT fSoft;
+    FLOAT r[3];
+    FLOAT v[3];
 #ifdef GASOLINE
-	FLOAT u;
+    FLOAT u;
 #ifdef STARSINK
-        FLOAT Lx,Ly,Lz;
+    FLOAT Lx,Ly,Lz;
 #endif
 #ifdef VARALPHA
-        FLOAT alpha;
+    FLOAT alpha;
 #endif
-	FLOAT fMetals;
+    FLOAT fMetals;
 #ifndef NOCOOLING
-	COOLPARTICLE CoolParticle;
+    COOLPARTICLE CoolParticle;
 #endif
-	FLOAT fTimeForm;
+    FLOAT fTimeForm;
 #ifdef STARFORM
-        FLOAT fTimeCoolIsOffUntil;
-	FLOAT fMassForm;	/* record original mass of star */
-	FLOAT fNSN;
-	FLOAT fMFracOxygen;
-	FLOAT fMFracIron;
-        int iGasOrder;
+    FLOAT fTimeCoolIsOffUntil;
+    FLOAT fMassForm;	/* record original mass of star */
+    FLOAT fNSN;
+    FLOAT fMFracOxygen;
+    FLOAT fMFracIron;
+#ifdef MORE_METALS
+    FLOAT fMFracC;
+    FLOAT fMFracN;
+    FLOAT fMFracNe;
+    FLOAT fMFracMg;
+    FLOAT fMFracSi;
+#endif
+    int iGasOrder;
 #endif
 #ifdef SIMPLESF
-	FLOAT fMassStar;
-	FLOAT rForm[3];		/* record pos and vel of star formation */
-	FLOAT vForm[3];
-	FLOAT fDenForm;
-	int iGasOrder;
+    FLOAT fMassStar;
+    FLOAT rForm[3];		/* record pos and vel of star formation */
+    FLOAT vForm[3];
+    FLOAT fDenForm;
+    int iGasOrder;
 #endif
 #ifdef SINKING
-        FLOAT rSinking0Unit[3];
-        FLOAT rSinking0Mag;
-        FLOAT vSinkingTang0Unit[3];
-        FLOAT vSinkingTang0Mag;
-        FLOAT vSinkingr0;
-        FLOAT fSinkingTime;  
-        FLOAT fTrueMass;
-        int iSinkingOnto; /* used for nSinkingOnto for sink itself */
+    FLOAT rSinking0Unit[3];
+    FLOAT rSinking0Mag;
+    FLOAT vSinkingTang0Unit[3];
+    FLOAT vSinkingTang0Mag;
+    FLOAT vSinkingr0;
+    FLOAT fSinkingTime;  
+    FLOAT fTrueMass;
+    int iSinkingOnto; /* used for nSinkingOnto for sink itself */
 #endif
 #endif
 #ifdef COLLISIONS
-	int iOrgIdx; /* added for version 7 */
-	FLOAT w[3];
-	int iColor;
+    int iOrgIdx; /* added for version 7 */
+    FLOAT w[3];
+    int iColor;
 #endif /* COLLISIONS */
-	} CHKPART;
+    } CHKPART;
 
 typedef struct bndBound {
-	FLOAT fMin[3];
-	FLOAT fMax[3];
-	} BND;
+    FLOAT fMin[3];
+    FLOAT fMax[3];
+    } BND;
+
+typedef struct bndDt {
+    FLOAT vMin[3],vMax[3];
+    FLOAT cMax,drMax2;
+    } BNDDT;
+
+#define DIAGDIST2(fDist2,rMin,rMax) {			\
+	FLOAT DD_dx,DD_dy,DD_dz;			\
+	DD_dx = (rMax)[0] - (rMin)[0];			\
+	DD_dy = (rMax)[1] - (rMin)[1];			\
+	DD_dz = (rMax)[2] - (rMin)[2];			\
+	fDist2 = DD_dx*DD_dx+DD_dy*DD_dy+DD_dz*DD_dz; }
 
 struct pkdCalcCellStruct {
-	double Qxx,Qyy,Qzz,Qxy,Qxz,Qyz;
-	/*
-	 ** Reduced multipole moments for l>2 !!!
-	 */
-	double Oxxx,Oxyy,Oxxy,Oyyy,Oxxz,Oyyz,Oxyz;
-	double Oxzz, Oyzz, Ozzz;
-	double Hxxxx,Hxyyy,Hxxxy,Hyyyy,Hxxxz,Hyyyz,Hxxyy,Hxxyz,Hxyyz;
-	double Hxxzz, Hxyzz, Hxzzz, Hyyzz, Hyzzz, Hzzzz;
-	double Bmax,B2,B3,B4,B5,B6;
+    double Qxx,Qyy,Qzz,Qxy,Qxz,Qyz;
+    /*
+    ** Reduced multipole moments for l>2 !!!
+    */
+    double Oxxx,Oxyy,Oxxy,Oyyy,Oxxz,Oyyz,Oxyz;
+    double Oxzz, Oyzz, Ozzz;
+    double Hxxxx,Hxyyy,Hxxxy,Hyyyy,Hxxxz,Hyyyz,Hxxyy,Hxxyz,Hxyyz;
+    double Hxxzz, Hxyzz, Hxzzz, Hyyzz, Hyzzz, Hzzzz;
+    double Bmax,B2,B3,B4,B5,B6;
 #ifdef  RADIATIVEBOX
-        double fLW;
-        double gmass;
-        double gmom;
-        FLOAT cLumLW[3];
+    double fLW;
+    double gmass;
+    double gmom;
+    FLOAT cLumLW[3];
 #endif
-	};
+    };
+
 
 typedef struct kdNode {
-	int iDim;
-	double fSplit;
-	BND bnd;
-	BND bndBall;	/* Bound including fBall*(1+changemax) */
-	int pLower;		/* also doubles as thread id for the LTT */
-	int pUpper;		/* pUpper < 0 indicates no particles in tree! */
-	int iLower;
-	int iUpper;
-	double fMass;
-	double fSoft;
-	FLOAT r[3];
-	struct pkdCalcCellStruct mom;
-	double fOpen2;
-	} KDN;
+    int iDim;
+    double fSplit;
+    BND bnd;
+    BND bndBall;	/* Bound including fBall*(1+changemax) */
+    BNDDT bndDt;
+    int pLower;		/* also doubles as thread id for the LTT */
+    int pUpper;		/* pUpper < 0 indicates no particles in tree! */
+    int iLower;
+    int iUpper;
+    double fMass;
+    double fSoft;
+    FLOAT r[3];
+    struct pkdCalcCellStruct mom;
+    double fOpen2;
+    } KDN;
 
 typedef struct ilPart {
-	double m,h;
-	double x,y,z;
-	} ILP;
+    double m,h;
+    double x,y,z;
+    } ILP;
 
 typedef struct ilCellSoft {
-	double m,h;
-	double x,y,z;
-	double xx,yy,zz,xy,xz,yz;
-	} ILCS;
+    double m,h;
+    double x,y,z;
+    double xx,yy,zz,xy,xz,yz;
+    } ILCS;
 
 /*
- ** moment tensor components.
- */
+** moment tensor components.
+*/
 typedef struct ilCellNewt {
-	double m;
-	double x,y,z;
-	double xx,yy,xy,xz,yz;
-	double zz;
-	double xxx,xyy,xxy,yyy,xxz,yyz,xyz;
-	double xzz,yzz,zzz;
-	double xxxx,xyyy,xxxy,yyyy,xxxz,yyyz,xxyy,xxyz,xyyz;
-	double xxzz,xyzz,xzzz,yyzz,yzzz,zzzz;
-	} ILCN;
+    double m;
+    double x,y,z;
+    double xx,yy,xy,xz,yz;
+    double zz;
+    double xxx,xyy,xxy,yyy,xxz,yyz,xyz;
+    double xzz,yzz,zzz;
+    double xxxx,xyyy,xxxy,yyyy,xxxz,yyyz,xxyy,xxyz,xyyz;
+    double xxzz,xyzz,xzzz,yyzz,yzzz,zzzz;
+    } ILCN;
 
 /* IBM brain damage */
 #undef hz
 
 typedef struct ewaldTable {
-	double hx,hy,hz;
-	double hCfac,hSfac;
-	} EWT;
+    double hx,hy,hz;
+    double hCfac,hSfac;
+    } EWT;
 
 typedef struct sfEvent 		/* Holds statistics of the star
 				   formation event */
@@ -451,6 +495,10 @@ typedef struct sfEvent 		/* Holds statistics of the star
     double massForm;
     double rhoForm;
     double TForm;
+#ifdef BIGSTARLOG
+    double phiForm;
+    int nSmoothForm;
+#endif
 #ifdef COOLING_MOLECULARH
     double H2fracForm;
 #endif
@@ -473,7 +521,7 @@ enum SinkEventType {
     SINK_EVENT_ACCRETE,
     SINK_EVENT_ACCRETE_UPDATE,
     SINK_EVENT_MERGER
-    }; 
+}; 
 
 typedef struct sinkEvent 	/* Holds statistics of the sink/accretion/merger
 			           formation event */
@@ -502,90 +550,90 @@ typedef struct sinkLog
     } SINKLOG;
 
 typedef struct pkdContext {
-	MDL mdl;
-	int idSelf;
-	int nThreads;
-	int nStore;
-	int nRejects;
-	int nLocal;
-	int nActive;
-	int nTreeActive;
-	int nSmoothActive;
-	int nDark;
-	int nGas;
-	int nStar;
-	int nMaxOrderDark;
-	int nMaxOrderGas;
-        int nMaxOrder;
-	int nBucket;
-	int nLevels;
-	int nSplit;
-	int nNodes;
-	int iExtraBucket;
-	int iOrder;
-	int iFreeCell;
-	int iRoot;
-	FLOAT fPeriod[3];
-	FLOAT dxInflow, dxOutflow;
-	int *piLeaf;
-	KDN *kdTop;
-	KDN *kdNodes;
-	PARTICLE *pStore;
-        double duTFac;
-        double dvFac;
-	/*
-	 ** gravitational interaction lists
-	 */
-	int nMaxPart;
-	int nMaxCellSoft;
-	int nMaxCellNewt;
-	int nPart;
-	int nCellSoft;
-	int nCellNewt;
-	int nSqrtTmp;
-	ILP *ilp;
-	ILCS *ilcs;
-	ILCN *ilcn;
-	double *sqrttmp;
-	double *d2a;
-	/*
-	 ** Ewald summation setup.
-	 */
-	ILCN ilcnRoot;
-	int nMaxEwhLoop;
-	int nEwhLoop;
-	EWT *ewt;
-	/*
-	 ** Timers stuff.
-	 */
-	struct timer {
-		double sec;
-		double stamp;
-		double system_sec;
-		double system_stamp;
-		double wallclock_sec;
-		double wallclock_stamp;
-		int iActive;
-		} ti[MAX_TIMERS];
+    MDL mdl;
+    int idSelf;
+    int nThreads;
+    int nStore;
+    int nRejects;
+    int nLocal;
+    int nActive;
+    int nTreeActive;
+    int nSmoothActive;
+    int nDark;
+    int nGas;
+    int nStar;
+    int nMaxOrderDark;
+    int nMaxOrderGas;
+    int nMaxOrder;
+    int nBucket;
+    int nLevels;
+    int nSplit;
+    int nNodes;
+    int iExtraBucket;
+    int iOrder;
+    int iFreeCell;
+    int iRoot;
+    FLOAT fPeriod[3];
+    FLOAT dxInflow, dxOutflow;
+    int *piLeaf;
+    KDN *kdTop;
+    KDN *kdNodes;
+    PARTICLE *pStore;
+    double duTFac;
+    double dvFac;
+    /*
+    ** gravitational interaction lists
+    */
+    int nMaxPart;
+    int nMaxCellSoft;
+    int nMaxCellNewt;
+    int nPart;
+    int nCellSoft;
+    int nCellNewt;
+    int nSqrtTmp;
+    ILP *ilp;
+    ILCS *ilcs;
+    ILCN *ilcn;
+    double *sqrttmp;
+    double *d2a;
+    /*
+    ** Ewald summation setup.
+    */
+    ILCN ilcnRoot;
+    int nMaxEwhLoop;
+    int nEwhLoop;
+    EWT *ewt;
+    /*
+    ** Timers stuff.
+    */
+    struct timer {
+	double sec;
+	double stamp;
+	double system_sec;
+	double system_stamp;
+	double wallclock_sec;
+	double wallclock_stamp;
+	int iActive;
+	} ti[MAX_TIMERS];
 #ifdef GASOLINE
-	/* 
-	 ** Cooling 
-	 */
+    /* 
+    ** Cooling 
+    */
 #ifndef NOCOOLING
-	COOL *Cool;
+    COOL *Cool;
 #endif
     STARLOG starLog;
 #endif
     SINKLOG sinkLog;
 #ifdef SLIDING_PATCH
-  /*
-  ** Info needed for sliding patch model...
-  */
-  double dTime;
-  PATCH_PARAMS *PP;
+    /*
+    ** Info needed for sliding patch model...
+    */
+    double dTime;
+    PATCH_PARAMS *PP;
 #endif
-        ROTBAR  rotbar;
-	} * PKD;
+    ROTBAR  rotbar;
+    } * PKD;
 
 int pkdIsGas(PKD,PARTICLE *);
 #define pkdIsGas( pkd, pTMP) TYPETest( (pTMP), TYPE_GAS )
@@ -600,46 +648,46 @@ int pkdIsStarByOrder(PKD pkd,PARTICLE *p);
 
 
 typedef struct CacheStatistics {
-	double dpNumAccess;
-	double dpMissRatio;
-	double dpCollRatio;
-	double dpMinRatio;
-	double dcNumAccess;
-	double dcMissRatio;
-	double dcCollRatio;
-	double dcMinRatio;
-	} CASTAT;
+    double dpNumAccess;
+    double dpMissRatio;
+    double dpCollRatio;
+    double dpMinRatio;
+    double dcNumAccess;
+    double dcMissRatio;
+    double dcCollRatio;
+    double dcMinRatio;
+    } CASTAT;
 
 /* JW: */
 
 #define GASMODEL_UNSET -1
 enum GasModel {
-	GASMODEL_ADIABATIC, 
-	GASMODEL_ISOTHERMAL, 
-	GASMODEL_COOLING, 
-	GASMODEL_GLASS
-	}; 
+    GASMODEL_ADIABATIC, 
+    GASMODEL_ISOTHERMAL, 
+    GASMODEL_COOLING, 
+    GASMODEL_GLASS
+}; 
 
 #ifdef GLASS
 struct GlassData {
-  /* Glass */
-	double dGlassPoverRhoL;
-	double dGlassPoverRhoR;
-	double dGlassxL;
-	double dGlassxR;
-	double dxBoundL;
-	double dxBoundR;
-        double dGamma;
+    /* Glass */
+    double dGlassPoverRhoL;
+    double dGlassPoverRhoR;
+    double dGlassxL;
+    double dGlassxR;
+    double dxBoundL;
+    double dxBoundR;
+    double dGamma;
     };
 #endif
 
 
 #define PKD_ORDERTEMP	256
 
-#define pkdRoot(iCell,id)\
-{\
-	id = -1;\
-	iCell = ROOT;\
+#define pkdRoot(iCell,id)			\
+    {						\
+	id = -1;				\
+	iCell = ROOT;				\
 	}
 
 #define pkdIsRoot(iCell,id)		((id==-1)?((iCell==ROOT)?1:0):0)
@@ -651,47 +699,47 @@ struct GlassData {
  * check if the root cell is a bucket.
  */
 
-#define pkdLower(pkd,iCell,id)\
-{\
-	if (id == -1) {\
-		id = pkd->kdTop[iCell].pLower;\
-		if (id != -1) iCell = ROOT;\
-		else iCell = LOWER(iCell);\
-		}\
-	else iCell = LOWER(iCell);\
+#define pkdLower(pkd,iCell,id)			\
+    {						\
+	if (id == -1) {				\
+	    id = pkd->kdTop[iCell].pLower;	\
+	    if (id != -1) iCell = ROOT;		\
+	    else iCell = LOWER(iCell);		\
+	    }					\
+	else iCell = LOWER(iCell);		\
 	}
 
-#define pkdUpper(pkd,iCell,id)\
-{\
-	if (id == -1) {\
-		id = pkd->kdTop[iCell].pLower;\
-		if (id != -1) iCell = ROOT;\
-		else iCell = UPPER(iCell);\
-		}\
-	else iCell = UPPER(iCell);\
+#define pkdUpper(pkd,iCell,id)			\
+    {						\
+	if (id == -1) {				\
+	    id = pkd->kdTop[iCell].pLower;	\
+	    if (id != -1) iCell = ROOT;		\
+	    else iCell = UPPER(iCell);		\
+	    }					\
+	else iCell = UPPER(iCell);		\
 	}
 
-#define pkdParent(pkd,iCell,id)\
-{\
-	iCell = PARENT(iCell);\
-	if (iCell == ROOT) {\
-		if (id != -1) {\
-			iCell = pkd->piLeaf[id];\
-			id = -1;\
-			}\
-		}\
+#define pkdParent(pkd,iCell,id)			\
+    {						\
+	iCell = PARENT(iCell);			\
+	if (iCell == ROOT) {			\
+	    if (id != -1) {			\
+		iCell = pkd->piLeaf[id];	\
+		id = -1;			\
+		}				\
+	    }					\
 	}
 
-#define pkdNext(pkd,iCell,id)\
-{\
-	SETNEXT(iCell);\
-	if (iCell == ROOT) {\
-		if (id != -1) {\
-			iCell = pkd->piLeaf[id];\
-			id = -1;\
-			SETNEXT(iCell);\
-			}\
-		}\
+#define pkdNext(pkd,iCell,id)			\
+    {						\
+	SETNEXT(iCell);				\
+	if (iCell == ROOT) {			\
+	    if (id != -1) {			\
+		iCell = pkd->piLeaf[id];	\
+		id = -1;			\
+		SETNEXT(iCell);			\
+		}				\
+	    }					\
 	}
 
 double pkdGetTimer(PKD,int);
@@ -710,7 +758,7 @@ void pkdPhysicalSoft(PKD pkd,double, double, int);
 void pkdPreVariableSoft(PKD pkd,int iVariableSoftType);
 void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSoftType);
 #endif
-void pkdCalcBound(PKD,BND *,BND *,BND *,BND *);
+void pkdCalcBound(PKD,BND *,BND *,BND *,BND *, BNDDT *);
 void pkdGasWeight(PKD);
 void pkdRungDDWeight(PKD, int, double);
 int pkdWeight(PKD,int,FLOAT,int,int,int,int *,int *,FLOAT *,FLOAT *);
@@ -746,10 +794,10 @@ void pkdBuildLocal(PKD,int,int,double,int,int,int,KDN *);
 void pkdBuildBinary(PKD,int,int,double,int,int,int,KDN *);
 void pkdThreadTree(PKD pkd,int iCell,int iNext);
 void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder, int bEwald,int iEwOrder,
-	   double fEwCut,double fEwhCut, int bComove, double dRhoFac,
-	   int bDoSun,double dSunSoft, double *aSun,int *nActive,
-	   double *pdPartSum,double *pdCellSum,double *pdSoftSum,CASTAT *pcs,
-	   double *pdFlop);
+		double fEwCut,double fEwhCut, int bComove, double dRhoFac,
+		int bDoSun,double dSunSoft, double *aSun,int *nActive,
+		double *pdPartSum,double *pdCellSum,double *pdSoftSum,CASTAT *pcs,
+		double *pdFlop);
 void pkdCalcEandL(PKD,double *,double *,double *,double []);
 void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,int,FLOAT,double);
@@ -767,14 +815,14 @@ void pkdDistribRoot(PKD,struct ilCellNewt *);
 void pkdSwapAll(PKD pkd, int idSwap);
 double pkdMassCheck(PKD pkd);
 void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, double *dTotMetals, 
-                    double *dTotOx, double *dTotFe, double *dTotEnergy);
+			      double *dTotOx, double *dTotFe, double *dTotEnergy);
 void pkdSetRung(PKD pkd, int iRung);
 void pkdBallMax(PKD pkd, int iRung, int bGreater, double ddHonHLimit);
 int pkdActiveRung(PKD pkd, int iRung, int bGreater);
 int pkdCurrRung(PKD pkd, int iRung);
 void pkdGravStep(PKD pkd, double dEta);
 void pkdAccelStep(PKD pkd, double dEta, double dVelFac, double
-				  dAccFac, int bDoGravity, int bEpsAcc, int bSqrtPhi, double dhMinOverSoft);
+		  dAccFac, int bDoGravity, int bEpsAcc, int bSqrtPhi, double dhMinOverSoft);
 void pkdDensityStep(PKD pkd, double dEta, double dRhoFac);
 
 int pkdOneParticleDtToRung( int iRung,double dDelta,double dt);
@@ -803,24 +851,24 @@ int pkdSetTypeFromFile(PKD pkd, int iSetMask, int biGasOrder, char *file, int *p
 void pkdSetParticleTypes(PKD pkd, int nSuperCool);
 
 struct SoughtParticle {
-  int iOrder;
-  int iActive; 
-  double x,y,z,m;
-};
+    int iOrder;
+    int iActive; 
+    double x,y,z,m;
+    };
 
 int pkdSoughtParticleList(PKD pkd, int iTypeSought, int nMax, int *n, struct SoughtParticle *sp);
 
 void pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *sp);
 
 void pkdColNParts(PKD pkd, int *pnNew, int *nAddGas, int *nAddDark,
-	     int *nAddStar, int *nDelGas, int *nDelDark, int *nDelStar);
+		  int *nAddStar, int *nDelGas, int *nDelDark, int *nDelStar);
 
 void pkdNewOrder(PKD pkd, int nStartGas, int nStarDark, int nStartStar);
 void pkdMoveParticle(PKD pkd, double *xcenter,double *xoffset,int iOrder);
 
 
 struct outGetNParts { 
-	int n;
+    int n;
     int nGas;
     int nDark;
     int nStar;
@@ -831,7 +879,7 @@ struct outGetNParts {
 
 void pkdGetNParts(PKD pkd, struct outGetNParts *out );
 void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int, int nMaxOrderGas,
-				  int nMaxOrderDark);
+		  int nMaxOrderDark);
 void pkdSunIndirect(PKD,double *,int,double,double);
 void pkdLogHalo(PKD);
 void pkdHernquistSpheroid(PKD pkd);
@@ -839,7 +887,6 @@ void pkdNFWSpheroid(PKD pkd, double M_200, double r_200, double c, double dSoft)
 void pkdElliptical(PKD pkd, int bEllipticalDarkNFW);
 void pkdHomogSpheroid(PKD pkd);
 void pkdBodyForce(PKD pkd, double dConst);
-void pkdChrisDiskForce(PKD pkd, double Vc, double R);
 void pkdMiyamotoDisk(PKD pkd);
 void pkdTimeVarying(PKD pkd,double dTime);
 #ifdef ROT_FRAME
@@ -874,9 +921,9 @@ void pkdRandomVelocities(PKD pkd, double dMaxVL, double dMaxVR);
 
 #ifdef SLIDING_PATCH
 double SHEAR(int,double,PATCH_PARAMS *);
-#define SHEAR(ix,t,pp)\
-	((ix) < 0 ? fmod(0.5*(pp)->dLength - 1.5*(ix)*(pp)->dOrbFreq*(pp)->dWidth*(t),(pp)->dLength) - 0.5*(pp)->dLength:\
-	 (ix) > 0 ? 0.5*(pp)->dLength - fmod(0.5*(pp)->dLength + 1.5*(ix)*(pp)->dOrbFreq*(pp)->dWidth*(t),(pp)->dLength): 0.0)
+#define SHEAR(ix,t,pp)							\
+    ((ix) < 0 ? fmod(0.5*(pp)->dLength - 1.5*(ix)*(pp)->dOrbFreq*(pp)->dWidth*(t),(pp)->dLength) - 0.5*(pp)->dLength: \
+     (ix) > 0 ? 0.5*(pp)->dLength - fmod(0.5*(pp)->dLength + 1.5*(ix)*(pp)->dOrbFreq*(pp)->dWidth*(t),(pp)->dLength): 0.0)
 void pkdPatch(PKD pkd);
 int pkdRandAzWrap(PKD pkd);
 #endif
@@ -890,7 +937,7 @@ void pkdNextEncounter(PKD pkd, double *dt);
 void pkdMarkEncounters(PKD pkd, double dt);
 #ifdef SIMPLE_GAS_DRAG
 void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
-					  double dTime);
+		      double dTime);
 #endif
 #ifdef OLD_KEPLER/*DEBUG*/
 int pkdLowerQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);
@@ -905,7 +952,7 @@ void pkdMassInR(PKD pkd, double R, double *pdMass, FLOAT *com);
 #ifdef NEED_VPRED
 #ifdef GASOLINE
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,
-				  int iGasModel, double z, double duDotLimit,double);
+		  int iGasModel, double z, double duDotLimit,double);
 #else
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
 #endif

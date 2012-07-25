@@ -144,12 +144,8 @@ int msrSetTypeFromFile(MSR msr, char *file, int type);
 double msrReadTipsy(MSR);
 void msrCreateAllStepZeroOutputList(MSR msr, int *iNumOutputs, int OutputList[]);
 void msrCreateGasStepZeroOutputList(MSR msr, int *iNumOutputs, int OutputList[]);
-void msrInitOutputLists(MSR msr);
-void msrSelectOutputList(MSR msr, int (*nOutputList), int OutputList[], int, int bOutTime, int *pbDensitySmooth);
-void msrCreateOutputListFromString(MSR msr,int (*pnOutputList), int OutputList[], char *achGas, char *achDark, char *achStar, int *pbDensitySmooth); 
-void msrCreateOutputList(MSR msr, int *iNumOutputs, int OutputList[]);
-  void msrCreateAllOutputList(MSR msr, int *iNumOutputs, int OutputList[]);
-  void msrCreateGasOutputList(MSR msr, int *iNumOutputs, int OutputList[]);
+void msrCreateAllOutputList(MSR msr, int *iNumOutputs, int OutputList[]);
+void msrCreateGasOutputList(MSR msr, int *iNumOutputs, int OutputList[]);
 void msrWriteOutputs(MSR msr, char *achFile, int *OutputList, int iNumOutputs, double dTime);
 void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int iNumOutputs,
 #ifdef COLLISIONS
@@ -172,9 +168,11 @@ void msrOutVector(MSR,char *,int);
 void msrGetGasPressure(MSR, double);
 void msrGetDensityU(MSR);
 void msrLowerSoundSpeed(MSR);
+void msrSmoothFcnParam(MSR msr, double dTimem, SMF *psmf);
 void msrSmooth(MSR,double,int,int);
 void msrReSmooth(MSR,double,int,int);
 void msrMarkSmooth(MSR,double,int,int);
+void msrDtSmooth(MSR msr,double dTime,int bSymmetric);
 void msrUpdateSoft(MSR,double);
 void msrGravity(MSR,double,int,int *,double *,double *,double *,int *);
 void msrCalcEandL(MSR,int,double,double *,double *,double *,double *,double *);
@@ -188,6 +186,7 @@ void msrReadOuts(MSR,double);
 double msrTime(void);
 double msrMassCheck(MSR,double,char *);
 void msrMassMetalsEnergyCheck(MSR,double *, double *, double *, double *, double *,char *);
+void msrMinMaxPot(MSR msr,double *dMinPot,  double *dMaxPot);
 void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta, 
 				   double *pdMultiEff);
 void msrTopStepKDK(MSR msr,
@@ -256,8 +255,6 @@ void msrAddDelParticles(MSR msr);
 void msrOutputBlackHoles(MSR msr, double dTime);
 void msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung);
 void msrFormSinks(MSR msr, double dTime, double dDelta, int iKickRung);
-void msrInitStarLog(MSR msr);
-void msrFlushStarLog(MSR msr);
 void msrInitSinkLog(MSR msr);
 void msrFlushSinkLog(MSR msr);
 void msrGravStep(MSR msr, double dTime);
@@ -300,7 +297,7 @@ void msrUpdateuDot(MSR,double,double,int);
 void msrUpdateShockTracker(MSR,double);
 void msrInitSph(MSR,double);
 int msrSphCurrRung(MSR msr, int iRung, int bGreater);
-void msrSphStep(MSR msr, double dTime);
+void msrSphStep(MSR msr, double dTime, int iKickRung);
 void msrSphViscosityLimiter(MSR msr, double dTime);
 #ifndef NOCOOLING
 void msrInitCooling(MSR msr);

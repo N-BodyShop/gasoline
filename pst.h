@@ -125,6 +125,7 @@ enum pst_service {
       PST_SWAPALL,
       PST_MASSCHECK,
       PST_MASSMETALSENERGYCHECK,
+      PST_MINMAXPOT,
       PST_ACTIVETYPEORDER,
       PST_ACTIVEORDER,
       PST_SETRUNG,
@@ -149,6 +150,7 @@ enum pst_service {
 	  PST_COOLUSINGPARTICLELIST,
 	  PST_SETTYPEFROMFILE,
       PST_MARKSMOOTH,
+      PST_DTSMOOTH,
       PST_RESMOOTH,
       PST_INITACCEL,
       PST_MODIFYACCEL,
@@ -406,7 +408,6 @@ void pstOutArray(PST,void *,int,void *,int *);
 struct outNC {
     float min[3][3];
     float max[3][3];
-    int nOut;
     };
 void pstOutNCVector(PST,void *,int,void *,int *);
 
@@ -569,9 +570,6 @@ struct inGravExternal {
 	int bHomogSpheroid;
 	int bBodyForce;
 	double dBodyForceConst;
-	int bChrisDisk;
-	double dChrisDiskVc;
-	double dChrisDiskR;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
@@ -966,7 +964,6 @@ struct inoutParticleList {
 void pstSoughtParticleList(PST,void *,int,void *,int *);
 void pstCoolUsingParticleList(PST,void *,int,void *,int *);
 
-/* PST_RESMOOTH */
 struct inMarkSmooth {
 	int nSmooth;
 	int bPeriodic;
@@ -977,6 +974,19 @@ struct inMarkSmooth {
 	};
 void pstMarkSmooth(PST,void *,int,void *,int *);
 
+struct inDtSmooth {
+	int nSmooth;
+	int bPeriodic;
+	int bSymmetric;
+	int iSmoothType;
+	SMF smf;
+	};
+struct outDtSmooth {
+    double dtMin;
+    };
+void pstDtSmooth(PST,void *,int,void *,int *);
+
+/* PST_RESMOOTH */
 struct inReSmooth {
 	int nSmooth;
 	int bPeriodic;
@@ -1632,6 +1642,17 @@ struct inUpdateShockTracker {
 void pstUpdateShockTracker(PST,void *,int,void *,int *);
 
 #ifdef STARFORM
+struct inMinMaxPot
+{
+    struct stfmContext stfm;
+    };
+
+struct outMinMaxPot {
+    double dMinPot;
+    double dMaxPot;
+    };
+void pstMinMaxPot(PST,void *,int,void *,int *);
+
 /* PST_FORMSTARS */
 struct inFormStars
 {

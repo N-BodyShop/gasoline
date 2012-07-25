@@ -47,6 +47,9 @@ void stfmInitialize(STFM *pstfm)
     stfm->dBHFormProb = 0.0; /* new BH params */
     stfm->bBHForm = 0;
     stfm->dInitBHMass = 0.0;
+    stfm->dMaxBHMetallicity = 0.0;
+    stfm->dMinPot = 0.0;
+    stfm->dMaxPot = 0.0;
     *pstfm = stfm;
     }
 
@@ -89,6 +92,10 @@ void pkdStarLogFlush(PKD pkd, char *pszFileName)
 	xdr_double(&xdrs, &(pSfEv->massForm));
 	xdr_double(&xdrs, &(pSfEv->rhoForm));
 	xdr_double(&xdrs, &(pSfEv->TForm));
+#ifdef BIGSTARLOG
+	xdr_double(&xdrs, &(pSfEv->phiForm));
+	xdr_int(&xdrs, &(pSfEv->nSmoothForm));
+#endif
 #ifdef COOLING_MOLECULARH
 	xdr_double(&xdrs, &(pSfEv->H2fracForm));
 #endif
@@ -99,6 +106,38 @@ void pkdStarLogFlush(PKD pkd, char *pszFileName)
     pkd->starLog.nOrdered = 0;
     }
     
+void pkdMinMaxPot(PKD pkd, STFM stfm, double *dMinPot, double *dMaxPot) 
+{
+    PARTICLE *p;
+    int i, bHasLowMet;
+    double dLowMetMinPot=FLOAT_MAXVAL;
+    double dLowMetMaxPot=-FLOAT_MAXVAL;
+    *dMinPot=FLOAT_MAXVAL;
+    *dMaxPot=-FLOAT_MAXVAL;
+    
+    for (i=0;i<pkdLocal(pkd);++i) {
+	p = &pkd->pStore[i];
+	if ( TYPETest(p, TYPE_GAS) ){
+	    if(p->fDensity >= stfm->dPhysDenMin && /* BH form criteria */
+		p->fMetals <= stfm->dMaxBHMetallicity) {
+	    /*		    dLowMetMinPot = (p->fPot < dLowMetMinPot) ? 
+			p->fPot : dLowMetMinPot;
+		    bHasLowMet=1;
+		    }*/
+		*dMinPot = (p->fPot < *dMinPot) ? 
+		    p->fPot : *dMinPot;
+		*dMaxPot = (p->fPot > *dMaxPot) ? 
+		    p->fPot : *dMaxPot;
+		} /* dense */
+	    } /* gas */
+	} /* particle for loop */
+    /* don't think we'll be needing this if we use the 
+    if (bHasLowMet && (dLowMetMinPot - *dMinPot) < 0.5*(*dMaxPot - *dMinPot)){
+	    *dMinPot = dLowMetMinPot;
+	}
+    */
+    }
+
 /*
      taken from TREESPH and modified greatly.
      Uses the following formula for the star formation rate:
@@ -124,11 +163,17 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     double dCosmoFac = dExp*dExp*dExp;
     PARTICLE starp;
     double dMprob;
+    double dBHFormProb;
     double dDeltaM;
     double l_jeans2;
     int small_jeans = 0;
     int j;
     int newbh; /* tracking whether a new seed BH has formed JMB  */
+#ifdef BIGSTARLOG
+    int nSmooth = p->nSmooth;
+    double dPot = p->fPot;
+#endif
+    
  #ifdef COOLING_MOLECULARH
     double correL = 1.0;/*correlation length used for H2 shielding, CC*/
     double yH;
@@ -264,6 +309,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
        p->fDensity/dCosmoFac < stfm->dPhysDenMin)
 	return;
 
+#ifndef NOSCHMIDT
     if(tcool < 0.0 || tdyn > tcool || T < stfm->dTempMax)
 	tform = tdyn;
     else
@@ -308,7 +354,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 
     if(dMprob*p->fMass < dDeltaM*(rand()/((double) RAND_MAX)))
 	return;
-
+#endif /* NOSCHMIDT */
     /* 
      * Note on number of stars formed:
      * n = log(dMinGasMass/dInitMass)/log(1-dStarEff) = max no. stars 
@@ -327,36 +373,38 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     starp.fBallMax = 0.0;
     starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in
 				       NewParticle() */
-
+#ifdef NOSCHMIDT
+    if (stfm->dInitStarMass > 0) 
+        dDeltaM = stfm->dInitStarMass;
+    else
+	dDeltaM=p->fMass;
+#endif
     /* Seed BH Formation JMB 1/19/09*/
      newbh = 0;  /* BH tracker */
-     if (stfm->bBHForm == 1 && starp.fMetals <= 1.0e-6 && stfm->dBHFormProb > (rand()/((double) RAND_MAX ))) {
-       starp.fTimeForm = -1.0*starp.fTimeForm;
-       newbh = 1;      
-       /* Decrement mass of particle.*/
-       if (stfm->dInitBHMass > 0) 
-	 dDeltaM = stfm->dInitBHMass;  /* reassigning dDeltaM to be initBHmass JMB 6/16/09 */
-       else 
-	 dDeltaM = p->fMass*stfm->dStarEff;
-       /* No negative or very tiny masses please! */
-       if ( (dDeltaM > p->fMass) ) dDeltaM = p->fMass;
-       p->fMass -= dDeltaM;
-       assert(p->fMass >= 0.0);
-       starp.fMass = dDeltaM;
-       starp.fMassForm = dDeltaM;
+     if (stfm->bBHForm == 1 && starp.fMetals <= 1.0e-6 ){
+	 dBHFormProb = stfm->dBHFormProb*(exp((stfm->dMaxPot-starp.fPot)/(stfm->dMaxPot-stfm->dMinPot))-1)/(exp(1)-1);
+	 if (dBHFormProb > (rand()/((double) RAND_MAX ))) {
+	     starp.fTimeForm = -1.0*starp.fTimeForm;
+	     newbh = 1;      
+	     /* Decrement mass of particle.  Always mass of gas
+		particle. */
+	     dDeltaM = p->fMass;
+	     }
 	 }
-     else {
-       p->fMass -= dDeltaM;
-       assert(p->fMass >= 0.0);
-       starp.fMass = dDeltaM;
-       starp.fMassForm = dDeltaM;
-     }
 
+     p->fMass -= dDeltaM;
+     assert(p->fMass >= 0.0);
+     starp.fMass = dDeltaM;
+     starp.fMassForm = dDeltaM;
+#ifdef JAMESFB
+#define SECONDSPERYEAR   31557600.
+     p->u = CoolTemperatureToEnergy( cl, &p->CoolParticle, 20000, p->fMetals );
+     p->fTimeCoolIsOffUntil = 4.5e6 * stfm->dSecUnit * SECONDSPERYEAR + dTime;
+#endif
     if(p->fMass < stfm->dMinGasMass) {
 		(*nDeleted)++;
 		pkdDeleteParticle(pkd, p);
 		}
-
 
     /*
      * Log Star formation quantities
@@ -382,6 +430,10 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	pSfEv->massForm = starp.fMassForm;
 	pSfEv->rhoForm = starp.fDensity/dCosmoFac;
 	pSfEv->TForm = T;
+#ifdef BIGSTARLOG
+	pSfEv->phiForm = dPot;
+	pSfEv->nSmoothForm = nSmooth;
+#endif
 #ifdef COOLING_MOLECULARH /* Output the H2 fractional abundance in the gas particle*/
 	pSfEv->H2fracForm = 2.0*p->CoolParticle.f_H2/yH;
 #endif

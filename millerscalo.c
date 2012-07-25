@@ -17,9 +17,12 @@ void MSInitialize(MSPARAM *pms)
     
 #ifdef CHABRIER
     struct MillerScaloContext initms = 
-    /* Parameters from Table 1 of Chabrier, 2003. */
+    /* Parameters from Table 1 of Chabrier, 2003. /
          {       0.158, .69, .079,
 		 4.43e-2, -1.3, 1.0,
+	         100.0} ;*/
+         {       1.923, .69, .079,
+		 0.537, -1.3, 1.0,
 	         100.0} ;
     
 #else
@@ -195,6 +198,67 @@ double dMSCumMass(MSPARAM p, double mass)
     
 #endif
     return dCumM;
+    }
+
+/*
+ * Cumulative luminosity of stars with mass greater than "mass".
+ *
+ * Bressan (1993) can be found in Binney + Merrifield, but it is
+ * complicated.  Torres, Andersen + Gimenez (2010) Figure 5 makes
+ * it look simpler: L~M^4 1 - 10 Msun, then L~100 M^2 for M > 10 Msun
+ */
+double imfCumLuminosity(MSPARAM p, double mass)
+{
+    double dCumL;
+    double La0, La1, Lpow0, Lpow1, Llim1;
+    La0 = 1;
+    Lpow0 = 4;
+    La1 = 100;
+    Lpow1 = 2;
+    Llim1 = 10;
+    
+    if(mass > p->mmax)
+	return 0;
+#ifdef CHABRIER
+    if (mass > Llim1)
+	return p->a2*La1/(p->b2 + Lpow1)*(pow(p->mmax, p->b2 + Lpow1)
+					  - pow(mass, p->b2 + Lpow1))/log(10.0);
+    else
+	dCumL = p->a2*La1/(p->b2 + Lpow1)*(pow(p->mmax, p->b2 + Lpow1)
+				  - pow(Llim1, p->b2 + Lpow1))/log(10.0);
+    if(mass > p->m2)
+	dCumL += p->a2/(p->b2 + Lpow0)*(pow(Llim1, p->b2 + Lpow0)
+				  - pow(mass, p->b2 + Lpow0))/log(10.0);
+    else
+	dCumL += p->a2/(p->b2 + Lpow0)*(pow(Llim1, p->b2 + Lpow0)
+				   - pow(p->m2, p->b2 + Lpow0))/log(10.0); 
+    return dCumL;
+    /* Don't worry about masses below 1 Msun */
+#else
+    if(mass > Llim1)
+	return p->a3*La1/(p->b3 + Lpow1)*(pow(p->mmax, p->b3 + Lpow1)
+					- pow(mass, p->b3 + Lpow1));
+    else
+	dCumL = p->a3*La1/(p->b3 + Lpow1)*(pow(p->mmax, p->b3 + Lpow1)
+				     - pow(Llim1, p->b3 + Lpow1)); 
+#ifdef KROUPA
+    if(mass > p->m3)
+	dCumL += p->a3*La0/(p->b3 + Lpow0)*(pow(Llim1, p->b3 + Lpow0)
+					  - pow(mass, p->b3 + Lpow0));
+    else
+	dCumL += p->a3*La0/(p->b3 + Lpow0)*(pow(Llim1, p->b3 + Lpow0)
+					  - pow(p->m3, p->b3 + Lpow0)); 
+	    
+#else /* Miller-Scalo */
+    if(mass > p->m2)
+	dCumL += p->a2/(p->b2 + Lpow0)*(pow(Llim1, p->b2 + Lpow0)
+					- pow(mass, p->b2 + Lpow0));
+    else
+	dCumL += p->a2/(p->b2 + Lpow0)*(pow(Llim1, p->b2 + Lpow0)
+					- pow(p->m2, p->b2 + Lpow0)); 
+#endif    
+#endif
+    return dCumL;
     }
 
 double imf1to8Exp(MSPARAM p)
