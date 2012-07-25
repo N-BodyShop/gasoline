@@ -5426,7 +5426,6 @@ void DistIonize(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   for (i=0;i<nSmooth;++i) {
       q = isort[i].pNN->pPart;
       T = CoolCodeEnergyToTemperature(smf->pkd->Cool,&q->CoolParticle, q->u, q->fMetals/q->fMass);
-      printf("DEBUGION: %e %e %e\n", q->u, T, q->fMetals/q->fMass);
       if (T > smf->dIonizeTMin) continue;
       /* Stop once we have enough cold mass ionized 
 	 -- currently only checks nSmooth neighbours max so may truncate if in a hot region 
