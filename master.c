@@ -960,6 +960,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dBodyForceConst",2,&msr->param.dBodyForceConst,
 		    sizeof(double),"bodyforceconst",
 		    "strength of bodyforce = 0");
+	msr->param.bChrisDisk = 0;
+	prmAddParam(msr->prm,"bChrisDisk",0,&msr->param.bChrisDisk,
+		sizeof(int),"chrisdisk","use/don't use Chris' disk potential");
+	msr->param.dChrisDiskVc= 220.0;
+	prmAddParam(msr->prm,"dChrisDiskVc",2,&msr->param.dChrisDiskVc,
+		sizeof(double),"chrisdiskvc","Circular velocity (km/s) = 220");
+	msr->param.dChrisDiskR = 6.0;
+	prmAddParam(msr->prm,"dChrisDiskR",2,&msr->param.dChrisDiskR,
+		sizeof(double),"chrisdiskr","Disk Radius (kpc) = 6");
 	msr->param.bMiyamotoDisk = 0;
 	prmAddParam(msr->prm,"bMiyamotoDisk",0,&msr->param.bMiyamotoDisk,
 				sizeof(int),"mdisk","use/don't use galaxy Miyamoto Disk = -mdisk");
@@ -2676,6 +2685,9 @@ void msrLogParams(MSR msr,FILE *fp)
             fprintf(fp," dNFWconc: %g",msr->param.dNFWconc );
             }
 	fprintf(fp," bHomogSpheroid: %d",msr->param.bHomogSpheroid );
+	fprintf(fp," bChrisDisk: %d",msr->param.bChrisDisk);
+	fprintf(fp," dChrisDiskVc: %g",msr->param.dChrisDiskVc);
+	fprintf(fp," dChrisDiskR: %g",msr->param.dChrisDiskR);
 	fprintf(fp," bBodyForce: %d",msr->param.bBodyForce );
 	fprintf(fp," dBodyForceConst: %g",msr->param.dBodyForceConst );
 	fprintf(fp," bMiyamotoDisk: %d",msr->param.bMiyamotoDisk );
@@ -5347,7 +5359,8 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		msr->param.bElliptical ||
 		msr->param.bHomogSpheroid || msr->param.bBodyForce ||
 	    	msr->param.bRotatingBar ||
-        	msr->param.bMiyamotoDisk || msr->param.bTimeVarying) {
+        	msr->param.bMiyamotoDisk || msr->param.bTimeVarying || 
+			msr->param.bChrisDisk) {
 	        struct outGravExternal outExt;
 		/*
 		 ** Provide the time.
@@ -5377,6 +5390,10 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
 		inExt.bBodyForce = msr->param.bBodyForce;
 		inExt.dBodyForceConst = msr->param.dBodyForceConst;
+		inExt.bChrisDisk = msr->param.bChrisDisk;
+		inExt.dChrisDiskVc = 3.241e-17*msr->param.dChrisDiskVc/msr->param.dKpcUnit*msr->param.dSecUnit;
+		inExt.dChrisDiskR = msr->param.dChrisDiskR/msr->param.dKpcUnit;
+
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		inExt.bTimeVarying = msr->param.bTimeVarying;
 		inExt.bRotatingBar = msr->param.bRotatingBar;
