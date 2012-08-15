@@ -60,7 +60,7 @@ CODE_DEF = -DGASOLINE -DSTARFORM -DCHANGESOFT -DCHABRIER -DDIFFUSION \
 
 #Basic Gasoline (SPH+Gravity) code 
 #CODE_DEF = -DGASOLINE
-EXE = gasoline
+EXE = gasoline_DEBUGCOOL
 
 #Basic Gravity only code
 #CODE_DEF = 
