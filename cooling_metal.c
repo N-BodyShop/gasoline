@@ -899,7 +899,6 @@ void clRateMetalTable(COOL *cl, RATE *Rate, double T, double rho, double Y_H, do
   iz = xz;   
 
   xTlog = (Tlog - cl->MetalTlogMin)*cl->rDeltaTlog; 
-  if(xTlog < 0.0) printf("DEBUGCOOL: %f %f %f %f %f %f \n", xTlog, Tlog, tempT, cl->MetalTlogMin, cl->MetalTMin, cl->rDeltaTlog);
   assert(xTlog >= 0.0);
   iTlog = xTlog; 
 
