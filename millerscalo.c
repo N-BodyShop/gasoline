@@ -211,7 +211,7 @@ double imf1to8Exp(MSPARAM p)
 double imf1to8PreFactor(MSPARAM p)
 {
 #ifdef CHABRIER
-    return p->a2;
+    return p->a2/log(10.0);
 #else
   if(p->m3 < 3.0) return p->a3;
   else if(p->m2 < 3.0) return p->a2;
