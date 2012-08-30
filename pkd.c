@@ -4911,7 +4911,7 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 			if (bEpsAcc && acc>0) {
 #ifdef GASOLINE
 			     if (pkdIsGas(pkd, &(pkd->pStore[i])) && dhMinOverSoft < 1 && pkd->pStore[i].fBall2<4.0*pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) {
-			        if (pkd->pStore[i].fBall2 > 4.0*dhMinOverSoft
+			        if (pkd->pStore[i].fBall2 > 4.0*dhMinOverSoft*dhMinOverSoft
 				    *pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
 				   dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
 			        else 
