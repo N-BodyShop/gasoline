@@ -1249,16 +1249,21 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	int i,iRung,naccreted, ieat, ivmin;
 	FLOAT mdotsum, weat;
 	FLOAT weight,wrs;
-	double aFac, dCosmoDenFac,dCosmoVel2Fac;
-	FLOAT dvmin,dvx,dvy,dvz;
-	FLOAT ddvx,ddvy,ddvz,dvv; /* measure mindeltav */
+	double aFac, dCosmoDenFac,dCosmoVel2Fac,aDot;
+	FLOAT dvmin,dvx,dvy,dvz,dx,dy,dz,dr,dvvcosmo;
+	FLOAT ddvx,ddvy,ddvz,dvv,ddx,ddy,ddz,drr,dvcosmo; /* measure mindeltav */
 
 	assert(p->iRung >= smf->iSinkCurrentRung);
 	p->curlv[1] = 0.0;
 	naccreted = 0;
 	aFac = smf->a;
 	dCosmoDenFac = aFac*aFac*aFac;
-	dCosmoVel2Fac = aFac*aFac;
+	dCosmoVel2Fac = (smf->bCannonical ? aFac*aFac : 1.0);
+	aDot = aFac*smf->H;  /* da/dt */
+	/* CosmoVel2Fac converts cannonical velocity to physical
+	   Cosmo sims tend to use cannonical velocities 
+	   v_phys = v_cannonical/a + adot*r
+	   JMB 9/1/12*/
 
         mdotsum = 0.;
         weat = -1e37;
@@ -1270,14 +1275,20 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	/* for mindv accretion method JMB 8/5/10 */
 	if(smf->bBHMindv == 1){
 	  dvmin = FLOAT_MAXVAL;
+	  dvcosmo = 0.0;
 	  for (i=0;i<nSmooth;++i) {
 	    ddvx = p->v[0] - nnList[i].pPart->v[0];
 	    ddvy = p->v[1] - nnList[i].pPart->v[1];
 	    ddvz = p->v[2] - nnList[i].pPart->v[2];
+	    ddx = nnList[i].dx;
+	    ddy = nnList[i].dy;
+	    ddz = nnList[i].dz;
 	    dvv = sqrt(ddvx*ddvx + ddvy*ddvy + ddvz*ddvz);
-	    if (dvv < dvmin) {
-	      dvmin=dvv;
-	      ivmin = i;
+	    drr  = sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
+	    dvvcosmo = dvv/aFac + aDot*drr;
+	    if (dvvcosmo < dvmin) {
+	      dvmin=dvvcosmo;
+	      ivmin = i;	      
 	    }
 	  }
 	}
@@ -1296,12 +1307,17 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    assert(TYPETest(q,TYPE_GAS));
 	    fW = rs*q->fMass;
 
-	    if(smf->bBHMindv == 1) weight = rs*pow(q->c*q->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5)/dCosmoDenFac;
+	    if(smf->bBHMindv == 1) weight = rs*pow(q->c*q->c+(dvmin*dvmin),-1.5)/dCosmoDenFac;
 	    else {
 	      dvx = p->v[0]-q->v[0];
 	      dvy = p->v[1]-q->v[1];
 	      dvz = p->v[2]-q->v[2];
-	      weight = rs*pow(q->c*q->c+(dvx*dvx+dvy*dvy+dvz*dvz)/dCosmoVel2Fac,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
+	      dx = p->r[0]-q->r[0];
+	      dy = p->r[1]-q->r[1];
+	      dz = p->r[2]-q->r[2];
+	      dr = sqrt(dx*dx+dy*dy+dz*dz);
+	      dvcosmo = sqrt(dvx*dvx+dvy*dvy+dvz*dvz)/aFac + aDot*dr;
+	      weight = rs*pow(q->c*q->c+dvcosmo*dvcosmo,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
 	    /* cosmo factors put in 7/7/09  JMB */
 	    }
 	      if (weight > weat)  {   
@@ -1368,12 +1384,17 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		 * in its smoothing length  JMB 10/22/08 */
 		if (nnList[i].pPart->iRung < smf->iSinkCurrentRung) continue; /* JMB 7/9/09 */
 
-		if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5)/dCosmoDenFac;
+		if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin),-1.5)/dCosmoDenFac;
 		else {
 		  dvx = p->v[0]-nnList[i].pPart->v[0];
 		  dvy = p->v[1]-nnList[i].pPart->v[1];
 		  dvz = p->v[2]-nnList[i].pPart->v[2];
-		  weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvx*dvx+dvy*dvy+dvz*dvz)/dCosmoVel2Fac,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
+		  dx = nnList[i].dx;
+		  dy = nnList[i].dy;
+		  dz = nnList[i].dz;
+		  dr = sqrt(dx*dx+dy*dy+dz*dz);
+		  dvcosmo = sqrt(dvx*dvx+dvy*dvy+dvz*dvz)/aFac + aDot*dr;
+		  weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+dvcosmo*dvcosmo,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
 	    /* cosmo factors put in 7/7/09  JMB */
 		}
 	
@@ -1517,14 +1538,15 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	int i,iRung,counter,imind,naccreted,ieat;
 	FLOAT weat;
 	FLOAT weight,fbweight; /* weight is for accretion, fbweight is for FB  */
-	double aFac, dCosmoDenFac,dCosmoVel2Fac;
-	FLOAT dvmin, dvx,dvy,dvz,dvv;
+	double aFac, dCosmoDenFac,dCosmoVel2Fac,aDot;
+	FLOAT dvmin, dvx,dvy,dvz,dvv,dvvcosmo,dvcosmo,ddx,ddy,ddz,drr,ddvx,ddvy,ddvz,dx,dy,dz,dr;
 	int ivmin;
 
         weat = -1e37;
 	aFac = smf->a;
 	dCosmoDenFac = aFac*aFac*aFac;
-        dCosmoVel2Fac = aFac*aFac;
+        dCosmoVel2Fac = (smf->bCannonical ? aFac*aFac : 1.0);
+	aDot = aFac*smf->H;
 
 	mdot = p->divv;	
 	if (p->curlv[1] == 0.0) {
@@ -1615,8 +1637,14 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      dvy = p->v[1] - nnList[i].pPart->v[1];
 	      dvz = p->v[2] - nnList[i].pPart->v[2];
 	      dvv = sqrt(dvx*dvx + dvy*dvy + dvz*dvz);
-	      if (dvv < dvmin) {
-		dvmin=dvv;
+	      ddx = nnList[i].dx;
+	      ddy = nnList[i].dy;
+	      ddz = nnList[i].dz;
+	      dvv = sqrt(ddvx*ddvx + ddvy*ddvy + ddvz*ddvz);
+	      drr  = sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
+	      dvvcosmo = dvv/aFac + aDot*drr;
+	      if (dvvcosmo < dvmin) {
+		dvmin=dvvcosmo;
 		ivmin = i;
 	      }
 	    }
@@ -1637,12 +1665,17 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      /* has to be nearby! */
 	      KERNEL(rs,r2);
 
-	      if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5)/dCosmoDenFac;
+	      if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin),-1.5)/dCosmoDenFac;
 	      else {
 		dvx = p->v[0]-nnList[i].pPart->v[0];
 		dvy = p->v[1]-nnList[i].pPart->v[1];
 		dvz = p->v[2]-nnList[i].pPart->v[2];
-		weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvx*dvx+dvy*dvy+dvz*dvz)/dCosmoVel2Fac,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
+		dx = nnList[i].dx;
+		dy = nnList[i].dy;
+		dz = nnList[i].dz;
+		dr = sqrt(dx*dx+dy*dy+dz*dz);
+		dvcosmo = sqrt(dvx*dvx+dvy*dvy+dvz*dvz)/aFac + aDot*dr;
+		weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+dvcosmo*dvcosmo,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
 		/* cosmo factors put in 7/7/09  JMB */
 	      }	    	      
 	      if (weight > weat) {
@@ -1806,6 +1839,7 @@ void BHSinkIdentify(PARTICLE *p,int nSmooth,NN *nnList, SMF *smf)
 	PARTICLE *q = NULL;
 	int i;
 	FLOAT ifMass, deltaa, deltar, deltav;
+	FLOAT aFac = smf->a;
 
 	for (i=0;i<nSmooth;++i) {
 	  q = nnList[i].pPart;
@@ -1817,7 +1851,7 @@ void BHSinkIdentify(PARTICLE *p,int nSmooth,NN *nnList, SMF *smf)
 	  deltar=sqrt( (p->r[0] - q->r[0])*(p->r[0] - q->r[0]) +  (p->r[1] - q->r[1])*(p->r[1] - q->r[1]) + (p->r[2] - q->r[2])*(p->r[2] - q->r[2]));
 	  deltav=sqrt( (p->v[0] - q->v[0])*(p->v[0] - q->v[0]) +  (p->v[1] - q->v[1])*(p->v[1] - q->v[1]) + (p->v[2] - q->v[2])*(p->v[2] - q->v[2]));
 	  
-	  if ( deltaa*deltar < 0.5*deltav*deltav ) continue;
+	  if ( deltaa*deltar*aFac < 0.5*deltav*deltav ) continue;
 	  /* Selects other BH particles that are 
 	   * within  the criteria 
 	   * delta_a*delta_r < .5*delta_v^2  
@@ -1895,7 +1929,7 @@ void BHSinkMerge(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 
 	      /**** Gravitational Recoil  ****/
-	    if(smf->bDoBHKick == 1 && ( fabs(-1.0*p->fTimeForm - smf->dTime) > smf->dDeltaStarForm*SECONDSPERYEAR/smf->dSecUnit)) {
+	    if(smf->bDoBHKick == 1 && ( fabs(-1.0*p->fTimeForm - smf->dTime) > smf->dDeltaStarForm)) {
 	      /* Turn off recoil if BH has just formed. Ejecting them immediately is not helpful. JMB 8/5/09  */
 	      mfactor = pow(mratio,2)/pow((1+mratio),5);
 	      vm = A * (1.0-mratio) * mfactor * (1.0 + B*mratio/pow((1.0+mratio),2));
@@ -1913,7 +1947,7 @@ void BHSinkMerge(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      vkick = sqrt ( (vm + vperp*cos(xi))*(vm + vperp*cos(xi)) + (vperp*sin(xi))*(vperp*sin(xi)) + vpar*vpar);
 	      vkick = vkick / smf->dKmPerSecUnit;
 	      /* comoving coords are important JMB 5/15/09 */
-	      if(smf->bCannonical) vkick = vkick*smf->a*smf->a;
+	      if(smf->bCannonical) vkick = vkick*smf->a;
 	    
 	      /* random direction */
 
