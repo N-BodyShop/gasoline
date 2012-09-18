@@ -4059,7 +4059,6 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *iNumOutputs, int OutputList[])
         OutputList[(*iNumOutputs)++]=OUT_PDV_ARRAY;
         OutputList[(*iNumOutputs)++]=OUT_PDVPRES_ARRAY;
         OutputList[(*iNumOutputs)++]=OUT_PDVVISC_ARRAY;
-        OutputList[(*iNumOutputs)++]=OUT_PRES_ARRAY;
         }
 #ifndef NOCOOLING				
     {
