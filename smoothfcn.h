@@ -19,8 +19,8 @@
 #define SMF_SMOOTHAGAIN    1
 
 typedef struct smfParameters {
-	double H;
-	double a;
+    double H;
+    double a;
     double dDeltaAccelFac;
     double dSinkRadius;
     double dSinkBoundOrbitRadius;
@@ -34,18 +34,22 @@ typedef struct smfParameters {
     int bBHMindv;
     int bDoBHKick;
     double dSinkCurrentDelta;
-  double dDeltaStarForm;
+    double dDeltaStarForm;
 #ifdef GASOLINE
-	double alpha;
-	double beta;
-	double gamma;
-        double algam;
-        double Pext;
-        double uMin;
-	int bGeometric;
-	int bCannonical;
-	int bGrowSmoothList;
-        int iViscosityLimiter;
+    double alpha;
+    double beta;
+    double gamma;
+    double algam;
+    double Pext;
+    double uMin;
+    double dtMin; /* Read/Write */
+    double dtFac;
+    double dEtaCourantLong;
+    double dDelta;
+    int bGeometric;
+    int bCannonical;
+    int bGrowSmoothList;
+    int iViscosityLimiter;
 #endif
     int bSinkThermal;
     int bSinkFormDivV;
@@ -65,34 +69,39 @@ typedef struct smfParameters {
     int bConstantDiffusion;
 #endif
 #ifdef STARFORM
-        double dMinMassFrac;
-        double dMaxGasMass;
-	int bShortCoolShutoff;
-        int bSNTurnOffCooling;
-	int bSmallSNSmooth;
-        double dSecUnit;
-        double dErgUnit;
-        double dKmPerSecUnit;
-        double dGmUnit;
-        struct snContext sn;
+    double dMinMassFrac;
+    double dMaxGasMass;
+    int bShortCoolShutoff;
+    int bSNTurnOffCooling;
+    int bSmallSNSmooth;
+    double dSecUnit;
+    double dErgUnit;
+    double dKmPerSecUnit;
+    double dGmUnit;
+    struct snContext sn;
+    int bIonize;
+    double dIonizeTime;
+    double dIonizeMultiple;
+    double dIonizeTMin;
+    double dIonizeT;
 #endif    
 #ifdef COLLISIONS
-	double dDelta;
-	double dCentMass;
-	double dStart; /* collision search time interval */
-	double dEnd;
-	double dCollapseLimit; /* limit for inelastic collapse checks */
-	int bFixCollapse;
+    double dDelta;
+    double dCentMass;
+    double dStart; /* collision search time interval */
+    double dEnd;
+    double dCollapseLimit; /* limit for inelastic collapse checks */
+    int bFixCollapse;
     double dMaxBinaryEcc;
 #endif
 #ifdef SLIDING_PATCH
-  PATCH_PARAMS PP;
+    PATCH_PARAMS PP;
 #endif
 #ifdef SAND_PILE
-	WALLS walls;
+    WALLS walls;
 #endif
-	PKD pkd; /* useful for diagnostics, etc. */
-	} SMF;
+    PKD pkd; /* useful for diagnostics, etc. */
+    } SMF;
 
 
 typedef struct nNeighbor {
@@ -109,9 +118,11 @@ typedef struct nNeighbor {
 enum smx_smoothtype {
   SMX_NULL,
   SMX_DENSITY,
+  SMX_DENSITYTMP,
   SMX_MARKDENSITY,
   SMX_MARKIIDENSITY,
   SMX_MARK,
+  SMX_DT,
   SMX_MEANVEL,
   SMX_DELTAACCEL,
   SMX_SINKACCRETETEST,
@@ -124,6 +135,8 @@ enum smx_smoothtype {
   SMX_BHSINKMERGE,
   SMX_SINKFORMTEST,
   SMX_SINKFORM,
+  SMX_SINKMERGETEST,
+  SMX_SINKMERGE,
 #ifdef GASOLINE
   SMX_SPHPRESSURETERMS,
   SMX_DENDVDX,
@@ -167,6 +180,12 @@ void initDensity(void *);
 void combDensity(void *,void *);
 void Density(PARTICLE *,int,NN *,SMF *);
 void DensitySym(PARTICLE *,int,NN *,SMF *);
+
+/* SMX_DENSITYTMP */
+void initDensityTmp(void *);
+void combDensityTmp(void *,void *);
+void DensityTmp(PARTICLE *,int,NN *,SMF *);
+void DensityTmpSym(PARTICLE *,int,NN *,SMF *);
 
 /* SMX_MARKDENSITY */
 void initParticleMarkDensity(void *);
@@ -237,6 +256,16 @@ void combBHSinkIdentify(void *,void *);
 void BHSinkMerge(PARTICLE *,int,NN *,SMF *);
 void initBHSinkMerge(void *);
 void combBHSinkMerge(void *,void *);
+
+/* SMX_SINKMERGETEST */
+void SinkMergeTest(PARTICLE *,int,NN *,SMF *);
+void initSinkMergeTest(void *);
+void combSinkMergeTest(void *,void *);
+
+/* SMX_SINKMERGE */
+void SinkMerge(PARTICLE *,int,NN *,SMF *);
+void initSinkMerge(void *);
+void combSinkMerge(void *,void *);
 
 /* SMX_SINKFORMTEST */
 void SinkFormTest(PARTICLE *,int,NN *,SMF *);

@@ -3,7 +3,7 @@
 
 /*
  ** ssio.h -- DCR 98-09-16
- ** ======
+ ** ------
  ** Header file specific to Solar System data I/O routines.
  */
 

@@ -111,7 +111,7 @@ void snCalcSNIIFeedback(SN sn, SFEvent sfEvent,
   double dMSNTypeII, dESNTypeII, dNSNTypeII;
   double dCumNMinII, dCumNMaxII;
   double dMeanMStar;/* Average mass of star going
-		       supernovea for metalicity calculation */
+		       supernova for metalicity calculation */
   double  dDeltaMSNrem;
 
 

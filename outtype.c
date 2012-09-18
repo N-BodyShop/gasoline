@@ -43,61 +43,72 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return((FLOAT) p->iOrder);
 #ifdef GASOLINE
         case OUT_GASDENSITY_ARRAY:
-#endif
+	    return(p->fDensity);
 	case OUT_DENSITY_ARRAY:
+	    return(p->curlv[0]);
+#else
+	case OUT_DENSITY_ARRAY:
+	    return(p->fDensity);
+#endif
 	case OUT_DENSITYRFC_ARRAY:
-		return(p->fDensity);
+	    return(p->fDensity);
 	case OUT_COLOR_ARRAY:
 #ifdef COLORCODE
-		return(p->fColor);
+	    return(p->fColor);
 #endif
 	case OUT_POT_ARRAY:
-		return(p->fPot);
+	    return(p->fPot);
 	case OUT_AMAG_ARRAY:
-		return(sqrt(p->a[0]*p->a[0] + p->a[1]*p->a[1] + p->a[2]*p->a[2]));
+	    return(sqrt(p->a[0]*p->a[0] + p->a[1]*p->a[1] + p->a[2]*p->a[2]));
 	case OUT_RUNG_ARRAY:
-		return(p->iRung);
+	    return(p->iRung);
 	case OUT_SPHDT_ARRAY:
 	case OUT_DT_ARRAY:
-		return(p->dt);
+	    return(p->dt);
 	case OUT_SOFT_ARRAY:
-	        return(p->fSoft);
+	    return(p->fSoft);
 #ifdef GASOLINE
 #ifdef DENSITYU
 	case OUT_DENSITYU_ARRAY:
-		return(p->fDensityU);
+	    return(p->fDensityU);
 #endif
 	case OUT_PRES_ARRAY:
-		return(p->fDensity*p->fDensity*p->PoverRho2);	
+	    return(p->fDensity*p->fDensity*p->PoverRho2);	
 	case OUT_U_ARRAY:
-		return(p->u);
+	    return(p->u);
 	case OUT_TEMP_ARRAY:
 #ifndef NOCOOLING
-                vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
+	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
 #else
-                vTemp = pkd->duTFac*p->u;
+	    vTemp = pkd->duTFac*p->u;
 #endif
-		return(vTemp);
+	    return(vTemp);
 #ifndef NOCOOLING
 	case OUT_UDOT_ARRAY:
-		return(p->uDot);
+	    return(p->uDot);
 	case OUT_COOL_ARRAY0:
-		return(COOL_ARRAY0(pkd->Cool, &p->CoolParticle,p->fMetals));
+	    return(COOL_ARRAY0(pkd->Cool, &p->CoolParticle,p->fMetals));
 	case OUT_COOL_ARRAY1:
-		return(COOL_ARRAY1(pkd->Cool, &p->CoolParticle,p->fMetals));
+	    return(COOL_ARRAY1(pkd->Cool, &p->CoolParticle,p->fMetals));
 	case OUT_COOL_ARRAY2:
-		return(COOL_ARRAY2(pkd->Cool, &p->CoolParticle,p->fMetals));
+	    return(COOL_ARRAY2(pkd->Cool, &p->CoolParticle,p->fMetals));
 #ifdef COOLING_MOLECULARH
 	case OUT_COOL_ARRAY3:
-	        return(COOL_ARRAY3(pkd->Cool, &p->CoolParticle,p->fMetals)); /*H2 output array*/
+	    return(COOL_ARRAY3(pkd->Cool, &p->CoolParticle,p->fMetals)); /*H2*/
 	case OUT_CORREL_ARRAY:
 	        return correL;
 #endif
+/*Gas shear in terms of mach number, used when calculating column density*/
+#ifdef COOLING_METAL_BROKEN
+	case OUT_COOL_SHEAR_ARRAY:
+	    return(COOL_SHEAR_ARRAY(p->c, p->curlv[0], p->curlv[1], p->curlv[2], p->iOrder)); 
+#endif
+
+
 #ifdef  RADIATIVEBOX
 	case OUT_COOL_LYMANWERNER_ARRAY:
 	  return(p->CoolParticle.dLymanWerner); /* Lyman Werner Radiation output array*/
 #endif /*RADIATIVEBOX*/
-
 
 #ifdef DENSITYU
 #ifdef COOLING_MOLECULARH
@@ -116,7 +127,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
 #endif
 #else
-
 #ifdef COOLING_MOLECULARH
 	case OUT_COOL_EDOT_ARRAY:
 	  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r, correL) );
@@ -135,45 +145,45 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #endif
 #endif
 	case OUT_BALSARASWITCH_ARRAY:
-		return(p->BalsaraSwitch);
+	    return(p->BalsaraSwitch);
 #ifdef VARALPHA
 	case OUT_ALPHA_ARRAY:
-		return(p->alpha);
+	    return(p->alpha);
 #endif
 	case OUT_DIVV_ARRAY:
-		return(p->divv);
+	    return(p->divv);
 #ifdef DODVDS
 	case OUT_DVDS_ARRAY:
-		return(p->dvds);
+	    return(p->dvds);
 #endif
 	case OUT_CSOUND_ARRAY:
-		return(p->c);
+	    return(p->c);
 	case OUT_MUMAX_ARRAY:
-		return(p->mumax);
+	    return(p->mumax);
 	case OUT_DIVONCONH_ARRAY:
-	        return(p->divv/(p->c/sqrt(p->fBall2*0.25)));
+	    return(p->divv/(p->c/sqrt(p->fBall2*0.25)));
 	case OUT_DIVONCONX_ARRAY:
-	        return(p->divv/(p->c/pow(p->fMass/p->fDensity,1./3.)));
+	    return(p->divv/(p->c/pow(p->fMass/p->fDensity,1./3.)));
         case OUT_PDV_ARRAY:
         case OUT_PDVRFC_ARRAY:
-  	        return(p->PdV);
+	    return(p->PdV);
 	case OUT_METALS_ARRAY:
-  	        return(p->fMetals);
+	    return(p->fMetals);
 #ifdef DIFFUSION
 	case OUT_METALSDOT_ARRAY:
-  	        return(p->fMetalsDot);
+	    return(p->fMetalsDot);
 #endif
 #ifdef PDVDEBUG
 	case OUT_PDVPRES_ARRAY:
-	        return(p->PdVpres);
+	    return(p->PdVpres);
 	case OUT_PDVVISC_ARRAY:
-	        return(p->PdVvisc);
+	    return(p->PdVvisc);
 #endif
 #ifdef SHOCKTRACK
 	case OUT_SHOCKTRACKER_ARRAY:
-	        return(p->ShockTracker);
+	    return(p->ShockTracker);
 	case OUT_DIVRHOV_ARRAY:
-	        return(p->divrhov);
+	    return(p->divrhov);
 #endif
 #ifdef STARFORM
 	case OUT_IGASORDER_ARRAY:
@@ -214,61 +224,76 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 
 #ifdef SIMPLESF
 	case OUT_TCOOLAGAIN_ARRAY:
-		return(p->fTimeForm);
+	    return(p->fTimeForm);
 	case OUT_MSTAR_ARRAY:
-		return(p->fMassStar);
+	    return(p->fMassStar);
 #endif
 	case OUT_SPHH_ARRAY:
 #endif
 	case OUT_H_ARRAY:
-		return(sqrt(p->fBall2*0.25));
+	    return(sqrt(p->fBall2*0.25));
 #ifdef SURFACEAREA
 	case OUT_SURFACEAREA_ARRAY:
-   	        return(p->fArea);
+	    return(p->fArea);
 #endif
+#ifdef DRHODT
+	case OUT_DIVV_T_ARRAY:
+	    return(p->fDivv_t);
+	case OUT_DIVV_CORRECTOR_ARRAY:
+	    return(p->fDivv_Corrector);
+#endif
+	case OUT_IACTIVE_ARRAY:
+	    return((FLOAT) p->iActive);
 #ifdef COLLISIONS
 	case OUT_REJECTS_ARRAY:
 		/* Rejected particles indicated by their iOrder, otherwise -1 */
-		return(REJECT(p) ? p->iOrder : -1);
+	    return(REJECT(p) ? p->iOrder : -1);
 #endif /* COLLISIONS */
 	case OUT_POS_VECTOR:
-		return(p->r[iDim]);
+	    return(p->r[iDim]);
 	case OUT_VEL_VECTOR:
-		return(pkd->dvFac*p->v[iDim]);
+	    return(pkd->dvFac*p->v[iDim]);
 	case OUT_MASS_ARRAY:
-		return(p->fMass);
+	    return(p->fMass);
 	case OUT_ACCELRFC_VECTOR:
 	case OUT_ACCELG_VECTOR:
 	case OUT_ACCEL_VECTOR:
-		return(p->a[iDim]);
+	    return(p->a[iDim]);
 #ifdef NEED_VPRED
 	case OUT_VPRED_VECTOR:
-		return(p->vPred[iDim]);
+	    return(p->vPred[iDim]);
 #endif
 #if defined(GASOLINE)
 	case OUT_CURLV_VECTOR:
-		return(p->curlv[iDim]);
+	    return(p->curlv[iDim]);
 #ifdef NORMAL
 	case OUT_NORMAL_VECTOR:
- 	        return(p->normal[iDim]);
+	    return(p->normal[iDim]);
 #endif
 #if defined(SHOCKTRACK)
 	case OUT_GRADRHO_VECTOR:
-		return(p->gradrho[iDim]);
+	    return(p->gradrho[iDim]);
 	case OUT_ACCELPRES_VECTOR:
-		return(p->aPres[iDim]);
+	    return(p->aPres[iDim]);
 #endif
 	case OUT_ANGMOM_VECTOR:
-	        return(((FLOAT *) (&(SINK_Lx(p))))[iDim]);
+	    return(((FLOAT *) (&(SINK_Lx(p))))[iDim]);
 #endif
 	default:
-		return(0.0);
+	    return(0.0);
 		}
 	}
 
 void VecFilename(char *achFile, int iType)
 {
 	switch (iType) {
+	case OUT_BIG_FILE:
+#ifdef COLLISIONS
+	    strncat(achFile,"ss",256);
+#else
+	    strncat(achFile,"tipsy",256);
+#endif
+	    break;
 	case OUT_IORDER_ARRAY:
 	    strncat(achFile,"iord",256);
             break;
@@ -280,7 +305,7 @@ void VecFilename(char *achFile, int iType)
             break;
 	case OUT_COLOR_ARRAY:
 #ifdef COLORCODE
-		return(p->fColor);
+	    strncat(achFile,"col",256);
 #endif
 	case OUT_POT_ARRAY:
             strncat(achFile,"pot",256);
@@ -369,6 +394,17 @@ void VecFilename(char *achFile, int iType)
             break;
 	case OUT_SURFACEAREA_ARRAY:
             strncat(achFile,"area",256);
+            break;
+#ifdef DRHODT
+	case OUT_DIVV_T_ARRAY:
+            strncat(achFile,"divvt",256);
+            break;
+	case OUT_DIVV_CORRECTOR_ARRAY:
+            strncat(achFile,"divvcorr",256);
+            break;
+#endif
+	case OUT_IACTIVE_ARRAY:
+            strncat(achFile,"ia",256);
             break;
 	case OUT_CSOUND_ARRAY:
             strncat(achFile,"c",256);
@@ -521,12 +557,12 @@ void VecFilename(char *achFile, int iType)
 		}
 	}
 
-void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int nStarStart, int iVecType, float minValue[3][3], float maxValue[3][3], double duTFac, double dvFac)
+void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int nStarStart, int iVecType, int *pnOut, float minValue[3][3], float maxValue[3][3], double duTFac, double dvFac)
 {
     FILE *gasFp = NULL, *darkFp = NULL, *starFp = NULL;
     float fOut, min[3][3], max[3][3];
     int i, iDim, nDim, headerlength;
-    int nGas, nDark, nStar;
+    int nGas, nDark, nStar, nOut=0;
     char darkFileName[256],gasFileName[256],starFileName[256];
     XDR gasXdrs, darkXdrs, starXdrs;
     for(i=0;i<3;i++){
@@ -536,11 +572,18 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
             }
         }
     
-    nGas = pkd->nGas; nDark = pkd->nDark; nStar = pkd->nStar;
     pkd->duTFac = duTFac;
     pkd->dvFac = dvFac;
-    switch (iVecType){
-        /* Gas only floats */
+    if ((iVecType&OUTTYPEMASK)!=iVecType) {
+	nGas = ((iVecType & TYPE_GAS) ? pkd->nGas : 0);
+	nDark = ((iVecType & TYPE_DARK) ? pkd->nDark : 0);
+	nStar = ((iVecType & TYPE_STAR) ? pkd->nStar : 0);
+	iVecType = iVecType&OUTTYPEMASK;
+    }
+    else {
+	nGas = pkd->nGas; nDark = pkd->nDark; nStar = pkd->nStar;
+	switch (iVecType){
+	    /* Gas only floats */
         case OUT_COOLTURNONTIME_ARRAY:
         case OUT_DIVV_ARRAY:
         case OUT_DVDS_ARRAY:
@@ -566,6 +609,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         case OUT_IGASORDER_ARRAY:
         case OUT_TIMEFORM_ARRAY:
         case OUT_MASSFORM_ARRAY:
+        case OUT_ANGMOM_VECTOR:
             nGas=nDark=0;
             break;
         case OUT_METALS_ARRAY:
@@ -574,7 +618,8 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         case OUT_ESNRATE_ARRAY:
             nDark=0;
             break;
-        }
+	    }
+	}
         
     /*
      * N-Chilada has a 28 byte header (see FieldHeader in
@@ -629,6 +674,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
             for (i=0;i<pkd->nLocal;++i) {
                 if (pkdIsStar(pkd,&pkd->pStore[i])) {
                     xdr_int(&starXdrs,&(pkd->pStore[i].iGasOrder));
+		    nOut++;
                     min[2][0] = (pkd->pStore[i].iOrder > min[2][0]) ? min[2][0]: pkd->pStore[i].iOrder;
                     max[2][0] = (pkd->pStore[i].iOrder < max[2][0]) ? max[2][0]: pkd->pStore[i].iOrder;
                     }
@@ -643,16 +689,19 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
             for (i=0;i<pkd->nLocal;++i) {
                 if (nGas && pkdIsGas(pkd,&pkd->pStore[i])) {
                     xdr_int(&gasXdrs,&(pkd->pStore[i].iOrder));
+		    nOut++;
                     min[0][0] = (pkd->pStore[i].iOrder > min[0][0]) ? min[0][0]: pkd->pStore[i].iOrder;
                     max[0][0] = (pkd->pStore[i].iOrder < max[0][0]) ? max[0][0]: pkd->pStore[i].iOrder;
                     }
                 if (nDark && pkdIsDark(pkd,&pkd->pStore[i])) { 
                     xdr_int(&darkXdrs,&(pkd->pStore[i].iOrder));
+		    nOut++;
                     min[1][0] = (pkd->pStore[i].iOrder > min[1][0]) ? min[1][0]: pkd->pStore[i].iOrder;
                     max[1][0] = (pkd->pStore[i].iOrder < max[1][0]) ? max[1][0]: pkd->pStore[i].iOrder;
                     }
                 if (nStar && pkdIsStar(pkd,&pkd->pStore[i])) {
                     xdr_int(&starXdrs,&(pkd->pStore[i].iOrder));
+		    nOut++;
                     min[2][0] = (pkd->pStore[i].iOrder > min[2][0]) ? min[2][0]: pkd->pStore[i].iOrder;
                     max[2][0] = (pkd->pStore[i].iOrder < max[2][0]) ? max[2][0]: pkd->pStore[i].iOrder;
                     }
@@ -669,6 +718,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
                     min[0][0] = (fOut > min[0][0]) ? min[0][0]: fOut;
                     max[0][0] = (fOut < max[0][0]) ? max[0][0]: fOut;
                     xdr_float(&gasXdrs,&fOut);
+		    nOut++;
                     }
                 }
 	    }
@@ -686,16 +736,19 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
                     fOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
                     if (nGas && pkdIsGas(pkd,&pkd->pStore[i])) {
                         xdr_float(&gasXdrs,&fOut);
+			nOut++;
                         min[0][iDim] = (fOut > min[0][iDim]) ? min[0][iDim]: fOut;
                         max[0][iDim] = (fOut < max[0][iDim]) ? max[0][iDim]: fOut;
                         }
                     if (nDark && pkdIsDark(pkd,&pkd->pStore[i])) {
                         xdr_float(&darkXdrs,&fOut);
+			nOut++;
                         min[1][iDim] = (fOut > min[1][iDim]) ? min[1][iDim]: fOut;
                         max[1][iDim] = (fOut < max[1][iDim]) ? max[1][iDim]: fOut;
                         }
                     if (nStar && pkdIsStar(pkd,&pkd->pStore[i])) {
                         xdr_float(&starXdrs,&fOut);
+			nOut++;
                         min[2][iDim] = (fOut > min[2][iDim]) ? min[2][iDim]: fOut;
                         max[2][iDim] = (fOut < max[2][iDim]) ? max[2][iDim]: fOut;
                         }
@@ -714,6 +767,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
             maxValue[i][iDim] = max[i][iDim];
             }
         }
+    *pnOut = nOut;
     }
 
 void xdr_FLOAT(XDR *xdrs, FLOAT *fIn) 

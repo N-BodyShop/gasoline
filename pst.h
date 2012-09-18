@@ -149,6 +149,7 @@ enum pst_service {
 	  PST_COOLUSINGPARTICLELIST,
 	  PST_SETTYPEFROMFILE,
       PST_MARKSMOOTH,
+      PST_DTSMOOTH,
       PST_RESMOOTH,
       PST_INITACCEL,
       PST_MODIFYACCEL,
@@ -252,7 +253,9 @@ enum pst_service {
 	  PST_OLDESTSTAR,
 	  PST_SETSINK,
       PST_INITSTARLOG,
-      PST_FLUSHSTARLOG
+      PST_FLUSHSTARLOG,
+      PST_INITSINKLOG,
+      PST_FLUSHSINKLOG
       };
 
 void pstAddServices(PST,MDL);
@@ -404,6 +407,7 @@ void pstOutArray(PST,void *,int,void *,int *);
 struct outNC {
     float min[3][3];
     float max[3][3];
+    int nOut;
     };
 void pstOutNCVector(PST,void *,int,void *,int *);
 
@@ -960,7 +964,6 @@ struct inoutParticleList {
 void pstSoughtParticleList(PST,void *,int,void *,int *);
 void pstCoolUsingParticleList(PST,void *,int,void *,int *);
 
-/* PST_RESMOOTH */
 struct inMarkSmooth {
 	int nSmooth;
 	int bPeriodic;
@@ -971,6 +974,19 @@ struct inMarkSmooth {
 	};
 void pstMarkSmooth(PST,void *,int,void *,int *);
 
+struct inDtSmooth {
+	int nSmooth;
+	int bPeriodic;
+	int bSymmetric;
+	int iSmoothType;
+	SMF smf;
+	};
+struct outDtSmooth {
+    double dtMin;
+    };
+void pstDtSmooth(PST,void *,int,void *,int *);
+
+/* PST_RESMOOTH */
 struct inReSmooth {
 	int nSmooth;
 	int bPeriodic;
@@ -1695,6 +1711,15 @@ void pstSimpleStarForm(PST,void *,int,void *,int *);
 #endif
 
 #endif
+
+void pstInitSinkLog(PST,void *,int,void *,int *);
+
+struct inFlushSinkLog 
+{
+    char achSinkLogFile[PST_FILENAME_SIZE];
+    };
+
+void pstFlushSinkLog(PST,void *,int,void *,int *);
 
 /* Return is pixmap */
 void pstDumpFrame(PST,void *,int,void *,int *);

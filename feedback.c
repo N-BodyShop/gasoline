@@ -115,11 +115,12 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 			if(dRandomNum < dProb) /* SN occurred */ {
 			    /* Adds missing part to make up quantum */
 			    p->fNSN = dNSNII + (1.-dProb)*sn->iNSNIIQuantum;
-			    /*printf("NSN: +factor=%g   dNSNII=%g  result=%g fNSN=%g\n",(1.-dProb)*sn->iNSNIIQuantum,dNSNII,dNSNII + (1.-dProb)*sn->iNSNIIQuantum,p->fNSN);*/
-			    } else {
-				p->fNSN = dNSNII - dProb*sn->iNSNIIQuantum;
-				/*printf("NSN: -factor=%g   dNSNII=%g  result=%g fNSN=%g\n",dProb*sn->iNSNIIQuantum,dNSNII,dNSNII - dProb*sn->iNSNIIQuantum,p->fNSN);*/
-				}
+/*			    printf("NSN: +factor=%g   dNSNII=%g  result=%g fNSN=%g\n",(1.-dProb)*sn->iNSNIIQuantum,dNSNII,dNSNII + (1.-dProb)*sn->iNSNIIQuantum,p->fNSN);*/
+			    } 
+			else {
+			    p->fNSN = dNSNII - dProb*sn->iNSNIIQuantum;
+/*			    printf("NSN: -factor=%g   dNSNII=%g  result=%g fNSN=%g\n",dProb*sn->iNSNIIQuantum,dNSNII,dNSNII - dProb*sn->iNSNIIQuantum,p->fNSN);*/
+			    }
 			if(p->fNSN < sn->iNSNIIQuantum) p->fNSN = 0;
 			fbEffects.dEnergy = p->fNSN*sn->dESN/(MSOLG*fbEffects.dMassLoss);   
 			} 

@@ -2,7 +2,7 @@
 
 /*
  ** ssio.c -- DCR 98-09-16
- ** ======
+ ** ------
  ** Solar System data I/O routines.
  */
 
