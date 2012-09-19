@@ -8016,7 +8016,7 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	      msrActiveTypeRung(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE,iKickRung,1);
 	      /* need to change nSmooth to number of BHs.  */
 	      nSmoothTemp = msr->param.nSmooth;
-	      msr->param.nSmooth = min(msr->nTreeActive, 4);
+	      msr->param.nSmooth = min(msr->nTreeActive, 4);/*tracking mergers with more than a few BH neighbors is overkill - JMB  */
 	      msrSmooth(msr,dTime, SMX_BHSINKIDENTIFY,1);
       	      msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
 	      msrSmooth(msr,dTime, SMX_BHSINKMERGE,1);
