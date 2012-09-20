@@ -2840,6 +2840,10 @@ void initSphPressureTermsParticle(void *p)
 		((PARTICLE *)p)->mumax = 0.0;
     	        ((PARTICLE *)p)->dtNew = FLT_MAX;
 		((PARTICLE *)p)->PdV = 0.0;
+#ifdef UNONCOOL
+	        ((PARTICLE *)p)->uDotDiff = 0.0;
+	        ((PARTICLE *)p)->uNoncoolDotDiff = 0.0;
+#endif
 #ifdef PDVDEBUG
 		((PARTICLE *)p)->PdVvisc = 0.0;
 		((PARTICLE *)p)->PdVpres = 0.0;
@@ -2868,6 +2872,10 @@ void initSphPressureTerms(void *p)
 		((PARTICLE *)p)->mumax = 0.0;
 		((PARTICLE *)p)->dtNew = FLT_MAX;
 		((PARTICLE *)p)->PdV = 0.0;
+#ifdef UNONCOOL
+	        ((PARTICLE *)p)->uDotDiff = 0.0;
+	        ((PARTICLE *)p)->uNoncoolDotDiff = 0.0;
+#endif
 #ifdef PDVDEBUG
 		((PARTICLE *)p)->PdVvisc = 0.0;
 		((PARTICLE *)p)->PdVpres = 0.0;
@@ -2896,6 +2904,10 @@ void combSphPressureTerms(void *p1,void *p2)
 {
 	if (TYPEQueryACTIVE((PARTICLE *) p1)) {
 		((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
+#ifdef UNONCOOL
+	        ((PARTICLE *)p1)->uDotDiff += ((PARTICLE *)p2)->uDotDiff;
+	        ((PARTICLE *)p1)->uNoncoolDotDiff += ((PARTICLE *)p2)->uNoncoolDotDiff;
+#endif
 #ifdef PDVDEBUG
 		((PARTICLE *)p1)->PdVvisc += ((PARTICLE *)p2)->PdVvisc;
 		((PARTICLE *)p1)->PdVpres += ((PARTICLE *)p2)->PdVpres;
@@ -3085,21 +3097,36 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #define DIFFUSIONVelocity()
 #endif
 
+
 #ifdef DIFFUSION
+#ifdef UNONCOOL
+#define UDOTDIFF(_p) ((_p)->uDotDiff)
+#define DIFFUSIONThermaluNoncool() \
+	    { double diffuNc = diffTh*(p->uNoncoolPred-q->uNoncoolPred); \
+	    PACTIVE( p->uNoncoolDotDiff += diffuNc*rq );		\
+	    QACTIVE( q->uNoncoolDotDiff -= diffuNc*rp );		\
+	    }
+#else
+#define UDOTDIFF(_p) ((_p)->PdV)
+#define DIFFUSIONThermaluNoncool()  
+#endif
 #ifdef DIFFUSIONPRICE
 #define DIFFUSIONThermal() \
-   { double irhobar = 2/(p->fDensity+q->fDensity); \
+    { double irhobar = 2/(p->fDensity+q->fDensity);		\
      double vsig = sqrt(fabs(qPoverRho2*q->fDensity*q->fDensity - pPoverRho2*p->fDensity*p->fDensity)*irhobar); \
-     double diff = smf->dThermalDiffusionCoeff*0.5*(ph+sqrt(0.25*BALL2(q)))*irhobar*vsig*(p->uPred-q->uPred); \
-      PACTIVE( p->PdV += diff*rq ); \
-      QACTIVE( q->PdV -= diff*rp ); }
+     double diffTh = smf->dThermalDiffusionCoeff*0.5*(ph+sqrt(0.25*BALL2(q)))*irhobar*vsig; \
+     double diffu = diffTh*(p->uPred-q->uPred);				\
+     PACTIVE( UDOTDIFF(p)+= diffu*rq ); \
+     QACTIVE( UDOTDIFF(q)-= diffu*rp ); }
+//     DIFFUSIONThermaluNoncool(); }
 #else
 #ifdef DIFFUSIONTHERMAL
 #define DIFFUSIONThermal() \
-    { double diff = 2*smf->dThermalDiffusionCoeff*(p->diff+q->diff)*(p->uPred-q->uPred) \
-		/(p->fDensity+q->fDensity); \
-      PACTIVE( p->PdV += diff*rq*MASSDIFFFAC(q) ); \
-      QACTIVE( q->PdV -= diff*rp*MASSDIFFFAC(p) ); }
+    { double diffTh = 2*smf->dThermalDiffusionCoeff*(p->diff+q->diff)/(p->fDensity+q->fDensity); \
+      double diffu = diffTh*(p->uPred-q->uPred);	\
+      PACTIVE( UDOTDIFF(p) += diffu*rq*MASSDIFFFAC(q) );	\
+      QACTIVE( UDOTDIFF(q) -= diffu*rp*MASSDIFFFAC(p) );  }
+//      DIFFUSIONThermaluNoncool(); }
 #else
 /* Default -- no thermal diffusion */
 #define DIFFUSIONThermal()

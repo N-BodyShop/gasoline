@@ -596,7 +596,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDeltaAccelStepGasTree = 0;
 	prmAddParam(msr->prm,"bDeltaAccelStepGasTree",0,&msr->param.bDeltaAccelStepGasTree,sizeof(int),
 				"isdrdagt", "<Sqrt(dr/da) timestepping via gas tree>");
-	msr->param.bLongRangeStep = 1;
+	msr->param.bLongRangeStep = 0;
 	prmAddParam(msr->prm,"bLongRangeStep",0,&msr->param.bLongRangeStep,sizeof(int),
 				"lrs", "long range timestepping>");
 	msr->param.nTruncateRung = 0;
@@ -1102,6 +1102,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dKBoltzUnit",2,&msr->param.dKBoltzUnit,
 				sizeof(double),"kb",
 				"<Boltzmann Constant in System Units>");
+	msr->param.dNoncoolConvTime = 1e6;
+	prmAddParam(msr->prm,"dNoncoolConvTime",2,&msr->param.dNoncoolConvTime,
+				sizeof(double),"ncct",
+				"<Timescale to convert noncooling to cooling (yr)>");
 	msr->param.dPext = 0;
 	prmAddParam(msr->prm,"dPext",2,&msr->param.dPext,
 				sizeof(double),"pext",
@@ -8581,6 +8585,7 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateState)
 	a = csmTime2Exp(msr->param.csm,dTime);
 	in.z = 1/a - 1;
 	in.dTime = dTime;
+	in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
 	in.iGasModel = msr->param.iGasModel;
 	in.bUpdateState = bUpdateState;
 

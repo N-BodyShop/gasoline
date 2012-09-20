@@ -309,9 +309,10 @@ struct parameters {
 	double dExtraCoolShutoff;
 	int bSmallSNSmooth;
         int iStarFormRung;
-  int iRandomSeed;
+        int iRandomSeed;
 	int nSmoothFeedback;
 #endif
+        double dNoncoolConvTime;
 	double dKBoltzUnit;
         double dPext;
         double dvturb;

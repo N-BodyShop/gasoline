@@ -107,6 +107,13 @@ typedef struct particle {
         FLOAT PdVvisc;          /* P dV from shock (testing) */
         FLOAT PdVpres;          /* P dV from adiabatic compression (testing) */
 #endif
+#ifdef UNONCOOL
+        FLOAT uNoncool;
+        FLOAT uNoncoolPred;
+        FLOAT uNoncoolDot;
+        FLOAT uDotDiff;
+        FLOAT uNoncoolDotDiff;
+#endif
         FLOAT divv;             
 #ifdef DODVDS
         FLOAT dvds;
@@ -777,8 +784,8 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder, int bEwald,int iEwOr
 void pkdCalcEandL(PKD,double *,double *,double *,double []);
 void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,int,FLOAT,double);
-void pkdUpdateUdot(PKD pkd,double,double,double,int,int);
-void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double, double);
+void pkdUpdateUdot(PKD pkd,double,double,double,double,int,int);
+void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double, double, double);
 void pkdKickPatch(PKD pkd, double dvFacOne, double dvFacTwo,
 		  double dOrbFreq, int bOpen);
 void pkdGravInflow(PKD pkd, double r);
@@ -871,7 +878,7 @@ void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);
 
 #ifdef GASOLINE
 
-void pkdUpdateuDot(PKD,double,double,double,int,int);
+void pkdUpdateuDot(PKD,double,double,double,double,int,int);
 void pkdUpdateShockTracker(PKD,double, double, double);
 void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma,
 			     double dResolveJeans, double dCosmoFac);
@@ -928,7 +935,7 @@ void pkdMassInR(PKD pkd, double R, double *pdMass, FLOAT *com);
 #ifdef NEED_VPRED
 #ifdef GASOLINE
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,
-				  int iGasModel, double z, double duDotLimit,double);
+    int iGasModel, double z, double duDotLimit,double,double);
 #else
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
 #endif

@@ -331,6 +331,10 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef GASOLINE
     p->u = 0.0;
     p->uPred = 0.0;
+#ifdef UNONCOOL
+    p->uNoncool = 0.;
+    p->uNoncoolPred = 0.;
+#endif
 #ifdef STARSINK
     SINK_Lx(p) = 0.0;
     SINK_Ly(p) = 0.0;
@@ -4240,7 +4244,7 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
-	     double z, double duDotLimit, double dTimeEnd )
+    double z, double duDotLimit, double dTimeEnd, double dNoncoolConvRate )
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -4313,6 +4317,21 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				      p->uPred = uold*exp(p->uDot*duPredDelta/uold);
 				      p->u = uold*exp(p->uDot*duDelta/uold);
 				      }
+#ifdef UNONCOOL
+			          {
+			          double uNoncoolDot = p->uNoncoolDotDiff
+				      + p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred) 
+#ifdef STARFORM
+				      + p->fESNrate
+#endif
+				      - p->uNoncoolPred*dNoncoolConvRate;
+
+				  p->uNoncoolPred = p->uNoncool + uNoncoolDot*duPredDelta;
+				  p->uNoncool = p->uNoncool + uNoncoolDot*duDelta;
+				  if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
+				  if (p->uNoncool < 0) p->uNoncool = 0;
+				  }
+#endif
 #else /* NOCOOLING */
 				  p->uPred = p->u + p->PdV*duPredDelta;
 				  p->u = p->u + p->PdV*duDelta;
@@ -5906,7 +5925,7 @@ int pkdIsStarByOrder(PKD pkd,PARTICLE *p) {
 
 #ifdef GASOLINE
 
-void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasModel, int bUpdateState )
+void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNoncoolConvRate, int iGasModel, int bUpdateState )
 {
 #ifndef NOCOOLING	
 	PARTICLE *p;
@@ -5937,10 +5956,15 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
   n = pkdLocal(pkd);
   for (i=0;i<n;++i,++p) {
     if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
+#ifdef UNONCOOL
+      ExternalHeating = p->PdV*p->uPred/(p->uPred+p->uNoncoolPred) + p->uDotDiff 
+	  + p->uNoncoolPred*dNoncoolConvRate;
+#else
       ExternalHeating = p->PdV;
 #ifdef STARFORM
       ExternalHeating += p->fESNrate;
 #endif
+#endif      
 			if ( bCool ) {
 				cp = p->CoolParticle;
 				E = p->u;
@@ -6089,7 +6113,11 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p)) {
+#ifdef UNONCOOL
+		        PoverRho = gammam1*(p->uPred+p->uNoncoolPred);
+#else
 			PoverRho = gammam1*p->uPred;
+#endif
 			p->PoverRho2 = PoverRho/p->fDensity;
 			/*
 			 * Add pressure floor to keep Jeans Mass
@@ -6153,7 +6181,10 @@ void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma,
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p)) {
-		    CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, &PoverRho, &(p->c) );
+		        CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, &PoverRho, &(p->c) );
+#ifdef UNONCOOL
+		        PoverRho += gammam1*(p->uNoncoolPred);
+#endif
 			p->PoverRho2 = PoverRho/p->fDensity;
 			/*
 			 * Add pressure floor to keep Jeans Mass
@@ -6990,7 +7021,7 @@ void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
 #ifdef GASOLINE
 void
 pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
-			 int iGasModel,double z,double duDotLimit, double dTimeEnd)
+    int iGasModel,double z,double duDotLimit, double dTimeEnd,double dNoncoolConvRate)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -7059,7 +7090,20 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 			      FLOAT uold = p->uPred - p->uDot*duDelta;
 			      p->uPred = uold*exp(p->uDot*duDelta/uold);
 			      }
-#else
+#ifdef UNONCOOL
+			  {
+			  double uNoncoolDot = p->uNoncoolDotDiff
+			      + p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred) 
+#ifdef STARFORM
+			      + p->fESNrate
+#endif
+			      - p->uNoncoolPred*dNoncoolConvRate;
+			  p->uNoncoolPred = p->uNoncoolPred + uNoncoolDot*duDelta;
+			  if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
+			      }
+#endif /* UNONCOOL */
+
+#else /* NOCOOLING is defined: */
 			  p->uPred = p->uPred + p->PdV*duDelta;
 #endif
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) || defined(SIMPLESF)
