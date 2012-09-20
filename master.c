@@ -4107,6 +4107,10 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
     if (msr->param.bSphStep) OutputList[(*nOutputList)++]=OUT_SPHDT_ARRAY;
+#ifdef UNONCOOL
+    OutputList[(*nOutputList)++]=OUT_U_ARRAY;
+    OutputList[(*nOutputList)++]=OUT_UNONCOOL_ARRAY;
+#endif
     OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
     if (!msr->param.bBulkViscosity){
         OutputList[(*nOutputList)++]=OUT_BALSARASWITCH_ARRAY;
