@@ -44,12 +44,12 @@ COOLING_DEF = -DCOOLING_METAL
 #BASE_LD_FLAGS = $(PNG_LIB) -static
 BASE_LD_FLAGS = $(PNG_LIB) 
 
-CC = icc 
+#CC = icc 
 #CC = ecc
 ##CC = icc
 #CC = gcc -Wall
 #CC = pgcc 
-#CC = gcc
+CC = gcc
 
 CC_DEF = 
 
@@ -96,8 +96,8 @@ EXE = gasoline.vsig.rtforce.rhopred3.nodiff
 #EXE = gasoline.drhodt
 
 CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE -DDRHODT -DVSIGVISC
-CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE -DVSIGVISC -DUNONCOOL #-DSETTRAPFPE
-EXE = gasoline.diff.rtforce.dtgreg
+CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE -DVSIGVISC -DSTARFORM -DUNONCOOL #-DSETTRAPFPE
+EXE = gasoline.diff.rtforce.unoncool
 
 #Basic Gravity only code
 #CODE_DEF =
