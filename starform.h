@@ -25,16 +25,12 @@ typedef struct stfmContext
     double dMinSpawnStarMass;   /* Minimum Initial Star Mass */
     double dMinGasMass;		/* minimum mass gas before we delete
 				   the particle. */
-    double dMaxGasMass;		/* maximum mass gas particle. */
-    double dMaxStarMass;	/* maximum mass star particle. */
-    double dMinPot;             /* minimum low metallicity potential
-				   in simulation */
-    double dMaxPot;             /* max low metallicity potential in
-				   simulation */
+    double dMaxGasMass;		/* maxmimum mass gas so that it gets
+				   no more feedback. */
+    double dMaxStarMass;	/* maximum mass star particle to form */
     double dBHFormProb;         /* Probability star will become a BH */
     int bBHForm;                /* are BH seeds allowed to form */ 
     double dInitBHMass;         /* Initial BH mass */
-    double dMaxBHMetallicity;	/* maximum BH metallicity. */
 #ifdef COOLING_MOLECULARH
   double dStarFormEfficiencyH2; /* Star formation efficiency, CStar, is multiplied by dStarFormEfficiencyH2 times the fraction of hydrogen in molecular form  */
 #endif
@@ -45,7 +41,6 @@ void stfmInitialize(STFM *pstfm);
 
 void pkdStarLogInit(PKD pkd);
 void pkdStarLogFlush(PKD pkd, char *pszFileName);
-void pkdMinMaxPot(PKD pkd, STFM stfm, double *dMinPot, double *dMaxPot);
 
 void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 		   double dTime, /* current time */

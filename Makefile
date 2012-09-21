@@ -4,11 +4,7 @@
 # Then type make <platform>
 # <platform> should be one of:
 # null, sgi, pvm, pthread, pthread_dec, pthread_sgi, ampi, lam_mpi, qmpi, mpi,
-# spx, t3d, t3dmpi, t3empi, ksr, charm, xt3
-#
-# NOTE: When compiling on XT3, make sure that DF_NXPIXMAX and DF_NXPIXMAX are
-#       set to something like 600 or 700 or you will crash after writing a few
-#       frames.
+# spx, t3d, t3dmpi, t3empi, ksr, charm
 #
 PNG_INCL =
 PNG_LIB = 
@@ -21,50 +17,93 @@ PNG_DEF =
 #PNG_OBJ = writepng.o
 #PNG_DEF = $(PNG_INCL) -DUSE_PNG
 
-#COOLING_OBJ = cooling_cosmo.o
-#COOLING_DEF = -DCOOLING_COSMO
+COOLING_OBJ = cooling_cosmo.o
+COOLING_DEF = -DCOOLING_COSMO
+
+#COOLING_OBJ = cooling_bate.o
+#COOLING_DEF = -DCOOLING_BATE
 
 COOLING_OBJ = cooling_metal.o
 COOLING_DEF = -DCOOLING_METAL
 
+#COOLING_OBJ = cooling_metal_H2.o
+#COOLING_DEF = -DCOOLING_MOLECULARH
+
+#COOLING_OBJ = cooling_metal_noH2.o
+#COOLING_DEF = -DCOOLING_METAL_NOH2
+
 #COOLING_OBJ = cooling_planet.o
 #COOLING_DEF = -DCOOLING_PLANET
+
+#COOLING_OBJ = cooling_disk.o
+#COOLING_DEF = -DCOOLING_DISK
+
+#COOLING_OBJ = 
+#COOLING_DEF = -DNOCOOLING
 
 #BASE_LD_FLAGS = $(PNG_LIB) -static
 BASE_LD_FLAGS = $(PNG_LIB) 
 
-#CC = cc
+CC = icc 
 #CC = ecc
-CC = icc
+##CC = icc
 #CC = gcc -Wall
 #CC = pgcc 
 #CC = gcc
-#CC = mpicc
 
 CC_DEF = 
 
-#CC = ccc
-#CC_DEF = -DCCC
+CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DCHANGESOFT -DSTARFORM -DKROUPA -DVOLUMEFEEDBACK
+EXE = gasoline
 
-# -DBENCHMARK turns off all file outputs
-#CODE_DEF = -DBENCHMARK
-#CODE_DEF = -DCHANGESOFT
-#CODE_DEF = -DCOLLISIONS -DSLIDING_PATCH
-#CODE_DEF = -DSUPERCOOL
-#CODE_DEF = -DGASOLINE  -DSTARFORM -DPRES_HK -DPEAKKERNEL
-CODE_DEF = -DGASOLINE -DSTARFORM -DCHANGESOFT -DCHABRIER -DDIFFUSION \
-	   -DDIFFUSIONTHERMAL -DRTFORCE \
-	   -DJEANSFIXPDV -DJEANSSOFT #-DDEBUG_RADPRES -DDEBUG_FEEDBACK #-DNOSCHMIDT -DSETTRAPFPE 
-#CODE_DEF = -DGASOLINE -DLARGEFBALL
-#CODE_DEF =  -DCHANGESOFT -DGASOLINE -DSTARFORM    
+#mass diff
+CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DCHANGESOFT -DSTARFORM -DKROUPA -DVOLUMEFEEDBACK -DMASSDIFF
+# -DVARALPHA
+EXE = gasoline.massdiff
+#CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DCHANGESOFT -DSTARFORM -DKROUPA -DVOLUMEFEEDBACK -DMASSDIFF -DRTF
+#EXE = gasoline.massdiff.rtf
+#CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DCHANGESOFT -DSTARFORM -DKROUPA -DVOLUMEFEEDBACK -DMASSDIFF -DRTDENSITY
+#EXE = gasoline.massdiff.rtdensity
 
-#Basic Gasoline (SPH+Gravity) code 
-#CODE_DEF = -DGASOLINE
-EXE = gasoline.MAGICC
+CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DCHANGESOFT -DSTARFORM -DKROUPA -DVOLUMEFEEDBACK -DDODVDS -DRTF
+#CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE
+CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DCHANGESOFT -DSTARFORM -DKROUPA -DRTF
+CODE_DEF = -DGASOLINE -DCHANGESOFT -DSTARFORM -DKROUPA -DRTF
+EXE = gasoline
+
+#CODE_DEF = -DGASOLINE -DSTARSINK -DPEXT -DMODBATEPOLY
+#CODE_DEF = -DGASOLINE -DSTARSINK -DPEXT -DMODBATEPOLY -DSINKING -DSINKINGAVERAGE
+#EXE = gasoline.sinking
+
+#CODE_DEF = -DGASOLINE -DSTARSINK -DPEXT -DMODBATEPOLY
+#EXE = gasoline.sink
+
+#CODE_DEF = -DGASOLINE -DEPSACCH -DVSIGVISC -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE -DDKDENSITY
+#EXE = gasoline.vsig.rtforce.dkden
+CODE_DEF = -DGASOLINE -DEPSACCH -DVSIGVISC -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DJWFORCE
+EXE = gasoline.vsig.jwforce
+
+CODE_DEF = -DGASOLINE -DEPSACCH -DVSIGVISC -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE -DDRHODT #-DSETTRAPFPE
+#-DDRHODTDIVOUT
+#-DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DJWFORCE
+EXE = gasoline.vsig.rtforce.rhopred3
+
+CODE_DEF = -DGASOLINE -DEPSACCH -DVSIGVISC -DDODVDS -DRTFORCE -DDRHODT #-DSETTRAPFPE
+EXE = gasoline.vsig.rtforce.rhopred3.nodiff
+
+#CODE_DEF = -DGASOLINE -DEPSACCH -DDRHODT 
+#-DDRHODTDIVOUT
+#EXE = gasoline.drhodt
+
+CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE -DDRHODT -DVSIGVISC
+CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE -DVSIGVISC -DUNONCOOL #-DSETTRAPFPE
+EXE = gasoline.diff.rtforce.dtgreg
 
 #Basic Gravity only code
-#CODE_DEF = 
+#CODE_DEF =
 #EXE = pkdgrav
+
+
 
 BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 
@@ -72,19 +111,34 @@ BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 #       NULL defines
 #
 NULL_MDL		= ../mdl/null
-
 #NULL_CFLAGS		= -D__GNUC__ -O3 -static -I$(NULL_MDL) $(BASE_DEF)
 
 #ev6 flags:
+#NULL_CFLAGS		= -O3 -g3 -fast -arch ev6 -I$(NULL_MDL) $(BASE_DEF)
+NULL_CFLAGS		= -O3 -fast -arch ev6 -I$(NULL_MDL) $(BASE_DEF)
 #NULL_CFLAGS            = -fast -I$(NULL_MDL) $(BASE_DEF)
-NULL_CFLAGS		= -O3 -ftree-vectorize -funroll-loops -fprefetch-loop-arrays -I$(NULL_MDL) $(BASE_DEF)
-NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF)
+#imp
+NULL_CFLAGS		= -O3 -ipo -xW -I$(NULL_MDL) $(BASE_DEF)
+#sse3
+#NULL_CFLAGS		= -O3 -ipo -no-prec-div -xP -I$(NULL_MDL) $(BASE_DEF)
+#core2 duo (imp 2007)
+NULL_CFLAGS		= -O3 -ipo -no-prec-div -xT -I$(NULL_MDL) $(BASE_DEF)
+#NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(BASE_DEF)
+#
+NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF) 
 #NULL_LD_FLAGS	= -Wl,-s
-NULL_LD_FLAGS	= $(BASE_LD_FLAGS)
+NULL_LD_FLAGS	= $(BASE_LD_FLAGS) -L/usr/lib -L/lib
 NULL_XOBJ		= erf.o v_sqrt1.o
-NULL_LIBMDL		= -g $(NULL_MDL)/mdl.o -lm
-#NULL_LIBMDL		= -O3 $(NULL_MDL)/mdl.o -lm
-#NULL_LIBMDL		= $(NULL_MDL)/mdl.o -L/1/local/intel/mkl/8.1.1/lib/32 -lmkl_ia32
+NULL_LIBMDL		= $(NULL_MDL)/mdl.o -lm
+
+#
+#       DBG defines
+#
+DBG_MDL		= ../mdl/null
+DBG_CFLAGS		= -g -I$(DBG_MDL) $(BASE_DEF) 
+DBG_LD_FLAGS	= $(BASE_LD_FLAGS) -L/usr/lib -L/lib
+DBG_XOBJ		= erf.o v_sqrt1.o
+DBG_LIBMDL		= $(NULL_MDL)/mdl.o -lm
 
 #
 #       SGI defines
@@ -131,30 +185,15 @@ QMPI_LIBMDL              = $(QMPI_MDL)/mdl.o -lmpi -lelan -lelan3 -lm
 QMPI_MDL_CFLAGS  = -O5 -arch ev6 -fast -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX 
 #QMPI_MDL_CFLAGS  = -g -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX 
 
-#
-#         Cray XT3 defines
-#  (XT3 needs homebrewed XDR in directory XT3_XDR)
-#  
-XT3_MDL            = ../mdl/mpi
-XT3_LIBMDL         = $(XT3_MDL)/mdl.o -lm
-XT3_MDL_CFLAGS     = -fastsse -DCRAY_XT3
-XT3_XDR            = ../xdr
-XT3_XDR_CFLAGS     = -g -O2
-XT3_CFLAGS         = -fastsse -Mvect=prefetch -I$(XT3_MDL) -I/usr/include -I$(XT3_XDR) $(BASE_DEF)  $(CC_DEF) -DCRAY_XT3
-XT3_LD_FLAGS       = $(BASE_LD_FLAGS)
-XT3_XOBJ           = erf.o v_sqrt1.o $(XT3_XDR)/xdr.o $(XT3_XDR)/xdr_stdio.o $(XT3_XDR)/xdr_float.o $(XT3_XDR)/htonl.o
-
 
 #       SP1/2 defines
 #
 SPX_MDL			= ../mdl/mpi
-SPX_CFLAGS		= -O3 -ftree-vectorize -funroll-loops -fprefetch-loop-arrays -I$(SPX_MDL) $(BASE_DEF)
-#SPX_CFLAGS		= -g -I$(SPX_MDL) $(BASE_DEF)
+SPX_CFLAGS		= -O3 -I$(SPX_MDL) $(BASE_DEF)
 SPX_LD_FLAGS	= $(BASE_LD_FLAGS)
 SPX_XOBJ		= v_sqrt1.o
 SPX_LIBMDL		= $(SPX_MDL)/mdl.o -lm
-SPX_MDL_CFLAGS	= -O3 -ftree-vectorize -funroll-loops -fprefetch-loop-arrays
-#SPX_MDL_CFLAGS	= -g
+SPX_MDL_CFLAGS	= -g -O3
 
 #
 #		PVM defines
@@ -176,13 +215,9 @@ PVM_LD_FLAGS	= $(BASE_LD_FLAGS)
 #
 PTHREAD_MDL			= ../mdl/pthread
 PTHREAD_CFLAGS		= -O3 -D_REENTRANT -I$(PTHREAD_MDL) $(BASE_DEF)
-#PTHREAD_CFLAGS		= -g -D_REENTRANT -I$(PTHREAD_MDL) $(BASE_DEF)
-#PTHREAD_CFLAGS		= -fast -D_REENTRANT -I$(PTHREAD_MDL) $(BASE_DEF)
 PTHREAD_LD_FLAGS 	=  $(BASE_LD_FLAGS)
 PTHREAD_XOBJ		= erf.o v_sqrt1.o
-PTHREAD_LIBMDL 		= -O3 $(PTHREAD_MDL)/mdl.o -lm -lpthread
-#PTHREAD_LIBMDL 		= -g $(PTHREAD_MDL)/mdl.o -lm -lpthread
-#PTHREAD_LIBMDL 		= $(PTHREAD_MDL)/mdl.o -L/1/local/intel/mkl/8.1.1/lib/32 -lmkl_ia32 -lpthread
+PTHREAD_LIBMDL 		= $(PTHREAD_MDL)/mdl.o -lm -lpthread
 
 #
 #       PTHREAD_SGI defines
@@ -239,7 +274,7 @@ CHARMLINK=
 CHARM_MDL			= ../mdl/charm
 CHARM_CFLAGS		= -verbose -g -I$(CHARM_MDL) $(BASE_DEF) 
 CHARM_MDL_CFLAGS	= -verbose -g -Wall
-CHARM_LD_FLAGS		=  $(BASE_LD_FLAGS) -language charm++
+CHARM_LD_FLAGS		=  $(BASE_LD_FLAGS) -language charm++ -memory os
 CHARM_XOBJ                = erf.o v_sqrt1.o
 CHARM_LIBMDL              = $(CHARM_MDL)/mdl.o $(CHARMLINK) -lm
 
@@ -256,8 +291,8 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
 	  smoothfcn.o collision.o qqsmooth.o $(COOLING_OBJ) cosmo.o romberg.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
-	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o \
-	  rotbar.o special.o ssio.o agb.o treezip.o $(PNG_OBJ)
+	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o rotbar.o special.o ssio.o $(PNG_OBJ) \
+	  treezip.o
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 
@@ -284,7 +319,12 @@ $(XDIR):
 null:
 	cd $(NULL_MDL); make "CC=$(CC)" "CFLAGS=$(NULL_CFLAGS)"
 	make $(EXE) "CFLAGS=$(NULL_CFLAGS)" "LD_FLAGS=$(NULL_LD_FLAGS)"\
-		"MDL=$(NULL_MDL)" "LIBMDL=$(NULL_LIBMDL)" "XOBJ=$(NULL_XOBJ)"
+		"MDL=$(NULL_MDL)" "XOBJ=$(NULL_XOBJ)" "LIBMDL=$(NULL_LIBMDL)"
+
+dbg:
+	cd $(DBG_MDL); make "CC=$(CC)" "CFLAGS=$(DBG_CFLAGS)"
+	make $(EXE) "CFLAGS=$(DBG_CFLAGS)" "LD_FLAGS=$(DBG_LD_FLAGS)"\
+		"MDL=$(DBG_MDL)" "XOBJ=$(DBG_XOBJ)" "LIBMDL=$(DBG_LIBMDL)"
 
 sgi:
 	cd $(SGI_MDL); make CC=cc "CC_FLAGS=$(SGI_MDL_CFLAGS)"
@@ -327,11 +367,6 @@ qmpi:
 	make $(EXE) "CFLAGS=$(QMPI_CFLAGS)" "LD_FLAGS=$(QMPI_LD_FLAGS)"\
 		"MDL=$(QMPI_MDL)" "XOBJ=$(QMPI_XOBJ)" "LIBMDL=$(QMPI_LIBMDL)"
 
-xt3:
-	cd $(XT3_MDL); make CC=mpicc "CC_FLAGS=$(XT3_MDL_CFLAGS)"
-	cd $(XT3_XDR); make CC=gcc "CC_FLAGS=$(XT3_XDR_CFLAGS)"
-	make $(EXE) CC=mpicc "CFLAGS=$(XT3_CFLAGS)" "LD_FLAGS=$(XT3_LD_FLAGS)"\
-		"MDL=$(XT3_MDL)" "XOBJ=$(XT3_XOBJ)" "LIBMDL=$(XT3_LIBMDL)"
 
 mpi: spx
 
@@ -392,7 +427,6 @@ pkd.o: tipsydefs.h dumpframe.h
 pst.o: pst.h pkd.h floattype.h cooling.h smoothfcn.h starform.h feedback.h
 pst.o: outtype.h smooth.h dumpframe.h
 romberg.o: floattype.h
-rotbar.o: rotbar.h pkd.h param.h
 smooth.o: smooth.h pkd.h floattype.h cooling.h smoothfcn.h
 smoothfcn.o: smoothfcn.h pkd.h floattype.h cooling.h
 startime.o: floattype.h startime.h
@@ -403,5 +437,7 @@ supernovaia.o: floattype.h cooling.h supernovaia.h
 dumpframe.o: dumpframe.c dumpframe.h
 dumpvoxel.o: dumpvoxel.c dumpframe.h dumpvoxel.h
 dffuncs.o: dffuncs.c dumpframe.h
+treezip.o: treezip.c treezip.h treezipkey.h treeziptypes.h
 writepng.o: writepng.c writepng.h
 walk.o: walk.h pkd.h floattype.h cooling.h
+rotbar.o: 

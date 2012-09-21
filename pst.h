@@ -125,7 +125,6 @@ enum pst_service {
       PST_SWAPALL,
       PST_MASSCHECK,
       PST_MASSMETALSENERGYCHECK,
-      PST_MINMAXPOT,
       PST_ACTIVETYPEORDER,
       PST_ACTIVEORDER,
       PST_SETRUNG,
@@ -408,6 +407,7 @@ void pstOutArray(PST,void *,int,void *,int *);
 struct outNC {
     float min[3][3];
     float max[3][3];
+    int nOut;
     };
 void pstOutNCVector(PST,void *,int,void *,int *);
 
@@ -570,9 +570,6 @@ struct inGravExternal {
 	int bHomogSpheroid;
 	int bBodyForce;
 	double dBodyForceConst;
-	int bChrisDisk;
-	double dChrisDiskVc;
-	double dChrisDiskR;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
@@ -646,6 +643,7 @@ struct inUpdateuDot {
 	double duDelta;
 	double dTime;	
 	double z;
+        double dNoncoolConvRate;
 	int iGasModel;
 	int bUpdateState;
 	};
@@ -670,6 +668,7 @@ struct inKick {
 	int iGasModel;
         double z;
         double dTimeEnd;
+        double dNoncoolConvRate;
 	};
 struct outKick {
 	double Time;
@@ -1645,17 +1644,6 @@ struct inUpdateShockTracker {
 void pstUpdateShockTracker(PST,void *,int,void *,int *);
 
 #ifdef STARFORM
-struct inMinMaxPot
-{
-    struct stfmContext stfm;
-    };
-
-struct outMinMaxPot {
-    double dMinPot;
-    double dMaxPot;
-    };
-void pstMinMaxPot(PST,void *,int,void *,int *);
-
 /* PST_FORMSTARS */
 struct inFormStars
 {
@@ -1827,6 +1815,7 @@ struct inKickVpred {
 	int iGasModel;
 	double z;
         double dTimeEnd;
+        double dNoncoolConvRate;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
 #endif

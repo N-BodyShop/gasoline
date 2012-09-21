@@ -1320,12 +1320,6 @@ double CoolEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double f
 						 3*(Cool)->Y_He - 2*cp->Y_HeI - cp->Y_HeII, E );
 	}
 
-double CoolTemperatureToEnergy( COOL *Cool, COOLPARTICLE *cp, double T, double fMetal ) {
-	return clEnergy(2*(Cool)->Y_H - cp->Y_HI + 
-			3*(Cool)->Y_He - 2*cp->Y_HeI - cp->Y_HeII, T ) / 
-	    (Cool)->dErgPerGmUnit;
-	}
-
 double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double fMetal ) {
 	return CoolEnergyToTemperature( Cool, cp, E*Cool->dErgPerGmUnit, fMetal );
 	}

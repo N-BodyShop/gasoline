@@ -180,9 +180,6 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_MASSMETALSENERGYCHECK,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstMassMetalsEnergyCheck,
 				  0,sizeof(struct outMassMetalsEnergyCheck));
-	mdlAddService(mdl,PST_MINMAXPOT,pst,
-		      (void (*)(void *,void *,int,void *,int *)) pstMinMaxPot,
-		      0,sizeof(struct outMinMaxPot));
 	mdlAddService(mdl,PST_ACTIVETYPEORDER,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstActiveTypeOrder,
 				  sizeof(struct inActiveTypeOrder),sizeof(int));
@@ -2738,6 +2735,7 @@ void pstOutNCVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
                 if (out != NULL){
+		    out->nOut += outUp.nOut;
                     for(i=0; i<3; i++){
                         for(iDim=0;iDim<3;iDim++){
                             out->min[i][iDim]=(out->min[i][iDim] < outUp.min[i][iDim]) ? out->min[i][iDim]: outUp.min[i][iDim];
@@ -2757,9 +2755,9 @@ void pstOutNCVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 		strcat(achOutFile,in->achOutFile);
 		pkdOutNChilada(plcl->pkd,achOutFile,plcl->nGasWriteStart,
-			       plcl->nDarkWriteStart, plcl->nStarWriteStart,
-			       in->iType,out->min, out->max, in->duTFac,
-			       in->dvFac);
+		    plcl->nDarkWriteStart, plcl->nStarWriteStart,
+ 		    in->iType,&out->nOut,out->min, out->max, in->duTFac,
+		    in->dvFac);
 		}
 	if (pnOut) *pnOut = sizeof(struct outNC);
 	}
@@ -3154,7 +3152,6 @@ void pstDtSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
-
 void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	struct inReSmooth *in = vin;
@@ -3403,9 +3400,6 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (in->bBodyForce) {
 			pkdBodyForce(plcl->pkd, in->dBodyForceConst);
 			}
-		if (in->bChrisDisk) {
-			pkdChrisDiskForce(plcl->pkd, in->dChrisDiskVc, in->dChrisDiskR);
-		}
 		if (in->bMiyamotoDisk) {
 			pkdMiyamotoDisk(plcl->pkd);
 			}
@@ -3535,7 +3529,7 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		pkdKick(plcl->pkd,in->dvFacOne,in->dvFacTwo,
 				in->dvPredFacOne,in->dvPredFacTwo,in->duDelta,in->duPredDelta,
-				in->iGasModel,in->z,in->duDotLimit, in->dTimeEnd);
+		    in->iGasModel,in->z,in->duDotLimit, in->dTimeEnd, in->dNoncoolConvRate);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -4606,7 +4600,7 @@ void pstUpdateuDot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (outUp.MaxTime > out->MaxTime) out->MaxTime = outUp.MaxTime;
 		}
 	else {
-		pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->iGasModel,in->bUpdateState);
+	        pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->dNoncoolConvRate,in->iGasModel,in->bUpdateState);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -6162,7 +6156,7 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo,in->duDelta,
-					 in->iGasModel,in->z,in->duDotLimit,in->dTimeEnd);
+		    in->iGasModel,in->z,in->duDotLimit,in->dTimeEnd,in->dNoncoolConvRate);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -6298,29 +6292,6 @@ pstFlushStarLog(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	pkdStarLogFlush(pst->plcl->pkd, in->achStarLogFile);
 	}
     }
-
-void pstMinMaxPot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
-{
-	LCL *plcl = pst->plcl;
-	struct inMinMaxPot *in = vin;
-	struct outMinMaxPot *out = vout;
-	struct outMinMaxPot outUp;
-	
-	mdlassert(pst->mdl,nIn == sizeof(struct inMinMaxPot));
-	if (pst->nLeaves > 1) {
-		mdlReqService(pst->mdl,pst->idUpper,PST_MINMAXPOT,NULL,0);
-		pstMassMetalsEnergyCheck(pst->pstLower,NULL,0,vout,pnOut);
-		mdlGetReply(pst->mdl,pst->idUpper,&outUp,pnOut);
-		out->dMinPot = (outUp.dMinPot < out->dMinPot) ? 
-		    outUp.dMinPot : out->dMinPot;
-		out->dMaxPot = (outUp.dMaxPot > out->dMaxPot) ? 
-		    outUp.dMaxPot : out->dMaxPot;
-		}
-	else {
-	    pkdMinMaxPot(plcl->pkd,&in->stfm,&out->dMinPot,&out->dMaxPot);
-		}
-	if (pnOut) *pnOut = sizeof(struct outMinMaxPot);
-	}
 
 #endif
 

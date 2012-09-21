@@ -60,7 +60,7 @@ int main(int argc,char **argv)
 	double E=0,T=0,U=0,Eth=0,L[3]={0,0,0};
 	double dWMax=0,dIMax=0,dEMax=0,dMass=0,dMultiEff=0;
 	long lSec=0,lStart;
-	int i,j=0,iStep,bOutTime,iSec=0,iStop=0,nActive,iNumOutputs, OutputList[NUMOUTPUTS];
+	int i,j=0,iStep,bOutTime,iSec=0,iStop=0,nActive,nOutputList, OutputList[NUMOUTPUTS];
 	char achBaseMask[256];
 
 #ifdef COLLISIONS
@@ -595,7 +595,6 @@ int main(int argc,char **argv)
 			**           3) we're at an output interval
 			*/
 #ifndef BENCHMARK
-			printf("Treezip?\n");
 			if (msr->param.iTreeZipStep && (iStep % msr->param.iTreeZipStep)==0) msrTreeZip(msr,iStep);
 
 			if ((bOutTime=msrOutTime(msr,dTime)) || iStep == msr->param.iStopStep || iStop ||
@@ -610,26 +609,22 @@ int main(int argc,char **argv)
 #ifdef DENSITYU
 				msrGetDensityU(msr);
 #endif
-                                bDensitySmooth = msrDoDensity(msr) || msr->param.bDohOutput;
-                                /*msrSelectOutputList(msr, &nOutputList, OutputList, iStep, bOutTime, &bDensitySmooth);*/
+				bDensitySmooth = msrDoDensity(msr) || msr->param.bDohOutput;
+                                msrSelectOutputList(msr, &nOutputList, OutputList, iStep, bOutTime, &bDensitySmooth);
 
 				if (bDensitySmooth) {
 				    msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 				    msrDomainDecomp(msr,0,1);
 				    msrBuildTree(msr,0,dMass,1);
-				    msrSmooth(msr,dTime,SMX_DENSITY,1);
+				    msrSmooth(msr,dTime,SMX_DENSITYTMP,1);
 				    if (!msr->param.bNoReOrder) msrReorder(msr);
 				    }
-                                if (!msr->param.bNoReOrder) {
-                                    msrReorder(msr);
-                                    msrMassCheck(msr,dMass,"After msrReorder in Out\
-Time");
-                                    }
+				if (!msr->param.bNoReOrder) { 
+				    msrReorder(msr);
+				    msrMassCheck(msr,dMass,"After msrReorder in OutTime");
+				    }
 				sprintf(achFile,msr->param.achDigitMask,msrOutName(msr),iStep);
-                                msrCreateGasOutputList(msr, &iNumOutputs, OutputList);
-                                msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
-                                msrCreateAllOutputList(msr, &iNumOutputs, OutputList);
-                                msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+                                msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
 				msrFlushStarLog(msr);
 				msrFlushSinkLog(msr);
 				/*
@@ -702,53 +697,58 @@ Time");
                 msrMassCheck(msr,dMass,"After msrGravity in OutSingle Gravity");
                 msrReorder(msr);
                 msrMassCheck(msr,dMass,"After msrReorder in OutSingle Gravity");
-                iNumOutputs = 0;
-                OutputList[iNumOutputs++]=OUT_ACCELG_VECTOR;
-                OutputList[iNumOutputs++]=OUT_POT_ARRAY;
-                msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+                nOutputList = 0;
+                OutputList[nOutputList++]=OUT_ACCELG_VECTOR;
+                OutputList[nOutputList++]=OUT_POT_ARRAY;
+                msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
                 msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Gravity");
                 }
 #ifdef GASOLINE
             if (msr->nGas > 0) {
 		msrInitSph(msr,dTime);
-                msrCreateGasStepZeroOutputList(msr, &iNumOutputs,OutputList);
+                msrCreateGasStepZeroOutputList(msr, &nOutputList,OutputList);
 #ifdef DENSITYU
-		OutputList[(iNumOutputs)++]=OUT_DENSITYU_ARRAY;
+		OutputList[(nOutputList)++]=OUT_DENSITYU_ARRAY;
 #endif
 #ifdef DIFFUSION
-		OutputList[(iNumOutputs)++]=OUT_METALSDOT_ARRAY;
+		OutputList[(nOutputList)++]=OUT_METALSDOT_ARRAY;
 #endif
 #ifdef STARFORM
 #ifdef DIFFUSION
-		OutputList[(iNumOutputs)++]=OUT_OXYGENMASSFRACDOT_ARRAY;
-		OutputList[(iNumOutputs)++]=OUT_IRONMASSFRACDOT_ARRAY;
+		OutputList[(nOutputList)++]=OUT_OXYGENMASSFRACDOT_ARRAY;
+		OutputList[(nOutputList)++]=OUT_IRONMASSFRACDOT_ARRAY;
 #endif
 #ifdef CHECKSF
 		if(msr->param.bStarForm){
 		    msrFormStars(msr, dTime, 1e-6); /* dDelta = 1e-6 not 1e37 */
-		    OutputList[(iNumOutputs)++]=OUT_TOFF_YR_ARRAY;
-		    OutputList[(iNumOutputs)++]=OUT_TCOOL_YR_ARRAY;
-		    OutputList[(iNumOutputs)++]=OUT_TDYN_YR_ARRAY;
-		    OutputList[(iNumOutputs)++]=OUT_RATIOSOUNDDYN_ARRAY;
-		    OutputList[(iNumOutputs)++]=OUT_L_JEANS_ARRAY;
-		    OutputList[(iNumOutputs)++]=OUT_ISMALL_JEANS_ARRAY;
+		    OutputList[(nOutputList)++]=OUT_TOFF_YR_ARRAY;
+		    OutputList[(nOutputList)++]=OUT_TCOOL_YR_ARRAY;
+		    OutputList[(nOutputList)++]=OUT_TDYN_YR_ARRAY;
+		    OutputList[(nOutputList)++]=OUT_RATIOSOUNDDYN_ARRAY;
+		    OutputList[(nOutputList)++]=OUT_L_JEANS_ARRAY;
+		    OutputList[(nOutputList)++]=OUT_ISMALL_JEANS_ARRAY;
 		    }
 #endif		
 #endif
 #ifndef NOCOOLING
+
+#ifdef  COOLING_METAL_BROKEN
+		if (msr->param.bDoShear) OutputList[nOutputList++]=OUT_COOL_SHEAR_ARRAY;
+#endif
 		if (msr->param.bGasCooling) {
-		    OutputList[iNumOutputs++]=OUT_COOL_EDOT_ARRAY;
-		    OutputList[iNumOutputs++]=OUT_COOL_COOLING_ARRAY;
-		    OutputList[iNumOutputs++]=OUT_COOL_HEATING_ARRAY;
+		    OutputList[nOutputList++]=OUT_COOL_EDOT_ARRAY;
+		    OutputList[nOutputList++]=OUT_COOL_COOLING_ARRAY;
+		    OutputList[nOutputList++]=OUT_COOL_HEATING_ARRAY;
 		    }
 #endif
-                msrReorder(msr);
                 if (msr->param.bSphStep) {
                     fprintf(stdout,"Adding SphStep dt\n");
                     msrSphStep(msr,dTime,0);
                     }
-                msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+                msrReorder(msr);
+                msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
 		msrFlushStarLog(msr);
+		msrFlushSinkLog(msr);
                 }
 #endif
             /*
@@ -759,15 +759,15 @@ Time");
                     msrDomainDecomp(msr,0,1);
                     msrBuildTree(msr,0,-1.0,1);
                     msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Density");
-                    msrSmooth(msr,dTime,SMX_DENSITY,1);
+                    msrSmooth(msr,dTime,SMX_DENSITYTMP,1);
                     msrMassCheck(msr,dMass,"After msrSmooth in OutSingle Density");
                     } 
             if (msrDoDensity(msr)) {
                     msrReorder(msr);
                     msrMassCheck(msr,dMass,"After msrReorder in OutSingle Density");
-                    iNumOutputs = 0;
-                    OutputList[iNumOutputs++]=OUT_DENSITY_ARRAY;
-                    msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+                    nOutputList = 0;
+                    OutputList[nOutputList++]=OUT_DENSITY_ARRAY;
+                    msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
             /*	sprintf(achFile,"%s.den",msrOutName(msr));
                     msrReorder(msr);
                     msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);*/
@@ -797,9 +797,9 @@ Time");
                     dsec = time(0) - sec;
                     (void) printf("Encounter search completed, time = %i sec\n",dsec);
                     msrReorder(msr);
-                    iNumOutputs = 0;
-                    OutputList[iNumOutputs++]=OUT_DENSITY_ARRAY;
-                    msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+                    nOutputList = 0;
+                    OutputList[nOutputList++]=OUT_DENSITY_ARRAY;
+                    msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
     /*		sprintf(achFile,"%s.enc",msrOutName(msr));
 
                     msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);*/
@@ -840,17 +840,17 @@ Time");
                     msrSmooth(msr,dTime,SMX_DELTAACCEL,0);
                 }
             msrReorder(msr);
-            iNumOutputs = 0;
-            OutputList[iNumOutputs++]=OUT_DT_ARRAY;
+            nOutputList = 0;
+            OutputList[nOutputList++]=OUT_DT_ARRAY;
             if(msr->param.iMaxRung > 1
 	       && (msr->param.iRungForceCheck || msr->param.bDensityStep || msrDoGravity(msr))) {
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
                 msrDtToRung(msr,0,msrDelta(msr),1);
                 msrRungStats(msr);
-		OutputList[iNumOutputs++]=OUT_RUNG_ARRAY;
+		OutputList[nOutputList++]=OUT_RUNG_ARRAY;
                 }
 
-            msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+            msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
 
 	    if (msr->param.iRungForceCheck != 0) {
 		if (msr->param.iRungForceCheck > 0) 
@@ -889,12 +889,12 @@ Time");
 			}
 #endif			 
 		    msrReorder(msr);
-		    iNumOutputs = 2;
+		    nOutputList = 2;
 		    OutputList[0]=OUT_ACCELRFC_VECTOR;
 		    OutputList[1]=OUT_PDVRFC_ARRAY;
-		    if (msrDoDensity(msr)) OutputList[iNumOutputs++]=OUT_DENSITYRFC_ARRAY;
+		    if (msrDoDensity(msr)) OutputList[nOutputList++]=OUT_DENSITYRFC_ARRAY;
 
-		    msrWriteOutputs(msr, achFile, OutputList, iNumOutputs, dTime);
+		    msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
 		    }
 
 		}

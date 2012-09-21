@@ -958,17 +958,6 @@ void clRateMetalTable(COOL *cl, RATE *Rate, double T, double rho, double Y_H, do
     /* convert unit to erg/g/sec, time a factor of nH^2/nH, also scale with metalicity */ 
   Rate->Cool_Metal = exp(Cool)*nH*Y_H/M_H * ZMetal/ZSOLAR; 
   Rate->Heat_Metal = exp(Heat)*nH*Y_H/M_H * ZMetal/ZSOLAR;   
-  /* This addition to the metal cooling code adds a fit to the metal cooling table to be used when temperatures extend below the table range -- Charlotte C*/
-#ifndef NOCOOLTABLEFIT
-  if (T < cl->MetalTMin || nH >= cl->MetalnHMax) {
-    Rate->Cool_Metal = -12.5920 + 5.25788*Tlog -0.949444*nHlog +      1.02849*Tlog*nHlog -    0.647718*pow(Tlog,2) - 0.137914*pow(Tlog,2)*nHlog
-      + 0.000204617*pow(Tlog,2)*pow(nHlog,2) - 0.0751646*Tlog*pow(nHlog,2)   + 0.247727*pow(nHlog,2);
-    Rate->Cool_Metal = pow(10,Rate->Cool_Metal);
-    Rate->Heat_Metal = -13.3866 + 3.62845e-10*Tlog     + nHlog + -3.12419e-11*Tlog*nHlog - 6.09512e-11*pow(Tlog,2) + 5.49561e-12*pow(Tlog,2)*nHlog
-      + 7.33096e-12*pow(Tlog,2)*pow(nHlog,2) - 3.80744e-11*Tlog*pow(nHlog,2) + 2.65849e-08*pow(nHlog,2);
-    Rate->Heat_Metal = pow(10,Rate->Heat_Metal);
-  }
-#endif
 }
 
 /* Deprecated except for testing: use EdotInstant */
@@ -2349,21 +2338,6 @@ double CoolCodeEnergyToTemperature( COOL *cl, COOLPARTICLE *cp, double E, double
     return CoolEnergyToTemperature( cl, cp, E*cl->dErgPerGmUnit, ZMetal );
     }
 
-double CoolTemperatureToEnergy( COOL *cl, COOLPARTICLE *cp, double T, double ZMetal ) {
-    double Y_H, Y_He, Y_eMax, Y_H2;
-    clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
-#ifdef MOLECULARH
-    /*Total - electrons in H2 - half the number of atoms in H2 */
-    Y_H2 = cp->f_H2*Y_H + (cp->f_H2*Y_H)/2.0;
-#else
-    Y_H2 = 0;
-#endif
-    return clThermalEnergy(2*Y_H - cp->f_HI*Y_H - Y_H2
-		    + 3*Y_He - 2*cp->f_HeI*Y_He - 
-		    cp->f_HeII*Y_He + ZMetal/MU_METAL, T ) / 
-	cl->dErgPerGmUnit;
-    }
-
 /* Initialization Routines */
 
 void CoolTableReadInfo( COOLPARAM *CoolParam, int cntTable, int *nTableColumns, char *suffix )
@@ -2416,8 +2390,8 @@ void CoolTableRead( COOL *Cool, int nData, void *vData)
 void CoolDefaultParticleData( COOLPARTICLE *cp )
 {
  
-	cp->f_HI = 0.75;
-	cp->f_HeI = 0.06;
+	cp->f_HI = 1.0;
+	cp->f_HeI = 1.0;
 	cp->f_HeII = 0.0;
 }
 

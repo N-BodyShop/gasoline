@@ -85,9 +85,6 @@ struct parameters {
             int bHomogSpheroid;
         int bBodyForce;
 	double dBodyForceConst;
-	int bChrisDisk;
-	double dChrisDiskVc;
-	double dChrisDiskR;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
@@ -309,14 +306,13 @@ struct parameters {
         double dDeltaStarForm;
         int bSNTurnOffCooling;
 	int bShortCoolShutoff;
-    double dESFBlastRadius;     /* Extent of early stellar feedback
-				   (kpc) */
 	double dExtraCoolShutoff;
 	int bSmallSNSmooth;
         int iStarFormRung;
-  int iRandomSeed;
+        int iRandomSeed;
 	int nSmoothFeedback;
 #endif
+        double dNoncoolConvTime;
 	double dKBoltzUnit;
         double dPext;
         double dvturb;
