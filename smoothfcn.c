@@ -1367,9 +1367,10 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		    /* don't accrete a deleted particle!  JMB 10/1/08 */
 		KERNEL(rs,r2);
 		fW = rs*nnList[i].pPart->fMass;
-		if(r2 > 0.25*nnList[i].pPart->fBall2) continue; 
+		if(smf->bBHAccreteAll != 1 && r2 > 0.25*nnList[i].pPart->fBall2) continue; 
 		/* don't accrete gas that doesn't have the BH
 		 * in its smoothing length  JMB 10/22/08 */
+		/* make this an optional parameter JMB 9/21/12 */
 		/*if (nnList[i].pPart->iRung < smf->iSinkCurrentRung) continue; /* JMB 7/9/09 */
 
 		if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin),-1.5)/dCosmoDenFac;
@@ -1649,7 +1650,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      /*if(nnList[i].pPart->iRung < smf->iSinkCurrentRung) continue;*/
 	      /* has to be on the right timestep */
 	      r2 = nnList[i].fDist2;
-	      if(r2 > 0.25*nnList[i].pPart->fBall2) continue;
+	      if(smf->bBHAccreteAll != 1 && r2 > 0.25*nnList[i].pPart->fBall2) continue;
 	      /* has to be nearby! */
 	      KERNEL(rs,r2);
 
