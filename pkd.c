@@ -3754,6 +3754,29 @@ void pkdHomogSpheroid(PKD pkd)
 			}
 		}
 	}
+void pkdChrisDiskForce(PKD pkd, double Vc, double R)
+{
+	/*
+	This is the external disk potential that is used together with Chris 
+	Gatopolous' Enzo initial conditions for a disk slice.  The initial 
+	values Chris used for Vc and R were 220 km/s and 6 kpc respectively.
+	*/
+	PARTICLE *p;
+	int i,n;
+	
+	p = pkd->pStore;
+	n = pkdLocal(pkd);
+	for (i=0;i<n;++i) 
+	{
+		if (TYPEQueryACTIVE(&(p[i]))) 
+		{
+			double z = p[i].r[2];
+			double g = Vc*Vc*z/(R*R+z*z);
+            p[i].a[2] -= g;
+            p[i].fPot += g*z;
+		}
+	}
+}
 
 void pkdBodyForce(PKD pkd, double dConst)
 {
