@@ -4293,6 +4293,10 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
     if (msr->param.bDoCSound) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
+#ifdef UNONCOOL
+    OutputList[(*nOutputList)++]=OUT_U_ARRAY;
+    OutputList[(*nOutputList)++]=OUT_UNONCOOL_ARRAY;
+#endif
 #ifdef PDVDEBUG
     OutputList[(*nOutputList)++]=OUT_PDVPRES_ARRAY;
     OutputList[(*nOutputList)++]=OUT_PDVVISC_ARRAY;
