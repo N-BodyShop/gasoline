@@ -252,7 +252,7 @@ void clReadMetalTable(COOL *cl, COOLPARAM clParam)
   XDR xdrs; 
   
   /* fp = fopen(clParam.CoolInFile, "r"); */ 
-  fp = fopen("/home/christensen/Storage1/UW/MolecH/st_glass/glass_newintegrator/zsol0.01_rho1_ni/cooltable_xdr", "r"); 
+  fp = fopen("cooltable_xdr", "r"); 
   assert(fp != NULL); 
   fscanf(fp, "%d %lf %lf %lf \n",&nz, &zmin, &zmax, &dz);
   fscanf(fp, "%d %lf %lf %lf \n",&nnH, &nHminlog ,&nHmaxlog,&dnH);
