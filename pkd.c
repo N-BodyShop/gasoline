@@ -4264,6 +4264,7 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 	mdlDiag(pkd->mdl, "Out of pkddrift\n");
 	}
 
+#define NONCOOLCONVRATE(_dNoncoolConvRate,_p) (_dNoncoolConvRate > 0 ? _dNoncoolConvRate : sqrt((_p)->uNoncoolPred)/((_p)->fBall2*0.25))
 
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
@@ -4347,7 +4348,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #ifdef STARFORM
 				      + p->fESNrate
 #endif
-				      - p->uNoncoolPred*dNoncoolConvRate;
+				      - p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate,p);
 
 				  p->uNoncoolPred = p->uNoncool + uNoncoolDot*duPredDelta;
 				  p->uNoncool = p->uNoncool + uNoncoolDot*duDelta;
@@ -5981,7 +5982,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNonc
     if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
 #ifdef UNONCOOL
       ExternalHeating = p->PdV*p->uPred/(p->uPred+p->uNoncoolPred) + p->uDotDiff 
-	  + p->uNoncoolPred*dNoncoolConvRate;
+	  + p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate, p);
 #else
       ExternalHeating = p->PdV;
 #ifdef STARFORM
