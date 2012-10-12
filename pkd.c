@@ -6126,10 +6126,14 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
 			 * P_min = 3*G*max(h,eps)^2*rho^2
 			 * Note that G = 1 in our code
 			 */
+#ifdef JEANSSOFTONLY
+			l2 = p->fSoft*p->fSoft;
+#else
 			l2 = 0.25*p->fBall2; 
 #ifdef JEANSSOFT
 			e2 = p->fSoft*p->fSoft; 
 			if (l2 < e2) l2 = e2; /* Jeans scale can't be smaller than softening */
+#endif
 #endif
 			PoverRho2Jeans = l2*dResolveJeans;
 			if(p->PoverRho2 < PoverRho2Jeans) {
