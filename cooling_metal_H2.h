@@ -42,7 +42,7 @@ typedef struct CoolingParametersStruct {
   int    nCoolingTable;
   int    bUV;
   int    bMetal;
-  char   *CoolInFile; 
+  char   CoolInFile[MAXPATHLEN]; 
   int    bUVTableUsesTime;
   int    bDoIonOutput;
   int    bLowTCool;

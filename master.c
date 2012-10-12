@@ -702,6 +702,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"<BHSink Alpha>");
 	msr->param.bBHMindv = 0;
 	prmAddParam(msr->prm,"bBHMindv",0,&msr->param.bBHMindv,sizeof(int),"bhmindv","use mindeltav for BH accretion = -bhmindv");
+
+        msr->param.bBHAccreteAll = 1;
+        prmAddParam(msr->prm,"bBHAccreteAll",0,&msr->param.bBHAccreteAll,sizeof(int),"bhaccreteall","BHs can accrete any particle = -bhaccreteall");
+
 	msr->param.bDoSinksAtStart = 0;
 	prmAddParam(msr->prm,"bDoSinksAtStart",0,&msr->param.bDoSinksAtStart,sizeof(int),
 				"sinksas","enable/disable sinks at start = -sinksas");
@@ -2498,6 +2502,10 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef COLUMNLENGTH
  	fprintf(fp," COLUMNLENGTH"); /* Use smoothing length for correlation length*/
+/*Made using the smoothing length the default, as it has been used that way in all production runs to Jun 4th, 2012, CC*/
+#endif
+#ifdef PARTSHEAR
+ 	fprintf(fp," PARTSHEAR"); /* Use the particle shear for correlation length*/
 #endif
 #ifdef NEWSHEAR
  	fprintf(fp," NEWSHEAR"); /* Use diffusion length for correlation length*/
@@ -2730,6 +2738,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bBHTurnOffCooling: %d",msr->param.bBHTurnOffCooling);
 	fprintf(fp," bSmallBHSmooth: %d",msr->param.bSmallBHSmooth);
 	fprintf(fp," bBHMindv: %d",msr->param.bBHMindv);
+        fprintf(fp," bBHAccreteAll: %d",msr->param.bBHAccreteAll);
 	fprintf(fp," bDoSinksAtStart: %d",msr->param.bDoSinksAtStart );
 	fprintf(fp," bSinksThermal: %d",msr->param.bSinkThermal );
 	fprintf(fp," dSinkRadius: %g",msr->param.dSinkRadius);
@@ -4148,7 +4157,6 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
         OutputList[(*nOutputList)++]=OUT_PDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_PDVPRES_ARRAY;
         OutputList[(*nOutputList)++]=OUT_PDVVISC_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
         }
 #ifndef NOCOOLING				
     {
@@ -5334,6 +5342,8 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
     ** Make sure that the type of tree is a density binary tree!
     */
     assert(msr->iTreeType == MSR_TREE_DENSITY);
+
+    msrSmoothFcnParam(msr,dTime,&in.smf);
 #ifdef STARFORM
     in.nSmooth = (iSmoothType == SMX_DIST_SN_ENERGY ? msr->param.nSmoothFeedback : msr->param.nSmooth);
 #else
@@ -8310,17 +8320,17 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	    /* build new tree of BHs for merging JMB 11/14/08  */
 	    msrActiveType(msr,TYPE_SINK,TYPE_TREEACTIVE);
 	    if (msr->nTreeActive > 1) { /* no need to merge if there is only one! */
-		msrBuildTree(msr,1,-1.0,1);  /* bTreeActive */
-		msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
-		msrActiveTypeRung(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE,iKickRung,1);
-		/* need to change nSmooth to number of BHs.  */
-		nSmoothTemp = msr->param.nSmooth;
-		msr->param.nSmooth = min(msr->nTreeActive, 4);
-		msrSmooth(msr,dTime, SMX_BHSINKIDENTIFY,1);
-		msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
-		msrSmooth(msr,dTime, SMX_BHSINKMERGE,1);
-		/* now change it back to what it was before JMB 12/10/08  */
-		msr->param.nSmooth = nSmoothTemp;
+	      msrBuildTree(msr,1,-1.0,1);  /* bTreeActive */
+	      msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
+	      msrActiveTypeRung(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE,iKickRung,1);
+	      /* need to change nSmooth to number of BHs.  */
+	      nSmoothTemp = msr->param.nSmooth;
+	      msr->param.nSmooth = min(msr->nTreeActive, 4);/*tracking mergers with more than a few BH neighbors is overkill - JMB  */
+	      msrSmooth(msr,dTime, SMX_BHSINKIDENTIFY,1);
+      	      msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
+	      msrSmooth(msr,dTime, SMX_BHSINKMERGE,1);
+	      /* now change it back to what it was before JMB 12/10/08  */
+	      msr->param.nSmooth = nSmoothTemp;
 		msr->iTreeType = MSR_TREE_NONE;
 		}
 	    else {

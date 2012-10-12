@@ -436,7 +436,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
       pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
     }
     else {
-      fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+      if(pkd->idSelf == 0)
+	fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
     }
   }
 #endif
@@ -5049,7 +5050,7 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 				}		        
 #else
 			    if (pkdIsGas(pkd, &(pkd->pStore[i])) && dhMinOverSoft < 1 && pkd->pStore[i].fBall2<4.0*pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) {
-			        if (pkd->pStore[i].fBall2 > 4.0*dhMinOverSoft
+			        if (pkd->pStore[i].fBall2 > 4.0*dhMinOverSoft*dhMinOverSoft
 				    *pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
 				   dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
 			        else 
@@ -5993,15 +5994,17 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNonc
 				if (correL > sqrt(0.25*p->fBall2) || p->diff == 0) 
 				  correL = sqrt(0.25*p->fBall2); /*minimum is particle smoothing*/
 #else /*NEWSHEAR*/
+#ifdef PARTSHEAR
 				/***** particle shear method********/ 
 				if (p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2] != 0) 
 				  correL = p->c/sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2]);				
-#endif /*NEWSHEAR*/
-#ifdef COLUMNLENGTH
+#else /*PARTSHEAR*/
+				/*#ifdef COLUMNLENGTH */ /*Made using the smoothing length the default, as it has been used that way in all production runs to Jun 4th, 2012, CC*/
 				/***** From particle smoothing.  This works best for determining the correlation length.  CC 7/20/11 ******/
                                 correL = sqrt(0.25*p->fBall2);
-
-#endif /*COLUMNLENGTH*/
+				/*#endif COLUMNLENGTH*/
+#endif /*PARTSHEAR*/
+#endif /*NEWSHEAR*/
 #ifdef DENSITYU
 				if (p->fDensityU < p->fDensity) 
 				  CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensityU, p->fMetals, p->r, dtUse, correL); /* If doing H2, send the correlation length to calculate the shielding*/
@@ -6018,10 +6021,10 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNonc
 				if (p->fDensityU < p->fDensity) 
 				    CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensityU, p->fMetals, p->r, dtUse);
 				else
-#else
+#else /*DENSITYU*/
 				    CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensity, p->fMetals, p->r, dtUse);
-#endif
-#endif
+#endif /*DENSITYU*/
+#endif /*COOLING_MOLECULARH*/
 
 				mdlassert(pkd->mdl,E > 0);
 
@@ -6033,7 +6036,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNonc
 				}
 			}
 		}
-#endif /*COOLING_MOLECULARH*/
+#endif /*NOT NOCOOLING*/
 	pkdStopTimer(pkd,1);
 	}
 

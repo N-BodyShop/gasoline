@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 #include <assert.h>
 /* #include <rpc/xdr.h> */
@@ -234,8 +235,8 @@ void clReadMetalTable(COOL *cl, COOLPARAM clParam)
   FILE *fp;  
   XDR xdrs; 
   
-  /* fp = fopen(clParam.CoolInFile, "r"); */ 
-  fp = fopen("cooltable_xdr", "r"); 
+  fp = fopen(clParam.CoolInFile, "r"); 
+//  fp = fopen("cooltable_xdr", "r"); 
   assert(fp != NULL); 
   fscanf(fp, "%d %lf %lf %lf \n",&nz, &zmin, &zmax, &dz);
   fscanf(fp, "%d %lf %lf %lf \n",&nnH, &nHminlog ,&nHmaxlog,&dnH);
@@ -904,7 +905,7 @@ void clRateMetalTable(COOL *cl, RATE *Rate, double T, double rho, double Y_H, do
 
   xnHlog = (nHlog - cl->MetalnHlogMin)*cl->rDeltanHlog; 
   inHlog = xnHlog;
-  if(inHlog > 115) inHlog = 115;  /*Slipshod method until the table can be extended */
+  if (inHlog == cl->nnHMetalTable - 1) inHlog == cl->nnHMetalTable - 2; /*CC; To prevent running over the table.  Should not be used*/
   
   Cool000 = cl->MetalCoolln[iz][inHlog][iTlog];
   Cool001 = cl->MetalCoolln[iz][inHlog][iTlog+1];
@@ -2284,9 +2285,9 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 	CoolParam->bMetal = 1; 
 	prmAddParam(prm,"bMetal",0,&CoolParam->bMetal,sizeof(int),
 				"mtc","enable/disable Metal heating/cooling = +mtc");
-	/*	CoolParam->CoolInFile = "cooltable_xdr";
+	strcpy(CoolParam->CoolInFile,"cooltable_xdr\0");
 	prmAddParam(prm,"CoolInFile",3,&CoolParam->CoolInFile,256,"coolin",
-	"<cooling table file> (file in xdr binary format)"); */
+	"<cooling table file> (file in xdr binary format)"); 
 
 	}
 	
