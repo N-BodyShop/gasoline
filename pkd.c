@@ -2626,7 +2626,18 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 				c[iCell].r[j] += p[pj].fMass*p[pj].r[j];
 				}
 			}
-		DIAGDIST2(c[iCell].bndDt.drMax2,c[iCell].bnd.fMin,c[iCell].bnd.fMax);
+		if(l <= u) {
+		    DIAGDIST2(c[iCell].bndDt.drMax2,c[iCell].bnd.fMin,c[iCell].bnd.fMax);
+		    }
+		else { /* An empty cell */
+		    c[iCell].bndDt.drMax2 = 0.0;
+		    c[iCell].bndDt.cMax = 0.0;
+		    for(j = 0; j < 3; j++) {
+			c[iCell].bndDt.vMin[j] = 0.0;
+			c[iCell].bndDt.vMax[j] = 0.0;
+			}
+		    }
+
 		if (c[iCell].fMass > 0) {
 			for (j=0;j<3;++j) {
 				c[iCell].r[j] /= c[iCell].fMass;
