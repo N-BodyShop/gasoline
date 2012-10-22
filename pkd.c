@@ -7121,7 +7121,7 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 #ifdef STARFORM
 			      + p->fESNrate
 #endif
-			      - p->uNoncoolPred*dNoncoolConvRate;
+				  - p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate,p);
 			  p->uNoncoolPred = p->uNoncoolPred + uNoncoolDot*duDelta;
 			  if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
 			      }
