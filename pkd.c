@@ -2241,7 +2241,11 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 			pOut->bndDt.vMax[j] = p1->bndDt.vMax[j];
 		}
 
-	DIAGDIST2(pOut->bndDt.drMax2,pOut->bnd.fMin,pOut->bnd.fMax);
+	if(pOut->bnd.fMax[0] > pOut->bnd.fMin[0]) { /* non-empty */
+	    DIAGDIST2(pOut->bndDt.drMax2,pOut->bnd.fMin,pOut->bnd.fMax);
+	    }
+	else
+	    pOut->bndDt.drMax2 = 0.0;
 	if (p2->bndDt.cMax > p1->bndDt.cMax)
 	    pOut->bndDt.cMax = p2->bndDt.cMax;
 	else
@@ -3016,7 +3020,11 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		pkdn->bnd.fMax[j] = -FLOAT_MAXVAL;
 		pkdn->bndBall.fMin[j] = FLOAT_MAXVAL;
 		pkdn->bndBall.fMax[j] = -FLOAT_MAXVAL;
+		pkdn->bndDt.vMin[j] = 0.0;
+		pkdn->bndDt.vMax[j] = 0.0;
 	        }
+	    pkdn->bndDt.drMax2 = 0.0;
+	    pkdn->bndDt.cMax = 0.0;
 	    pkdn->iDim = -1; /* it is a bucket! */
 	    pkdn->fSplit = 0.0;
 	    pkdn->iLower = -1;
