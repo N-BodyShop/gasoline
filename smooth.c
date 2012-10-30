@@ -1489,6 +1489,9 @@ void smSmooth(SMX smx,SMF *smf)
     pqn->ax = 0.0;
     pqn->ay = 0.0;
     pqn->az = 0.0;
+    pqn->dx = 0.0;
+    pqn->dy = 0.0;
+    pqn->dz = 0.0;
     PQ_BUILD(smx->pq,nSmooth,pq);
 /*
   sprintf(ach,"Snake:%d\n",p[pi].iOrder);

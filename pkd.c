@@ -436,7 +436,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
       pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
     }
     else {
-      fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+      if(pkd->idSelf == 0)
+	fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
     }
   }
 #endif
@@ -891,6 +892,7 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pb
 		pbndTreeActive->fMax[j] = pbndActive->fMax[j];
 		}
 
+#ifdef LONGRANGESTEP
 	if (pbndDt != NULL) {
 	    DIAGDIST2(pbndDt->drMax2,pbnd->fMin,pbnd->fMax);
 	    pbndDt->cMax = -FLOAT_MAXVAL;
@@ -912,6 +914,7 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pb
 		    }
 		}
 	    }
+#endif
 	}
 
 
@@ -2230,6 +2233,7 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 		else
 			pOut->bndBall.fMax[j] = p1->bndBall.fMax[j];
 
+#ifdef LONGRANGESTEP
 		if (p2->bndDt.vMin[j] < p1->bndDt.vMin[j])
 			pOut->bndDt.vMin[j] = p2->bndDt.vMin[j];
 		else
@@ -2238,14 +2242,16 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 			pOut->bndDt.vMax[j] = p2->bndDt.vMax[j];
 		else
 			pOut->bndDt.vMax[j] = p1->bndDt.vMax[j];
+#endif
 		}
 
+#ifdef LONGRANGESTEP
 	DIAGDIST2(pOut->bndDt.drMax2,pOut->bnd.fMin,pOut->bnd.fMax);
 	if (p2->bndDt.cMax > p1->bndDt.cMax)
 	    pOut->bndDt.cMax = p2->bndDt.cMax;
 	else
 	    pOut->bndDt.cMax = p1->bndDt.cMax;
-
+#endif
 	/*
 	 ** Find the center of mass and mass weighted softening.
 	 */
@@ -2592,14 +2598,20 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 			c[iCell].bnd.fMax[j] = -FLOAT_MAXVAL;
 			c[iCell].bndBall.fMin[j] = FLOAT_MAXVAL;
 			c[iCell].bndBall.fMax[j] = -FLOAT_MAXVAL;
+#ifdef LONGRANGESTEP
 			c[iCell].bndDt.vMin[j] = FLOAT_MAXVAL;
 			c[iCell].bndDt.vMax[j] = -FLOAT_MAXVAL;
+#endif
 			c[iCell].r[j] = 0.0;
 			}
+#ifdef LONGRANGESTEP
 		c[iCell].bndDt.cMax = -FLOAT_MAXVAL;
+#endif
 		for (pj=l;pj<=u;++pj) {
+#ifdef LONGRANGESTEP
 		        if (p[pj].c > c[iCell].bndDt.cMax)
 			        c[iCell].bndDt.cMax = p[pj].c;
+#endif
 			for (j=0;j<3;++j) {
 				if (p[pj].r[j] < c[iCell].bnd.fMin[j])
 					c[iCell].bnd.fMin[j] = p[pj].r[j];
@@ -2610,10 +2622,12 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 					c[iCell].bndBall.fMin[j] = p[pj].r[j]-p[pj].fBallMax;
 				if (p[pj].r[j]+p[pj].fBallMax > c[iCell].bndBall.fMax[j])
 					c[iCell].bndBall.fMax[j] = p[pj].r[j]+p[pj].fBallMax;
+#ifdef LONGRANGESTEP
 				if (p[pj].vPred[j] < c[iCell].bndDt.vMin[j])
 					c[iCell].bndDt.vMin[j] = p[pj].vPred[j];
 				if (p[pj].vPred[j] > c[iCell].bndDt.vMax[j])
 					c[iCell].bndDt.vMax[j] = p[pj].vPred[j];
+#endif
 
 				}
 			/*
@@ -2624,8 +2638,11 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 			for (j=0;j<3;++j) {
 				c[iCell].r[j] += p[pj].fMass*p[pj].r[j];
 				}
-			}
+		        }
+#ifdef LONGRANGESTEP
+		assert( !isnan(c[iCell].bndDt.cMax) );
 		DIAGDIST2(c[iCell].bndDt.drMax2,c[iCell].bnd.fMin,c[iCell].bnd.fMax);
+#endif
 		if (c[iCell].fMass > 0) {
 			for (j=0;j<3;++j) {
 				c[iCell].r[j] /= c[iCell].fMass;
@@ -3005,6 +3022,9 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		pkdn->bndBall.fMin[j] = FLOAT_MAXVAL;
 		pkdn->bndBall.fMax[j] = -FLOAT_MAXVAL;
 	        }
+#ifdef LONGRANGESTEP
+	    pkdn->bndDt.cMax = -FLOAT_MAXVAL;
+#endif
 	    pkdn->iDim = -1; /* it is a bucket! */
 	    pkdn->fSplit = 0.0;
 	    pkdn->iLower = -1;
@@ -3754,29 +3774,6 @@ void pkdHomogSpheroid(PKD pkd)
 			}
 		}
 	}
-void pkdChrisDiskForce(PKD pkd, double Vc, double R)
-{
-	/*
-	This is the external disk potential that is used together with Chris 
-	Gatopolous' Enzo initial conditions for a disk slice.  The initial 
-	values Chris used for Vc and R were 220 km/s and 6 kpc respectively.
-	*/
-	PARTICLE *p;
-	int i,n;
-	
-	p = pkd->pStore;
-	n = pkdLocal(pkd);
-	for (i=0;i<n;++i) 
-	{
-		if (TYPEQueryACTIVE(&(p[i]))) 
-		{
-			double z = p[i].r[2];
-			double g = Vc*Vc*z/(R*R+z*z);
-            p[i].a[2] -= g;
-            p[i].fPot += g*z;
-		}
-	}
-}
 
 void pkdBodyForce(PKD pkd, double dConst)
 {
@@ -5073,7 +5070,7 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 				}		        
 #else
 			    if (pkdIsGas(pkd, &(pkd->pStore[i])) && dhMinOverSoft < 1 && pkd->pStore[i].fBall2<4.0*pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) {
-			        if (pkd->pStore[i].fBall2 > 4.0*dhMinOverSoft
+			        if (pkd->pStore[i].fBall2 > 4.0*dhMinOverSoft*dhMinOverSoft
 				    *pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
 				   dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
 			        else 
@@ -5982,7 +5979,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNonc
     if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
 #ifdef UNONCOOL
       ExternalHeating = p->PdV*p->uPred/(p->uPred+p->uNoncoolPred) + p->uDotDiff 
-	  + p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate, p);
+	  + p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate,p);
 #else
       ExternalHeating = p->PdV;
 #ifdef STARFORM
@@ -6017,15 +6014,17 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNonc
 				if (correL > sqrt(0.25*p->fBall2) || p->diff == 0) 
 				  correL = sqrt(0.25*p->fBall2); /*minimum is particle smoothing*/
 #else /*NEWSHEAR*/
+#ifdef PARTSHEAR
 				/***** particle shear method********/ 
 				if (p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2] != 0) 
 				  correL = p->c/sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2]);				
-#endif /*NEWSHEAR*/
-#ifdef COLUMNLENGTH
+#else /*PARTSHEAR*/
+				/*#ifdef COLUMNLENGTH */ /*Made using the smoothing length the default, as it has been used that way in all production runs to Jun 4th, 2012, CC*/
 				/***** From particle smoothing.  This works best for determining the correlation length.  CC 7/20/11 ******/
                                 correL = sqrt(0.25*p->fBall2);
-
-#endif /*COLUMNLENGTH*/
+				/*#endif COLUMNLENGTH*/
+#endif /*PARTSHEAR*/
+#endif /*NEWSHEAR*/
 #ifdef DENSITYU
 				if (p->fDensityU < p->fDensity) 
 				  CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensityU, p->fMetals, p->r, dtUse, correL); /* If doing H2, send the correlation length to calculate the shielding*/
@@ -6042,10 +6041,10 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNonc
 				if (p->fDensityU < p->fDensity) 
 				    CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensityU, p->fMetals, p->r, dtUse);
 				else
-#else
+#else /*DENSITYU*/
 				    CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensity, p->fMetals, p->r, dtUse);
-#endif
-#endif
+#endif /*DENSITYU*/
+#endif /*COOLING_MOLECULARH*/
 
 				mdlassert(pkd->mdl,E > 0);
 
@@ -6057,7 +6056,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNonc
 				}
 			}
 		}
-#endif /*COOLING_MOLECULARH*/
+#endif /*NOT NOCOOLING*/
 	pkdStopTimer(pkd,1);
 	}
 
@@ -6150,10 +6149,14 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
 			 * P_min = 3*G*max(h,eps)^2*rho^2
 			 * Note that G = 1 in our code
 			 */
+#ifdef JEANSSOFTONLY
+			l2 = p->fSoft*p->fSoft;
+#else
 			l2 = 0.25*p->fBall2; 
 #ifdef JEANSSOFT
 			e2 = p->fSoft*p->fSoft; 
 			if (l2 < e2) l2 = e2; /* Jeans scale can't be smaller than softening */
+#endif
 #endif
 			PoverRho2Jeans = l2*dResolveJeans;
 			if(p->PoverRho2 < PoverRho2Jeans) {
@@ -7121,7 +7124,7 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 #ifdef STARFORM
 			      + p->fESNrate
 #endif
-			      - p->uNoncoolPred*dNoncoolConvRate;
+			      - p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate,p);
 			  p->uNoncoolPred = p->uNoncoolPred + uNoncoolDot*duDelta;
 			  if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
 			      }
