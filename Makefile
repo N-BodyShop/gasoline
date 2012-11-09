@@ -44,12 +44,12 @@ COOLING_DEF = -DCOOLING_METAL
 #BASE_LD_FLAGS = $(PNG_LIB) -static
 BASE_LD_FLAGS = $(PNG_LIB) 
 
-#CC = icc 
+CC = mpicc 
 #CC = ecc
 ##CC = icc
 #CC = gcc -Wall
 #CC = pgcc 
-CC = gcc
+#CC = gcc
 
 CC_DEF = 
 
@@ -96,8 +96,8 @@ EXE = gasoline.vsig.rtforce.rhopred3.nodiff
 #EXE = gasoline.drhodt
 
 CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE -DDRHODT -DVSIGVISC
-CODE_DEF = -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE -DVSIGVISC -DSTARFORM -DUNONCOOL #-DSETTRAPFPE
-EXE = gasoline.diff.rtforce.unoncool
+CODE_DEF = -DCHANGESOFT -DGASOLINE -DDIFFUSION -DDIFFUSIONTHERMAL -DDODVDS -DRTFORCE -DVSIGVISC -DSTARFORM -DKROUPA -DUNONCOOL #-DSETTRAPFPE
+EXE = gasoline.diff.rtforce.unoncool.requin
 
 #Basic Gravity only code
 #CODE_DEF =
@@ -177,13 +177,12 @@ LAM_MDL_CFLAGS  = -fast -I$(LAM_MDL) $(BASE_DEF)
 #       Quadrics MPI defines
 #
 QMPI_MDL                        = ../mdl/mpi
-QMPI_CFLAGS             = -O5 -arch ev6 -fast -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX -DCCC
+QMPI_CFLAGS             = -O3 -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX -DCCC
 #QMPI_CFLAGS            = -g -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX -DCCC
 QMPI_LD_FLAGS           =  $(BASE_LD_FLAGS)
 QMPI_XOBJ                = erf.o 
-QMPI_LIBMDL              = $(QMPI_MDL)/mdl.o -lmpi -lelan -lelan3 -lm
-QMPI_MDL_CFLAGS  = -O5 -arch ev6 -fast -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX 
-#QMPI_MDL_CFLAGS  = -g -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX 
+QMPI_LIBMDL              = $(QMPI_MDL)/mdl.o -lmpi -lm
+QMPI_MDL_CFLAGS  = -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX 
 
 
 #       SP1/2 defines
@@ -214,7 +213,7 @@ PVM_LD_FLAGS	= $(BASE_LD_FLAGS)
 #       PTHREAD defines
 #
 PTHREAD_MDL			= ../mdl/pthread
-PTHREAD_CFLAGS		= -O3 -D_REENTRANT -I$(PTHREAD_MDL) $(BASE_DEF)
+PTHREAD_CFLAGS		= -ggdb -O0 -D_REENTRANT -I$(PTHREAD_MDL) $(BASE_DEF)
 PTHREAD_LD_FLAGS 	=  $(BASE_LD_FLAGS)
 PTHREAD_XOBJ		= erf.o v_sqrt1.o
 PTHREAD_LIBMDL 		= $(PTHREAD_MDL)/mdl.o -lm -lpthread

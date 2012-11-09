@@ -341,6 +341,9 @@ typedef struct chkParticle {
         FLOAT v[3];
 #ifdef GASOLINE
         FLOAT u;
+#ifdef UNONCOOL
+		FLOAT uNoncool;
+#endif
 #ifdef STARSINK
         FLOAT Lx,Ly,Lz;
 #endif
