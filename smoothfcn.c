@@ -79,7 +79,6 @@
 #define ACCEL_COMB_PRES(p,j) 
 
 #endif
-
 #ifdef PEAKEDKERNEL
 /* Standard M_4 Kernel with central peak for dW/du according to Thomas and Couchman 92 (Steinmetz 96) */
 #define BALL2(a) ((a)->fBall2)
@@ -5597,7 +5596,11 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
   for (i=0;i<nSmooth;++i) {
     r2 = nnList[i].fDist2*ih2;
+#ifdef TOPHATFEEDBACK
+	rs = 1.0;
+#else
     KERNEL(rs,r2);
+#endif
     q = nnList[i].pPart;
     if(q->fMass > smf->dMaxGasMass) {
 	continue;		/* Skip heavy particles */
@@ -5620,7 +5623,11 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     if(q->fMass > smf->dMaxGasMass)
 	  continue;		/* Skip heavy particles */
     r2 = nnList[i].fDist2*ih2;  
+#ifdef TOPHATFEEDBACK
+	rs =1.0;
+#else
     KERNEL(rs,r2);
+#endif
     /* Remember: We are dealing with total energy rate and total metal
      * mass, not energy/gram or metals per gram.  
      * q->fMass is in product to make units work for fNorm_u.
@@ -5772,7 +5779,11 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	counter++;  
 	r2 = nnList[i].fDist2*ih2;
+#ifdef TOPHATFEEDBACK
+	rs = 1.0;
+#else
 	KERNEL(rs,r2);
+#endif
 	/* Remember: We are dealing with total energy rate and total metal
 	 * mass, not energy/gram or metals per gram.  
 	 * q->fMass is in product to make units work for fNorm_u.
@@ -5786,7 +5797,11 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
       }
     } else {
       r2 = nnList[i].fDist2*ih2;  
+#ifdef TOPHATFEEDBACK
+	rs = 1.0;
+#else
       KERNEL(rs,r2);
+#endif
       /* Remember: We are dealing with total energy rate and total metal
        * mass, not energy/gram or metals per gram.  
        * q->fMass is in product to make units work for fNorm_u.
