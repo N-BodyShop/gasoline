@@ -5681,7 +5681,11 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
   for (i=0;i<nSmooth;++i) {
     r2 = nnList[i].fDist2*ih2;            
+#ifdef TOPHATFEEDBACK
+	rs = 1.0;
+#else
     KERNEL(rs,r2);
+#endif
     q = nnList[i].pPart;
     fNorm_u += q->fMass*rs;
     rs *= fNorm;
@@ -5734,7 +5738,11 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
       if ( nnList[i].fDist2 < fmind ){imind = i; fmind = nnList[i].fDist2;}
       if ( nnList[i].fDist2 < f2h2 || !smf->bSmallSNSmooth) {
 	r2 = nnList[i].fDist2*ih2;            
+#ifdef TOPHATFEEDBACK
+	rs = 1.0;
+#else
 	KERNEL(rs,r2);
+#endif
 	q = nnList[i].pPart;
 #ifdef VOLUMEFEEDBACK
 	fNorm_u += q->fMass/q->fDensity*rs;
@@ -5750,7 +5758,11 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
      give mass and energy to nearest gas particle. */
   if (fNorm_u ==0.0){
     r2 = nnList[imind].fDist2*ih2;            
+#ifdef TOPHATFEEDBACK
+	rs = 1.0;
+#else
     KERNEL(rs,r2);
+#endif
     /*
      * N.B. This will be NEGATIVE, but that's OK since it will
      * cancel out down below.
