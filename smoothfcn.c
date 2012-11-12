@@ -5593,7 +5593,11 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   dAge = smf->dTime - p->fTimeForm;
   dAgeMyr = dAge* smf->dSecUnit / SECONDSPERYEAR;
 	
+#ifdef TOPHATFEEDBACK
+	fNorm = 1.0;
+#else
   fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
+#endif
   for (i=0;i<nSmooth;++i) {
     r2 = nnList[i].fDist2*ih2;
 #ifdef TOPHATFEEDBACK
@@ -5678,7 +5682,11 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   if (dAge == 0.0) return;
   dAgeMyr = dAge* smf->dSecUnit / SECONDSPERYEAR;
 	
+#ifdef TOPHATFEEDBACK
+	fNorm = 1.0;
+#else
   fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
+#endif
   for (i=0;i<nSmooth;++i) {
     r2 = nnList[i].fDist2*ih2;            
 #ifdef TOPHATFEEDBACK
