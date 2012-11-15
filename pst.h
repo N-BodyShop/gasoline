@@ -149,6 +149,7 @@ enum pst_service {
 	  PST_COOLUSINGPARTICLELIST,
 	  PST_SETTYPEFROMFILE,
       PST_MARKSMOOTH,
+      PST_DTSMOOTH,
       PST_RESMOOTH,
       PST_INITACCEL,
       PST_MODIFYACCEL,
@@ -645,6 +646,7 @@ struct inUpdateuDot {
 	double duDelta;
 	double dTime;	
 	double z;
+        double dNoncoolConvRate;
 	int iGasModel;
 	int bUpdateState;
 	};
@@ -669,6 +671,7 @@ struct inKick {
 	int iGasModel;
         double z;
         double dTimeEnd;
+        double dNoncoolConvRate;
 	};
 struct outKick {
 	double Time;
@@ -966,7 +969,6 @@ struct inoutParticleList {
 void pstSoughtParticleList(PST,void *,int,void *,int *);
 void pstCoolUsingParticleList(PST,void *,int,void *,int *);
 
-/* PST_RESMOOTH */
 struct inMarkSmooth {
 	int nSmooth;
 	int bPeriodic;
@@ -977,6 +979,19 @@ struct inMarkSmooth {
 	};
 void pstMarkSmooth(PST,void *,int,void *,int *);
 
+struct inDtSmooth {
+	int nSmooth;
+	int bPeriodic;
+	int bSymmetric;
+	int iSmoothType;
+	SMF smf;
+	};
+struct outDtSmooth {
+    double dtMin;
+    };
+void pstDtSmooth(PST,void *,int,void *,int *);
+
+/* PST_RESMOOTH */
 struct inReSmooth {
 	int nSmooth;
 	int bPeriodic;
@@ -1803,6 +1818,7 @@ struct inKickVpred {
 	int iGasModel;
 	double z;
         double dTimeEnd;
+        double dNoncoolConvRate;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
 #endif

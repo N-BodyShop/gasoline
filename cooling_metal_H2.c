@@ -1111,17 +1111,6 @@ void clRateMetalTable(COOL *cl, RATE *Rate, double T, double rho, double Y_H, do
   Rate->Cool_Metal = exp(Cool)*nH*Y_H/M_H * ZMetal/ZSOLAR; 
   Rate->Heat_Metal = exp(Heat)*nH*Y_H/M_H * ZMetal/ZSOLAR;   
 
-#ifndef NOCOOLTABLEFIT
-  if (T < cl->MetalTMin || nH >= cl->MetalnHMax) {
-    Rate->Cool_Metal = -12.5920 + 5.25788*Tlog -0.949444*nHlog +      1.02849*Tlog*nHlog -    0.647718*pow(Tlog,2) - 0.137914*pow(Tlog,2)*nHlog
-      + 0.000204617*pow(Tlog,2)*pow(nHlog,2) - 0.0751646*Tlog*pow(nHlog,2)   + 0.247727*pow(nHlog,2);
-    Rate->Cool_Metal = pow(10,Rate->Cool_Metal);
-    Rate->Heat_Metal = -13.3866 + 3.62845e-10*Tlog     + nHlog + -3.12419e-11*Tlog*nHlog - 6.09512e-11*pow(Tlog,2) + 5.49561e-12*pow(Tlog,2)*nHlog
-      + 7.33096e-12*pow(Tlog,2)*pow(nHlog,2) - 3.80744e-11*Tlog*pow(nHlog,2) + 2.65849e-08*pow(nHlog,2);
-    Rate->Heat_Metal = pow(10,Rate->Heat_Metal);
-  }
-#endif
-  
 }
 
 /* Deprecated except for testing: use EdotInstant */
@@ -3341,6 +3330,9 @@ void CoolDefaultParticleData( COOLPARTICLE *cp )
 	cp->f_HeI = 0.06;
 	cp->f_HeII = 0.0;
 	cp->f_H2 = 0.0;
+#ifdef  RADIATIVEBOX
+	cp->dLymanWerner = 0.0;
+#endif
 }
 
 void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp, double ZMetal)

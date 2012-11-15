@@ -49,64 +49,72 @@
 #define INTERNAL_WARNINGS 1 /* 0=none,1=once,2=always */
 #define INTERNAL_WARNINGS_ONCE (INTERNAL_WARNINGS == 1)
 
-#define CID_TOP			0
-#define CID_PARTICLE	0
-#define CID_CELL		1
+#define CID_TOP                 0
+#define CID_PARTICLE    0
+#define CID_CELL                1
 
-#define ROOT		1
-#define LOWER(i)	(i<<1)
-#define UPPER(i)	((i<<1)+1)
-#define PARENT(i)	(i>>1)
-#define SIBLING(i) 	((i&1)?i-1:i+1)
+#define ROOT            1
+#define LOWER(i)        (i<<1)
+#define UPPER(i)        ((i<<1)+1)
+#define PARENT(i)       (i>>1)
+#define SIBLING(i)      ((i&1)?i-1:i+1)
 #define SETNEXT(i)\
 {\
-	while (i&1) i=i>>1;\
-	++i;\
-	}
+        while (i&1) i=i>>1;\
+        ++i;\
+        }
 
-#define MAX_TIMERS		10
+#define MAX_TIMERS              10
 
 typedef struct particle {
-	int iOrder;
-	unsigned int iActive;  
-	int iRung;
-	int cpStart;
-	FLOAT fWeight;
-	FLOAT fMass;
-	FLOAT fSoft;
+        int iOrder;
+        unsigned int iActive;  
+        int iRung;
+        int cpStart;
+        FLOAT fWeight;
+        FLOAT fMass;
+        FLOAT fSoft;
 #ifdef CHANGESOFT
-	FLOAT fSoft0;
+        FLOAT fSoft0;
 #endif
-	FLOAT r[3];
-	FLOAT v[3];
-	FLOAT a[3];
-	FLOAT fPot;
-	FLOAT fBall2;
-	FLOAT fDensity;
-	FLOAT dt;		/* a time step suggestion */
-	FLOAT dtGrav;		/* suggested 1/dt^2 from gravity */
+        FLOAT r[3];
+        FLOAT v[3];
+        FLOAT a[3];
+        FLOAT fPot;
+        FLOAT fBall2;
+        FLOAT fDensity;
+        FLOAT dt;               /* a time step suggestion */
+        FLOAT dtNew;            /* SPH new dt estimate */
+        FLOAT dtGrav;           /* suggested 1/dt^2 from gravity */
 #ifdef SLIDING_PATCH
-	FLOAT dPy;		/* Canonical momentum for Hill eqn. */
+        FLOAT dPy;              /* Canonical momentum for Hill eqn. */
 #endif
 #ifdef SUPERCOOL
-	FLOAT vMean[3];
+        FLOAT vMean[3];
 #endif
 #ifdef COLORCODE
-	FLOAT fColor;
+        FLOAT fColor;
 #endif
-	FLOAT fBallMax;		/* SPH 2h Max value */
+        FLOAT fBallMax;         /* SPH 2h Max value */
 #ifdef GASOLINE
-	FLOAT c;		/* sound speed */
-	FLOAT u; 	        /* thermal energy  */ 
-	FLOAT uPred;		/* predicted thermal energy, Lx sink */
-	FLOAT PoverRho2;	/* P/rho^2, Ly sink */
-	FLOAT mumax;		/* sound speed like viscosity term, Lz sink */
-	FLOAT PdV;	        /* P dV heating (includes shocking) */
+        FLOAT c;                /* sound speed */
+        FLOAT u;                /* thermal energy  */ 
+        FLOAT uPred;            /* predicted thermal energy, Lx sink */
+        FLOAT PoverRho2;        /* P/rho^2, Ly sink */
+        FLOAT mumax;            /* sound speed like viscosity term, Lz sink */
+        FLOAT PdV;              /* P dV heating (includes shocking) */
 #ifdef PDVDEBUG
-	FLOAT PdVvisc;		/* P dV from shock (testing) */
-	FLOAT PdVpres;		/* P dV from adiabatic compression (testing) */
+        FLOAT PdVvisc;          /* P dV from shock (testing) */
+        FLOAT PdVpres;          /* P dV from adiabatic compression (testing) */
 #endif
-	FLOAT divv;		
+#ifdef UNONCOOL
+        FLOAT uNoncool;
+        FLOAT uNoncoolPred;
+        FLOAT uNoncoolDot;
+        FLOAT uDotDiff;
+        FLOAT uNoncoolDotDiff;
+#endif
+        FLOAT divv;             
 #ifdef DODVDS
         FLOAT dvds;
 #endif
@@ -115,7 +123,7 @@ typedef struct particle {
         FLOAT alphaPred;
 #endif
         FLOAT curlv[3];         /* Note this is used as workspace and value is not preserved */
-	FLOAT BalsaraSwitch;    /* Balsara viscosity reduction */
+        FLOAT BalsaraSwitch;    /* Balsara viscosity reduction */
 #ifdef DIFFUSION
         FLOAT diff;
         FLOAT fMetalsDot;
@@ -128,6 +136,15 @@ typedef struct particle {
 #ifdef DENSITYU
         FLOAT fDensityU;
 #endif
+#ifdef DRHODT
+        FLOAT fDensity_t;
+        FLOAT fDensity_PdV;
+        FLOAT fDensity_PdVcorr;
+        FLOAT fDivv_PdV;
+        FLOAT fDivv_PdVcorr;
+#endif
+        FLOAT fDivv_t;
+        FLOAT fDivv_Corrector;
 #ifdef SINKING
         FLOAT rSinking0Unit[3];
         FLOAT rSinking0Mag;
@@ -150,41 +167,41 @@ typedef struct particle {
         FLOAT divrhov;          /* debug */
         FLOAT gradrho[3];       /* debug */
 #endif
-/*	FLOAT fDensSave;*/	/* Used by diagnostic DensCheck funcs */
+/*      FLOAT fDensSave;*/      /* Used by diagnostic DensCheck funcs */
 #ifndef NOCOOLING
-	FLOAT uDot;			/* Rate of change of u -- for predicting u */
-	COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
+        FLOAT uDot;                     /* Rate of change of u -- for predicting u */
+        COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
 #endif
-	FLOAT fMetals;	/* mass fraction in metals, a.k.a, Z */
-	FLOAT fTimeForm;
+        FLOAT fMetals;  /* mass fraction in metals, a.k.a, Z */
+        FLOAT fTimeForm;
 #ifdef SIMPLESF
         FLOAT fMassStar;
-	FLOAT fESN;
-	int iGasOrder;		/* gas from which star formed */
+        FLOAT fESN;
+        int iGasOrder;          /* gas from which star formed */
 #endif
 #if defined(SIMPLESF) || defined(EXTRASINKDATA)
-	FLOAT rForm[3];		/* record pos and vel of star formation */
-	FLOAT vForm[3];
+        FLOAT rForm[3];         /* record pos and vel of star formation */
+        FLOAT vForm[3];
 #endif
 #ifdef STARFORM
-	FLOAT fESNrate;
-	FLOAT fMSN;
-	FLOAT fNSN;           
-	FLOAT fMOxygenOut;
-	FLOAT fMIronOut;
-	FLOAT fMFracOxygen;
-	FLOAT fMFracIron;
+        FLOAT fESNrate;
+        FLOAT fMSN;
+        FLOAT fNSN;           
+        FLOAT fMOxygenOut;
+        FLOAT fMIronOut;
+        FLOAT fMFracOxygen;
+        FLOAT fMFracIron;
 #ifdef DIFFUSION
         FLOAT fMFracOxygenDot;
-	FLOAT fMFracIronDot;
+        FLOAT fMFracIronDot;
         FLOAT fMFracOxygenPred;
-	FLOAT fMFracIronPred;
+        FLOAT fMFracIronPred;
 #endif
-	FLOAT fSNMetals;
-	FLOAT fNSNtot;
+        FLOAT fSNMetals;
+        FLOAT fNSNtot;
         FLOAT fTimeCoolIsOffUntil;
-	FLOAT fMassForm;	/* record original mass of star */
-	int iGasOrder;		/* gas from which star formed */
+        FLOAT fMassForm;        /* record original mass of star */
+        int iGasOrder;          /* gas from which star formed */
 #ifdef CHECKSF
         FLOAT tOff;
         FLOAT tcool;
@@ -196,44 +213,44 @@ typedef struct particle {
 #endif
 #endif  /* GASOLINE */
 #ifdef COLLISIONS
-	int iOrgIdx;		/* for tracking of mergers, aggregates etc. */
-	FLOAT w[3];			/* spin vector */
-	int iColor;			/* handy color tag */
-	int iDriftType;		/* either NORMAL or KEPLER */
-	double dtCol;		/* time to next encounter or collision */
-	int iOrderCol;		/* neighbour or collider iOrder */
-	double dtPrevCol;	/* time of previous collision */
-	int iPrevCol;		/* iOrder of previous collider */
-	int bTinyStep;		/* flag for imminent collapse */
-	FLOAT mindist2;		/* record min dist for all encounters */
+        int iOrgIdx;            /* for tracking of mergers, aggregates etc. */
+        FLOAT w[3];                     /* spin vector */
+        int iColor;                     /* handy color tag */
+        int iDriftType;         /* either NORMAL or KEPLER */
+        double dtCol;           /* time to next encounter or collision */
+        int iOrderCol;          /* neighbour or collider iOrder */
+        double dtPrevCol;       /* time of previous collision */
+        int iPrevCol;           /* iOrder of previous collider */
+        int bTinyStep;          /* flag for imminent collapse */
+        FLOAT mindist2;         /* record min dist for all encounters */
 #endif /* COLLISIONS */
 #ifdef SPECIAL_PARTICLES
-	int bGhostExclude;	/* particle not included in ghost cells */
+        int bGhostExclude;      /* particle not included in ghost cells */
 #endif /* SPECIAL_PARTICLES */ 
 #ifdef SLIDING_PATCH
     int bAzWrap;        /* flag set on azimuthal boundary wrap */
 #endif
 #ifdef SAND_PILE
-	int bStuck;
+        int bStuck;
 #endif
 #ifdef NEED_VPRED
-	FLOAT vPred[3];		/* predicted velocity (time centered) */
+        FLOAT vPred[3];         /* predicted velocity (time centered) */
 #endif
 #ifdef AGGS
-	/*
-	 ** Position of particle in principal frame of the aggregate
-	 ** (normally).  We temporarily store the COM frame position
-	 ** here during the process of computing the aggregate
-	 ** parameters.
-	 */
-	FLOAT r_agg[3];
+        /*
+         ** Position of particle in principal frame of the aggregate
+         ** (normally).  We temporarily store the COM frame position
+         ** here during the process of computing the aggregate
+         ** parameters.
+         */
+        FLOAT r_agg[3];
 #endif
 #ifdef RUBBLE_ZML
-	double dDustMass;	/* predicted mass increase from dust */
-	int iBin;				/* dust bin that planetesimal is in */
-	int bMayCollide;	/* true if planetesimal is predicted to
-						   collide with another planetesimal during
-						   the top step interval */
+        double dDustMass;       /* predicted mass increase from dust */
+        int iBin;                               /* dust bin that planetesimal is in */
+        int bMayCollide;        /* true if planetesimal is predicted to
+                                                   collide with another planetesimal during
+                                                   the top step interval */
 #endif
 } PARTICLE;
 
@@ -282,8 +299,8 @@ typedef struct particle {
 #define TYPE_OUTFLOW           (1<<18)
 
 /* Combination Masks */
-#define TYPE_ALLACTIVE			(TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
-#define TYPE_ALL				(TYPE_GAS|TYPE_DARK|TYPE_STAR)
+#define TYPE_ALLACTIVE                  (TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
+#define TYPE_ALL                                (TYPE_GAS|TYPE_DARK|TYPE_STAR)
 
 /* Type Macros */
 int TYPEQueryACTIVE      ( PARTICLE *a );
@@ -317,38 +334,41 @@ int TYPEClear( PARTICLE *a );
 #endif
 
 typedef struct chkParticle {
-	int iOrder;
-	FLOAT fMass;
-	FLOAT fSoft;
-	FLOAT r[3];
-	FLOAT v[3];
+        int iOrder;
+        FLOAT fMass;
+        FLOAT fSoft;
+        FLOAT r[3];
+        FLOAT v[3];
 #ifdef GASOLINE
-	FLOAT u;
+        FLOAT u;
+#ifdef UNONCOOL
+		FLOAT uNoncool;
+#endif
 #ifdef STARSINK
         FLOAT Lx,Ly,Lz;
 #endif
 #ifdef VARALPHA
         FLOAT alpha;
 #endif
-	FLOAT fMetals;
+        FLOAT fMetals;
 #ifndef NOCOOLING
-	COOLPARTICLE CoolParticle;
+        COOLPARTICLE CoolParticle;
 #endif
-	FLOAT fTimeForm;
+        FLOAT fTimeForm;
 #ifdef STARFORM
         FLOAT fTimeCoolIsOffUntil;
-	FLOAT fMassForm;	/* record original mass of star */
-	FLOAT fNSN;
-	FLOAT fMFracOxygen;
-	FLOAT fMFracIron;
+        FLOAT fMassForm;        /* record original mass of star */
+        FLOAT fNSN;
+        FLOAT fMFracOxygen;
+        FLOAT fMFracIron;
         int iGasOrder;
 #endif
 #ifdef SIMPLESF
-	FLOAT fMassStar;
-	FLOAT rForm[3];		/* record pos and vel of star formation */
-	FLOAT vForm[3];
-	FLOAT fDenForm;
-	int iGasOrder;
+        FLOAT fMassStar;
+        FLOAT rForm[3];         /* record pos and vel of star formation */
+        FLOAT vForm[3];
+        FLOAT fDenForm;
+        int iGasOrder;
 #endif
 #ifdef SINKING
         FLOAT rSinking0Unit[3];
@@ -362,40 +382,54 @@ typedef struct chkParticle {
 #endif
 #endif
 #ifdef COLLISIONS
-	int iOrgIdx; /* added for version 7 */
-	FLOAT w[3];
-	int iColor;
+        int iOrgIdx; /* added for version 7 */
+        FLOAT w[3];
+        int iColor;
 #endif /* COLLISIONS */
-	} CHKPART;
+        } CHKPART;
 
 typedef struct bndBound {
-	FLOAT fMin[3];
-	FLOAT fMax[3];
-	} BND;
+        FLOAT fMin[3];
+        FLOAT fMax[3];
+        } BND;
+
+typedef struct bndDt {
+        FLOAT vMin[3],vMax[3];
+        FLOAT cMax,drMax2;
+        } BNDDT;
+
+#define DIAGDIST2(fDist2,rMin,rMax) { \
+    FLOAT DD_dx,DD_dy,DD_dz; \
+    DD_dx = (rMax)[0] - (rMin)[0];\
+    DD_dy = (rMax)[1] - (rMin)[1];\
+    DD_dz = (rMax)[2] - (rMin)[2];\
+    fDist2 = DD_dx*DD_dx+DD_dy*DD_dy+DD_dz*DD_dz; }
 
 struct pkdCalcCellStruct {
-	double Qxx,Qyy,Qzz,Qxy,Qxz,Qyz;
-	/*
-	 ** Reduced multipole moments for l>2 !!!
-	 */
-	double Oxxx,Oxyy,Oxxy,Oyyy,Oxxz,Oyyz,Oxyz;
-	double Oxzz, Oyzz, Ozzz;
-	double Hxxxx,Hxyyy,Hxxxy,Hyyyy,Hxxxz,Hyyyz,Hxxyy,Hxxyz,Hxyyz;
-	double Hxxzz, Hxyzz, Hxzzz, Hyyzz, Hyzzz, Hzzzz;
-	double Bmax,B2,B3,B4,B5,B6;
+        double Qxx,Qyy,Qzz,Qxy,Qxz,Qyz;
+        /*
+         ** Reduced multipole moments for l>2 !!!
+         */
+        double Oxxx,Oxyy,Oxxy,Oyyy,Oxxz,Oyyz,Oxyz;
+        double Oxzz, Oyzz, Ozzz;
+        double Hxxxx,Hxyyy,Hxxxy,Hyyyy,Hxxxz,Hyyyz,Hxxyy,Hxxyz,Hxyyz;
+        double Hxxzz, Hxyzz, Hxzzz, Hyyzz, Hyzzz, Hzzzz;
+        double Bmax,B2,B3,B4,B5,B6;
 #ifdef  RADIATIVEBOX
         double fLW;
         double gmass;
         double gmom;
         FLOAT cLumLW[3];
 #endif
-	};
+        };
+
 
 typedef struct kdNode {
-	int iDim;
-	double fSplit;
+        int iDim;
+        double fSplit;
 	BND bnd;
 	BND bndBall;	/* Bound including fBall*(1+changemax) */
+        BNDDT bndDt;
 	int pLower;		/* also doubles as thread id for the LTT */
 	int pUpper;		/* pUpper < 0 indicates no particles in tree! */
 	int iLower;
@@ -710,7 +744,7 @@ void pkdPhysicalSoft(PKD pkd,double, double, int);
 void pkdPreVariableSoft(PKD pkd,int iVariableSoftType);
 void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSoftType);
 #endif
-void pkdCalcBound(PKD,BND *,BND *,BND *,BND *);
+void pkdCalcBound(PKD,BND *,BND *,BND *,BND *, BNDDT *);
 void pkdGasWeight(PKD);
 void pkdRungDDWeight(PKD, int, double);
 int pkdWeight(PKD,int,FLOAT,int,int,int,int *,int *,FLOAT *,FLOAT *);
@@ -753,8 +787,8 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder, int bEwald,int iEwOr
 void pkdCalcEandL(PKD,double *,double *,double *,double []);
 void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,int,FLOAT,double);
-void pkdUpdateUdot(PKD pkd,double,double,double,int,int);
-void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double, double);
+void pkdUpdateUdot(PKD pkd,double,double,double,double,int,int);
+void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double, double, double);
 void pkdKickPatch(PKD pkd, double dvFacOne, double dvFacTwo,
 		  double dOrbFreq, int bOpen);
 void pkdGravInflow(PKD pkd, double r);
@@ -848,7 +882,7 @@ void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);
 
 #ifdef GASOLINE
 
-void pkdUpdateuDot(PKD,double,double,double,int,int);
+void pkdUpdateuDot(PKD,double,double,double,double,int,int);
 void pkdUpdateShockTracker(PKD,double, double, double);
 void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma,
 			     double dResolveJeans, double dCosmoFac);
@@ -905,7 +939,7 @@ void pkdMassInR(PKD pkd, double R, double *pdMass, FLOAT *com);
 #ifdef NEED_VPRED
 #ifdef GASOLINE
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,
-				  int iGasModel, double z, double duDotLimit,double);
+    int iGasModel, double z, double duDotLimit,double,double);
 #else
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
 #endif

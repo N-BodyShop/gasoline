@@ -204,7 +204,7 @@ void snCalcSNIIFeedback(SN sn, SFEvent sfEvent,
     
     /* Use ratio of Fe to total iron group and O to total non-iron
        group derived from Asplund et al 2009 */
-    fbEffects->dMetals = ( 1.06*fbEffects->dMIron + 1.48*fbEffects->dMOxygen );
+    fbEffects->dMetals = ( 1.06*fbEffects->dMIron + 2.09*fbEffects->dMOxygen );
   }
 }
 
@@ -283,7 +283,7 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
    * independent of mass. See Raiteri, Villata and Navarro, page 108.
    */
   /* Use total metals to Fe and O based on Asplund et al 2009 */
-  fbEffects->dMetals = dNSNTypeIa*(0.63*1.06 + 0.13*1.48)
+  fbEffects->dMetals = dNSNTypeIa*(0.63*1.06 + 0.13*2.09)
       /fbEffects->dMassLoss; 
 }
 #endif

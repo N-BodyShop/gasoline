@@ -43,12 +43,6 @@ int SGN(double x);
 #define fseek fseeko
 #endif
 
-/*
- BalsaraSwitch hackery
-*/
-/*
-#define VISCSWITCHCUT 0.6
-*/
 
 double pkdGetTimer(PKD pkd,int iTimer)
 {
@@ -327,11 +321,20 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
     p->iRung = 0;
     p->fWeight = 1.0;
     p->fDensity = 0.0;
+#ifdef DRHODT
+    p->fDensity_t = 0.0;
+    p->fDensity_PdV = 0.0;
+    p->fDensity_PdVcorr = 0.0;
+#endif
     p->fBall2 = 0.0;
     p->fBallMax = 0.0;
 #ifdef GASOLINE
     p->u = 0.0;
     p->uPred = 0.0;
+#ifdef UNONCOOL
+    p->uNoncool = 0.;
+    p->uNoncoolPred = 0.;
+#endif
 #ifdef STARSINK
     SINK_Lx(p) = 0.0;
     SINK_Ly(p) = 0.0;
@@ -535,8 +538,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				/* O and Fe ratio based on Asplund et al 2009 */
 				if (p->fMetals && !p->fMFracOxygen && 
 				    !p->fMFracIron) {
-				  p->fMFracOxygen = 0.58 * p->fMetals;
-				  p->fMFracIron = 0.13 * p->fMetals;
+				  p->fMFracOxygen = 0.43 * p->fMetals;
+				  p->fMFracIron = 0.098 * p->fMetals;
 				}
 #endif
 #else
@@ -614,8 +617,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				/* O and Fe ratio based on Asplund et al 2009 */
 				if (p->fMetals && !p->fMFracOxygen && 
 				    !p->fMFracIron) {
-				  p->fMFracOxygen = 0.58 * p->fMetals;
-				  p->fMFracIron = 0.13 * p->fMetals;
+				  p->fMFracOxygen = 0.43 * p->fMetals;
+				  p->fMFracIron = 0.098 * p->fMetals;
 				}
 #endif
 				xdr_float(&xdrs,&fTmp);
@@ -729,8 +732,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef STARFORM
 	/* O and Fe ratio based on Asplund et al 2009 */
 	if (p->fMetals && !p->fMFracOxygen && !p->fMFracIron) {
-	    p->fMFracOxygen = 0.58 * p->fMetals;
-	    p->fMFracIron = 0.13 * p->fMetals;
+	    p->fMFracOxygen = 0.43 * p->fMetals;
+	    p->fMFracIron = 0.098 * p->fMetals;
 	    }
 #endif
 #endif
@@ -784,8 +787,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				/* O and Fe ratio based on Asplund et al 2009 */
 				if (p->fMetals && !p->fMFracOxygen
 				    && !p->fMFracIron) {
-				    p->fMFracOxygen = 0.58 * p->fMetals;
-				    p->fMFracIron = 0.13 * p->fMetals;
+				    p->fMFracOxygen = 0.43 * p->fMetals;
+				    p->fMFracIron = 0.098 * p->fMetals;
 				    }
 #endif
 #endif
@@ -839,7 +842,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	}
 
 
-void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pbndBall)
+void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pbndBall,BNDDT *pbndDt)
 {
         /* Faster by assuming active order */
 
@@ -887,6 +890,28 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pb
 		pbndTreeActive->fMin[j] = pbndActive->fMin[j];
 		pbndTreeActive->fMax[j] = pbndActive->fMax[j];
 		}
+
+	if (pbndDt != NULL) {
+	    DIAGDIST2(pbndDt->drMax2,pbnd->fMin,pbnd->fMax);
+	    pbndDt->cMax = -FLOAT_MAXVAL;
+	    for (j=0;j<3;++j) {
+		pbndDt->vMin[j] = FLOAT_MAXVAL;
+		pbndDt->vMax[j] = -FLOAT_MAXVAL;
+		}
+	    for (i=0;i<pkd->nLocal;++i) {
+		double v2;
+		if (TYPETest(&(pkd->pStore[i]),TYPE_GAS)) {
+		    if (pkd->pStore[i].c > pbndDt->cMax)
+			pbndDt->cMax = pkd->pStore[i].c;
+		    for (j=0;j<3;++j) {
+			if (pkd->pStore[i].vPred[j] < pbndDt->vMin[j]) 
+			    pbndDt->vMin[j] = pkd->pStore[i].vPred[j];
+			if (pkd->pStore[i].vPred[j] > pbndDt->vMax[j])
+			    pbndDt->vMax[j] = pkd->pStore[i].vPred[j];
+			}
+		    }
+		}
+	    }
 	}
 
 
@@ -959,7 +984,8 @@ void pkdCalcBound_old(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND
 				}
 			}
 		}
-	}
+    
+    }
 
 
 void pkdGasWeight(PKD pkd)
@@ -1813,6 +1839,14 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 #else
 	fTmp = p->fSoft;
 #endif
+#ifdef DRHODT 
+	/* Horrible hack -- overwrite soft output */
+#ifdef DRHODTDIVOUT
+	fTmp = p->fDivv_PdV;
+#else
+	fTmp = p->fDensity_PdV;
+#endif
+#endif
 	xdr_float(&xdrs,&fTmp);
 #ifdef SINKING
 	if (TYPETest( p, TYPE_SINKING)) {
@@ -1828,6 +1862,14 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	    }
 #else
 	fTmp = p->fMetals;
+#ifdef DRHODT 
+	/* Horrible hack -- overwrite metals output */
+#ifdef DRHODTDIVOUT
+	fTmp = p->fDivv_t;
+#else
+	fTmp = p->fDensity_t;
+#endif
+#endif
 	xdr_float(&xdrs,&fTmp);
 #endif
 #else /* not gasoline */
@@ -1843,6 +1885,14 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	xdr_float(&xdrs,&fTmp);
 #endif
 	fTmp = p->fPot;
+#ifdef DRHODT 
+	/* Horrible hack -- overwrite pot output */
+#ifdef DRHODTDIVOUT
+	fTmp = p->fDivv_PdVcorr;
+#else
+	fTmp = p->fDensity_PdVcorr;
+#endif
+#endif
 	xdr_float(&xdrs,&fTmp);
       }
       else if (pkdIsStar(pkd,p)) {
@@ -2179,7 +2229,23 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 			pOut->bndBall.fMax[j] = p2->bndBall.fMax[j];
 		else
 			pOut->bndBall.fMax[j] = p1->bndBall.fMax[j];
+
+		if (p2->bndDt.vMin[j] < p1->bndDt.vMin[j])
+			pOut->bndDt.vMin[j] = p2->bndDt.vMin[j];
+		else
+			pOut->bndDt.vMin[j] = p1->bndDt.vMin[j];
+		if (p2->bndDt.vMax[j] > p1->bndDt.vMax[j])
+			pOut->bndDt.vMax[j] = p2->bndDt.vMax[j];
+		else
+			pOut->bndDt.vMax[j] = p1->bndDt.vMax[j];
 		}
+
+	DIAGDIST2(pOut->bndDt.drMax2,pOut->bnd.fMin,pOut->bnd.fMax);
+	if (p2->bndDt.cMax > p1->bndDt.cMax)
+	    pOut->bndDt.cMax = p2->bndDt.cMax;
+	else
+	    pOut->bndDt.cMax = p1->bndDt.cMax;
+
 	/*
 	 ** Find the center of mass and mass weighted softening.
 	 */
@@ -2526,9 +2592,14 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 			c[iCell].bnd.fMax[j] = -FLOAT_MAXVAL;
 			c[iCell].bndBall.fMin[j] = FLOAT_MAXVAL;
 			c[iCell].bndBall.fMax[j] = -FLOAT_MAXVAL;
+			c[iCell].bndDt.vMin[j] = FLOAT_MAXVAL;
+			c[iCell].bndDt.vMax[j] = -FLOAT_MAXVAL;
 			c[iCell].r[j] = 0.0;
 			}
+		c[iCell].bndDt.cMax = -FLOAT_MAXVAL;
 		for (pj=l;pj<=u;++pj) {
+		        if (p[pj].c > c[iCell].bndDt.cMax)
+			        c[iCell].bndDt.cMax = p[pj].c;
 			for (j=0;j<3;++j) {
 				if (p[pj].r[j] < c[iCell].bnd.fMin[j])
 					c[iCell].bnd.fMin[j] = p[pj].r[j];
@@ -2539,6 +2610,11 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 					c[iCell].bndBall.fMin[j] = p[pj].r[j]-p[pj].fBallMax;
 				if (p[pj].r[j]+p[pj].fBallMax > c[iCell].bndBall.fMax[j])
 					c[iCell].bndBall.fMax[j] = p[pj].r[j]+p[pj].fBallMax;
+				if (p[pj].vPred[j] < c[iCell].bndDt.vMin[j])
+					c[iCell].bndDt.vMin[j] = p[pj].vPred[j];
+				if (p[pj].vPred[j] > c[iCell].bndDt.vMax[j])
+					c[iCell].bndDt.vMax[j] = p[pj].vPred[j];
+
 				}
 			/*
 			 ** Find center of mass and total mass and mass weighted softening.
@@ -2549,6 +2625,7 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 				c[iCell].r[j] += p[pj].fMass*p[pj].r[j];
 				}
 			}
+		DIAGDIST2(c[iCell].bndDt.drMax2,c[iCell].bnd.fMin,c[iCell].bnd.fMax);
 		if (c[iCell].fMass > 0) {
 			for (j=0;j<3;++j) {
 				c[iCell].r[j] /= c[iCell].fMass;
@@ -3018,10 +3095,10 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	 ** determine the local bound of the particles.
 	 */
 	if (bTreeActiveOnly) {
-		pkdCalcBound(pkd,&bndDum,&bndDum,&c[pkd->iRoot].bnd,&bndDum);
+	    pkdCalcBound(pkd,&bndDum,&bndDum,&c[pkd->iRoot].bnd,&bndDum,NULL);
 		}
 	else {
-		pkdCalcBound(pkd,&c[pkd->iRoot].bnd,&bndDum,&bndDum,&bndDum);
+	    pkdCalcBound(pkd,&c[pkd->iRoot].bnd,&bndDum,&bndDum,&bndDum,NULL);
 		}
 	i = pkd->iRoot;
 	while (1) {
@@ -3700,6 +3777,7 @@ void pkdChrisDiskForce(PKD pkd, double Vc, double R)
 		}
 	}
 }
+
 void pkdBodyForce(PKD pkd, double dConst)
 {
 	PARTICLE *p;
@@ -4112,9 +4190,14 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 			    }
 #endif
 
+			p->fDensity *= exp(-p->fDivv_t*dDelta); // Predictor for density
+#ifdef DRHODT
+			p->fDensity_t *= exp(-p->fDivv_t*dDelta);
+			p->fDensity_PdV *= exp(-p->fDivv_PdV*dDelta);
+			p->fDensity_PdVcorr *= exp(-p->fDivv_PdVcorr*dDelta);
+#endif
 			for (j=0;j<3;++j) {
 			        p->r[j] += dDelta*p->v[j];
-
 				if (bPeriodic) {
 					if (p->r[j] >= lfCenter[j] + 0.5*pkd->fPeriod[j]) {
 						p->r[j] -= pkd->fPeriod[j];
@@ -4142,8 +4225,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 						}
 					bInBox = bInBox && (p->r[j] >= lfCenter[j]-0.5*pkd->fPeriod[j]);
 					bInBox = bInBox && (p->r[j] <  lfCenter[j]+0.5*pkd->fPeriod[j]);
-					if(!bInBox) 
-						printf("%d %f %f %f\n", j, p->r[0], p->r[1], p->r[2]);
 					assert(bInBox);
 					}
 			    }
@@ -4183,10 +4264,11 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 	mdlDiag(pkd->mdl, "Out of pkddrift\n");
 	}
 
+#define NONCOOLCONVRATE(_dNoncoolConvRate,_p) (_dNoncoolConvRate > 0 ? _dNoncoolConvRate : sqrt((_p)->uNoncoolPred)/((_p)->fBall2*0.25))
 
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
-	     double z, double duDotLimit, double dTimeEnd )
+    double z, double duDotLimit, double dTimeEnd, double dNoncoolConvRate )
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -4259,6 +4341,21 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				      p->uPred = uold*exp(p->uDot*duPredDelta/uold);
 				      p->u = uold*exp(p->uDot*duDelta/uold);
 				      }
+#ifdef UNONCOOL
+			          {
+			          double uNoncoolDot = p->uNoncoolDotDiff
+				      + p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred) 
+#ifdef STARFORM
+				      + p->fESNrate
+#endif
+				      - p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate,p);
+
+				  p->uNoncoolPred = p->uNoncool + uNoncoolDot*duPredDelta;
+				  p->uNoncool = p->uNoncool + uNoncoolDot*duDelta;
+				  if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
+				  if (p->uNoncool < 0) p->uNoncool = 0;
+				  }
+#endif
 #else /* NOCOOLING */
 				  p->uPred = p->u + p->PdV*duPredDelta;
 				  p->u = p->u + p->PdV*duDelta;
@@ -4515,6 +4612,9 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #endif
 #ifdef GASOLINE
 		p->u = cp.u;
+#ifdef UNONCOOL
+		p->uNoncool = cp.uNoncool;
+#endif
 #ifdef STARSINK
 		SINK_Lx(p) = cp.Lx;
 		SINK_Ly(p) = cp.Ly;
@@ -4522,6 +4622,10 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #else
 		p->uPred = cp.u;
 		assert(p->u >= 0);
+#ifdef UNONCOOL
+		p->uNoncoolPred = cp.uNoncool;
+		assert(p->uNoncool >=0);
+#endif
 #endif
 
 #ifdef VARALPHA
@@ -4636,6 +4740,9 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 			}
 #ifdef GASOLINE
 		cp.u = p->u;
+#ifdef UNONCOOL
+		cp.uNoncool = p->uNoncool;
+#endif
 #ifdef STARSINK
 		cp.Lx = SINK_Lx(p);
 		cp.Ly = SINK_Ly(p);
@@ -5024,8 +5131,11 @@ int
 pkdOneParticleDtToRung( int iRung,double dDelta,double dt)
     {
   int iSteps,iTempRung;
+  double dSteps = dDelta/dt;
 
-  iSteps = floor(dDelta/dt);
+  assert(dSteps < 2.1e9); /* avoid integer overflow */
+  
+  iSteps = floor(dSteps);
   /* insure that integer boundary goes
      to the lower rung. */
   if(fmod(dDelta,dt) == 0.0) iSteps--;
@@ -5849,7 +5959,7 @@ int pkdIsStarByOrder(PKD pkd,PARTICLE *p) {
 
 #ifdef GASOLINE
 
-void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasModel, int bUpdateState )
+void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNoncoolConvRate, int iGasModel, int bUpdateState )
 {
 #ifndef NOCOOLING	
 	PARTICLE *p;
@@ -5880,10 +5990,15 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
   n = pkdLocal(pkd);
   for (i=0;i<n;++i,++p) {
     if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
+#ifdef UNONCOOL
+      ExternalHeating = p->PdV*p->uPred/(p->uPred+p->uNoncoolPred) + p->uDotDiff 
+	  + p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate, p);
+#else
       ExternalHeating = p->PdV;
 #ifdef STARFORM
       ExternalHeating += p->fESNrate;
 #endif
+#endif      
 			if ( bCool ) {
 				cp = p->CoolParticle;
 				E = p->u;
@@ -6032,7 +6147,11 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p)) {
+#ifdef UNONCOOL
+		        PoverRho = gammam1*(p->uPred+p->uNoncoolPred);
+#else
 			PoverRho = gammam1*p->uPred;
+#endif
 			p->PoverRho2 = PoverRho/p->fDensity;
 			/*
 			 * Add pressure floor to keep Jeans Mass
@@ -6096,7 +6215,10 @@ void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma,
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p)) {
-		    CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, &PoverRho, &(p->c) );
+		        CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, &PoverRho, &(p->c) );
+#ifdef UNONCOOL
+		        PoverRho += gammam1*(p->uNoncoolPred);
+#endif
 			p->PoverRho2 = PoverRho/p->fDensity;
 			/*
 			 * Add pressure floor to keep Jeans Mass
@@ -6316,6 +6438,9 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 			/*
 			 * Courant condition goes here.
 			 */
+#ifdef DRHODT
+		dT = p->dtNew;
+#else
 	       if (p->mumax>0.0) {
 				if (bViscosityLimitdt) 
 				  dT = dEtaCourant*dCosmoFac*(ph/(p->c + 0.6*(p->c + 2*p->BalsaraSwitch*p->mumax)));
@@ -6327,6 +6452,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 			   dT = dEtaCourant*dCosmoFac*(ph/(1.6*p->c+(10./FLT_MAX)));
 #else
 			   dT = dEtaCourant*dCosmoFac*(ph/(1.6*p->c));
+#endif
 #endif
 
 	       if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */
@@ -6929,7 +7055,7 @@ void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
 #ifdef GASOLINE
 void
 pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
-			 int iGasModel,double z,double duDotLimit, double dTimeEnd)
+    int iGasModel,double z,double duDotLimit, double dTimeEnd,double dNoncoolConvRate)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -6998,7 +7124,20 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 			      FLOAT uold = p->uPred - p->uDot*duDelta;
 			      p->uPred = uold*exp(p->uDot*duDelta/uold);
 			      }
-#else
+#ifdef UNONCOOL
+			  {
+			  double uNoncoolDot = p->uNoncoolDotDiff
+			      + p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred) 
+#ifdef STARFORM
+			      + p->fESNrate
+#endif
+				  - p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate,p);
+			  p->uNoncoolPred = p->uNoncoolPred + uNoncoolDot*duDelta;
+			  if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
+			      }
+#endif /* UNONCOOL */
+
+#else /* NOCOOLING is defined: */
 			  p->uPred = p->uPred + p->PdV*duDelta;
 #endif
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) || defined(SIMPLESF)

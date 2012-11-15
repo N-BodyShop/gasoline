@@ -255,6 +255,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_MARKSMOOTH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstMarkSmooth,
 				  sizeof(struct inMarkSmooth),0);
+	mdlAddService(mdl,PST_DTSMOOTH,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDtSmooth,
+				  sizeof(struct inDtSmooth),0);
 	mdlAddService(mdl,PST_RESMOOTH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstReSmooth,
 				  sizeof(struct inReSmooth),sizeof(struct outReSmooth));
@@ -2076,7 +2079,7 @@ void pstCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 		}
 	else {
-		pkdCalcBound(plcl->pkd,&out->bnd,&out->bndActive,&out->bndTreeActive,&out->bndBall);
+	    pkdCalcBound(plcl->pkd,&out->bnd,&out->bndActive,&out->bndTreeActive,&out->bndBall,NULL);
 		}
 	if (pnOut) *pnOut = sizeof(struct outCalcBound); 
 	}
@@ -3119,6 +3122,36 @@ void pstMarkSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 
 
+void pstDtSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inDtSmooth *in = vin;
+	struct outDtSmooth *out = vout;
+	struct outDtSmooth outUp;
+	CASTAT cs;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inDtSmooth));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DTSMOOTH,in,nIn);
+		pstDtSmooth(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+		if (out != NULL) 
+		    if (outUp.dtMin < out->dtMin) out->dtMin = outUp.dtMin;
+		}
+	else {
+		LCL *plcl = pst->plcl;
+		SMX smx;
+
+		(&in->smf)->pkd = pst->plcl->pkd;
+		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
+					 in->bSymmetric,in->iSmoothType,0,0.0);
+		smDtSmooth(smx,&in->smf);
+		smFinish(smx,&in->smf, &cs);
+		if (out != NULL) out->dtMin = in->smf.dtMin;
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
 void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	struct inReSmooth *in = vin;
@@ -3367,9 +3400,6 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (in->bBodyForce) {
 			pkdBodyForce(plcl->pkd, in->dBodyForceConst);
 			}
-		if (in->bChrisDisk) {
-			pkdChrisDiskForce(plcl->pkd, in->dChrisDiskVc, in->dChrisDiskR);
-			}
 		if (in->bMiyamotoDisk) {
 			pkdMiyamotoDisk(plcl->pkd);
 			}
@@ -3499,7 +3529,7 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		pkdKick(plcl->pkd,in->dvFacOne,in->dvFacTwo,
 				in->dvPredFacOne,in->dvPredFacTwo,in->duDelta,in->duPredDelta,
-				in->iGasModel,in->z,in->duDotLimit, in->dTimeEnd);
+		    in->iGasModel,in->z,in->duDotLimit, in->dTimeEnd, in->dNoncoolConvRate);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -4570,7 +4600,7 @@ void pstUpdateuDot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (outUp.MaxTime > out->MaxTime) out->MaxTime = outUp.MaxTime;
 		}
 	else {
-		pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->iGasModel,in->bUpdateState);
+	        pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->dNoncoolConvRate,in->iGasModel,in->bUpdateState);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -6126,7 +6156,7 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo,in->duDelta,
-					 in->iGasModel,in->z,in->duDotLimit,in->dTimeEnd);
+		    in->iGasModel,in->z,in->duDotLimit,in->dTimeEnd,in->dNoncoolConvRate);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;

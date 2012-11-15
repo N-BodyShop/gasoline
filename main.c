@@ -741,11 +741,11 @@ int main(int argc,char **argv)
 		    OutputList[nOutputList++]=OUT_COOL_HEATING_ARRAY;
 		    }
 #endif
-                msrReorder(msr);
                 if (msr->param.bSphStep) {
                     fprintf(stdout,"Adding SphStep dt\n");
-                    msrSphStep(msr,dTime);
+                    msrSphStep(msr,dTime,0);
                     }
+                msrReorder(msr);
                 msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
 		msrFlushStarLog(msr);
 		msrFlushSinkLog(msr);

@@ -677,11 +677,11 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 			assert( nitem == 2 );
 			}
 		else if (!strcmp( command, "loop") ) {
+			df->bLoop = 1;
 			nitem = sscanf( line, "%s %lf %lf", command, &df->dTimeLoop, &df->dPeriodLoop );
 			assert( nitem == 3 );
 			}
 		else if (!strcmp( command, "clip") ) {
-			df->bLoop = 1;
 			nitem = sscanf( line, "%s %lf %lf", command, &fs.zClipNear, &fs.zClipFar );
 			assert( nitem == 3 );
 			}

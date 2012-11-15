@@ -79,7 +79,6 @@
 #define ACCEL_COMB_PRES(p,j) 
 
 #endif
-
 #ifdef PEAKEDKERNEL
 /* Standard M_4 Kernel with central peak for dW/du according to Thomas and Couchman 92 (Steinmetz 96) */
 #define BALL2(a) ((a)->fBall2)
@@ -2838,11 +2837,20 @@ void initSphPressureTermsParticle(void *p)
 {
 	if (TYPEQueryACTIVE((PARTICLE *) p)) {
 		((PARTICLE *)p)->mumax = 0.0;
+    	        ((PARTICLE *)p)->dtNew = FLT_MAX;
 		((PARTICLE *)p)->PdV = 0.0;
+#ifdef UNONCOOL
+	        ((PARTICLE *)p)->uDotDiff = 0.0;
+	        ((PARTICLE *)p)->uNoncoolDotDiff = 0.0;
+#endif
 #ifdef PDVDEBUG
 		((PARTICLE *)p)->PdVvisc = 0.0;
 		((PARTICLE *)p)->PdVpres = 0.0;
 #endif
+#ifdef DRHODT
+		((PARTICLE *)p)->fDivv_PdV = 0.0;
+		((PARTICLE *)p)->fDivv_PdVcorr = 0.0;
+#endif	    
 #ifdef DIFFUSION
 		((PARTICLE *)p)->fMetalsDot = 0.0;
 #ifdef STARFORM
@@ -2861,11 +2869,20 @@ void initSphPressureTerms(void *p)
 {
 	if (TYPEQueryACTIVE((PARTICLE *) p)) {
 		((PARTICLE *)p)->mumax = 0.0;
+		((PARTICLE *)p)->dtNew = FLT_MAX;
 		((PARTICLE *)p)->PdV = 0.0;
+#ifdef UNONCOOL
+	        ((PARTICLE *)p)->uDotDiff = 0.0;
+	        ((PARTICLE *)p)->uNoncoolDotDiff = 0.0;
+#endif
 #ifdef PDVDEBUG
 		((PARTICLE *)p)->PdVvisc = 0.0;
 		((PARTICLE *)p)->PdVpres = 0.0;
 #endif
+#ifdef DRHODT
+		((PARTICLE *)p)->fDivv_PdV = 0.0;
+		((PARTICLE *)p)->fDivv_PdVcorr = 0.0;
+#endif	    
 		ACCEL(p,0) = 0.0;
 		ACCEL(p,1) = 0.0;
 		ACCEL(p,2) = 0.0;
@@ -2886,12 +2903,22 @@ void combSphPressureTerms(void *p1,void *p2)
 {
 	if (TYPEQueryACTIVE((PARTICLE *) p1)) {
 		((PARTICLE *)p1)->PdV += ((PARTICLE *)p2)->PdV;
+#ifdef UNONCOOL
+	        ((PARTICLE *)p1)->uDotDiff += ((PARTICLE *)p2)->uDotDiff;
+	        ((PARTICLE *)p1)->uNoncoolDotDiff += ((PARTICLE *)p2)->uNoncoolDotDiff;
+#endif
 #ifdef PDVDEBUG
 		((PARTICLE *)p1)->PdVvisc += ((PARTICLE *)p2)->PdVvisc;
 		((PARTICLE *)p1)->PdVpres += ((PARTICLE *)p2)->PdVpres;
 #endif
+#ifdef DRHODT
+ 	        ((PARTICLE *)p1)->fDivv_PdV += ((PARTICLE *)p2)->fDivv_PdV;
+ 	        ((PARTICLE *)p1)->fDivv_PdVcorr += ((PARTICLE *)p2)->fDivv_PdVcorr;
+#endif	    
 		if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
 			((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
+		if (((PARTICLE *)p2)->dtNew < ((PARTICLE *)p1)->dtNew)
+			((PARTICLE *)p1)->dtNew = ((PARTICLE *)p2)->dtNew;
 		ACCEL(p1,0) += ACCEL(p2,0);
 		ACCEL(p1,1) += ACCEL(p2,1);
 		ACCEL(p1,2) += ACCEL(p2,2);
@@ -2921,8 +2948,8 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT dx,dy,dz,dvx,dvy,dvz,dvdotdr;
 	FLOAT pPoverRho2,pPoverRho2f,pMass;
 	FLOAT qPoverRho2,qPoverRho2f;
-	FLOAT ph,pc,pDensity,visc,hav,absmu,Accp,Accq,gammam1 = smf->gamma-1;
-	FLOAT fNorm,fNorm1,aFac,vFac;
+	FLOAT ph,pc,pDensity,dt,visc,absmu,Accp,Accq,gammam1 = smf->gamma-1;
+	FLOAT fNorm,fNorm1,aFac,vFac,divvbad;
 	int i;
 
 	pc = p->c;
@@ -2947,6 +2974,22 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	aFac = (smf->a);        /* comoving acceleration factor */
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
 
+//#ifdef DRHODT
+	divvbad = 0;
+	for (i=0;i<nSmooth;++i) {
+	    r2 = nnList[i].fDist2*ih2;
+	    q = nnList[i].pPart;
+	    DKERNEL(rs1,r2);
+	    rs1 *= q->fMass;
+#ifdef RTFORCE
+	    divvbad += nnList[i].fDist2*rs1/q->fDensity;
+#else
+	    divvbad += nnList[i].fDist2*rs1/p->fDensity;
+#endif
+	    }
+        p->fDivv_Corrector = -(3/2.)/(divvbad*fNorm1); /* fNorm1 normalization includes 0.5 */
+//#endif
+
 	for (i=0;i<nSmooth;++i) {
 	    q = nnList[i].pPart;
 	    if (!TYPEQueryACTIVE(p) && !TYPEQueryACTIVE(q)) continue;
@@ -2954,9 +2997,11 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    r2 = nnList[i].fDist2*ih2;
 	    DKERNEL(rs1,r2);
 	    rs1 *= fNorm1;
+//#ifdef DRHODT
+	    rs1 *= p->fDivv_Corrector;
+//#endif
 	    rp = rs1 * pMass;
 	    rq = rs1 * q->fMass;
-
 	    dx = nnList[i].dx;
 	    dy = nnList[i].dy;
 	    dz = nnList[i].dz;
@@ -2965,7 +3010,17 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    dvz = p->vPred[2] - q->vPred[2];
 	    dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz)
 		+ nnList[i].fDist2*smf->H;
-	    
+
+#ifdef JWFORCE
+	{ //double iRho2 = 2/(pDensity*pDensity+q->fDensity*q->fDensity);
+ 	    double pD2 = pDensity*pDensity, qD2 = q->fDensity*q->fDensity;
+            double iRho2 = (pD2+qD2)/(2*pD2*qD2);
+	    pPoverRho2 = p->PoverRho2*pD2*iRho2;
+	    pPoverRho2f = pPoverRho2;
+	    qPoverRho2 = q->PoverRho2*qD2*iRho2;
+	    qPoverRho2f = qPoverRho2;
+	      }
+#else
 #ifdef RTFORCE
 #ifdef PEXT
 	  { double pP = p->PoverRho2*pDensity*pDensity;
@@ -2994,6 +3049,18 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    qPoverRho2 = gammam1*q->uPred/q->fDensity;
 #endif
 #endif	    
+#endif
+
+#ifdef DRHODT
+#define DRHODTACTIVE(xxx) xxx
+#ifdef RTFORCE
+#define RHO_DIVV(a,b) (b)
+#else
+#define RHO_DIVV(a,b) (a)
+#endif
+#else
+#define DRHODTACTIVE(xxx) 
+#endif
 
 #ifdef DIFFUSION 
 #ifdef MASSDIFF
@@ -3029,21 +3096,36 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #define DIFFUSIONVelocity()
 #endif
 
+
 #ifdef DIFFUSION
+#ifdef UNONCOOL
+#define UDOTDIFF(_p) ((_p)->uDotDiff)
+#define DIFFUSIONThermaluNoncool() \
+	    { double diffuNc = diffTh*(p->uNoncoolPred-q->uNoncoolPred); \
+	    PACTIVE( p->uNoncoolDotDiff += diffuNc*rq );		\
+	    QACTIVE( q->uNoncoolDotDiff -= diffuNc*rp );		\
+	    }
+#else
+#define UDOTDIFF(_p) ((_p)->PdV)
+#define DIFFUSIONThermaluNoncool()  
+#endif
 #ifdef DIFFUSIONPRICE
 #define DIFFUSIONThermal() \
-   { double irhobar = 2/(p->fDensity+q->fDensity); \
+    { double irhobar = 2/(p->fDensity+q->fDensity);		\
      double vsig = sqrt(fabs(qPoverRho2*q->fDensity*q->fDensity - pPoverRho2*p->fDensity*p->fDensity)*irhobar); \
-     double diff = smf->dThermalDiffusionCoeff*0.5*(ph+sqrt(0.25*BALL2(q)))*irhobar*vsig*(p->uPred-q->uPred); \
-      PACTIVE( p->PdV += diff*rq ); \
-      QACTIVE( q->PdV -= diff*rp ); }
+     double diffTh = smf->dThermalDiffusionCoeff*0.5*(ph+sqrt(0.25*BALL2(q)))*irhobar*vsig; \
+     double diffu = diffTh*(p->uPred-q->uPred);				\
+     PACTIVE( UDOTDIFF(p)+= diffu*rq ); \
+     QACTIVE( UDOTDIFF(q)-= diffu*rp ); }
+//     DIFFUSIONThermaluNoncool(); }
 #else
 #ifdef DIFFUSIONTHERMAL
 #define DIFFUSIONThermal() \
-    { double diff = 2*smf->dThermalDiffusionCoeff*(p->diff+q->diff)*(p->uPred-q->uPred) \
-		/(p->fDensity+q->fDensity); \
-      PACTIVE( p->PdV += diff*rq*MASSDIFFFAC(q) ); \
-      QACTIVE( q->PdV -= diff*rp*MASSDIFFFAC(p) ); }
+    { double diffTh = 2*smf->dThermalDiffusionCoeff*(p->diff+q->diff)/(p->fDensity+q->fDensity); \
+      double diffu = diffTh*(p->uPred-q->uPred);	\
+      PACTIVE( UDOTDIFF(p) += diffu*rq*MASSDIFFFAC(q) );	\
+      QACTIVE( UDOTDIFF(q) -= diffu*rp*MASSDIFFFAC(p) );  }
+//      DIFFUSIONThermaluNoncool(); }
 #else
 /* Default -- no thermal diffusion */
 #define DIFFUSIONThermal()
@@ -3081,9 +3163,38 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #define ALPHA smf->alpha
 #define BETA  smf->beta
 #endif
+#define SETDT()  if (dt < p->dtNew) p->dtNew=dt; \
+		 if (dt < q->dtNew) q->dtNew=dt; 
+	      
+#ifdef VSIGVISC
+#define VISC() { absmu = -dvdotdr*smf->a  \
+		    /sqrt(nnList[i].fDist2); /* mu multiply by a to be consistent with physical c */ \
+		if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
+		if (absmu>q->mumax) q->mumax=absmu; \
+		visc = (ALPHA*(pc + q->c) + BETA*1.5*absmu); \
+		dt = smf->dtFac*ph/visc;     \
+		visc = SWITCHCOMBINE(p,q)*visc \
+		    *absmu/(pDensity + q->fDensity); }
+#else
+#define VISC() { double hav=0.5*(ph+sqrt(0.25*BALL2(q)));  /* h mean */ \
+		absmu = -hav*dvdotdr*smf->a  \
+		    /(nnList[i].fDist2+0.01*hav*hav); /* mu multiply by a to be consistent with physical c */ \
+		if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
+		if (absmu>q->mumax) q->mumax=absmu; \
+		visc = (ALPHA*(pc + q->c) + BETA*2*absmu);	\
+		dt = smf->dtFac*hav/(0.625*(pc + q->c)+0.375*visc); \
+		visc = SWITCHCOMBINE(p,q)*visc \
+		    *absmu/(pDensity + q->fDensity); }
+#endif
 
 #define SphPressureTermsSymACTIVECODE() \
-	    if (dvdotdr>0.0) { \
+	    DRHODTACTIVE( PACTIVE( p->fDivv_PdV -= rq/p->fDivv_Corrector/RHO_DIVV(pDensity,q->fDensity)*dvdotdr; )); \
+	    DRHODTACTIVE( QACTIVE( q->fDivv_PdV -= rp/p->fDivv_Corrector/RHO_DIVV(q->fDensity,pDensity)*dvdotdr; )); \
+	    DRHODTACTIVE( PACTIVE( p->fDivv_PdVcorr -= rq/RHO_DIVV(pDensity,q->fDensity)*dvdotdr; )); \
+	    DRHODTACTIVE( QACTIVE( q->fDivv_PdVcorr -= rp/RHO_DIVV(q->fDensity,pDensity)*dvdotdr; )); \
+	    if (dvdotdr>=0.0) { \
+		dt = smf->dtFac*ph/(2*(pc > q->c ? pc : q->c));	\
+		SETDT(); \
 		PACTIVE( p->PdV += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; ); \
 		QACTIVE( q->PdV += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; ); \
                 PDVDEBUGLINE( PACTIVE( p->PdVpres += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; ); ); \
@@ -3092,15 +3203,8 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f)); ); \
 		} \
 	    else {  \
-		hav=0.5*(ph+sqrt(0.25*BALL2(q)));  /* h mean - using just hp probably ok */  \
-		absmu = -hav*dvdotdr*smf->a  \
-		    /(nnList[i].fDist2+0.01*hav*hav); /* mu multiply by a to be consistent with physical c */ \
-		if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
-		if (absmu>q->mumax) q->mumax=absmu; \
-		/* viscosity term */ \
-		visc = SWITCHCOMBINE(p,q)* \
-		    (ALPHA*(pc + q->c) + BETA*2*absmu)  \
-		    *absmu/(pDensity + q->fDensity); \
+		VISC(); \
+		SETDT(); \
 		PACTIVE( p->PdV += rq*(PRES_PDV(pPoverRho2,qPoverRho2) + 0.5*visc)*dvdotdr; ); \
 		QACTIVE( q->PdV += rp*(PRES_PDV(qPoverRho2,pPoverRho2) + 0.5*visc)*dvdotdr; ); \
 		PDVDEBUGLINE( PACTIVE( p->PdVpres += rq*(PRES_PDV(pPoverRho2,qPoverRho2))*dvdotdr; ); ); \
@@ -4337,6 +4441,9 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef RTDENSITY
 	FLOAT fDensityU = 0;
 #endif
+//#ifdef DRHODT
+	FLOAT divvnorm = 0;//, divvbad = 0;
+//#endif
 	PARTICLE *q;
 	int i;
 	unsigned int qiActive;
@@ -4361,7 +4468,12 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q = nnList[i].pPart;
 		if (TYPETest(p,TYPE_ACTIVE)) TYPESet(q,TYPE_NbrOfACTIVE); /* important for SPH */
 		qiActive |= q->iActive;
+#ifdef DKDENSITY
+		DKERNEL(rs,r2);
+		rs = -(1./3.)*r2*rs;
+#else
 		KERNEL(rs,r2);
+#endif
 		fDensity += rs*q->fMass;
 #ifdef RTDENSITY
 		fDensityU += rs*q->fMass*q->uPred;
@@ -4383,6 +4495,16 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dvzdx += dvz*dx*rs1;
 		dvzdy += dvz*dy*rs1;
 		dvzdz += dvz*dz*rs1;
+
+//#ifdef DRHODT
+		divvnorm += (dx*dx+dy*dy+dz*dz)*rs1;
+//		divvbad += (dvx*dx+dvy*dy+dvz*dz)*rs1/q->fDensity;
+#ifdef RTFORCE
+//		divvbad += (dx*dx+dy*dy+dz*dz)*rs1/q->fDensity;
+#else
+//		divvbad += (dx*dx+dy*dy+dz*dz)*rs1/p->fDensity;
+#endif
+//#endif
 		grx += (q->uPred-p->uPred)*dx*rs1; /* Grad P estimate */
 		gry += (q->uPred-p->uPred)*dy*rs1;
 		grz += (q->uPred-p->uPred)*dz*rs1;
@@ -4394,13 +4516,23 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef RTDENSITY	
 	fDensityU*=fNorm;
 	p->fDensity = fDensityU/p->uPred; 
-	printf("TEST %d  %g %g  %g %g %g\n",p->iOrder,fDensity,p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]);
 #else
 	p->fDensity = fDensity; 
 #endif
-	fNorm1 /= fDensity;
-/* divv will be used to update density estimates in future */
 	trace = dvxdx+dvydy+dvzdz;
+
+	/* This is a predictor for density estimation */
+//        p->fDivv_Corrector = -3/(divvbad*fNorm1);
+	p->fDivv_t = -3*trace/divvnorm; /* physical -- includes H */
+#ifdef DRHODT
+	/* Hack to initialize */
+	if (p->fDensity_t <= 0) p->fDensity_t = p->fDensity;
+	if (p->fDensity_PdV <= 0) p->fDensity_PdV = p->fDensity;
+	if (p->fDensity_PdVcorr <= 0) p->fDensity_PdVcorr = p->fDensity;
+#endif
+
+/* divv will be used to update density estimates in future */
+	fNorm1 /= fDensity;
 	p->divv =  fNorm1*trace; /* physical */
 /* Technically we could now dispense with curlv but it is used in several places as
    a work variable so we will retain it */
@@ -5297,8 +5429,8 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q->v[1] = f1*q->v[1]+f2*p->v[1];            
 		q->v[2] = f1*q->v[2]+f2*p->v[2];            
 		q->fMetals = f1*q->fMetals + f2*p->fMetals;
-        q->fMFracOxygen = f1*q->fMFracOxygen + f2*p->fMFracOxygen;
-        q->fMFracIron = f1*q->fMFracIron + f2*p->fMFracIron;
+                q->fMFracOxygen = f1*q->fMFracOxygen + f2*p->fMFracOxygen;
+                q->fMFracIron = f1*q->fMFracIron + f2*p->fMFracIron;
 		if(q->uDot < 0.0) /* make sure we don't shorten cooling time */
 			q->uDot = q->uPred/fTCool;
         }
@@ -5437,9 +5569,9 @@ void DistIonize(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
       tCoolAgain = smf->dIonizeTime+smf->dTime;
       if (tCoolAgain > q->fTimeCoolIsOffUntil) q->fTimeCoolIsOffUntil=tCoolAgain;
       if (T < smf->dIonizeT) {
-	  CoolInitEnergyAndParticleData( smf->pkd->Cool, &q->CoolParticle, &q->u, q->fDensity, smf->dIonizeT, q->fMetals/q->fMass);
+	  CoolInitEnergyAndParticleData( smf->pkd->Cool, &q->CoolParticle, &q->u, q->fDensity, smf->dIonizeT, q->fMetals );
 	  }
-  }
+      }
   printf("Ionize: Star %d: %g %g %d\n",p->iOrder,mgot,mwanted,ngot);
 }
 
@@ -5461,10 +5593,18 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   dAge = smf->dTime - p->fTimeForm;
   dAgeMyr = dAge* smf->dSecUnit / SECONDSPERYEAR;
 	
+#ifdef TOPHATFEEDBACK
+	fNorm = 1.0;
+#else
   fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
+#endif
   for (i=0;i<nSmooth;++i) {
     r2 = nnList[i].fDist2*ih2;
+#ifdef TOPHATFEEDBACK
+	rs = 1.0;
+#else
     KERNEL(rs,r2);
+#endif
     q = nnList[i].pPart;
     if(q->fMass > smf->dMaxGasMass) {
 	continue;		/* Skip heavy particles */
@@ -5487,7 +5627,11 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     if(q->fMass > smf->dMaxGasMass)
 	  continue;		/* Skip heavy particles */
     r2 = nnList[i].fDist2*ih2;  
+#ifdef TOPHATFEEDBACK
+	rs =1.0;
+#else
     KERNEL(rs,r2);
+#endif
     /* Remember: We are dealing with total energy rate and total metal
      * mass, not energy/gram or metals per gram.  
      * q->fMass is in product to make units work for fNorm_u.
@@ -5538,10 +5682,18 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   if (dAge == 0.0) return;
   dAgeMyr = dAge* smf->dSecUnit / SECONDSPERYEAR;
 	
+#ifdef TOPHATFEEDBACK
+	fNorm = 1.0;
+#else
   fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
+#endif
   for (i=0;i<nSmooth;++i) {
     r2 = nnList[i].fDist2*ih2;            
+#ifdef TOPHATFEEDBACK
+	rs = 1.0;
+#else
     KERNEL(rs,r2);
+#endif
     q = nnList[i].pPart;
     fNorm_u += q->fMass*rs;
     rs *= fNorm;
@@ -5594,7 +5746,11 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
       if ( nnList[i].fDist2 < fmind ){imind = i; fmind = nnList[i].fDist2;}
       if ( nnList[i].fDist2 < f2h2 || !smf->bSmallSNSmooth) {
 	r2 = nnList[i].fDist2*ih2;            
+#ifdef TOPHATFEEDBACK
+	rs = 1.0;
+#else
 	KERNEL(rs,r2);
+#endif
 	q = nnList[i].pPart;
 #ifdef VOLUMEFEEDBACK
 	fNorm_u += q->fMass/q->fDensity*rs;
@@ -5610,7 +5766,11 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
      give mass and energy to nearest gas particle. */
   if (fNorm_u ==0.0){
     r2 = nnList[imind].fDist2*ih2;            
+#ifdef TOPHATFEEDBACK
+	rs = 1.0;
+#else
     KERNEL(rs,r2);
+#endif
     /*
      * N.B. This will be NEGATIVE, but that's OK since it will
      * cancel out down below.
@@ -5639,7 +5799,11 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	counter++;  
 	r2 = nnList[i].fDist2*ih2;
+#ifdef TOPHATFEEDBACK
+	rs = 1.0;
+#else
 	KERNEL(rs,r2);
+#endif
 	/* Remember: We are dealing with total energy rate and total metal
 	 * mass, not energy/gram or metals per gram.  
 	 * q->fMass is in product to make units work for fNorm_u.
@@ -5653,7 +5817,11 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
       }
     } else {
       r2 = nnList[i].fDist2*ih2;  
+#ifdef TOPHATFEEDBACK
+	rs = 1.0;
+#else
       KERNEL(rs,r2);
+#endif
       /* Remember: We are dealing with total energy rate and total metal
        * mass, not energy/gram or metals per gram.  
        * q->fMass is in product to make units work for fNorm_u.

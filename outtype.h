@@ -33,6 +33,7 @@ enum outtype_arraytype {
 	OUT_RUNG_ARRAY,
 	OUT_SPHH_ARRAY,
 	OUT_U_ARRAY,
+	OUT_UNONCOOL_ARRAY,
         OUT_TEMP_ARRAY,
 	OUT_COOL_EDOT_ARRAY,
 	OUT_COOL_COOLING_ARRAY,
@@ -88,6 +89,9 @@ enum outtype_arraytype {
 	OUT_L_JEANS_ARRAY,
 	OUT_ISMALL_JEANS_ARRAY,
 	OUT_SURFACEAREA_ARRAY,
+	OUT_DIVV_T_ARRAY,
+	OUT_DIVV_CORRECTOR_ARRAY,
+	OUT_IACTIVE_ARRAY,
         OUT_1D3DSPLIT,  /* NOTICE!!
                        * Everything above here is 1D 
                        * Everything below here is 3D

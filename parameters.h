@@ -46,6 +46,7 @@ struct parameters {
 	int bDensityStep;
     int bDeltaAccelStep;
     int bDeltaAccelStepGasTree;
+        int bLongRangeStep;
 	int nTruncateRung;
 	int bNonSymp;
     int iBinaryOutput;
@@ -142,6 +143,7 @@ struct parameters {
     int bSinkFormPotMin;
     int bSinkFormSimple;
     int nSinkFormMin;
+    int bSinkMerge;
     int bSinkAngMomOutput;
     double dSinkFormDivVCoeff;
     double dSinkFormDivAccCoeff;
@@ -232,6 +234,7 @@ struct parameters {
 	int iGasModel;
 	double dEtaCourant;
 	double dEtauDot;
+	double dEtaCourantLong;
 	double duDotLimit;
 	double dShockTrackerA;
 	double dShockTrackerB;
@@ -309,9 +312,10 @@ struct parameters {
 	double dExtraCoolShutoff;
 	int bSmallSNSmooth;
         int iStarFormRung;
-  int iRandomSeed;
+        int iRandomSeed;
 	int nSmoothFeedback;
 #endif
+        double dNoncoolConvTime;
 	double dKBoltzUnit;
         double dPext;
         double dvturb;

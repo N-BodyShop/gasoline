@@ -76,6 +76,12 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return(p->fDensity*p->fDensity*p->PoverRho2);	
 	case OUT_U_ARRAY:
 	    return(p->u);
+	case OUT_UNONCOOL_ARRAY:
+#ifdef UNONCOOL
+	    return(p->uNoncool);
+#else
+	    return(0.);
+#endif
 	case OUT_TEMP_ARRAY:
 #ifndef NOCOOLING
 	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
@@ -236,6 +242,14 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_SURFACEAREA_ARRAY:
 	    return(p->fArea);
 #endif
+#ifdef DRHODT
+	case OUT_DIVV_T_ARRAY:
+	    return(p->fDivv_t);
+	case OUT_DIVV_CORRECTOR_ARRAY:
+	    return(p->fDivv_Corrector);
+#endif
+	case OUT_IACTIVE_ARRAY:
+	    return((FLOAT) p->iActive);
 #ifdef COLLISIONS
 	case OUT_REJECTS_ARRAY:
 		/* Rejected particles indicated by their iOrder, otherwise -1 */
@@ -337,6 +351,12 @@ void VecFilename(char *achFile, int iType)
 		strncat(achFile,"GasDensity",256);
             break;
 #ifndef NOCOOLING
+	case OUT_U_ARRAY:
+		strncat(achFile,"u",256);
+		break;
+	case OUT_UNONCOOL_ARRAY:
+		strncat(achFile,"uNoncool",256);
+		break;
 	case OUT_UDOT_ARRAY:
 		strncat(achFile,"uDot",256);
 		break;
@@ -386,6 +406,17 @@ void VecFilename(char *achFile, int iType)
             break;
 	case OUT_SURFACEAREA_ARRAY:
             strncat(achFile,"area",256);
+            break;
+#ifdef DRHODT
+	case OUT_DIVV_T_ARRAY:
+            strncat(achFile,"divvt",256);
+            break;
+	case OUT_DIVV_CORRECTOR_ARRAY:
+            strncat(achFile,"divvcorr",256);
+            break;
+#endif
+	case OUT_IACTIVE_ARRAY:
+            strncat(achFile,"ia",256);
             break;
 	case OUT_CSOUND_ARRAY:
             strncat(achFile,"c",256);
