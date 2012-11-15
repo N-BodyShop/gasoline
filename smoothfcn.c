@@ -1372,20 +1372,24 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	FLOAT ih2,r2,rs,fDensity;
 	FLOAT v[3],cs,fW,dv2,dv;
-	double mdot, mdotEdd, mdotCurr, dm, dmq, dE, ifMass, dtEff;
+	double mdot, mdotEdd, mdotCurr, dmq, dtEff;
 	int i,iRung,naccreted, ieat, ivmin;
 	FLOAT mdotsum, weat;
 	FLOAT weight,wrs;
-	double aFac, dCosmoDenFac,dCosmoVel2Fac;
-	FLOAT dvmin,dvx,dvy,dvz;
-	FLOAT ddvx,ddvy,ddvz,dvv; /* measure mindeltav */
+	double aFac, dCosmoDenFac,dCosmoVel2Fac,aDot;
+	FLOAT dvmin,dvx,dvy,dvz,dvcosmo; /* measure mindeltav */
 
 	assert(p->iRung >= smf->iSinkCurrentRung);
 	p->curlv[1] = 0.0;
 	naccreted = 0;
 	aFac = smf->a;
 	dCosmoDenFac = aFac*aFac*aFac;
-	dCosmoVel2Fac = aFac*aFac*aFac*aFac;
+	dCosmoVel2Fac = (smf->bCannonical ? aFac*aFac : 1.0);
+	aDot = aFac*smf->H;  /* da/dt */
+	/* CosmoVel2Fac converts cannonical velocity^2 to physical velocity^2
+	   Cosmo sims tend to use cannonical velocities 
+	   v_phys = v_cannonical/a + adot*r
+	   JMB 9/1/12*/
 
         mdotsum = 0.;
         weat = -1e37;
@@ -1398,13 +1402,13 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	if(smf->bBHMindv == 1){
 	  dvmin = FLOAT_MAXVAL;
 	  for (i=0;i<nSmooth;++i) {
-	    ddvx = p->v[0] - nnList[i].pPart->v[0];
-	    ddvy = p->v[1] - nnList[i].pPart->v[1];
-	    ddvz = p->v[2] - nnList[i].pPart->v[2];
-	    dvv = sqrt(ddvx*ddvx + ddvy*ddvy + ddvz*ddvz);
-	    if (dvv < dvmin) {
-	      dvmin=dvv;
-	      ivmin = i;
+	    dvx = (-p->vPred[0] + nnList[i].pPart->vPred[0])/aFac - aDot*nnList[i].dx;
+	    dvy = (-p->vPred[1] + nnList[i].pPart->vPred[1])/aFac - aDot*nnList[i].dy;
+	    dvz = (-p->vPred[2] + nnList[i].pPart->vPred[2])/aFac - aDot*nnList[i].dz;
+	    dvcosmo = sqrt(dvx*dvx + dvy*dvy + dvz*dvz);
+	    if (dvcosmo < dvmin) {
+	      dvmin=dvcosmo;
+	      ivmin = i;	      
 	    }
 	  }
 	}
@@ -1423,12 +1427,13 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    assert(TYPETest(q,TYPE_GAS));
 	    fW = rs*q->fMass;
 
-	    if(smf->bBHMindv == 1) weight = rs*pow(q->c*q->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5)/dCosmoDenFac;
+	    if(smf->bBHMindv == 1) weight = rs*pow(q->c*q->c+(dvmin*dvmin),-1.5)/dCosmoDenFac;
 	    else {
-	      dvx = p->v[0]-q->v[0];
-	      dvy = p->v[1]-q->v[1];
-	      dvz = p->v[2]-q->v[2];
-	      weight = rs*pow(q->c*q->c+(dvx*dvx+dvy*dvy+dvz*dvz)/dCosmoVel2Fac,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
+	      dvx = (-p->vPred[0]+q->vPred[0])/aFac - aDot*nnList[i].dx;
+	      dvy = (-p->vPred[1]+q->vPred[1])/aFac - aDot*nnList[i].dy;
+	      dvz = (-p->vPred[2]+q->vPred[2])/aFac - aDot*nnList[i].dz;
+	      dvcosmo = sqrt(dvx*dvx+dvy*dvy+dvz*dvz);
+	      weight = rs*pow(q->c*q->c+dvcosmo*dvcosmo,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
 	    /* cosmo factors put in 7/7/09  JMB */
 	    }
 	      if (weight > weat)  {   
@@ -1472,7 +1477,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	/* Eddington Limit Rate */
 	mdotEdd = smf->dBHSinkEddFactor*p->fMass;
-	printf("BHSink %d:  Time: %g mdot (BH): %g mdot (Edd): %g a: %g\n",p->iOrder,smf->dTime,mdot,mdotEdd, smf->a);
+	printf("BHSink %d:  Time: %.8f mdot (BH): %g mdot (Edd): %g a: %g\n",p->iOrder,smf->dTime,mdot,mdotEdd, smf->a);
 
 	if (mdot > mdotEdd) mdot = mdotEdd;
 
@@ -1482,7 +1487,6 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	weat = -1e37;
 
 	for (;;) {
-	    FLOAT r2min = FLOAT_MAXVAL;
 	    q = NULL;
 	    for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2;
@@ -1490,17 +1494,19 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		    /* don't accrete a deleted particle!  JMB 10/1/08 */
 		KERNEL(rs,r2);
 		fW = rs*nnList[i].pPart->fMass;
-		if(r2 > 0.25*nnList[i].pPart->fBall2) continue; 
+		if(smf->bBHAccreteAll != 1 && r2 > 0.25*nnList[i].pPart->fBall2) continue; 
 		/* don't accrete gas that doesn't have the BH
 		 * in its smoothing length  JMB 10/22/08 */
-		if (nnList[i].pPart->iRung < smf->iSinkCurrentRung) continue; /* JMB 7/9/09 */
+		/* make this an optional parameter JMB 9/21/12 */
+		/*if (nnList[i].pPart->iRung < smf->iSinkCurrentRung) continue; /* JMB 7/9/09 */
 
-		if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5)/dCosmoDenFac;
+		if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin),-1.5)/dCosmoDenFac;
 		else {
-		  dvx = p->v[0]-nnList[i].pPart->v[0];
-		  dvy = p->v[1]-nnList[i].pPart->v[1];
-		  dvz = p->v[2]-nnList[i].pPart->v[2];
-		  weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvx*dvx+dvy*dvy+dvz*dvz)/dCosmoVel2Fac,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
+		  dvx = (-p->vPred[0]+nnList[i].pPart->vPred[0])/aFac - nnList[i].dx*aDot;
+		  dvy = (-p->vPred[1]+nnList[i].pPart->vPred[1])/aFac - nnList[i].dy*aDot;
+		  dvz = (-p->vPred[2]+nnList[i].pPart->vPred[2])/aFac - nnList[i].dz*aDot;
+		  dvcosmo = sqrt(dvx*dvx+dvy*dvy+dvz*dvz);
+		  weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+dvcosmo*dvcosmo,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
 	    /* cosmo factors put in 7/7/09  JMB */
 		}
 	
@@ -1515,13 +1521,22 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	    if(q != NULL) {	    
 	      /* Timestep for accretion is larger of sink and victim timestep */
-	      iRung = q->iRung; 
-	      if (iRung > p->iRung) iRung = p->iRung;
-	      dtEff = smf->dSinkCurrentDelta*pow(0.5,iRung-smf->iSinkCurrentRung);
+	      /*iRung = q->iRung; 
+		if (iRung > p->iRung) iRung = p->iRung;*/
+	      dtEff = smf->dSinkCurrentDelta;/* *pow(0.5,iRung-smf->iSinkCurrentRung);*/
 	      /* If victim has unclosed kick -- don't actually take the mass
 	       If sink has unclosed kick we shouldn't even be here!
 	       When victim is active use his timestep if longer 
 	       Statistically expect to get right effective mdot on average */
+
+	      /* JMB 9/18/12 -- Actually, the method described above
+		 does NOT get the right mdot on average, it
+		 underestimates mdot.  Instead I have removed all
+		 timestep criteria from BH accretion.  Thus, momentum
+		 is no longer strictly conserved.  HOWEVER, the
+		 amounts of momentum involved are tiny, likely
+		 comparable to the errors intrinsic to the code.
+		 Thus, we shall not stress about it. */
 	      dmq = mdotCurr*dtEff;
 	      }
 	    else {
@@ -1533,7 +1548,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    assert(q != NULL);
 	    /* We have our victim */
 
-	    if (q->iRung >= smf->iSinkCurrentRung) { /* moved up from below JMB 5/4/09 */
+	    /*if (q->iRung >= smf->iSinkCurrentRung) { /* moved up from below JMB 5/4/09 */
 	                                             /* no longer needed, moved above */
 
 	      if (dmq < q->fMass) {
@@ -1553,7 +1568,7 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	      printf("BHSink %d:  Time %g %d dmq %g %g %g\n",p->iOrder,smf->dTime,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
 
-		}
+	      /*}*/
 	    
 	    if (mdotCurr == 0.0) break;
 	    }   
@@ -1636,30 +1651,29 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef STARFORM
 	PARTICLE *q = NULL;
 
-	FLOAT ih2,r2,rs,fDensity;
-	FLOAT fW;
-	double mdot, mdotCurr, dmAvg, dm, dmq, dE, ifMass, dtEff, dEwave;
-	FLOAT fNorm,rstot,fNorm_new,fNorm_Pres,fAveDens,f2h2;
-        FLOAT fBHBlastRadius,fBHShutoffTime,fmind;
-	int i,iRung,counter,imind,naccreted,ieat;
+	FLOAT ih2,r2,rs;
+	double mdot, mdotCurr, dmAvg, dm, dmq, dE, ifMass, dtEff;
+	FLOAT fNorm,fNorm_new,f2h2;
+	int i,iRung,counter,naccreted,ieat;
 	FLOAT weat;
 	FLOAT weight,fbweight; /* weight is for accretion, fbweight is for FB  */
-	double aFac, dCosmoDenFac,dCosmoVel2Fac;
-	FLOAT dvmin, dvx,dvy,dvz,dvv;
+	double aFac, dCosmoDenFac,dCosmoVel2Fac,aDot;
+	FLOAT dvmin, dvx,dvy,dvz,dvv,dvcosmo;
 	int ivmin;
 
         weat = -1e37;
 	aFac = smf->a;
 	dCosmoDenFac = aFac*aFac*aFac;
-        dCosmoVel2Fac = aFac*aFac*aFac*aFac;
+        dCosmoVel2Fac = (smf->bCannonical ? aFac*aFac : 1.0);
+	aDot = aFac*smf->H;
 
 	mdot = p->divv;	
-	if (p->curlv[1] == 0.0) {
+	/*	if (p->curlv[1] == 0.0) {
 	    dtEff = smf->dSinkCurrentDelta*pow(0.5,p->iRung-smf->iSinkCurrentRung);
 	    dmAvg = mdot*dtEff;
 	    printf("BHSink %d:  Delta: %g dm: 0 ( %g ) (victims on wrong step)\n",p->iOrder,dtEff,dmAvg);
 	    return;
-	    }
+	    }*/
 
 	mdotCurr = mdot;
 	dm = 0;
@@ -1677,13 +1691,16 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    r2min = nnList[i].fDist2;
 
 	    /* Timestep for accretion is larger of sink and victim timestep */
-	    iRung = q->iRung;
-	    if (iRung > p->iRung) iRung = p->iRung;
-	    dtEff = smf->dSinkCurrentDelta*pow(0.5,iRung-smf->iSinkCurrentRung);
+	    /*iRung = q->iRung;
+	    if (iRung > p->iRung) iRung = p->iRung;*/
+	    dtEff = smf->dSinkCurrentDelta;/* *pow(0.5,iRung-smf->iSinkCurrentRung);
 	      /* If victim has unclosed kick -- don't actually take the mass
 	       If sink has unclosed kick we shouldn't even be here!
 	       When victim is active use his timestep if longer 
 	       Statistically expect to get right effective mdot on average */
+
+	    /* JMB 9/18/12 - see comment in BHSinkDensity above for
+	       why the previous comment is not actually what is done. */
 	    dmq = mdotCurr*dtEff;
 
 	    /* update mdotCurr */
@@ -1696,7 +1713,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    assert(mdotCurr >= 0.0);
 
 	    printf("BHSink %d:  Time %g %d dmq %g %g %g\n",p->iOrder,smf->dTime,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
-	    if (q->iRung >= smf->iSinkCurrentRung) {
+	    /*if (q->iRung >= smf->iSinkCurrentRung) {*/
 		ifMass = 1./(p->fMass + dmq);
 		/* to record angular momentum JMB 11/9/10 */
 		printf("BHSink %d:  Gas: %d  dx: %g dy: %g dz: %g \n",p->iOrder,q->iOrder,p->r[0]-q->r[0],p->r[1]-q->r[1],p->r[2]-q->r[2]);
@@ -1726,7 +1743,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		      deleted once.  JMB 9/23/08*/
 		    }
 
-		}
+		/*	}*/
 
 	}
 
@@ -1738,12 +1755,12 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	  if(smf->bBHMindv == 1){
 	    dvmin = FLOAT_MAXVAL;
 	    for (i=0;i<nSmooth;++i) {
-	      dvx = p->v[0] - nnList[i].pPart->v[0];
-	      dvy = p->v[1] - nnList[i].pPart->v[1];
-	      dvz = p->v[2] - nnList[i].pPart->v[2];
-	      dvv = sqrt(dvx*dvx + dvy*dvy + dvz*dvz);
-	      if (dvv < dvmin) {
-		dvmin=dvv;
+	      dvx = (-p->vPred[0] + nnList[i].pPart->vPred[0])-aDot*nnList[i].dx;
+	      dvy = (-p->vPred[1] + nnList[i].pPart->vPred[1])-aDot*nnList[i].dy;
+	      dvz = (-p->vPred[2] + nnList[i].pPart->vPred[2])-aDot*nnList[i].dz;
+	      dvcosmo = sqrt(dvx*dvx + dvy*dvy + dvz*dvz);
+	      if (dvcosmo < dvmin) {
+		dvmin=dvcosmo;
 		ivmin = i;
 	      }
 	    }
@@ -1757,19 +1774,20 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      if(nnList[i].pPart->curlv[2] == p->iOrder) continue;
 	      /* don't choose a pre-accreted particle 
 	         but it can have been accreted by another BH */
-	      if(nnList[i].pPart->iRung < smf->iSinkCurrentRung) continue;
+	      /*if(nnList[i].pPart->iRung < smf->iSinkCurrentRung) continue;*/
 	      /* has to be on the right timestep */
 	      r2 = nnList[i].fDist2;
-	      if(r2 > 0.25*nnList[i].pPart->fBall2) continue;
+	      if(smf->bBHAccreteAll != 1 && r2 > 0.25*nnList[i].pPart->fBall2) continue;
 	      /* has to be nearby! */
 	      KERNEL(rs,r2);
 
-	      if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin/dCosmoVel2Fac),-1.5)/dCosmoDenFac;
+	      if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin),-1.5)/dCosmoDenFac;
 	      else {
-		dvx = p->v[0]-nnList[i].pPart->v[0];
-		dvy = p->v[1]-nnList[i].pPart->v[1];
-		dvz = p->v[2]-nnList[i].pPart->v[2];
-		weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvx*dvx+dvy*dvy+dvz*dvz)/dCosmoVel2Fac,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
+		dvx = (-p->vPred[0]+nnList[i].pPart->vPred[0])-aDot*nnList[i].dx;
+		dvy = (-p->vPred[1]+nnList[i].pPart->vPred[1])-aDot*nnList[i].dy;
+		dvz = (-p->vPred[2]+nnList[i].pPart->vPred[2])-aDot*nnList[i].dz;
+		dvcosmo = sqrt(dvx*dvx+dvy*dvy+dvz*dvz);
+		weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+dvcosmo*dvcosmo,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
 		/* cosmo factors put in 7/7/09  JMB */
 	      }	    	      
 	      if (weight > weat) {
@@ -1791,9 +1809,9 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    else {
 	      assert(q != NULL);
 	      /* Timestep for accretion is larger of sink and victim timestep */
-	      iRung = q->iRung;
-	      if (iRung > p->iRung) iRung = p->iRung;
-	      dtEff = smf->dSinkCurrentDelta*pow(0.5,iRung-smf->iSinkCurrentRung);
+	      /*iRung = q->iRung;
+		if (iRung > p->iRung) iRung = p->iRung;*/
+	      dtEff = smf->dSinkCurrentDelta;/* *pow(0.5,iRung-smf->iSinkCurrentRung);*/
 	      dmq = mdotCurr*dtEff;
 
 
@@ -1805,7 +1823,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	    
 	    printf("BHSink %d:  Time: %g %d dmq %g %g %g sharing \n",p->iOrder,smf->dTime,q->iOrder,dmq,q->curlv[1],p->curlv[1]);
-	      if (q->iRung >= smf->iSinkCurrentRung) {
+	    /*if (q->iRung >= smf->iSinkCurrentRung) {*/
 		ifMass = 1./(p->fMass + dmq);
 		/* to record angular momentum JMB 11/9/10 */
 		printf("BHSink %d:  Gas: %d  dx: %g dy: %g dz: %g \n",p->iOrder,q->iOrder,p->r[0]-q->r[0],p->r[1]-q->r[1],p->r[2]-q->r[2]);
@@ -1833,7 +1851,7 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		      up the bookkeeping.  I think this will make them only be 
 		      deleted once.  JMB 9/23/08*/
 		    }
-		}
+		/*}*/
 	    if (mdotCurr == 0.0) break;
 
 	    }
@@ -1845,12 +1863,11 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	if(smf->dBHSinkFeedbackFactor != 0.0) {  /* allows FB to be turned off JMB 7/20/09 */
 	  dE = smf->dBHSinkFeedbackFactor*dm; /* dE based on actual mass eaten */
-	  dEwave =  dE / smf->dBHSinkFeedbackEff; /* dE for blastwave equations.  assume excess is radiated away. JMB 9/10/09 */
 
-	  dtEff = smf->dSinkCurrentDelta*pow(0.5,p->iRung-smf->iSinkCurrentRung);
+	  dtEff = smf->dSinkCurrentDelta;/* *pow(0.5,p->iRung-smf->iSinkCurrentRung);*/
 	  dmAvg = mdot*dtEff;    
 	  /*printf("BHSink %d:  Delta: %g Time: %g  dm: actual %g (pred %g) (avg %g) dE %g\n",p->iOrder,dtEff,smf->dTime,dm,p->curlv[1],dmAvg,dE); */
-	  printf("BHSink %d:  Delta: %g Time: %g dm: %g dE %g\n",p->iOrder,dtEff,smf->dTime,dm,dE);
+	  printf("BHSink %d:  Delta: %g Time: %.8f dm: %g dE %g\n",p->iOrder,dtEff,smf->dTime,dm,dE);
 
 	  /* Recalculate Normalization */
 	  ih2 = 4.0/BALL2(p);
@@ -1932,7 +1949,8 @@ void BHSinkIdentify(PARTICLE *p,int nSmooth,NN *nnList, SMF *smf)
 #ifdef STARFORM
 	PARTICLE *q = NULL;
 	int i;
-	FLOAT ifMass, deltaa, deltar, deltav;
+	FLOAT deltaa, deltar, deltav;
+	FLOAT aFac = smf->a;
 
 	for (i=0;i<nSmooth;++i) {
 	  q = nnList[i].pPart;
@@ -1944,15 +1962,15 @@ void BHSinkIdentify(PARTICLE *p,int nSmooth,NN *nnList, SMF *smf)
 	  deltar=sqrt( (p->r[0] - q->r[0])*(p->r[0] - q->r[0]) +  (p->r[1] - q->r[1])*(p->r[1] - q->r[1]) + (p->r[2] - q->r[2])*(p->r[2] - q->r[2]));
 	  deltav=sqrt( (p->v[0] - q->v[0])*(p->v[0] - q->v[0]) +  (p->v[1] - q->v[1])*(p->v[1] - q->v[1]) + (p->v[2] - q->v[2])*(p->v[2] - q->v[2]));
 	  
-	  if ( deltaa*deltar < 0.5*deltav*deltav ) continue;
+	  if ( deltaa*deltar*aFac < 0.5*deltav*deltav ) continue;
 	  /* Selects other BH particles that are 
 	   * within  the criteria 
 	   * delta_a*delta_r < .5*delta_v^2  
 	   AND 
 	   * within the softening  */
 
-	  if(p->iOrder > q->iOrder) {
-	    if(p->iOrder > q->fNSNtot) {
+	  if(p->iOrder < q->iOrder) {
+	    if(p->iOrder < q->fNSNtot || q->fNSNtot == 0) {
 	      q->fNSNtot = p->iOrder;
 	      printf("BHSink MergeID %d will be eaten by %d \n",q->iOrder,p->iOrder);
 
@@ -1971,8 +1989,6 @@ void initBHSinkMerge(void *p)
 {
 #ifdef GASOLINE
 
-  PARTICLE *pp = p;
-
  /* this init function does nothing.  JMB */
 
 #endif
@@ -1986,7 +2002,7 @@ void BHSinkMerge(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef STARFORM
 
 	PARTICLE *q = NULL;
-	FLOAT ifMass, deltaa, deltar, deltav;
+	FLOAT ifMass;
 	int i;
 	/*  for kicks */
 	const FLOAT A = 12000.0;
@@ -2022,7 +2038,7 @@ void BHSinkMerge(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 
 	      /**** Gravitational Recoil  ****/
-	    if(smf->bDoBHKick == 1 && ( fabs(-1.0*p->fTimeForm - smf->dTime) > smf->dDeltaStarForm*SECONDSPERYEAR/smf->dSecUnit)) {
+	    if(smf->bDoBHKick == 1 && ( fabs(-1.0*p->fTimeForm - smf->dTime) > smf->dDeltaStarForm)) {
 	      /* Turn off recoil if BH has just formed. Ejecting them immediately is not helpful. JMB 8/5/09  */
 	      mfactor = pow(mratio,2)/pow((1+mratio),5);
 	      vm = A * (1.0-mratio) * mfactor * (1.0 + B*mratio/pow((1.0+mratio),2));
@@ -2040,7 +2056,7 @@ void BHSinkMerge(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      vkick = sqrt ( (vm + vperp*cos(xi))*(vm + vperp*cos(xi)) + (vperp*sin(xi))*(vperp*sin(xi)) + vpar*vpar);
 	      vkick = vkick / smf->dKmPerSecUnit;
 	      /* comoving coords are important JMB 5/15/09 */
-	      if(smf->bCannonical) vkick = vkick*smf->a*smf->a;
+	      if(smf->bCannonical) vkick = vkick*smf->a;
 	    
 	      /* random direction */
 
@@ -2966,7 +2982,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef JEANSFIXPDV
 	pPoverRho2 = gammam1*p->uPred/p->fDensity;
 #endif
-#endif
+#endif /* RTFORCE */
 	ph = sqrt(0.25*BALL2(p));
 	ih2 = 4.0/BALL2(p);
 	fNorm = 0.5*M_1_PI*ih2/ph;
@@ -2987,7 +3003,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    divvbad += nnList[i].fDist2*rs1/p->fDensity;
 #endif
 	    }
-        p->fDivv_Corrector = -(3/2.)/(divvbad*fNorm1); /* fNorm1 normalization includes 0.5 */
+        p->fDivv_Corrector = (divvbad != 0 ? -(3/2.)/(divvbad*fNorm1) : 1); /* fNorm1 normalization includes 0.5 */
 //#endif
 
 	for (i=0;i<nSmooth;++i) {
@@ -3022,227 +3038,56 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      }
 #else
 #ifdef RTFORCE
-#ifdef PEXT
+ #ifdef PEXT
 	  { double pP = p->PoverRho2*pDensity*pDensity;
 	    double qP = q->PoverRho2*q->fDensity*q->fDensity;
 	    double igDensity2 = 1/(pDensity*q->fDensity);
-	    pPoverRho2 = pP*igDensity2;
 	    pPoverRho2f = (pP-smf->Pext)*igDensity2;
-	    qPoverRho2 = qP*igDensity2;
 	    qPoverRho2f = (qP-smf->Pext)*igDensity2;
-	      }
-#else
-	    pPoverRho2 = p->PoverRho2*pDensity/q->fDensity;
-	    pPoverRho2f = pPoverRho2;
-	    qPoverRho2 = q->PoverRho2*q->fDensity/pDensity;
-	    qPoverRho2f = qPoverRho2;
-#endif
-#else
+  #ifdef JEANSFIXPDV
+	    pPoverRho2 = gammam1*p->uPred/q->fDensity;
+	    qPoverRho2 = gammam1*q->uPred/pDensity;
+  #else
+	    pPoverRho2 = pP*igDensity2;
+	    qPoverRho2 = qP*igDensity2;
+  #endif
+	  }
+ #else
+	    pPoverRho2f = p->PoverRho2*pDensity/q->fDensity;
+	    qPoverRho2f = q->PoverRho2*q->fDensity/pDensity;
+  #ifdef JEANSFIXPDV
+	    pPoverRho2 = gammam1*p->uPred/q->fDensity;
+	    qPoverRho2 = gammam1*q->uPred/pDensity;
+  #else
+	    pPoverRho2 = pPoverRho2f;
+	    qPoverRho2 = qPoverRho2f;
+  #endif
+ #endif
+#else /* now not RTFORCE */
 	    qPoverRho2 = q->PoverRho2;
-#ifdef PEXT
+ #ifdef PEXT
 	{   FLOAT qd2 = q->fDensity*q->fDensity;
 	    qPoverRho2f = (qPoverRho2*qd2-smf->Pext)/qd2; }
-#else
+ #else
 	    qPoverRho2f = qPoverRho2;
-#endif
-#ifdef JEANSFIXPDV
+ #endif
+ #ifdef JEANSFIXPDV
 	    qPoverRho2 = gammam1*q->uPred/q->fDensity;
+ #endif
+#endif /* RTFORCE */    
 #endif
-#endif	    
-#endif
-
-#ifdef DRHODT
-#define DRHODTACTIVE(xxx) xxx
-#ifdef RTFORCE
-#define RHO_DIVV(a,b) (b)
-#else
-#define RHO_DIVV(a,b) (a)
-#endif
-#else
-#define DRHODTACTIVE(xxx) 
-#endif
-
-#ifdef DIFFUSION 
-#ifdef MASSDIFF
-#define MASSDIFFFAC(pother_) ((pother_)->fMass)
-#define DIFFUSIONBase() double diffbase = 4*smf->dMetalDiffusionCoeff*(p->diff+q->diff) \
-	 /((p->fDensity+q->fDensity)*(p->fMass+q->fMass)); 
-#define DIFFUSIONMass() \
-    { double diff = diffbase*(p->fMass - q->fMass); \
-      PACTIVE( p->fMassDot += diff*p->fMass*rq ); \
-      QACTIVE( q->fMassDot -= diff*q->fMass*rp ); \
-    }
-#define DIFFUSIONVelocity() \
-    { double diff0 = diffbase*(p->v[0] - q->v[0]); \
-      double diff1 = diffbase*(p->v[1] - q->v[1]); \
-      double diff2 = diffbase*(p->v[2] - q->v[2]); \
-      PACTIVE( ACCEL(p,0) += diff0*rq*MASSDIFFFAC(q) ); \
-      QACTIVE( ACCEL(q,0) -= diff0*rp*MASSDIFFFAC(p) ); \
-      PACTIVE( ACCEL(p,1) += diff1*rq*MASSDIFFFAC(q) ); \
-      QACTIVE( ACCEL(q,1) -= diff1*rp*MASSDIFFFAC(p) ); \
-      PACTIVE( ACCEL(p,2) += diff2*rq*MASSDIFFFAC(q) ); \
-      QACTIVE( ACCEL(q,2) -= diff2*rp*MASSDIFFFAC(p) ); \
-    }
-#else
-#define MASSDIFFFAC(pother_) 1
-#define DIFFUSIONBase() double diffbase = 2*smf->dMetalDiffusionCoeff*(p->diff+q->diff) \
-	 /(p->fDensity+q->fDensity); 
-#define DIFFUSIONMass()
-#define DIFFUSIONVelocity()
-#endif
-#else
-#define DIFFUSIONBase()
-#define DIFFUSIONMass()
-#define DIFFUSIONVelocity()
-#endif
-
-
-#ifdef DIFFUSION
-#ifdef UNONCOOL
-#define UDOTDIFF(_p) ((_p)->uDotDiff)
-#define DIFFUSIONThermaluNoncool() \
-	    { double diffuNc = diffTh*(p->uNoncoolPred-q->uNoncoolPred); \
-	    PACTIVE( p->uNoncoolDotDiff += diffuNc*rq );		\
-	    QACTIVE( q->uNoncoolDotDiff -= diffuNc*rp );		\
-	    }
-#else
-#define UDOTDIFF(_p) ((_p)->PdV)
-#define DIFFUSIONThermaluNoncool()  
-#endif
-#ifdef DIFFUSIONPRICE
-#define DIFFUSIONThermal() \
-    { double irhobar = 2/(p->fDensity+q->fDensity);		\
-     double vsig = sqrt(fabs(qPoverRho2*q->fDensity*q->fDensity - pPoverRho2*p->fDensity*p->fDensity)*irhobar); \
-     double diffTh = smf->dThermalDiffusionCoeff*0.5*(ph+sqrt(0.25*BALL2(q)))*irhobar*vsig; \
-     double diffu = diffTh*(p->uPred-q->uPred);				\
-     PACTIVE( UDOTDIFF(p)+= diffu*rq ); \
-     QACTIVE( UDOTDIFF(q)-= diffu*rp ); }
-//     DIFFUSIONThermaluNoncool(); }
-#else
-#ifdef DIFFUSIONTHERMAL
-#define DIFFUSIONThermal() \
-    { double diffTh = 2*smf->dThermalDiffusionCoeff*(p->diff+q->diff)/(p->fDensity+q->fDensity); \
-      double diffu = diffTh*(p->uPred-q->uPred);	\
-      PACTIVE( UDOTDIFF(p) += diffu*rq*MASSDIFFFAC(q) );	\
-      QACTIVE( UDOTDIFF(q) -= diffu*rp*MASSDIFFFAC(p) );  }
-//      DIFFUSIONThermaluNoncool(); }
-#else
-/* Default -- no thermal diffusion */
-#define DIFFUSIONThermal()
-#endif
-#endif
-
-#define DIFFUSIONMetals() \
-    { double diff = diffbase*(p->fMetals - q->fMetals); \
-      PACTIVE( p->fMetalsDot += diff*rq*MASSDIFFFAC(q) ); \
-      QACTIVE( q->fMetalsDot -= diff*rp*MASSDIFFFAC(p) ); }
-#ifdef STARFORM
-#define DIFFUSIONMetalsOxygen() \
-    { double diff = diffbase*(p->fMFracOxygen - q->fMFracOxygen); \
-      PACTIVE( p->fMFracOxygenDot += diff*rq*MASSDIFFFAC(q) ); \
-      QACTIVE( q->fMFracOxygenDot -= diff*rp*MASSDIFFFAC(p) ); }
-#define DIFFUSIONMetalsIron() \
-    { double diff = diffbase*(p->fMFracIron - q->fMFracIron); \
-      PACTIVE( p->fMFracIronDot += diff*rq*MASSDIFFFAC(q) ); \
-      QACTIVE( q->fMFracIronDot -= diff*rp*MASSDIFFFAC(p) ); }
-#else 
-#define DIFFUSIONMetalsOxygen() 
-#define DIFFUSIONMetalsIron() 
-#endif /* STARFORM */
-#else /* No diffusion */
-#define DIFFUSIONThermal()
-#define DIFFUSIONMetals() 
-#define DIFFUSIONMetalsOxygen() 
-#define DIFFUSIONMetalsIron() 
-#endif
-
-#ifdef VARALPHA
-#define ALPHA (smf->alpha*0.5*(p->alpha+q->alpha))
-#define BETA  (smf->beta*0.5*(p->alpha+q->alpha))
-#else
-#define ALPHA smf->alpha
-#define BETA  smf->beta
-#endif
-#define SETDT()  if (dt < p->dtNew) p->dtNew=dt; \
-		 if (dt < q->dtNew) q->dtNew=dt; 
-	      
-#ifdef VSIGVISC
-#define VISC() { absmu = -dvdotdr*smf->a  \
-		    /sqrt(nnList[i].fDist2); /* mu multiply by a to be consistent with physical c */ \
-		if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
-		if (absmu>q->mumax) q->mumax=absmu; \
-		visc = (ALPHA*(pc + q->c) + BETA*1.5*absmu); \
-		dt = smf->dtFac*ph/visc;     \
-		visc = SWITCHCOMBINE(p,q)*visc \
-		    *absmu/(pDensity + q->fDensity); }
-#else
-#define VISC() { double hav=0.5*(ph+sqrt(0.25*BALL2(q)));  /* h mean */ \
-		absmu = -hav*dvdotdr*smf->a  \
-		    /(nnList[i].fDist2+0.01*hav*hav); /* mu multiply by a to be consistent with physical c */ \
-		if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
-		if (absmu>q->mumax) q->mumax=absmu; \
-		visc = (ALPHA*(pc + q->c) + BETA*2*absmu);	\
-		dt = smf->dtFac*hav/(0.625*(pc + q->c)+0.375*visc); \
-		visc = SWITCHCOMBINE(p,q)*visc \
-		    *absmu/(pDensity + q->fDensity); }
-#endif
-
-#define SphPressureTermsSymACTIVECODE() \
-	    DRHODTACTIVE( PACTIVE( p->fDivv_PdV -= rq/p->fDivv_Corrector/RHO_DIVV(pDensity,q->fDensity)*dvdotdr; )); \
-	    DRHODTACTIVE( QACTIVE( q->fDivv_PdV -= rp/p->fDivv_Corrector/RHO_DIVV(q->fDensity,pDensity)*dvdotdr; )); \
-	    DRHODTACTIVE( PACTIVE( p->fDivv_PdVcorr -= rq/RHO_DIVV(pDensity,q->fDensity)*dvdotdr; )); \
-	    DRHODTACTIVE( QACTIVE( q->fDivv_PdVcorr -= rp/RHO_DIVV(q->fDensity,pDensity)*dvdotdr; )); \
-	    if (dvdotdr>=0.0) { \
-		dt = smf->dtFac*ph/(2*(pc > q->c ? pc : q->c));	\
-		SETDT(); \
-		PACTIVE( p->PdV += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; ); \
-		QACTIVE( q->PdV += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; ); \
-                PDVDEBUGLINE( PACTIVE( p->PdVpres += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; ); ); \
-		PDVDEBUGLINE( QACTIVE( q->PdVpres += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; ); ); \
-		PACTIVE( Accp = (PRES_ACC(pPoverRho2f,qPoverRho2f)); ); \
-		QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f)); ); \
-		} \
-	    else {  \
-		VISC(); \
-		SETDT(); \
-		PACTIVE( p->PdV += rq*(PRES_PDV(pPoverRho2,qPoverRho2) + 0.5*visc)*dvdotdr; ); \
-		QACTIVE( q->PdV += rp*(PRES_PDV(qPoverRho2,pPoverRho2) + 0.5*visc)*dvdotdr; ); \
-		PDVDEBUGLINE( PACTIVE( p->PdVpres += rq*(PRES_PDV(pPoverRho2,qPoverRho2))*dvdotdr; ); ); \
-		PDVDEBUGLINE( QACTIVE( q->PdVpres += rp*(PRES_PDV(qPoverRho2,pPoverRho2))*dvdotdr; ); ); \
-		PDVDEBUGLINE( PACTIVE( p->PdVvisc += rq*(0.5*visc)*dvdotdr; ); ); \
-		PDVDEBUGLINE( QACTIVE( q->PdVvisc += rp*(0.5*visc)*dvdotdr; ); ); \
-		PACTIVE( Accp = (PRES_ACC(pPoverRho2f,qPoverRho2f) + visc); ); \
-		QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f) + visc); ); \
-		} \
-	    PACTIVE( Accp *= rq*aFac; );/* aFac - convert to comoving acceleration */ \
-	    QACTIVE( Accq *= rp*aFac; ); \
-	    PACTIVE( ACCEL(p,0) -= Accp * dx; ); \
-	    PACTIVE( ACCEL(p,1) -= Accp * dy; ); \
-	    PACTIVE( ACCEL(p,2) -= Accp * dz; ); \
-	    QACTIVE( ACCEL(q,0) += Accq * dx; ); \
-	    QACTIVE( ACCEL(q,1) += Accq * dy; ); \
-	    QACTIVE( ACCEL(q,2) += Accq * dz; ); \
-            { DIFFUSIONBase(); \
-            DIFFUSIONThermal(); \
-            DIFFUSIONMetals(); \
-            DIFFUSIONMetalsOxygen(); \
-            DIFFUSIONMetalsIron(); \
-            DIFFUSIONMass(); \
- 	    DIFFUSIONVelocity(); }
-
-/*            if (p->iOrder == 0 || q->iOrder == 0) { if (p->iOrder == 0) printf("sph%d%d  %d-%d %g %g\n",p->iActive&1,q->iActive&1,p->iOrder,q->iOrder,Accp,p->a[0]); else printf("sph%d%d  %d -%d %g %g\n",p->iActive&1,q->iActive&1,p->iOrder,q->iOrder,Accq,q->a[0]); } */
 
 
 	    if (TYPEQueryACTIVE(p)) {
 		if (TYPEQueryACTIVE(q)) {
 #define PACTIVE(xxx) xxx
 #define QACTIVE(xxx) xxx
-		    SphPressureTermsSymACTIVECODE();    
+#include "SphPressureTerms.h"
 		    }
 		else {
 #undef QACTIVE
 #define QACTIVE(xxx) 
-		    SphPressureTermsSymACTIVECODE();    
+#include "SphPressureTerms.h"
 		    }
 		}
 	    else if (TYPEQueryACTIVE(q)) {
@@ -3250,7 +3095,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #define PACTIVE(xxx) 
 #undef QACTIVE
 #define QACTIVE(xxx) xxx
-		SphPressureTermsSymACTIVECODE();    
+#include "SphPressureTerms.h"
 		}
 	    }
 }
@@ -4523,7 +4368,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	/* This is a predictor for density estimation */
 //        p->fDivv_Corrector = -3/(divvbad*fNorm1);
-	p->fDivv_t = -3*trace/divvnorm; /* physical -- includes H */
+	p->fDivv_t = (divvnorm != 0 ? -3*trace/divvnorm : 0); /* physical -- includes H */
 #ifdef DRHODT
 	/* Hack to initialize */
 	if (p->fDensity_t <= 0) p->fDensity_t = p->fDensity;

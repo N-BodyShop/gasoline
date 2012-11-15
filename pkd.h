@@ -393,6 +393,7 @@ typedef struct bndBound {
         FLOAT fMax[3];
         } BND;
 
+/* Used by bLongRangeStep, and -D ONGRANGESTEP */
 typedef struct bndDt {
         FLOAT vMin[3],vMax[3];
         FLOAT cMax,drMax2;
@@ -873,7 +874,6 @@ void pkdNFWSpheroid(PKD pkd, double M_200, double r_200, double c, double dSoft)
 void pkdElliptical(PKD pkd, int bEllipticalDarkNFW);
 void pkdHomogSpheroid(PKD pkd);
 void pkdBodyForce(PKD pkd, double dConst);
-void pkdChrisDiskForce(PKD pkd, double Vc, double R);
 void pkdMiyamotoDisk(PKD pkd);
 void pkdTimeVarying(PKD pkd,double dTime);
 #ifdef ROT_FRAME

@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 #include <assert.h>
 /* #include <rpc/xdr.h> */
@@ -251,8 +252,8 @@ void clReadMetalTable(COOL *cl, COOLPARAM clParam)
   FILE *fp;  
   XDR xdrs; 
   
-  /* fp = fopen(clParam.CoolInFile, "r"); */ 
-  fp = fopen("cooltable_xdr", "r"); 
+  fp = fopen(clParam.CoolInFile, "r"); 
+//  fp = fopen("cooltable_xdr", "r"); 
   assert(fp != NULL); 
   fscanf(fp, "%d %lf %lf %lf \n",&nz, &zmin, &zmax, &dz);
   fscanf(fp, "%d %lf %lf %lf \n",&nnH, &nHminlog ,&nHmaxlog,&dnH);
@@ -1056,7 +1057,7 @@ void clRateMetalTable(COOL *cl, RATE *Rate, double T, double rho, double Y_H, do
 
   xnHlog = (nHlog - cl->MetalnHlogMin)*cl->rDeltanHlog; 
   inHlog = xnHlog;
-  if(inHlog > 115) inHlog = 115;  /*Slipshod method until the table can be extended */
+  if (inHlog == cl->nnHMetalTable - 1) inHlog == cl->nnHMetalTable - 2; /*CC; To prevent running over the table.  Should not be used*/
   
   Cool000 = cl->MetalCoolln[iz][inHlog][iTlog];
   Cool001 = cl->MetalCoolln[iz][inHlog][iTlog+1];
@@ -2462,7 +2463,7 @@ double clEdotInstant_Table( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, doub
       Rate->Heat_Metal
 #endif
     +
-    Y->H2 * cl->R.Heat_Phot_H2 * Rate->Phot_H2*s_dust*s_self - /*photon heating and dissociation CC*/
+    Y->H2 * cl->R.Heat_Phot_H2 * Rate->Phot_H2*s_dust*s_self + /*photon heating and dissociation CC*/
     Y->HI   * cl->R.Heat_Phot_HI * Rate_Phot_HI +
     Y->HeI  * cl->R.Heat_Phot_HeI * Rate->Phot_HeI +
     Y->HeII * cl->R.Heat_Phot_HeII * Rate->Phot_HeII;
@@ -3051,7 +3052,7 @@ if(cl->p->iOrder == PARTICLEIORD)
    cl->its = its;
    }
 
- assert(its<MAXINTEGITS);
+ /* assert(its<MAXINTEGITS);*/
  /* if (its > MAXINTEGITS) printf("No convergence in clIntegrateEnergy %d\n", its);*/
 
 #ifdef COOLDEBUG
@@ -3208,9 +3209,9 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 	prmAddParam(prm,"dLymanWernerFrac",2,&CoolParam->dLymanWernerFrac,sizeof(double),
 				"lwf","coeff times stellar lyman-werner photons");
 #endif
-	/*	CoolParam->CoolInFile = "cooltable_xdr";
+	strcpy(CoolParam->CoolInFile,"cooltable_xdr\0");
 	prmAddParam(prm,"CoolInFile",3,&CoolParam->CoolInFile,256,"coolin",
-	"<cooling table file> (file in xdr binary format)"); */
+	"<cooling table file> (file in xdr binary format)"); 
 
 	}
 	

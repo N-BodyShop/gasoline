@@ -57,6 +57,7 @@ struct parameters {
  	int bDoIOrderOutput;
  	int bDohOutput;
  	int bDoSphhOutput;
+	int bDoPressureOutput;
 	int bDodtOutput;
 	int bDoIonOutput;
 #ifdef COOLING_MOLECULARH 
@@ -85,9 +86,6 @@ struct parameters {
             int bHomogSpheroid;
         int bBodyForce;
 	double dBodyForceConst;
-	int bChrisDisk;
-	double dChrisDiskVc;
-	double dChrisDiskR;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
@@ -197,6 +195,7 @@ struct parameters {
   double dBHFormProb;
   double dInitBHMass;
   int bBHMindv;
+  int bBHAccreteAll;
 	char achDigitMask[MAXPATHLEN];
 	char achInFile[MAXPATHLEN];
 	char achOutName[MAXPATHLEN];

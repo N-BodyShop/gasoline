@@ -523,7 +523,7 @@ int main(int argc,char **argv)
 								&dEMax,&iSec);
 				}
 				
-				msrRungStats(msr);
+				/* msrRungStats(msr); This is useless */
 				msrCoolVelocity(msr,dTime,dMass);	/* Supercooling if specified */
 				msrMassCheck(msr,dMass,"After CoolVelocity in KDK");
 				dTime += msrDelta(msr);

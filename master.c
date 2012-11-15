@@ -465,6 +465,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bDoSphhOutput = 0;
 	prmAddParam(msr->prm,"bDoSphhOutput",0,&msr->param.bDoSphhOutput,sizeof(int),
 				"sphhout","enable/disable Sph h outputs = -sphhout");
+	msr->param.bDoPressureOutput = 0;
+	prmAddParam(msr->prm,"bDoPressureOutput",0,&msr->param.bDoPressureOutput,sizeof(int),
+				"Pout","enable/disable Pressure outputs = -Pout");
 	msr->param.bDodtOutput = 0;
 	prmAddParam(msr->prm,"bDodtOutput",0,&msr->param.bDodtOutput,sizeof(int),
 				"dtout","enable/disable dt outputs = -dtout");
@@ -702,6 +705,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"<BHSink Alpha>");
 	msr->param.bBHMindv = 0;
 	prmAddParam(msr->prm,"bBHMindv",0,&msr->param.bBHMindv,sizeof(int),"bhmindv","use mindeltav for BH accretion = -bhmindv");
+
+        msr->param.bBHAccreteAll = 1;
+        prmAddParam(msr->prm,"bBHAccreteAll",0,&msr->param.bBHAccreteAll,sizeof(int),"bhaccreteall","BHs can accrete any particle = -bhaccreteall");
+
 	msr->param.bDoSinksAtStart = 0;
 	prmAddParam(msr->prm,"bDoSinksAtStart",0,&msr->param.bDoSinksAtStart,sizeof(int),
 				"sinksas","enable/disable sinks at start = -sinksas");
@@ -981,15 +988,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"bElliptical",0,&msr->param.bElliptical,
 				sizeof(int),"elliptical","use/don't");
 	msr->param.bEllipticalDarkNFW=0;
-	msr->param.bChrisDisk = 0;
-	prmAddParam(msr->prm,"bChrisDisk",0,&msr->param.bChrisDisk,
-				sizeof(int),"chrisdisk","use/don't use Chris' disk potential");
-	msr->param.dChrisDiskVc= 220.0;
-	prmAddParam(msr->prm,"dChrisDiskVc",2,&msr->param.dChrisDiskVc,
-		    sizeof(double),"chrisdiskvc","Circular velocity (km/s) = 220");
-	msr->param.dChrisDiskR = 6.0;
-	prmAddParam(msr->prm,"dChrisDiskR",2,&msr->param.dChrisDiskR,
-		    sizeof(double),"chrisdiskr","Disk Radius (kpc) = 6");
 	prmAddParam(msr->prm,"bEllipticalDarkNFW",0,&msr->param.bEllipticalDarkNFW,
 		    sizeof(int),"ellipticaldarknfw","use/dont");
 	msr->param.bHomogSpheroid = 0;
@@ -1918,6 +1916,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    assert(0);
 	    }
 #endif
+#ifndef LONGRANGESTEP
+	if (msr->param.bLongRangeStep) {
+	    fprintf(stderr,"WARNING: bLongRangeStep requires -DLONGRANGESTEP.\n");
+	    assert(0);
+	    }
+#endif
 #ifndef JEANSFIXPDV
 	if (msr->param.dResolveJeans > 0) {
 	    fprintf(stderr,"WARNING: dResolveJeans > 0 but not compiled with -DJEANSFIXPDV.  PdV work may be crazy.\n");
@@ -2507,6 +2511,10 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef COLUMNLENGTH
  	fprintf(fp," COLUMNLENGTH"); /* Use smoothing length for correlation length*/
+/*Made using the smoothing length the default, as it has been used that way in all production runs to Jun 4th, 2012, CC*/
+#endif
+#ifdef PARTSHEAR
+ 	fprintf(fp," PARTSHEAR"); /* Use the particle shear for correlation length*/
 #endif
 #ifdef NEWSHEAR
  	fprintf(fp," NEWSHEAR"); /* Use diffusion length for correlation length*/
@@ -2591,6 +2599,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef JEANSSOFT
 	fprintf(fp, " JEANSSOFT");
+#endif
+#ifdef JEANSSOFTONLY
+	fprintf(fp, " JEANSSOFTONLY");
 #endif
 #ifdef JEANSFIXPDV
 	fprintf(fp, " JEANSFIXPDV");
@@ -2720,9 +2731,6 @@ void msrLogParams(MSR msr,FILE *fp)
             fprintf(fp," dNFWconc: %g",msr->param.dNFWconc );
             }
 	fprintf(fp," bHomogSpheroid: %d",msr->param.bHomogSpheroid );
-	fprintf(fp," bChrisDisk: %d",msr->param.bChrisDisk);
-	fprintf(fp," dChrisDiskVc: %g",msr->param.dChrisDiskVc);
-	fprintf(fp," dChrisDiskR: %g",msr->param.dChrisDiskR);
 	fprintf(fp," bBodyForce: %d",msr->param.bBodyForce );
 	fprintf(fp," dBodyForceConst: %g",msr->param.dBodyForceConst );
 	fprintf(fp," bMiyamotoDisk: %d",msr->param.bMiyamotoDisk );
@@ -2742,6 +2750,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bBHTurnOffCooling: %d",msr->param.bBHTurnOffCooling);
 	fprintf(fp," bSmallBHSmooth: %d",msr->param.bSmallBHSmooth);
 	fprintf(fp," bBHMindv: %d",msr->param.bBHMindv);
+        fprintf(fp," bBHAccreteAll: %d",msr->param.bBHAccreteAll);
 	fprintf(fp," bDoSinksAtStart: %d",msr->param.bDoSinksAtStart );
 	fprintf(fp," bSinksThermal: %d",msr->param.bSinkThermal );
 	fprintf(fp," dSinkRadius: %g",msr->param.dSinkRadius);
@@ -4160,7 +4169,6 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
         OutputList[(*nOutputList)++]=OUT_PDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_PDVPRES_ARRAY;
         OutputList[(*nOutputList)++]=OUT_PDVVISC_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
         }
 #ifndef NOCOOLING				
     {
@@ -4303,6 +4311,7 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDodtOutput) OutputList[(*nOutputList)++]=OUT_DT_ARRAY;
 #ifdef GASOLINE				
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
+    if (msr->param.bDoPressureOutput) OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
     if (msr->param.bDoCSound) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
 #ifdef UNONCOOL
@@ -4399,6 +4408,7 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDodtOutput) OutputList[(*nOutputList)++]=OUT_DT_ARRAY;
 #ifdef GASOLINE				
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
+    if (msr->param.bDoPressureOutput) OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
     if (msr->param.bDoCSound) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
 #ifdef PDVDEBUG
@@ -5346,6 +5356,8 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
     ** Make sure that the type of tree is a density binary tree!
     */
     assert(msr->iTreeType == MSR_TREE_DENSITY);
+
+    msrSmoothFcnParam(msr,dTime,&in.smf);
 #ifdef STARFORM
     in.nSmooth = (iSmoothType == SMX_DIST_SN_ENERGY ? msr->param.nSmoothFeedback : msr->param.nSmooth);
 #else
@@ -5612,8 +5624,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		msr->param.bElliptical ||
 		msr->param.bHomogSpheroid || msr->param.bBodyForce ||
 	    	msr->param.bRotatingBar ||
-        	msr->param.bMiyamotoDisk || msr->param.bTimeVarying || 
-            msr->param.bChrisDisk) {
+        	msr->param.bMiyamotoDisk || msr->param.bTimeVarying) {
 	        struct outGravExternal outExt;
 		/*
 		 ** Provide the time.
@@ -5643,9 +5654,6 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
 		inExt.bBodyForce = msr->param.bBodyForce;
 		inExt.dBodyForceConst = msr->param.dBodyForceConst;
-		inExt.bChrisDisk = msr->param.bChrisDisk;
-		inExt.dChrisDiskVc = 3.241e-17*msr->param.dChrisDiskVc/msr->param.dKpcUnit*msr->param.dSecUnit;
-		inExt.dChrisDiskR = msr->param.dChrisDiskR/msr->param.dKpcUnit;
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		inExt.bTimeVarying = msr->param.bTimeVarying;
 		inExt.bRotatingBar = msr->param.bRotatingBar;
@@ -7830,6 +7838,36 @@ void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta,
 			   *pdMultiEff);
 	}
 
+
+#ifdef CHECKSOFT			  
+#define CHECKSOFT_DIAGNOSTICOUTPUT() \
+	   { \
+	   char achFile[256];  \
+  	   fprintf(stderr,"Outputing .soft .dt .den tipsy\n"); \
+	   msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE|TYPE_DensZeroed); \
+	   msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1); \
+	   msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE); \
+	   msrBuildTree(msr,1,-1.0,1); \
+	   msrActiveType(msr,TYPE_ACTIVE,TYPE_DensACTIVE ); \
+	   msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1); \
+	   /*	   msrSmooth(msr,dTime,SMX_DENSITY,1);*/ \
+	   msrReorder(msr); \
+	   sprintf(achFile,"step%015.10f.soft",dTime); \
+	   msrOutArray(msr,achFile,OUT_SOFT_ARRAY); \
+	   sprintf(achFile,"step%015.10f.dt",dTime); \
+	   msrOutArray(msr,achFile,OUT_DT_ARRAY); \
+	   sprintf(achFile,"step%015.10f.pot",dTime); \
+	   msrOutArray(msr,achFile,OUT_POT_ARRAY); \
+	   sprintf(achFile,"step%015.10f.den",dTime); \
+	   msrOutArray(msr,achFile,OUT_DENSITY_ARRAY); \
+	   sprintf(achFile,"step%015.10f",dTime); \
+	   msrWriteTipsy(msr,achFile,dTime); \
+	   }
+#else
+#define CHECKSOFT_DIAGNOSTICOUTPUT()
+#endif
+
+
 void msrTopStepKDK(MSR msr,
 				   double dStep,	/* Current step */
 				   double dTime,	/* Current time */
@@ -8014,41 +8052,17 @@ void msrTopStepKDK(MSR msr,
 
 			if (msr->param.bVStep) printf("Forces, Step:%f nActive %i\n",dStep,msr->nActive);
 			if(msrDoGravity(msr)) {
-				if (msr->param.bDoSelfGravity) {
-					msrActiveRung(msr,iKickRung,1);
-					msrUpdateSoft(msr,dTime);
-					msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
-					if (msr->param.bVDetails)
-						printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
-					msrBuildTree(msr,0,dMass,0);
-					}
-				msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nActive);
-#ifdef CHECKSOFT			  
-	   {
-	   char achFile[256]; 
-
-  	   fprintf(stderr,"Outputing .soft .dt .den tipsy\n");
-	   msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE|TYPE_DensZeroed);
-	   msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
-	   msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-	   msrBuildTree(msr,1,-1.0,1);
-	   msrActiveType(msr,TYPE_ACTIVE,TYPE_DensACTIVE );
-	   msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1);
-	   /*	   msrSmooth(msr,dTime,SMX_DENSITY,1);*/
-	   msrReorder(msr);
-	   sprintf(achFile,"step%015.10f.soft",dTime);
-	   msrOutArray(msr,achFile,OUT_SOFT_ARRAY);
-	   sprintf(achFile,"step%015.10f.dt",dTime);
-	   msrOutArray(msr,achFile,OUT_DT_ARRAY);
-	   sprintf(achFile,"step%015.10f.pot",dTime);
-	   msrOutArray(msr,achFile,OUT_POT_ARRAY);
-	   sprintf(achFile,"step%015.10f.den",dTime);
-	   msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);
-	   sprintf(achFile,"step%015.10f",dTime);
-	   msrWriteTipsy(msr,achFile,dTime);
-	   }
-#endif
-     	                    *pdActiveSum += (double)nActive/msr->N;
+			    if (msr->param.bDoSelfGravity) {
+				msrActiveRung(msr,iKickRung,1);
+				msrUpdateSoft(msr,dTime);
+				msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
+				if (msr->param.bVDetails)
+				    printf("Gravity, iRung: %d to %d\n", iRung, iKickRung);
+				msrBuildTree(msr,0,dMass,0);
+				}
+			    msrGravity(msr,dStep,msrDoSun(msr),piSec,pdWMax,pdIMax,pdEMax,&nActive);
+			    CHECKSOFT_DIAGNOSTICOUTPUT();
+			    *pdActiveSum += (double)nActive/msr->N;
 			    }
 			
 #ifdef GASOLINE
@@ -8326,17 +8340,17 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	    /* build new tree of BHs for merging JMB 11/14/08  */
 	    msrActiveType(msr,TYPE_SINK,TYPE_TREEACTIVE);
 	    if (msr->nTreeActive > 1) { /* no need to merge if there is only one! */
-		msrBuildTree(msr,1,-1.0,1);  /* bTreeActive */
-		msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
-		msrActiveTypeRung(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE,iKickRung,1);
-		/* need to change nSmooth to number of BHs.  */
-		nSmoothTemp = msr->param.nSmooth;
-		msr->param.nSmooth = min(msr->nTreeActive, 4);
-		msrSmooth(msr,dTime, SMX_BHSINKIDENTIFY,1);
-		msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
-		msrSmooth(msr,dTime, SMX_BHSINKMERGE,1);
-		/* now change it back to what it was before JMB 12/10/08  */
-		msr->param.nSmooth = nSmoothTemp;
+	      msrBuildTree(msr,1,-1.0,1);  /* bTreeActive */
+	      msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
+	      msrActiveTypeRung(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE,iKickRung,1);
+	      /* need to change nSmooth to number of BHs.  */
+	      nSmoothTemp = msr->param.nSmooth;
+	      msr->param.nSmooth = min(msr->nTreeActive, 4);/*tracking mergers with more than a few BH neighbors is overkill - JMB  */
+	      msrSmooth(msr,dTime, SMX_BHSINKIDENTIFY,1);
+      	      msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
+	      msrSmooth(msr,dTime, SMX_BHSINKMERGE,1);
+	      /* now change it back to what it was before JMB 12/10/08  */
+	      msr->param.nSmooth = nSmoothTemp;
 		msr->iTreeType = MSR_TREE_NONE;
 		}
 	    else {
