@@ -4261,11 +4261,11 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 	mdlDiag(pkd->mdl, "Out of pkddrift\n");
 	}
 
-#define NONCOOLCONVRATE(_dNoncoolConvRate,_p) (_dNoncoolConvRate > 0 ? _dNoncoolConvRate : sqrt((_p)->uNoncoolPred)/((_p)->fBall2*0.25))
+#define NONCOOLCONVRATE(_dNoncoolConvRate,_dNoncoolConvRateMax,_p) (_dNoncoolConvRate > 0 ? _dNoncoolConvRate : (sqrt((_p)->uNoncoolPred)/((_p)->fBall2*0.25) < _dNoncoolConvRateMax ? sqrt((_p)->uNoncoolPred)/((_p)->fBall2*0.25) : _dNoncoolConvRateMax))
 
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
-    double z, double duDotLimit, double dTimeEnd, double dNoncoolConvRate )
+    double z, double duDotLimit, double dTimeEnd, double dNoncoolConvRate, double dNoncoolConvRateMax)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -4345,7 +4345,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #ifdef STARFORM
 				      + p->fESNrate
 #endif
-				      - p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate,p);
+				      - p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate,dNoncoolConvRateMax,p);
 
 				  p->uNoncoolPred = p->uNoncool + uNoncoolDot*duPredDelta;
 				  p->uNoncool = p->uNoncool + uNoncoolDot*duDelta;
@@ -5956,7 +5956,7 @@ int pkdIsStarByOrder(PKD pkd,PARTICLE *p) {
 
 #ifdef GASOLINE
 
-void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNoncoolConvRate, int iGasModel, int bUpdateState )
+void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNoncoolConvRate, double dNoncoolConvRateMax, int iGasModel, int bUpdateState )
 {
 #ifndef NOCOOLING	
 	PARTICLE *p;
@@ -5989,7 +5989,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNonc
     if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
 #ifdef UNONCOOL
       ExternalHeating = p->PdV*p->uPred/(p->uPred+p->uNoncoolPred) + p->uDotDiff 
-	  + p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate,p);
+	  + p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate,dNoncoolConvRateMax,p);
 #else
       ExternalHeating = p->PdV;
 #ifdef STARFORM
@@ -7058,7 +7058,7 @@ void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
 #ifdef GASOLINE
 void
 pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
-    int iGasModel,double z,double duDotLimit, double dTimeEnd,double dNoncoolConvRate)
+    int iGasModel,double z,double duDotLimit, double dTimeEnd,double dNoncoolConvRate, double dNoncoolConvRateMax)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -7134,7 +7134,7 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 #ifdef STARFORM
 			      + p->fESNrate
 #endif
-			      - p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate,p);
+			      - p->uNoncoolPred*NONCOOLCONVRATE(dNoncoolConvRate,dNoncoolConvRateMax,p);
 			  p->uNoncoolPred = p->uNoncoolPred + uNoncoolDot*duDelta;
 			  if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
 			      }
