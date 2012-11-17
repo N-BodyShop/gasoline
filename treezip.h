@@ -14,12 +14,6 @@
 */
 #define DEPTHCHECK
 
-/* 
-   Remove Label info in particle data
-
-   Probably should leave OFF
-*/
-/* #define NOLABEL */
 typedef unsigned int LABELTYPE;
 
 /* debug info */
@@ -30,9 +24,7 @@ typedef unsigned int LABELTYPE;
 
 typedef struct {
 	tzkey k;
-#ifndef NOLABEL
 	LABELTYPE label;
-#endif
 #ifdef DEBUG
 	float pos[3];
 #endif

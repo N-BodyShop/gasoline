@@ -784,11 +784,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
 
 void xdr_FLOAT(XDR *xdrs, FLOAT *fIn) 
 {
-#ifdef SINGLE
-    xdr_float(xdrs, fIn);
-#else
     xdr_double(xdrs, fIn);
-#endif
     }
 
 void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,int iBinaryOutput, int N, int bStandard)

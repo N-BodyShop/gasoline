@@ -3130,12 +3130,6 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	char ach[456];
 #endif
 
-#ifdef TESTSPH
-	if (TYPETest(p, (1<<20))) {
-	    printf("DUMP: %d %g %g %g  %g %g %g  %g\n",p->iOrder,p->r[0],p->r[1],p->r[2],p->vPred[0],p->vPred[1],p->vPred[2],p->fMetals);
-	    }
-#endif
-
 #ifdef DEBUGFORCE
 	pa[0]=0.0;
 #endif
@@ -5196,9 +5190,6 @@ void combDistDeletedGas(void *vp1,void *vp2)
 			p1->fMass = m_new;
 			p1->u = f1*p1->u + f2*p2->u;
 			p1->uPred = f1*p1->uPred + f2*p2->uPred;
-#ifdef COOLDEBUG
-			assert(p1->u >= 0.0);
-#endif
 			p1->v[0] = f1*p1->v[0] + f2*p2->v[0];            
 			p1->v[1] = f1*p1->v[1] + f2*p2->v[1];            
 			p1->v[2] = f1*p1->v[2] + f2*p2->v[2];            
@@ -5267,9 +5258,6 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                  */
 		q->u = f1*q->u+f2*p->u;
 		q->uPred = f1*q->uPred+f2*p->uPred;
-#ifdef COOLDEBUG
-		assert(q->u >= 0.0);
-#endif
 		q->v[0] = f1*q->v[0]+f2*p->v[0];            
 		q->v[1] = f1*q->v[1]+f2*p->v[1];            
 		q->v[2] = f1*q->v[2]+f2*p->v[2];            
@@ -5290,10 +5278,6 @@ void DeleteGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	assert(TYPETest(p, TYPE_GAS));
 	fMasstot = 0;
-#ifdef COOLDEBUG
-	assert(p->fMass >= 0.0);
-#endif
-
 	for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
 	    assert(TYPETest(q, TYPE_GAS));

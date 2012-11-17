@@ -52,19 +52,12 @@
 
 #define STOPFILE "STOP"			/* for user interrupt */
 
-#define NEWTIME
-#ifdef NEWTIME 
 double msrTime(void) {
 	struct timeval tv;
 
 	gettimeofday(&tv,NULL);
 	return tv.tv_sec + tv.tv_usec*1e-6;
 	}
-#else
-double msrTime(void) {
-	return time(NULL);
-	}
-#endif
 
 #define DEN_CGS_SYS 1.6831e6 /* multiply density in cgs by this to get
 								density in system units (AU, M_Sun) */
@@ -2486,9 +2479,6 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef SIMPLESF
 	fprintf(fp," SIMPLESF");
 #endif
-#ifdef LARGEFBALL
-	fprintf(fp," LARGEFBALL");
-#endif
 #ifdef SHOCKTRACK
 	fprintf(fp," SHOCKTRACK");
 #endif
@@ -2538,9 +2528,6 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef COOLING_BATE
  	fprintf(fp," COOLING_BATE");
 #endif
-#ifdef COOLING_DISK
- 	fprintf(fp," COOLING_DISK");
-#endif
 #ifdef GLASS
 	fprintf(fp," GLASS");
 #endif
@@ -2552,9 +2539,6 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef DEBUG
 	fprintf(fp," DEBUG");
-#endif
-#ifdef ALTSPH
-	fprintf(fp," ALTSPH");
 #endif
 #ifdef SUPERCOOL
 	fprintf(fp," SUPERCOOL");
@@ -7230,7 +7214,6 @@ void msrSwitchTheta(MSR msr,double dTime)
 	}
 
 
-#define SUPPRESSMASSCHECKREPORT      
 double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 {
 	struct outMassCheck out;
@@ -7238,9 +7221,6 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 #ifdef GROWMASS
 	out.dMass = 0.0;
 #else
-#ifndef SUPPRESSMASSCHECKREPORT      
-	if (msr->param.bVDetails) puts("doing mass check...");
-#endif
 	pstMassCheck(msr->pst,NULL,0,&out,NULL);
 #ifdef RUBBLE_ZML
 	{
@@ -7277,9 +7257,6 @@ void msrMassMetalsEnergyCheck(MSR msr,double *dTotMass, double *dTotMetals,
 	out.dTotOx = 0.0;
 	out.dTotEnergy = 0.0;
 #else
-#ifndef SUPPRESSMASSCHECKREPORT      
-	if (msr->param.bVDetails) puts("doing mass check...");
-#endif
 	pstMassMetalsEnergyCheck(msr->pst,NULL,0,&out,NULL);
 	if (*dTotMass < 0.0) {}
 	else {
@@ -8714,31 +8691,6 @@ void msrInitSph(MSR msr,double dTime)
 		printf("Initializing SPH forces\n");
 	        msrSph(msr, dTime, 0); /* rungs should all be zero initially, pass iKickRung=0 */
 
-#ifdef OLDINITSPHCODE
-   	    msrBallMax(msr, 0, 1); /* set ball max - done in msrSph */
-	    if (msr->param.iViscosityLimiter || msr->param.bBulkViscosity
-		    || msr->param.bStarForm) {
-		        msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-			}
-		msrSphViscosityLimiter(msr, dTime);
-
-		msrGetGasPressure(msr, dTime);
-			
-		if (msr->param.bShockTracker) { 
-			msrReSmooth(msr,dTime,SMX_SPHPRESSURE,1);
-			msrUpdateShockTracker(msr, 0.0);
-			if (msr->param.bBulkViscosity) 
-			        msrReSmooth(msr,dTime,SMX_HKVISCOSITY,1);
-			else
-			        msrReSmooth(msr,dTime,SMX_SPHVISCOSITY,1);
-		        }
-		else {
-			if (msr->param.bBulkViscosity) 
-				msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);     
-			else
-				msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1); 
-		        }
-#endif
 		/* First guess at uDot with quite small step size 
 		   step size irrelevant for adiabatic gas */
    	        msrUpdateuDot(msr,dTime,0.5e-7*msr->param.dDelta,0);
@@ -8870,15 +8822,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     {
 #ifdef GASOLINE
 
-#ifdef TESTSPH
-    int iDump = 0;
-    if (dTime > 30351.157 && iKickRung == 0) {
-/*    if (dTime > 30 && iKickRung == 0) {*/
-	printf("DUMP: Starting Dump\n");
-	iDump = 1;
-	msrActiveType(msr,TYPE_GAS,(1<<20));
-	}
-#endif
 
 /*
 ** Build Tree for SPH

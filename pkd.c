@@ -3868,22 +3868,12 @@ void pkdTimeVarying(PKD pkd,double dTime)
 	}
 
 
-/*DEBUG #define SPINUP*/
 
 #ifdef ROT_FRAME
 void
 pkdRotFrame(PKD pkd,double dOmega,double dOmegaDot)
 {
 	/* WARNING: p[i].fPot not updated */
-
-#ifdef SPINUP
-	PARTICLE *p = pkd->pStore;
-	int i;
-	for (i=0;i<pkd->nLocal;i++) {
-		p[i].a[0] -= dOmegaDot*p[i].r[1];
-		p[i].a[1] += dOmegaDot*p[i].r[0];
-		}
-#else
 	/* note Omega & dOmega/dt are assumed to be in the +z direction */
 
 	PARTICLE *p;
@@ -3903,7 +3893,6 @@ pkdRotFrame(PKD pkd,double dOmega,double dOmegaDot)
 		for (k=0;k<2;k++)
 			p[i].a[k] -= (w2r[k] + 2*wxv[k] + dwxr[k]);
 		}
-#endif
 	}
 #endif
 
@@ -4628,9 +4617,6 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef VARALPHA
 		p->alpha = cp.alpha;
 		p->alphaPred = cp.alpha;
-#endif
-#ifdef COOLDEBUG
-		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
 #endif
 #ifdef STARFORM 
 		p->fESNrate = 0.0;
@@ -5534,11 +5520,6 @@ int pkdSetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
 
     for(i=0;i<pkdLocal(pkd);++i) {
 		p = &pkd->pStore[i];
-#ifdef COOLDEBUG
-		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
-		assert(p->u >= 0.0);
-		assert(p->uPred >= 0.0);
-#endif
 		/* DEBUG: Paranoia check */
 		mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
 		if (TYPETest(p,iTestMask)) {
@@ -5860,10 +5841,6 @@ pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *l)
 		      mass_min = l[0].m;
 		      }
 		}
-#ifdef COOLING_DISK
-		p[i].CoolParticle.r = sqrt(r2min);
-		p[i].CoolParticle.StarMass = mass_min;
-#endif
 	  }
 	}
 #endif
@@ -6044,9 +6021,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNonc
 #endif /*DENSITYU*/
 #else /* COOLING_MOLECULARH */
 
-#ifdef COOLING_BOLEY
-				cp.mrho = pow(p->fMass/p->fDensity, 1./3.);
-#endif
 #ifdef DENSITYU
 				if (p->fDensityU < p->fDensity) 
 				    CoolIntegrateEnergyCode(cl, &cp, &E, ExternalHeating, p->fDensityU, p->fMetals, p->r, dtUse);
