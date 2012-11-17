@@ -2231,25 +2231,7 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 		else
 			pOut->bndBall.fMax[j] = p1->bndBall.fMax[j];
 
-		if (p2->bndDt.vMin[j] < p1->bndDt.vMin[j])
-			pOut->bndDt.vMin[j] = p2->bndDt.vMin[j];
-		else
-			pOut->bndDt.vMin[j] = p1->bndDt.vMin[j];
-		if (p2->bndDt.vMax[j] > p1->bndDt.vMax[j])
-			pOut->bndDt.vMax[j] = p2->bndDt.vMax[j];
-		else
-			pOut->bndDt.vMax[j] = p1->bndDt.vMax[j];
 		}
-
-	if(pOut->bnd.fMax[0] > pOut->bnd.fMin[0]) { /* non-empty */
-	    DIAGDIST2(pOut->bndDt.drMax2,pOut->bnd.fMin,pOut->bnd.fMax);
-	    }
-	else
-	    pOut->bndDt.drMax2 = 0.0;
-	if (p2->bndDt.cMax > p1->bndDt.cMax)
-	    pOut->bndDt.cMax = p2->bndDt.cMax;
-	else
-	    pOut->bndDt.cMax = p1->bndDt.cMax;
 
 	/*
 	 ** Find the center of mass and mass weighted softening.
@@ -2597,14 +2579,9 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 			c[iCell].bnd.fMax[j] = -FLOAT_MAXVAL;
 			c[iCell].bndBall.fMin[j] = FLOAT_MAXVAL;
 			c[iCell].bndBall.fMax[j] = -FLOAT_MAXVAL;
-			c[iCell].bndDt.vMin[j] = FLOAT_MAXVAL;
-			c[iCell].bndDt.vMax[j] = -FLOAT_MAXVAL;
 			c[iCell].r[j] = 0.0;
 			}
-		c[iCell].bndDt.cMax = -FLOAT_MAXVAL;
 		for (pj=l;pj<=u;++pj) {
-		        if (p[pj].c > c[iCell].bndDt.cMax)
-			        c[iCell].bndDt.cMax = p[pj].c;
 			for (j=0;j<3;++j) {
 				if (p[pj].r[j] < c[iCell].bnd.fMin[j])
 					c[iCell].bnd.fMin[j] = p[pj].r[j];
@@ -2615,10 +2592,6 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 					c[iCell].bndBall.fMin[j] = p[pj].r[j]-p[pj].fBallMax;
 				if (p[pj].r[j]+p[pj].fBallMax > c[iCell].bndBall.fMax[j])
 					c[iCell].bndBall.fMax[j] = p[pj].r[j]+p[pj].fBallMax;
-				if (p[pj].vPred[j] < c[iCell].bndDt.vMin[j])
-					c[iCell].bndDt.vMin[j] = p[pj].vPred[j];
-				if (p[pj].vPred[j] > c[iCell].bndDt.vMax[j])
-					c[iCell].bndDt.vMax[j] = p[pj].vPred[j];
 
 				}
 			/*
@@ -2630,17 +2603,6 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 				c[iCell].r[j] += p[pj].fMass*p[pj].r[j];
 				}
 			}
-		if(l <= u) {
-		    DIAGDIST2(c[iCell].bndDt.drMax2,c[iCell].bnd.fMin,c[iCell].bnd.fMax);
-		    }
-		else { /* An empty cell */
-		    c[iCell].bndDt.drMax2 = 0.0;
-		    c[iCell].bndDt.cMax = 0.0;
-		    for(j = 0; j < 3; j++) {
-			c[iCell].bndDt.vMin[j] = 0.0;
-			c[iCell].bndDt.vMax[j] = 0.0;
-			}
-		    }
 
 		if (c[iCell].fMass > 0) {
 			for (j=0;j<3;++j) {
@@ -3020,11 +2982,7 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
 		pkdn->bnd.fMax[j] = -FLOAT_MAXVAL;
 		pkdn->bndBall.fMin[j] = FLOAT_MAXVAL;
 		pkdn->bndBall.fMax[j] = -FLOAT_MAXVAL;
-		pkdn->bndDt.vMin[j] = 0.0;
-		pkdn->bndDt.vMax[j] = 0.0;
 	        }
-	    pkdn->bndDt.drMax2 = 0.0;
-	    pkdn->bndDt.cMax = 0.0;
 	    pkdn->iDim = -1; /* it is a bucket! */
 	    pkdn->fSplit = 0.0;
 	    pkdn->iLower = -1;

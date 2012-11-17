@@ -3144,7 +3144,8 @@ void pstDtSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		(&in->smf)->pkd = pst->plcl->pkd;
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
 					 in->bSymmetric,in->iSmoothType,0,0.0);
-		smDtSmooth(smx,&in->smf);
+		assert(0);  /* unimplemented */
+		/* smDtSmooth(smx,&in->smf); */
 		smFinish(smx,&in->smf, &cs);
 		if (out != NULL) out->dtMin = in->smf.dtMin;
 		}

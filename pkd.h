@@ -426,7 +426,6 @@ typedef struct kdNode {
         double fSplit;
 	BND bnd;
 	BND bndBall;	/* Bound including fBall*(1+changemax) */
-        BNDDT bndDt;
 	int pLower;		/* also doubles as thread id for the LTT */
 	int pUpper;		/* pUpper < 0 indicates no particles in tree! */
 	int iLower;
