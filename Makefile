@@ -1,10 +1,15 @@
 # Makefile for pkdgrav or gasoline (specify below)
-# Copy this file "Makefile.default" to "Makefile"
 # Then type make <platform>
 # <platform> should be one of:
 # null, sgi, pvm, pthread, pthread_dec, pthread_sgi, ampi, lam_mpi, qmpi, mpi,
 # spx, t3d, t3dmpi, t3empi, ksr, charm
 #
+# You will get a pair of new files: gasoline.NNNNNNNN and buildlog.NNNNNNNN,
+# where NNNNNNNN is an 8 character hash.
+# The first is the actual gasoline executable, and the second one contains all
+# defines that were used to build gasoline.  You should copy that file into 
+# the directory of any simulation you run so you know exactly which options were
+# used.
 PNG_INCL =
 PNG_LIB = 
 PNG_OBJ =
@@ -50,9 +55,6 @@ CC = gcc
 
 CC_DEF = 
 CODE_DEF = 
-
-# The filename of the compiled executable
-EXE = gasoline
 
 # Gasoline uses a number of defines to enable/disable code features,
 # debug sections of the code, and switch out different physics.
@@ -177,6 +179,11 @@ CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
 CODE_DEF += -DVSIGVISC #Alternate Viscous force calculation (better?)
 
 BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
+
+MD5 = ` echo $(BASE_DEF) | md5sum | cut -c1-8`
+
+# The filename of the compiled executable
+EXE = gasoline
 
 #
 #       NULL defines
@@ -344,6 +351,7 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 
+
 default:	
 	@echo "Please tell me what architecture to make."
 	@echo "Choices are null, sgi, pvm, pthread, pthread_dec, pthread_sgi, ampi, lam_mpi, qmpi, mpi, spx, t3d, t3dmpi, t3empi, ksr, charm"
@@ -368,7 +376,6 @@ null:
 	cd $(NULL_MDL); make "CC=$(CC)" "CFLAGS=$(NULL_CFLAGS)"
 	make $(EXE) "CFLAGS=$(NULL_CFLAGS)" "LD_FLAGS=$(NULL_LD_FLAGS)"\
 		"MDL=$(NULL_MDL)" "XOBJ=$(NULL_XOBJ)" "LIBMDL=$(NULL_LIBMDL)"
-
 dbg:
 	cd $(DBG_MDL); make "CC=$(CC)" "CFLAGS=$(DBG_CFLAGS)"
 	make $(EXE) "CFLAGS=$(DBG_CFLAGS)" "LD_FLAGS=$(DBG_LD_FLAGS)"\
@@ -387,7 +394,7 @@ pvm:
 
 pthread:
 	cd $(PTHREAD_MDL); make "CC=$(CC)" "CFLAGS=$(PTHREAD_CFLAGS)"
-	make $(EXE).pthread "EXE=$(EXE).pthread" "CFLAGS=$(PTHREAD_CFLAGS)" "LD_FLAGS=$(PTHREAD_LD_FLAGS)"\
+	make $(EXE) "EXE=$(EXE)" "CFLAGS=$(PTHREAD_CFLAGS)" "LD_FLAGS=$(PTHREAD_LD_FLAGS)"\
 		"MDL=$(PTHREAD_MDL)" "XOBJ=$(PTHREAD_XOBJ)" "LIBMDL=$(PTHREAD_LIBMDL)"
 
 pthread_dec:
@@ -414,7 +421,6 @@ qmpi:
 	cd $(QMPI_MDL); make "CC_FLAGS=$(QMPI_MDL_CFLAGS)"
 	make $(EXE) "CFLAGS=$(QMPI_CFLAGS)" "LD_FLAGS=$(QMPI_LD_FLAGS)"\
 		"MDL=$(QMPI_MDL)" "XOBJ=$(QMPI_XOBJ)" "LIBMDL=$(QMPI_LIBMDL)"
-
 
 mpi: spx
 
@@ -449,7 +455,9 @@ charm:
 		"MDL=$(CHARM_MDL)" "XOBJ=$(CHARM_XOBJ)" "LIBMDL=$(CHARM_LIBMDL)"
 
 $(EXE): $(OBJ) $(XOBJ)
+	echo $(BASE_DEF) >> buildlog.$(MD5)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -o $@ $(OBJ) $(XOBJ) $(LIBMDL)
+	mv gasoline gasoline.$(MD5)
 
 $(OBJ) $(EXTRA_OBJ): Makefile
 
