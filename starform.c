@@ -126,7 +126,6 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     double dMprob;
     double dDeltaM;
     double l_jeans2;
-    int small_jeans = 0;
     int j;
     int newbh; /* tracking whether a new seed BH has formed JMB  */
  #ifdef COOLING_MOLECULARH
@@ -222,7 +221,6 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     p->tdyn = CoolCodeTimeToSeconds( cl, tdyn)/3.1557e7;
     p->ratiosounddyn = sqrt(0.25*p->fBall2)/p->c/tdyn;
     p->l_jeans = sqrt(M_PI*p->c*p->c/p->fDensity*dCosmoFac);
-    p->small_jeans = small_jeans;
 #endif
 #ifdef SFCONDITIONS
     if(tcool < 0.0 && T > stfm->dTempMax) return;
@@ -236,24 +234,9 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * softening
      */
     l_jeans2 = M_PI*p->c*p->c/p->fDensity*dCosmoFac;
-#if (0)
-/* Old code: problem -- compares physics L_J to comoving softening */
-    if (l_jeans2 < p->fSoft*p->fSoft*stfm->dSoftMin*stfm->dSoftMin) 
-        small_jeans = 1;
-#ifdef CHECKSF
-    p->small_jeans = small_jeans;
-#endif /*CHECKSF*/
-    if (!small_jeans && tsound <= tdyn)
-        return;
-
-#else /* old code (0) */
 /* New code: physical L_J vs. physics smoothing length (with multiplier) */
     if (l_jeans2 >= 0.25*p->fBall2*dExp*dExp*stfm->dSoftMin*stfm->dSoftMin) return;
 
-#ifdef CHECKSF
-    p->small_jeans = 1;
-#endif
-#endif /* old code (0) */
 
 #else /* CHECKSF */
     if(T > stfm->dTempMax) return;

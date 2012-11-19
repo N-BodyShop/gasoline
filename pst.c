@@ -876,7 +876,6 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 #define MAX_ITTR	64
 #define EPS_BOUND	0.01
 #define MASS_EPS	1e-11
-/* #define PARANOID_CHECK */
 
 void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 		   int bDoSplitDimFind, int bSplitWork)
@@ -912,9 +911,6 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 	mdlTimer t;
 
 	struct outMassCheck outMass;
-#ifdef PARANOID_CHECK
-	int i,iLowSum,iHighSum;
-#endif
 	int pFlag;	/* 0 => we are splitting all particles at once. 
 			   1 => we first split active, and then inactive. */
 	int nTotalActive;
@@ -1306,40 +1302,6 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 
 	mdlPrintTimer(pst->mdl,"TIME Collected Rejects _pstRootSplit ",&t);
 
-#ifdef PARANOID_CHECK
-	/*
-	 ** This paranoid check no longer works for Active particles, need
-	 ** to modify or remove this!
-	 */
-	iLowSum = 0;
-	iHighSum = 0;
-	for (i=0;i<pst->nLower;++i) {
-		iLowSum += pLowerRej[i].nLocal;
-		iHighSum += pLowerRej[i].nRejects;
-		}
-	for (i=0;i<pst->nUpper;++i) {
-		iHighSum += pUpperRej[i].nLocal;
-		iLowSum += pUpperRej[i].nRejects;
-		}
-	mdlprintf(pst->mdl,"%d l:%d Paranoid Check Final nLow:%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
-		   nLowTot,iLowSum,nHighTot,iHighSum);
-	iLowSum = 0;
-	iHighSum = 0;
-	for (i=0;i<pst->nLower;++i) {
-		iLowSum += pLowerRej[i].nLocal;
-		iHighSum += pLowerRej[i].nRejects;
-		}
-	mdlprintf(pst->mdl,"%d l:%d Paranoid Check Low: nLow:%d == %d, nHigh(rejects):%d == %d\n",pst->idSelf,pst->iLvl,
-		   outWtLow.nLow,iLowSum,outWtLow.nHigh,iHighSum);
-	iLowSum = 0;
-	iHighSum = 0;
-	for (i=0;i<pst->nUpper;++i) {
-		iHighSum += pUpperRej[i].nLocal;
-		iLowSum += pUpperRej[i].nRejects;
-		}
-	mdlprintf(pst->mdl,"%d l:%d Paranoid Check High: nLow(rejects):%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
-		   outWtHigh.nLow,iLowSum,outWtHigh.nHigh,iHighSum);
-#endif
 	
 	pstMassCheck(pst,NULL,0,&outMass,NULL);
 #if 0
@@ -1415,9 +1377,6 @@ void _pstRootSplit_Active_Inactive(PST pst,int iSplitDim,double dMass, int bDoRo
 	char ach[256];	/* Debug */
 
 	struct outMassCheck outMass;
-#ifdef PARANOID_CHECK
-	int i,iLowSum,iHighSum;
-#endif
 	int pFlag,	/* 0 => we are splitting all particles at once. 
 				   1 => we first split active, and then inactive. */
 	    nTotalActive;
@@ -1872,40 +1831,6 @@ void _pstRootSplit_Active_Inactive(PST pst,int iSplitDim,double dMass, int bDoRo
 	mdlGetReply(pst->mdl,pst->idUpper,pUpperRej,&nOut);
 	mdlassert(pst->mdl,nOut/sizeof(OREJ) == pst->nUpper);
 
-#ifdef PARANOID_CHECK
-	/*
-	 ** This paranoid check no longer works for Active particles, need
-	 ** to modify or remove this!
-	 */
-	iLowSum = 0;
-	iHighSum = 0;
-	for (i=0;i<pst->nLower;++i) {
-		iLowSum += pLowerRej[i].nLocal;
-		iHighSum += pLowerRej[i].nRejects;
-		}
-	for (i=0;i<pst->nUpper;++i) {
-		iHighSum += pUpperRej[i].nLocal;
-		iLowSum += pUpperRej[i].nRejects;
-		}
-	printf("%d l:%d nLow:%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
-		   nLow,iLowSum,nHigh,iHighSum);
-	iLowSum = 0;
-	iHighSum = 0;
-	for (i=0;i<pst->nLower;++i) {
-		iLowSum += pLowerRej[i].nLocal;
-		iHighSum += pLowerRej[i].nRejects;
-		}
-	printf("%d l:%d nLow:%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
-		   outWtLow.nLow,iLowSum,outWtLow.nHigh,iHighSum);
-	iLowSum = 0;
-	iHighSum = 0;
-	for (i=0;i<pst->nUpper;++i) {
-		iHighSum += pUpperRej[i].nLocal;
-		iLowSum += pUpperRej[i].nRejects;
-		}
-	printf("%d l:%d nLow:%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
-		   outWtHigh.nLow,iLowSum,outWtHigh.nHigh,iHighSum);
-#endif
 	
 	pstMassCheck(pst,NULL,0,&outMass,NULL);
 #if 0

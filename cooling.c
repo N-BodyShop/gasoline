@@ -840,10 +840,6 @@ double clEdotInstant( CL *cl, PERBARYON *Y, RATE *Rate, double rho )
     Y->HeI  * cl->R.Heat_Phot_HeI * cl->R.Rate_Phot_HeI +
     Y->HeII * cl->R.Heat_Phot_HeII * cl->R.Rate_Phot_HeII;
 
-#ifdef OLD_STARFORM
-  Edot += cl->p->fESNrate * cl->dErgPerGmPerSecUnit;
-#endif
-
   return Edot;
 }
 
@@ -880,11 +876,6 @@ double clEdot( CL *cl, PERBARYON *Y, RATE *Rate, double rho,
 	   (wTln0*RT0->Cool_Line_HeI+wTln1*RT1->Cool_Line_HeI) * Y->HeI +
 	   (wTln0*RT0->Cool_Line_HeII+wTln1*RT1->Cool_Line_HeII) * Y->HeII );
 
-/* supernova feedback heating rate.  XXX - this is not clean; cooling
-   shouldn't have to dig into the particle structure. */
-#ifdef OLD_STARFORM
-  Edot += cl->p->fESNrate * cl->dErgPerGmPerSecUnit;
-#endif
   /* 
    * In equilibrium ndot_Phot + ndot_Coll - ndot_Radr = 0
    * However, there has been a net change ndot so we adjust the rates
@@ -1394,13 +1385,6 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
 
   dE  = dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &YY, rho, PdV, dt );
   if (dE < -0.2*Ein) dE = -0.2*Ein;
-  /*
-  if (part->iOrder==880556) {
-     sprintf(ach,"%d: T: %e E %e dE: %e dt %e   %e %e %e\n",part->iOrder,Tin,Ein,dE,dt,
-	 -clCoolTotal( cl, &YY, &Ratein, rho ),clHeatTotal( cl, &YY ),PdV);
-     mdlDiag(cl->mdl, ach);
-  }
-  */
   a.Y = Yin;
   a.E = Ein;
   a.T = Tin;
@@ -1425,15 +1409,6 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
       b.F = b.E - Ein - dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt );
       if ( b.F * a.F < 0 ) break;
       /* Stick to the minimum Temperature */
-      /*
-      if (part->iOrder==880556) {
-	sprintf(ach,"Floored it after %i brackets %g %g %g %g\n   (%g %g %g %g %g)\n",i,a.T,a.F,b.T,b.F,b.E,Ein,
-	     dt*clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt ),
-	     dt*( clEdot( cl, &Yin, &Ratein, rho, &Yin, &b.Y, dt ) + PdV),
-	     dt*( clEdot( cl, &b.Y, &Rate, rho, &Yin, &b.Y, dt ) + PdV) );
-	mdlDiag(cl->mdl, ach);
-      }
-      */
       *Y = b.Y;
       *E = b.E;
       return;
@@ -1442,14 +1417,6 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
     clAbunds( cl, &b.Y, &Rate, rho );
 
     b.F = b.E - Ein - dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt );
-    /*
-    if (part->iOrder==880556) {
-      sprintf(ach,"%d B %d T: %e E %e dE: %e dt %g Edot %g %e %e PdV %e F %g\n",part->iOrder,i,b.T,b.E,dE,dt,
-	      clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt ),
-	      -clCoolTotal( cl, &b.Y, &Rate, rho ),clHeatTotal( cl, &b.Y ),PdV,b.F);
-      mdlDiag(cl->mdl, ach);
-    }
-    */
 
     if ( b.F * a.F < 0 ) break;
     if (i<5 && Ein+2*dE > 0) dE *= 2;
@@ -1501,16 +1468,7 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
     }
   }
 #endif
-  /*
-  if (i>MAXBRACKET) {
-    sprintf(ach,"COOL: %d %d MaxBracket Y %g %g %g E %g PdV %g rho %g dt %g\n", part->iOrder,part->iRung,Y->HI,Y->HeI,Y->HeII, *E, PdV, rho, dt);
-    mdlDiag(cl->mdl, ach);
-  }  
-  */
   assert(i<=MAXBRACKET);
-  /*
-    printf("Bracket Iterations %i\n",i);
-  */
 
   /* Brent it - Algorithm taken from Numerical Recipes */  
   c = b;

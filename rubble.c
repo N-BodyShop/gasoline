@@ -508,10 +508,6 @@ pkdRubbleStep(PKD pkd,double dMaxStep,double dMinStep)
 			pkd->pStore[i].dt = dMaxStep;
 		else
 			pkd->pStore[i].dt = dMinStep;
-/*		if (pkd->pStore[i].iOrder == 2536 || pkd->pStore[i].iOrder == 1834)
-			printf("particle %d is on step %e Minstep = %e Maxstep = %e\n",
-				   pkd->pStore[i].iOrder, pkd->pStore[i].dt,dMinStep,
-				   dMaxStep);*/ /* DEBUG 01.30.04*/
 		}
 	}
 

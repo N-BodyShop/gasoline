@@ -1799,9 +1799,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	}
 #ifdef SINKINGOUTVPRED
 	if (TYPETest(p,TYPE_SINKING)) {
-#ifdef SINKDBG
-	  if (p->iOrder == 55) printf("SINKINGKICKOUT %d, %g %g  %g %g  %g %g\n",p->iOrder,p->vPred[0],p->v[0],p->vPred[1],p->v[1],p->vPred[2],p->v[2]);
-#endif
 	  for (j=0;j<3;++j) {
 	    vTemp = dvFac*p->vPred[j];			
 	    fTmp = vTemp;
@@ -2187,9 +2184,6 @@ void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSo
 	        }
 	else {
 	        for (i=0;i<n;++i) {
-#ifdef CHECKSOFT			  
-			  if (p[i].iOrder == CHECKSOFT) fprintf(stderr,"Particle %i: %g %g %g %i %g\n",p[i].iOrder,p[i].fDensity,sqrt(p[i].fBall2*.25),p[i].fSoft,p[i].iActive,dSoftMax);
-#endif
 			  if (TYPETest(&(p[i]),iVariableSoftType) && TYPEQueryACTIVE(&(p[i]))) {
 #ifdef DENSSOFT
 				  p[i].fSoft = pow((p[i].fMass*1.90986/p[i].fDensity),.3333333333);
@@ -2199,9 +2193,6 @@ void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSo
 				  p[i].fSoft = (dTmp <= dSoftMax ? dTmp : dSoftMax);
 #endif
 			          }
-#ifdef CHECKSOFT			  
-			  if (p[i].iOrder == CHECKSOFT) fprintf(stderr,"Particle %iA: %g %g %g %i %g\n",p[i].iOrder,p[i].fDensity,sqrt(p[i].fBall2*.25),p[i].fSoft,p[i].iActive,dSoftMax);
-#endif
 		        }
 	        }
 	}
@@ -4149,7 +4140,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 			    sinth1 = sin(th1);
 			    costh2 = cos(th2);
 			    sinth2 = sin(th2);
-/*#define SINKFREEZE*/
 #ifndef SINKFREEZE
 			    for (j=0;j<3;j++) {
 				p->r[j] += (r2*costh2-r1*costh1)*p->rSinking0Unit[j]+(r2*sinth2-r1*sinth1)*p->vSinkingTang0Unit[j];
@@ -4159,11 +4149,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 				    +(costh2*sqr02-costh1*sqr01)*p->vSinkingTang0Unit[j])
 				    +p->vSinkingr0*((costh2-costh1)*p->rSinking0Unit[j]
 						    +(sinth2-sinth1)*p->vSinkingTang0Unit[j]);
-				}
-#endif
-#ifdef SINKDBG
-			    if (p->iOrder == 55) {
-				printf("SINKINGDRIFT %d: %g %g %lf %lf, %g %g\n",p->iOrder,th1,th2,r1,r2,dTime,dTime+dDelta);
 				}
 #endif
 			    }
@@ -4233,11 +4218,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 #endif
 
 #ifdef SINKING
-#ifdef SINKDBG
-			if (p->iOrder == 55) {
-			    printf("SINKDRIFT %g, %g %g %g, %g %g %g: %d %g\n",dTime+dDelta,p->v[0],p->v[1],p->v[2],p->r[0],p->r[1],p->r[2],p->iOrder,p->fMass);
-			    }
-#endif
 #endif
 #ifdef SLIDING_PATCH
 			p->v[1] += fShear;
@@ -4314,9 +4294,6 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 					p->vPred[j] += p->vSinkingTang0Mag*sqr02*(-sinth2*p->rSinking0Unit[j]+costh2*p->vSinkingTang0Unit[j])+p->vSinkingr0*(costh2*p->rSinking0Unit[j]+sinth2*p->vSinkingTang0Unit[j]);
 					}
 				    }
-#ifdef SINKDBG
-				if (p->iOrder == 55) printf("SINKINGKICK %d %g, %g %g  %g %g  %g %g\n",p->iOrder,dTimeEnd,p->vPred[0],p->v[0],p->vPred[1],p->v[1],p->vPred[2],p->v[2]);
-#endif
 #endif /* SINKING */
 				if (iGasModel != GASMODEL_ISOTHERMAL && iGasModel != GASMODEL_GLASS) {
 #ifndef NOCOOLING				
@@ -6433,12 +6410,6 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 #endif
 
 	       if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */
-#ifdef SSFDEBUG
-			    if (p->u<=0) printf("p->iOrder: %i\n",p->iOrder);
-#endif
-#ifdef SSFDEBUG
-			    if (p->iOrder==5514) printf("dT1 %i: %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,dT);
-#endif
 			    assert(p->u > 0.0);
 			    dTu = dEtauDot*p->u/fabs(p->PdV);
 			    if (dTu < dT) 
@@ -6450,9 +6421,6 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 		   dTD = (1/2.8*(dEtaCourant/0.4))*ph*ph/(p->diff);  
 		   if (dTD < dT) dT = dTD;
 		   }
-#endif
-#ifdef SSFDEBUG
-	       if (p->iOrder==5514) printf("dT2 %i: %f %f %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,dT,dTu,p->PdV);
 #endif
 
 		if(dT < p->dt)
@@ -7083,18 +7051,12 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 				}
 			    }
 #endif /* (0) */
-#ifdef SINKDBG
-			if (p->iOrder == 55) printf("SINKINGKICKVPRED %d %g, %g %g  %g %g  %g %g\n",p->iOrder,dTimeEnd,p->vPred[0],p->v[0],p->vPred[1],p->v[1],p->vPred[2],p->v[2]);
-#endif
 #endif
 			if (iGasModel != GASMODEL_ISOTHERMAL && iGasModel != GASMODEL_GLASS) {
 #ifndef NOCOOLING
 #ifdef COOLDEBUG
 				if (p->uPred+p->uDot*duDelta < 0) 
 					fprintf(stderr,"upred error %i: %g %g %g -> %g %i\n",p->iOrder,p->uPred,p->uDot,duDelta,p->uPred + p->uDot*duDelta,p->iRung);
-#endif
-#ifdef SSFDEBUG
-			    if (p->iOrder==5514) printf("%i: %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta);
 #endif
 			  p->uPred = p->uPred + p->uDot*duDelta;
 			  if (p->uPred < 0) {

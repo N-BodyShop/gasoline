@@ -5932,19 +5932,6 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	    }
 #ifdef NEED_VPRED
 
-#ifdef PREDRHO
-	if (msr->param.bPredRho == 2) {
-		struct inKickRhopred inRhop;
-		if (msrComove(msr)) 
-			inRhop.dHubbFac = 3*csmTime2Hub(msr->param.csm, dTime + dDelta/2.0);
-		else
-			inRhop.dHubbFac = 0.0;
-		inRhop.dDelta = dDelta;
-		/* Non Active Gas particles need to have updated densities */
-		pstKickRhopred(msr->pst,&inRhop,sizeof(inRhop),NULL,NULL);
-		}
-#endif
-
 	if (msr->param.bCannonical) {
 #ifdef GLASS	  
 		invpr.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper; /* Damp velocities */
