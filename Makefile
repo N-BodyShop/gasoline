@@ -180,7 +180,7 @@ CODE_DEF += -DVSIGVISC #Alternate Viscous force calculation (better?)
 
 BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 
-MD5 = ` echo $(BASE_DEF) | md5sum | cut -c1-8`
+MD5 = ` echo $(BASE_DEF) | md5sum | cut -c1-8 `
 
 # The filename of the compiled executable
 EXE = gasoline
@@ -363,7 +363,8 @@ clean:
 	-rm -f $(OBJ) $(EXTRA_OBJ)
 
 spotless: clean
-	-rm -f $(EXE)
+	@echo rm -rf $(EXE).$(MD5)
+	@rm -f $(EXE).$(MD5)
 
 depend:
 	makedepend -Y -- $(BASE_DEF) -- *.c
@@ -457,7 +458,7 @@ charm:
 $(EXE): $(OBJ) $(XOBJ)
 	echo $(BASE_DEF) >> buildlog.$(MD5)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -o $@ $(OBJ) $(XOBJ) $(LIBMDL)
-	mv gasoline gasoline.$(MD5)
+	@mv $(EXE) $(EXE).$(MD5)
 
 $(OBJ) $(EXTRA_OBJ): Makefile
 

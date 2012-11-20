@@ -2,6 +2,7 @@
 *.swp
 .#*
 gasoline.*
+buildlog.*
 *.tar
 *.tar.gz
 *.o
