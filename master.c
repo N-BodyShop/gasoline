@@ -5965,6 +5965,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
 		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
 		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEnergy = msr->param.dESFEnergy / (MSOLG*msr->param.dErgPerGmUnit);
 		}
 	else {
 		double H;
@@ -5987,6 +5988,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
 		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
 		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEnergy = msr->param.dESFEnergy / (MSOLG*msr->param.dErgPerGmUnit);
 		}
 	if (dDelta != 0.0) {
 		struct outKick out;
@@ -6149,6 +6151,7 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
 		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
 		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEnergy = msr->param.dESFEnergy / (MSOLG*msr->param.dErgPerGmUnit);
 #endif /* NEED_VPRED */
 		}
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
@@ -6206,6 +6209,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
 		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
 		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEnergy = msr->param.dESFEnergy / (MSOLG*msr->param.dErgPerGmUnit);
 #endif /* NEED_VPRED */
 		}
 	else {
@@ -6232,6 +6236,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
 		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
 		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEnergy = msr->param.dESFEnergy / (MSOLG*msr->param.dErgPerGmUnit);
 #endif /* NEED_VPRED */
 		}
 	if(!msr->param.bPatch) {
@@ -6317,6 +6322,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
 		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
 		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEnergy = msr->param.dESFEnergy / (MSOLG*msr->param.dErgPerGmUnit);
 #endif /* NEED_VPRED */
 		}
 	else {
@@ -6343,6 +6349,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
 		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
 		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEnergy = msr->param.dESFEnergy / (MSOLG*msr->param.dErgPerGmUnit);
 #endif /* NEED_VPRED */
 		}
 	if(!msr->param.bPatch) {
@@ -8645,6 +8652,7 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateState)
 	in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
 	in.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
 	in.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
+	in.dESFEnergy = msr->param.dESFEnergy / (MSOLG*msr->param.dErgPerGmUnit);
 	in.iGasModel = msr->param.iGasModel;
 	in.bUpdateState = bUpdateState;
 
