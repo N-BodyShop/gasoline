@@ -1104,12 +1104,27 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"<Boltzmann Constant in System Units>");
 	msr->param.dNoncoolConvTimeMin= 1e7;
 	prmAddParam(msr->prm,"dNoncoolConvTimeMin",2,&msr->param.dNoncoolConvTimeMin,
-				sizeof(double),"ncctm",
+				sizeof(double),"NCCTM",
 				"<Minimum Timescale to convert noncooling to cooling (yr)>");
+	msr->param.dESFStartTime = 1e6;
+	prmAddParam(msr->prm, "dESFStartTime",2,&msr->param.dESFStartTime,
+			sizeof(double), "ESFST",
+			"<Start time for Early Stellar Feedback (yr)>");
+	msr->param.dESFEndTime = 6e6;
+	prmAddParam(msr->prm, "dESFStartTime",2,&msr->param.dESFEndTime,
+			sizeof(double), "ESFET",
+			"<End time for Early Stellar Feedback (yr)>");
+	msr->param.dESFEnergy = 2e48;
+	prmAddParam(msr->prm, "dESFEnergy",2,&msr->param.dESFEnergy, 
+			sizeof(double), "ESFE",
+			"<Total Energy output in Early Stellar Feedback(erg/Msol)>");
 	msr->param.dNoncoolConvTime = 1e7;
 	prmAddParam(msr->prm,"dNoncoolConvTime",2,&msr->param.dNoncoolConvTime,
-				sizeof(double),"ncct",
+				sizeof(double),"NCCT",
 				"<Timescale to convert noncooling to cooling (yr)>");
+#ifdef ESF
+	msr->param.dNoncoolConvTimeMin = 6e6; //This should allow the conversion time to be ~ the early feedback time.
+#endif 
 	msr->param.dPext = 0;
 	prmAddParam(msr->prm,"dPext",2,&msr->param.dPext,
 				sizeof(double),"pext",
@@ -5948,6 +5963,8 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.dTimeEnd = dTime + dDelta/2.0;
 		invpr.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
 		invpr.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
 		}
 	else {
 		double H;
@@ -5968,6 +5985,8 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.dTimeEnd = dTime + dDelta/2.0;
 		invpr.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
 		invpr.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
 		}
 	if (dDelta != 0.0) {
 		struct outKick out;
@@ -6128,6 +6147,8 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 		in.duDotLimit = msr->param.duDotLimit;
 		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
 		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
 #endif /* NEED_VPRED */
 		}
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
@@ -6183,6 +6204,8 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.duDotLimit = msr->param.duDotLimit;
 		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
 		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
 #endif /* NEED_VPRED */
 		}
 	else {
@@ -6207,6 +6230,8 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.duDotLimit = msr->param.duDotLimit;
 		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
 		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
 #endif /* NEED_VPRED */
 		}
 	if(!msr->param.bPatch) {
@@ -6290,6 +6315,8 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.duDotLimit = msr->param.duDotLimit;
 		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
 		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
 #endif /* NEED_VPRED */
 		}
 	else {
@@ -6314,6 +6341,8 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.duDotLimit = msr->param.duDotLimit;
 		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
 		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
+		invpr.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
 #endif /* NEED_VPRED */
 		}
 	if(!msr->param.bPatch) {
@@ -8614,6 +8643,8 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateState)
 	in.z = 1/a - 1;
 	in.dTime = dTime;
 	in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+	in.dESFStartTime = msr->param.dESFStartTime *SECONDSPERYEAR/msr->param.dSecUnit;
+	in.dESFEndTime = msr->param.dESFEndTime *SECONDSPERYEAR/msr->param.dSecUnit;
 	in.iGasModel = msr->param.iGasModel;
 	in.bUpdateState = bUpdateState;
 
