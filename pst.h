@@ -647,6 +647,7 @@ struct inUpdateuDot {
         double dNoncoolConvRate;
 		double dESFStartTime;
 		double dESFEndTime;
+		double dESFEnergy;
 	int iGasModel;
 	int bUpdateState;
 	};
@@ -675,6 +676,7 @@ struct inKick {
         double dNoncoolConvRate;
 		double dESFStartTime;
 		double dESFEndTime;
+		double dESFEnergy;
 	};
 struct outKick {
 	double Time;
@@ -1825,6 +1827,7 @@ struct inKickVpred {
         double dNoncoolConvRate;
 		double dESFStartTime;
 		double dESFEndTime;
+		double dESFEnergy;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
 #endif
