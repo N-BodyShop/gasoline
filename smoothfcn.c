@@ -5244,6 +5244,7 @@ void DistESF(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	PARTICLE *q;
 	double fNorm, fNorm_u, ih2, r2, rs;
 	double ESFRate = p->fMass*smf->dESFEnergy/(smf->dESFEndTime-smf->dESFStartTime);
+	printf("DEBUGES1: %e\n", ESFRate);
 	ih2 = 4.0/BALL2(p);
 #ifdef TOPHATFEEDBACK
 	fNorm = 1.0;
@@ -5426,10 +5427,10 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
   if (smf->bIonize && smf->dTime-p->fTimeForm < smf->dIonizeTime)
 	  DistIonize(p,nSmooth,nnList,smf);
+  printf("DEBUGESF: %e %e %e %e %e %e\n", smf->dTime, p->fTimeForm, smf->dESFStartTime, smf->dESFEndTime, smf->dDelta, smf->dESFEnergy);
 #ifdef ESF
   if (smf->dTime-p->fTimeForm > smf->dESFStartTime && smf->dTime-p->fTimeForm < smf->dESFEndTime)
   {
-	  printf("DEBUGESF: %e %e %e %e %e\n", smf->dTime, p->fTimeForm, smf->dESFStartTime, smf->dESFEndTime, smf->dESFEnergy);
 	  DistESF(p, nSmooth, nnList, smf);
   }
 #endif
