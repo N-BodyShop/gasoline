@@ -5236,7 +5236,7 @@ typedef struct { double r2; NN *pNN; } ISORT;
 int CompISORT(const void * a, const void * b) {
 	return ( (((ISORT *) a)->r2 < ((ISORT *) b)->r2) ? -1 : 1 );
 	}
-
+#ifdef ESF
 void DistESF(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
     assert(TYPETest(p, TYPE_STAR));
@@ -5290,6 +5290,7 @@ void DistESF(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	q->fESNrate += weight*ESFRate;
   }
 }
+#endif
 void DistIonize(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
   PARTICLE *q;
@@ -5426,8 +5427,11 @@ void DistSNEnergy(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
   if (smf->bIonize && smf->dTime-p->fTimeForm < smf->dIonizeTime)
 	  DistIonize(p,nSmooth,nnList,smf);
 #ifdef ESF
-  if (smf->dTime-p->fTimeForm > smf->dESFStartTime && smf->dTime-p->fTimeForm < smf->dESFEnergy)
+  if (smf->dTime-p->fTimeForm > smf->dESFStartTime && smf->dTime-p->fTimeForm < smf->dESFEndTime)
+  {
+	  printf("DEBUGESF: %e %e %e %e %e\n", smf->dTime, p->fTimeForm, smf->dESFStartTime, smf->dESFEndTime, smf->dESFEnergy);
 	  DistESF(p, nSmooth, nnList, smf);
+  }
 #endif
 
   if ( p->fMSN == 0.0 ){return;}
