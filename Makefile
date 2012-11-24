@@ -365,6 +365,7 @@ clean:
 spotless: clean
 	@echo rm -rf $(EXE).$(MD5)
 	@rm -f $(EXE).$(MD5)
+	@rm -f ../mdl/*/mdl.o
 
 depend:
 	makedepend -Y -- $(BASE_DEF) -- *.c
