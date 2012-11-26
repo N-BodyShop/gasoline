@@ -86,6 +86,9 @@ struct parameters {
 			int bHomogSpheroid;
 		int bBodyForce;
 	double dBodyForceConst;
+	int bChrisDisk;
+	double dChrisDiskVc;
+	double dChrisDiskR;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
