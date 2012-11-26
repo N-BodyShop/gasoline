@@ -1106,12 +1106,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dNoncoolConvTimeMin",2,&msr->param.dNoncoolConvTimeMin,
 				sizeof(double),"NCCTM",
 				"<Minimum Timescale to convert noncooling to cooling (yr)>");
-	msr->param.dESFStartTime = 1e6;
-	prmAddParam(msr->prm, "dESFStartTime",2,&msr->param.dESFStartTime,
+	msr->param.dZAMSTime = 1e6;
+	prmAddParam(msr->prm, "dZAMSTime",2,&msr->param.dZAMSTime,
 			sizeof(double), "ESFST",
-			"<Start time for Early Stellar Feedback (yr)>");
+			"<When does a newly created star enter the ZAMS.  Essentially just a feedback delay. (yr)>");
 	msr->param.dESFEndTime = 6e6;
-	prmAddParam(msr->prm, "dESFStartTime",2,&msr->param.dESFEndTime,
+	prmAddParam(msr->prm, "dESFEndTime",2,&msr->param.dESFEndTime,
 			sizeof(double), "ESFET",
 			"<End time for Early Stellar Feedback (yr)>");
 	msr->param.dESFEnergy = 2e48;
@@ -2021,16 +2021,17 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.stfm->dPhysDenMin *= MHYDR/msr->param.stfm->dGmPerCcUnit;
             msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
             msr->param.dIonizeTime *= SECONDSPERYEAR/msr->param.dSecUnit;
-			msr->param.dESFStartTime *= SECONDSPERYEAR/msr->param.dSecUnit;
+			msr->param.dZAMSTime *= SECONDSPERYEAR/msr->param.dSecUnit;
 			msr->param.dESFEndTime *= SECONDSPERYEAR/msr->param.dSecUnit;
 			msr->param.dESFEnergy /= MSOLG*msr->param.dErgPerGmUnit;
-			printf("DEBUGES0: %e %e %e\n", msr->param.dESFStartTime, msr->param.dESFEndTime, msr->param.dESFEnergy);
+			printf("DEBUGES0: %e %e %e\n", msr->param.dZAMSTime, msr->param.dESFEndTime, msr->param.dESFEnergy);
             msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm;
 
 	    msr->param.fb->dSecUnit = msr->param.dSecUnit;
 	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
 	    msr->param.fb->dErgPerGmUnit = msr->param.dErgPerGmUnit;
 	    msr->param.fb->dInitStarMass = msr->param.stfm->dInitStarMass;
+	    msr->param.fb->dZAMSTime = msr->param.dZAMSTime;
 #endif /* STARFORM */
 #ifdef SIMPLESF		
 	    assert(msr->param.SSF_dInitStarMass > 0.0);
@@ -5296,7 +5297,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->dKmPerSecUnit = sqrt(GCGS*msr->param.dMsolUnit*MSOLG/(msr->param.dKpcUnit*KPCCM))/1e5 ;
     psmf->bIonize=msr->param.bIonize;
     psmf->dIonizeTime=msr->param.dIonizeTime;
-	psmf->dESFStartTime = msr->param.dESFStartTime;
+	psmf->dZAMSTime = msr->param.dZAMSTime;
 	psmf->dESFEndTime = msr->param.dESFEndTime;
 	psmf->dESFEnergy = msr->param.dESFEnergy;
     psmf->dIonizeMultiple=msr->param.dIonizeMultiple;

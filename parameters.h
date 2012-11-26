@@ -314,7 +314,7 @@ struct parameters {
 		int iRandomSeed;
 	int nSmoothFeedback;
 #endif
-		double dESFStartTime;
+		double dZAMSTime;
 		double dESFEndTime;
 		double dESFEnergy;
 		double dNoncoolConvTimeMin;
