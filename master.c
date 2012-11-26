@@ -1106,7 +1106,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dNoncoolConvTimeMin",2,&msr->param.dNoncoolConvTimeMin,
 				sizeof(double),"NCCTM",
 				"<Minimum Timescale to convert noncooling to cooling (yr)>");
-	msr->param.dZAMSTime = 1e6;
+	msr->param.dZAMSTime = 0;
 	prmAddParam(msr->prm, "dZAMSTime",2,&msr->param.dZAMSTime,
 			sizeof(double), "ESFST",
 			"<When does a newly created star enter the ZAMS.  Essentially just a feedback delay. (yr)>");
