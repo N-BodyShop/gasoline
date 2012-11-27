@@ -983,6 +983,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bEllipticalDarkNFW=0;
 	prmAddParam(msr->prm,"bEllipticalDarkNFW",0,&msr->param.bEllipticalDarkNFW,
 		    sizeof(int),"ellipticaldarknfw","use/dont");
+	msr->param.bChrisDisk = 0;
+	prmAddParam(msr->prm,"bChrisDisk",0,&msr->param.bChrisDisk,
+			sizeof(int),"chrisdisk","use/don't use Chris' disk potential");
+	msr->param.dChrisDiskVc= 220.0;
+	prmAddParam(msr->prm,"dChrisDiskVc",2,&msr->param.dChrisDiskVc,
+			sizeof(double),"chrisdiskvc","Circular velocity (km/s) = 220");
+	msr->param.dChrisDiskR = 6.0;
+	prmAddParam(msr->prm,"dChrisDiskR",2,&msr->param.dChrisDiskR,
+			sizeof(double),"chrisdiskr","Disk Radius (kpc) = 6");
 	msr->param.bHomogSpheroid = 0;
 	prmAddParam(msr->prm,"bHomogSpheroid",0,&msr->param.bHomogSpheroid,
 				sizeof(int),"hspher","use/don't use galaxy Homog Spheroid = -homogspher");
@@ -1104,12 +1113,27 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"<Boltzmann Constant in System Units>");
 	msr->param.dNoncoolConvTimeMin= 1e7;
 	prmAddParam(msr->prm,"dNoncoolConvTimeMin",2,&msr->param.dNoncoolConvTimeMin,
-				sizeof(double),"ncctm",
+				sizeof(double),"NCCTM",
 				"<Minimum Timescale to convert noncooling to cooling (yr)>");
+	msr->param.dZAMSTime = 0;
+	prmAddParam(msr->prm, "dZAMSTime",2,&msr->param.dZAMSTime,
+			sizeof(double), "ESFST",
+			"<When does a newly created star enter the ZAMS.  Essentially just a feedback delay. (yr)>");
+	msr->param.dESFEndTime = 6e6;
+	prmAddParam(msr->prm, "dESFEndTime",2,&msr->param.dESFEndTime,
+			sizeof(double), "ESFET",
+			"<End time for Early Stellar Feedback (yr)>");
+	msr->param.dESFEnergy = 2e48;
+	prmAddParam(msr->prm, "dESFEnergy",2,&msr->param.dESFEnergy, 
+			sizeof(double), "ESFE",
+			"<Total Energy output in Early Stellar Feedback(erg/Msol)>");
 	msr->param.dNoncoolConvTime = 1e7;
 	prmAddParam(msr->prm,"dNoncoolConvTime",2,&msr->param.dNoncoolConvTime,
-				sizeof(double),"ncct",
+				sizeof(double),"NCCT",
 				"<Timescale to convert noncooling to cooling (yr)>");
+#ifdef ESF
+	msr->param.dNoncoolConvTimeMin = 6e6; //This should allow the conversion time to be ~ the early feedback time.
+#endif 
 	msr->param.dPext = 0;
 	prmAddParam(msr->prm,"dPext",2,&msr->param.dPext,
 				sizeof(double),"pext",
@@ -2006,12 +2030,17 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.stfm->dPhysDenMin *= MHYDR/msr->param.stfm->dGmPerCcUnit;
             msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
             msr->param.dIonizeTime *= SECONDSPERYEAR/msr->param.dSecUnit;
+			msr->param.dZAMSTime *= SECONDSPERYEAR/msr->param.dSecUnit;
+			msr->param.dESFEndTime *= SECONDSPERYEAR/msr->param.dSecUnit;
+			msr->param.dESFEnergy /= MSOLG*msr->param.dErgPerGmUnit;
+			printf("DEBUGES0: %e %e %e\n", msr->param.dZAMSTime, msr->param.dESFEndTime, msr->param.dESFEnergy);
             msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm;
 
 	    msr->param.fb->dSecUnit = msr->param.dSecUnit;
 	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
 	    msr->param.fb->dErgPerGmUnit = msr->param.dErgPerGmUnit;
 	    msr->param.fb->dInitStarMass = msr->param.stfm->dInitStarMass;
+	    msr->param.fb->dZAMSTime = msr->param.dZAMSTime;
 #endif /* STARFORM */
 #ifdef SIMPLESF		
 	    assert(msr->param.SSF_dInitStarMass > 0.0);
@@ -2718,6 +2747,9 @@ void msrLogParams(MSR msr,FILE *fp)
             fprintf(fp," dNFWsoft: %g",msr->param.dNFWsoft );
             fprintf(fp," dNFWconc: %g",msr->param.dNFWconc );
             }
+	fprintf(fp," bChrisDisk: %d",msr->param.bChrisDisk);
+	fprintf(fp," dChrisDiskVc: %g",msr->param.dChrisDiskVc);
+	fprintf(fp," dChrisDiskR: %g",msr->param.dChrisDiskR);
 	fprintf(fp," bHomogSpheroid: %d",msr->param.bHomogSpheroid );
 	fprintf(fp," bBodyForce: %d",msr->param.bBodyForce );
 	fprintf(fp," dBodyForceConst: %g",msr->param.dBodyForceConst );
@@ -5277,6 +5309,9 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->dKmPerSecUnit = sqrt(GCGS*msr->param.dMsolUnit*MSOLG/(msr->param.dKpcUnit*KPCCM))/1e5 ;
     psmf->bIonize=msr->param.bIonize;
     psmf->dIonizeTime=msr->param.dIonizeTime;
+	psmf->dZAMSTime = msr->param.dZAMSTime;
+	psmf->dESFEndTime = msr->param.dESFEndTime;
+	psmf->dESFEnergy = msr->param.dESFEnergy;
     psmf->dIonizeMultiple=msr->param.dIonizeMultiple;
     psmf->dIonizeTMin=msr->param.dIonizeTMin;
     psmf->dIonizeT=msr->param.dIonizeT;
@@ -5612,7 +5647,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		msr->param.bElliptical ||
 		msr->param.bHomogSpheroid || msr->param.bBodyForce ||
 	    	msr->param.bRotatingBar ||
-        	msr->param.bMiyamotoDisk || msr->param.bTimeVarying) {
+        	msr->param.bMiyamotoDisk || msr->param.bTimeVarying || msr->param.bChrisDisk) {
 	        struct outGravExternal outExt;
 		/*
 		 ** Provide the time.
@@ -5642,6 +5677,9 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
 		inExt.bBodyForce = msr->param.bBodyForce;
 		inExt.dBodyForceConst = msr->param.dBodyForceConst;
+		inExt.bChrisDisk = msr->param.bChrisDisk;
+		inExt.dChrisDiskVc = 3.241e-17*msr->param.dChrisDiskVc/msr->param.dKpcUnit*msr->param.dSecUnit;
+		inExt.dChrisDiskR = msr->param.dChrisDiskR/msr->param.dKpcUnit;
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		inExt.bTimeVarying = msr->param.bTimeVarying;
 		inExt.bRotatingBar = msr->param.bRotatingBar;

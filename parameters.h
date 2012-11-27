@@ -86,6 +86,9 @@ struct parameters {
 			int bHomogSpheroid;
 		int bBodyForce;
 	double dBodyForceConst;
+	int bChrisDisk;
+	double dChrisDiskVc;
+	double dChrisDiskR;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
@@ -314,6 +317,9 @@ struct parameters {
 		int iRandomSeed;
 	int nSmoothFeedback;
 #endif
+		double dZAMSTime;
+		double dESFEndTime;
+		double dESFEnergy;
 		double dNoncoolConvTimeMin;
 		double dNoncoolConvTime;
 	double dKBoltzUnit;

@@ -42,6 +42,7 @@ typedef struct fbContext
     double dSecUnit;		/* system time in seconds */
     double dErgPerGmUnit;	/* system specific energy in ergs/gm */
 	double dInitStarMass; 
+	double dZAMSTime;		/* when does a star enter the ZAMS after forming?*/
     }  * FB;
 
 void fbInitialize(FB *pfb);

@@ -85,6 +85,9 @@ typedef struct smfParameters {
     double dIonizeMultiple;
     double dIonizeTMin;
     double dIonizeT;
+	double dZAMSTime;
+	double dESFEndTime;
+	double dESFEnergy;
 #endif    
 #ifdef COLLISIONS
     double dDelta;
