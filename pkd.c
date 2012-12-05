@@ -4145,8 +4145,12 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 			    }
 #endif
 
-			p->fDensity *= exp(-p->fDivv_t*dDelta); // Predictor for density
 #ifdef DRHODT
+			if(pkdIsGas(pkd, p)) {
+			    p->fDensity *= exp(-p->fDivv_t*dDelta); // Predictor for density
+			    if(dDelta > 0.0)
+			       assert(p->fDensity > 0.0);
+			    }
 			p->fDensity_t *= exp(-p->fDivv_t*dDelta);
 			p->fDensity_PdV *= exp(-p->fDivv_PdV*dDelta);
 			p->fDensity_PdVcorr *= exp(-p->fDivv_PdVcorr*dDelta);
