@@ -4252,7 +4252,7 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 	mdlDiag(pkd->mdl, "Out of pkddrift\n");
 	}
 
-#define NONCOOLCONVRATE(_dNoncoolConvRate,_dNoncoolConvRateMax,_p) (_dNoncoolConvRate > 0 ? _dNoncoolConvRate : (sqrt((_p)->uNoncoolPred)/((_p)->fBall2*0.25) < _dNoncoolConvRateMax ? sqrt((_p)->uNoncoolPred)/((_p)->fBall2*0.25) : _dNoncoolConvRateMax))
+#define NONCOOLCONVRATE(_dNoncoolConvRate,_dNoncoolConvRateMax,_p) (_dNoncoolConvRate > 0 ? _dNoncoolConvRate : (sqrt((_p)->uNoncoolPred+(_p)->uPred)/((_p)->fBall2*0.25) < _dNoncoolConvRateMax ? sqrt((_p)->uNoncoolPred+(_p)->uPred)/((_p)->fBall2*0.25) : _dNoncoolConvRateMax))
 
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 		 double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
