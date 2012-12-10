@@ -75,6 +75,9 @@ struct parameters {
 		int bHeliocentric;
 			double dSunSoft;
 		int bLogHalo;
+		double dLogHaloVcirc;
+		double dLogHaloEps;
+		double dLogHaloFlat;
 		int bHernquistSpheroid;
 		int bNFWSpheroid;
 			double dNFWm200;

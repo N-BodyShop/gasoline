@@ -559,6 +559,9 @@ struct inGravExternal {
 	 ** For external galaxy potential stuff
 	 */
 	int bLogHalo;
+	double dLogHaloVcirc;
+	double dLogHaloEps;
+	double dLogHaloFlat;
 	int bHernquistSpheroid;
     int bNFWSpheroid;
         double dNFWm200;

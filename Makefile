@@ -99,7 +99,6 @@ CODE_DEF += -DDODVDS #Better handling of viscosity with the Balsara switch
 #CODE_DEF += -DDRHODTTEST #Output a large list of properties important for the DRHODT parts of the code for debugging
 #CODE_DEF += -DEPSACCH #Turning this one makes the pkd code ignore dhMinOverSoft in pkdAccelStep
 #CODE_DEF += -DINELASTIC #Use the experimental inelastic collapse for collisions.
-#CODE_DEF += -DESF #Enable Early Stellar Feedback
 #CODE_DEF += -DFITDVDX #Use a fitted version of the DenDVDX that doesn't use the stiff.h evaluator.
 #CODE_DEF += -DFREEZENONGAS #Force nongas particles to zero velocity.
 CODE_DEF += -DGASOLINE #Do SPH (without this, compiles pkdgrav, just N-Body)
