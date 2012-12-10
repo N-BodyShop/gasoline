@@ -327,14 +327,14 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         smx->fcnPost = NULL;
         smx->bUseBallMax = 0;
         break;
-    case SMX_DIST_SN_ENERGY:
+    case SMX_DIST_FB_ENERGY:
         assert(bSymmetric != 0);
-        smx->fcnSmooth = DistSNEnergy;
+        smx->fcnSmooth = DistFBEnergy;
         initParticle = NULL;
-        initTreeParticle = initTreeParticleDistSNEnergy;
-        init = initDistSNEnergy;
-        comb = combDistSNEnergy;
-        smx->fcnPost = postDistSNEnergy;
+        initTreeParticle = initTreeParticleDistFBEnergy;
+        init = initDistFBEnergy;
+        comb = combDistFBEnergy;
+        smx->fcnPost = postDistFBEnergy;
         smx->bUseBallMax = 0;
         break;
 #endif

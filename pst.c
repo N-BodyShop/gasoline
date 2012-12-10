@@ -3308,7 +3308,7 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass,in->dSunSoft);
 			}
 		if (in->bLogHalo) {
-			pkdLogHalo(plcl->pkd);
+		        pkdLogHalo(plcl->pkd,in->dLogHaloVcirc,in->dLogHaloEps,in->dLogHaloFlat);
 			}
 		if (in->bHernquistSpheroid) {
 			pkdHernquistSpheroid(plcl->pkd);

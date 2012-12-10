@@ -37,7 +37,6 @@ void fbInitialize(FB *pfb)
     fb->dGmUnit = 0.0;
     fb->dSecUnit = 0.0;
     fb->dErgPerGmUnit = 0.0;
-    fb->dZAMSTime = 0.0;
     *pfb = fb;
     }
 
@@ -80,7 +79,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    p->fNSN = 0.0;
 
 	    sfEvent.dMass = p->fMassForm*fb->dGmUnit/MSOLG;
-	    sfEvent.dTimeForm = (fb->dZAMSTime+p->fTimeForm)*fb->dSecUnit/SEC_YR;
+	    sfEvent.dTimeForm = p->fTimeForm*fb->dSecUnit/SEC_YR;
 	    dStarAge = dTime - sfEvent.dTimeForm;
 	    sfEvent.dMetals = p->fMetals;
 	    sfEvent.dMFracOxygen = p->fMFracOxygen;

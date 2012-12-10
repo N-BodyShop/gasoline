@@ -963,6 +963,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bLogHalo = 0;
 	prmAddParam(msr->prm,"bLogHalo",0,&msr->param.bLogHalo,
 				sizeof(int),"halo","use/don't use galaxy halo = -halo");
+	msr->param.dLogHaloVcirc = 220;
+	prmAddParam(msr->prm,"dLogHaloVcirc",2,&msr->param.dLogHaloVcirc,
+				sizeof(double),"halovc","galaxy halo vcirc");
+	msr->param.dLogHaloEps = 1;
+	prmAddParam(msr->prm,"dLogHaloEps",2,&msr->param.dLogHaloEps,
+				sizeof(double),"haloeps","galaxy halo eps");
+	msr->param.dLogHaloFlat = 1;
+	prmAddParam(msr->prm,"dLogHaloFlat",2,&msr->param.dLogHaloFlat,
+				sizeof(double),"haloflat","galaxy halo flat");
 	msr->param.bHernquistSpheroid = 0;
 	prmAddParam(msr->prm,"bHernquistSpheroid",0,&msr->param.bHernquistSpheroid,
 				sizeof(int),"hspher","use/don't use galaxy Hernquist Spheroid = -hspher");
@@ -1111,29 +1120,22 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dKBoltzUnit",2,&msr->param.dKBoltzUnit,
 				sizeof(double),"kb",
 				"<Boltzmann Constant in System Units>");
-	msr->param.dNoncoolConvTimeMin= 1e7;
+	msr->param.dNoncoolConvTime = 1e7;
+	prmAddParam(msr->prm,"dNoncoolConvTime",2,&msr->param.dNoncoolConvTime,
+				sizeof(double),"ncct",
+				"<Timescale to convert noncooling to cooling (yr)>");
+	msr->param.dNoncoolConvTimeMin = 1e6;
 	prmAddParam(msr->prm,"dNoncoolConvTimeMin",2,&msr->param.dNoncoolConvTimeMin,
-				sizeof(double),"NCCTM",
+				sizeof(double),"ncctm",
 				"<Minimum Timescale to convert noncooling to cooling (yr)>");
-	msr->param.dZAMSTime = 0;
-	prmAddParam(msr->prm, "dZAMSTime",2,&msr->param.dZAMSTime,
-			sizeof(double), "ESFST",
-			"<When does a newly created star enter the ZAMS.  Essentially just a feedback delay. (yr)>");
-	msr->param.dESFEndTime = 6e6;
-	prmAddParam(msr->prm, "dESFEndTime",2,&msr->param.dESFEndTime,
+	msr->param.dESFTime = 6e6;
+	prmAddParam(msr->prm, "dESFTime",2,&msr->param.dESFTime,
 			sizeof(double), "ESFET",
 			"<End time for Early Stellar Feedback (yr)>");
 	msr->param.dESFEnergy = 2e48;
 	prmAddParam(msr->prm, "dESFEnergy",2,&msr->param.dESFEnergy, 
 			sizeof(double), "ESFE",
 			"<Total Energy output in Early Stellar Feedback(erg/Msol)>");
-	msr->param.dNoncoolConvTime = 1e7;
-	prmAddParam(msr->prm,"dNoncoolConvTime",2,&msr->param.dNoncoolConvTime,
-				sizeof(double),"NCCT",
-				"<Timescale to convert noncooling to cooling (yr)>");
-#ifdef ESF
-	msr->param.dNoncoolConvTimeMin = 6e6; //This should allow the conversion time to be ~ the early feedback time.
-#endif 
 	msr->param.dPext = 0;
 	prmAddParam(msr->prm,"dPext",2,&msr->param.dPext,
 				sizeof(double),"pext",
@@ -1303,6 +1305,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dTempMax", 2, &msr->param.stfm->dTempMax,
 		    sizeof(double), "stTempMax",
 		    "<Maximum temperature at which star formation occurs> = 1.5e4");
+	msr->param.stfm->dZAMSDelayTime = 0;
+	prmAddParam(msr->prm,"dZAMSDelayTime",2,&msr->param.stfm->dZAMSDelayTime,
+				sizeof(double),"zamsdt",
+				"<Time delay from star particle creation to ZAMS start (yr)>");
 	msr->param.stfm->dSoftMin = 1.0;
 	prmAddParam(msr->prm,"dSoftMin", 2, &msr->param.stfm->dSoftMin,
 		    sizeof(double), "stSoftMin",
@@ -2030,17 +2036,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.stfm->dPhysDenMin *= MHYDR/msr->param.stfm->dGmPerCcUnit;
             msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
             msr->param.dIonizeTime *= SECONDSPERYEAR/msr->param.dSecUnit;
-			msr->param.dZAMSTime *= SECONDSPERYEAR/msr->param.dSecUnit;
-			msr->param.dESFEndTime *= SECONDSPERYEAR/msr->param.dSecUnit;
-			msr->param.dESFEnergy /= MSOLG*msr->param.dErgPerGmUnit;
-			printf("DEBUGES0: %e %e %e\n", msr->param.dZAMSTime, msr->param.dESFEndTime, msr->param.dESFEnergy);
             msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm;
+	    msr->param.stfm->dZAMSDelayTime *= SECONDSPERYEAR/msr->param.dSecUnit;
+	    msr->param.dESFTime *= SECONDSPERYEAR/msr->param.dSecUnit;
+	    msr->param.dESFEnergy /= MSOLG*msr->param.dErgPerGmUnit;
 
 	    msr->param.fb->dSecUnit = msr->param.dSecUnit;
 	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
 	    msr->param.fb->dErgPerGmUnit = msr->param.dErgPerGmUnit;
 	    msr->param.fb->dInitStarMass = msr->param.stfm->dInitStarMass;
-	    msr->param.fb->dZAMSTime = msr->param.dZAMSTime;
 #endif /* STARFORM */
 #ifdef SIMPLESF		
 	    assert(msr->param.SSF_dInitStarMass > 0.0);
@@ -2557,11 +2561,14 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef COOLING_BATE
  	fprintf(fp," COOLING_BATE");
 #endif
+#ifdef COOLING_DISK
+ 	fprintf(fp," COOLING_DISK");
+#endif
 #ifdef GLASS
 	fprintf(fp," GLASS");
 #endif
-#ifdef FREEZENONGAS
-	fprintf(fp," FREEZENONGAS");
+#ifdef GLASSZ
+	fprintf(fp," GLASSZ");
 #endif
 #ifdef HSHRINK
 	fprintf(fp," HSHRINK");
@@ -2739,6 +2746,11 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dCentMass: %g",msr->param.dCentMass);
 	fprintf(fp," dSunSoft: %g",msr->param.dSunSoft);
 	fprintf(fp,"\n# bLogHalo: %d",msr->param.bLogHalo );
+        if( msr->param.bLogHalo ){
+            fprintf(fp," dLogHaloVcirc: %g",msr->param.dLogHaloVcirc );
+            fprintf(fp," dLogHaloEps: %g",msr->param.dLogHaloEps );
+            fprintf(fp," dLogHaloFlat: %g",msr->param.dLogHaloFlat );
+	    }
 	fprintf(fp," bHernquistSpheroid: %d",msr->param.bHernquistSpheroid );
 	fprintf(fp," bNFWSpheroid: %d",msr->param.bNFWSpheroid );
         if( msr->param.bNFWSpheroid ){
@@ -2836,7 +2848,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	   prmSpecified(msr->prm, "dKpcUnit")) {
 	    fprintf(fp," dErgPerGmUnit: %g", msr->param.dErgPerGmUnit );
 	    fprintf(fp," dGmPerCcUnit (z=0): %g", msr->param.dGmPerCcUnit );
-	    fprintf(fp," dSecUnit: %g", msr->param.dSecUnit );
+	    fprintf(fp," dSecUnit: %g (%g Myr)", msr->param.dSecUnit, msr->param.dSecUnit/SECONDSPERYEAR/1e6);
 	    fprintf(fp," dKmPerSecUnit (z=0): %g", sqrt(GCGS*msr->param.dMsolUnit*MSOLG/(msr->param.dKpcUnit*KPCCM))/1e5 );
 	    }
 
@@ -2870,6 +2882,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dMinGasMass: %g",msr->param.stfm->dMinGasMass);
 	fprintf(fp," dMaxGasMass: %g",msr->param.stfm->dMaxGasMass);
 	fprintf(fp," dMaxStarMass: %g",msr->param.stfm->dMaxStarMass);
+	fprintf(fp," dZAMSDelayTime: %g",msr->param.stfm->dZAMSDelayTime);
 	fprintf(fp," dESN: %g",msr->param.sn->dESN);
 	fprintf(fp," iNSNIIQuantum: %d",msr->param.sn->iNSNIIQuantum);
 	fprintf(fp," bSNTurnOffCooling: %i",msr->param.bSNTurnOffCooling);
@@ -5309,12 +5322,11 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->dKmPerSecUnit = sqrt(GCGS*msr->param.dMsolUnit*MSOLG/(msr->param.dKpcUnit*KPCCM))/1e5 ;
     psmf->bIonize=msr->param.bIonize;
     psmf->dIonizeTime=msr->param.dIonizeTime;
-	psmf->dZAMSTime = msr->param.dZAMSTime;
-	psmf->dESFEndTime = msr->param.dESFEndTime;
-	psmf->dESFEnergy = msr->param.dESFEnergy;
     psmf->dIonizeMultiple=msr->param.dIonizeMultiple;
     psmf->dIonizeTMin=msr->param.dIonizeTMin;
     psmf->dIonizeT=msr->param.dIonizeT;
+    psmf->dESFTime = msr->param.dESFTime;
+    psmf->dESFEnergy = msr->param.dESFEnergy;
 #endif /*STARFORM*/
 #ifdef COLLISIONS
     psmf->dCentMass = msr->param.dCentMass; /* for Hill sphere checks */
@@ -5335,7 +5347,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   */
   assert(msr->iTreeType == MSR_TREE_DENSITY);
 #ifdef STARFORM
-  in.nSmooth = (iSmoothType == SMX_DIST_SN_ENERGY ? msr->param.nSmoothFeedback : msr->param.nSmooth);
+  in.nSmooth = (iSmoothType == SMX_DIST_FB_ENERGY ? msr->param.nSmoothFeedback : msr->param.nSmooth);
 #else
   in.nSmooth = msr->param.nSmooth;
 #endif
@@ -5382,7 +5394,7 @@ void msrReSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
 
     msrSmoothFcnParam(msr,dTime,&in.smf);
 #ifdef STARFORM
-    in.nSmooth = (iSmoothType == SMX_DIST_SN_ENERGY ? msr->param.nSmoothFeedback : msr->param.nSmooth);
+    in.nSmooth = (iSmoothType == SMX_DIST_FB_ENERGY ? msr->param.nSmoothFeedback : msr->param.nSmooth);
 #else
     in.nSmooth = msr->param.nSmooth;
 #endif
@@ -5664,6 +5676,11 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		if (inExt.bIndirect)
 		    for (j=0;j<3;++j) inExt.aSun[j] = out.aSun[j];
 		inExt.bLogHalo = msr->param.bLogHalo;
+		if (inExt.bLogHalo) {
+		    inExt.dLogHaloVcirc = msr->param.dLogHaloVcirc/(sqrt(GCGS*msr->param.dMsolUnit*MSOLG/(msr->param.dKpcUnit*KPCCM))/1e5);
+		    inExt.dLogHaloEps = msr->param.dLogHaloEps/msr->param.dKpcUnit;
+		    inExt.dLogHaloFlat = msr->param.dLogHaloFlat;
+		    }
 		inExt.bHernquistSpheroid = msr->param.bHernquistSpheroid;
 		inExt.bNFWSpheroid = msr->param.bNFWSpheroid;
 		if (inExt.bNFWSpheroid) {
@@ -5972,7 +5989,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 
 	if (msr->param.bCannonical) {
 #ifdef GLASS	  
-		invpr.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper; /* Damp velocities */
+	        invpr.dvFacOne = exp(- fabs(dDelta)*msr->param.dGlassDamper); /* Damp velocities */
 #else
 		invpr.dvFacOne = 1.0; /* no hubble drag, man! */
 #endif
@@ -6120,13 +6137,13 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 
 	if (msr->param.bCannonical) {
 #ifdef GLASS	  
-		in.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper; /* Damp velocities */
+	        in.dvFacOne = exp(- fabs(dDelta)*msr->param.dGlassDamper); /* Damp velocities */
 #else
 		in.dvFacOne = 1.0; /* no hubble drag, man! */
 #endif
 #ifdef NEED_VPRED
 #ifdef GLASS	  
-		in.dvPredFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper; /* Damp velocities */
+		in.dvPredFacOne = exp(- fabs(dDelta)*msr->param.dGlassDamper); /* Damp velocities */
 #else
 		in.dvPredFacOne = 1.0;
 #endif
@@ -6199,14 +6216,14 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 
 	if (msr->param.bCannonical) {
 #ifdef GLASS	  
-		in.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
+		in.dvFacOne = exp(- fabs(dDelta)*msr->param.dGlassDamper); /* Damp velocities */
 #else
 		in.dvFacOne = 1.0;		/* no hubble drag, man! */
 #endif
 		in.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
 #ifdef NEED_VPRED
 #ifdef GLASS	  
-		in.dvPredFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper;  /* Damp velocities */
+		in.dvPredFacOne = exp(- fabs(dDelta)*msr->param.dGlassDamper); /* Damp velocities */
 #else
 		in.dvPredFacOne = 1.0;
 #endif
@@ -6306,14 +6323,14 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 	
 	if (msr->param.bCannonical) {
 #ifdef GLASS	  
-		in.dvFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper; /* Damp velocities */
+	        in.dvFacOne = exp(- fabs(dDelta)*msr->param.dGlassDamper); /* Damp velocities */
 #else
 		in.dvFacOne = 1.0; /* no hubble drag, man! */
 #endif
 		in.dvFacTwo = csmComoveKickFac(msr->param.csm,dTime,dDelta);
 #ifdef NEED_VPRED
 #ifdef GLASS	  
-		in.dvPredFacOne = 1.0 - fabs(dDelta)*msr->param.dGlassDamper; /* Damp velocities */
+		in.dvPredFacOne = exp(- fabs(dDelta)*msr->param.dGlassDamper); /* Damp velocities */
 #else
 		in.dvPredFacOne = 1.0;
 #endif
@@ -7239,6 +7256,7 @@ void msrSwitchTheta(MSR msr,double dTime)
 	}
 
 
+#define SUPPRESSMASSCHECKREPORT      
 double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 {
 	struct outMassCheck out;
@@ -7246,6 +7264,9 @@ double msrMassCheck(MSR msr,double dMass,char *pszWhere)
 #ifdef GROWMASS
 	out.dMass = 0.0;
 #else
+#ifndef SUPPRESSMASSCHECKREPORT      
+	if (msr->param.bVDetails) puts("doing mass check...");
+#endif
 	pstMassCheck(msr->pst,NULL,0,&out,NULL);
 #ifdef RUBBLE_ZML
 	{
@@ -7282,6 +7303,9 @@ void msrMassMetalsEnergyCheck(MSR msr,double *dTotMass, double *dTotMetals,
 	out.dTotOx = 0.0;
 	out.dTotEnergy = 0.0;
 #else
+#ifndef SUPPRESSMASSCHECKREPORT      
+	if (msr->param.bVDetails) puts("doing mass check...");
+#endif
 	pstMassMetalsEnergyCheck(msr->pst,NULL,0,&out,NULL);
 	if (*dTotMass < 0.0) {}
 	else {
@@ -8651,7 +8675,7 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateState)
 	a = csmTime2Exp(msr->param.csm,dTime);
 	in.z = 1/a - 1;
 	in.dTime = dTime;
-	in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+	in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
 	in.iGasModel = msr->param.iGasModel;
 	in.bUpdateState = bUpdateState;
 
@@ -9373,17 +9397,17 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 
 
 		/*
-		 * spread mass lost from SN, (along with energy and metals)
+		 * spread mass lost from FB, (along with energy and metals)
 		 * to neighboring gas particles.
 		 */
-		if (msr->param.bVDetails) printf("Distribute SN Energy ...\n");
+		if (msr->param.bVDetails) printf("Distribute FB Energy ...\n");
 		msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
 		msrBuildTree(msr,1,-1.0,1);
 
 		msrResetType(msr, TYPE_STAR, TYPE_SMOOTHDONE);
 		msrActiveType(msr, TYPE_STAR, TYPE_SMOOTHACTIVE);
 		assert(msr->nSmoothActive == msr->nStar);
-		msrSmooth(msr, dTime, SMX_DIST_SN_ENERGY, 1);
+		msrSmooth(msr, dTime, SMX_DIST_FB_ENERGY, 1);
 		msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, &dTotFe, 
                     &dTotOx, &dTotSNEnergy, "Form stars: after feedback");
 

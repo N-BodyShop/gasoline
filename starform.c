@@ -44,6 +44,7 @@ void stfmInitialize(STFM *pstfm)
     stfm->dMinGasMass = 0.0;
     stfm->dMinMassFrac = 0.0;
     stfm->dMaxStarMass = 0.0;
+    stfm->dZAMSDelayTime = 0.0;
     stfm->dBHFormProb = 0.0; /* new BH params */
     stfm->bBHForm = 0;
     stfm->dInitBHMass = 0.0;
@@ -126,6 +127,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     double dMprob;
     double dDeltaM;
     double l_jeans2;
+    int small_jeans = 0;
     int j;
     int newbh; /* tracking whether a new seed BH has formed JMB  */
  #ifdef COOLING_MOLECULARH
@@ -216,11 +218,12 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 #endif
 	-p->PdV );
 #ifdef CHECKSF
-    p->tOff = CoolCodeTimeToSeconds( cl, p->fTimeCoolIsOffUntil - dTime)/3.1557e7;  /* years */
+    p->tOff = CoolCodeTimeToSeconds( cl, p->fTimeCoolIsOffUntil - dTime)/3.1557e7;  /* years - never used */
     p->tcool = CoolCodeTimeToSeconds( cl, tcool)/3.1557e7;
     p->tdyn = CoolCodeTimeToSeconds( cl, tdyn)/3.1557e7;
     p->ratiosounddyn = sqrt(0.25*p->fBall2)/p->c/tdyn;
     p->l_jeans = sqrt(M_PI*p->c*p->c/p->fDensity*dCosmoFac);
+    p->small_jeans = small_jeans;
 #endif
 #ifdef SFCONDITIONS
     if(tcool < 0.0 && T > stfm->dTempMax) return;
@@ -234,9 +237,24 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * softening
      */
     l_jeans2 = M_PI*p->c*p->c/p->fDensity*dCosmoFac;
+#if (0)
+/* Old code: problem -- compares physics L_J to comoving softening */
+    if (l_jeans2 < p->fSoft*p->fSoft*stfm->dSoftMin*stfm->dSoftMin) 
+        small_jeans = 1;
+#ifdef CHECKSF
+    p->small_jeans = small_jeans;
+#endif /*CHECKSF*/
+    if (!small_jeans && tsound <= tdyn)
+        return;
+
+#else /* old code (0) */
 /* New code: physical L_J vs. physics smoothing length (with multiplier) */
     if (l_jeans2 >= 0.25*p->fBall2*dExp*dExp*stfm->dSoftMin*stfm->dSoftMin) return;
 
+#ifdef CHECKSF
+    p->small_jeans = 1;
+#endif
+#endif /* old code (0) */
 
 #else /* CHECKSF */
     if(T > stfm->dTempMax) return;
@@ -309,7 +327,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * form star
      */
 
-    starp.fTimeForm = dTime;
+    starp.fTimeForm = dTime + stfm->dZAMSDelayTime;
     starp.fBallMax = 0.0;
     starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in
 				       NewParticle() */

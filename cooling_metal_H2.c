@@ -886,7 +886,7 @@ void clRates_Table_Lin( COOL *cl, RATE *Rate, double T, double rho, double ZMeta
 	  Rate->Phot_HI *= (AP_Gamma_HI_factor[ix]*(1-x)+AP_Gamma_HI_factor[ix+1]*x);
 	  Rate->Phot_HeI *= (AP_Gamma_HeI_factor[ix]*(1-x)+AP_Gamma_HeI_factor[ix+1]*x);
 	  Rate->Phot_HeII *= (AP_Gamma_HeII_factor[ix]*(1-x)+AP_Gamma_HeII_factor[ix+1]*x);
-	  Rate->Phot_H2 += (AP_Gamma_H2_factor[ix]*(1-x)+AP_Gamma_H2_factor[ix+1]*x);
+	  Rate->Phot_H2 *= (AP_Gamma_H2_factor[ix]*(1-x)+AP_Gamma_H2_factor[ix+1]*x);
 	  }
       }
 }
@@ -3031,10 +3031,10 @@ if(cl->p->iOrder == PARTICLEIORD)
 #else
       if (y[0] < EMin) {
 	y[0] = EMin;
-	y[1] = YHMIN;
+/*	y[1] = YHMIN;
 	y[2] = d->Y_He;
 	y[3] = YHeMIN;
-	y[4] = d->Y_H/2.0;
+	y[4] = d->Y_H/2.0;*/
 	/*	printf("Emin: %e\n", EMin);*/
 	break;
       }

@@ -85,9 +85,8 @@ typedef struct smfParameters {
     double dIonizeMultiple;
     double dIonizeTMin;
     double dIonizeT;
-	double dZAMSTime;
-	double dESFEndTime;
-	double dESFEnergy;
+    double dESFTime;
+    double dESFEnergy; 
 #endif    
 #ifdef COLLISIONS
     double dDelta;
@@ -156,7 +155,7 @@ enum smx_smoothtype {
 #ifdef STARFORM
   SMX_DIST_DELETED_GAS,
   SMX_DELETE_GAS,
-  SMX_DIST_SN_ENERGY,
+  SMX_DIST_FB_ENERGY,
 #endif
 #ifdef SIMPLESF
   SMX_SIMPLESF_FEEDBACK,
@@ -361,12 +360,12 @@ void DistDeletedGas(PARTICLE *, int, NN *, SMF *);
 /* SMX_DELETE_GAS */
 void DeleteGas(PARTICLE *, int, NN *, SMF *);
 
-/* SMX_DIST_SN_ENERGY */
-void initTreeParticleDistSNEnergy(void *p1);
-void initDistSNEnergy(void *p1);
-void combDistSNEnergy(void *p1,void *p2);
-void DistSNEnergy(PARTICLE *p, int, NN *, SMF *);
-void postDistSNEnergy(PARTICLE *p1, SMF *smf);
+/* SMX_DIST_FB_ENERGY */
+void initTreeParticleDistFBEnergy(void *p1);
+void initDistFBEnergy(void *p1);
+void combDistFBEnergy(void *p1,void *p2);
+void DistFBEnergy(PARTICLE *p, int, NN *, SMF *);
+void postDistFBEnergy(PARTICLE *p1, SMF *smf);
 
 #endif
 

@@ -342,7 +342,7 @@ typedef struct chkParticle {
 #ifdef GASOLINE
         FLOAT u;
 #ifdef UNONCOOL
-		FLOAT uNoncool;
+        FLOAT uNoncool;
 #endif
 #ifdef STARSINK
         FLOAT Lx,Ly,Lz;
@@ -788,7 +788,8 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder, int bEwald,int iEwOr
 void pkdCalcEandL(PKD,double *,double *,double *,double []);
 void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,int,FLOAT,double);
-void pkdUpdateUdot(PKD pkd,double,double,double,double,int,int);
+double pkduNoncoolConvRate(double dNoncoolConvRate,double dNoncoolConvRateMax,PARTICLE *p);
+void pkdUpdateUdot(PKD pkd,double,double,double,double,double,int,int);
 void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double, double, double, double);
 void pkdKickPatch(PKD pkd, double dvFacOne, double dvFacTwo,
 		  double dOrbFreq, int bOpen);
@@ -868,7 +869,7 @@ void pkdGetNParts(PKD pkd, struct outGetNParts *out );
 void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int, int nMaxOrderGas,
 				  int nMaxOrderDark);
 void pkdSunIndirect(PKD,double *,int,double,double);
-void pkdLogHalo(PKD);
+void pkdLogHalo(PKD, double, double, double);
 void pkdHernquistSpheroid(PKD pkd);
 void pkdNFWSpheroid(PKD pkd, double M_200, double r_200, double c, double dSoft);
 void pkdElliptical(PKD pkd, int bEllipticalDarkNFW);
