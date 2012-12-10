@@ -5243,7 +5243,7 @@ void DistESF(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	int i;
 	PARTICLE *q;
 	double fNorm, fNorm_u, ih2, r2, rs;
-	double ESFRate = p->fMass*smf->dESFEnergy/(smf->dESFEndTime);
+	double ESFRate = p->fMass*smf->dESFEnergy/smf->dESFEndTime;
 	printf("DEBUGES1: %e\n", ESFRate);
 	ih2 = 4.0/BALL2(p);
 #ifdef TOPHATFEEDBACK
