@@ -1428,6 +1428,14 @@ void smSmooth(SMX smx,SMF *smf)
 
 #else /* SLIDING_PATCH && INTERNAL_WARNINGS */
 
+#define LARGEFBALL
+#ifndef LARGEFBALL
+        assert(!smx->bPeriodic ||
+                ((lx == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lx*lx) &&
+                (ly == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*ly*ly) &&
+                (lz == FLOAT_MAXVAL || p[pi].fBall2 < 0.25*lz*lz)));
+#endif
+
 #endif
 
         nSmoothed++;

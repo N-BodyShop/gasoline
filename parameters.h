@@ -64,30 +64,30 @@ struct parameters {
   int bDoCorreL; /* Output the correlation length used for calculating H2 shielding*/
 #endif
   int bDoCSound;
-#ifdef	RADIATIVEBOX
+#ifdef  RADIATIVEBOX
   int bDoStellarLW; /*Turn this on to have the LW radiation outputted*/
 #endif
 	int bDoDminOutput;
 	int bSymCool;
-		int bDoGravity;
-		int bDoSelfGravity;
-		int bFandG;
-		int bHeliocentric;
-			double dSunSoft;
-		int bLogHalo;
-		double dLogHaloVcirc;
-		double dLogHaloEps;
-		double dLogHaloFlat;
-		int bHernquistSpheroid;
-		int bNFWSpheroid;
-			double dNFWm200;
-			double dNFWr200;
-			double dNFWconc;
-			double dNFWsoft;
-		int bElliptical;
-		int bEllipticalDarkNFW;
-			int bHomogSpheroid;
-		int bBodyForce;
+        int bDoGravity;
+        int bDoSelfGravity;
+        int bFandG;
+        int bHeliocentric;
+            double dSunSoft;
+        int bLogHalo;
+        double dLogHaloVcirc;
+        double dLogHaloEps;
+        double dLogHaloFlat;
+        int bHernquistSpheroid;
+        int bNFWSpheroid;
+            double dNFWm200;
+            double dNFWr200;
+            double dNFWconc;
+            double dNFWsoft;
+        int bElliptical;
+        int bEllipticalDarkNFW;
+            int bHomogSpheroid;
+        int bBodyForce;
 	double dBodyForceConst;
 	int bChrisDisk;
 	double dChrisDiskVc;
@@ -95,8 +95,8 @@ struct parameters {
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
-		ROTBAR	rotbar;
-	
+        ROTBAR  rotbar;
+    
 	int bRotFrame;
 	double dOmega;
 	double dOmegaDot;
@@ -310,23 +310,24 @@ struct parameters {
 #ifdef STARFORM
 	STFM   stfm;
 	FB     fb;
-        SN sn;
-        double dDeltaStarForm;
-        int bSNTurnOffCooling;
+    SN sn;
+    double dDeltaStarForm;
+    int bSNTurnOffCooling;
 	int bShortCoolShutoff;
 	double dExtraCoolShutoff;
 	int bSmallSNSmooth;
-        int iStarFormRung;
-        int iRandomSeed;
+    int iStarFormRung;
+    int iRandomSeed;
 	int nSmoothFeedback;
 #endif
-        double dNoncoolConvTime;
-        double dNoncoolConvTimeMin;
-        double dESFEnergy;
-        double dESFTime;
+    double dNoncoolConvTime;
+    double dNoncoolConvTimeMin;
+    int bESF;
+    double dESFEnergy;
+    double dESFTime;
 	double dKBoltzUnit;
-        double dPext;
-        double dvturb;
+    double dPext;
+    double dvturb;
 #ifdef GLASS
 	/*
 	 ** Additional parameters for GLASS.
