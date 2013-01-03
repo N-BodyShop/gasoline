@@ -1275,9 +1275,9 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	if(smf->bBHMindv == 1){
 	  dvmin = FLOAT_MAXVAL;
 	  for (i=0;i<nSmooth;++i) {
-	    dvx = (-p->vPred[0] + nnList[i].pPart->vPred[0])/aFac - aDot*nnList[i].dx;
-	    dvy = (-p->vPred[1] + nnList[i].pPart->vPred[1])/aFac - aDot*nnList[i].dy;
-	    dvz = (-p->vPred[2] + nnList[i].pPart->vPred[2])/aFac - aDot*nnList[i].dz;
+	    dvx = (-p->v[0] + nnList[i].pPart->v[0])/aFac - aDot*nnList[i].dx;
+	    dvy = (-p->v[1] + nnList[i].pPart->v[1])/aFac - aDot*nnList[i].dy;
+	    dvz = (-p->v[2] + nnList[i].pPart->v[2])/aFac - aDot*nnList[i].dz;
 	    dvcosmo = sqrt(dvx*dvx + dvy*dvy + dvz*dvz);
 	    if (dvcosmo < dvmin) {
 	      dvmin=dvcosmo;
@@ -1302,9 +1302,9 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	    if(smf->bBHMindv == 1) weight = rs*pow(q->c*q->c+(dvmin*dvmin),-1.5)/dCosmoDenFac;
 	    else {
-	      dvx = (-p->vPred[0]+q->vPred[0])/aFac - aDot*nnList[i].dx;
-	      dvy = (-p->vPred[1]+q->vPred[1])/aFac - aDot*nnList[i].dy;
-	      dvz = (-p->vPred[2]+q->vPred[2])/aFac - aDot*nnList[i].dz;
+	      dvx = (-p->v[0]+q->v[0])/aFac - aDot*nnList[i].dx;
+	      dvy = (-p->v[1]+q->v[1])/aFac - aDot*nnList[i].dy;
+	      dvz = (-p->v[2]+q->v[2])/aFac - aDot*nnList[i].dz;
 	      dvcosmo = sqrt(dvx*dvx+dvy*dvy+dvz*dvz);
 	      weight = rs*pow(q->c*q->c+dvcosmo*dvcosmo,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
 	    /* cosmo factors put in 7/7/09  JMB */
@@ -1375,9 +1375,9 @@ void BHSinkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 		if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin),-1.5)/dCosmoDenFac;
 		else {
-		  dvx = (-p->vPred[0]+nnList[i].pPart->vPred[0])/aFac - nnList[i].dx*aDot;
-		  dvy = (-p->vPred[1]+nnList[i].pPart->vPred[1])/aFac - nnList[i].dy*aDot;
-		  dvz = (-p->vPred[2]+nnList[i].pPart->vPred[2])/aFac - nnList[i].dz*aDot;
+		  dvx = (-p->v[0]+nnList[i].pPart->v[0])/aFac - nnList[i].dx*aDot;
+		  dvy = (-p->v[1]+nnList[i].pPart->v[1])/aFac - nnList[i].dy*aDot;
+		  dvz = (-p->v[2]+nnList[i].pPart->v[2])/aFac - nnList[i].dz*aDot;
 		  dvcosmo = sqrt(dvx*dvx+dvy*dvy+dvz*dvz);
 		  weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+dvcosmo*dvcosmo,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
 	    /* cosmo factors put in 7/7/09  JMB */
@@ -1628,9 +1628,9 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	  if(smf->bBHMindv == 1){
 	    dvmin = FLOAT_MAXVAL;
 	    for (i=0;i<nSmooth;++i) {
-	      dvx = (-p->vPred[0] + nnList[i].pPart->vPred[0])-aDot*nnList[i].dx;
-	      dvy = (-p->vPred[1] + nnList[i].pPart->vPred[1])-aDot*nnList[i].dy;
-	      dvz = (-p->vPred[2] + nnList[i].pPart->vPred[2])-aDot*nnList[i].dz;
+	      dvx = (-p->v[0] + nnList[i].pPart->v[0])-aDot*nnList[i].dx;
+	      dvy = (-p->v[1] + nnList[i].pPart->v[1])-aDot*nnList[i].dy;
+	      dvz = (-p->v[2] + nnList[i].pPart->v[2])-aDot*nnList[i].dz;
 	      dvcosmo = sqrt(dvx*dvx + dvy*dvy + dvz*dvz);
 	      if (dvcosmo < dvmin) {
 		dvmin=dvcosmo;
@@ -1656,9 +1656,9 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	      if(smf->bBHMindv == 1) weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+(dvmin*dvmin),-1.5)/dCosmoDenFac;
 	      else {
-		dvx = (-p->vPred[0]+nnList[i].pPart->vPred[0])-aDot*nnList[i].dx;
-		dvy = (-p->vPred[1]+nnList[i].pPart->vPred[1])-aDot*nnList[i].dy;
-		dvz = (-p->vPred[2]+nnList[i].pPart->vPred[2])-aDot*nnList[i].dz;
+		dvx = (-p->v[0]+nnList[i].pPart->v[0])-aDot*nnList[i].dx;
+		dvy = (-p->v[1]+nnList[i].pPart->v[1])-aDot*nnList[i].dy;
+		dvz = (-p->v[2]+nnList[i].pPart->v[2])-aDot*nnList[i].dz;
 		dvcosmo = sqrt(dvx*dvx+dvy*dvy+dvz*dvz);
 		weight = rs*pow(nnList[i].pPart->c*nnList[i].pPart->c+dvcosmo*dvcosmo,-1.5)/dCosmoDenFac; /* weight particles by mdot quantities */
 		/* cosmo factors put in 7/7/09  JMB */
