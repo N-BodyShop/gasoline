@@ -164,8 +164,13 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * Determine cooling time.
      */
 
+#ifdef UNONCOOL
+    if (stfm->bTempInclNoncool) 
+        T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u+p->uNoncool, p->fMetals );
+    else
+#endif
+        T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fMetals );
 
-    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fMetals );
 #ifdef  COOLING_MOLECULARH
 #ifdef NEWSHEAR
     /***** particle diffusion method ******/
@@ -269,9 +274,9 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	return;
 
     if(tcool < 0.0 || tdyn > tcool || T < stfm->dTempMax)
-	tform = tdyn;
+        tform = tdyn;
     else
-	tform = tcool;
+        tform = tcool;
 #ifdef COOLING_MOLECULARH
     if (p->fMetals <= 0.1) yH = 1.0 - 4.0*((0.236 + 2.1*p->fMetals)/4.0) - p->fMetals;
     else yH = 1.0 - 4.0*((-0.446*(p->fMetals - 0.1)/0.9 + 0.446)/4.0) - p->fMetals;
@@ -328,6 +333,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      */
 
     starp.fTimeForm = dTime + stfm->dZAMSDelayTime;
+    printf("star   KDK %g %g %g\n",dTime,starp.fTimeForm,stfm->dZAMSDelayTime); //DEBUG dTime for SF
     starp.fBallMax = 0.0;
     starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in
 				       NewParticle() */

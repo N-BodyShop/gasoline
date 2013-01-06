@@ -85,6 +85,7 @@ typedef struct smfParameters {
     double dIonizeMultiple;
     double dIonizeTMin;
     double dIonizeT;
+    int bESF;
     double dESFTime;
     double dESFEnergy; 
 #endif    

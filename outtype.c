@@ -82,6 +82,17 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #else
 	    return(0.);
 #endif
+	case OUT_TEMPINC_ARRAY:
+#ifdef UNONCOOL
+	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u+p->uNoncool, p->fMetals );
+#else
+#ifndef NOCOOLING
+	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
+#else
+	    vTemp = pkd->duTFac*p->u;
+#endif
+#endif
+	    return(vTemp);
 	case OUT_TEMP_ARRAY:
 #ifndef NOCOOLING
 	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
@@ -356,6 +367,9 @@ void VecFilename(char *achFile, int iType)
 		break;
 	case OUT_UNONCOOL_ARRAY:
 		strncat(achFile,"uNoncool",256);
+		break;
+	case OUT_TEMPINC_ARRAY:
+		strncat(achFile,"Tinc",256);
 		break;
 	case OUT_UDOT_ARRAY:
 		strncat(achFile,"uDot",256);
@@ -784,7 +798,11 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
 
 void xdr_FLOAT(XDR *xdrs, FLOAT *fIn) 
 {
+#ifdef SINGLE
+    xdr_float(xdrs, fIn);
+#else
     xdr_double(xdrs, fIn);
+#endif
     }
 
 void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,int iBinaryOutput, int N, int bStandard)

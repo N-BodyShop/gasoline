@@ -52,7 +52,7 @@ void pkdFeedback(PKD pkd, FB fb, struct snContext * sn, double dTime, double dDe
 	/* solar mass in grams */
 #define MSOLG 1.99e33
         /* seconds per year = 3600*24*365.25 */
-#define SEC_YR 3.15576e07;
+#define SEC_YR 3.15576e07
 
 #endif
 

@@ -1140,6 +1140,14 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
     int its = 0;
     while (t<tstop) {
       double Eold;
+#ifdef COOLDEBUG
+      if (cl->p->iOrder == 5647) {
+	  d->E = *E;
+	  clTempIteration( d );
+	  clDerivs( d, t, (&d->E)-1, (&dEdt)-1 );
+          fprintf(stderr,"iteration: %d, %g %g, T %g %g,  E %g %g %g,  dE %g %g,  dt %g %g %g, dt_s %g %g\n",its,rho,ZMetal,d->Rate.T,cl->TMin,Ein,*E,EMin,ExternalHeating,dEdt,t,tstop,tStep,dtnext,dtused);
+	  }
+#endif
       if (its++ > MAXINTEGITS) {
 #ifdef COOLDEBUG
 	  d->E = *E;

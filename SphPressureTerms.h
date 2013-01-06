@@ -82,17 +82,17 @@
      double vsig = sqrt(fabs(qPoverRho2*q->fDensity*q->fDensity - pPoverRho2*p->fDensity*p->fDensity)*irhobar); \
      double diffTh = smf->dThermalDiffusionCoeff*0.5*(ph+sqrt(0.25*BALL2(q)))*irhobar*vsig; \
      double diffu = diffTh*(p->uPred-q->uPred);				\
-     PACTIVE( UDOTDIFF(p)+= diffu*rq ); \
-     QACTIVE( UDOTDIFF(q)-= diffu*rp ); }
-//     DIFFUSIONThermaluNoncool(); }
+     PACTIVE( UDOTDIFF(p)+= diffu*rq );                     \
+     QACTIVE( UDOTDIFF(q)-= diffu*rp );                     \
+     DIFFUSIONThermaluNoncool(); }
 #else
 #ifdef DIFFUSIONTHERMAL
 #define DIFFUSIONThermal() \
     { double diffTh = 2*smf->dThermalDiffusionCoeff*(p->diff+q->diff)/(p->fDensity+q->fDensity); \
-      double diffu = diffTh*(p->uPred-q->uPred);	\
-      PACTIVE( UDOTDIFF(p) += diffu*rq*MASSDIFFFAC(q) );	\
-      QACTIVE( UDOTDIFF(q) -= diffu*rp*MASSDIFFFAC(p) );  }
-//      DIFFUSIONThermaluNoncool(); }
+      double diffu = diffTh*(p->uPred-q->uPred);                              \
+      PACTIVE( UDOTDIFF(p) += diffu*rq*MASSDIFFFAC(q) );                \
+      QACTIVE( UDOTDIFF(q) -= diffu*rp*MASSDIFFFAC(p) );                \
+      DIFFUSIONThermaluNoncool(); }
 #else
 /* Default -- no thermal diffusion */
 #define DIFFUSIONThermal()

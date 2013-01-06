@@ -1034,7 +1034,8 @@ void pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 			}
 		else if ((CP->iSlideOption == EscVel && v2 < CP->dSlideLimit2*ve2) ||
 				 (CP->iSlideOption == MaxTrv && v2 < CP->dSlideLimit2)) {
-#ifdef INELASTIC
+			/*#define EXPERIMENTAL*//*DEBUG*/
+#ifdef EXPERIMENTAL
 			/*DEBUG -- new inelastic collapse strategy! does not allow parallel, sliding friction, zero-mass particles, or ghosts though*/
 			double rn[3],vr=0,r2,imr2;
 			(void) fprintf(stderr,"***** COLLAPSE *****\n");

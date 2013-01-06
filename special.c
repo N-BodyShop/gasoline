@@ -205,6 +205,51 @@ pkdDoSpecialParticles(PKD pkd,int nSpecial,SPECIAL_MASTER_INFO *mInfo,
 	int i,j;
 	int nGhosts=0;
 	double **rGhosts=NULL;
+#ifdef OLD_COMET_STUFF
+	/*THIS STUFF #ifdef'D OUT TO SIMPLIFY MERGING OF RORY'S VERSION
+	  WITH UMD SVN VERSION 5/23/06*/
+	int nLocal=pkdLocal(pkd);
+
+	/*DEBUG some (all?) of this stuff is for the comet spin-up problem*/
+	/*DEBUG this first stuff is for do_force(): need to know COM position of rubble pile -- won't work in parallel!!*/
+	FLOAT r[3],rc[3];
+	int n,nn;
+	do {
+		r[0] = r[1] = r[2] = 0.0;
+		for (i=n=0;i<nLocal;i++) {
+			p = &pkd->pStore[i];
+			if (p->iColor != 2) {
+				r[0] += p->r[0]; /*DEBUG assumes equal-mass particles...*/
+				r[1] += p->r[1];
+				r[2] += p->r[2];
+				++n;
+			}
+		}
+		assert(n > 0);
+		rc[0] = r[0]/n;
+		rc[1] = r[1]/n;
+		rc[2] = r[2]/n;
+		/* loop again to remove any particles far from main clump */
+		for (i=nn=0;i<nLocal;i++) {
+			p = &pkd->pStore[i];
+			if (p->iColor == 2) continue;
+			if (sqrt((p->r[0] - rc[0])*(p->r[0] - rc[0]) +
+					 (p->r[1] - rc[1])*(p->r[1] - rc[1]) +
+					 (p->r[2] - rc[2])*(p->r[2] - rc[2])) > 4.0e-8) { /*DEBUG 8 km */
+				if (p->iColor != 3) {
+					(void) fprintf(stderr,"special particle %i escaped\n",p->iOrder);
+/*DEBUG					assert(0);*/
+				}
+				p->iColor = 2;
+				continue;
+			}
+			++nn;
+		}
+		assert(nn > 0);
+	} while (nn < n);
+
+	assert(nn == n);
+#endif /*OLD_COMET_STUFF*/
 
 	for (i=0;i<nSpecial;i++) {
 	  if (sData[i].iType & SPECIAL_NOGHOSTPERT) {

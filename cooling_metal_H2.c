@@ -2805,26 +2805,35 @@ void clSetyscale( COOL *cl, double Y_H, double Y_He, double *y, double *yscale) 
        to control delta YHeIII
        NB: Also gives error control on Y_e which was absent before! */
     
+#define CONTROLYHII
 
     /* HI */
+#ifdef CONTROLYHII
     if ((YHII = Y_H - y[1] - 2.0*y[4]) < YeSCALEMIN) YHII = YeSCALEMIN; /*Adding in molec H*/
     if (yscale[1] > YHII) yscale[1] = YHII; 
     else 
+#endif
       if (yscale[1] < YSCALEMIN) yscale[1] = YSCALEMIN; 
 
     /* H2 */
+#ifdef CONTROLYHII
     if (yscale[4] > YHII) yscale[4] = YHII;
     else
+#endif
       if (yscale[4] < YSCALEMIN) yscale[4] = YSCALEMIN;
 
+#ifdef CONTROLYHII
     if ((YHeIII = 0.5*(Y_He - y[2] - y[3])) <  (0.5*YeSCALEMIN)) YHeIII = (0.5*YeSCALEMIN);
     if (yscale[2] > YHeIII) yscale[2] =  YHeIII; 
     else 
+#endif
       if (yscale[2] < YSCALEMIN) yscale[2] = YSCALEMIN;
 
 
+#ifdef CONTROLYHII
     if (yscale[3] > YHeIII) yscale[3] =  YHeIII; 
     else 
+#endif
       if (yscale[3] < YSCALEMIN) yscale[3] = YSCALEMIN; 
 
 } 
