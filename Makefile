@@ -188,7 +188,7 @@ EXE = gasoline
 #
 #       NULL defines
 #
-NULL_MDL		= ../mdl/null
+NULL_MDL		= mdl/null
 NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF) 
 NULL_LD_FLAGS	= $(BASE_LD_FLAGS) -L/usr/lib -L/lib
 NULL_XOBJ		= erf.o v_sqrt1.o
@@ -197,7 +197,7 @@ NULL_LIBMDL		= $(NULL_MDL)/mdl.o -lm
 #
 #       DBG defines
 #
-DBG_MDL		= ../mdl/null
+DBG_MDL		= mdl/null
 DBG_CFLAGS		= -g -I$(DBG_MDL) $(BASE_DEF) 
 DBG_LD_FLAGS	= $(BASE_LD_FLAGS) -L/usr/lib -L/lib
 DBG_XOBJ		= erf.o v_sqrt1.o
@@ -206,7 +206,7 @@ DBG_LIBMDL		= $(NULL_MDL)/mdl.o -lm
 #
 #       SGI defines
 #
-SGI_MDL			= ../mdl/mpi
+SGI_MDL			= mdl/mpi
 SGI_CFLAGS		= -O2 -I$(SGI_MDL) $(BASE_DEF) -mips4 -64 -r10000
 SGI_LD_FLAGS	= -mips4 -64 -r10000 $(BASE_LD_FLAGS)
 SGI_XOBJ		=
@@ -218,7 +218,7 @@ SGI_MDL_CFLAGS	= -g2 -O2 -mips4 -64 -r10000
 #
 CHARM=../charm/net-linux/bin/charmc
 CHARMLINK=
-AMPI_MDL			= ../mdl/ampi
+AMPI_MDL			= mdl/ampi
 AMPI_CFLAGS		= -O3 -malign-double -mpentiumpro -I$(AMPI_MDL) $(BASE_DEF) 
 AMPI_LD_FLAGS		=  $(BASE_LD_FLAGS)
 AMPI_XOBJ                = erf.o v_sqrt1.o
@@ -227,7 +227,7 @@ AMPI_LIBMDL              = $(AMPI_MDL)/mdl.o -language ampi $(CHARMLINK) -lm
 #
 #       LINUX LAM MPI defines
 #
-LAM_MDL			= ../mdl/mpi
+LAM_MDL			= mdl/mpi
 LAM_CFLAGS		= -fast -I$(LAM_MDL) $(BASE_DEF) -DMPI_LINUX
 LAM_LD_FLAGS		=  $(BASE_LD_FLAGS)
 LAM_XOBJ                = erf.o v_sqrt1.o
@@ -237,7 +237,7 @@ LAM_MDL_CFLAGS  = -fast -I$(LAM_MDL) $(BASE_DEF)
 #
 #       Quadrics MPI defines
 #
-QMPI_MDL                        = ../mdl/mpi
+QMPI_MDL                        = mdl/mpi
 QMPI_CFLAGS             = -O3 -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX -DCCC
 QMPI_LD_FLAGS           =  $(BASE_LD_FLAGS)
 QMPI_XOBJ                = erf.o 
@@ -247,7 +247,7 @@ QMPI_MDL_CFLAGS  = -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX
 
 #       SP1/2 defines
 #
-SPX_MDL			= ../mdl/mpi
+SPX_MDL			= mdl/mpi
 SPX_CFLAGS		= -O3 -I$(SPX_MDL) $(BASE_DEF)
 SPX_LD_FLAGS	= $(BASE_LD_FLAGS)
 SPX_XOBJ		= v_sqrt1.o
@@ -261,7 +261,7 @@ PVMDIR	= $(PVM_ROOT)
 PVMLIB	= $(PVMDIR)/lib/$(PVM_ARCH)/libpvm3.a
 BDIR	= $(HOME)/pvm3/bin
 XDIR	= $(BDIR)/$(PVM_ARCH)
-PVM_MDL		= ../mdl/pvm
+PVM_MDL		= mdl/pvm
 PVM_CFLAGS	= -O3 -I$(PVMDIR)/include -I$(PVM_MDL) $(BASE_DEF)
 PVM_XOBJ	= v_sqrt1.o
 PVM_LIBMDL	= $(PVM_MDL)/$(PVM_ARCH)/mdl.o $(PVMLIB) $(ARCHLIB) -lm
@@ -270,7 +270,7 @@ PVM_LD_FLAGS	= $(BASE_LD_FLAGS)
 #
 #       PTHREAD defines
 #
-PTHREAD_MDL			= ../mdl/pthread
+PTHREAD_MDL			= mdl/pthread
 PTHREAD_CFLAGS		= -g -D_REENTRANT -I$(PTHREAD_MDL) $(BASE_DEF)
 PTHREAD_LD_FLAGS 	=  $(BASE_LD_FLAGS)
 PTHREAD_XOBJ		= erf.o v_sqrt1.o
@@ -279,7 +279,7 @@ PTHREAD_LIBMDL 		= $(PTHREAD_MDL)/mdl.o -lm -lpthread
 #
 #       PTHREAD_SGI defines
 #
-PTHREAD_SGI_MDL			= ../mdl/pthread
+PTHREAD_SGI_MDL			= mdl/pthread
 PTHREAD_SGI_CFLAGS		= -O2 -D_REENTRANT -I$(PTHREAD_SGI_MDL) $(BASE_DEF) -mips4 -64 -r10000
 PTHREAD_SGI_LD_FLAGS 	= -mips4 -64 -r10000 $(BASE_LD_FLAGS)
 PTHREAD_SGI_XOBJ		= 
@@ -289,7 +289,7 @@ PTHREAD_SGI_MDL_CFLAGS	= -O2 -mips4 -64 -r10000
 #
 #       T3D MPP defines
 #
-T3D_MDL	= ../mdl/mpp
+T3D_MDL	= mdl/mpp
 V_SQRT	= ../v_sqrt/lib
 V_SQRT1	= ../v_sqrt1/lib
 RPC		= ../rpc
@@ -302,7 +302,7 @@ T3D_LD_FLAGS	= $(BASE_LD_FLAGS)
 #
 #       T3DMPI MPP defines
 #
-T3DMPI_MDL	= ../mdl/t3dmpi
+T3DMPI_MDL	= mdl/t3dmpi
 V_SQRT		= ../v_sqrt/lib
 V_SQRT1		= ../v_sqrt1/lib
 RPC			= ../rpc
@@ -315,7 +315,7 @@ T3DMPI_LD_FLAGS	= $(BASE_LD_FLAGS)
 #
 #       T3EMPI MPP defines
 #
-T3EMPI_MDL		= ../mdl/t3empi
+T3EMPI_MDL		= mdl/t3empi
 T3EMPI_CFLAGS	= -O3 -DCRAY_T3D -I$(T3EMPI_MDL) -I$(RPC) $(BASE_DEF)
 T3EMPI_XOBJ		= hyperlib.o v_sqrt1.t3x.o
 T3EMPI_LIBMDL	= $(T3EMPI_MDL)/mdl.o -lmpi -lm
@@ -326,7 +326,7 @@ T3DMPI_LD_FLAGS	= $(BASE_LD_FLAGS)
 #
 CHARM=../charm/net-linux/bin/charmc
 CHARMLINK=
-CHARM_MDL			= ../mdl/charm
+CHARM_MDL			= mdl/charm
 CHARM_CFLAGS		= -verbose -g -I$(CHARM_MDL) $(BASE_DEF) 
 CHARM_MDL_CFLAGS	= -verbose -g -Wall
 CHARM_LD_FLAGS		=  $(BASE_LD_FLAGS) -language charm++ -memory os
@@ -336,7 +336,7 @@ CHARM_LIBMDL              = $(CHARM_MDL)/mdl.o $(CHARMLINK) -lm
 #
 #       KSR1 defines
 #
-KSR_MDL			= ../mdl/ksr
+KSR_MDL			= mdl/ksr
 KSR_CFLAGS		= -O2 -w2 -I$(KSR_MDL) $(BASE_DEF)
 KSR_LD_FLAGS	= -para $(BASE_LD_FLAGS)
 KSR_XOBJ		= erf.o v_sqrt1.ksr.o
@@ -365,7 +365,7 @@ clean:
 spotless: clean
 	@echo rm -rf $(EXE).$(MD5)
 	@rm -f $(EXE).$(MD5)
-	@rm -f ../mdl/*/mdl.o
+	@rm -f mdl/*/mdl.o
 
 depend:
 	makedepend -Y -- $(BASE_DEF) -- *.c
