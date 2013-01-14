@@ -5209,7 +5209,7 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
 			if(bAll) {          /* Assign all rungs at iRung and above */
                 assert(pkd->pStore[i].fSoft > 0.0);
                 assert(pkd->pStore[i].dt > 0.0);
-				if (dDelta/pkd->pStore[i].dt < 2.1e9) print_particle(pkd, pkd->pStore[i]); /* avoid integer overflow */
+				if (dDelta/pkd->pStore[i].dt >= 2.1e9) print_particle(pkd, pkd->pStore[i]); /* avoid integer overflow */
 				iTempRung = pkdOneParticleDtToRung( iRung,dDelta,pkd->pStore[i].dt);
 
                 bDiag = 0;
