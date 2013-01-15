@@ -594,15 +594,15 @@ typedef struct smContext {
 	FLOAT DTEST_fDist, DTEST_dvdr;\
 	DTEST_dx = sx - (pkdn)->r[0];			     \
 	DTEST_dvx = (vx-(pkdn)->bndDt.vMin[0])*DTEST_dx;	\
-        DTEST_dvx1 = (vx-(pkdn)->bndDt.vMax[0])*DTEST_dx; \
+        DTEST_dvx1 = (vx-(pkdn)->bndDt.vMax[0])*DTEST_dx; \	
         DTEST_dvdr = (DTEST_dvx < DTEST_dvx1 ? DTEST_dvx : DTEST_dvx1); \
         DTEST_dy = sy - (pkdn)->r[1];						\
 	DTEST_dvy = (vy-(pkdn)->bndDt.vMin[1])*DTEST_dy; \
-        DTEST_dvy1 = (vy-(pkdn)->bndDt.vMax[1])*DTEST_dy; \
+        DTEST_dvy1 = (vy-(pkdn)->bndDt.vMax[1])*DTEST_dy; \	
         DTEST_dvdr += (DTEST_dvy < DTEST_dvy1 ? DTEST_dvy : DTEST_dvy1); \
 	DTEST_dz = sz - (pkdn)->r[2]; \
 	DTEST_dvz = (vz-(pkdn)->bndDt.vMin[2])*DTEST_dz; \
-        DTEST_dvz1 = (vz-(pkdn)->bndDt.vMax[2])*DTEST_dz; \
+        DTEST_dvz1 = (vz-(pkdn)->bndDt.vMax[2])*DTEST_dz; \	
         DTEST_dvdr += (DTEST_dvz < DTEST_dvz1 ? DTEST_dvz : DTEST_dvz1); \
         DTEST_fDist = sqrt(DTEST_dx*DTEST_dx + DTEST_dy*DTEST_dy + DTEST_dz*DTEST_dz); \
         dt_est = DTEST_fDist/((pkdn)->bndDt.cMax - (DTEST_dvdr < 0 ? DTEST_dvdr/DTEST_fDist : 0)); }

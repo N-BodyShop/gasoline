@@ -4285,29 +4285,31 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 	}
 
 #ifdef UNONCOOL
-double pkduNoncoolConvRate(double dNoncoolConvRate, double dNoncoolConvRateMul, double dNoncoolConvRateMax, PARTICLE *p) 
+double pkduNoncoolConvRate(UNCC uncc, PARTICLE *p) 
     {
-    double rate;
-    if (dNoncoolConvRate > 0) return dNoncoolConvRate;
-    rate = dNoncoolConvRateMul*sqrt((p->uNoncoolPred+p->uPred)/(p->fBall2*0.25));
-    if (rate > dNoncoolConvRateMax) return dNoncoolConvRateMax;
+    double rate,ueff;
+    if (uncc.dNoncoolConvRate > 0) return uncc.dNoncoolConvRate;
+    ueff = p->uNoncoolPred+p->uPred;
+    if (ueff < uncc.dNoncoolConvUMin) ueff = uncc.dNoncoolConvUMin;
+    rate = uncc.dNoncoolConvRateMul*sqrt((p->uNoncoolPred+p->uPred)/(p->fBall2*0.25));
+    if (rate > uncc.dNoncoolConvRateMax) return uncc.dNoncoolConvRateMax;
     return rate;
     }
 
-double pkduNoncoolDot( double dNoncoolConvRate, double dNoncoolConvRateMul, double dNoncoolConvRateMax, PARTICLE *p) 
+double pkduNoncoolDot(UNCC uncc, PARTICLE *p) 
     {
-    return p->uNoncoolDotDiff
+    return p->uNoncoolDotSPH
         + p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred) 
 #ifdef STARFORM
         + p->fESNrate
 #endif
-        - p->uNoncoolPred*pkduNoncoolConvRate(dNoncoolConvRate,dNoncoolConvRateMul,dNoncoolConvRateMax,p);
+        - p->uNoncoolPred*pkduNoncoolConvRate(uncc,p);
     }
 #endif
 
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
-    double z, double duDotLimit, double dTimeEnd, double dNoncoolConvRate, double dNoncoolConvRateMul, double dNoncoolConvRateMax )
+    double z, double duDotLimit, double dTimeEnd, UNCC uncc )
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -4385,9 +4387,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				      }
 #ifdef UNONCOOL
 			          {
-                          double uNoncoolDot = pkduNoncoolDot(dNoncoolConvRate,dNoncoolConvRateMul,dNoncoolConvRateMax,p);
-
-                          if (p->iOrder == 8494772) fprintf(stderr,"uNoncool     %d: %g %g %g %g %g, %g %g %g\n",p->iOrder,p->uNoncool,p->uNoncoolDotDiff,p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred),p->fESNrate,-p->uNoncoolPred*pkduNoncoolConvRate(dNoncoolConvRate,dNoncoolConvRateMul,dNoncoolConvRateMax,p),p->uNoncoolPred,uNoncoolDot*duDelta,duDelta);
+                      double uNoncoolDot = pkduNoncoolDot(uncc,p);
+                      if ((p->iOrder%10000)==0) printf("UMIN %d: %g %g %g  %g\n",p->iOrder,p->uNoncoolPred,p->uPred,uncc.dNoncoolConvUMin,CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals ));
+                      if (p->iOrder == 8494772) fprintf(stderr,"uNoncool     %d: %g %g %g %g %g, %g %g %g\n",p->iOrder,p->uNoncool,p->uNoncoolDotSPH,p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred),p->fESNrate,-p->uNoncoolPred*pkduNoncoolConvRate(uncc,p),p->uNoncoolPred,uNoncoolDot*duDelta,duDelta);
                       p->uNoncoolPred = p->uNoncool + uNoncoolDot*duPredDelta;
                       p->uNoncool = p->uNoncool + uNoncoolDot*duDelta;
                       if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
@@ -5209,7 +5211,6 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
 			if(bAll) {          /* Assign all rungs at iRung and above */
                 assert(pkd->pStore[i].fSoft > 0.0);
                 assert(pkd->pStore[i].dt > 0.0);
-				if (dDelta/pkd->pStore[i].dt >= 2.1e9) print_particle(pkd, pkd->pStore[i]); /* avoid integer overflow */
 				iTempRung = pkdOneParticleDtToRung( iRung,dDelta,pkd->pStore[i].dt);
 
                 bDiag = 0;
@@ -6024,7 +6025,7 @@ int pkdIsStarByOrder(PKD pkd,PARTICLE *p) {
 
 #ifdef GASOLINE
 
-void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNoncoolConvRate, double dNoncoolConvRateMul, double dNoncoolConvRateMax, int iGasModel, int bUpdateState )
+void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, int iGasModel, int bUpdateState )
 {
 #ifndef NOCOOLING	
 	PARTICLE *p;
@@ -6057,7 +6058,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNonc
     if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
 #ifdef UNONCOOL
       ExternalHeating = p->PdV*p->uPred/(p->uPred+p->uNoncoolPred) + p->uDotDiff 
-          + p->uNoncoolPred*pkduNoncoolConvRate(dNoncoolConvRate,dNoncoolConvRateMul, dNoncoolConvRateMax,p);
+          + p->uNoncoolPred*pkduNoncoolConvRate(uncc,p);
 #else
       ExternalHeating = p->PdV;
 #ifdef STARFORM
@@ -6214,10 +6215,10 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p)) {
-#ifdef UNONCOOL
-		        PoverRho = gammam1*(p->uPred+p->uNoncoolPred);
+#ifdef UNONCOOLOLD
+            PoverRho = gammam1*(p->uPred+p->uNoncoolPred);
 #else
-			PoverRho = gammam1*p->uPred;
+            PoverRho = gammam1*p->uPred;
 #endif
 			p->PoverRho2 = PoverRho/p->fDensity;
 			/*
@@ -6287,7 +6288,7 @@ void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma,
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p)) {
 		        CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, &PoverRho, &(p->c) );
-#ifdef UNONCOOL
+#ifdef UNONCOOLOLD
 		        PoverRho += gammam1*(p->uNoncoolPred);
 #endif
 			p->PoverRho2 = PoverRho/p->fDensity;
@@ -7126,7 +7127,7 @@ void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
 #ifdef GASOLINE
 void
 pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
-    int iGasModel,double z,double duDotLimit, double dTimeEnd,double dNoncoolConvRate,double dNoncoolConvRateMul, double dNoncoolConvRateMax)
+    int iGasModel,double z,double duDotLimit, double dTimeEnd,UNCC uncc)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -7200,8 +7201,8 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 			      }
 #ifdef UNONCOOL
 			  {
-			  double uNoncoolDot = pkduNoncoolDot(dNoncoolConvRate, dNoncoolConvRateMul, dNoncoolConvRateMax,p);
-              if (p->iOrder == 8494772) fprintf(stderr,"uNoncoolpred %d: %g %g %g %g %g, %g %g %g\n",p->iOrder,p->uNoncool,p->uNoncoolDotDiff,p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred),p->fESNrate,-p->uNoncoolPred*pkduNoncoolConvRate(dNoncoolConvRate,dNoncoolConvRateMul, dNoncoolConvRateMax,p),p->uNoncoolPred,uNoncoolDot*duDelta,duDelta);
+			  double uNoncoolDot = pkduNoncoolDot(uncc,p);
+              if (p->iOrder == 8494772) fprintf(stderr,"uNoncoolpred %d: %g %g %g %g %g, %g %g %g\n",p->iOrder,p->uNoncool,p->uNoncoolDotSPH,p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred),p->fESNrate,-p->uNoncoolPred*pkduNoncoolConvRate(uncc,p),p->uNoncoolPred,uNoncoolDot*duDelta,duDelta);
 			  p->uNoncoolPred = p->uNoncoolPred + uNoncoolDot*duDelta;
 			  if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
 			      }

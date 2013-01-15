@@ -323,6 +323,7 @@ struct parameters {
     double dNoncoolConvTime;
     double dNoncoolConvTimeMul;
     double dNoncoolConvTimeMin;
+    double dNoncoolConvVelMin;
     int bESF;
     double dESFEnergy;
     double dESFTime;

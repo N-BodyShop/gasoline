@@ -18,6 +18,11 @@
    All Macros and Variables not defined here are defined in smoothfcn.c
  */
 
+#ifdef UNONOCOOL
+#define UNONCOOLACTIVE(xxx) xxx
+#else
+#define UNONCOOLACTIVE(xxx) 
+#endif
 #ifdef DRHODT
 #define DRHODTACTIVE(xxx) xxx
 #ifdef RTFORCE
@@ -69,8 +74,8 @@
 #define UDOTDIFF(_p) ((_p)->uDotDiff)
 #define DIFFUSIONThermaluNoncool() \
 	    { double diffuNc = diffTh*(p->uNoncoolPred-q->uNoncoolPred); \
-	    PACTIVE( p->uNoncoolDotDiff += diffuNc*rq );		\
-	    QACTIVE( q->uNoncoolDotDiff -= diffuNc*rp );		\
+	    PACTIVE( p->uNoncoolDotSPH += diffuNc*rq );		\
+	    QACTIVE( q->uNoncoolDotSPH -= diffuNc*rp );		\
 	    }
 #else
 #define UDOTDIFF(_p) ((_p)->PdV)
@@ -158,28 +163,30 @@
 	    DRHODTACTIVE( PACTIVE( p->fDivv_PdV -= rq/p->fDivv_Corrector/RHO_DIVV(pDensity,q->fDensity)*dvdotdr; )); 
 	    DRHODTACTIVE( QACTIVE( q->fDivv_PdV -= rp/p->fDivv_Corrector/RHO_DIVV(q->fDensity,pDensity)*dvdotdr; )); 
 	    DRHODTACTIVE( PACTIVE( p->fDivv_PdVcorr -= rq/RHO_DIVV(pDensity,q->fDensity)*dvdotdr; ));
-	    DRHODTACTIVE( QACTIVE( q->fDivv_PdVcorr -= rp/RHO_DIVV(q->fDensity,pDensity)*dvdotdr; ));
+        DRHODTACTIVE( QACTIVE( q->fDivv_PdVcorr -= rp/RHO_DIVV(q->fDensity,pDensity)*dvdotdr; ));
+        UNONCOOLACTIVE(PACTIVE( p->uNoncoolDotSPH += rq*PRES_PDV(pPuNoncooloverRho2,qPuNoncooloverRho2)*dvdotdr; ););
+        UNONCOOLACTIVE(QACTIVE( q->uNoncoolDotSPH += rp*PRES_PDV(qPuNoncooloverRho2,pPuNoncooloverRho2)*dvdotdr; ););
 	    if (dvdotdr>=0.0) {
-		dt = smf->dtFac*ph/(2*(pc > q->c ? pc : q->c));	
-		SETDTNEW_PQ(dt);
-		PACTIVE( p->PdV += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; );
-		QACTIVE( q->PdV += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; );
-                PDVDEBUGLINE( PACTIVE( p->PdVpres += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; ); );
-		PDVDEBUGLINE( QACTIVE( q->PdVpres += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; ); );
-		PACTIVE( Accp = (PRES_ACC(pPoverRho2f,qPoverRho2f)); );
-		QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f)); );
-		}
+            dt = smf->dtFac*ph/(2*(pc > q->c ? pc : q->c));	
+            SETDTNEW_PQ(dt);
+            PACTIVE( p->PdV += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; );
+            QACTIVE( q->PdV += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; );
+            PDVDEBUGLINE( PACTIVE( p->PdVpres += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; ); );
+            PDVDEBUGLINE( QACTIVE( q->PdVpres += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; ); );
+            PACTIVE( Accp = (PRES_ACC(pPoverRho2f,qPoverRho2f)); );
+            QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f)); );
+            }
 	    else { 
-		VISC(visc,dt);		
-		SETDTNEW_PQ(dt);
-		PACTIVE( p->PdV += rq*(PRES_PDV(pPoverRho2,qPoverRho2) + 0.5*visc)*dvdotdr; );
-		QACTIVE( q->PdV += rp*(PRES_PDV(qPoverRho2,pPoverRho2) + 0.5*visc)*dvdotdr; );
-		PDVDEBUGLINE( PACTIVE( p->PdVpres += rq*(PRES_PDV(pPoverRho2,qPoverRho2))*dvdotdr; ); );
-		PDVDEBUGLINE( QACTIVE( q->PdVpres += rp*(PRES_PDV(qPoverRho2,pPoverRho2))*dvdotdr; ); );
-		PDVDEBUGLINE( PACTIVE( p->PdVvisc += rq*(0.5*visc)*dvdotdr; ); );
-		PDVDEBUGLINE( QACTIVE( q->PdVvisc += rp*(0.5*visc)*dvdotdr; ); );
-		PACTIVE( Accp = (PRES_ACC(pPoverRho2f,qPoverRho2f) + visc); );
-		QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f) + visc); );
+            VISC(visc,dt);		
+            SETDTNEW_PQ(dt);
+            PACTIVE( p->PdV += rq*(PRES_PDV(pPoverRho2,qPoverRho2) + 0.5*visc)*dvdotdr; );
+            QACTIVE( q->PdV += rp*(PRES_PDV(qPoverRho2,pPoverRho2) + 0.5*visc)*dvdotdr; );
+            PDVDEBUGLINE( PACTIVE( p->PdVpres += rq*(PRES_PDV(pPoverRho2,qPoverRho2))*dvdotdr; ); );
+            PDVDEBUGLINE( QACTIVE( q->PdVpres += rp*(PRES_PDV(qPoverRho2,pPoverRho2))*dvdotdr; ); );
+            PDVDEBUGLINE( PACTIVE( p->PdVvisc += rq*(0.5*visc)*dvdotdr; ); );
+            PDVDEBUGLINE( QACTIVE( q->PdVvisc += rp*(0.5*visc)*dvdotdr; ); );
+            PACTIVE( Accp = (PRES_ACC(pPoverRho2f,qPoverRho2f) + visc); );
+            QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f) + visc); );
 		}
 	    PACTIVE( Accp *= rq*aFac; );/* aFac - convert to comoving acceleration */
 	    QACTIVE( Accq *= rp*aFac; );
@@ -189,11 +196,13 @@
 	    QACTIVE( ACCEL(q,0) += Accq * dx; );
 	    QACTIVE( ACCEL(q,1) += Accq * dy; );
 	    QACTIVE( ACCEL(q,2) += Accq * dz; );
-            { DIFFUSIONBase();
-            DIFFUSIONThermal();
-            DIFFUSIONMetals();
-            DIFFUSIONMetalsOxygen();
-            DIFFUSIONMetalsIron();
-            DIFFUSIONMass();
- 	    DIFFUSIONVelocity(); }
+        { 
+        DIFFUSIONBase();
+        DIFFUSIONThermal();
+        DIFFUSIONMetals();
+        DIFFUSIONMetalsOxygen();
+        DIFFUSIONMetalsIron();
+        DIFFUSIONMass();
+ 	    DIFFUSIONVelocity(); 
+        }
 

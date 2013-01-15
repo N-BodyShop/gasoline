@@ -649,9 +649,7 @@ struct inUpdateuDot {
 	double duDelta;
 	double dTime;	
 	double z;
-    double dNoncoolConvRate;
-    double dNoncoolConvRateMul;
-    double dNoncoolConvRateMax;
+    UNCC uncc;
 	int iGasModel;
 	int bUpdateState;
 	};
@@ -674,11 +672,9 @@ struct inKick {
 	double duPredDelta;
 	double duDotLimit;
 	int iGasModel;
-        double z;
-        double dTimeEnd;
-        double dNoncoolConvRate;
-        double dNoncoolConvRateMul;
-        double dNoncoolConvRateMax;
+    double z;
+    double dTimeEnd;
+    UNCC uncc;
 	};
 struct outKick {
 	double Time;
@@ -1825,9 +1821,7 @@ struct inKickVpred {
 	int iGasModel;
 	double z;
     double dTimeEnd;
-    double dNoncoolConvRate;
-    double dNoncoolConvRateMul;
-    double dNoncoolConvRateMax;
+    UNCC uncc;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
 #endif

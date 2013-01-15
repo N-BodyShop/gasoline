@@ -1134,11 +1134,15 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dNoncoolConvTimeMul = 4;
 	prmAddParam(msr->prm,"dNoncoolConvTimeMul",2,&msr->param.dNoncoolConvTimeMul,
 				sizeof(double),"ncctmul",
-				"<Timescale Multiplier to convert noncooling to cooling (yr)>");
+				"<Timescale Multiplier to convert noncooling to cooling>");
 	msr->param.dNoncoolConvTimeMin = 1e6;
 	prmAddParam(msr->prm,"dNoncoolConvTimeMin",2,&msr->param.dNoncoolConvTimeMin,
 				sizeof(double),"ncctm",
 				"<Minimum Timescale to convert noncooling to cooling (yr)>");
+	msr->param.dNoncoolConvVelMin = 0;
+	prmAddParam(msr->prm,"dNoncoolConvVelMin",2,&msr->param.dNoncoolConvVelMin,
+				sizeof(double),"nccvm",
+				"<Minimum velocity to convert noncooling to cooling (km/s)>");
 	msr->param.bESF = 0;
 	prmAddParam(msr->prm,"bESF",0,&msr->param.bESF,
 				sizeof(int),"esf","use/don't");
@@ -2922,6 +2926,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dESFEnergy: %g",msr->param.dESFEnergy);
 	fprintf(fp," dNoncoolConvTime: %g",msr->param.dNoncoolConvTime);
 	fprintf(fp," dNoncoolConvTimeMin: %g",msr->param.dNoncoolConvTimeMin);
+	fprintf(fp," dNoncoolConvVelMin: %g",msr->param.dNoncoolConvVelMin);
 	fprintf(fp," iNSNIIQuantum: %d",msr->param.sn->iNSNIIQuantum);
 	fprintf(fp," bSNTurnOffCooling: %i",msr->param.bSNTurnOffCooling);
 	fprintf(fp," bShortCoolShutoff: %i",msr->param.bShortCoolShutoff);
@@ -6054,9 +6059,10 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.z = 1/a - 1;
 		invpr.duDotLimit = msr->param.duDotLimit;
 		invpr.dTimeEnd = dTime + dDelta/2.0;
-		invpr.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        invpr.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		invpr.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        invpr.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		invpr.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 		}
 	else {
 		double H;
@@ -6075,9 +6081,10 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.z = 1/a - 1;
 		invpr.duDotLimit = msr->param.duDotLimit;
 		invpr.dTimeEnd = dTime + dDelta/2.0;
-		invpr.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        invpr.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		invpr.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        invpr.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		invpr.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 		}
 	if (dDelta != 0.0) {
 		struct outKick out;
@@ -6236,9 +6243,10 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        in.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 #endif /* NEED_VPRED */
 		}
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
@@ -6292,9 +6300,10 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		a = csmTime2Exp(msr->param.csm,dTime);
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        in.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 #endif /* NEED_VPRED */
 		}
 	else {
@@ -6317,9 +6326,10 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        in.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 #endif /* NEED_VPRED */
 		}
 	if(!msr->param.bPatch) {
@@ -6401,9 +6411,10 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		a = csmTime2Exp(msr->param.csm,dTime);
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        in.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 #endif /* NEED_VPRED */
 		}
 	else {
@@ -6426,9 +6437,10 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        in.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 #endif /* NEED_VPRED */
 		}
 	if(!msr->param.bPatch) {
@@ -8739,9 +8751,10 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateState)
 	a = csmTime2Exp(msr->param.csm,dTime);
 	in.z = 1/a - 1;
 	in.dTime = dTime;
-	in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-	in.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-    in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+	in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+	in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+    in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+	in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 	in.iGasModel = msr->param.iGasModel;
 	in.bUpdateState = bUpdateState;
 
