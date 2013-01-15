@@ -1385,7 +1385,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		    "<Energy of supernova in ergs> = 0.1e51");
 #ifndef UNONCOOL
 	if (msr->param.sn->dESN > 0.0) msr->param.bSmallSNSmooth = 1;
-        else 
+	else msr->param.bSmallSNSmooth = 0;
 #else
 	    msr->param.bSmallSNSmooth = 0;
 #endif
