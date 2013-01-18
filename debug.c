@@ -40,8 +40,8 @@ void print_particle(PKD pkd,PARTICLE p) {
 	printf("*                                                                              *\n");
 #endif
 #ifdef UNONCOOL
-	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "uNoncool", p.uNoncool, "uNCPred", p.uNoncoolPred, "uNCDot", p.uNoncoolDot);
-	printf("* %9s: %13e %10s: %13e                           *\n", "uDotDiff", p.uDotDiff, "uNCDotDiff", p.uNoncoolDotDiff);
+	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "uNoncool", p.uNoncool, "uNCPred", p.uNoncoolPred, "uNCDotSPH", p.uNoncoolDotSPH);
+	printf("* %9s: %13e                                                     *\n", "uDotDiff", p.uDotDiff); 
 	printf("*                                                                              *\n");
 #endif
 #ifdef SHOCKTRACK
