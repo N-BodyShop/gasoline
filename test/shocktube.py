@@ -13,6 +13,14 @@ def plot_density(infile, step):
 	plt.savefig(testdir+"/shocktube_density_step"+step+".png")
 	plt.clf() 
 
+def plot_entropy(infile, step):
+	sim = pyn.load(testdir+"/"+infile)
+	plt.plot(sim.g['x'], np.power(sim.g['temp'], 1.5)/sim.g['rho'], 'r.')
+	plt.xlabel('position')
+	plt.ylabel(r'S')
+	plt.savefig(testdir+"/shocktube_entropy_step"+step+".png")
+	plt.clf() 
+
 def plot_temperature(infile, step):
 	sim = pyn.load(testdir+"/"+infile)
 	plt.plot(sim.g['x'], sim.g['temp'], 'r.')
@@ -43,6 +51,7 @@ def make_plots():
 			("shocktube.00400", "400")]:
 		print "Plotting Step " + step
 		plot_density(infile, step)
+		plot_entropy(infile, step)
 		plot_temperature(infile, step)
 		plot_velocity(infile, step)
 		plot_pressure(infile, step)
