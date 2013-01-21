@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import os
+import subprocess
 import glob
 import shutil
 import pynbody as pyn
@@ -20,7 +21,7 @@ def run_gasoline(testdir, files, param, exe="gasoline", args=""):
 	shutil.copy(exe, testdir+'/gasoline')
 	print "Starting gasoline..."
 	os.chdir(testdir)
-	exitcode = os.spawnl(os.P_WAIT, './gasoline', args, param)
+	exitcode = subprocess.call('./gasoline '+args+' '+param , shell=True)
 	os.chdir('..')
 	if exitcode != 0:
 		print "gasoline failed with exit code: " + str(exitcode)
@@ -34,7 +35,7 @@ def build_gasoline(makefile, obj="gasoline", mdl="pthread"):
 	for i in glob.iglob("../*h"):
 		shutil.copy(i, "buildtmp/")
 	os.chdir("buildtmp")
-	exitcode = os.spawnlpe(os.P_WAIT, 'make', '', mdl, os.environ)
+	exitcode = subprocess.call('make '+mdl)
 	if exitcode != 0:
 		print "make failed with exit code: " + str(exitcode)
 	shutil.copy(obj, "../gasoline")
