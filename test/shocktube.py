@@ -11,51 +11,41 @@ def plot_density(testdir, infile, step):
 	plt.plot(sim.g['x'], sim.g['rho'], 'r.')
 	plt.xlabel('position')
 	plt.ylabel(r'$\rho$')
-	plt.savefig(testdir+"/shocktube_density_step"+step+".png")
-	plt.clf() 
-
-def plot_entropy(testdir, infile, step):
-	sim = pyn.load(testdir+"/"+infile)
-	plt.plot(sim.g['x'], np.power(sim.g['temp'], 1.5)/sim.g['rho'], 'r.')
-	plt.xlabel('position')
-	plt.ylabel(r'S')
-	plt.savefig(testdir+"/shocktube_entropy_step"+step+".png")
-	plt.clf() 
 
 def plot_temperature(testdir, infile, step):
 	sim = pyn.load(testdir+"/"+infile)
 	plt.plot(sim.g['x'], sim.g['temp'], 'r.')
 	plt.xlabel('position')
 	plt.ylabel('temperature')
-	plt.savefig(testdir+"/shocktube_temperature_step"+step+".png")
-	plt.clf() 
 
 def plot_velocity(testdir, infile, step):
 	sim = pyn.load(testdir+"/"+infile)
 	plt.plot(sim.g['x'], sim.g['vx'], 'r.')
 	plt.xlabel('position')
 	plt.ylabel('velocity')
-	plt.savefig(testdir+"/shocktube_velocity_step"+step+".png")
-	plt.clf() 
 	
 def plot_pressure(testdir, infile, step):
 	sim = pyn.load(testdir+"/"+infile)
 	plt.plot(sim.g['x'], sim.g['rho']*sim.g['temp'], 'r.')
 	plt.xlabel('position')
 	plt.ylabel(r'$\rho$')
-	plt.savefig(testdir+"/shocktube_pressure_step"+step+".png")
-	plt.clf() 
 
 def make_plots(testdir):
-	for infile, step in [("shocktube.std", "0"), ("shocktube.00100", "100"), 
+	for infile, step in [("shocktube.std", "000"), ("shocktube.00100", "100"), 
 			("shocktube.00200", "200"), ("shocktube.00300", "300"),
 			("shocktube.00400", "400")]:
 		print "Plotting Step " + step
+		plt.subplot(221)
 		plot_density(testdir, infile, step)
-		plot_entropy(testdir, infile, step)
+		plt.subplot(222)
 		plot_temperature(testdir, infile, step)
+		plt.subplot(223)
 		plot_velocity(testdir, infile, step)
+		plt.subplot(224)
 		plot_pressure(testdir, infile, step)
+		plt.tight_layout(pad=0.1)
+		plt.savefig(testdir+"/shocktube_step%s.png" %step, dpi=150)
+		plt.clf()
 
 if __name__ == '__main__':
 	testdir='shocktube'
