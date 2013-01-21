@@ -1,13 +1,13 @@
 #!/usr/bin/python
 import os
 import shutil
+from testutil import run_gasoline
 import pynbody as pyn
 import numpy as np
 import matplotlib.pyplot as plt
 import pynbody.plot.sph as p_sph
-testdir='sedov'
 
-def plot_density():
+def plot_density(testdir):
 	rshock=[0.8995, 1.1864,1.3958]
 	time_10 = pyn.load(testdir+'/sedov.00010')
 	time_20 = pyn.load(testdir+'/sedov.00020')
@@ -21,7 +21,7 @@ def plot_density():
 	plt.ylabel("Density $(M_\odot/kpc^3)$")
 	plt.xlim((0,2))
 
-def plot_density_image():
+def plot_density_image(testdir):
 	plt.ion()
 	rshock=[0.8995, 1.1864,1.3958]
 	rshock10x = rshock[0]*np.cos(np.arange(0,2*np.pi,0.0001))
@@ -46,7 +46,7 @@ def plot_density_image():
 	plt.tight_layout(pad=0.1)
 	plt.savefig(testdir+'/sedov_density_image.png', dpi=100)
 
-def plot_velocity():
+def plot_velocity(testdir):
 	time_10 = pyn.load(testdir+'/sedov.00010')
 	time_20 = pyn.load(testdir+'/sedov.00020')
 	time_30 = pyn.load(testdir+'/sedov.00030')
@@ -58,7 +58,7 @@ def plot_velocity():
 	plt.xlim((0,2))
 	plt.ylim((-10,40))
 
-def plot_temperature():
+def plot_temperature(testdir):
 	time_30 = pyn.load(testdir+'/sedov.00030')
 	plt.semilogy(time_30['r'], time_30['temp'], '.k')
 	plt.xlabel("Radius $(kpc)$")
@@ -66,7 +66,7 @@ def plot_temperature():
 	plt.xlim((0,2))
 	plt.ylim((1,1e8))
 
-def plot_entropy():
+def plot_entropy(testdir):
 	time_30 = pyn.load(testdir+'/sedov.00030')
 	plt.semilogy(time_30['r'], np.power(time_30['temp'], 1.5)/time_30['rho'], '.k')
 	plt.semilogy([0,0.1], [5.13e6, 5.13e6], 'r-')
@@ -76,48 +76,22 @@ def plot_entropy():
 	plt.ylim((6e3,6e7))
 
 
-def make_plots():
-	#plt.subplot(221)
-	#plot_density()
-	#plt.subplot(222)
-	#plot_temperature()
-	#plt.subplot(223)
-	#plot_velocity()
-	#plt.subplot(224)
-	#plot_entropy()
-	#plt.tight_layout(pad=0.1)
-	#plt.savefig(testdir+'/sedov.png', dpi=150)
-	plot_density_image()
-
-def run_gasoline(exe, args):
-	try:
-		os.mkdir(testdir)
-	except OSError:
-		print "Output directory already exists, not running gasoline"
-		return
-	shutil.copy('data/sedov.std', testdir)
-	shutil.copy('data/sedov.param', testdir)
-	shutil.copy(exe, testdir+'/gasoline')
-	print "Starting gasoline..."
-	os.chdir(testdir)
-	exitcode = os.spawnl(os.P_WAIT, './gasoline', args, 'sedov.param')
-	os.chdir('..')
-	if exitcode != 0:
-		print "gasoline failed with exit code: " + str(exitcode)
-
-def readconfig():
-	output = {'EXE':'gasoline', 'ARGS':''}
-	configfile = open('test.cfg')
-	for line in configfile:
-		if line[0] == '#':
-			continue
-		if line.split()[0] == 'EXE:':
-			output['EXE'] = line.split()[1]
-		if line.split()[0] == 'ARGS:':
-			output['ARGS'] = line.split()[1]
-	return output
+def make_plots(testdir):
+	plt.subplot(221)
+	plot_density(testdir)
+	plt.subplot(222)
+	plot_temperature(testdir)
+	plt.subplot(223)
+	plot_velocity(testdir)
+	plt.subplot(224)
+	plot_entropy(testdir)
+	plt.tight_layout(pad=0.1)
+	plt.savefig(testdir+'/sedov.png', dpi=150)
+	plot_density_image(testdir)
 
 if __name__ == '__main__':
-	config = readconfig()
-	run_gasoline(config['EXE'], config['ARGS'])
-	make_plots()
+	testdir='sedov'
+	files = ["data/sedov.std", "data/sedov.param"]
+	exe = "../gasoline.ce92ce93"
+	run_gasoline(testdir, files, 'sedov.param', exe)
+	make_plots(testdir)
