@@ -2,6 +2,7 @@
 import os
 import shutil
 import pynbody as pyn
+import numpy as np
 import matplotlib.pyplot as plt
 import pynbody.plot.sph as p_sph
 testdir='sedov'
@@ -19,9 +20,9 @@ def plot_density():
 	plt.xlabel("Radius $(kpc)$")
 	plt.ylabel("Density $(M_\odot/kpc^3)$")
 	plt.xlim((0,2))
-	plt.title(title)
 
 def plot_density_image():
+	plt.ion()
 	rshock=[0.8995, 1.1864,1.3958]
 	rshock10x = rshock[0]*np.cos(np.arange(0,2*np.pi,0.0001))
 	rshock10y = rshock[0]*np.sin(np.arange(0,2*np.pi,0.0001))
@@ -29,20 +30,21 @@ def plot_density_image():
 	rshock20y = rshock[1]*np.sin(np.arange(0,2*np.pi,0.0001))
 	rshock30x = rshock[2]*np.cos(np.arange(0,2*np.pi,0.0001))
 	rshock30y = rshock[2]*np.sin(np.arange(0,2*np.pi,0.0001))
-	plt.set_cmap('gray')
 	time_10 = pyn.load(testdir+'/sedov.00010')
 	time_20 = pyn.load(testdir+'/sedov.00020')
 	time_30 = pyn.load(testdir+'/sedov.00030')
-	plt.subplot(311)
-	p_sph.image(time_10)
-	plt.plot(rshock10x, rshock10y, 'r.')
-	plt.subplot(312)
-	p_sph.image(time_20)
-	plt.plot(rshock20x, rshock20y, 'r.')
-	plt.subplot(313)
-	p_sph.image(time_30)
-	plt.plot(rshock30x, rshock30y, 'r.')
-	plt.savefig('sedov_density_image.png')
+	f = plt.figure(figsize=(9,3))
+	p = f.add_subplot(131)
+	p_sph.image(time_10, width=4, show_cbar=False, subplot=p, clear=False, cmap='gray')
+	plt.plot(rshock10x, rshock10y, 'r,')
+	p = f.add_subplot(132)
+	p_sph.image(time_20, width=4, show_cbar=False, subplot=p, clear=False, cmap='gray')
+	plt.plot(rshock20x, rshock20y, 'r,')
+	p = f.add_subplot(133)
+	p_sph.image(time_30, width=4, show_cbar=False, subplot=p, clear=False, cmap='gray')
+	plt.plot(rshock30x, rshock30y, 'r,')
+	plt.tight_layout(pad=0.1)
+	plt.savefig(testdir+'/sedov_density_image.png', dpi=100)
 
 def plot_velocity():
 	time_10 = pyn.load(testdir+'/sedov.00010')
@@ -55,16 +57,14 @@ def plot_velocity():
 	plt.ylabel("Velocity $(km/s)$")
 	plt.xlim((0,2))
 	plt.ylim((-10,40))
-	plt.title(title)
 
 def plot_temperature():
 	time_30 = pyn.load(testdir+'/sedov.00030')
-	plt.semilogy(time_30['r'], time_30['temp'], ',k')
+	plt.semilogy(time_30['r'], time_30['temp'], '.k')
 	plt.xlabel("Radius $(kpc)$")
 	plt.ylabel("Temperature $(K)$")
 	plt.xlim((0,2))
 	plt.ylim((1,1e8))
-	plt.title(title)
 
 def plot_entropy():
 	time_30 = pyn.load(testdir+'/sedov.00030')
@@ -74,19 +74,19 @@ def plot_entropy():
 	plt.ylabel("$A(S) K^{1.5} cc/g$")
 	plt.xlim((0,2))
 	plt.ylim((6e3,6e7))
-	plt.title(title)
 
 
 def make_plots():
-	plt.subplot(221)
-	plot_density()
-	plt.subplot(222)
-	plot_temperature()
-	plt.subplot(223)
-	plot_velocity()
-	plt.subplot(224)
-	plot_entropy()
-	plt.savefig(testdir+'/sedov.png')
+	#plt.subplot(221)
+	#plot_density()
+	#plt.subplot(222)
+	#plot_temperature()
+	#plt.subplot(223)
+	#plot_velocity()
+	#plt.subplot(224)
+	#plot_entropy()
+	#plt.tight_layout(pad=0.1)
+	#plt.savefig(testdir+'/sedov.png', dpi=150)
 	plot_density_image()
 
 def run_gasoline(exe, args):
