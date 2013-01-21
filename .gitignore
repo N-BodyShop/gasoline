@@ -7,3 +7,6 @@ buildlog.*
 *.tar
 *.tar.gz
 *.o
+test/shocktube
+test/sedov
+test/onestar
