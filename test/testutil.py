@@ -35,7 +35,7 @@ def build_gasoline(makefile, obj="gasoline", mdl="pthread"):
 	for i in glob.iglob("../*h"):
 		shutil.copy(i, "buildtmp/")
 	os.chdir("buildtmp")
-	exitcode = subprocess.call('make '+mdl)
+	exitcode = subprocess.call(['make', mdl])
 	if exitcode != 0:
 		print "make failed with exit code: " + str(exitcode)
 	shutil.copy(obj, "../gasoline")
