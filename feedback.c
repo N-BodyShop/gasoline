@@ -166,6 +166,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    /*
 	     * Modify star particle
 	     */
+//        fprintf(stderr,"Mass dTotMassLoss %d %g %g  %g %g\n",p->iOrder,p->fMass,dTotMassLoss,dTime/(fb->dSecUnit/SEC_YR),p->fTimeForm);
 	    assert(p->fMass > dTotMassLoss);
 
 	    p->fMass -= dTotMassLoss;

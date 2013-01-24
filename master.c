@@ -52,12 +52,19 @@
 
 #define STOPFILE "STOP"			/* for user interrupt */
 
+#define NEWTIME
+#ifdef NEWTIME 
 double msrTime(void) {
 	struct timeval tv;
 
 	gettimeofday(&tv,NULL);
 	return tv.tv_sec + tv.tv_usec*1e-6;
 	}
+#else
+double msrTime(void) {
+	return time(NULL);
+	}
+#endif
 
 #define DEN_CGS_SYS 1.6831e6 /* multiply density in cgs by this to get
 								density in system units (AU, M_Sun) */
@@ -1124,10 +1131,18 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dNoncoolConvTime",2,&msr->param.dNoncoolConvTime,
 				sizeof(double),"ncct",
 				"<Timescale to convert noncooling to cooling (yr)>");
+	msr->param.dNoncoolConvTimeMul = 4;
+	prmAddParam(msr->prm,"dNoncoolConvTimeMul",2,&msr->param.dNoncoolConvTimeMul,
+				sizeof(double),"ncctmul",
+				"<Timescale Multiplier to convert noncooling to cooling>");
 	msr->param.dNoncoolConvTimeMin = 1e6;
 	prmAddParam(msr->prm,"dNoncoolConvTimeMin",2,&msr->param.dNoncoolConvTimeMin,
 				sizeof(double),"ncctm",
 				"<Minimum Timescale to convert noncooling to cooling (yr)>");
+	msr->param.dNoncoolConvVelMin = 0;
+	prmAddParam(msr->prm,"dNoncoolConvVelMin",2,&msr->param.dNoncoolConvVelMin,
+				sizeof(double),"nccvm",
+				"<Minimum velocity to convert noncooling to cooling (km/s)>");
 	msr->param.bESF = 0;
 	prmAddParam(msr->prm,"bESF",0,&msr->param.bESF,
 				sizeof(int),"esf","use/don't");
@@ -1304,6 +1319,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dCStar", 2, &msr->param.stfm->dCStar,
 		    sizeof(double), "stCStar",
 		    "<Star formation coefficient> = 0.1");
+	msr->param.stfm->bTempInclNoncool = 0;
+	prmAddParam(msr->prm,"bTempInclNoncool", 0, &msr->param.stfm->bTempInclNoncool,
+		    sizeof(int), "bTempInclNoncool",
+		    "<Include uNoncool in temp estimate for Temp>");
 	msr->param.stfm->dTempMax = 1.5e4;
 	prmAddParam(msr->prm,"dTempMax", 2, &msr->param.stfm->dTempMax,
 		    sizeof(double), "stTempMax",
@@ -2001,8 +2020,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		    prmSpecified(msr->prm, "dKpcUnit"));
 
 	    if (!(msr->param.iGasModel == GASMODEL_COOLING)) {
-		fprintf(stderr,"Warning: You are not running a cooling EOS with starformation\n");
-		}
+            fprintf(stderr,"Warning: You are not running a cooling EOS with starformation\n");
+            }
 
 #ifdef STARFORM
 	    srand(msr->param.iRandomSeed);
@@ -2901,11 +2920,13 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dMaxGasMass: %g",msr->param.stfm->dMaxGasMass);
 	fprintf(fp," dMaxStarMass: %g",msr->param.stfm->dMaxStarMass);
 	fprintf(fp," dZAMSDelayTime: %g",msr->param.stfm->dZAMSDelayTime);
+	fprintf(fp," dESN: %g",msr->param.sn->dESN);
 	fprintf(fp," bESF: %d",msr->param.bESF);
 	fprintf(fp," dESFTime: %g",msr->param.dESFTime);
 	fprintf(fp," dESFEnergy: %g",msr->param.dESFEnergy);
 	fprintf(fp," dNoncoolConvTime: %g",msr->param.dNoncoolConvTime);
 	fprintf(fp," dNoncoolConvTimeMin: %g",msr->param.dNoncoolConvTimeMin);
+	fprintf(fp," dNoncoolConvVelMin: %g",msr->param.dNoncoolConvVelMin);
 	fprintf(fp," iNSNIIQuantum: %d",msr->param.sn->iNSNIIQuantum);
 	fprintf(fp," bSNTurnOffCooling: %i",msr->param.bSNTurnOffCooling);
 	fprintf(fp," bShortCoolShutoff: %i",msr->param.bShortCoolShutoff);
@@ -4194,6 +4215,7 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
 #ifdef UNONCOOL
     OutputList[(*nOutputList)++]=OUT_U_ARRAY;
     OutputList[(*nOutputList)++]=OUT_UNONCOOL_ARRAY;
+    OutputList[(*nOutputList)++]=OUT_TEMPINC_ARRAY;
 #endif
     OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
     if (!msr->param.bBulkViscosity){
@@ -5347,6 +5369,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->dIonizeMultiple=msr->param.dIonizeMultiple;
     psmf->dIonizeTMin=msr->param.dIonizeTMin;
     psmf->dIonizeT=msr->param.dIonizeT;
+    psmf->bESF = msr->param.bESF;
     psmf->dESFTime = msr->param.dESFTime;
     psmf->dESFEnergy = msr->param.dESFEnergy;
 #endif /*STARFORM*/
@@ -6036,8 +6059,10 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.z = 1/a - 1;
 		invpr.duDotLimit = msr->param.duDotLimit;
 		invpr.dTimeEnd = dTime + dDelta/2.0;
-		invpr.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-		invpr.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        invpr.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		invpr.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 		}
 	else {
 		double H;
@@ -6056,8 +6081,10 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.z = 1/a - 1;
 		invpr.duDotLimit = msr->param.duDotLimit;
 		invpr.dTimeEnd = dTime + dDelta/2.0;
-		invpr.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-		invpr.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        invpr.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		invpr.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		invpr.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 		}
 	if (dDelta != 0.0) {
 		struct outKick out;
@@ -6216,8 +6243,10 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 #endif /* NEED_VPRED */
 		}
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
@@ -6271,8 +6300,10 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		a = csmTime2Exp(msr->param.csm,dTime);
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 #endif /* NEED_VPRED */
 		}
 	else {
@@ -6295,8 +6326,10 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 #endif /* NEED_VPRED */
 		}
 	if(!msr->param.bPatch) {
@@ -6378,8 +6411,10 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		a = csmTime2Exp(msr->param.csm,dTime);
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 #endif /* NEED_VPRED */
 		}
 	else {
@@ -6402,8 +6437,10 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-		in.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 #endif /* NEED_VPRED */
 		}
 	if(!msr->param.bPatch) {
@@ -7667,9 +7704,11 @@ void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
     pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
 
     if(out.iMaxRungIdeal > msrMaxRung(msr)) {
-	fprintf(stderr, "WARNING, TIMESTEPS TOO LARGE: nMaxRung (%d) is greater than ideal rung (%d)\n", 
-		msrMaxRung(msr), out.iMaxRungIdeal);
-	}
+        printf("WARNING, TIMESTEPS TOO LARGE: nMaxRung (%d) is greater than ideal rung (%d)\n", 
+            msrMaxRung(msr), out.iMaxRungIdeal);
+        fprintf(stderr, "WARNING, TIMESTEPS TOO LARGE: nMaxRung (%d) is greater than ideal rung (%d)\n", 
+            msrMaxRung(msr), out.iMaxRungIdeal);
+        }
     if (out.nMaxRung <= msr->param.nTruncateRung && out.iMaxRung > iRung) {
 	if (msr->param.bVDetails)
 	    printf("n_CurrMaxRung = %d  (iCurrMaxRung = %d):  Promoting particles to iCurrMaxrung = %d\n",
@@ -7957,6 +7996,7 @@ void msrTopStepKDK(MSR msr,
     double dMass = -1.0;
     int nActive;
 
+    printf("TopstepKDK %g %g %g\n",dStep,dTime,dDelta); //DEBUG dTime for SF
     LogTimingSetRung( msr, iKickRung );
     if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
 		if (msr->param.bVDetails) printf("Adjust, iRung: %d\n",iRung);
@@ -8098,9 +8138,11 @@ void msrTopStepKDK(MSR msr,
 		msrSimpleStarForm(msr, dTime, dDelta);
 #endif
 #ifdef STARFORM
-                /* only form stars at user defined intervals */
-                if ( iKickRung <= msr->param.iStarFormRung )
-                    msrFormStars(msr, dTime, max(dDelta,msr->param.dDeltaStarForm));
+        /* only form stars at user defined intervals */
+        if ( iKickRung <= msr->param.iStarFormRung ) {
+            printf("TopstepKDK %g %g %g SF \n",dStep,dTime,dDelta); //DEBUG dTime for SF
+            msrFormStars(msr, dTime, max(dDelta,msr->param.dDeltaStarForm));
+            }
 #endif
 		if (msr->param.bInflowOutflow) msrCreateInflow(msr, dTime, dDelta);
 
@@ -8709,7 +8751,10 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateState)
 	a = csmTime2Exp(msr->param.csm,dTime);
 	in.z = 1/a - 1;
 	in.dTime = dTime;
-	in.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+	in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+	in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
+    in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+	in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
 	in.iGasModel = msr->param.iGasModel;
 	in.bUpdateState = bUpdateState;
 
@@ -8774,6 +8819,31 @@ void msrInitSph(MSR msr,double dTime)
 		printf("Initializing SPH forces\n");
 	        msrSph(msr, dTime, 0); /* rungs should all be zero initially, pass iKickRung=0 */
 
+#ifdef OLDINITSPHCODE
+   	    msrBallMax(msr, 0, 1); /* set ball max - done in msrSph */
+	    if (msr->param.iViscosityLimiter || msr->param.bBulkViscosity
+		    || msr->param.bStarForm) {
+		        msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+			}
+		msrSphViscosityLimiter(msr, dTime);
+
+		msrGetGasPressure(msr, dTime);
+			
+		if (msr->param.bShockTracker) { 
+			msrReSmooth(msr,dTime,SMX_SPHPRESSURE,1);
+			msrUpdateShockTracker(msr, 0.0);
+			if (msr->param.bBulkViscosity) 
+			        msrReSmooth(msr,dTime,SMX_HKVISCOSITY,1);
+			else
+			        msrReSmooth(msr,dTime,SMX_SPHVISCOSITY,1);
+		        }
+		else {
+			if (msr->param.bBulkViscosity) 
+				msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);     
+			else
+				msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1); 
+		        }
+#endif
 		/* First guess at uDot with quite small step size 
 		   step size irrelevant for adiabatic gas */
    	        msrUpdateuDot(msr,dTime,0.5e-7*msr->param.dDelta,0);
@@ -8905,6 +8975,15 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     {
 #ifdef GASOLINE
 
+#ifdef TESTSPH
+    int iDump = 0;
+    if (dTime > 30351.157 && iKickRung == 0) {
+/*    if (dTime > 30 && iKickRung == 0) {*/
+	printf("DUMP: Starting Dump\n");
+	iDump = 1;
+	msrActiveType(msr,TYPE_GAS,(1<<20));
+	}
+#endif
 
 /*
 ** Build Tree for SPH

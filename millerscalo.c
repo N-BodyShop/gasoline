@@ -218,3 +218,65 @@ double imf1to8PreFactor(MSPARAM p)
   else return p->a1;
 #endif
 }
+
+#ifdef MS_TST
+int
+main(int argc, char **argv)
+{
+    int nsamp;
+    int i, imax;
+    double dlgm;
+    double lgm;
+    double Ntot;
+    double Mtot;
+    double dMassT1, dMassT2, dMass, part, sum;
+    
+    MSPARAM MSparam;
+    MSInitialize (&MSparam);
+
+    sum = 0;
+#if 0
+    dMassT1 = 3;
+    dMassT2 = 8;
+    imax = 101;
+    for (i = 0; i < imax; i++) {
+        dMass = dMassT1 + i*(dMassT2-dMassT1)/(float) imax;
+        part = dMSIMFSec (MSparam, dMass);
+        printf ("%g %g\n", dMass, part);
+        sum += part*0.05;
+    }
+    printf ("sum = %g\n", sum);
+
+    printf ("number SN Ia = %g\n", dNSNIa (MSparam, dMassT1, dMassT2));
+    printf ("mass in SN Ia %g\n", dMSNIa (MSparam, dMassT1, dMassT2));
+#endif
+
+    assert(argc == 2);
+    
+    nsamp = atoi(argv[1]);
+    dlgm = (2.0 + 1.0)/nsamp;
+    
+    Ntot = dMSCumNumber(MSparam, 0.0791);
+    Mtot = dMSCumMass(MSparam, 0.0791);
+    
+    printf("# Ntot, Mtot = %g %g\n", Ntot, Mtot);
+    printf("# Fraction of mass in stars that go Type II SN: %g\n",
+	   dMSCumMass(MSparam, 8.0)/Mtot);
+    printf("# SuperNovea/solar mass of stars formed: %g\n",
+	   dMSCumNumber(MSparam, 8.0)/Mtot);
+    
+    for(i = 0; i < nsamp; i++) {
+	double mass;
+	
+	lgm = -1.1 + i*dlgm;
+
+	mass = pow(10.0, lgm);
+
+
+	printf("%g %g %g %g\n", mass, dMSIMF(MSparam, mass),
+	       dMSCumNumber(MSparam, mass),
+	       dMSCumMass(MSparam, mass));
+	}
+    return 0;
+    }
+#endif

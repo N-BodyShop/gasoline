@@ -43,6 +43,7 @@ int SGN(double x);
 #define fseek fseeko
 #endif
 
+#include "debug.h"
 
 double pkdGetTimer(PKD pkd,int iTimer)
 {
@@ -2186,7 +2187,10 @@ void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSo
 		        }
 	        }
 	else {
-			for (i=0;i<n;++i) {
+	        for (i=0;i<n;++i) {
+#ifdef CHECKSOFT			  
+			  if (p[i].iOrder == CHECKSOFT) fprintf(stderr,"Particle %i: %g %g %g %i %g\n",p[i].iOrder,p[i].fDensity,sqrt(p[i].fBall2*.25),p[i].fSoft,p[i].iActive,dSoftMax);
+#endif
 			  if (TYPETest(&(p[i]),iVariableSoftType) && TYPEQueryACTIVE(&(p[i]))) {
 #ifdef DENSSOFT
 				  p[i].fSoft = pow((p[i].fMass*1.90986/p[i].fDensity),.3333333333);
@@ -2195,9 +2199,12 @@ void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSo
 				  p[i].fBall2 = p[i].fSoft;
 				  p[i].fSoft = (dTmp <= dSoftMax ? dTmp : dSoftMax);
 #endif
-					  }
-				}
-			}
+			          }
+#ifdef CHECKSOFT			  
+			  if (p[i].iOrder == CHECKSOFT) fprintf(stderr,"Particle %iA: %g %g %g %i %g\n",p[i].iOrder,p[i].fDensity,sqrt(p[i].fBall2*.25),p[i].fSoft,p[i].iActive,dSoftMax);
+#endif
+		        }
+	        }
 	}
 #endif
 
@@ -3884,12 +3891,22 @@ void pkdTimeVarying(PKD pkd,double dTime)
 	}
 
 
+/*DEBUG #define SPINUP*/
 
 #ifdef ROT_FRAME
 void
 pkdRotFrame(PKD pkd,double dOmega,double dOmegaDot)
 {
 	/* WARNING: p[i].fPot not updated */
+
+#ifdef SPINUP
+	PARTICLE *p = pkd->pStore;
+	int i;
+	for (i=0;i<pkd->nLocal;i++) {
+		p[i].a[0] -= dOmegaDot*p[i].r[1];
+		p[i].a[1] += dOmegaDot*p[i].r[0];
+		}
+#else
 	/* note Omega & dOmega/dt are assumed to be in the +z direction */
 
 	PARTICLE *p;
@@ -3909,6 +3926,7 @@ pkdRotFrame(PKD pkd,double dOmega,double dOmegaDot)
 		for (k=0;k<2;k++)
 			p[i].a[k] -= (w2r[k] + 2*wxv[k] + dwxr[k]);
 		}
+#endif
 	}
 #endif
 
@@ -4242,13 +4260,18 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 #endif
 				TYPEReset(p, TYPE_INFLOW); /* Original particle joins regular particles now */
 				}
-				if (p->r[0] < pkd->dxOutflow && TYPETest(p,TYPE_OUTFLOW)) { /* delete */ 
+			    if (p->r[0] < pkd->dxOutflow && TYPETest(p,TYPE_OUTFLOW)) { /* delete */ 
 				pkdDeleteParticle(pkd, p);
 				}
-				}
+			    }
 #endif
 
 #ifdef SINKING
+#ifdef SINKDBG
+			if (p->iOrder == 55) {
+			    printf("SINKDRIFT %g, %g %g %g, %g %g %g: %d %g\n",dTime+dDelta,p->v[0],p->v[1],p->v[2],p->r[0],p->r[1],p->r[2],p->iOrder,p->fMass);
+			    }
+#endif
 #endif
 #ifdef SLIDING_PATCH
 			p->v[1] += fShear;
@@ -4262,19 +4285,31 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 	}
 
 #ifdef UNONCOOL
-double pkduNoncoolConvRate(double dNoncoolConvRate, double dNoncoolConvRateMax, PARTICLE *p) 
+double pkduNoncoolConvRate(UNCC uncc, PARTICLE *p) 
     {
-    double rate;
-    if (dNoncoolConvRate > 0) return dNoncoolConvRate;
-    rate = sqrt(p->uNoncoolPred+p->uPred)/(p->fBall2*0.25);
-    if (rate > dNoncoolConvRateMax) return dNoncoolConvRateMax;
+    double rate,ueff;
+    if (uncc.dNoncoolConvRate > 0) return uncc.dNoncoolConvRate;
+    ueff = p->uNoncoolPred+p->uPred;
+    if (ueff < uncc.dNoncoolConvUMin) ueff = uncc.dNoncoolConvUMin;
+    rate = uncc.dNoncoolConvRateMul*sqrt((p->uNoncoolPred+p->uPred)/(p->fBall2*0.25));
+    if (rate > uncc.dNoncoolConvRateMax) return uncc.dNoncoolConvRateMax;
     return rate;
+    }
+
+double pkduNoncoolDot(UNCC uncc, PARTICLE *p) 
+    {
+    return p->uNoncoolDotSPH
+        + p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred) 
+#ifdef STARFORM
+        + p->fESNrate
+#endif
+        - p->uNoncoolPred*pkduNoncoolConvRate(uncc,p);
     }
 #endif
 
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
-    double z, double duDotLimit, double dTimeEnd, double dNoncoolConvRate, double dNoncoolConvRateMax )
+    double z, double duDotLimit, double dTimeEnd, UNCC uncc )
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -4336,7 +4371,10 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				    for (j=0;j<3;j++) {
 					p->vPred[j] += p->vSinkingTang0Mag*sqr02*(-sinth2*p->rSinking0Unit[j]+costh2*p->vSinkingTang0Unit[j])+p->vSinkingr0*(costh2*p->rSinking0Unit[j]+sinth2*p->vSinkingTang0Unit[j]);
 					}
-					}
+				    }
+#ifdef SINKDBG
+				if (p->iOrder == 55) printf("SINKINGKICK %d %g, %g %g  %g %g  %g %g\n",p->iOrder,dTimeEnd,p->vPred[0],p->v[0],p->vPred[1],p->v[1],p->vPred[2],p->v[2]);
+#endif
 #endif /* SINKING */
 				if (iGasModel != GASMODEL_ISOTHERMAL && iGasModel != GASMODEL_GLASS) {
 #ifndef NOCOOLING				
@@ -4349,18 +4387,14 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				      }
 #ifdef UNONCOOL
 			          {
-			          double uNoncoolDot = p->uNoncoolDotDiff
-				      + p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred) 
-#ifdef STARFORM
-				      + p->fESNrate
-#endif
-				      - p->uNoncoolPred*pkduNoncoolConvRate(dNoncoolConvRate,dNoncoolConvRateMax,p);
-
-				  p->uNoncoolPred = p->uNoncool + uNoncoolDot*duPredDelta;
-				  p->uNoncool = p->uNoncool + uNoncoolDot*duDelta;
-				  if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
-				  if (p->uNoncool < 0) p->uNoncool = 0;
-				  }
+                      double uNoncoolDot = pkduNoncoolDot(uncc,p);
+                      if ((p->iOrder%10000)==0) printf("UMIN %d: %g %g %g  %g\n",p->iOrder,p->uNoncoolPred,p->uPred,uncc.dNoncoolConvUMin,CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals ));
+                      if (p->iOrder == 8494772) fprintf(stderr,"uNoncool     %d: %g %g %g %g %g, %g %g %g\n",p->iOrder,p->uNoncool,p->uNoncoolDotSPH,p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred),p->fESNrate,-p->uNoncoolPred*pkduNoncoolConvRate(uncc,p),p->uNoncoolPred,uNoncoolDot*duDelta,duDelta);
+                      p->uNoncoolPred = p->uNoncool + uNoncoolDot*duPredDelta;
+                      p->uNoncool = p->uNoncool + uNoncoolDot*duDelta;
+                      if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
+                      if (p->uNoncool < 0) p->uNoncool = 0;
+                      }
 #endif
 #else /* NOCOOLING */
 				  p->uPred = p->u + p->PdV*duPredDelta;
@@ -4633,6 +4667,9 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef VARALPHA
 		p->alpha = cp.alpha;
 		p->alphaPred = cp.alpha;
+#endif
+#ifdef COOLDEBUG
+		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
 #endif
 #ifdef STARFORM 
 		p->fESNrate = 0.0;
@@ -5161,8 +5198,9 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
     int i;
     int iMaxRungOut;
     int iTempRung;
-    int nMaxRung;
+    int nMaxRung,nExceed=0;
     int iMaxRungIdeal;
+    int bDiag;
     
     iMaxRungOut = 0;
     iMaxRungIdeal = 0;
@@ -5171,16 +5209,45 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
 		if(pkd->pStore[i].iRung >= iRung) {
 			mdlassert(pkd->mdl,TYPEQueryACTIVE(&(pkd->pStore[i])));
 			if(bAll) {          /* Assign all rungs at iRung and above */
-			        assert(pkd->pStore[i].fSoft > 0.0);
-			        assert(pkd->pStore[i].dt > 0.0);
+                assert(pkd->pStore[i].fSoft > 0.0);
+                assert(pkd->pStore[i].dt > 0.0);
 				iTempRung = pkdOneParticleDtToRung( iRung,dDelta,pkd->pStore[i].dt);
 
+                bDiag = 0;
 				if(iTempRung >= iMaxRungIdeal)
 					iMaxRungIdeal = iTempRung+1;
-				if(iTempRung >= iMaxRung)
+				if(iTempRung >= iMaxRung) {
+                    nExceed++;
+                    if (nExceed < 100) bDiag = 1;
 					iTempRung = iMaxRung-1;
+                    }
+                
+                if (pkd->pStore[i].iOrder == 8494772) bDiag = 1;
+                if (bDiag) {
+                    PARTICLE *p = &pkd->pStore[i];
+                    double ph = sqrt(p->fBall2*0.25);
+#ifndef NOCOOLING
+                    double pTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
+#ifdef UNONCOOL
+                    double pTempTot = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u+p->uNoncool, p->fMetals );
+#else
+                    double pTempTot = p->u;
+#endif
+#else
+                    double pTemp = p->u, pTempTot = -1;
+#endif
+                    double h1=0,h2=0;
+#ifdef STARFORM
+                    h1 = p->fESNrate;
+#endif
+#ifndef NOCOOLING
+                    h2 = p->uDot;
+#endif
+                    fprintf(stderr,"p %d exceeds maxrung: %g %g %g  T %g %g udot %g %g h %g %g dt %g %g %g %g %g %g %g\n",p->iOrder,p->fDensity,p->c,sqrt(p->v[0]*p->v[0]+p->v[1]*p->v[1]+p->v[2]*p->v[2]),pTemp,pTempTot,h1,h2,ph,p->fSoft,p->dt,0.4*(ph/(p->c + 0.6*(p->c))),0.4*(ph/(p->c + 0.6*(p->c + 2*p->mumax))),0.2*sqrt(ph/sqrt(p->a[0]*p->a[0]+p->a[1]*p->a[1]+p->a[2]*p->a[2])),0.25*p->u/p->PdV,1/2.8*ph*ph/(p->diff),p->dtOld);
+                    }
 
 				pkd->pStore[i].iRung = iTempRung;
+				pkd->pStore[i].dtOld = pkd->pStore[i].dt;
 				}
 			else {
 				if(dDelta <= pkd->pStore[i].dt) {
@@ -5536,6 +5603,11 @@ int pkdSetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
 
     for(i=0;i<pkdLocal(pkd);++i) {
 		p = &pkd->pStore[i];
+#ifdef COOLDEBUG
+		if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
+		assert(p->u >= 0.0);
+		assert(p->uPred >= 0.0);
+#endif
 		/* DEBUG: Paranoia check */
 		mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
 		if (TYPETest(p,iTestMask)) {
@@ -5953,7 +6025,7 @@ int pkdIsStarByOrder(PKD pkd,PARTICLE *p) {
 
 #ifdef GASOLINE
 
-void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNoncoolConvRate, double dNoncoolConvRateMax, int iGasModel, int bUpdateState )
+void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, int iGasModel, int bUpdateState )
 {
 #ifndef NOCOOLING	
 	PARTICLE *p;
@@ -5986,7 +6058,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNonc
     if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
 #ifdef UNONCOOL
       ExternalHeating = p->PdV*p->uPred/(p->uPred+p->uNoncoolPred) + p->uDotDiff 
-	  + p->uNoncoolPred*pkduNoncoolConvRate(dNoncoolConvRate,dNoncoolConvRateMax,p);
+          + p->uNoncoolPred*pkduNoncoolConvRate(uncc,p);
 #else
       ExternalHeating = p->PdV;
 #ifdef STARFORM
@@ -6143,10 +6215,10 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p)) {
-#ifdef UNONCOOL
-		        PoverRho = gammam1*(p->uPred+p->uNoncoolPred);
+#ifdef UNONCOOLOLD
+            PoverRho = gammam1*(p->uPred+p->uNoncoolPred);
 #else
-			PoverRho = gammam1*p->uPred;
+            PoverRho = gammam1*p->uPred;
 #endif
 			p->PoverRho2 = PoverRho/p->fDensity;
 			/*
@@ -6216,7 +6288,7 @@ void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma,
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p)) {
 		        CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, &PoverRho, &(p->c) );
-#ifdef UNONCOOL
+#ifdef UNONCOOLOLD
 		        PoverRho += gammam1*(p->uNoncoolPred);
 #endif
 			p->PoverRho2 = PoverRho/p->fDensity;
@@ -6455,10 +6527,16 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 #endif
 #endif
 
-		   if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */
-				assert(p->u > 0.0);
-				dTu = dEtauDot*p->u/fabs(p->PdV);
-				if (dTu < dT) 
+	       if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */
+#ifdef SSFDEBUG
+			    if (p->u<=0) printf("p->iOrder: %i\n",p->iOrder);
+#endif
+#ifdef SSFDEBUG
+			    if (p->iOrder==5514) printf("dT1 %i: %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,dT);
+#endif
+			    assert(p->u > 0.0);
+			    dTu = dEtauDot*p->u/fabs(p->PdV);
+			    if (dTu < dT) 
 				dT = dTu;
 		   }
 #ifdef DIFFUSION
@@ -6467,6 +6545,9 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 		   dTD = (1/2.8*(dEtaCourant/0.4))*ph*ph/(p->diff);  
 		   if (dTD < dT) dT = dTD;
 		   }
+#endif
+#ifdef SSFDEBUG
+	       if (p->iOrder==5514) printf("dT2 %i: %f %f %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,dT,dTu,p->PdV);
 #endif
 
 		if(dT < p->dt)
@@ -7046,7 +7127,7 @@ void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
 #ifdef GASOLINE
 void
 pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
-    int iGasModel,double z,double duDotLimit, double dTimeEnd,double dNoncoolConvRate,double dNoncoolConvRateMax)
+    int iGasModel,double z,double duDotLimit, double dTimeEnd,UNCC uncc)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -7100,12 +7181,18 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 				}
 			    }
 #endif /* (0) */
+#ifdef SINKDBG
+			if (p->iOrder == 55) printf("SINKINGKICKVPRED %d %g, %g %g  %g %g  %g %g\n",p->iOrder,dTimeEnd,p->vPred[0],p->v[0],p->vPred[1],p->v[1],p->vPred[2],p->v[2]);
+#endif
 #endif
 			if (iGasModel != GASMODEL_ISOTHERMAL && iGasModel != GASMODEL_GLASS) {
 #ifndef NOCOOLING
 #ifdef COOLDEBUG
 				if (p->uPred+p->uDot*duDelta < 0) 
 					fprintf(stderr,"upred error %i: %g %g %g -> %g %i\n",p->iOrder,p->uPred,p->uDot,duDelta,p->uPred + p->uDot*duDelta,p->iRung);
+#endif
+#ifdef SSFDEBUG
+			    if (p->iOrder==5514) printf("%i: %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,duDelta);
 #endif
 			  p->uPred = p->uPred + p->uDot*duDelta;
 			  if (p->uPred < 0) {
@@ -7114,12 +7201,8 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 			      }
 #ifdef UNONCOOL
 			  {
-			  double uNoncoolDot = p->uNoncoolDotDiff
-			      + p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred) 
-#ifdef STARFORM
-			      + p->fESNrate
-#endif
-			      - p->uNoncoolPred*pkduNoncoolConvRate(dNoncoolConvRate,dNoncoolConvRateMax,p);
+			  double uNoncoolDot = pkduNoncoolDot(uncc,p);
+              if (p->iOrder == 8494772) fprintf(stderr,"uNoncoolpred %d: %g %g %g %g %g, %g %g %g\n",p->iOrder,p->uNoncool,p->uNoncoolDotSPH,p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred),p->fESNrate,-p->uNoncoolPred*pkduNoncoolConvRate(uncc,p),p->uNoncoolPred,uNoncoolDot*duDelta,duDelta);
 			  p->uNoncoolPred = p->uNoncoolPred + uNoncoolDot*duDelta;
 			  if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
 			      }

@@ -12,7 +12,15 @@
 #define DBL_MAX 1.7976931348623157E+308
 #endif
 
+/*
+ * If you change these, see also xdr_FLOAT() in outtype.c
+ */
+#ifndef SINGLE
 #define FLOAT double
 #define FLOAT_MAXVAL DBL_MAX
+#else
+#define FLOAT float
+#define FLOAT_MAXVAL FLT_MAX
+#endif
 
 #endif

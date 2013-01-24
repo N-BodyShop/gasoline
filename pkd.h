@@ -85,6 +85,7 @@ typedef struct particle {
         FLOAT fDensity;
         FLOAT dt;               /* a time step suggestion */
         FLOAT dtNew;            /* SPH new dt estimate */
+        FLOAT dtOld;            /* SPH Old dt */
         FLOAT dtGrav;           /* suggested 1/dt^2 from gravity */
 #ifdef SLIDING_PATCH
         FLOAT dPy;              /* Canonical momentum for Hill eqn. */
@@ -110,9 +111,8 @@ typedef struct particle {
 #ifdef UNONCOOL
         FLOAT uNoncool;
         FLOAT uNoncoolPred;
-        FLOAT uNoncoolDot;
         FLOAT uDotDiff;
-        FLOAT uNoncoolDotDiff;
+        FLOAT uNoncoolDotSPH;
 #endif
         FLOAT divv;             
 #ifdef DODVDS
@@ -788,9 +788,20 @@ void pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder, int bEwald,int iEwOr
 void pkdCalcEandL(PKD,double *,double *,double *,double []);
 void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,int,FLOAT,double);
-double pkduNoncoolConvRate(double dNoncoolConvRate,double dNoncoolConvRateMax,PARTICLE *p);
-void pkdUpdateUdot(PKD pkd,double,double,double,double,double,int,int);
-void pkdKick(PKD pkd,double,double, double, double, double, double, int, double, double, double, double, double);
+
+typedef struct uNonCoolContext {
+    double dNoncoolConvRate;
+    double dNoncoolConvRateMul;
+    double dNoncoolConvRateMax;
+    double dNoncoolConvUMin;
+    } UNCC;
+
+double pkduNoncoolConvRate(UNCC uncc,PARTICLE *p);
+double pkduNoncoolDot(UNCC uncc,PARTICLE *p);
+void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, int iGasModel, int bUpdateState );
+void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
+	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
+    double z, double duDotLimit, double dTimeEnd, UNCC uncc );
 void pkdKickPatch(PKD pkd, double dvFacOne, double dvFacTwo,
 		  double dOrbFreq, int bOpen);
 void pkdGravInflow(PKD pkd, double r);
@@ -884,7 +895,7 @@ void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);
 
 #ifdef GASOLINE
 
-void pkdUpdateuDot(PKD,double,double,double,double,double,int,int);
+void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, int iGasModel, int bUpdateState );
 void pkdUpdateShockTracker(PKD,double, double, double);
 void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma,
 			     double dResolveJeans, double dCosmoFac);
@@ -940,8 +951,8 @@ void pkdMassInR(PKD pkd, double R, double *pdMass, FLOAT *com);
 
 #ifdef NEED_VPRED
 #ifdef GASOLINE
-void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo, double duDelta,
-    int iGasModel, double z, double duDotLimit,double,double,double);
+void pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
+    int iGasModel,double z,double duDotLimit, double dTimeEnd,UNCC uncc);
 #else
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
 #endif

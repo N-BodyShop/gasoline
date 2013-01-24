@@ -14,8 +14,8 @@
 
 struct parameters {
 	/*
-	 ** Parameters for PKDGRAV.
-	 */
+    ** Parameters for PKDGRAV.
+    */
 	int nThreads;
 	int bDiag;
 	int bOverwrite;
@@ -24,13 +24,13 @@ struct parameters {
 	int bVStep;
 	int bVRungStat;
 	int bVDetails;
-        int bLogTiming;
-        int bLogTimingSubStep;
-        int bLogTimingStep;
-        int bLogTimingSubStepTot;
-        int bLogTimingStepTot;
+    int bLogTiming;
+    int bLogTimingSubStep;
+    int bLogTimingStep;
+    int bLogTimingSubStepTot;
+    int bLogTimingStepTot;
 	int bPeriodic;
-        int    bInflowOutflow;
+    int bInflowOutflow;
 	int bRestart;
 	int bParaRead;
 	int bParaWrite;
@@ -46,7 +46,7 @@ struct parameters {
 	int bDensityStep;
     int bDeltaAccelStep;
     int bDeltaAccelStepGasTree;
-        int bLongRangeStep;
+    int bLongRangeStep;
 	int nTruncateRung;
 	int bNonSymp;
     int iBinaryOutput;
@@ -61,33 +61,33 @@ struct parameters {
 	int bDodtOutput;
 	int bDoIonOutput;
 #ifdef COOLING_MOLECULARH 
-  int bDoCorreL; /* Output the correlation length used for calculating H2 shielding*/
+    int bDoCorreL; /* Output the correlation length used for calculating H2 shielding*/
 #endif
-  int bDoCSound;
+    int bDoCSound;
 #ifdef  RADIATIVEBOX
-  int bDoStellarLW; /*Turn this on to have the LW radiation outputted*/
+    int bDoStellarLW; /*Turn this on to have the LW radiation outputted*/
 #endif
 	int bDoDminOutput;
 	int bSymCool;
-        int bDoGravity;
-        int bDoSelfGravity;
-        int bFandG;
-        int bHeliocentric;
-            double dSunSoft;
-        int bLogHalo;
-        double dLogHaloVcirc;
-        double dLogHaloEps;
-        double dLogHaloFlat;
-        int bHernquistSpheroid;
-        int bNFWSpheroid;
-            double dNFWm200;
-            double dNFWr200;
-            double dNFWconc;
-            double dNFWsoft;
-        int bElliptical;
-        int bEllipticalDarkNFW;
-            int bHomogSpheroid;
-        int bBodyForce;
+    int bDoGravity;
+    int bDoSelfGravity;
+    int bFandG;
+    int bHeliocentric;
+    double dSunSoft;
+    int bLogHalo;
+    double dLogHaloVcirc;
+    double dLogHaloEps;
+    double dLogHaloFlat;
+    int bHernquistSpheroid;
+    int bNFWSpheroid;
+    double dNFWm200;
+    double dNFWr200;
+    double dNFWconc;
+    double dNFWsoft;
+    int bElliptical;
+    int bEllipticalDarkNFW;
+    int bHomogSpheroid;
+    int bBodyForce;
 	double dBodyForceConst;
 	int bChrisDisk;
 	double dChrisDiskVc;
@@ -95,19 +95,19 @@ struct parameters {
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
-        ROTBAR  rotbar;
+    ROTBAR  rotbar;
     
 	int bRotFrame;
 	double dOmega;
 	double dOmegaDot;
 	int bPatch;
-  PATCH_PARAMS PP;
+    PATCH_PARAMS PP;
 	int bSimpleGasDrag;
 	int bEpstein;
 	double dGamma;
 	int nBucket;
 	int iOutInterval;
-        int iOutMinorInterval;
+    int iOutMinorInterval;
 	int iLogInterval;
 	int iCheckInterval;
 	int iOrder;
@@ -121,9 +121,9 @@ struct parameters {
 	int iMaxRung;
 	int nSuperCool;
 	int nGrowMass;
-        int bGrowGas;
-        int bGrowStar;
-        int bGrowDark;
+    int bGrowGas;
+    int bGrowStar;
+    int bGrowDark;
 	int iWallRunTime;
 	int bPhysicalSoft;  
 	int bSoftMaxMul;
@@ -157,7 +157,7 @@ struct parameters {
     int iSinkCurrentRung;
     int nJeans;
 	double dEta;
-        double dEtaDeltaAccel;
+    double dEtaDeltaAccel;
 	double dExtraStore;
 	double dSoft;
 	double dSoftMax;
@@ -175,10 +175,10 @@ struct parameters {
 	double dxPeriod;
 	double dyPeriod;
 	double dzPeriod;
-        double dxInflow;
-        double dxOutflow;
-        double drLastInflow;
-        double dxLastInflow;
+    double dxInflow;
+    double dxOutflow;
+    double drLastInflow;
+    double dxLastInflow;
 	CSM csm;
 	double dRedTo;
 	double dCentMass;
@@ -193,33 +193,33 @@ struct parameters {
     double dBHSinkEddFactor;
     double dBHSinkFeedbackFactor;
     double dBHSinkAlpha;
-  double dSinkCurrentDelta;
-  int bBHTurnOffCooling;
-  int bSmallBHSmooth;
-  int bDoBHKick;
-  int bBHForm;
-  double dBHFormProb;
-  double dInitBHMass;
-  int bBHMindv;
-  int bBHAccreteAll;
+    double dSinkCurrentDelta;
+    int bBHTurnOffCooling;
+    int bSmallBHSmooth;
+    int bDoBHKick;
+    int bBHForm;
+    double dBHFormProb;
+    double dInitBHMass;
+    int bBHMindv;
+    int bBHAccreteAll;
 	char achDigitMask[MAXPATHLEN];
 	char achInFile[MAXPATHLEN];
 	char achOutName[MAXPATHLEN];
 	char achDataSubPath[MAXPATHLEN];
-        char achOutputListGasRed[MAXLISTLEN];
-        char achOutputListDarkRed[MAXLISTLEN];
-        char achOutputListStarRed[MAXLISTLEN];
-        char achOutputListGasInterval[MAXLISTLEN];
-        char achOutputListDarkInterval[MAXLISTLEN];
-        char achOutputListStarInterval[MAXLISTLEN];
-        char achOutputListGasMinorInterval[MAXLISTLEN];
-        char achOutputListDarkMinorInterval[MAXLISTLEN];
-        char achOutputListStarMinorInterval[MAXLISTLEN];
+    char achOutputListGasRed[MAXLISTLEN];
+    char achOutputListDarkRed[MAXLISTLEN];
+    char achOutputListStarRed[MAXLISTLEN];
+    char achOutputListGasInterval[MAXLISTLEN];
+    char achOutputListDarkInterval[MAXLISTLEN];
+    char achOutputListStarInterval[MAXLISTLEN];
+    char achOutputListGasMinorInterval[MAXLISTLEN];
+    char achOutputListDarkMinorInterval[MAXLISTLEN];
+    char achOutputListStarMinorInterval[MAXLISTLEN];
 	double dCoolFac;
 	double dCoolDens;
 	double dCoolMaxDens;
-        double dGrowMinM;
-        double dGrowMaxM;
+    double dGrowMinM;
+    double dGrowMaxM;
 	double dGrowDeltaM;
 	double dGrowStartT;
 	double dGrowEndT;
@@ -229,8 +229,8 @@ struct parameters {
 	int    bRungDD;
 	double dRungDDWeight;
 	/*
-	 ** Additional parameters for GASOLINE.
-	 */
+    ** Additional parameters for GASOLINE.
+    */
 	int bGeometric;
 	int bGasAdiabatic;
 	int bGasIsothermal;
@@ -248,7 +248,7 @@ struct parameters {
 	double dConstGamma;
 	double dMeanMolWeight;
 	double dGasConst;
-        double dTuFac;
+    double dTuFac;
 	double dMsolUnit;
 	double dKpcUnit;
 	double ddHonHLimit;
@@ -260,7 +260,7 @@ struct parameters {
 	int    iViscosityLimiter;
 	int    bViscosityLimitdt;
 	int    bShockTracker;
-        int    bVariableAlpha;
+    int    bVariableAlpha;
 	int    bBulkViscosity;
 	int    bGasDomainDecomp;
 	int    bLowerSoundSpeed;
@@ -268,13 +268,13 @@ struct parameters {
 	double dFracFastGas;
 	double dhMinOverSoft;
 	double dResolveJeans;
-        double dMetalDiffusionCoeff;
-        double dThermalDiffusionCoeff;
-        int    bConstantDiffusion;
+    double dMetalDiffusionCoeff;
+    double dThermalDiffusionCoeff;
+    int    bConstantDiffusion;
 	int    bDoGas;
 	int    bSphStep;
-        int    bSphSingleStep;
-        int    iRungForceCheck;
+    int    bSphSingleStep;
+    int    iRungForceCheck;
 #if defined(GASOLINE) && !defined(NOCOOLING)
 	COOLPARAM CoolParam;
 #endif
@@ -287,16 +287,16 @@ struct parameters {
 	double dDumpFrameStep;
 	double dDumpFrameTime;
 	int iTreeZipStep;
-        int bTreeZipLocal;
-        int    iDirector;
+    int bTreeZipLocal;
+    int    iDirector;
 	int    bStarForm;
 	int    bFeedBack;
 	int    bFormOutputs;
-        int    bIonize;
-        double dIonizeTime;
-        double dIonizeMultiple;
-        double dIonizeTMin;
-        double dIonizeT;
+    int    bIonize;
+    double dIonizeTime;
+    double dIonizeMultiple;
+    double dIonizeTMin;
+    double dIonizeT;
 #ifdef SIMPLESF
 	double SSF_dEfficiency;
     double SSF_dTMax;
@@ -321,7 +321,9 @@ struct parameters {
 	int nSmoothFeedback;
 #endif
     double dNoncoolConvTime;
+    double dNoncoolConvTimeMul;
     double dNoncoolConvTimeMin;
+    double dNoncoolConvVelMin;
     int bESF;
     double dESFEnergy;
     double dESFTime;
@@ -330,8 +332,8 @@ struct parameters {
     double dvturb;
 #ifdef GLASS
 	/*
-	 ** Additional parameters for GLASS.
-	 */
+    ** Additional parameters for GLASS.
+    */
 	double dGlassDamper;
 	/* Hack for shock tube glasses */
 	double dGlassPoverRhoL;
@@ -343,24 +345,24 @@ struct parameters {
 #endif
 #ifdef COLLISIONS
 	/*
-	 ** Additional parameters for collision code...
-	 */
+    ** Additional parameters for collision code...
+    */
 	int bFindRejects;
 	int iCollLogOption;
-        int iMinCollRung;
+    int iMinCollRung;
 	char achCollLog[MAXPATHLEN];
 	double dSmallStep;
 	double dxUnifGrav;
 	double dyUnifGrav;
 	double dzUnifGrav;
 	int    iMinBinaryRung;
-        double dBallVelFact;
-        double dMaxBinaryEcc;
+    double dBallVelFact;
+    double dMaxBinaryEcc;
 #ifdef SLIDING_PATCH
-        int    iRandStep;
-        double dLargeMass;
-        double dRandBall;
-        int iNextRandomization;
+    int    iRandStep;
+    double dLargeMass;
+    double dRandBall;
+    int iNextRandomization;
 #endif
 	COLLISION_PARAMS CP;
 #endif /* COLLISIONS */

@@ -559,9 +559,9 @@ struct inGravExternal {
 	 ** For external galaxy potential stuff
 	 */
 	int bLogHalo;
-	double dLogHaloVcirc;
-	double dLogHaloEps;
-	double dLogHaloFlat;
+        double dLogHaloVcirc;
+        double dLogHaloEps;
+        double dLogHaloFlat;
 	int bHernquistSpheroid;
     int bNFWSpheroid;
         double dNFWm200;
@@ -649,8 +649,7 @@ struct inUpdateuDot {
 	double duDelta;
 	double dTime;	
 	double z;
-        double dNoncoolConvRateMax;
-        double dNoncoolConvRate;
+    UNCC uncc;
 	int iGasModel;
 	int bUpdateState;
 	};
@@ -673,10 +672,9 @@ struct inKick {
 	double duPredDelta;
 	double duDotLimit;
 	int iGasModel;
-        double z;
-        double dTimeEnd;
-        double dNoncoolConvRateMax;
-        double dNoncoolConvRate;
+    double z;
+    double dTimeEnd;
+    UNCC uncc;
 	};
 struct outKick {
 	double Time;
@@ -1822,9 +1820,8 @@ struct inKickVpred {
 	double duDotLimit;
 	int iGasModel;
 	double z;
-        double dTimeEnd;
-        double dNoncoolConvRateMax;
-        double dNoncoolConvRate;
+    double dTimeEnd;
+    UNCC uncc;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
 #endif

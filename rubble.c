@@ -508,6 +508,10 @@ pkdRubbleStep(PKD pkd,double dMaxStep,double dMinStep)
 			pkd->pStore[i].dt = dMaxStep;
 		else
 			pkd->pStore[i].dt = dMinStep;
+/*		if (pkd->pStore[i].iOrder == 2536 || pkd->pStore[i].iOrder == 1834)
+			printf("particle %d is on step %e Minstep = %e Maxstep = %e\n",
+				   pkd->pStore[i].iOrder, pkd->pStore[i].dt,dMinStep,
+				   dMaxStep);*/ /* DEBUG 01.30.04*/
 		}
 	}
 
@@ -1569,6 +1573,40 @@ ran(void)
 	return rangen();
 	}
 
+#ifdef RANOLD /*DEBUG*/
+static double
+ran_old(void)
+{
+	static long idum;
+	
+	int j;
+	long k;
+	static long iy=0;
+	static long iv[NTAB];
+	float temp;
+
+	if (!iy) { /* throw away returned value in this case! */
+		idum = getpid();
+		idum = 421; /* DEBUG: want to run same simulation (11.25.03)*/
+		printf("idum = %ld\n", idum);
+		for (j=NTAB+7;j>=0;j--) {
+			k=idum/IQ;
+			idum=IA*(idum-k*IQ)-IR*k;
+			if (idum < 0) idum += IM;
+			if (j < NTAB) iv[j] = idum;
+			}
+		iy=iv[0];
+		}
+	k=idum/IQ;
+	idum=IA*(idum-k*IQ)-IR*k;
+	if (idum < 0) idum += IM;
+	j=iy/NDIV;
+	iy=iv[j];
+	iv[j] = idum;
+	if ((temp=AM*iy) > RNMX) return RNMX;
+	else return (double) temp;
+	}
+#endif
 
 #undef IA
 #undef IM

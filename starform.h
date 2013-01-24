@@ -3,7 +3,7 @@
 #define STARFORM_HINCLUDED
 
 typedef struct stfmContext 
-{
+    {
     double dMinMassFrac;        /* minimum fraction of average mass of neighbour 
                                    particles required for particle to avoid deletion */
     double dDeltaT;		/* timestep in system units */
@@ -14,6 +14,7 @@ typedef struct stfmContext
     double dPhysDenMin;		/* Physical density minimum for star
 				   formation (in system units) */
     double dOverDenMin;		/* Overdensity minimum for star formation */
+    int bTempInclNoncool;   /* Include uNoncool in temp estimate for TempMax */
     double dTempMax;		/* Form stars below this temperature
 				   EVEN IF the gas is not cooling. */
     double dSoftMin;		/* Jean's length as a fraction of
