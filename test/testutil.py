@@ -31,7 +31,7 @@ def run_gasoline(testdir, files, param, exe="gasoline", args="", paramdict={}):
 				del paramdict[line.split()[0]]
 		[paramlines.append(line) for line in paramdict.itervalues()]
 		outfile = open(param, 'w')
-		[outfile.write("%s\n" for line in paramlines]
+		[outfile.write("%s\n" % line) for line in paramlines]
 		outfile.close()
 		os.remove("tmp.param")
 	exitcode = subprocess.call('./gasoline '+args+' '+param , shell=True)
