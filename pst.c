@@ -113,6 +113,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_KICK,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstKick,
 				  sizeof(struct inKick),sizeof(struct outKick));
+	mdlAddService(mdl,PST_EMERGENCYADJUST,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstEmergencyAdjust,
+				  sizeof(struct inEmergencyAdjust),sizeof(struct outEmergencyAdjust));
 	mdlAddService(mdl,PST_KICKPATCH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstKickPatch,
 				  sizeof(struct inKickPatch),sizeof(struct outKick));
@@ -3146,7 +3149,9 @@ void pstDtSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 					 in->bSymmetric,in->iSmoothType,0,0.0);
 		smDtSmooth(smx,&in->smf);
 		smFinish(smx,&in->smf, &cs);
+#ifdef GASOLINE
 		if (out != NULL) out->dtMin = in->smf.dtMin;
+#endif
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -3536,6 +3541,37 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		out->nSum = 1;
 		}
 	if (pnOut) *pnOut = sizeof(struct outKick);
+	}
+
+void pstEmergencyAdjust(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inEmergencyAdjust *in = vin;
+	struct outEmergencyAdjust *out = vout;
+	struct outEmergencyAdjust outUp;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inEmergencyAdjust));
+
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_EMERGENCYADJUST,in,nIn);
+		pstEmergencyAdjust(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+
+		out->nUn += outUp.nUn;
+		if(outUp.iMaxRungOut > out->iMaxRungOut) {
+			out->iMaxRungOut = outUp.iMaxRungOut;
+			out->nMaxRung = outUp.nMaxRung;
+		        }
+		else if (outUp.iMaxRungOut == out->iMaxRungOut) 
+		        out->nMaxRung += outUp.nMaxRung;
+		        
+		if(outUp.iMaxRungIdeal > out->iMaxRungIdeal)
+		    out->iMaxRungIdeal = outUp.iMaxRungIdeal;
+		}
+	else {
+		pkdEmergencyAdjust(plcl->pkd,in->iRung,in->iMaxRung,in->dDelta,in->dDeltaThresh,&(out->nUn),&(out->iMaxRungIdeal), &(out->nMaxRung), &(out->iMaxRungOut) );
+		}
+	if (pnOut) *pnOut = sizeof(struct outEmergencyAdjust);
 	}
 
 void pstKickPatch(PST pst,void *vin,int nIn,void *vout,int *pnOut)
@@ -4641,16 +4677,10 @@ void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		switch( in->iGasModel ) {
 		case GASMODEL_ADIABATIC: 
 		case GASMODEL_ISOTHERMAL:
-			pkdAdiabaticGasPressure(plcl->pkd, in->gammam1,
-						in->gamma, in->dResolveJeans,
+		case GASMODEL_COOLING:
+			pkdGasPressure(plcl->pkd, in->gammam1,in->gamma, in->dResolveJeans,
 						in->dCosmoFac);
 			break;
-		case GASMODEL_COOLING:
-#ifndef NOCOOLING
-			pkdCoolingGasPressure(plcl->pkd, in->gammam1,in->gamma,
-					      in->dResolveJeans,
-					      in->dCosmoFac);
-#endif
 			break;
 		case GASMODEL_GLASS:
 #ifdef GLASS		  
@@ -4809,7 +4839,7 @@ void pstSphStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inSphStep));
 	if (pst->nLeaves > 1) {
-   	        double dtMinGas;
+        double dtMinGas;
 		mdlReqService(pst->mdl,pst->idUpper,PST_SPHSTEP,in,nIn);
 		pstSphStep(pst->pstLower,in,nIn,vout,pnOut);
 		mdlGetReply(pst->mdl,pst->idUpper,&dtMinGas,pnOut);

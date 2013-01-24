@@ -294,6 +294,7 @@ void msrInitAccel(MSR msr);
 void msrModifyAccel(MSR msr,double);
 void msrSwitchTheta(MSR msr,double);
 int msrMaxOrder(MSR msr);
+int msrMaxRung(MSR msr);
 
 void msrInitTimeSteps(MSR,double,double);
 

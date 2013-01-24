@@ -58,6 +58,7 @@ struct parameters {
  	int bDohOutput;
  	int bDoSphhOutput;
 	int bDoPressureOutput;
+    int bDoHydroOutput;
 	int bDodtOutput;
 	int bDoIonOutput;
 #ifdef COOLING_MOLECULARH 

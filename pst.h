@@ -106,6 +106,7 @@ enum pst_service {
 	  PST_CALCEANDLEXT,
       PST_DRIFT,
       PST_KICK,
+      PST_EMERGENCYADJUST,
       PST_KICKPATCH,
       PST_READCHECK,
       PST_WRITECHECK,
@@ -651,6 +652,7 @@ struct inUpdateuDot {
 	double z;
     UNCC uncc;
 	int iGasModel;
+    double dResolveJeans;
 	int bUpdateState;
 	};
 struct outUpdateuDot {
@@ -684,6 +686,20 @@ struct outKick {
 	};
 
 void pstKick(PST,void *,int,void *,int *);
+
+struct inEmergencyAdjust {
+    int iRung;
+    int iMaxRung;
+    double dDelta;
+    double dDeltaThresh;
+    };
+struct outEmergencyAdjust {
+	int nUn;
+    int iMaxRungOut;
+    int nMaxRung;
+    int iMaxRungIdeal;
+	};
+void pstEmergencyAdjust(PST,void *,int,void *,int *);
 
 /* PST_KICKPATCH */
 struct inKickPatch {

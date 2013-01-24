@@ -42,10 +42,19 @@
 #define RTFORCE
 #endif
 
-/* this too... */
+#ifdef DIFFUSION
+#define DIFFRATE(p_) ((p_)->diff)
+#else
+#define DIFFRATE(p_) (1e-30)
+#endif
+
+/* Note: UDOT_HYDRO is only correct if there is only thermal pressure (no UNONCOOL or Jeans Floor) */
+#define UDOT_HYDRO(p_)   ((p_)->uDotPdV+(p_)->uDotAV+(p_)->uDotDiff)
+#ifndef PONRHOFLOOR
+#define PONRHOFLOOR 0
+#endif
 
 /* (note bVWarnings still applies) */
-
 #define INTERNAL_WARNINGS 1 /* 0=none,1=once,2=always */
 #define INTERNAL_WARNINGS_ONCE (INTERNAL_WARNINGS == 1)
 
@@ -99,20 +108,22 @@ typedef struct particle {
         FLOAT fBallMax;         /* SPH 2h Max value */
 #ifdef GASOLINE
         FLOAT c;                /* sound speed */
+        FLOAT PoverRho2;        /* P/rho^2 */
+        FLOAT mumax;            /* sound speed like viscosity term (OBSOLETE) */
         FLOAT u;                /* thermal energy  */ 
-        FLOAT uPred;            /* predicted thermal energy, Lx sink */
-        FLOAT PoverRho2;        /* P/rho^2, Ly sink */
-        FLOAT mumax;            /* sound speed like viscosity term, Lz sink */
-        FLOAT PdV;              /* P dV heating (includes shocking) */
-#ifdef PDVDEBUG
-        FLOAT PdVvisc;          /* P dV from shock (testing) */
-        FLOAT PdVpres;          /* P dV from adiabatic compression (testing) */
+        FLOAT uPred;            /* predicted thermal energy, */
+        FLOAT uDotPdV;          /* PdV heating                          [Sink Lx] */
+        FLOAT uDotAV;           /* Shock Heating (Artificial Viscosity) [Sink Ly] */
+        FLOAT uDotDiff;         /* Thermal Energy diffusion             [Sink Lz] */
+#ifndef NOCOOLING
+        FLOAT uDot;                 /* Rate of change of u -- for predicting u */
+        COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
 #endif
 #ifdef UNONCOOL
         FLOAT uNoncool;
         FLOAT uNoncoolPred;
-        FLOAT uDotDiff;
-        FLOAT uNoncoolDotSPH;
+        FLOAT uNoncoolDot;
+        FLOAT uNoncoolDotDiff;  /* Noncool Energy diffusion */
 #endif
         FLOAT divv;             
 #ifdef DODVDS
@@ -168,10 +179,6 @@ typedef struct particle {
         FLOAT gradrho[3];       /* debug */
 #endif
 /*      FLOAT fDensSave;*/      /* Used by diagnostic DensCheck funcs */
-#ifndef NOCOOLING
-        FLOAT uDot;                     /* Rate of change of u -- for predicting u */
-        COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
-#endif
         FLOAT fMetals;  /* mass fraction in metals, a.k.a, Z */
         FLOAT fTimeForm;
 #ifdef SIMPLESF
@@ -184,7 +191,7 @@ typedef struct particle {
         FLOAT vForm[3];
 #endif
 #ifdef STARFORM
-        FLOAT fESNrate;
+        FLOAT uDotFB;
         FLOAT fMSN;
         FLOAT fNSN;           
         FLOAT fMOxygenOut;
@@ -254,9 +261,21 @@ typedef struct particle {
 #endif
 } PARTICLE;
 
-#define SINK_Lx(_a) (((PARTICLE *) (_a))->uPred)
-#define SINK_Ly(_a) (((PARTICLE *) (_a))->PoverRho2)
-#define SINK_Lz(_a) (((PARTICLE *) (_a))->mumax)
+#define GAMMA_JEANS    (2.0)
+#define GAMMA_NONCOOL  (5./3.)
+
+typedef struct uNonCoolContext {
+    double dNoncoolConvRate;
+    double dNoncoolConvRateMul;
+    double dNoncoolConvRateMax;
+    double dNoncoolConvUMin;
+    double gammam1;
+    double dResolveJeans;
+    } UNCC;
+
+#define SINK_Lx(_a) (((PARTICLE *) (_a))->uDotPdV)
+#define SINK_Ly(_a) (((PARTICLE *) (_a))->uDotAV)
+#define SINK_Lz(_a) (((PARTICLE *) (_a))->uDotDiff)
 
 /* Active Type Masks */
 
@@ -789,19 +808,12 @@ void pkdCalcEandL(PKD,double *,double *,double *,double []);
 void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,int,FLOAT,double);
 
-typedef struct uNonCoolContext {
-    double dNoncoolConvRate;
-    double dNoncoolConvRateMul;
-    double dNoncoolConvRateMax;
-    double dNoncoolConvUMin;
-    } UNCC;
-
-double pkduNoncoolConvRate(UNCC uncc,PARTICLE *p);
-double pkduNoncoolDot(UNCC uncc,PARTICLE *p);
+double pkduNoncoolConvRate(PKD pkd, UNCC uncc, FLOAT fBall2, double uNoncoolPred, double uPred);
 void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, int iGasModel, int bUpdateState );
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
     double z, double duDotLimit, double dTimeEnd, UNCC uncc );
+void pkdEmergencyAdjust(PKD pkd, int iRung, int iMaxRung, double dDelta, double dDeltaThresh, int *pnUn, int *piMaxRungIdeal, int *pnMaxRung, int *piMaxRungOut);
 void pkdKickPatch(PKD pkd, double dvFacOne, double dvFacTwo,
 		  double dOrbFreq, int bOpen);
 void pkdGravInflow(PKD pkd, double r);
@@ -897,10 +909,10 @@ void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);
 
 void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, int iGasModel, int bUpdateState );
 void pkdUpdateShockTracker(PKD,double, double, double);
-void pkdAdiabaticGasPressure(PKD, double gammam1, double gamma,
+void pkdGasPressureParticle(PKD pkd, double gammam1, double dResolveJeans, PARTICLE *p, 
+    double *pPoverRhoFloorJeans, double *pPoverRhoNoncool, double *pPoverRhoGas, double *pcGas );
+void pkdGasPressure(PKD, double gammam1, double gamma,
 			     double dResolveJeans, double dCosmoFac);
-void pkdCoolingGasPressure(PKD, double gammam1, double gamma,
-			   double dResolveJeans, double dCosmoFac);
 void pkdGetDensityU(PKD, double);
 void pkdLowerSoundSpeed(PKD, double);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime );
