@@ -98,7 +98,7 @@ CODE_DEF += -DDODVDS #Better handling of viscosity with the Balsara switch
 #CODE_DEF += -DDRHODTDIVOUT #Output Divv variables used in DRHODT
 #CODE_DEF += -DDRHODTTEST #Output a large list of properties important for the DRHODT parts of the code for debugging
 CODE_DEF += -DDTADJUST #Use a more clever "anticipatory" timestep criteria for multistepping
-#CODE_DEF += -DEPSACCH #Turning this one makes the pkd code ignore dhMinOverSoft in pkdAccelStep
+CODE_DEF += -DEPSACCH #Turning this one makes the pkd code ignore dhMinOverSoft in pkdAccelStep
 #CODE_DEF += -DFITDVDX #Use a fitted version of the DenDVDX that doesn't use the stiff.h evaluator.
 CODE_DEF += -DGASOLINE #Do SPH (without this, compiles pkdgrav, just N-Body)
 #CODE_DEF += -DGLASS #Use this to make glass initial conditions
@@ -107,7 +107,8 @@ CODE_DEF += -DGASOLINE #Do SPH (without this, compiles pkdgrav, just N-Body)
 #CODE_DEF += -DHSHRINK #M4 kernel times (pi/6)^(1/3) for a tighter kernel
 #CODE_DEF += -DINFLOWOUTFLOW #Enable inflow/outflow boundary conditions
 #CODE_DEF += -DJEANSSF #Use a simple Jeans length criteria for starformation
-#CODE_DEF += -DJEANSSOFT #Force the smoothing & softening length to be at least as small as the Jeans scale
+CODE_DEF += -DJEANSSOFT #Force the smoothing & softening length to be at least as small as the Jeans scale
+CODE_DEF += -DJEANSFIXPDV
 #CODE_DEF += -DJEANSSOFTONLY #Only force the softening length to be as small as the Jeans scale
 #CODE_DEF += -DKROUPA #Use the Kroupa IMF (from Kroupa et al 1993 Bibcode:1993MNRAS.262..545K)
 #CODE_DEF += -DKROUPA01 #Use the newer Kroupa 01 IMF (DOI:10.1046/j.1365-8711.2001.04022.x)
@@ -134,6 +135,7 @@ CODE_DEF += -DLONGRANGESTEP #Predict what particles will need to be put onto a l
 #CODE_DEF += -DPEXT #Allow for the use of an external pressure (Sort of the opposite of an external potential.)
 #CODE_DEF += -DPRES_HK #Use the Euclidean mean of the both pOverRho values to calculate PdV work
 #CODE_DEF += -DPRES_MONAGHAN #Use Monaghan's PdV work calculation (the average of both pOverRho values)
+CODE_DEF += -DPONRHOFLOOR=1e-30
 #CODE_DEF += -DRADIATIVEBOX #Estimate Local Lyman-Werner radiation from the tree
 #CODE_DEF += -DREDUCED_EWALD #Used reduced Ewald Summation for faster multipole moment expansions
 #CODE_DEF += -DRHOSF #Form stars linearly with density above 100 H cc^-3
@@ -346,7 +348,7 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  smoothfcn.o collision.o qqsmooth.o $(COOLING_OBJ) cosmo.o romberg.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
 	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o rotbar.o special.o ssio.o $(PNG_OBJ) \
-	  treezip.o 
+	  treezip.o debug.o
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 
