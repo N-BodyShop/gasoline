@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <math.h>
 #include <assert.h>
+#include <string.h>
 #include <sys/time.h>
 
 #ifdef CRAY_XT3
@@ -6095,7 +6096,7 @@ double pkduNoncoolConvRate(PKD pkd, UNCC uncc, FLOAT fBall2, double uNoncoolPred
     if (uncc.dNoncoolConvRate > 0) return uncc.dNoncoolConvRate;
     ueff = uNoncoolPred+uPred;
     if (ueff < uncc.dNoncoolConvUMin) ueff = uncc.dNoncoolConvUMin;
-    rate = uncc.dNoncoolConvRateMul*sqrt((uNoncoolPred+uPred)/(fBall2*0.25));
+    rate = uncc.dNoncoolConvRateMul*sqrt((ueff)/(fBall2*0.25));
     if (rate > uncc.dNoncoolConvRateMax) return uncc.dNoncoolConvRateMax;
     return rate;
     }
@@ -6126,7 +6127,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
         CoolSetTime( cl, dTime, z  );
         dt = CoolCodeTimeToSeconds( cl, duDelta );
         break;
-    }
+        }
     
     p = pkd->pStore;
     n = pkdLocal(pkd);
@@ -6152,11 +6153,12 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             uNoncoolDotConv = uNoncoolPredTmp*
                 pkduNoncoolConvRate(pkd,uncc,p->fBall2,uNoncoolPredTmp,p->u+p->uDot*duDelta*0.5); 
             
-            p->uNoncoolDot = p->uDotPdV*PoverRhoNoncool/(PONRHOFLOOR + PoverRho) // Need all P here, incl. Jeans floor
+            p->uNoncoolDot = p->uDotPdV*PoverRhoNoncool/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to uNoncool 
                 - uNoncoolDotConv + uNoncoolDotFB + p->uNoncoolDotDiff;
 #endif    
             
-            uDotSansCooling = p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho) + p->uDotAV
+            uDotSansCooling = p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to u thermal
+                + p->uDotAV                                                   // Only u thermal energy gets shock heating
                 + uNoncoolDotConv + uDotFBThermal + p->uDotDiff;
             
             if ( bCool ) {
@@ -6298,25 +6300,9 @@ printf("r %g PdV %g a %g %g %g SW %g %g %g\n",sqrt(p->r[0]*p->r[0]+p->r[1]*p->r[
 #endif
         }
 
-void pkdGasPressureParticle(PKD pkd, double gammam1, double dResolveJeans, PARTICLE *p, 
-    double *pPoverRhoFloorJeans, double *pPoverRhoNoncool, double *pPoverRhoGas, double *pcGas ) 
+double pkdPoverRhoFloorJeansParticle(PKD pkd, double dResolveJeans, PARTICLE *p) 
     {
     double e2,l2;
-    
-#ifndef NOCOOLING
-    COOL *cl = pkd->Cool;
-
-    CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, pPoverRhoGas, pcGas );
-#else
-    PoverRho = gammam1*p->uPred;
-#endif
-
-#ifdef UNONCOOL
-    *pPoverRhoNoncool = (GAMMA_NONCOOL-1)*p->uNoncoolPred;
-#else
-    *pPoverRhoNoncool = 0;
-#endif
-
     /*
      * Add pressure floor to keep Jeans Mass
      * resolved.  In comparison with Agertz et
@@ -6333,11 +6319,32 @@ void pkdGasPressureParticle(PKD pkd, double gammam1, double dResolveJeans, PARTI
     if (l2 < e2) l2 = e2; /* Jeans scale can't be smaller than softening */
 #endif
 #endif
-    *pPoverRhoFloorJeans = l2*dResolveJeans*p->fDensity;
+    return l2*dResolveJeans*p->fDensity;
+    }
+
+void pkdGasPressureParticle(PKD pkd, double gammam1, double dResolveJeans, PARTICLE *p, 
+    double *pPoverRhoFloorJeans, double *pPoverRhoNoncool, double *pPoverRhoGas, double *pcGas ) 
+    {
+    
+#ifndef NOCOOLING
+    COOL *cl = pkd->Cool;
+
+    CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, pPoverRhoGas, pcGas );
+#else
+    PoverRho = gammam1*p->uPred;
+#endif
+
+#ifdef UNONCOOL
+    *pPoverRhoNoncool = (GAMMA_NONCOOL-1)*p->uNoncoolPred;
+#else
+    *pPoverRhoNoncool = 0;
+#endif
+
+    *pPoverRhoFloorJeans = pkdPoverRhoFloorJeansParticle(pkd, dResolveJeans, p);
     }
 
 /* Note: Uses uPred */
-void pkdGasPressure(PKD pkd, double gammam1, double gamma, double dResolveJeans, double dCosmoFac)
+void pkdGasPressure(PKD pkd, double gammam1, double gamma, double dResolveJeans, double dCosmoFac, double dtFacCourant)
 {
     PARTICLE *p;
     int i;
@@ -6355,13 +6362,13 @@ void pkdGasPressure(PKD pkd, double gammam1, double gamma, double dResolveJeans,
             p->c = sqrt(cGas*cGas+GAMMA_NONCOOL*PoverRhoNoncool+GAMMA_JEANS*PoverRhoJeans);
 #ifdef DTADJUST
                 {
-                double dtFac = 0.4*1*2/1.6, uTotDot, dt;
+                double uTotDot, dt;
                 uTotDot = p->uDot;
 #ifdef UNONCOOL
                 uTotDot += p->uNoncoolDot;
 #endif
-                if (uTotDot > 0) dt = dtFac*sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
-                else dt = dtFac*sqrt(p->fBall2*0.25)/(2*(p->c));
+                if (uTotDot > 0) dt = dtFacCourant*sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
+                else dt = dtFacCourant*sqrt(p->fBall2*0.25)/(2*(p->c));
                 if (dt < p->dt) p->dt = dt; // Update to scare the neighbours
                 }
 #endif
@@ -6564,100 +6571,133 @@ int pkdSphCurrRung(PKD pkd, int iRung, int bGreater)
     return iCurrent;
     }
 
+double pkdDtFacCourant( double dEtaCourant, double dCosmoFac ) {
+    return dEtaCourant*dCosmoFac*2/1.6;
+    }
+
+/* DTTEST should be define to the dt value that going under will trigger the print */
+#ifdef DTTEST
+#define DTSAVE(_val,_label)  { \
+    if ((_label)[0]=='0') dTnSave=0; \
+    dTSave[dTnSave]=_val; \
+    strncpy(&dTLabel[dTnSave][0], _label, 3); \
+    dTLabel[dTnSave][3]='\0'; \
+    dTnSave++; \
+    }
+#else
+#define DTSAVE(_val,_label)
+#endif
+
 void
-pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int bViscosityLimitdt, double *pdtMinGas)
-{
+pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, double dResolveJeans, int bViscosityLimitdt, 
+    double *pdtMinGas)
+    {
     int i;
     PARTICLE *p;    
-    double dT,dTu,dTD,ph;
+    double dT,dTC,dTu,dTD,ph;
+#ifdef DTTEST
+    double dTSave[10];
+    char dTLabel[10][4];
+    int dTnSave=0,nFail=0;
+#endif
 
     *pdtMinGas = DBL_MAX;
     for(i=0;i<pkdLocal(pkd);++i) {
         p = &pkd->pStore[i];
         if(pkdIsGas(pkd, p)) {
-	    if (TYPEQueryACTIVE(p)) {
-		ph = sqrt(0.25*p->fBall2);
+            if (TYPEQueryACTIVE(p)) {
+                ph = sqrt(0.25*p->fBall2);
 #ifdef SINKING
-		if (TYPETest( p, TYPE_SINKING)) {
-		    p->dt = FLT_MAX; /* reset later to min gas step */
-		    continue;
-		    }
+                if (TYPETest( p, TYPE_SINKING)) {
+                    p->dt = FLT_MAX; /* reset later to min gas step */
+                    continue;
+                    }
 #endif
-			/*
-			 * Courant condition goes here.
-			 */
+                /*
+                 * Courant condition goes here.
+                 */
+                DTSAVE(p->dt,"0IN");
 #if defined(DRHODT) || defined(DTADJUST)
-		dT = p->dtNew; /* Start with estimate from prior Sph force calculations */
-        assert(dT > 1e-24); // HACK REMOVE!
-        p->dtNew = FLT_MAX;
-#else
-	       if (p->mumax>0.0) {
-				if (bViscosityLimitdt) 
-				  dT = dEtaCourant*dCosmoFac*(ph/(p->c + 0.6*(p->c + 2*p->BalsaraSwitch*p->mumax)));
-				else
-				  dT = dEtaCourant*dCosmoFac*(ph/(p->c + 0.6*(p->c + 2*p->mumax)));
-	                   }
-	       else
+                dT = p->dtNew; /* Start with estimate from prior Sph force calculations */ 
+                DTSAVE(dT,"SPH");
+                assert(dT > 1e-24); // HACK REMOVE!
+                p->dtNew = FLT_MAX;
+#else /* If not doing DTADJUST */
+                if (p->mumax>0.0) {
+                    if (bViscosityLimitdt) 
+                        dTC = dEtaCourant*dCosmoFac*(ph/(p->c + 0.6*(p->c + 2*p->BalsaraSwitch*p->mumax)));
+                    else
+                        dTC = dEtaCourant*dCosmoFac*(ph/(p->c + 0.6*(p->c + 2*p->mumax)));
+                    }
+                else {
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) || defined(SIMPLESF)
-			   dT = dEtaCourant*dCosmoFac*(ph/(1.6*p->c+(10./FLT_MAX)));
+                    dTC = dEtaCourant*dCosmoFac*(ph/(1.6*p->c+(10./FLT_MAX)));
 #else
-			   dT = dEtaCourant*dCosmoFac*(ph/(1.6*p->c));
+                    dTC = dEtaCourant*dCosmoFac*(ph/(1.6*p->c));
 #endif
-#endif
-#ifdef DTADJUST
-               {
-               double dtFac = 0.4*1*2/1.6, uTotDot, dtExtrap;
-               uTotDot = p->uDot;
-#ifdef UNONCOOL
-               uTotDot += p->uNoncoolDot;
-#endif
-               if (uTotDot > 0) {
-                   dtExtrap = dtFac*sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
-                   if (dtExtrap < dT) dT = dtExtrap; 
-                   }
-               }
-#endif
-               if (dEtauDot > 0.0 && p->uDotPdV < 0.0) { /* Prevent rapid adiabatic cooling */
-#ifdef SSFDEBUG
-			    if (p->u<=0) printf("p->iOrder: %i\n",p->iOrder);
-#endif
-#ifdef SSFDEBUG
-			    if (p->iOrder==5514) printf("dT1 %i: %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,dT);
-#endif
-			    assert(p->u > 0.0);
-#ifdef UNONCOOL
-			    dTu = dEtauDot*(PONRHOFLOOR+p->u+p->uNoncool)/fabs(p->uDotPdV);
-#else
-			    dTu = dEtauDot*(PONRHOFLOOR+p->u)/fabs(p->uDotPdV);
-#endif
-			    if (dTu < dT) 
-				dT = dTu;
-		   }
-#ifdef DIFFUSION
-               /* h^2/(2.77Q) Linear stability from Brookshaw */
-	       if (p->diff > 0) {
-		   dTD = (1/2.8*(dEtaCourant/0.4))*ph*ph/(p->diff);  
-		   if (dTD < dT) dT = dTD;
-		   }
-#endif
-#ifdef SSFDEBUG
-	       if (p->iOrder==5514) printf("dT2 %i: %f %f %f %f %f %f\n",p->iOrder,p->u,p->uPred,p->uDot,dT,dTu,UDOT_HYDRO(p));
+                    }
+                DTSAVE(dTC,"COU");
+                dT = dTC;
 #endif
 
-        assert(dT > 1e-24); // HACK REMOVE!
-		if(dT < p->dt)
-				p->dt = dT;
-		}
-	    /* This code relies on SPH step being done last -- not good */
-	    if (p->dt < *pdtMinGas) { *pdtMinGas = p->dt; }
-	    }
-#ifdef SINKING
-	else if (TYPETest( p, TYPE_SINK )) {
-	    if (p->dt < *pdtMinGas) { *pdtMinGas = p->dt; }
-	    }
+#ifdef DTADJUST
+                    {
+                    double uTotDot, dtExtrap;
+                    uTotDot = p->uDot;
+#ifdef UNONCOOL
+                    uTotDot += p->uNoncoolDot;
 #endif
-	}
-}
+                    if (uTotDot > 0) {
+                        dtExtrap = pkdDtFacCourant(dEtaCourant,dCosmoFac)
+                            *sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
+                        DTSAVE(dtExtrap,"UEX");
+                        if (dtExtrap < dT) dT = dtExtrap; 
+                        }
+                    }
+#endif
+                if (dEtauDot > 0.0 && p->uDotPdV < 0.0) { /* Prevent rapid adiabatic cooling */
+                    double PoverRhoFloorJeans=pkdPoverRhoFloorJeansParticle(pkd, dResolveJeans, p);
+                    double uEff = PONRHOFLOOR+PoverRhoFloorJeans/(GAMMA_JEANS-1)+p->u;
+                            
+                    assert(p->u > 0.0);
+#ifdef UNONCOOL
+                    uEff += p->uNoncool;
+#else
+                    dTu = dEtauDot*uEff/fabs(p->uDotPdV);
+#endif
+                    DTSAVE(dTu,"PDV");
+                    if (dTu < dT) dT = dTu;
+                    }
+#ifdef DIFFUSION
+            /* h^2/(2.77Q) Linear stability from Brookshaw */
+                if (p->diff > 0) {
+                    dTD = (1/2.8*(dEtaCourant/0.4))*ph*ph/(p->diff);  
+                    DTSAVE(dTD,"DIF");
+                    if (dTD < dT) dT = dTD;
+                    }
+#endif
+#ifdef DTTEST                
+                if (dT < DTTEST && nFail < 10) {
+                    int j;
+                    nFail++;
+                    fprintf(stderr,"dt problem %d: dt %g < %g",p->iOrder,dT,DTTEST);
+                    for (j=0;j<dTnSave;j++) fprintf(stderr,", %3s %g",&dTLabel[j][0],dTSave[j]);
+                    fprintf(stderr,"\n");
+                    }
+#endif
+                assert(dT > 1e-24); // HACK REMOVE!
+                if(dT < p->dt) p->dt = dT;
+                }
+            /* This code relies on SPH step being done last -- not good */
+	        if (p->dt < *pdtMinGas) { *pdtMinGas = p->dt; }
+            }
+#ifdef SINKING
+        else if (TYPETest( p, TYPE_SINK )) {
+            if (p->dt < *pdtMinGas) { *pdtMinGas = p->dt; }
+            }
+#endif
+        }
+    }
 
 void
 pkdSinkStep(PKD pkd, double dtMax)

@@ -4679,7 +4679,7 @@ void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		case GASMODEL_ISOTHERMAL:
 		case GASMODEL_COOLING:
 			pkdGasPressure(plcl->pkd, in->gammam1,in->gamma, in->dResolveJeans,
-						in->dCosmoFac);
+                in->dCosmoFac, in->dtFacCourant);
 			break;
 			break;
 		case GASMODEL_GLASS:
@@ -4846,7 +4846,7 @@ void pstSphStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (dtMinGas < *pdtMinGas) *pdtMinGas = dtMinGas;
 		}
 	else {
-		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot,in->bViscosityLimitdt,pdtMinGas);
+		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot,in->dResolveJeans,in->bViscosityLimitdt,pdtMinGas);
 		}
 	if (pnOut) *pnOut = sizeof(double);
 	}

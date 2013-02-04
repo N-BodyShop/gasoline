@@ -826,10 +826,10 @@ void pstMassCheck(PST,void *,int,void *,int *);
 
 struct outMassMetalsEnergyCheck {
 	double dTotMass;
-        double dTotMetals;
-        double dTotOx;
-        double dTotFe;
-        double dTotEnergy;
+    double dTotMetals;
+    double dTotOx;
+    double dTotFe;
+    double dTotEnergy;
 	};
 void pstMassMetalsEnergyCheck(PST,void *,int,void *,int *);
 
@@ -1142,6 +1142,7 @@ struct inGetGasPressure {
 	double gammam1;
 	double dResolveJeans;
 	double dCosmoFac;
+    double dtFacCourant;
     
   /* Isothermal */
 
@@ -1634,6 +1635,7 @@ struct inSphStep {
     double dCosmoFac;
     double dEtaCourant;
     double dEtauDot;
+    double dResolveJeans;
     int bViscosityLimitdt;
     };
 void pstSphStep(PST,void *,int,void *,int *);
