@@ -60,6 +60,6 @@ def make_plots(testdir):
 if __name__ == '__main__':
 	testdir='onestar'
 	files = ["data/onestar.tbin", "data/onestar.param"]
-	exe = "../gasoline.ce92ce93"
+	exe = "./gasoline"
 	run_gasoline(testdir, files, 'onestar.param', exe)
 	make_plots(testdir)
