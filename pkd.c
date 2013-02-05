@@ -6331,7 +6331,7 @@ void pkdGasPressureParticle(PKD pkd, double gammam1, double dResolveJeans, PARTI
 
     CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, pPoverRhoGas, pcGas );
 #else
-    PoverRho = gammam1*p->uPred;
+    PoverRhoGas = gammam1*p->uPred;
 #endif
 
 #ifdef UNONCOOL
@@ -6662,10 +6662,12 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     assert(p->u > 0.0);
 #ifdef UNONCOOL
                     uEff += p->uNoncool;
-#else
-                    dTu = dEtauDot*uEff/fabs(p->uDotPdV);
 #endif
+                    dTu = dEtauDot*uEff/fabs(p->uDotPdV);
                     DTSAVE(dTu,"PDV");
+#ifdef DTTEST                
+                    if (dTu < DTTEST) fprintf(stderr,"udot PdV %g %g %g %g %g %g %g\n",dTu,dEtauDot,PoverRhoFloorJeans,uEff,p->u,p->uNoncool,p->uDotPdV);
+#endif
                     if (dTu < dT) dT = dTu;
                     }
 #ifdef DIFFUSION

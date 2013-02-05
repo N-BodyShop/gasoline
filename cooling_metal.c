@@ -29,7 +29,9 @@
    and prevents unphysical negative Y_e (resulting from roundoff)
    This is important for cases with no cosmic rays or UV 
    */
+#ifndef Y_EMIN
 #define Y_EMIN 1e-7
+#endif
 
 #define TESTRATE 1e-3
 /* #define CUBICTABLEINTERP   */
@@ -197,6 +199,7 @@ void CoolPARTICLEtoPERBARYON(COOL *cl, PERBARYON *Y, COOLPARTICLE *cp, double ZM
     Y->HeII = cp->f_HeII*Y_He;
     Y->HeIII = Y_He - Y->HeI - Y->HeII;
     Y->e = Y->HII + Y->HeII + 2*Y->HeIII;
+    if (Y->e < Y_EMIN) Y->e = Y_EMIN;
     Y->Total = Y->e + Y_H + Y_He + ZMetal/MU_METAL; 
 }
 
@@ -2147,16 +2150,16 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 
       if(y[1] < YHMIN) y[1] = YHMIN;
       if(y[2] < YHeMIN) {
-	y[2] = YHeMIN;
-	if (d->Y_He - y[2] - y[3] < YHeMIN) y[3] = d->Y_He - y[2] - YHeMIN;
-      }
+          y[2] = YHeMIN;
+          if (d->Y_He - y[2] - y[3] < YHeMIN) y[3] = d->Y_He - y[2] - YHeMIN;
+          }
       if(y[3] < YHeMIN) {
-	y[3] = YHeMIN;
-	if (d->Y_He - y[2] - y[3] < YHeMIN) y[2] = d->Y_He - y[3] - YHeMIN;
-      }
+          y[3] = YHeMIN;
+          if (d->Y_He - y[2] - y[3] < YHeMIN) y[2] = d->Y_He - y[3] - YHeMIN;
+          }
 
       YTotal = (d->Y_H) + (d->Y_H - y[1]) + d->Y_He + y[3] +
-	2.0*(d->Y_He - y[2] - y[3]) + d->ZMetal/MU_METAL;
+          2.0*(d->Y_He - y[2] - y[3]) + d->ZMetal/MU_METAL;
       EMin = clThermalEnergy( YTotal, cl->TMin );
 
 
@@ -2164,8 +2167,8 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
       assert(*y > 0.0);
 #else
       if (y[0] < EMin) {
-	y[0] = EMin;
-	break;
+          y[0] = EMin;
+          break;
       }
 #endif   
     }
@@ -2183,6 +2186,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
    Y->HeIII = d->Y_He - Y->HeI - Y->HeII;
    Y->HII = d->Y_H - Y->HI;
    Y->e = Y->HII + Y->HeII + 2*Y->HeIII;
+   if (Y->e < Y_EMIN) Y->e = Y_EMIN;
    Y->Total = Y->e + d->Y_H + d->Y_He + d->ZMetal/MU_METAL;  /* H total from cl now -- in future from particle */ /*as two hydrogen atoms make one molecular hydrogen particle, subtract off number of molecules to avoid double counting particles CC */
 
 #ifdef COOLDEBUG

@@ -1142,11 +1142,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dNoncoolConvTimeMin",2,&msr->param.dNoncoolConvTimeMin,
 				sizeof(double),"ncctm",
 				"<Minimum Timescale to convert noncooling to cooling (yr)>");
-#ifdef DTADJUST
-	msr->param.dNoncoolConvVelMin = 1e-6;
-#else
-	msr->param.dNoncoolConvVelMin = 0;
-#endif
+	msr->param.dNoncoolConvVelMin = 1e-6; // Prevents negative ueff 
 	prmAddParam(msr->prm,"dNoncoolConvVelMin",2,&msr->param.dNoncoolConvVelMin,
 				sizeof(double),"nccvm",
 				"<Minimum velocity to convert noncooling to cooling (km/s)>");
@@ -2671,7 +2667,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp, " JEANSSOFTONLY");
 #endif
 #ifdef PONRHOFLOOR
-    if (PONRHOFLOOR > 0) fprintf(fp, " PONRHOFLOOR=%g",PONRHOFLOOR);
+    if (PONRHOFLOOR > 0) fprintf(fp, " PONRHOFLOOR=%g",(double) PONRHOFLOOR);
 #endif
 #ifdef DTADJUST
 	fprintf(fp, " DTADJUST");
@@ -5350,7 +5346,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->algam = psmf->alpha*sqrt(psmf->gamma*(psmf->gamma - 1));
     psmf->Pext = msr->param.dPext;
     psmf->dtMin = FLOAT_MAXVAL; /* Read/Write */
-    psmf->dtFac = msr->param.dEtaCourant*psmf->a*2/1.6; 
+    psmf->dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,psmf->a); 
     psmf->dEtaCourantLong = msr->param.dEtaCourantLong;
     psmf->dDelta = msr->param.dDelta;
 	{
@@ -8118,17 +8114,17 @@ void msrTopStepKDK(MSR msr,
 		    }
 #endif
 		msrDtToRung(msr,iRung,dDelta,1);
-#if !defined(DRHODT) && !defined(DTADJUST)
+#if !defined(DRHODT) && !defined(DTADJUST) && !defined(UNONCOOL)
 		if (iRung == 0) 
 #endif
 		    {
-		  /*
-		  msrReorder(msr);
-		  msrOutArray(msr,"test.dt",OUT_DT_ARRAY);
-		  msrActiveOrder(msr);
-		  */
-		  msrRungStats(msr);
-		  }
+            /*
+              msrReorder(msr);
+              msrOutArray(msr,"test.dt",OUT_DT_ARRAY);
+              msrActiveOrder(msr);
+            */
+            msrRungStats(msr);
+            }
 		}
     if (msr->param.bVDetails) printf("Kick, iRung: %d\n",iRung);
     msrActiveRung(msr,iRung,0);
@@ -8748,6 +8744,7 @@ void msrGetGasPressure(MSR msr, double dTime)
 		in.gamma = msr->param.dConstGamma;
 		in.gammam1 = in.gamma-1;
 		in.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
+        in.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,in.dCosmoFac); //for DTADJUST
 		/*
 		 * If self gravitating, resolve the Jeans Mass
 		 */
@@ -8985,6 +8982,10 @@ void msrSphStep(MSR msr, double dTime, int iKickRung)
     in.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
     in.dEtaCourant = msrEtaCourant(msr);
     in.dEtauDot = msr->param.dEtauDot;
+    if(msr->param.bDoGravity && msr->param.bDoSelfGravity)
+        in.dResolveJeans = msr->param.dResolveJeans/csmTime2Exp(msr->param.csm,dTime);
+    else
+        in.dResolveJeans = 0.0;
     in.bViscosityLimitdt = msr->param.bViscosityLimitdt;
     pstSphStep(msr->pst,&in,sizeof(in),&msr->dtMinGas,NULL);
 
@@ -9045,10 +9046,10 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     int iDump = 0;
     if (dTime > 30351.157 && iKickRung == 0) {
 /*    if (dTime > 30 && iKickRung == 0) {*/
-	printf("DUMP: Starting Dump\n");
-	iDump = 1;
-	msrActiveType(msr,TYPE_GAS,(1<<20));
-	}
+        printf("DUMP: Starting Dump\n");
+        iDump = 1;
+        msrActiveType(msr,TYPE_GAS,(1<<20));
+        }
 #endif
 
 /*

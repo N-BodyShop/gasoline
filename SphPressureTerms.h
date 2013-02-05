@@ -125,8 +125,8 @@
 #define ALPHA (smf->alpha*0.5*(p->alpha+q->alpha))
 #define BETA  (smf->beta*0.5*(p->alpha+q->alpha))
 #else
-#define ALPHA smf->alpha
-#define BETA  smf->beta
+#define ALPHA (smf->alpha)
+#define BETA  (smf->beta)
 #endif
 #define SETDTNEW_PQ(dt_)  { if (dt_ < p->dtNew) p->dtNew=dt_; \
                             if (dt_ < q->dtNew) q->dtNew=dt_; \
@@ -139,7 +139,7 @@
         if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
 		if (absmu>q->mumax) q->mumax=absmu; \
 		visc_ = (ALPHA*(pc + q->c) + BETA*1.5*absmu); \
-		dt_ = smf->dtFac*ph/visc_;     \
+		dt_ = smf->dtFacCourant*ph/visc_;     \
 		visc_ = SWITCHCOMBINE(p,q)*visc_ \
 		    *absmu/(pDensity + q->fDensity); }
 #else
@@ -149,7 +149,7 @@
 		if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
 		if (absmu>q->mumax) q->mumax=absmu; \
 		visc_ = (ALPHA*(pc + q->c) + BETA*2*absmu);	\
-		dt_ = smf->dtFac*hav/(0.625*(pc + q->c)+0.375*visc_); \
+		dt_ = smf->dtFacCourant*hav/(0.625*(pc + q->c)+0.375*visc_); \
 		visc_ = SWITCHCOMBINE(p,q)*visc_ \
 		    *absmu/(pDensity + q->fDensity); }
 #endif
@@ -166,7 +166,7 @@
         PACTIVE( Accp = (PRES_ACC(pPoverRho2f,qPoverRho2f)); );
         QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f)); );
 	    if (dvdotdr>=0.0) {
-            dt = smf->dtFac*ph/(2*(pc > q->c ? pc : q->c));	
+            dt = smf->dtFacCourant*ph/(2*(pc > q->c ? pc : q->c));	
             }
 	    else {  
             ARTIFICIALVISCOSITY(visc,dt); /* Calculate Artificial viscosity terms and associated dt */		
