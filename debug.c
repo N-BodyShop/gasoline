@@ -21,8 +21,8 @@ void print_particle(PKD pkd,PARTICLE p) {
 	printf("* %9s: %13e %10s: %13e                           *\n", "fBall2", p.fBall2, "fBallMax", p.fBallMax);
 	printf("*                                                                              *\n");
 #ifdef GASOLINE
-	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "u", p.u, "uPred", p.uPred, "uDot", p.uDot);
-	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "PoverRho2", p.PoverRho2, "mumax", p.mumax, "PdV", p.PdV);
+	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "u", p.u, "uPred", p.uPred, "uDotAV", p.uDotAV);
+	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "PoverRho2", p.PoverRho2, "mumax", p.mumax, "uDotPdV", p.uDotPdV);
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "curlv_x", p.curlv[0], "curlv_y", p.curlv[1], "curlv_z", p.curlv[2]);
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "divv", p.divv, "fDivv_Corr", p.fDivv_Corrector, "fDivv_t", p.fDivv_t);
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "fMetals", p.fMetals, "fTimeForm", p.fTimeForm, "c", p.c);
@@ -50,7 +50,7 @@ void print_particle(PKD pkd,PARTICLE p) {
 	printf("* %9s: %13e %10s: %13e                           *\n", "divrhov", p.divrhov, "ShockTrack", p.ShockTracker);
 #endif
 #ifdef STARFORM
-	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "fESNrate", p.fESNrate, "fMSN", p.fMSN, "fNSN", p.fNSN);
+	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "uDotFB", p.uDotFB, "fMSN", p.fMSN, "fNSN", p.fNSN);
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "fMOnOut", p.fMOxygenOut, "fMFEOut", p.fMIronOut, "fMFracO", p.fMFracOxygen);
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "fMFracFe", p.fMFracIron, "fSNMetals", p.fSNMetals, "fNSNtot", p.fNSNtot);
 	printf("* %9s: %13e %10s: %13e %10s: %13d *\n", "fCoolOff", p.fTimeCoolIsOffUntil, "fMassForm", p.fMassForm, "iGasOrder", p.iGasOrder);
