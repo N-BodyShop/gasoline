@@ -26,6 +26,7 @@ void print_particle(PKD pkd,PARTICLE p) {
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "curlv_x", p.curlv[0], "curlv_y", p.curlv[1], "curlv_z", p.curlv[2]);
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "divv", p.divv, "fDivv_Corr", p.fDivv_Corrector, "fDivv_t", p.fDivv_t);
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "fMetals", p.fMetals, "fTimeForm", p.fTimeForm, "c", p.c);
+	printf("* %9s: %13e                                                     *\n", "uDotDiff", p.uDotDiff); 
 #ifdef DIFFUSION
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "diff", p.diff, "MetalsDot", p.fMetalsDot, "MetalsPred", p.fMetalsPred);
 #ifdef MASSDIFF
@@ -40,8 +41,8 @@ void print_particle(PKD pkd,PARTICLE p) {
 	printf("*                                                                              *\n");
 #endif
 #ifdef UNONCOOL
-	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "uNoncool", p.uNoncool, "uNCPred", p.uNoncoolPred, "uNCDotSPH", p.uNoncoolDotSPH);
-	printf("* %9s: %13e                                                     *\n", "uDotDiff", p.uDotDiff); 
+	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "uNoncool", p.uNoncool, "uNCPred", p.uNoncoolPred, "uNCDot", p.uNoncoolDot);
+	printf("* %9s: %13e                                                     *\n", "uNCDotDiff", p.uNoncoolDotDiff); 
 	printf("*                                                                              *\n");
 #endif
 #ifdef SHOCKTRACK
@@ -51,7 +52,7 @@ void print_particle(PKD pkd,PARTICLE p) {
 #endif
 #ifdef STARFORM
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "uDotFB", p.uDotFB, "fMSN", p.fMSN, "fNSN", p.fNSN);
-	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "fMOnOut", p.fMOxygenOut, "fMFEOut", p.fMIronOut, "fMFracO", p.fMFracOxygen);
+	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "fMOOut", p.fMOxygenOut, "fMFeOut", p.fMIronOut, "fMFracO", p.fMFracOxygen);
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "fMFracFe", p.fMFracIron, "fSNMetals", p.fSNMetals, "fNSNtot", p.fNSNtot);
 	printf("* %9s: %13e %10s: %13e %10s: %13d *\n", "fCoolOff", p.fTimeCoolIsOffUntil, "fMassForm", p.fMassForm, "iGasOrder", p.iGasOrder);
 #ifdef DIFFUSION
