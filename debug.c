@@ -1,6 +1,9 @@
 #include "pkd.h"
+#include "cooling.h"
 
-
+void print_coolparticle(COOLPARTICLE cp) {
+	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "f_HI", cp.f_HI, "f_HeI", cp.f_HeI, "F_HeII", cp.f_HeII);
+}
 void print_particle(PKD pkd,PARTICLE p) {
 	printf("********************************************************************************\n");
 	printf("*                                                                              *\n");
@@ -27,6 +30,7 @@ void print_particle(PKD pkd,PARTICLE p) {
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "divv", p.divv, "fDivv_Corr", p.fDivv_Corrector, "fDivv_t", p.fDivv_t);
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "fMetals", p.fMetals, "fTimeForm", p.fTimeForm, "c", p.c);
 	printf("* %9s: %13e                                                     *\n", "uDotDiff", p.uDotDiff); 
+	print_coolparticle(p.CoolParticle);
 #ifdef DIFFUSION
 	printf("* %9s: %13e %10s: %13e %10s: %13e *\n", "diff", p.diff, "MetalsDot", p.fMetalsDot, "MetalsPred", p.fMetalsPred);
 #ifdef MASSDIFF
