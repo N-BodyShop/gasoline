@@ -192,29 +192,32 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	      a1old = -4.0643123;
 	    
 	    double Alog101, Alog102, dLW1, dLW2;
-	    Alog101 = dStarAge;
-	    if (Alog101 < 1e7) Alog101 = 7; /*used Alog10 = 1e6, at one point*/
-	    else Alog101 = log10(Alog101);
-	    if (Alog101 < 9.0) dLW1 = pow(10,a0
+	    if (dStarAge < 0) p->CoolParticle.dLymanWerner = 0; /*If BH, no LW radiation*/
+	    else {
+	      Alog101 = dStarAge;
+	      if (Alog101 < 1e7) Alog101 = 7; /*used Alog10 = 1e6, at one point*/
+	      else Alog101 = log10(Alog101);
+	      if (Alog101 < 9.0) dLW1 = pow(10,a0
 		       + a1*Alog101
 		       + a2*Alog101*Alog101
 		       + a3*Alog101*Alog101*Alog101
 		       + a4*Alog101*Alog101*Alog101*Alog101
 		       + a5*Alog101*Alog101*Alog101*Alog101*Alog101 - 30.0);
-	    else dLW1 = pow(10,a0old + a1old*Alog101 - 30.0);
+	      else dLW1 = pow(10,a0old + a1old*Alog101 - 30.0);
 
-	    Alog102 = dStarAge + dDeltaYr;
-	    if (Alog102 < 1e7) Alog102 = 7; /*used Alog10 = 1e6, at one point*/
-	    else Alog102 = log10(Alog102);
-	    if (Alog102 < 9.0) dLW2 = pow(10,a0
+	      Alog102 = dStarAge + dDeltaYr;
+	      if (Alog102 < 1e7) Alog102 = 7; /*used Alog10 = 1e6, at one point*/
+	      else Alog102 = log10(Alog102);
+	      if (Alog102 < 9.0) dLW2 = pow(10,a0
 		       + a1*Alog102
 		       + a2*Alog102*Alog102
 		       + a3*Alog102*Alog102*Alog102
 		       + a4*Alog102*Alog102*Alog102*Alog102
 		       + a5*Alog102*Alog102*Alog102*Alog102*Alog102 - 30.0); /*Divide by 1e30 to keep things in bounds*/
-	    else dLW2 = pow(10,a0old + a1old*Alog102 - 30.0);
+	      else dLW2 = pow(10,a0old + a1old*Alog102 - 30.0);
 
-	    p->CoolParticle.dLymanWerner = pkd->Cool->dMsolUnit*pkd->Cool->dInitStarMass*(dLW1 + dLW2)/2; 
+	      p->CoolParticle.dLymanWerner = pkd->Cool->dMsolUnit*pkd->Cool->dInitStarMass*(dLW1 + dLW2)/2; 
+	    }
 #endif
 	    }
 	else if(pkdIsGas(pkd, p)){
