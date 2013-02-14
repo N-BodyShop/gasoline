@@ -2328,7 +2328,7 @@ double clCoolLowT( double T ) {
 /*----  Lyman-Warner Radiation from young stars ------gasoline.metal.mh.rad.gdb*/
 #ifdef  RADIATIVEBOX
 double CoolLymanWerner(COOL *cl, double fMassStar, double dlw){
-  if (!cl->bAgeFromMass && dlw != 0) return dlw; /*If the stellar age cannot be used to determine LW radiation, return given LW radiation*/
+  if (!cl->bAgeFromMass && dlw != 0 || cl->bAgeFromMass > cl->dInitStarMass) return dlw; /*If the stellar age cannot be used to determine LW radiation, return given LW radiation*/
     double  a0 = -84550.812,
       a1 =  54346.066,
       a2 = -13934.144,
