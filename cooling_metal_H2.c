@@ -2825,6 +2825,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
   STIFF *sbs = d->IntegratorContext;
   int its = 0;
   FILE *fp; 
+  double T;
  
   if (tStep == 0) return;
   d->bCool = 1;
@@ -2861,7 +2862,8 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
     /*    clDerivs( d, t, yin, &dHeat, &dCool ); *//*, sqrt(cl->p->fBall2/2.0) );*/
     printf("tStep %g \n", tStep);
     printf("%d: rho %g \n", cl->p->iOrder,rho*CL_B_gm); 
-    printf("Temperature %g \n", d->Rate.T);
+    T = clTemperature( Y->Total, *E );
+    printf("Temperature %g \n", T);
     printf("Y e:%g Total:%g H2:%g HI:%g HII:%g HeI:%g HeII:%g HeIII:%g\n",Y->e, YTotal, Y->H2, Y->HI, Y->HII, Y->HeI, Y->HeII, Y->HeIII);
     /*   printf("dHeat[0]: %e, dHeat[1]: %e, dHeat[2]: %e, dHeat[3]: %e, dHeat[4] %e\n",dHeat[0],dHeat[1],dHeat[2],dHeat[3],dHeat[4]);
 	 printf("dCool[0]: %e, dCool[1]: %e, dCool[2]: %e, dCool[3]: %e, dCool[4] %e\n",dCool[0],dCool[1],dCool[2],dCool[3],dCool[4]);*/
@@ -2894,7 +2896,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
     fprintf(fpdebug, "Metalicity %g \n", d->ZMetal);
     fprintf(fpdebug, "redshift %g \n", cl->z);
     fprintf(fpdebug, "rho %g \n", rho*CL_B_gm); 
-    fprintf(fpdebug, "temperature %g \n", d->Rate.T);
+    fprintf(fpdebug, "temperature %g \n", T);
     fprintf(fpdebug, "Y %g %g %g %g %g %g %g %g\n",Y->e, Y->Total, Y->H2, Y->HI, Y->HII, Y->HeI, Y->HeII, Y->HeIII); 
     fprintf(fpdebug, "Internal %e \n",CLEDOTINSTANT( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal, &dHeat, &dCool ));
     fprintf(fpdebug, "PdV %e \n",ExternalHeating);
@@ -2965,7 +2967,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 	if (d->Y_He - y[2] - y[3] < YHeMIN) y[2] = d->Y_He - y[3] - YHeMIN;
 	}*/
 
-      YTotal = (d->Y_H) + (d->Y_H - y[1]) + d->Y_He + y[3] +
+      YTotal = (d->Y_H) - y[4] + (d->Y_H - y[1] - 2*y[4]) + d->Y_He + y[3] +
 	2.0*(d->Y_He - y[2] - y[3]) + d->ZMetal/MU_METAL;
       EMin = clThermalEnergy( YTotal, cl->TMin );
 
@@ -3016,7 +3018,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
    Y->H2 = y[4];
    Y->HII = d->Y_H - Y->HI - 2.0*Y->H2;
    Y->e = Y->HII + Y->HeII + 2*Y->HeIII;
-   Y->Total =  Y->e + d->Y_H + d->Y_He + d->ZMetal/MU_METAL - Y->H2; 
+   Y->Total =  Y->e + d->Y_H + d->Y_He + d->ZMetal/MU_METAL - Y->H2; /*as two hydrogen atoms make one molecular hydrogen particle, subtract off number of molecules to avoid double counting particles CC */
 
 #ifdef COOLDEBUG
    /* Table of cooling and heating terms that can be read into an idl function to create a nice cooling curve*/
@@ -3024,9 +3026,10 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
      FILE *cooldebug;
      cooldebug = fopen("cooldebug_table.txt","a");
      double en_B = d->rho*CL_B_gm, Edot, LowTCool;
-     double  T = clTemperature( Y->Total, *E ), ne = en_B*Y->e;
+     double ne = en_B*Y->e;
      RATE *Rate = &d->Rate;
 
+     T = clTemperature( Y->Total, *E );
      CLRATES( d->cl, &d->Rate, T, d->rho, d->ZMetal, d->correL, d->dLymanWerner);
      s_dust = clDustShield(Y->HI*en_B, Y->H2*en_B, d->ZMetal, Rate->CorreLength);
      s_self = clSelfShield(Y->H2*en_B, Rate->CorreLength);
@@ -3452,5 +3455,3 @@ double CoolHeatingCode(COOL *cl, COOLPARTICLE *cp, double ECode,
 
 #endif /* NOCOOLING */
 #endif /* GASOLINE */
-
-
