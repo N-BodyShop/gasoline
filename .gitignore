@@ -1,4 +1,4 @@
 *.o
 Makefile
-gasoline
 pkdgrav
+gasoline*

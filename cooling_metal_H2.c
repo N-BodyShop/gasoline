@@ -3265,6 +3265,9 @@ void CoolDefaultParticleData( COOLPARTICLE *cp )
 	cp->f_HeI = 0.06;
 	cp->f_HeII = 0.0;
 	cp->f_H2 = 0.0;
+#ifdef  RADIATIVEBOX
+	cp->dLymanWerner = 0.0;
+#endif
 }
 
 void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp, double ZMetal)

@@ -5,6 +5,9 @@
 #ifndef MAXPATHLEN
 #define MAXPATHLEN 256
 #endif
+#ifndef MAXLISTLEN
+#define MAXLISTLEN 1024
+#endif
 
 #include "cosmo.h"
 #include "patch.h"
@@ -43,9 +46,11 @@ struct parameters {
 	int bDensityStep;
     int bDeltaAccelStep;
     int bDeltaAccelStepGasTree;
+        int bLongRangeStep;
 	int nTruncateRung;
 	int bNonSymp;
     int iBinaryOutput;
+    int bNoReOrder;
     int bPackedVector;
 	int bDoDensity;
  	int iReadIOrder;
@@ -95,6 +100,7 @@ struct parameters {
 	double dGamma;
 	int nBucket;
 	int iOutInterval;
+        int iOutMinorInterval;
 	int iLogInterval;
 	int iCheckInterval;
 	int iOrder;
@@ -134,6 +140,8 @@ struct parameters {
     int bSinkFormPotMin;
     int bSinkFormSimple;
     int nSinkFormMin;
+    int bSinkMerge;
+    int bSinkAngMomOutput;
     double dSinkFormDivVCoeff;
     double dSinkFormDivAccCoeff;
     double dSinkFormDensity;
@@ -191,6 +199,15 @@ struct parameters {
 	char achInFile[MAXPATHLEN];
 	char achOutName[MAXPATHLEN];
 	char achDataSubPath[MAXPATHLEN];
+        char achOutputListGasRed[MAXLISTLEN];
+        char achOutputListDarkRed[MAXLISTLEN];
+        char achOutputListStarRed[MAXLISTLEN];
+        char achOutputListGasInterval[MAXLISTLEN];
+        char achOutputListDarkInterval[MAXLISTLEN];
+        char achOutputListStarInterval[MAXLISTLEN];
+        char achOutputListGasMinorInterval[MAXLISTLEN];
+        char achOutputListDarkMinorInterval[MAXLISTLEN];
+        char achOutputListStarMinorInterval[MAXLISTLEN];
 	double dCoolFac;
 	double dCoolDens;
 	double dCoolMaxDens;
@@ -215,6 +232,7 @@ struct parameters {
 	int iGasModel;
 	double dEtaCourant;
 	double dEtauDot;
+	double dEtaCourantLong;
 	double duDotLimit;
 	double dShockTrackerA;
 	double dShockTrackerB;
@@ -267,6 +285,11 @@ struct parameters {
 	int    bStarForm;
 	int    bFeedBack;
 	int    bFormOutputs;
+        int    bIonize;
+        double dIonizeTime;
+        double dIonizeMultiple;
+        double dIonizeTMin;
+        double dIonizeT;
 #ifdef SIMPLESF
 	double SSF_dEfficiency;
     double SSF_dTMax;
@@ -287,9 +310,10 @@ struct parameters {
 	double dExtraCoolShutoff;
 	int bSmallSNSmooth;
         int iStarFormRung;
-  int iRandomSeed;
+        int iRandomSeed;
 	int nSmoothFeedback;
 #endif
+        double dNoncoolConvTime;
 	double dKBoltzUnit;
         double dPext;
         double dvturb;

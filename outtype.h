@@ -20,7 +20,7 @@ enum DataTypeCode {
 
 enum outtype_arraytype {
 	OUT_NULL,
-        BIG_FILE,
+        OUT_BIG_FILE,
 	OUT_COLOR_ARRAY,
 	OUT_DENSITY_ARRAY,
 	OUT_DENSITYU_ARRAY,
@@ -33,6 +33,7 @@ enum outtype_arraytype {
 	OUT_RUNG_ARRAY,
 	OUT_SPHH_ARRAY,
 	OUT_U_ARRAY,
+	OUT_UNONCOOL_ARRAY,
         OUT_TEMP_ARRAY,
 	OUT_COOL_EDOT_ARRAY,
 	OUT_COOL_COOLING_ARRAY,
@@ -88,6 +89,9 @@ enum outtype_arraytype {
 	OUT_L_JEANS_ARRAY,
 	OUT_ISMALL_JEANS_ARRAY,
 	OUT_SURFACEAREA_ARRAY,
+	OUT_DIVV_T_ARRAY,
+	OUT_DIVV_CORRECTOR_ARRAY,
+	OUT_IACTIVE_ARRAY,
         OUT_1D3DSPLIT,  /* NOTICE!!
                        * Everything above here is 1D 
                        * Everything below here is 3D
@@ -102,12 +106,13 @@ enum outtype_arraytype {
 	OUT_VPRED_VECTOR,
 	OUT_GRADRHO_VECTOR,
 	OUT_ACCELPRES_VECTOR,
-	OUT_ANGMOM_VECTOR
+	OUT_ANGMOM_VECTOR,
+	OUT_END_OF_LIST
 	};
 
 /*void pkdOutArray(PKD pkd,char *pszFileName,int nStart, int iArrType, int iBinaryOutput);*/
 void VecFilename(char *achFile, int iType);
 void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,int iBinaryOutput, int N, int bStandard);
 void pkdGenericSeek(PKD pkd,FILE *fp,long nStart,int iHeader, int iElement);
-void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int nStarStart, int iVecType, float minValue[3][3], float maxValue[3][3], double duTFac, double dvFac);
+void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int nStarStart, int iVecType, int *pnOut, float minValue[3][3], float maxValue[3][3], double duTFac, double dvFac);
 #endif

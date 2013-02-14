@@ -255,6 +255,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_MARKSMOOTH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstMarkSmooth,
 				  sizeof(struct inMarkSmooth),0);
+	mdlAddService(mdl,PST_DTSMOOTH,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstDtSmooth,
+				  sizeof(struct inDtSmooth),0);
 	mdlAddService(mdl,PST_RESMOOTH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstReSmooth,
 				  sizeof(struct inReSmooth),sizeof(struct outReSmooth));
@@ -503,6 +506,12 @@ pstAddServices(PST pst,MDL mdl)
 		      (void (*)(void *,void *,int,void *,int *))
 		      pstFlushStarLog, sizeof(struct inFlushStarLog), 0);
 #endif
+	mdlAddService(mdl,PST_INITSINKLOG,pst,
+		      (void (*)(void *,void *,int,void *,int *))
+		      pstInitSinkLog, 0, 0);
+	mdlAddService(mdl,PST_FLUSHSINKLOG,pst,
+		      (void (*)(void *,void *,int,void *,int *))
+		      pstFlushSinkLog, sizeof(struct inFlushSinkLog), 0);
 	mdlAddService(mdl,PST_GRAVINFLOW,pst,
 		      (void (*)(void *,void *,int,void *,int *)) pstGravInflow,
 		      sizeof(struct inGravInflow), 0);
@@ -2070,7 +2079,7 @@ void pstCalcBound(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 		}
 	else {
-		pkdCalcBound(plcl->pkd,&out->bnd,&out->bndActive,&out->bndTreeActive,&out->bndBall);
+	    pkdCalcBound(plcl->pkd,&out->bnd,&out->bndActive,&out->bndTreeActive,&out->bndBall,NULL);
 		}
 	if (pnOut) *pnOut = sizeof(struct outCalcBound); 
 	}
@@ -2726,6 +2735,7 @@ void pstOutNCVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
                 if (out != NULL){
+		    out->nOut += outUp.nOut;
                     for(i=0; i<3; i++){
                         for(iDim=0;iDim<3;iDim++){
                             out->min[i][iDim]=(out->min[i][iDim] < outUp.min[i][iDim]) ? out->min[i][iDim]: outUp.min[i][iDim];
@@ -2745,9 +2755,9 @@ void pstOutNCVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 		strcat(achOutFile,in->achOutFile);
 		pkdOutNChilada(plcl->pkd,achOutFile,plcl->nGasWriteStart,
-			       plcl->nDarkWriteStart, plcl->nStarWriteStart,
-			       in->iType,out->min, out->max, in->duTFac,
-			       in->dvFac);
+		    plcl->nDarkWriteStart, plcl->nStarWriteStart,
+ 		    in->iType,&out->nOut,out->min, out->max, in->duTFac,
+		    in->dvFac);
 		}
 	if (pnOut) *pnOut = sizeof(struct outNC);
 	}
@@ -3107,6 +3117,37 @@ void pstMarkSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 					 in->bSymmetric,in->iSmoothType,0,0.0);
 		smMarkSmooth(smx,&in->smf,in->iMarkType);
 		smFinish(smx,&in->smf, &cs);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstDtSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inDtSmooth *in = vin;
+	struct outDtSmooth *out = vout;
+	struct outDtSmooth outUp;
+	CASTAT cs;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inDtSmooth));
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_DTSMOOTH,in,nIn);
+		pstDtSmooth(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+		if (out != NULL) 
+		    if (outUp.dtMin < out->dtMin) out->dtMin = outUp.dtMin;
+		}
+	else {
+		LCL *plcl = pst->plcl;
+		SMX smx;
+
+		(&in->smf)->pkd = pst->plcl->pkd;
+		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
+					 in->bSymmetric,in->iSmoothType,0,0.0);
+		assert(0);  /* unimplemented */
+		/* smDtSmooth(smx,&in->smf); */
+		smFinish(smx,&in->smf, &cs);
+		if (out != NULL) out->dtMin = in->smf.dtMin;
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -3489,7 +3530,7 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		pkdKick(plcl->pkd,in->dvFacOne,in->dvFacTwo,
 				in->dvPredFacOne,in->dvPredFacTwo,in->duDelta,in->duPredDelta,
-				in->iGasModel,in->z,in->duDotLimit, in->dTimeEnd);
+		    in->iGasModel,in->z,in->duDotLimit, in->dTimeEnd, in->dNoncoolConvRate);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -4560,7 +4601,7 @@ void pstUpdateuDot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (outUp.MaxTime > out->MaxTime) out->MaxTime = outUp.MaxTime;
 		}
 	else {
-		pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->iGasModel,in->bUpdateState);
+	        pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->dNoncoolConvRate,in->iGasModel,in->bUpdateState);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -6116,7 +6157,7 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo,in->duDelta,
-					 in->iGasModel,in->z,in->duDotLimit,in->dTimeEnd);
+		    in->iGasModel,in->z,in->duDotLimit,in->dTimeEnd,in->dNoncoolConvRate);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -6254,6 +6295,38 @@ pstFlushStarLog(PST pst,void *vin,int nIn,void *vout,int *pnOut)
     }
 
 #endif
+
+void
+pstInitSinkLog(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+    if (pst->nLeaves > 1) {
+	mdlReqService(pst->mdl,pst->idUpper,PST_INITSINKLOG,NULL,0);
+	pstInitSinkLog(pst->pstLower,NULL,0, NULL, NULL);
+	mdlGetReply(pst->mdl,pst->idUpper,NULL, NULL);
+    }
+    else {
+	pkdSinkLogInit(pst->plcl->pkd);
+	}
+    }
+
+void
+pstFlushSinkLog(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+    struct inFlushSinkLog *in = vin;
+
+    mdlassert(pst->mdl,nIn == sizeof(struct inFlushSinkLog));
+    if (pst->nLeaves > 1) {
+	/*
+	 * N.B. NOT parallel
+	 */
+	pstFlushSinkLog(pst->pstLower, in, nIn, NULL, NULL);
+	mdlReqService(pst->mdl,pst->idUpper,PST_FLUSHSINKLOG, in, nIn);
+	mdlGetReply(pst->mdl,pst->idUpper,NULL, NULL);
+    }
+    else {
+	pkdSinkLogFlush(pst->plcl->pkd, in->achSinkLogFile);
+	}
+    }
 
 void pstGravInflow(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {

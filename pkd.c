@@ -43,12 +43,6 @@ int SGN(double x);
 #define fseek fseeko
 #endif
 
-/*
- BalsaraSwitch hackery
-*/
-/*
-#define VISCSWITCHCUT 0.6
-*/
 
 double pkdGetTimer(PKD pkd,int iTimer)
 {
@@ -178,6 +172,7 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 		}
 	pkd->dxInflow = dxInflow;
 	pkd->dxOutflow = dxOutflow;
+	pkd->sinkLog.nLog = 0; /* Nothing in log, even if not needed */
 	/*
 	 ** Allocate the main particle store.
 	 ** Need to use mdlMalloc() since the particles will need to be
@@ -304,7 +299,7 @@ void pkdGenericSeek(PKD pkd,FILE *fp,long nStart,int iHeader,int iElement)
 void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		  int bStandard,int iReadIOrder,double dvFac,double dTuFac)
 {
-  FILE *fp,*fp2 = NULL;
+  FILE *fp,*fpiord = NULL;
 #if defined(SIMPLESF) || defined(STARFORM)
   FILE *fpmStar = NULL, *fptCoolAgain = NULL;
 #endif
@@ -326,11 +321,20 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
     p->iRung = 0;
     p->fWeight = 1.0;
     p->fDensity = 0.0;
+#ifdef DRHODT
+    p->fDensity_t = 0.0;
+    p->fDensity_PdV = 0.0;
+    p->fDensity_PdVcorr = 0.0;
+#endif
     p->fBall2 = 0.0;
     p->fBallMax = 0.0;
 #ifdef GASOLINE
     p->u = 0.0;
     p->uPred = 0.0;
+#ifdef UNONCOOL
+    p->uNoncool = 0.;
+    p->uNoncoolPred = 0.;
+#endif
 #ifdef STARSINK
     SINK_Lx(p) = 0.0;
     SINK_Ly(p) = 0.0;
@@ -395,22 +399,24 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
   
   /* Open iOrder file if requested */
   if (iReadIOrder) {
-    char atmp[160];
+    char atmp[512];
     sprintf(atmp,"%s.iord",pszFileName);
-    fp2 = fopen(atmp,"r");
-    mdlassert(pkd->mdl,fp2 != NULL);
+    fpiord = fopen(atmp,"r");   
+    mdlassert(pkd->mdl,fpiord != NULL);
     /*
     ** Seek to right place in file
     */
     switch(iReadIOrder) {
     case 1:
-      pkdGenericSeek(pkd,fp2,nStart,sizeof(int),sizeof(int));
+      pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(int));
       break;
     case 2:
-      pkdGenericSeek(pkd,fp2,nStart,sizeof(int),sizeof(long long));
+      pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(long long));
+      if (bStandard) assert(sizeof(long)==sizeof(long long));
       break;
     case 3:
-      pkdGenericSeek(pkd,fp2,nStart,sizeof(int),sizeof(pkd->pStore[0].iOrder));
+      pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(pkd->pStore[0].iOrder));
+      if (bStandard) assert(sizeof(int)==sizeof(pkd->pStore[0].iOrder));
       break;
     default:
       fprintf(stderr,"Don't understand iOrder format: %d\n",iReadIOrder);
@@ -420,7 +426,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
   
 #ifdef STARFORM
   {
-    char atmp[160];
+    char atmp[512];
     sprintf(atmp,"%s.coolontime",pszFileName);
     fptCoolAgain = fopen(atmp,"r");
     if (fptCoolAgain!=NULL) {
@@ -438,7 +444,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 
 #ifdef SIMPLESF
   {
-    char atmp[160];
+    char atmp[512];
     sprintf(atmp,"%s.tCoolAgain",pszFileName);
     fptCoolAgain = fopen(atmp,"r");
     if (fptCoolAgain!=NULL) {
@@ -470,18 +476,20 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	 */
 	if (bStandard) {
 		FLOAT vTemp;
-		long long LongTmp;
+		long LongTmp;
 		int IntTmp;
-		XDR xdrs,tocxdrs;
+		XDR xdrs,xdrstoc,xdrsiord;
 		xdrstdio_create(&xdrs,fp,XDR_DECODE);
 #ifdef STARFORM
-		xdrstdio_create(&tocxdrs,fptCoolAgain,XDR_DECODE);
+		xdrstdio_create(&xdrstoc,fptCoolAgain,XDR_DECODE);
 #endif
+		if (iReadIOrder) xdrstdio_create(&xdrsiord,fpiord,XDR_DECODE);
+
 		for (i=0;i<nLocal;++i) {
 			p = &pkd->pStore[i];
 			p->iOrder = nStart + i; /* temporary */
 			if (pkdIsGasByOrder(pkd,p)) {
-				iSetMask = TYPE_GAS;
+			        iSetMask = TYPE_GAS; /* saves identity based on Tipsy file in case iOrder changed */
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
 				assert(p->fMass > 0.0);
@@ -631,25 +639,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 			    else mdlassert(pkd->mdl,0);
 			}
 
-			    TYPESet(p,iSetMask);
-			    switch (iReadIOrder) {
-			    case 0:
-			      break;
-			    case 1:
-			      fread(&IntTmp,sizeof(IntTmp),1,fp2);
-			      p->iOrder = IntTmp;
-			      break;
-			    case 2:
-			      fread(&LongTmp,sizeof(LongTmp),1,fp2);
-			      p->iOrder = LongTmp;
-			      break;
-			    case 3:
-			      fread(&p->iOrder,sizeof(p->iOrder),1,fp2);
-			      break;
-			    }
 #ifdef STARFORM
 			    if (fptCoolAgain!=NULL) {
-			      xdr_float(&tocxdrs,&fTmp);
+			      xdr_float(&xdrstoc,&fTmp);
 			      if (pkdIsGasByOrder(pkd,p)) p->fTimeCoolIsOffUntil = fTmp;
 			    }
 #endif
@@ -668,8 +660,33 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 			    if (p->r[0] < pkd->dxInflow) { TYPESet(p,TYPE_INFLOW); assert(p->v[0] > 0); }
 			    if (p->r[0] > pkd->dxOutflow) { TYPESet(p,TYPE_OUTFLOW); assert(p->v[0] > 0); }
 #endif
+			    TYPESet(p,iSetMask);
+			    /* Read iOrder last so byOrder Types not messed up */
+			    switch (iReadIOrder) {
+			    case 0:
+			      break;
+			    case 1:
+			      xdr_int(&xdrsiord,&IntTmp);
+//			      fread(&IntTmp,sizeof(IntTmp),1,fpiord);
+			      p->iOrder = IntTmp;
+			      break;
+			    case 2:
+			      xdr_long(&xdrsiord,&LongTmp);
+//			      fread(&LongTmp,sizeof(LongTmp),1,fpiord);
+			      p->iOrder = LongTmp;
+			      break;
+			    case 3:
+			      xdr_int(&xdrsiord,&IntTmp);
+// see assert above -- I have to assume iOrder is int
+			      p->iOrder = IntTmp;
+			      break;
+			    }
 			}
 		xdr_destroy(&xdrs);
+#ifdef STARFORM
+		xdr_destroy(&xdrstoc);
+#endif
+		if (iReadIOrder) xdr_destroy(&xdrsiord);
 		}
 	else {
 		long long LongTmp;
@@ -780,26 +797,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 			    else mdlassert(pkd->mdl,0);
 			    }
 
-			TYPESet(p,iSetMask); /* needed to get max order info */
-			switch (iReadIOrder) {
-			case 0:
-#ifndef INFLOWOUTFLOW
-				p->iOrder = nStart + i;
-#endif
-				break;
-			case 1:
-				fread(&IntTmp,sizeof(IntTmp),1,fp2);
-				p->iOrder = IntTmp;
-				break;
-			case 2:
-				fread(&LongTmp,sizeof(LongTmp),1,fp2);
-				p->iOrder = LongTmp;
-				break;
-			case 3:
-				fread(&p->iOrder,sizeof(p->iOrder),1,fp2);
-				break;
-				}
-
 #if defined(SIMPLESF) || defined(STARFORM)
       if (fptCoolAgain!=NULL) {
 	fread(&fTmp,sizeof(float),1,fptCoolAgain);
@@ -818,14 +815,35 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 			if (p->r[0] < pkd->dxInflow) { TYPESet(p,TYPE_INFLOW); assert(p->v[0] > 0); }
 			if (p->r[0] > pkd->dxOutflow) { TYPESet(p,TYPE_OUTFLOW); assert(p->v[0] > 0); }
 #endif
+			TYPESet(p,iSetMask); /* needed to get max order info */
+			/* Read iOrder last so Types not messed up */
+			switch (iReadIOrder) {
+			case 0:
+#ifndef INFLOWOUTFLOW
+				p->iOrder = nStart + i;
+#endif
+				break;
+			case 1:
+				fread(&IntTmp,sizeof(IntTmp),1,fpiord);
+				p->iOrder = IntTmp;
+				break;
+			case 2:
+				fread(&LongTmp,sizeof(LongTmp),1,fpiord);
+				p->iOrder = LongTmp;
+				break;
+			case 3:
+				fread(&p->iOrder,sizeof(p->iOrder),1,fpiord);
+				break;
+				}
+
 		    }
 	    }
-	if (fp2!=NULL) fclose(fp2);
+	if (fpiord!=NULL) fclose(fpiord);
 	fclose(fp);
 	}
 
 
-void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pbndBall)
+void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pbndBall,BNDDT *pbndDt)
 {
         /* Faster by assuming active order */
 
@@ -873,6 +891,28 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pb
 		pbndTreeActive->fMin[j] = pbndActive->fMin[j];
 		pbndTreeActive->fMax[j] = pbndActive->fMax[j];
 		}
+
+	if (pbndDt != NULL) {
+	    DIAGDIST2(pbndDt->drMax2,pbnd->fMin,pbnd->fMax);
+	    pbndDt->cMax = -FLOAT_MAXVAL;
+	    for (j=0;j<3;++j) {
+		pbndDt->vMin[j] = FLOAT_MAXVAL;
+		pbndDt->vMax[j] = -FLOAT_MAXVAL;
+		}
+	    for (i=0;i<pkd->nLocal;++i) {
+		double v2;
+		if (TYPETest(&(pkd->pStore[i]),TYPE_GAS)) {
+		    if (pkd->pStore[i].c > pbndDt->cMax)
+			pbndDt->cMax = pkd->pStore[i].c;
+		    for (j=0;j<3;++j) {
+			if (pkd->pStore[i].vPred[j] < pbndDt->vMin[j]) 
+			    pbndDt->vMin[j] = pkd->pStore[i].vPred[j];
+			if (pkd->pStore[i].vPred[j] > pbndDt->vMax[j])
+			    pbndDt->vMax[j] = pkd->pStore[i].vPred[j];
+			}
+		    }
+		}
+	    }
 	}
 
 
@@ -945,7 +985,8 @@ void pkdCalcBound_old(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND
 				}
 			}
 		}
-	}
+    
+    }
 
 
 void pkdGasWeight(PKD pkd)
@@ -1799,6 +1840,14 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 #else
 	fTmp = p->fSoft;
 #endif
+#ifdef DRHODT 
+	/* Horrible hack -- overwrite soft output */
+#ifdef DRHODTDIVOUT
+	fTmp = p->fDivv_PdV;
+#else
+	fTmp = p->fDensity_PdV;
+#endif
+#endif
 	xdr_float(&xdrs,&fTmp);
 #ifdef SINKING
 	if (TYPETest( p, TYPE_SINKING)) {
@@ -1814,6 +1863,14 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	    }
 #else
 	fTmp = p->fMetals;
+#ifdef DRHODT 
+	/* Horrible hack -- overwrite metals output */
+#ifdef DRHODTDIVOUT
+	fTmp = p->fDivv_t;
+#else
+	fTmp = p->fDensity_t;
+#endif
+#endif
 	xdr_float(&xdrs,&fTmp);
 #endif
 #else /* not gasoline */
@@ -1829,6 +1886,14 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	xdr_float(&xdrs,&fTmp);
 #endif
 	fTmp = p->fPot;
+#ifdef DRHODT 
+	/* Horrible hack -- overwrite pot output */
+#ifdef DRHODTDIVOUT
+	fTmp = p->fDivv_PdVcorr;
+#else
+	fTmp = p->fDensity_PdVcorr;
+#endif
+#endif
 	xdr_float(&xdrs,&fTmp);
       }
       else if (pkdIsStar(pkd,p)) {
@@ -2165,7 +2230,9 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
 			pOut->bndBall.fMax[j] = p2->bndBall.fMax[j];
 		else
 			pOut->bndBall.fMax[j] = p1->bndBall.fMax[j];
+
 		}
+
 	/*
 	 ** Find the center of mass and mass weighted softening.
 	 */
@@ -2187,6 +2254,7 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
 				 struct pkdCalcCellStruct *pcc)
 {
 	int pj;
+	int bSinkCell=0;
 	double m,dx,dy,dz,d2,d1;
 	struct pkdCalcCellStruct cc;
 #ifdef  RADIATIVEBOX
@@ -2258,6 +2326,9 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
 		d2 = dx*dx + dy*dy + dz*dz;
 		d1 = sqrt(d2);
 		if (d1 > cc.Bmax) cc.Bmax = d1;
+#ifdef STARSINK
+		if (TYPETest(&(pkd->pStore[pj]),TYPE_STAR)) bSinkCell=1;
+#endif
 		cc.B2 += m*d2;
 		cc.B3 += m*d2*d1;
 		cc.B4 += m*d2*d2;
@@ -2331,6 +2402,12 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
 			cc.Qyz += m*dy*dz;
 			}
 		}
+#ifdef STARSINK
+	if (bSinkCell) {
+	    cc.Bmax*=2;
+	    bSinkCell=0;
+	    }
+#endif
 #ifdef  RADIATIVEBOX
 	if (cc.gmass > 0) cc.gmom /= cc.gmass; /*Finish determining the moment of the gas*/
 	if (cc.fLW > 0) {
@@ -2515,6 +2592,7 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 					c[iCell].bndBall.fMin[j] = p[pj].r[j]-p[pj].fBallMax;
 				if (p[pj].r[j]+p[pj].fBallMax > c[iCell].bndBall.fMax[j])
 					c[iCell].bndBall.fMax[j] = p[pj].r[j]+p[pj].fBallMax;
+
 				}
 			/*
 			 ** Find center of mass and total mass and mass weighted softening.
@@ -2525,6 +2603,7 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
 				c[iCell].r[j] += p[pj].fMass*p[pj].r[j];
 				}
 			}
+
 		if (c[iCell].fMass > 0) {
 			for (j=0;j<3;++j) {
 				c[iCell].r[j] /= c[iCell].fMass;
@@ -2994,10 +3073,10 @@ void pkdBuildLocal(PKD pkd,int nBucket,int iOpenType,double dCrit,
 	 ** determine the local bound of the particles.
 	 */
 	if (bTreeActiveOnly) {
-		pkdCalcBound(pkd,&bndDum,&bndDum,&c[pkd->iRoot].bnd,&bndDum);
+	    pkdCalcBound(pkd,&bndDum,&bndDum,&c[pkd->iRoot].bnd,&bndDum,NULL);
 		}
 	else {
-		pkdCalcBound(pkd,&c[pkd->iRoot].bnd,&bndDum,&bndDum,&bndDum);
+	    pkdCalcBound(pkd,&c[pkd->iRoot].bnd,&bndDum,&bndDum,&bndDum,NULL);
 		}
 	i = pkd->iRoot;
 	while (1) {
@@ -4066,9 +4145,18 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 			    }
 #endif
 
+#ifdef DRHODT
+			if(pkdIsGas(pkd, p)) {
+			    p->fDensity *= exp(-p->fDivv_t*dDelta); // Predictor for density
+			    if(dDelta > 0.0)
+			       assert(p->fDensity > 0.0);
+			    }
+			p->fDensity_t *= exp(-p->fDivv_t*dDelta);
+			p->fDensity_PdV *= exp(-p->fDivv_PdV*dDelta);
+			p->fDensity_PdVcorr *= exp(-p->fDivv_PdVcorr*dDelta);
+#endif
 			for (j=0;j<3;++j) {
 			        p->r[j] += dDelta*p->v[j];
-
 				if (bPeriodic) {
 					if (p->r[j] >= lfCenter[j] + 0.5*pkd->fPeriod[j]) {
 						p->r[j] -= pkd->fPeriod[j];
@@ -4138,11 +4226,17 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 	     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
-	     double z, double duDotLimit, double dTimeEnd )
+    double z, double duDotLimit, double dTimeEnd, double dNoncoolConvRate )
 {
 	PARTICLE *p;
 	int i,j,n;
-
+#ifdef GLASS 
+#define dvFacOneSTD     1.0
+#define dvPredFacOneSTD 1.0
+#else
+#define dvFacOneSTD     dvFacOne
+#define dvPredFacOneSTD dvPredFacOne
+#endif
 	pkdClearTimer(pkd,1);
 	pkdStartTimer(pkd,1);
 
@@ -4154,11 +4248,11 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 			continue;
 #endif
 		if (TYPEQueryACTIVE(p)) {
-#ifdef NEED_VPRED
 #ifdef GASOLINE
 			if (pkdIsGas(pkd, p)) {
 				for (j=0;j<3;++j) {
 					p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
+					p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
 				    }
 #ifdef VARALPHA
 				    {
@@ -4205,6 +4299,21 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				      p->uPred = uold*exp(p->uDot*duPredDelta/uold);
 				      p->u = uold*exp(p->uDot*duDelta/uold);
 				      }
+#ifdef UNONCOOL
+			          {
+			          double uNoncoolDot = p->uNoncoolDotDiff
+				      + p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred) 
+#ifdef STARFORM
+				      + p->fESNrate
+#endif
+				      - p->uNoncoolPred*dNoncoolConvRate;
+
+				  p->uNoncoolPred = p->uNoncool + uNoncoolDot*duPredDelta;
+				  p->uNoncool = p->uNoncool + uNoncoolDot*duDelta;
+				  if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
+				  if (p->uNoncool < 0) p->uNoncool = 0;
+				  }
+#endif
 #else /* NOCOOLING */
 				  p->uPred = p->u + p->PdV*duPredDelta;
 				  p->u = p->u + p->PdV*duDelta;
@@ -4229,16 +4338,21 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #endif /* STARFORM */
 #endif /* DIFFUSION */
 			    }
-#else /* GASOLINE */
-			for (j=0;j<3;++j) {
-				p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
-				}
+			else 
 #endif /* GASOLINE */
+			    { /* Not gas or not -DGASOLINE */
+			    for (j=0;j<3;++j) {
+#if defined(NEED_VPRED) && !defined(GASOLINE)
+				p->vPred[j] = p->v[j]*dvPredFacOneSTD + p->a[j]*dvPredFacTwo;
 #endif /* NEED_VPRED */
-			for (j=0;j<3;++j) {
-				p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
-				}
-			}
+#ifdef FREEZENONGAS
+				p->v[j] = 0.;
+#else
+				p->v[j] = p->v[j]*dvFacOneSTD + p->a[j]*dvFacTwo;
+#endif
+			        }
+			    }
+		    }
 	    }
 
 	pkdStopTimer(pkd,1);
@@ -4911,15 +5025,21 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 			dT = FLOAT_MAXVAL;
 			if (bEpsAcc && acc>0) {
 #ifdef GASOLINE
-			     if (pkdIsGas(pkd, &(pkd->pStore[i])) && dhMinOverSoft < 1 && pkd->pStore[i].fBall2<4.0*pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) {
+#ifdef EPSACCH
+			    if (pkdIsGas(pkd, &(pkd->pStore[i]))) {
+				dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
+				}		        
+#else
+			    if (pkdIsGas(pkd, &(pkd->pStore[i])) && dhMinOverSoft < 1 && pkd->pStore[i].fBall2<4.0*pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) {
 			        if (pkd->pStore[i].fBall2 > 4.0*dhMinOverSoft*dhMinOverSoft
 				    *pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
 				   dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
 			        else 
 				   dT = dEta*sqrt((dhMinOverSoft*pkd->pStore[i].fSoft)/acc);
 			        }
+#endif 
 		             else 
-#endif
+#endif /* GASOLINE */
 			        dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
 			        }
 			if (bSqrtPhi && acc>0) {
@@ -5186,11 +5306,55 @@ pkdColNParts(PKD pkd, int *pnNew, int *nAddGas, int *nAddDark,
     }
 
 void
-pkdNewOrder(PKD pkd,int nStartGas, int nStartDark, int nStartStar)
+pkdNewOrder(PKD pkd,int nStartGas, int nStartDark, int nStartStar) 
+/* How does it feel? */
 {
     int pi;
     PARTICLE *p;
-    
+
+    /* Sink Log to be updated? */
+    if (pkd->sinkLog.nLog) {
+	SINKEVENT *pSE;
+	int iOrdSink = nStartStar;
+	int iForm, iLog;
+	iForm = pkd->sinkLog.nFormOrdered;
+	iLog = pkd->sinkLog.nLogOrdered;
+	pSE = &(pkd->sinkLog.SinkEventTab[iLog]);
+	for(pi=0;pi<pkdLocal(pkd);pi++) {
+	    p = &(pkd->pStore[pi]);
+	    if(p->iOrder == -1) {
+		if (pkdIsStar(pkd, p)) {
+		    while (pSE->iOrdSink != -1) { /* Find next sink creation accretion in log */
+			printf("%d New order Non-sink form accrete -- skipped %d %d %d\n",pkd->idSelf,iLog,pSE->iOrdSink,pSE->iOrdVictim);
+			pSE++;
+			iLog++;
+			assert(iLog < pkd->sinkLog.nLog);
+			}
+		    while (pSE->iOrdSink == -1) { /* Count through sink creation accretions in log */
+			printf("%d New order Sink form accrete -- skipped %d %d %d %d\n",pkd->idSelf,iLog,pSE->iOrdSink,pSE->iOrdVictim,pkd->sinkLog.nAccrete);
+			pSE++;
+			iLog++;
+			}
+		    printf("%d New order Sink form -- %d %d %d %d %d\n",pkd->idSelf,iLog,pSE->iOrdSink,pSE->iOrdVictim,iForm,pkd->sinkLog.nForm);
+		    /* Must be followed by sink creation event in log */
+		    assert(iLog < pkd->sinkLog.nLog);
+		    assert(pSE->iOrdSink == iForm);
+		    assert(pSE->iOrdVictim == -1);
+		    pSE->iOrdSink = iOrdSink;
+		    pSE++;
+		    iForm++; iLog++;
+		    pkd->sinkLog.nLogOrdered = iLog;
+
+		    iOrdSink++; /* Just counted here -- set below */
+		    pkd->sinkLog.nFormOrdered++;
+		    }
+		}
+	    }
+	printf("%d New order sink ordering -- %d %d %d\n",pkd->idSelf,iForm,pkd->sinkLog.nFormOrdered,pkd->sinkLog.nForm);
+	assert(iForm == pkd->sinkLog.nForm);
+	}
+    /* END sink Log */
+
     for(pi=0;pi<pkdLocal(pkd);pi++) {
 	p = &(pkd->pStore[pi]);
 	if(p->iOrder == -1) {
@@ -5743,7 +5907,7 @@ int pkdIsStarByOrder(PKD pkd,PARTICLE *p) {
 
 #ifdef GASOLINE
 
-void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasModel, int bUpdateState )
+void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, double dNoncoolConvRate, int iGasModel, int bUpdateState )
 {
 #ifndef NOCOOLING	
 	PARTICLE *p;
@@ -5774,10 +5938,15 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, int iGasMode
   n = pkdLocal(pkd);
   for (i=0;i<n;++i,++p) {
     if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
+#ifdef UNONCOOL
+      ExternalHeating = p->PdV*p->uPred/(p->uPred+p->uNoncoolPred) + p->uDotDiff 
+	  + p->uNoncoolPred*dNoncoolConvRate;
+#else
       ExternalHeating = p->PdV;
 #ifdef STARFORM
       ExternalHeating += p->fESNrate;
 #endif
+#endif      
 			if ( bCool ) {
 				cp = p->CoolParticle;
 				E = p->u;
@@ -5928,7 +6097,11 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p)) {
+#ifdef UNONCOOL
+		        PoverRho = gammam1*(p->uPred+p->uNoncoolPred);
+#else
 			PoverRho = gammam1*p->uPred;
+#endif
 			p->PoverRho2 = PoverRho/p->fDensity;
 			/*
 			 * Add pressure floor to keep Jeans Mass
@@ -5937,10 +6110,14 @@ void pkdAdiabaticGasPressure(PKD pkd, double gammam1, double gamma,
 			 * P_min = 3*G*max(h,eps)^2*rho^2
 			 * Note that G = 1 in our code
 			 */
+#ifdef JEANSSOFTONLY
+			l2 = p->fSoft*p->fSoft;
+#else
 			l2 = 0.25*p->fBall2; 
 #ifdef JEANSSOFT
 			e2 = p->fSoft*p->fSoft; 
 			if (l2 < e2) l2 = e2; /* Jeans scale can't be smaller than softening */
+#endif
 #endif
 			PoverRho2Jeans = l2*dResolveJeans;
 			if(p->PoverRho2 < PoverRho2Jeans) {
@@ -5992,7 +6169,10 @@ void pkdCoolingGasPressure(PKD pkd, double gammam1, double gamma,
     p = pkd->pStore;
     for(i=0;i<pkdLocal(pkd);++i,++p) {
 		if (pkdIsGas(pkd,p)) {
-		    CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, &PoverRho, &(p->c) );
+		        CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, &PoverRho, &(p->c) );
+#ifdef UNONCOOL
+		        PoverRho += gammam1*(p->uNoncoolPred);
+#endif
 			p->PoverRho2 = PoverRho/p->fDensity;
 			/*
 			 * Add pressure floor to keep Jeans Mass
@@ -6212,6 +6392,9 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 			/*
 			 * Courant condition goes here.
 			 */
+#ifdef DRHODT
+		dT = p->dtNew;
+#else
 	       if (p->mumax>0.0) {
 				if (bViscosityLimitdt) 
 				  dT = dEtaCourant*dCosmoFac*(ph/(p->c + 0.6*(p->c + 2*p->BalsaraSwitch*p->mumax)));
@@ -6223,6 +6406,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 			   dT = dEtaCourant*dCosmoFac*(ph/(1.6*p->c+(10./FLT_MAX)));
 #else
 			   dT = dEtaCourant*dCosmoFac*(ph/(1.6*p->c));
+#endif
 #endif
 
 	       if (dEtauDot > 0.0 && p->PdV < 0.0) { /* Prevent rapid adiabatic cooling */
@@ -6251,6 +6435,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, int b
 		if(dT < p->dt)
 				p->dt = dT;
 		}
+	    /* This code relies on SPH step being done last -- not good */
 	    if (p->dt < *pdtMinGas) { *pdtMinGas = p->dt; }
 	    }
 #ifdef SINKING
@@ -6824,7 +7009,7 @@ void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
 #ifdef GASOLINE
 void
 pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
-			 int iGasModel,double z,double duDotLimit, double dTimeEnd)
+    int iGasModel,double z,double duDotLimit, double dTimeEnd,double dNoncoolConvRate)
 {
 	PARTICLE *p;
 	int i,j,n;
@@ -6893,7 +7078,20 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 			      FLOAT uold = p->uPred - p->uDot*duDelta;
 			      p->uPred = uold*exp(p->uDot*duDelta/uold);
 			      }
-#else
+#ifdef UNONCOOL
+			  {
+			  double uNoncoolDot = p->uNoncoolDotDiff
+			      + p->PdV*p->uNoncoolPred/(p->uPred+p->uNoncoolPred) 
+#ifdef STARFORM
+			      + p->fESNrate
+#endif
+			      - p->uNoncoolPred*dNoncoolConvRate;
+			  p->uNoncoolPred = p->uNoncoolPred + uNoncoolDot*duDelta;
+			  if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
+			      }
+#endif /* UNONCOOL */
+
+#else /* NOCOOLING is defined: */
 			  p->uPred = p->uPred + p->PdV*duDelta;
 #endif
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) || defined(SIMPLESF)
@@ -6917,7 +7115,7 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 	pkdStopTimer(pkd,1);
 	mdlDiag(pkd->mdl, "Done Vpred\n");
 	}
-#else
+#else /* NOT GASOLINE */
 void
 pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo)
 {
@@ -6927,8 +7125,17 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo)
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
 	for (i=0;i<n;i++)
-		for (j=0;j<3;j++)
-			p[i].vPred[j] = p[i].vPred[j]*dvFacOne + p[i].a[j]*dvFacTwo;
+#ifdef GLASS
+		    if (!pkdIsGas(pkd,&p[i])) {
+			for (j=0;j<3;j++)
+			    p[i].vPred[j] = p[i].vPred[j] + p[i].a[j]*dvFacTwo;
+			}
+		    else
+#endif	
+			{
+			for (j=0;j<3;j++)
+			    p[i].vPred[j] = p[i].vPred[j]*dvFacOne + p[i].a[j]*dvFacTwo;
+			}
 	}
 #endif
 #endif /* NEED_VPRED */
@@ -7092,5 +7299,63 @@ void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDe
     *pJvalmin = Jvalmin;
 #endif
 }
+
+void pkdSinkLogInit(PKD pkd)
+{
+    SINKLOG *pSinkLog = &pkd->sinkLog;
+    
+    pSinkLog->nLog = 0;
+    pSinkLog->nMaxLog = 1000;	/* inital size of buffer */
+    pSinkLog->nLogOrdered = 0;
+    pSinkLog->nFormOrdered = 0;
+    pSinkLog->nForm = 0;
+    pSinkLog->nAccrete = 0;
+    pSinkLog->nMerge = 0;
+    pSinkLog->SinkEventTab = malloc(pSinkLog->nMaxLog*sizeof(SINKEVENT));
+}
+
+void pkdSinkLogFlush(PKD pkd, char *pszFileName)
+{
+    FILE *fp;
+    int iLog;
+    XDR xdrs;
+    
+    if(pkd->sinkLog.nLog == 0)
+	return;
+    
+    assert(pkd->sinkLog.nForm == pkd->sinkLog.nFormOrdered);
+    
+    fp = fopen(pszFileName, "a");
+    assert(fp != NULL);
+    xdrstdio_create(&xdrs,fp,XDR_ENCODE);
+    /* Note: Could treat different events differently 
+       -- Accretion events do not have useful info except iOrd of Victim 
+          e.g. if iOrdSink == -1 (sink formation accrete), -2 (std accrete) */
+    for(iLog = 0; iLog < pkd->sinkLog.nLog; iLog++){
+	SINKEVENT *pSEv = &(pkd->sinkLog.SinkEventTab[iLog]); 
+	xdr_int(&xdrs, &(pSEv->iOrdSink));
+	xdr_int(&xdrs, &(pSEv->iOrdVictim));
+	xdr_double(&xdrs, &(pSEv->time));
+	xdr_double(&xdrs, &(pSEv->mass));
+	xdr_double(&xdrs, &(pSEv->r[0]));
+	xdr_double(&xdrs, &(pSEv->r[1]));
+	xdr_double(&xdrs, &(pSEv->r[2]));
+	xdr_double(&xdrs, &(pSEv->v[0]));
+	xdr_double(&xdrs, &(pSEv->v[1]));
+	xdr_double(&xdrs, &(pSEv->v[2]));
+	xdr_double(&xdrs, &(pSEv->L[0]));
+	xdr_double(&xdrs, &(pSEv->L[1]));
+	xdr_double(&xdrs, &(pSEv->L[2]));
+	}
+    xdr_destroy(&xdrs);
+    fclose(fp);
+    pkd->sinkLog.nLog = 0;
+    pkd->sinkLog.nForm = 0;
+    pkd->sinkLog.nAccrete = 0;
+    pkd->sinkLog.nMerge = 0;
+    pkd->sinkLog.nLogOrdered = 0;
+    pkd->sinkLog.nFormOrdered = 0;
+    }
+    
 
 

@@ -1,5 +1,5 @@
-#ifndef COOLING_COSMO_HINCLUDED
-#define COOLING_COSMO_HINCLUDED
+#ifndef COOLING_PLANET_HINCLUDED
+#define COOLING_PLANET_HINCLUDED
 
 /* Global consts */
 #if defined(COOLDEBUG) || defined(STARFORM)

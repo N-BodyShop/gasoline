@@ -2327,8 +2327,8 @@ void CoolTableRead( COOL *Cool, int nData, void *vData)
 void CoolDefaultParticleData( COOLPARTICLE *cp )
 {
  
-	cp->f_HI = 0.75;
-	cp->f_HeI = 0.06;
+	cp->f_HI = 1.0;
+	cp->f_HeI = 1.0;
 	cp->f_HeII = 0.0;
 }
 

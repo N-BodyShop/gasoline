@@ -3,7 +3,7 @@
 
 /*
  ** ssdefs.h -- DCR 98-09-16
- ** ========
+ ** --------
  ** Header file for external interfacing with Solar System data and routines.
  */
 
