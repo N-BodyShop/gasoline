@@ -4438,6 +4438,10 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
         OutputList[(*nOutputList)++]=OUT_OXYGENMASSFRAC_ARRAY;
         OutputList[(*nOutputList)++]=OUT_IRONMASSFRAC_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTFB_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UDOTHYDRO_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UDOTDIFF_ARRAY;
         if(msr->param.bFormOutputs){
             OutputList[(*nOutputList)++]=OUT_TIMEFORM_ARRAY;
             OutputList[(*nOutputList)++]=OUT_MASSFORM_ARRAY;
