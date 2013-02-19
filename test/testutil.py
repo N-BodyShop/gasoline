@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import pynbody.plot.sph as p_sph
 
 
-def run_gasoline(testdir, files, param, exe="gasoline", args="", paramdict={}):
+def run_gasoline(testdir, files, param, exe="gasoline", args="", params={}):
 	try:
 		os.mkdir(testdir)
 	except OSError:
@@ -21,15 +21,15 @@ def run_gasoline(testdir, files, param, exe="gasoline", args="", paramdict={}):
 	shutil.copy(exe, testdir+'/gasoline')
 	print "Starting gasoline..."
 	os.chdir(testdir)
-	if len(paramdict) > 0:
+	if len(params) > 0:
 		shutil.copy(param, "tmp.param")
 		os.remove(param)
 		paramlines = open("tmp.param").readlines()
 		for line in paramlines():
-			if line.split()[0] in paramdict:
-				line = paramdict[line.split()[0]]
-				del paramdict[line.split()[0]]
-		[paramlines.append(line) for line in paramdict.itervalues()]
+			if line.split()[0] in params:
+				line = params[line.split()[0]]
+				del params[line.split()[0]]
+		[paramlines.append(line) for line in params.itervalues()]
 		outfile = open(param, 'w')
 		[outfile.write("%s\n" % line) for line in paramlines]
 		outfile.close()
