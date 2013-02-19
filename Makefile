@@ -51,7 +51,7 @@ COOLING_DEF = -DCOOLING_METAL
 
 
 # Which C compiler should I use?
-CC = gcc
+CC = icc
 
 CC_DEF = 
 CODE_DEF = 
@@ -98,6 +98,7 @@ CODE_DEF += -DDODVDS #Better handling of viscosity with the Balsara switch
 #CODE_DEF += -DDRHODTDIVOUT #Output Divv variables used in DRHODT
 #CODE_DEF += -DDRHODTTEST #Output a large list of properties important for the DRHODT parts of the code for debugging
 CODE_DEF += -DDTADJUST #Use a more clever "anticipatory" timestep criteria for multistepping
+CODE_DEF += -DDTTEST=6e-12
 CODE_DEF += -DEPSACCH #Turning this one makes the pkd code ignore dhMinOverSoft in pkdAccelStep
 #CODE_DEF += -DFITDVDX #Use a fitted version of the DenDVDX that doesn't use the stiff.h evaluator.
 CODE_DEF += -DGASOLINE #Do SPH (without this, compiles pkdgrav, just N-Body)
@@ -168,7 +169,7 @@ CODE_DEF += -DTOPHATFEEDBACK #Use a tophat kernel to smooth feedback over
 #CODE_DEF += -DTWOSMOOTH #Smooth twice rather than 3 times.  This is defined by default in master.c
 #CODE_DEF += -DTZKEY64 #Use 64 (instead of 128) bit keys for the tree.  Faster, but allows less depth.
 CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
-#CODE_DEF += -DUNONCOOLINIT #Initialize the uNoncool to have equal energy to u (useful for hacking some tests)
+CODE_DEF += -DUNONCOOLINIT #Initialize the uNoncool to have equal energy to u (useful for hacking some tests)
 #CODE_DEF += -DUNROLLED_VSQRT #Unroll the v_sqrt function for speed
 #CODE_DEF += -DUSEHMIN #Use a floor to keep the integrator for stiff equations from blowing up
 #CODE_DEF += -DUSE_PNG #Use PNG encoding for dumpframes
@@ -253,7 +254,7 @@ SPX_CFLAGS		= -O3 -I$(SPX_MDL) $(BASE_DEF)
 SPX_LD_FLAGS	= $(BASE_LD_FLAGS)
 SPX_XOBJ		= v_sqrt1.o
 SPX_LIBMDL		= $(SPX_MDL)/mdl.o -lm
-SPX_MDL_CFLAGS	= -g -O3
+SPX_MDL_CFLAGS	= -O3
 
 #
 #		PVM defines

@@ -522,6 +522,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				vTemp = fTmp;
 				p->u = dTuFac*vTemp;
 				p->uPred = dTuFac*vTemp;
+				assert(p->uPred > 0);
 // Special purpose hack for testing noncooling
 #ifdef UNONCOOLINIT
 				p->uNoncool = p->u;
@@ -730,6 +731,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	p->fDensity = gp.rho;
 	p->u = dTuFac*gp.temp;
 	p->uPred = dTuFac*gp.temp;
+	assert(p->uPred > 0);
 #ifdef COOLDEBUG
 	assert(p->u >= 0.0);
 	assert(p->uPred >= 0.0);
@@ -4372,6 +4374,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     if (p->u < 0) {
                         FLOAT uold = p->u - p->uDot*duDelta;
                         p->uPred = uold*exp(p->uDot*duPredDelta/uold);
+						assert(p->uPred > 0);
                         p->u = uold*exp(p->uDot*duDelta/uold);
                         }
 #ifdef UNONCOOL
@@ -4382,6 +4385,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #endif
 #else /* NOCOOLING */
                     p->uPred = p->u + UDOT_HYDRO(p)*duPredDelta;
+					assert(p->uPred > 0);
                     p->u = p->u + UDOT_HYDRO(p)*duDelta;
 #endif /* NOCOOLING */
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) 
@@ -4608,12 +4612,14 @@ void pkdCreateInflow(PKD pkd, int Ny, int iGasModel, double dTuFac, double pmass
 #endif
 		CoolInitEnergyAndParticleData( pkd->Cool, &p.CoolParticle, &p.u, density, temp, p.fMetals );
 		p.uPred = p.u;
+		assert(p.uPred > 0);
 		}
 	    else
 #endif
 		{
 		p.u = dTuFac*temp;
 		p.uPred = dTuFac*temp;
+		assert(p.uPred > 0);
 		}
 	    p.c = sqrt(5./3.)*(5./3.-1)*p.uPred; /* Hack */
 	    p.uDotPdV = 0;
@@ -6453,6 +6459,7 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime )
 			p->u = E;
 #endif
             p->uPred = p->u;
+			assert(p->uPred > 0);
 #ifdef DEBUG
             if ((p->iOrder % 1000)==0) {
                 printf("InitEnergy %i: %f %g   %f %f %f %g\n",
@@ -7343,6 +7350,7 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 
 #else /* NOCOOLING is defined: */
                 p->uPred = p->uPred + UDOT_HYDRO(p)*duDelta;
+				assert(p->uPred > 0);
 #endif
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) || defined(SIMPLESF)
 			  if (p->uPred < 0) p->uPred = 0;
