@@ -3965,7 +3965,11 @@ void pkdCalcEandL(PKD pkd,double *T,double *U,double *Eth,double L[])
 		*U += 0.5*p[i].fMass*p[i].fPot;
 #ifdef GASOLINE
 		if (pkdIsGas(pkd,&p[i]))
-			*Eth += p[i].fMass*p[i].u;
+			*Eth += p[i].fMass*p[i].u
+#ifdef UNONCOOL
+                + p[i].fMass*p[i].uNoncool
+#endif
+                ;
 #endif
 		L[0] += p[i].fMass*(ry*vz - rz*vy);
 		L[1] += p[i].fMass*(rz*vx - rx*vz);
