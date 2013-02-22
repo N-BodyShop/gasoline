@@ -6170,7 +6170,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             uDotSansCooling = p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to u thermal
                 + p->uDotAV                                                   // Only u thermal energy gets shock heating
                 + uNoncoolDotConv + uDotFBThermal + p->uDotDiff;
-			printf("DEBUGUDOT0: %e %d %e %e %e %e %e\n", dTime, p->iOrder, p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho), p->uDotAV, uNoncoolDotConv, uDotFBThermal, p->uDotDiff);
+			printf("DEBUGUDOT0: %e %d %e %e %e %e %e %e %e\n", dTime, p->iOrder, p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho), p->uDotAV, uNoncoolDotConv, uDotFBThermal, p->uDotDiff, p->u, p->uPred);
             
             if ( bCool ) {
                 cp = p->CoolParticle;
