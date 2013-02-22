@@ -4249,6 +4249,7 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
         OutputList[(*nOutputList)++]=OUT_CURLV_VECTOR;
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UDOT_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTDIFF_ARRAY;
         }
 #ifndef NOCOOLING				
@@ -4402,6 +4403,7 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDoHydroOutput) {    
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UDOT_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTDIFF_ARRAY;
         }
     if (msr->param.bShockTracker) {
@@ -4439,6 +4441,7 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
         OutputList[(*nOutputList)++]=OUT_IRONMASSFRAC_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTFB_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UDOT_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTHYDRO_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTDIFF_ARRAY;
@@ -4500,6 +4503,7 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDoHydroOutput) {    
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UDOT_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTDIFF_ARRAY;
         }
     if (msr->param.bShockTracker) {
