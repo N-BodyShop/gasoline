@@ -8138,7 +8138,7 @@ void msrTopStepKDK(MSR msr,
     msrActiveRung(msr,iRung,0);
 #ifdef GASOLINE
     msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
-	printf("DEBUG0UPDATE1\n")
+	printf("DEBUG0UPDATE1\n");
     msrUpdateuDot(msr,dTime,0.5*dDelta,1);
 #endif
 //    printf("SYNC Start of step: %f (%f %f)\n",dTime,dTime,0.5*dDelta);
@@ -8155,7 +8155,7 @@ void msrTopStepKDK(MSR msr,
 		dTime += 0.5*dDelta;
 		msrActiveRung(msr,iRung,0);
 #ifdef GASOLINE
-		printf("DEBUG0UPDATE2\n")
+		printf("DEBUG0UPDATE2\n");
 		msrUpdateuDot(msr,dTime,0.5*dDelta,0); /* Need forward uDot for Upreds */
 #endif
 		msrTopStepKDK(msr,dStep,dTime,0.5*dDelta,iRung+1,iKickRung,1,
@@ -8169,7 +8169,7 @@ void msrTopStepKDK(MSR msr,
 		dTime += 0.5*dDelta;
 		dStep += 1.0/(2 << iRung);
 		msrActiveRung(msr,iRung,0);
-		printf("DEBUG0UPDATE3\n")
+		printf("DEBUG0UPDATE3\n");
 		msrUpdateuDot(msr,dTime,0.5*dDelta,0); /* Need forward uDot for uPred */
 		msrDrift(msr,dTime,0.5*dDelta);
 		dTime += 0.5*dDelta;
@@ -8285,7 +8285,7 @@ void msrTopStepKDK(MSR msr,
     if (msr->param.bVDetails) printf("Kick, iRung: %d\n",iRung);
     msrActiveRung(msr,iRung,0);
 #ifdef GASOLINE
-	printf("DEBUG0UPDATE4\n")
+	printf("DEBUG0UPDATE4\n");
     msrUpdateuDot(msr,dTime,0.5*dDelta,1);
 #endif
     msrKickKDKClose(msr,dTime,0.5*dDelta);
@@ -8921,7 +8921,7 @@ void msrInitSph(MSR msr,double dTime)
 #endif
 		/* First guess at uDot with quite small step size 
 		   step size irrelevant for adiabatic gas */
-			printf("DEBUG0UPDATE5\n")
+			printf("DEBUG0UPDATE5\n");
    	        msrUpdateuDot(msr,dTime,0.5e-7*msr->param.dDelta,0);
 		}
 
