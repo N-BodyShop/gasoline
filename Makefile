@@ -136,7 +136,7 @@ CODE_DEF += -DLONGRANGESTEP #Predict what particles will need to be put onto a l
 #CODE_DEF += -DPEXT #Allow for the use of an external pressure (Sort of the opposite of an external potential.)
 #CODE_DEF += -DPRES_HK #Use the Euclidean mean of the both pOverRho values to calculate PdV work
 #CODE_DEF += -DPRES_MONAGHAN #Use Monaghan's PdV work calculation (the average of both pOverRho values)
-CODE_DEF += -DPONRHOFLOOR=1e-30
+#CODE_DEF += -DPONRHOFLOOR=1e-30
 #CODE_DEF += -DRADIATIVEBOX #Estimate Local Lyman-Werner radiation from the tree
 #CODE_DEF += -DREDUCED_EWALD #Used reduced Ewald Summation for faster multipole moment expansions
 #CODE_DEF += -DRHOSF #Form stars linearly with density above 100 H cc^-3
@@ -169,7 +169,7 @@ CODE_DEF += -DTOPHATFEEDBACK #Use a tophat kernel to smooth feedback over
 #CODE_DEF += -DTWOSMOOTH #Smooth twice rather than 3 times.  This is defined by default in master.c
 #CODE_DEF += -DTZKEY64 #Use 64 (instead of 128) bit keys for the tree.  Faster, but allows less depth.
 CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
-CODE_DEF += -DUNONCOOLINIT #Initialize the uNoncool to have equal energy to u (useful for hacking some tests)
+#CODE_DEF += -DUNONCOOLINIT #Initialize the uNoncool to have equal energy to u (useful for hacking some tests)
 #CODE_DEF += -DUNROLLED_VSQRT #Unroll the v_sqrt function for speed
 #CODE_DEF += -DUSEHMIN #Use a floor to keep the integrator for stiff equations from blowing up
 #CODE_DEF += -DUSE_PNG #Use PNG encoding for dumpframes
