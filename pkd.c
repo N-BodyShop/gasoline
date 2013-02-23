@@ -6678,7 +6678,11 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     dTu = dEtauDot*uEff/fabs(p->uDotPdV);
                     DTSAVE(dTu,"PDV");
 #ifdef DTTEST                
+#ifdef UNONCOOL
                     if (dTu < DTTEST) fprintf(stderr,"udot PdV %g %g %g %g %g %g %g\n",dTu,dEtauDot,PoverRhoFloorJeans,uEff,p->u,p->uNoncool,p->uDotPdV);
+#else
+                    if (dTu < DTTEST) fprintf(stderr,"udot PdV %g %g %g %g %g %g\n",dTu,dEtauDot,PoverRhoFloorJeans,uEff,p->u,p->uDotPdV);
+#endif
 #endif
                     if (dTu < dT) dT = dTu;
                     }
