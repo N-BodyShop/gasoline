@@ -8,7 +8,8 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-/* #include <rpc/xdr.h> */
+#include <rpc/types.h>
+#include <rpc/xdr.h>
 
 /* Usage/Interfaces:
    Functions starting with

@@ -238,19 +238,9 @@ int main(int argc,char **argv)
 		 ** Dump Frame Initialization
 		 */
 		/* Bring frame count up to correct place for restart. */
-		/*
-	       *** changing for multiple director outputs
-	       if( msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep, 1 )
-                    && msr->df->dDumpFrameStep > 0) {
-			while(msr->df->dStep + msr->df->dDumpFrameStep < iStep) {
-				msr->df->dStep += msr->df->dDumpFrameStep;
-				msr->df->nFrame++;
-			}
-		}
-		*/
-		/* changes made -> df is now an array to allow for more than one
-		   director output frame 
-		*/
+		/* df is an array to allow for more than one director 
+		 * output frame.
+		 */
 
 		if( msrDumpFrameInit( msr, dTime, 1.0*msr->param.iStartStep, 1 )
 		    && msr->df[0]->dDumpFrameStep > 0) 
