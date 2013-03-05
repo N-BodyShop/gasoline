@@ -1296,6 +1296,11 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage, PKD pkd,
 	fVar = VecType(pkd,p,1,in->ColGasProperty);
 	fVar = in->bColLogInterp ? log10(fVar):fVar;
 	fVar = (fVar-in->ColGasPropMin)/(in->ColGasPropMax-in->ColGasPropMin);
+	/* For temperature, try scaling brightness by the temperature
+	   since there is so much less hot gas. */
+	if (in->ColGasProperty == OUT_TEMP_ARRAY) {
+	    br0 *= exp(3.0*fVar);
+	    }
 	col = dfInterpOnColorMap(in->nColGas,&in->dColGas[0],&in->ColGas[0],
 				 fVar);
 	}
