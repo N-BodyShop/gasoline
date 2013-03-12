@@ -3776,12 +3776,12 @@ void pkdHomogSpheroid(PKD pkd)
 		}
 	}
 
-void pkdChrisDiskForce(PKD pkd, double Vc, double R)
+void pkdGalaxyDiskForce(PKD pkd, double Vc, double R)
 {
 		  /*
-			  -  This is the external disk potential that is used together with Chris 
+			  -  This is the external disk potential that is used together with Galaxy 
 			  -  Gatopolous' Enzo initial conditions for a disk slice.	The initial 
-			  -  values Chris used for Vc and R were 220 km/s and 6 kpc respectively.
+			  -  values Galaxy used for Vc and R were 220 km/s and 6 kpc respectively.
 			  -  */
 		 PARTICLE *p;
 		int i,n;

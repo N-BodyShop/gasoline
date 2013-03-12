@@ -3400,6 +3400,9 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (in->bBodyForce) {
 			pkdBodyForce(plcl->pkd, in->dBodyForceConst);
 			}
+		if (in->bGalaxyDisk) {
+			pkdGalaxyDiskForce(plcl->pkd, in->dGalaxyDiskVc, in->dGalaxyDiskR);
+			}
 		if (in->bMiyamotoDisk) {
 			pkdMiyamotoDisk(plcl->pkd);
 			}
