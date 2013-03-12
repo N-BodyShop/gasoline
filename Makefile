@@ -51,7 +51,7 @@ COOLING_DEF = -DCOOLING_METAL
 
 
 # Which C compiler should I use?
-CC = icc
+CC = gcc
 
 CC_DEF = 
 CODE_DEF = 

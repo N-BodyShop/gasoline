@@ -6170,7 +6170,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             uDotSansCooling = p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to u thermal
                 + p->uDotAV                                                   // Only u thermal energy gets shock heating
                 + uNoncoolDotConv + uDotFBThermal + p->uDotDiff;
-			printf("DEBUGUDOT0: %e %d %e %e %e %e %e %e %e\n", dTime, p->iOrder, p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho), p->uDotAV, uNoncoolDotConv, uDotFBThermal, p->uDotDiff, p->u, p->uPred);
+			printf("DEBUGUDOT0: %e %d %e %e %e %e %e %e %e %e %e\n", dTime, p->iOrder, p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho), p->uDotAV, uNoncoolDotConv, uDotFBThermal, p->uDotDiff, p->u, p->uPred, p->fDensity, p->fBall2);
             
             if ( bCool ) {
                 cp = p->CoolParticle;
@@ -6632,7 +6632,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 #if defined(DRHODT) || defined(DTADJUST)
                 dT = p->dtNew; /* Start with estimate from prior Sph force calculations */ 
                 DTSAVE(dT,"SPH");
-                assert(dT > 1e-24); // HACK REMOVE!
+				assert(dT > 1e-24); // HACK REMOVE!
                 p->dtNew = FLT_MAX;
 #else /* If not doing DTADJUST */
                 if (p->mumax>0.0) {
@@ -6703,7 +6703,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     fprintf(stderr,"\n");
                     }
 #endif
-                assert(dT > 1e-24); // HACK REMOVE!
+				assert(dT > 1e-24); // HACK REMOVE!
                 if(dT < p->dt) p->dt = dT;
                 }
             /* This code relies on SPH step being done last -- not good */
