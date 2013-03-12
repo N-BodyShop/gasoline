@@ -4716,6 +4716,9 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef GASOLINE
 		p->u = cp.u;
 #ifdef UNONCOOL
+#ifdef UNONCOOLZERO
+		cp.uNoncool = 0;
+#endif
 #ifdef UNONCOOLMERGE
 				p->u += cp.uNoncool; 
 				p->uPred += cp.uNoncool; 
@@ -6175,7 +6178,9 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             uDotSansCooling = p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to u thermal
                 + p->uDotAV                                                   // Only u thermal energy gets shock heating
                 + uNoncoolDotConv + uDotFBThermal + p->uDotDiff;
+#ifdef COOLDEBUG
 			printf("DEBUGUDOT0: %e %d %e %e %e %e %e %e %e %e %e\n", dTime, p->iOrder, p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho), p->uDotAV, uNoncoolDotConv, uDotFBThermal, p->uDotDiff, p->u, p->uPred, p->fDensity, p->fBall2);
+#endif
             
             if ( bCool ) {
                 cp = p->CoolParticle;
