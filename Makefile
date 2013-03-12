@@ -170,6 +170,7 @@ CODE_DEF += -DTOPHATFEEDBACK #Use a tophat kernel to smooth feedback over
 #CODE_DEF += -DTZKEY64 #Use 64 (instead of 128) bit keys for the tree.  Faster, but allows less depth.
 CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
 #CODE_DEF += -DUNONCOOLINIT #Initialize the uNoncool to have equal energy to u (useful for hacking some tests)
+CODE_DEF += -DUNONCOOLMERGE #Put the uNoncool energy from a checkpoint into u (for debugging)
 #CODE_DEF += -DUNROLLED_VSQRT #Unroll the v_sqrt function for speed
 #CODE_DEF += -DUSEHMIN #Use a floor to keep the integrator for stiff equations from blowing up
 #CODE_DEF += -DUSE_PNG #Use PNG encoding for dumpframes

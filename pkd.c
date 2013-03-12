@@ -4716,7 +4716,17 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef GASOLINE
 		p->u = cp.u;
 #ifdef UNONCOOL
-		p->uNoncool = cp.uNoncool;
+#ifdef UNONCOOLMERGE
+				p->u += cp.uNoncool; 
+				p->uPred += cp.uNoncool; 
+				p->uNoncool = 0;
+#else 
+				p->uNoncool = cp.uNoncool; 
+#endif 
+				p->uNoncoolPred = p->uNoncool;
+				assert(p->uNoncool >= 0); 
+				p->uNoncoolDot = 0;
+
 #endif
 #ifdef STARSINK
 		SINK_Lx(p) = cp.Lx;
@@ -4725,11 +4735,6 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #else
 		p->uPred = cp.u;
 		assert(p->u >= 0);
-#ifdef UNONCOOL
-		p->uNoncoolPred = cp.uNoncool;
-        p->uNoncoolDot = 0;
-		assert(p->uNoncool >= 0);
-#endif
 #endif
 
 #ifdef VARALPHA
