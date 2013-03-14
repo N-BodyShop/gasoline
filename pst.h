@@ -573,9 +573,9 @@ struct inGravExternal {
 	int bHomogSpheroid;
 	int bBodyForce;
 	double dBodyForceConst;
-	int bChrisDisk;
-	double dChrisDiskVc;
-	double dChrisDiskR;
+	int bGalaxyDisk;
+	double dGalaxyDiskVc;
+	double dGalaxyDiskR;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
