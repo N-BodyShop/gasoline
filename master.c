@@ -1002,14 +1002,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bEllipticalDarkNFW=0;
 	prmAddParam(msr->prm,"bEllipticalDarkNFW",0,&msr->param.bEllipticalDarkNFW,
 		    sizeof(int),"ellipticaldarknfw","use/dont");
-	msr->param.bChrisDisk = 0;
-	prmAddParam(msr->prm,"bChrisDisk",0,&msr->param.bChrisDisk,
+	msr->param.bGalaxyDiskVerticalPotential = 0;
+	prmAddParam(msr->prm,"bGalaxyDiskVerticalPotential",0,&msr->param.bGalaxyDiskVerticalPotential,
 			sizeof(int),"chrisdisk","use/don't use Chris' disk potential");
-	msr->param.dChrisDiskVc= 220.0;
-	prmAddParam(msr->prm,"dChrisDiskVc",2,&msr->param.dChrisDiskVc,
+	msr->param.dGalaxyDiskVerticalPotentialVc= 220.0;
+	prmAddParam(msr->prm,"dGalaxyDiskVerticalPotentialVc",2,&msr->param.dGalaxyDiskVerticalPotentialVc,
 			sizeof(double),"chrisdiskvc","Circular velocity (km/s) = 220");
-	msr->param.dChrisDiskR = 6.0;
-	prmAddParam(msr->prm,"dChrisDiskR",2,&msr->param.dChrisDiskR,
+	msr->param.dGalaxyDiskVerticalPotentialR = 6.0;
+	prmAddParam(msr->prm,"dGalaxyDiskVerticalPotentialR",2,&msr->param.dGalaxyDiskVerticalPotentialR,
 			sizeof(double),"chrisdiskr","Disk Radius (kpc) = 6");
 	msr->param.bHomogSpheroid = 0;
 	prmAddParam(msr->prm,"bHomogSpheroid",0,&msr->param.bHomogSpheroid,
@@ -2801,9 +2801,9 @@ void msrLogParams(MSR msr,FILE *fp)
             fprintf(fp," dNFWsoft: %g",msr->param.dNFWsoft );
             fprintf(fp," dNFWconc: %g",msr->param.dNFWconc );
             }
-	fprintf(fp," bChrisDisk: %d",msr->param.bChrisDisk);
-	fprintf(fp," dChrisDiskVc: %g",msr->param.dChrisDiskVc);
-	fprintf(fp," dChrisDiskR: %g",msr->param.dChrisDiskR);
+	fprintf(fp," bGalaxyDiskVerticalPotential: %d",msr->param.bGalaxyDiskVerticalPotential);
+	fprintf(fp," dGalaxyDiskVerticalPotentialVc: %g",msr->param.dGalaxyDiskVerticalPotentialVc);
+	fprintf(fp," dGalaxyDiskVerticalPotentialR: %g",msr->param.dGalaxyDiskVerticalPotentialR);
 	fprintf(fp," bHomogSpheroid: %d",msr->param.bHomogSpheroid );
 	fprintf(fp," bBodyForce: %d",msr->param.bBodyForce );
 	fprintf(fp," dBodyForceConst: %g",msr->param.dBodyForceConst );
@@ -5720,7 +5720,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		msr->param.bElliptical ||
 		msr->param.bHomogSpheroid || msr->param.bBodyForce ||
 	    	msr->param.bRotatingBar ||
-        	msr->param.bMiyamotoDisk || msr->param.bTimeVarying || msr->param.bChrisDisk) {
+        	msr->param.bMiyamotoDisk || msr->param.bTimeVarying || msr->param.bGalaxyDiskVerticalPotential) {
 	        struct outGravExternal outExt;
 		/*
 		 ** Provide the time.
@@ -5755,9 +5755,9 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
 		inExt.bBodyForce = msr->param.bBodyForce;
 		inExt.dBodyForceConst = msr->param.dBodyForceConst;
-		inExt.bChrisDisk = msr->param.bChrisDisk;
-		inExt.dChrisDiskVc = 3.241e-17*msr->param.dChrisDiskVc/msr->param.dKpcUnit*msr->param.dSecUnit;
-		inExt.dChrisDiskR = msr->param.dChrisDiskR/msr->param.dKpcUnit;
+		inExt.bGalaxyDiskVerticalPotential = msr->param.bGalaxyDiskVerticalPotential;
+		inExt.dGalaxyDiskVerticalPotentialVc = 3.241e-17*msr->param.dGalaxyDiskVerticalPotentialVc/msr->param.dKpcUnit*msr->param.dSecUnit;
+		inExt.dGalaxyDiskVerticalPotentialR = msr->param.dGalaxyDiskVerticalPotentialR/msr->param.dKpcUnit;
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		inExt.bTimeVarying = msr->param.bTimeVarying;
 		inExt.bRotatingBar = msr->param.bRotatingBar;

@@ -522,7 +522,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				vTemp = fTmp;
 				p->u = dTuFac*vTemp;
 				p->uPred = dTuFac*vTemp;
-				assert(p->uPred > 0);
 // Special purpose hack for testing noncooling
 #ifdef UNONCOOLINIT
 				p->uNoncool = p->u;
@@ -731,7 +730,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 	p->fDensity = gp.rho;
 	p->u = dTuFac*gp.temp;
 	p->uPred = dTuFac*gp.temp;
-	assert(p->uPred > 0);
 #ifdef COOLDEBUG
 	assert(p->u >= 0.0);
 	assert(p->uPred >= 0.0);
@@ -3788,7 +3786,7 @@ void pkdHomogSpheroid(PKD pkd)
 		}
 	}
 
-void pkdChrisDiskForce(PKD pkd, double Vc, double R)
+void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R)
 {
 		  /*
 			  -  This is the external disk potential that is used together with Chris 
@@ -4378,7 +4376,6 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     if (p->u < 0) {
                         FLOAT uold = p->u - p->uDot*duDelta;
                         p->uPred = uold*exp(p->uDot*duPredDelta/uold);
-						assert(p->uPred > 0);
                         p->u = uold*exp(p->uDot*duDelta/uold);
                         }
 #ifdef UNONCOOL
@@ -4389,7 +4386,6 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #endif
 #else /* NOCOOLING */
                     p->uPred = p->u + UDOT_HYDRO(p)*duPredDelta;
-					assert(p->uPred > 0);
                     p->u = p->u + UDOT_HYDRO(p)*duDelta;
 #endif /* NOCOOLING */
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) 
@@ -4616,14 +4612,12 @@ void pkdCreateInflow(PKD pkd, int Ny, int iGasModel, double dTuFac, double pmass
 #endif
 		CoolInitEnergyAndParticleData( pkd->Cool, &p.CoolParticle, &p.u, density, temp, p.fMetals );
 		p.uPred = p.u;
-		assert(p.uPred > 0);
 		}
 	    else
 #endif
 		{
 		p.u = dTuFac*temp;
 		p.uPred = dTuFac*temp;
-		assert(p.uPred > 0);
 		}
 	    p.c = sqrt(5./3.)*(5./3.-1)*p.uPred; /* Hack */
 	    p.uDotPdV = 0;
@@ -4715,29 +4709,23 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #endif
 #ifdef GASOLINE
 		p->u = cp.u;
+		p->uPred = cp.u;
 #ifdef UNONCOOL
-#ifdef UNONCOOLZERO
-		cp.uNoncool = 0;
-#endif
 #ifdef UNONCOOLMERGE
-				p->u += cp.uNoncool; 
-				p->uPred += cp.uNoncool; 
-				p->uNoncool = 0;
-#else 
-				p->uNoncool = cp.uNoncool; 
-#endif 
-				p->uNoncoolPred = p->uNoncool;
-				assert(p->uNoncool >= 0); 
-				p->uNoncoolDot = 0;
-
+        p->u += cp.uNoncool;
+		p->uPred += cp.uNoncool;
+        p->uNoncool = 0;
+#else
+		p->uNoncool = cp.uNoncool;
+#endif
+		p->uNoncoolPred = p->uNoncool;
+		assert(p->uNoncool >= 0);
+        p->uNoncoolDot = 0;
 #endif
 #ifdef STARSINK
 		SINK_Lx(p) = cp.Lx;
 		SINK_Ly(p) = cp.Ly;
 		SINK_Lz(p) = cp.Lz;
-#else
-		p->uPred = cp.u;
-		assert(p->u >= 0);
 #endif
 
 #ifdef VARALPHA
@@ -5191,21 +5179,21 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 #ifdef GASOLINE
 #ifdef EPSACCH
 			    if (pkdIsGas(pkd, &(pkd->pStore[i]))) {
-				dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
-				}		        
+                    dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
+                    }		        
 #else
 			    if (pkdIsGas(pkd, &(pkd->pStore[i])) && dhMinOverSoft < 1 && pkd->pStore[i].fBall2<4.0*pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) {
 			        if (pkd->pStore[i].fBall2 > 4.0*dhMinOverSoft*dhMinOverSoft
-				    *pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
-				   dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
+                        *pkd->pStore[i].fSoft*pkd->pStore[i].fSoft) 
+                        dT = dEta*sqrt(sqrt(0.25*pkd->pStore[i].fBall2)/acc);
 			        else 
-				   dT = dEta*sqrt((dhMinOverSoft*pkd->pStore[i].fSoft)/acc);
+                        dT = dEta*sqrt((dhMinOverSoft*pkd->pStore[i].fSoft)/acc);
 			        }
 #endif 
-		             else 
+                else 
 #endif /* GASOLINE */
 			        dT = dEta*sqrt(pkd->pStore[i].fSoft/acc);
-			        }
+                }
 			if (bSqrtPhi && acc>0) {
 				/*
 				 ** NOTE: The factor of 3.5 keeps this criterion in sync
@@ -6133,7 +6121,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 	double correL = 1.0; /* Correlation length used when calculating shielding*/
 #endif
 #endif
-  
     pkdClearTimer(pkd,1);
     pkdStartTimer(pkd,1);
     
@@ -6149,6 +6136,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
     
     p = pkd->pStore;
     n = pkdLocal(pkd);
+
     for (i=0;i<n;++i,++p) {
         if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
             double PoverRho,PoverRhoGas,PoverRhoNoncool,PoverRhoFloorJeans,cGas;
@@ -6178,10 +6166,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             uDotSansCooling = p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to u thermal
                 + p->uDotAV                                                   // Only u thermal energy gets shock heating
                 + uNoncoolDotConv + uDotFBThermal + p->uDotDiff;
-#ifdef COOLDEBUG
-			printf("DEBUGUDOT0: %e %d %e %e %e %e %e %e %e %e %e\n", dTime, p->iOrder, p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho), p->uDotAV, uNoncoolDotConv, uDotFBThermal, p->uDotDiff, p->u, p->uPred, p->fDensity, p->fBall2);
-#endif
-            
+
             if ( bCool ) {
                 cp = p->CoolParticle;
                 E = p->u;
@@ -6474,7 +6459,6 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime )
 			p->u = E;
 #endif
             p->uPred = p->u;
-			assert(p->uPred > 0);
 #ifdef DEBUG
             if ((p->iOrder % 1000)==0) {
                 printf("InitEnergy %i: %f %g   %f %f %f %g\n",
@@ -6597,7 +6581,7 @@ double pkdDtFacCourant( double dEtaCourant, double dCosmoFac ) {
     return dEtaCourant*dCosmoFac*2/1.6;
     }
 
-/* DTTEST should be define to the dt value that going under will trigger the print */
+/* DTTEST should be defined to the dt value that going under will trigger the print */
 #ifdef DTTEST
 #define DTSAVE(_val,_label)  { \
     if ((_label)[0]=='0') dTnSave=0; \
@@ -6642,7 +6626,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 #if defined(DRHODT) || defined(DTADJUST)
                 dT = p->dtNew; /* Start with estimate from prior Sph force calculations */ 
                 DTSAVE(dT,"SPH");
-				assert(dT > 1e-24); // HACK REMOVE!
+                assert(dT > 1e-24); // HACK REMOVE!
                 p->dtNew = FLT_MAX;
 #else /* If not doing DTADJUST */
                 if (p->mumax>0.0) {
@@ -6688,11 +6672,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     dTu = dEtauDot*uEff/fabs(p->uDotPdV);
                     DTSAVE(dTu,"PDV");
 #ifdef DTTEST                
-#ifdef UNONCOOL
                     if (dTu < DTTEST) fprintf(stderr,"udot PdV %g %g %g %g %g %g %g\n",dTu,dEtauDot,PoverRhoFloorJeans,uEff,p->u,p->uNoncool,p->uDotPdV);
-#else
-                    if (dTu < DTTEST) fprintf(stderr,"udot PdV %g %g %g %g %g %g\n",dTu,dEtauDot,PoverRhoFloorJeans,uEff,p->u,p->uDotPdV);
-#endif
 #endif
                     if (dTu < dT) dT = dTu;
                     }
@@ -6713,7 +6693,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     fprintf(stderr,"\n");
                     }
 #endif
-				assert(dT > 1e-24); // HACK REMOVE!
+                assert(dT > 1e-24); // HACK REMOVE!
                 if(dT < p->dt) p->dt = dT;
                 }
             /* This code relies on SPH step being done last -- not good */
@@ -7369,7 +7349,6 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 
 #else /* NOCOOLING is defined: */
                 p->uPred = p->uPred + UDOT_HYDRO(p)*duDelta;
-				assert(p->uPred > 0);
 #endif
 #if defined(PRES_HK) || defined(PRES_MONAGHAN) || defined(SIMPLESF)
 			  if (p->uPred < 0) p->uPred = 0;

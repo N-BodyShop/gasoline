@@ -90,9 +90,9 @@ struct parameters {
     int bHomogSpheroid;
     int bBodyForce;
 	double dBodyForceConst;
-	int bChrisDisk;
-	double dChrisDiskVc;
-	double dChrisDiskR;
+	int bGalaxyDiskVerticalPotential;
+	double dGalaxyDiskVerticalPotentialVc;
+	double dGalaxyDiskVerticalPotentialR;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
