@@ -2972,7 +2972,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT pPoverRho2,pPoverRho2f,pMass;
 	FLOAT qPoverRho2,qPoverRho2f;
 	FLOAT ph,pc,pDensity,dt,visc,absmu,Accp,Accq,gammam1 = smf->gamma-1;
-	FLOAT fNorm,fNorm1,aFac,vFac,divvbad;
+	FLOAT fNorm,fNorm1,aFac,vFac,divvi,divvj;
 	int i;
 
 	pc = p->c;
@@ -2999,19 +2999,25 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
 
 //#ifdef DRHODT
-	divvbad = 0;
+	divvi = 0;
+	divvj = 0;
 	for (i=0;i<nSmooth;++i) {
 	    r2 = nnList[i].fDist2*ih2;
 	    q = nnList[i].pPart;
 	    DKERNEL(rs1,r2);
-	    rs1 *= q->fMass;
-#ifdef RTFORCE
-	    divvbad += nnList[i].fDist2*rs1/q->fDensity;
-#else
-	    divvbad += nnList[i].fDist2*rs1/p->fDensity;
-#endif
+	    rs1 *= nnList[i].fDist2*q->fMass;
+	    divvi += rs1/p->fDensity;
+	    divvj += rs1/q->fDensity;
 	    }
-        p->fDivv_Corrector = (divvbad != 0 ? -(3/2.)/(divvbad*fNorm1) : 1); /* fNorm1 normalization includes 0.5 */
+#ifdef RTFORCE
+#ifdef DIVVCORR2
+    p->fDivv_Corrector = (divvj != 0 ? divvi/divvj : 1);
+#else
+    p->fDivv_Corrector = (divvbad != 0 ? -(3/2.)/(divvbad*fNorm1) : 1); /* fNorm1 normalization includes 0.5 */
+#endif
+#else
+    p->fDivv_Corrector = (divvi != 0 ? -(3/2.)/(divvi*fNorm1) : 1); /* fNorm1 normalization includes 0.5 */
+#endif
 //#endif
 
 	for (i=0;i<nSmooth;++i) {

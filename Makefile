@@ -91,6 +91,7 @@ CODE_DEF += -DCHANGESOFT #Allow you to explicitly give the softening length for 
 CODE_DEF += -DDIFFUSION #Enable Metal Diffusion
 #CODE_DEF += -DDIFFUSIONPRICE #Daniel Price's Thermal Diffusion
 CODE_DEF += -DDIFFUSIONTHERMAL #Thermal Diffusion
+CODE_DEF += -DDIVVCORR2 #Use a more robust div v correction term in calculating PdV work.
 #CODE_DEF += -DDIVVOFF #Remove the convergent flow requirement for starformation
 #CODE_DEF += -DDKDENSITY #Calculate the density using the derivative of the kernel in the DVDX calculation of density
 CODE_DEF += -DDODVDS #Better handling of viscosity with the Balsara switch
