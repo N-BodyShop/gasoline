@@ -49,7 +49,10 @@ typedef struct CoolingParametersStruct {
   int    bSelfShield;
   double dMassFracHelium;
   double dCoolingTmin;     
-  double dCoolingTmax;        
+  double dCoolingTmax;     
+  double dPhotoelectricHeating;
+  double dPhotoelectricnMin;
+  double dzTimeClampUV;
 } COOLPARAM;
 
 typedef struct CoolingParticleStruct {
@@ -81,6 +84,9 @@ typedef struct {
   double   Heat_Phot_HI;
   double   Heat_Phot_HeI;
   double   Heat_Phot_HeII;
+
+  double   Heat_Photoelectric;
+  double   nMin_Photoelectric;
 
   double   Cool_Coll_HI;
   double   Cool_Coll_HeI;
@@ -159,6 +165,7 @@ typedef struct CoolingPKDStruct {
   int        bUVTableLinear;
   int        bLowTCool;
   int        bSelfShield;
+  double     dzTimeClampUV;
 
   double     dGmPerCcUnit;
   double     dComovingGmPerCcUnit;
@@ -191,6 +198,8 @@ typedef struct {
   double   Radr_HeIII; 
   double   Cool_Metal;
   double   Heat_Metal;
+  double   Heat_Photoelectric;
+  double   nMin_Photoelectric;
 
   double   Phot_HI;
   double   Phot_HeI;
