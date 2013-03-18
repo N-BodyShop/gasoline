@@ -469,8 +469,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"bDoPressureOutput",0,&msr->param.bDoPressureOutput,sizeof(int),
 				"Pout","enable/disable Pressure outputs = -Pout");
 	msr->param.bDoHydroOutput = 0;
-	prmAddParam(msr->prm,"bDoPressureOutput",0,&msr->param.bDoHydroOutput,sizeof(int),
-				"hydroout","enable/disable PdV, AV, Diff outputs = -hydroPout");
+	prmAddParam(msr->prm,"bDoHydroOutput",0,&msr->param.bDoHydroOutput,sizeof(int),
+				"hydroout","enable/disable PdV, AV, Diff outputs = -hydroout");
 	msr->param.bDodtOutput = 0;
 	prmAddParam(msr->prm,"bDodtOutput",0,&msr->param.bDodtOutput,sizeof(int),
 				"dtout","enable/disable dt outputs = -dtout");
@@ -1063,6 +1063,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bSphSingleStep = 0;
 	prmAddParam(msr->prm,"bSphSingleStep",0,&msr->param.bSphSingleStep,sizeof(int),
 				"sss","<SPH single timestepping>");
+	msr->param.dDeltaSph = 0;
+	prmAddParam(msr->prm,"dDeltaSph",2,&msr->param.dDeltaSph,sizeof(double),
+				"dds","<SPH Delta (testing only!) = 0>");
 	msr->param.bDoGas = 1;
 	prmAddParam(msr->prm,"bDoGas",0,&msr->param.bDoGas,sizeof(int),"gas",
 				"calculate gas/don't calculate gas = +gas");
@@ -4249,7 +4252,6 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
         OutputList[(*nOutputList)++]=OUT_CURLV_VECTOR;
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_UDOT_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTDIFF_ARRAY;
         }
 #ifndef NOCOOLING				
@@ -4403,7 +4405,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDoHydroOutput) {    
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_UDOT_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTDIFF_ARRAY;
         }
     if (msr->param.bShockTracker) {
@@ -4440,11 +4441,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
         OutputList[(*nOutputList)++]=OUT_OXYGENMASSFRAC_ARRAY;
         OutputList[(*nOutputList)++]=OUT_IRONMASSFRAC_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTFB_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_UDOT_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_UDOTHYDRO_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_UDOTDIFF_ARRAY;
         if(msr->param.bFormOutputs){
             OutputList[(*nOutputList)++]=OUT_TIMEFORM_ARRAY;
             OutputList[(*nOutputList)++]=OUT_MASSFORM_ARRAY;
@@ -4503,7 +4499,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDoHydroOutput) {    
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_UDOT_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTDIFF_ARRAY;
         }
     if (msr->param.bShockTracker) {
@@ -5984,6 +5979,14 @@ void msrCalcEandL(MSR msr,int bFirst,double dTime,double *E,double *T,
 	*E = (*T) + (*U) - msr->dEcosmo + a*a*(*Eth);
 	}
 
+void msrSetuNonCoolContext( MSR msr, UNCC *puncc, double a ) {
+    puncc->dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+    puncc->dNoncoolConvRateMul = 1/(a*msr->param.dNoncoolConvTimeMul);
+    puncc->dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+    puncc->dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
+    puncc->gammam1 = msr->param.dConstGamma-1;
+    puncc->dResolveJeans = msr->param.dResolveJeans/a;
+    }
 
 void msrDrift(MSR msr,double dTime,double dDelta)
 {
@@ -6075,12 +6078,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.z = 1/a - 1;
 		invpr.duDotLimit = msr->param.duDotLimit;
 		invpr.dTimeEnd = dTime + dDelta/2.0;
-		invpr.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        invpr.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		invpr.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
-		invpr.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
-        invpr.uncc.gammam1 = msr->param.dConstGamma-1;
-        invpr.uncc.dResolveJeans = msr->param.dResolveJeans/a;
+        msrSetuNonCoolContext( msr, &(invpr.uncc), a );
 		}
 	else {
 		double H;
@@ -6099,12 +6097,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.z = 1/a - 1;
 		invpr.duDotLimit = msr->param.duDotLimit;
 		invpr.dTimeEnd = dTime + dDelta/2.0;
-		invpr.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        invpr.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		invpr.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
-		invpr.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
-        invpr.uncc.gammam1 = msr->param.dConstGamma-1;
-        invpr.uncc.dResolveJeans = msr->param.dResolveJeans/a;
+        msrSetuNonCoolContext( msr, &(invpr.uncc), a );
 		}
 	if (dDelta != 0.0) {
 		struct outKick out;
@@ -6263,12 +6256,7 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
-		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
-        in.uncc.gammam1 = msr->param.dConstGamma-1;
-        in.uncc.dResolveJeans = msr->param.dResolveJeans/a;
+        msrSetuNonCoolContext( msr, &(in.uncc), a );
 #endif /* NEED_VPRED */
 		}
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
@@ -6322,12 +6310,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		a = csmTime2Exp(msr->param.csm,dTime);
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
-		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
-        in.uncc.gammam1 = msr->param.dConstGamma-1;
-        in.uncc.dResolveJeans = msr->param.dResolveJeans/a;
+        msrSetuNonCoolContext( msr, &(in.uncc), a );
 #endif /* NEED_VPRED */
 		}
 	else {
@@ -6350,12 +6333,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
-		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
-        in.uncc.gammam1 = msr->param.dConstGamma-1;
-        in.uncc.dResolveJeans = msr->param.dResolveJeans/a;
+        msrSetuNonCoolContext( msr, &(in.uncc), a );
 #endif /* NEED_VPRED */
 		}
 	if(!msr->param.bPatch) {
@@ -6437,12 +6415,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		a = csmTime2Exp(msr->param.csm,dTime);
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
-		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
-        in.uncc.gammam1 = msr->param.dConstGamma-1;
-        in.uncc.dResolveJeans = msr->param.dResolveJeans/a;
+        msrSetuNonCoolContext( msr, &(in.uncc), a );
 #endif /* NEED_VPRED */
 		}
 	else {
@@ -6465,11 +6438,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-		in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-        in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-		in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
-		in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
-        in.uncc.dResolveJeans = msr->param.dResolveJeans/a;
+        msrSetuNonCoolContext( msr, &(in.uncc), a );
 #endif /* NEED_VPRED */
 		}
 	if(!msr->param.bPatch) {
@@ -8138,7 +8107,6 @@ void msrTopStepKDK(MSR msr,
     msrActiveRung(msr,iRung,0);
 #ifdef GASOLINE
     msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
-	printf("DEBUG0UPDATE1\n");
     msrUpdateuDot(msr,dTime,0.5*dDelta,1);
 #endif
 //    printf("SYNC Start of step: %f (%f %f)\n",dTime,dTime,0.5*dDelta);
@@ -8155,7 +8123,6 @@ void msrTopStepKDK(MSR msr,
 		dTime += 0.5*dDelta;
 		msrActiveRung(msr,iRung,0);
 #ifdef GASOLINE
-		printf("DEBUG0UPDATE2\n");
 		msrUpdateuDot(msr,dTime,0.5*dDelta,0); /* Need forward uDot for Upreds */
 #endif
 		msrTopStepKDK(msr,dStep,dTime,0.5*dDelta,iRung+1,iKickRung,1,
@@ -8169,7 +8136,6 @@ void msrTopStepKDK(MSR msr,
 		dTime += 0.5*dDelta;
 		dStep += 1.0/(2 << iRung);
 		msrActiveRung(msr,iRung,0);
-		printf("DEBUG0UPDATE3\n");
 		msrUpdateuDot(msr,dTime,0.5*dDelta,0); /* Need forward uDot for uPred */
 		msrDrift(msr,dTime,0.5*dDelta);
 		dTime += 0.5*dDelta;
@@ -8285,7 +8251,6 @@ void msrTopStepKDK(MSR msr,
     if (msr->param.bVDetails) printf("Kick, iRung: %d\n",iRung);
     msrActiveRung(msr,iRung,0);
 #ifdef GASOLINE
-	printf("DEBUG0UPDATE4\n");
     msrUpdateuDot(msr,dTime,0.5*dDelta,1);
 #endif
     msrKickKDKClose(msr,dTime,0.5*dDelta);
@@ -8823,12 +8788,7 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateState)
 	a = csmTime2Exp(msr->param.csm,dTime);
 	in.z = 1/a - 1;
 	in.dTime = dTime;
-	in.uncc.dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-	in.uncc.dNoncoolConvRateMul = 1/(msr->param.dNoncoolConvTimeMul);
-    in.uncc.dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
-	in.uncc.dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
-    in.uncc.gammam1 = msr->param.dConstGamma-1;
-    in.uncc.dResolveJeans = msr->param.dResolveJeans/a;
+    msrSetuNonCoolContext( msr, &(in.uncc), a );
 	in.iGasModel = msr->param.iGasModel;
     in.dResolveJeans = msr->param.dResolveJeans/a;
 	in.bUpdateState = bUpdateState;
@@ -8921,7 +8881,6 @@ void msrInitSph(MSR msr,double dTime)
 #endif
 		/* First guess at uDot with quite small step size 
 		   step size irrelevant for adiabatic gas */
-			printf("DEBUG0UPDATE5\n");
    	        msrUpdateuDot(msr,dTime,0.5e-7*msr->param.dDelta,0);
 		}
 
@@ -9004,28 +8963,36 @@ void msrSphStep(MSR msr, double dTime, int iKickRung)
 
 //#ifdef DRHODT
     if (!msr->param.bSphSingleStep && msr->param.bLongRangeStep) {
-	if (msr->iTreeType != MSR_TREE_DENSITY) {
-	    msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
-	    msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-	    msrBuildTree(msr,1,-1.0,1);
-	    msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
-	    }
-	msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
-	msrDtSmooth(msr,dTime,0); /* Updates msr->dtMinGas */
-	}
+        if (msr->iTreeType != MSR_TREE_DENSITY) {
+            msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
+            msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+            msrBuildTree(msr,1,-1.0,1);
+            msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
+            }
+        msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
+        msrDtSmooth(msr,dTime,0); /* Updates msr->dtMinGas */
+        }
 //#endif
     
-    msr->iMaxRungGas = pkdOneParticleDtToRung( 0,msrDelta(msr),msr->dtMinGas);
-    if(msr->iMaxRungGas >= msrMaxRung(msr)) msr->iMaxRungGas = msrMaxRung(msr)-1;
-
     if (msr->param.bSphSingleStep) {
-	struct inSetSphStep inSetSph;
+        struct inSetSphStep inSetSph;
 
 /* Sinks have maximum timestep of sink step (parameter) or smallest gas step */
-	inSetSph.dt = msr->dtMinGas;
-	printf("Setting dt for gas to dt min %f\n",inSetSph.dt);
-	pstSetSphStep(msr->pst,&inSetSph,sizeof(inSetSph),NULL,NULL);
-	}
+        if (msr->param.dDeltaSph > 0) {
+            msr->iMaxRungGas = pkdOneParticleDtToRung( 0,msrDelta(msr),msr->param.dDeltaSph);
+            if(msr->iMaxRungGas >= msrMaxRung(msr)) msr->iMaxRungGas = msrMaxRung(msr)-1;
+            printf("Setting dt for gas to dDeltaSph %f\n",msr->param.dDeltaSph);
+            if (msr->param.dDeltaSph > msr->dtMinGas) fprintf(stderr,"WARNING: Using fixed dDeltaSph=%f > required Sph step %f\n",msr->param.dDeltaSph,msr->dtMinGas);
+            inSetSph.dt = msr->param.dDeltaSph;
+            }
+        else {
+            msr->iMaxRungGas = pkdOneParticleDtToRung( 0,msrDelta(msr),msr->dtMinGas);
+            if(msr->iMaxRungGas >= msrMaxRung(msr)) msr->iMaxRungGas = msrMaxRung(msr)-1;
+            printf("Setting dt for gas to dt min %f\n",inSetSph.dt);
+            inSetSph.dt = msr->dtMinGas;
+            }
+        pstSetSphStep(msr->pst,&inSetSph,sizeof(inSetSph),NULL,NULL);
+        }
 
     if (msr->param.bDoSinks) {
 	struct inSinkStep inSink;
