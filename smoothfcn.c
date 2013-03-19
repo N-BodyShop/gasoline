@@ -3010,11 +3010,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    divvj += rs1/q->fDensity;
 	    }
 #ifdef RTFORCE
-#ifdef DIVVCORR2
     p->fDivv_Corrector = (divvj != 0 ? divvi/divvj : 1);
-#else
-    p->fDivv_Corrector = (divvbad != 0 ? -(3/2.)/(divvbad*fNorm1) : 1); /* fNorm1 normalization includes 0.5 */
-#endif
 #else
     p->fDivv_Corrector = (divvi != 0 ? -(3/2.)/(divvi*fNorm1) : 1); /* fNorm1 normalization includes 0.5 */
 #endif

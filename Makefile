@@ -91,7 +91,6 @@ CODE_DEF += -DCHANGESOFT #Allow you to explicitly give the softening length for 
 CODE_DEF += -DDIFFUSION #Enable Metal Diffusion
 #CODE_DEF += -DDIFFUSIONPRICE #Daniel Price's Thermal Diffusion
 CODE_DEF += -DDIFFUSIONTHERMAL #Thermal Diffusion
-CODE_DEF += -DDIVVCORR2 #Use a more robust div v correction term in calculating PdV work.
 #CODE_DEF += -DDIVVOFF #Remove the convergent flow requirement for starformation
 #CODE_DEF += -DDKDENSITY #Calculate the density using the derivative of the kernel in the DVDX calculation of density
 CODE_DEF += -DDODVDS #Better handling of viscosity with the Balsara switch
@@ -100,7 +99,7 @@ CODE_DEF += -DDODVDS #Better handling of viscosity with the Balsara switch
 #CODE_DEF += -DDRHODTTEST #Output a large list of properties important for the DRHODT parts of the code for debugging
 CODE_DEF += -DDTADJUST #Use a more clever "anticipatory" timestep criteria for multistepping
 #CODE_DEF += -DDTTEST=6e-12
-#CODE_DEF += -DEPSACCH #Turning this one makes the pkd code ignore dhMinOverSoft in pkdAccelStep
+CODE_DEF += -DEPSACCH #Turning this one makes the pkd code ignore dhMinOverSoft in pkdAccelStep
 #CODE_DEF += -DFITDVDX #Use a fitted version of the DenDVDX that doesn't use the stiff.h evaluator.
 CODE_DEF += -DGASOLINE #Do SPH (without this, compiles pkdgrav, just N-Body)
 #CODE_DEF += -DGLASS #Use this to make glass initial conditions
