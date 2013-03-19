@@ -95,22 +95,22 @@ def make_plots(testdir):
 	plt.savefig(testdir+'/sedov.png', dpi=150)
 	plot_density_image(testdir)
 
-def check_radius(output, radius, tolerance=0.05):
-	sim = pyn.load(output)
-	simradius = sim.g['r'][np.where(sim.g['rho'] == np.max(sim.g['rho']))]
-	error = np.abs(radius-simradius)
-	if error > tolerance*radius:
-		check = False
-	else:
-		check = True
-	return (check, error, "Shock radius is at %f"
+#def check_radius(output, radius, tolerance=0.05):
+	#sim = pyn.load(output)
+	#simradius = sim.g['r'][np.where(sim.g['rho'] == np.max(sim.g['rho']))]
+	#error = np.abs(radius-simradius)
+	#if error > tolerance*radius:
+		#check = False
+	#else:
+		#check = True
+	#return (check, error, "Shock radius is at %f"
 
-def passfail(testdir):
-	passfail = []
+#def passfail(testdir):
+	#passfail = []
 
 if __name__ == '__main__':
 	testdir='sedov'
 	files = ["data/sedov.std", "data/sedov.param"]
-	exe = "../gasoline.ce92ce93"
+	exe = "./gasoline"
 	run_gasoline(testdir, files, 'sedov.param', exe)
 	make_plots(testdir)

@@ -50,6 +50,6 @@ def make_plots(testdir):
 if __name__ == '__main__':
 	testdir='shocktube'
 	files = ["data/shocktube.std", "data/shocktube.param"]
-	exe = "../gasoline.ce92ce93"
+	exe = "./gasoline"
 	run_gasoline(testdir, files, 'shocktube.param', exe)
 	make_plots(testdir)

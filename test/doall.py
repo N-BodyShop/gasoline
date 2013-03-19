@@ -44,7 +44,7 @@ if __name__ == '__main__':
 	testdir='shocktube'
 	files = ["data/shocktube.std", "data/shocktube.param"]
 	run_gasoline(testdir, files, 'shocktube.param', exe, args=args, params=paramdict)
-	#shocktube.make_plots(testdir)
+	shocktube.make_plots(testdir)
 #Run the Sedov blast
 	testdir='sedov'
 	files = ["data/sedov.std", "data/sedov.param"]

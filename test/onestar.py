@@ -51,15 +51,15 @@ def make_plots(testdir):
 			("onestar.00200", "200"), ("onestar.00300", "300"),
 			("onestar.00400", "400")]:
 		print "Plotting Step " + step
-		#plot_density(testdir, infile, step)
-		#plot_entropy(testdir, infile, step)
-		#plot_temperature(testdir, infile, step)
-		#plot_velocity(testdir, infile, step)
-		#plot_pressure(testdir, infile, step)
+		plot_density(testdir, infile, step)
+		plot_entropy(testdir, infile, step)
+		plot_temperature(testdir, infile, step)
+		plot_velocity(testdir, infile, step)
+		plot_pressure(testdir, infile, step)
 
 if __name__ == '__main__':
 	testdir='onestar'
 	files = ["data/onestar.tbin", "data/onestar.param"]
-	exe = "../gasoline.ce92ce93"
+	exe = "./gasoline"
 	run_gasoline(testdir, files, 'onestar.param', exe)
 	make_plots(testdir)

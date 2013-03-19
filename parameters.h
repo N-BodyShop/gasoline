@@ -58,6 +58,7 @@ struct parameters {
  	int bDohOutput;
  	int bDoSphhOutput;
 	int bDoPressureOutput;
+    int bDoHydroOutput;
 	int bDodtOutput;
 	int bDoIonOutput;
 #ifdef COOLING_MOLECULARH 
@@ -89,9 +90,9 @@ struct parameters {
     int bHomogSpheroid;
     int bBodyForce;
 	double dBodyForceConst;
-	int bGalaxyDisk;
-	double dGalaxyDiskVc;
-	double dGalaxyDiskR;
+	int bGalaxyDiskVerticalPotential;
+	double dGalaxyDiskVerticalPotentialVc;
+	double dGalaxyDiskVerticalPotentialR;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
@@ -270,6 +271,7 @@ struct parameters {
 	double dResolveJeans;
     double dMetalDiffusionCoeff;
     double dThermalDiffusionCoeff;
+    double dDeltaSph;
     int    bConstantDiffusion;
 	int    bDoGas;
 	int    bSphStep;

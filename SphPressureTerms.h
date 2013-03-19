@@ -18,11 +18,6 @@
    All Macros and Variables not defined here are defined in smoothfcn.c
  */
 
-#ifdef UNONOCOOL
-#define UNONCOOLACTIVE(xxx) xxx
-#else
-#define UNONCOOLACTIVE(xxx) 
-#endif
 #ifdef DRHODT
 #define DRHODTACTIVE(xxx) xxx
 #ifdef RTFORCE
@@ -38,7 +33,7 @@
 #ifdef MASSDIFF
 #define MASSDIFFFAC(pother_) ((pother_)->fMass)
 #define DIFFUSIONBase() double diffbase = 4*smf->dMetalDiffusionCoeff*(p->diff+q->diff) \
-	 /((p->fDensity+q->fDensity)*(p->fMass+q->fMass)); 
+     /((p->fDensity+q->fDensity)*(p->fMass+q->fMass)); 
 #define DIFFUSIONMass() \
     { double diff = diffbase*(p->fMass - q->fMass); \
       PACTIVE( p->fMassDot += diff*p->fMass*rq ); \
@@ -58,7 +53,7 @@
 #else
 #define MASSDIFFFAC(pother_) 1
 #define DIFFUSIONBase() double diffbase = 2*smf->dMetalDiffusionCoeff*(p->diff+q->diff) \
-	 /(p->fDensity+q->fDensity); 
+     /(p->fDensity+q->fDensity); 
 #define DIFFUSIONMass()
 #define DIFFUSIONVelocity()
 #endif
@@ -71,35 +66,33 @@
 
 #ifdef DIFFUSION
 #ifdef UNONCOOL
-#define UDOTDIFF(_p) ((_p)->uDotDiff)
 #define DIFFUSIONThermaluNoncool() \
-	    { double diffuNc = diffTh*(p->uNoncoolPred-q->uNoncoolPred); \
-	    PACTIVE( p->uNoncoolDotSPH += diffuNc*rq );		\
-	    QACTIVE( q->uNoncoolDotSPH -= diffuNc*rp );		\
-	    }
+        { double diffuNc = diffTh*(p->uNoncoolPred-q->uNoncoolPred); \
+        PACTIVE( p->uNoncoolDotDiff += diffuNc*rq );        \
+        QACTIVE( q->uNoncoolDotDiff -= diffuNc*rp );        \
+        }
 #else
-#define UDOTDIFF(_p) ((_p)->PdV)
 #define DIFFUSIONThermaluNoncool()  
 #endif
 #ifdef DIFFUSIONPRICE
 #define DIFFUSIONThermal() \
-    { double irhobar = 2/(p->fDensity+q->fDensity);		\
+    { double irhobar = 2/(p->fDensity+q->fDensity);     \
      double vsig = sqrt(fabs(qPoverRho2*q->fDensity*q->fDensity - pPoverRho2*p->fDensity*p->fDensity)*irhobar); \
      double diffTh = smf->dThermalDiffusionCoeff*0.5*(ph+sqrt(0.25*BALL2(q)))*irhobar*vsig; \
-     double diffu = diffTh*(p->uPred-q->uPred);				\
-     PACTIVE( UDOTDIFF(p)+= diffu*rq );                     \
-     QACTIVE( UDOTDIFF(q)-= diffu*rp );                     \
+     double diffu = diffTh*(p->uPred-q->uPred);             \
+     PACTIVE( p->uDotDiff += diffu*rq );                     \
+     QACTIVE( q->uDotDiff-= diffu*rp );                     \
      DIFFUSIONThermaluNoncool(); }
 #else
-#ifdef DIFFUSIONTHERMAL
+#ifndef NODIFFUSIONTHERMAL
+/* Default -- thermal diffusion */
 #define DIFFUSIONThermal() \
     { double diffTh = 2*smf->dThermalDiffusionCoeff*(p->diff+q->diff)/(p->fDensity+q->fDensity); \
       double diffu = diffTh*(p->uPred-q->uPred);                              \
-      PACTIVE( UDOTDIFF(p) += diffu*rq*MASSDIFFFAC(q) );                \
-      QACTIVE( UDOTDIFF(q) -= diffu*rp*MASSDIFFFAC(p) );                \
+      PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
+      QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \
       DIFFUSIONThermaluNoncool(); }
 #else
-/* Default -- no thermal diffusion */
 #define DIFFUSIONThermal()
 #endif
 #endif
@@ -132,29 +125,31 @@
 #define ALPHA (smf->alpha*0.5*(p->alpha+q->alpha))
 #define BETA  (smf->beta*0.5*(p->alpha+q->alpha))
 #else
-#define ALPHA smf->alpha
-#define BETA  smf->beta
+#define ALPHA (smf->alpha)
+#define BETA  (smf->beta)
 #endif
-#define SETDTNEW_PQ(dt_)  if (dt_ < p->dtNew) p->dtNew=dt_; \
-		 if (dt_ < q->dtNew) q->dtNew=dt_; 
-	      
+#define SETDTNEW_PQ(dt_)  { if (dt_ < p->dtNew) p->dtNew=dt_; \
+                            if (dt_ < q->dtNew) q->dtNew=dt_; \
+                            if (4*q->dt < p->dtNew) p->dtNew = 4*q->dt; \
+                            if (4*p->dt < q->dtNew) q->dtNew = 4*p->dt; }
+          
 #ifdef VSIGVISC
-#define VISC(visc_,dt_) { absmu = -dvdotdr*smf->a			\
-		    /sqrt(nnList[i].fDist2); /* mu multiply by a to be consistent with physical c */ \
-		if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
+#define ARTIFICIALVISCOSITY(visc_,dt_) { absmu = -dvdotdr*smf->a            \
+            /sqrt(nnList[i].fDist2); /* mu multiply by a to be consistent with physical c */ \
+        if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
 		if (absmu>q->mumax) q->mumax=absmu; \
 		visc_ = (ALPHA*(pc + q->c) + BETA*1.5*absmu); \
-		dt_ = smf->dtFac*ph/visc_;     \
+		dt_ = smf->dtFacCourant*ph/visc_;     \
 		visc_ = SWITCHCOMBINE(p,q)*visc_ \
 		    *absmu/(pDensity + q->fDensity); }
 #else
-#define VISC(visc_,dt_) { double hav=0.5*(ph+sqrt(0.25*BALL2(q)));  /* h mean */ \
+#define ARTIFICIALVISCOSITY(visc_,dt_) { double hav=0.5*(ph+sqrt(0.25*BALL2(q)));  /* h mean */ \
 		absmu = -hav*dvdotdr*smf->a  \
 		    /(nnList[i].fDist2+0.01*hav*hav); /* mu multiply by a to be consistent with physical c */ \
 		if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
 		if (absmu>q->mumax) q->mumax=absmu; \
 		visc_ = (ALPHA*(pc + q->c) + BETA*2*absmu);	\
-		dt_ = smf->dtFac*hav/(0.625*(pc + q->c)+0.375*visc_); \
+		dt_ = smf->dtFacCourant*hav/(0.625*(pc + q->c)+0.375*visc_); \
 		visc_ = SWITCHCOMBINE(p,q)*visc_ \
 		    *absmu/(pDensity + q->fDensity); }
 #endif
@@ -164,30 +159,25 @@
 	    DRHODTACTIVE( QACTIVE( q->fDivv_PdV -= rp/p->fDivv_Corrector/RHO_DIVV(q->fDensity,pDensity)*dvdotdr; )); 
 	    DRHODTACTIVE( PACTIVE( p->fDivv_PdVcorr -= rq/RHO_DIVV(pDensity,q->fDensity)*dvdotdr; ));
         DRHODTACTIVE( QACTIVE( q->fDivv_PdVcorr -= rp/RHO_DIVV(q->fDensity,pDensity)*dvdotdr; ));
-        UNONCOOLACTIVE(PACTIVE( p->uNoncoolDotSPH += rq*PRES_PDV(pPuNoncooloverRho2,qPuNoncooloverRho2)*dvdotdr; ););
-        UNONCOOLACTIVE(QACTIVE( q->uNoncoolDotSPH += rp*PRES_PDV(qPuNoncooloverRho2,pPuNoncooloverRho2)*dvdotdr; ););
+        PACTIVE( p->uDotPdV += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; );
+        QACTIVE( q->uDotPdV += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; );
+//if (p->iOrder == 865177) printf("sphp %d: %g %g %g %g\n",p->iOrder,p->u,pPoverRho2,dvdotdr,rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr );
+//if (q->iOrder == 865177) printf("sphq %q: %g %g %g %g\n",q->iOrder,q->u,qPoverRho2,dvdotdr,rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr );
+if (p->iOrder == 6625) printf("DEBUGSPH: %d %e %e %e %e %e %e %e %e %e %e %e %e %e %e %d %e %e %e %e %e %e %e %e %e %e %e %e %e \n", p->iOrder, p->r[0], p->r[1], p->r[2], p->vPred[0], p->vPred[1], p->vPred[2], p->fDensity, p->PoverRho2, p->fMass, p->u, p->dt, rq, PRES_PDV(pPoverRho2,qPoverRho2), dvdotdr, q->iOrder, q->r[0], q->r[1], q->r[2], q->vPred[0], q->vPred[1], q->vPred[2], q->fDensity, q->PoverRho2, q->fMass, q->u, q->dt, rp, PRES_PDV(qPoverRho2,pPoverRho2));
+if (q->iOrder == 6625) printf("DEBUGSPH: %d %e %e %e %e %e %e %e %e %e %e %e %e %e %e %d %e %e %e %e %e %e %e %e %e %e %e %e %e \n", p->iOrder, p->r[0], p->r[1], p->r[2], p->vPred[0], p->vPred[1], p->vPred[2], p->fDensity, p->PoverRho2, p->fMass, p->u, p->dt, rq, PRES_PDV(pPoverRho2,qPoverRho2), dvdotdr, q->iOrder, q->r[0], q->r[1], q->r[2], q->vPred[0], q->vPred[1], q->vPred[2], q->fDensity, q->PoverRho2, q->fMass, q->u, q->dt, rp, PRES_PDV(qPoverRho2,pPoverRho2));
+        PACTIVE( Accp = (PRES_ACC(pPoverRho2f,qPoverRho2f)); );
+        QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f)); );
 	    if (dvdotdr>=0.0) {
-            dt = smf->dtFac*ph/(2*(pc > q->c ? pc : q->c));	
-            SETDTNEW_PQ(dt);
-            PACTIVE( p->PdV += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; );
-            QACTIVE( q->PdV += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; );
-            PDVDEBUGLINE( PACTIVE( p->PdVpres += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr; ); );
-            PDVDEBUGLINE( QACTIVE( q->PdVpres += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr; ); );
-            PACTIVE( Accp = (PRES_ACC(pPoverRho2f,qPoverRho2f)); );
-            QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f)); );
+            dt = smf->dtFacCourant*ph/(2*(pc > q->c ? pc : q->c));	
             }
-	    else { 
-            VISC(visc,dt);		
-            SETDTNEW_PQ(dt);
-            PACTIVE( p->PdV += rq*(PRES_PDV(pPoverRho2,qPoverRho2) + 0.5*visc)*dvdotdr; );
-            QACTIVE( q->PdV += rp*(PRES_PDV(qPoverRho2,pPoverRho2) + 0.5*visc)*dvdotdr; );
-            PDVDEBUGLINE( PACTIVE( p->PdVpres += rq*(PRES_PDV(pPoverRho2,qPoverRho2))*dvdotdr; ); );
-            PDVDEBUGLINE( QACTIVE( q->PdVpres += rp*(PRES_PDV(qPoverRho2,pPoverRho2))*dvdotdr; ); );
-            PDVDEBUGLINE( PACTIVE( p->PdVvisc += rq*(0.5*visc)*dvdotdr; ); );
-            PDVDEBUGLINE( QACTIVE( q->PdVvisc += rp*(0.5*visc)*dvdotdr; ); );
-            PACTIVE( Accp = (PRES_ACC(pPoverRho2f,qPoverRho2f) + visc); );
-            QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f) + visc); );
+	    else {  
+            ARTIFICIALVISCOSITY(visc,dt); /* Calculate Artificial viscosity terms and associated dt */		
+            PACTIVE( p->uDotAV += rq*(0.5*visc)*dvdotdr; );
+            QACTIVE( q->uDotAV += rp*(0.5*visc)*dvdotdr; );
+            PACTIVE( Accp += visc; );
+            QACTIVE( Accq += visc; );
 		}
+        SETDTNEW_PQ(dt);
 	    PACTIVE( Accp *= rq*aFac; );/* aFac - convert to comoving acceleration */
 	    QACTIVE( Accq *= rp*aFac; );
 	    PACTIVE( ACCEL(p,0) -= Accp * dx; );
@@ -196,7 +186,7 @@
 	    QACTIVE( ACCEL(q,0) += Accq * dx; );
 	    QACTIVE( ACCEL(q,1) += Accq * dy; );
 	    QACTIVE( ACCEL(q,2) += Accq * dz; );
-        { 
+
         DIFFUSIONBase();
         DIFFUSIONThermal();
         DIFFUSIONMetals();
@@ -204,5 +194,4 @@
         DIFFUSIONMetalsIron();
         DIFFUSIONMass();
  	    DIFFUSIONVelocity(); 
-        }
 

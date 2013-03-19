@@ -196,12 +196,12 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     E = CoolCodeEnergyToErgPerGm( cl, p->u );
 #ifdef  COOLING_MOLECULARH
     tcool = E/(-CoolHeatingRate( cl, &p->CoolParticle, T, 
-				 CodeDensityToComovingGmPerCc(cl,p->fDensity ), p->fMetals, correL )
-	       -CoolCodeWorkToErgPerGmPerSec( cl, p->PdV ), correL);
+            CodeDensityToComovingGmPerCc(cl,p->fDensity ), p->fMetals, correL )
+        -CoolCodeWorkToErgPerGmPerSec( cl, UDOT_HYDRO(p) ), correL);
 #else
     tcool = E/(-CoolHeatingRate( cl, &p->CoolParticle, T, 
 		 CodeDensityToComovingGmPerCc(cl,p->fDensity ), p->fMetals )
-	       -CoolCodeWorkToErgPerGmPerSec( cl, p->PdV ));
+        -CoolCodeWorkToErgPerGmPerSec( cl, UDOT_HYDRO(p) ));
 #endif
     tcool = CoolSecondsToCodeTime( cl, tcool ); 
     printf("tcool %i: %g %g %g\n",p->iOrder,T,p->fDensity,tcool);
@@ -221,7 +221,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals,  p->r)
 #endif
 #endif
-	-p->PdV );
+          -UDOT_HYDRO(p) );
 #ifdef CHECKSF
     p->tOff = CoolCodeTimeToSeconds( cl, p->fTimeCoolIsOffUntil - dTime)/3.1557e7;  /* years - never used */
     p->tcool = CoolCodeTimeToSeconds( cl, tcool)/3.1557e7;
@@ -494,7 +494,7 @@ void pkdSimpleStarForm(PKD pkd, double dRateCoeff, double dTMax, double dDenMin,
 					assert(p->fMass > 0);
 					}
 
-				starp.PdV = dtCoolingShutoff; /* Max local Cooling shutoff period */
+				starp.uDotPdV = dtCoolingShutoff; /* Max local Cooling shutoff period */
 
 				/*
 				 * Save quantities -- as per old STARFORM

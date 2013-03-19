@@ -44,7 +44,7 @@ typedef struct smfParameters {
     double Pext;
     double uMin;
     double dtMin; /* Read/Write */
-    double dtFac;
+    double dtFacCourant;
     double dEtaCourantLong;
     double dDelta;
     int bGeometric;

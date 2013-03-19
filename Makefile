@@ -97,24 +97,23 @@ CODE_DEF += -DDODVDS #Better handling of viscosity with the Balsara switch
 #CODE_DEF += -DDRHODT #Use the change in density over time (dRho/dt) as a timestep criteria
 #CODE_DEF += -DDRHODTDIVOUT #Output Divv variables used in DRHODT
 #CODE_DEF += -DDRHODTTEST #Output a large list of properties important for the DRHODT parts of the code for debugging
-#CODE_DEF += -DEPSACCH #Turning this one makes the pkd code ignore dhMinOverSoft in pkdAccelStep
-#CODE_DEF += -DINELASTIC #Use the experimental inelastic collapse for collisions.
+CODE_DEF += -DDTADJUST #Use a more clever "anticipatory" timestep criteria for multistepping
+#CODE_DEF += -DDTTEST=6e-12
+CODE_DEF += -DEPSACCH #Turning this one makes the pkd code ignore dhMinOverSoft in pkdAccelStep
 #CODE_DEF += -DFITDVDX #Use a fitted version of the DenDVDX that doesn't use the stiff.h evaluator.
-#CODE_DEF += -DFREEZENONGAS #Force nongas particles to zero velocity.
 CODE_DEF += -DGASOLINE #Do SPH (without this, compiles pkdgrav, just N-Body)
 #CODE_DEF += -DGLASS #Use this to make glass initial conditions
 #CODE_DEF += -DGR_DRAG #Enable Frame draggin (I believe)
 #CODE_DEF += -DGROWMASS #Allow collisional particles to grow
 #CODE_DEF += -DHSHRINK #M4 kernel times (pi/6)^(1/3) for a tighter kernel
 #CODE_DEF += -DINFLOWOUTFLOW #Enable inflow/outflow boundary conditions
-#CODE_DEF += -DJEANSFIXPDV #Correct PdV work when using a Jeans floor (dResolveJeans)
 #CODE_DEF += -DJEANSSF #Use a simple Jeans length criteria for starformation
-#CODE_DEF += -DJEANSSOFT #Force the smoothing & softening length to be at least as small as the Jeans scale
+CODE_DEF += -DJEANSSOFT #Force the smoothing & softening length to be at least as small as the Jeans scale
+CODE_DEF += -DJEANSFIXPDV
 #CODE_DEF += -DJEANSSOFTONLY #Only force the softening length to be as small as the Jeans scale
-#CODE_DEF += -DJWFORCE #Use an alternate way for calculating Pressures (I don't fully understand how this works)
 #CODE_DEF += -DKROUPA #Use the Kroupa IMF (from Kroupa et al 1993 Bibcode:1993MNRAS.262..545K)
 #CODE_DEF += -DKROUPA01 #Use the newer Kroupa 01 IMF (DOI:10.1046/j.1365-8711.2001.04022.x)
-CODE_DEF += -DLONGRANGESTEP #Predict what particles will need to be put onto a longer timestep.
+#CODE_DEF += -DLONGRANGESTEP #Predict what particles will need to be put onto a longer timestep.
 #CODE_DEF += -DM43D #Use a fancier 3D derived M4 Kernel
 #CODE_DEF += -DMASSDIFF #Enable Mass diffusion (probably not a good idea right now)
 #CODE_DEF += -DMODBATEPOLY #Use a polytropic equation of state with COOLING_BATE
@@ -137,6 +136,7 @@ CODE_DEF += -DLONGRANGESTEP #Predict what particles will need to be put onto a l
 #CODE_DEF += -DPEXT #Allow for the use of an external pressure (Sort of the opposite of an external potential.)
 #CODE_DEF += -DPRES_HK #Use the Euclidean mean of the both pOverRho values to calculate PdV work
 #CODE_DEF += -DPRES_MONAGHAN #Use Monaghan's PdV work calculation (the average of both pOverRho values)
+#CODE_DEF += -DPONRHOFLOOR=1e-30
 #CODE_DEF += -DRADIATIVEBOX #Estimate Local Lyman-Werner radiation from the tree
 #CODE_DEF += -DREDUCED_EWALD #Used reduced Ewald Summation for faster multipole moment expansions
 #CODE_DEF += -DRHOSF #Form stars linearly with density above 100 H cc^-3
@@ -169,6 +169,9 @@ CODE_DEF += -DTOPHATFEEDBACK #Use a tophat kernel to smooth feedback over
 #CODE_DEF += -DTWOSMOOTH #Smooth twice rather than 3 times.  This is defined by default in master.c
 #CODE_DEF += -DTZKEY64 #Use 64 (instead of 128) bit keys for the tree.  Faster, but allows less depth.
 CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
+#CODE_DEF += -DUNONCOOLINIT #Initialize the uNoncool to have equal energy to u (useful for hacking some tests)
+#CODE_DEF += -DUNONCOOLMERGE #Put the uNoncool energy from a checkpoint into u (for debugging)
+#CODE_DEF += -DUNONCOOLZERO #Always read noncooling energy as 0 when read from checkpoint (for debugging)
 #CODE_DEF += -DUNROLLED_VSQRT #Unroll the v_sqrt function for speed
 #CODE_DEF += -DUSEHMIN #Use a floor to keep the integrator for stiff equations from blowing up
 #CODE_DEF += -DUSE_PNG #Use PNG encoding for dumpframes
@@ -177,6 +180,7 @@ CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
 #CODE_DEF += -DVOLUMEFEEDBACK #Smooth FB energy over a volume rather than mass
 #CODE_DEF += -DVOXEL #Dump voxels for volume imaging.
 CODE_DEF += -DVSIGVISC #Alternate Viscous force calculation (better?)
+CODE_DEF += -DWENDLAND #Use the Wendland C_2 Kernel (See Dehnen & Aly 2012)
 
 BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 
@@ -252,7 +256,7 @@ SPX_CFLAGS		= -O3 -I$(SPX_MDL) $(BASE_DEF)
 SPX_LD_FLAGS	= $(BASE_LD_FLAGS)
 SPX_XOBJ		= v_sqrt1.o
 SPX_LIBMDL		= $(SPX_MDL)/mdl.o -lm
-SPX_MDL_CFLAGS	= -g -O3
+SPX_MDL_CFLAGS	= -O3
 
 #
 #		PVM defines
@@ -271,7 +275,7 @@ PVM_LD_FLAGS	= $(BASE_LD_FLAGS)
 #       PTHREAD defines
 #
 PTHREAD_MDL			= mdl/pthread
-PTHREAD_CFLAGS		= -g -D_REENTRANT -I$(PTHREAD_MDL) $(BASE_DEF)
+PTHREAD_CFLAGS		= -O3  -D_REENTRANT -I$(PTHREAD_MDL) $(BASE_DEF)
 PTHREAD_LD_FLAGS 	=  $(BASE_LD_FLAGS)
 PTHREAD_XOBJ		= erf.o v_sqrt1.o
 PTHREAD_LIBMDL 		= $(PTHREAD_MDL)/mdl.o -lm -lpthread
