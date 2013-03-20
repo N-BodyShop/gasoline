@@ -181,6 +181,7 @@ CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
 #CODE_DEF += -DVOXEL #Dump voxels for volume imaging.
 CODE_DEF += -DVSIGVISC #Alternate Viscous force calculation (better?)
 CODE_DEF += -DWENDLAND #Use the Wendland C_2 Kernel (See Dehnen & Aly 2012)
+CODE_DEF += -DGSS_DUMPFRAME #Dumpframe that allows coloring by particle property
 
 BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 
@@ -194,7 +195,7 @@ EXE = gasoline
 #
 NULL_MDL		= mdl/null
 NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF) 
-NULL_LD_FLAGS	= $(BASE_LD_FLAGS) -L/usr/lib -L/lib
+NULL_LD_FLAGS	= $(BASE_LD_FLAGS) #-L/usr/lib -L/lib
 NULL_XOBJ		= erf.o v_sqrt1.o
 NULL_LIBMDL		= $(NULL_MDL)/mdl.o -lm
 
@@ -350,7 +351,8 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
 	  smoothfcn.o collision.o qqsmooth.o $(COOLING_OBJ) cosmo.o romberg.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
-	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o rotbar.o special.o ssio.o $(PNG_OBJ) \
+	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o \
+	  gss_dumpframe.o rotbar.o special.o ssio.o $(PNG_OBJ) \
 	  treezip.o debug.o
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o

@@ -94,6 +94,7 @@ enum outtype_arraytype {
 	OUT_DIVV_T_ARRAY,
 	OUT_DIVV_CORRECTOR_ARRAY,
 	OUT_IACTIVE_ARRAY,
+	OUT_GROUP_ARRAY,
         OUT_1D3DSPLIT,  /* NOTICE!!
                        * Everything above here is 1D 
                        * Everything below here is 3D
