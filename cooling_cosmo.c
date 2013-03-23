@@ -1160,7 +1160,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 #else
 		  0,
 #endif		 
-		  cl->p->u,cl->p->uPred,cl->p->PdV,cl->p->fESNrate,cl->p->dt);
+              cl->p->u,cl->p->uPred,UDOT_HYDRO(cl->p),cl->p->uDotFB,cl->p->dt);
 	  d->E = *E+ExternalHeating*tStep;
 	  clTempIteration( d );
 	  clDerivs( d, t, (&d->E)-1, (&dEdt)-1 );

@@ -106,6 +106,7 @@ enum pst_service {
 	  PST_CALCEANDLEXT,
       PST_DRIFT,
       PST_KICK,
+      PST_EMERGENCYADJUST,
       PST_KICKPATCH,
       PST_READCHECK,
       PST_WRITECHECK,
@@ -559,6 +560,9 @@ struct inGravExternal {
 	 ** For external galaxy potential stuff
 	 */
 	int bLogHalo;
+        double dLogHaloVcirc;
+        double dLogHaloEps;
+        double dLogHaloFlat;
 	int bHernquistSpheroid;
     int bNFWSpheroid;
         double dNFWm200;
@@ -570,6 +574,9 @@ struct inGravExternal {
 	int bHomogSpheroid;
 	int bBodyForce;
 	double dBodyForceConst;
+	int bGalaxyDiskVerticalPotential;
+	double dGalaxyDiskVerticalPotentialVc;
+	double dGalaxyDiskVerticalPotentialR;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;
@@ -643,8 +650,9 @@ struct inUpdateuDot {
 	double duDelta;
 	double dTime;	
 	double z;
-        double dNoncoolConvRate;
+    UNCC uncc;
 	int iGasModel;
+    double dResolveJeans;
 	int bUpdateState;
 	};
 struct outUpdateuDot {
@@ -666,9 +674,9 @@ struct inKick {
 	double duPredDelta;
 	double duDotLimit;
 	int iGasModel;
-        double z;
-        double dTimeEnd;
-        double dNoncoolConvRate;
+    double z;
+    double dTimeEnd;
+    UNCC uncc;
 	};
 struct outKick {
 	double Time;
@@ -678,6 +686,20 @@ struct outKick {
 	};
 
 void pstKick(PST,void *,int,void *,int *);
+
+struct inEmergencyAdjust {
+    int iRung;
+    int iMaxRung;
+    double dDelta;
+    double dDeltaThresh;
+    };
+struct outEmergencyAdjust {
+	int nUn;
+    int iMaxRungOut;
+    int nMaxRung;
+    int iMaxRungIdeal;
+	};
+void pstEmergencyAdjust(PST,void *,int,void *,int *);
 
 /* PST_KICKPATCH */
 struct inKickPatch {
@@ -804,10 +826,10 @@ void pstMassCheck(PST,void *,int,void *,int *);
 
 struct outMassMetalsEnergyCheck {
 	double dTotMass;
-        double dTotMetals;
-        double dTotOx;
-        double dTotFe;
-        double dTotEnergy;
+    double dTotMetals;
+    double dTotOx;
+    double dTotFe;
+    double dTotEnergy;
 	};
 void pstMassMetalsEnergyCheck(PST,void *,int,void *,int *);
 
@@ -1120,6 +1142,7 @@ struct inGetGasPressure {
 	double gammam1;
 	double dResolveJeans;
 	double dCosmoFac;
+    double dtFacCourant;
     
   /* Isothermal */
 
@@ -1612,6 +1635,7 @@ struct inSphStep {
     double dCosmoFac;
     double dEtaCourant;
     double dEtauDot;
+    double dResolveJeans;
     int bViscosityLimitdt;
     };
 void pstSphStep(PST,void *,int,void *,int *);
@@ -1814,8 +1838,8 @@ struct inKickVpred {
 	double duDotLimit;
 	int iGasModel;
 	double z;
-        double dTimeEnd;
-        double dNoncoolConvRate;
+    double dTimeEnd;
+    UNCC uncc;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
 #endif
