@@ -65,7 +65,7 @@ typedef struct CoolingPKDStruct {
 
 #if defined(COOLDEBUG) || defined(STARFORM)
    MDL        mdl; /* For diag/debug outputs */
-   struct particle *p; /* particle pointer needed for SN feedback */
+   struct particle *p; /* particle pointer NEVER TO BE USED EXCEPT FOR DEBUG */
 #endif
    
 } COOL;

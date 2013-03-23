@@ -141,7 +141,7 @@ void StiffStep(STIFF *s, double y[], double dydx[], double *xx, double htry,
       if (s->xnew == (*xx)) assert(0); /* nrerror("step size underflow in stifbs"); */
       simpr(s,ysav,dydx,s->dfdx,s->dfdy,*xx,h,s->nseq[k],yseq);
       if (s->iAbort) {
-	  printf("simpr blow-up (singular matrix?): retry with smaller stepsize\n");
+//	  printf("simpr blow-up (singular matrix?): retry with smaller stepsize\n");
 	  h=h*0.9;
 	  s->iAbort=0;
 	  break;
