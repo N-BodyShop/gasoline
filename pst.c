@@ -6448,6 +6448,11 @@ pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		free( Image2 );
 		}
 	else {
+#ifdef GSS_DUMPFRAME
+		dfClearImage( in, vout, pnOut );
+		/*dfRenderParticles( in, vout, p, pst->plcl->pkd->nLocal );*/
+		pkdDumpFrame( pst->plcl->pkd, in, vout );
+#else
 		PARTICLE *p = pst->plcl->pkd->pStore;
 		dfClearImage( in, vout, pnOut );
 		dfRenderParticlesInit( in, TYPE_GAS, TYPE_DARK, TYPE_STAR,
@@ -6460,6 +6465,7 @@ pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 #endif
 							   p, sizeof(p[0]) );
 		dfRenderParticles( in, vout, p, pst->plcl->pkd->nLocal );
+#endif
 		}
 	}
 

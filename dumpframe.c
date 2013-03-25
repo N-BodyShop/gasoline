@@ -1,3 +1,4 @@
+#ifndef GSS_DUMPFRAME
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -1968,3 +1969,4 @@ void dfFinishFrame( struct DumpFrameContext *df, double dTime, double dStep, str
 
 	}
   
+#endif /*not GSS_DUMPFRAME*/
