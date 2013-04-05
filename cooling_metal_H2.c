@@ -2327,8 +2327,22 @@ double clCoolLowT( double T ) {
 
 /*----  Lyman-Warner Radiation from young stars ------gasoline.metal.mh.rad.gdb*/
 #ifdef  RADIATIVEBOX
-double CoolLymanWerner(COOL *cl, double fMassStar, double dlw){
-  if (!cl->bAgeFromMass && dlw != 0 || cl->bAgeFromMass > cl->dInitStarMass) return dlw; /*If the stellar age cannot be used to determine LW radiation, return given LW radiation*/
+/*---- If the ages of stars are not already set, this will estimate them from the mass */
+double CoolAgeFromMass(COOL *cl, double fMassStar){
+  double dAlog10, dLogMassFrac;
+  dLogMassFrac = log10(fMassStar/cl->dInitStarMass);
+  if (dLogMassFrac > 0) dLogMassFrac = 0;
+  dAlog10 = 6.53429 - 
+    49.4558*dLogMassFrac - 
+    475.707*dLogMassFrac*dLogMassFrac - 
+    3145.14*dLogMassFrac*dLogMassFrac*dLogMassFrac -
+    7936.82*dLogMassFrac*dLogMassFrac*dLogMassFrac*dLogMassFrac;
+ 
+  return pow(10,dAlog10);
+}
+
+
+double CoolLymanWerner(COOL *cl, double dAge){
     double  a0 = -84550.812,
       a1 =  54346.066,
       a2 = -13934.144,
@@ -2336,28 +2350,21 @@ double CoolLymanWerner(COOL *cl, double fMassStar, double dlw){
       a4 = -113.68717,
       a5 =  2.8930795;
 
-    double a0old =  70.908586,
-      a1old = -4.0643123;
+    double dA0old =  70.908586,
+      dA1old = -4.0643123;
 
+    double temp, dAlog10;
 
-    double Alog10, logmassfrac,temp;
-    logmassfrac = log10(fMassStar/cl->dInitStarMass);
-    if (logmassfrac > 0) logmassfrac = 0;
-    Alog10 = 6.53429 - 
-      49.4558*logmassfrac - 
-      475.707*logmassfrac*logmassfrac - 
-      3145.14*logmassfrac*logmassfrac*logmassfrac -
-      7936.82*logmassfrac*logmassfrac*logmassfrac*logmassfrac;	
+    if (dAge < 1e7)  dAlog10 = 7.0; /*used 1e6 as the minimum at one point*/
+    else dAlog10 = log10(dAge);
+    if (dAlog10 < 9.0) temp = pow(10,a0
+	       + a1*dAlog10
+	       + a2*dAlog10*dAlog10
+	       + a3*dAlog10*dAlog10*dAlog10
+	       + a4*dAlog10*dAlog10*dAlog10*dAlog10
+	       + a5*dAlog10*dAlog10*dAlog10*dAlog10*dAlog10 - 30.0); /*Divide by 1e30 to keep things in bounds*/
 
-    if (Alog10 < 7.0) Alog10 = 7.0;
-    if (Alog10 < 9.0) temp = pow(10,a0
-	       + a1*Alog10
-	       + a2*Alog10*Alog10
-	       + a3*Alog10*Alog10*Alog10
-	       + a4*Alog10*Alog10*Alog10*Alog10
-	       + a5*Alog10*Alog10*Alog10*Alog10*Alog10 - 30.0);
-
-    else temp = pow(10,a0old + a1old*Alog10 - 30.0); /*Close to zero*/
+    else temp = pow(10,dA0old + dA1old*dAlog10 - 30.0); /*Close to zero*/
     return cl->dMsolUnit*cl->dInitStarMass*temp;
 }
 #endif

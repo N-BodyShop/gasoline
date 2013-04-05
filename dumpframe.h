@@ -9,6 +9,9 @@
 #include "png.h"        /* libpng header; includes zlib.h and setjmp.h */
 #include "writepng.h"   /* typedefs, common macros, public prototypes */
 #endif
+#ifdef GSS_DUMPFRAME
+#include "pkd.h"
+#endif
 
 typedef struct dfImage {
 	float r,g,b;
@@ -114,6 +117,10 @@ struct inDumpFrame {
         float dColStar[10],dColGas[10],dColDark[10];
 	DFIMAGE ColStar[10],ColGas[10],ColDark[10];
         int nColStar,nColGas,nColDark;
+#ifdef GSS_DUMPFRAME
+    float ColGasPropMin, ColGasPropMax;
+    int ColGasProperty, ColDarkProperty, ColStarProperty;
+#endif
 	int bColMassWeight;
 	int bGasSph;
     int iColStarAge;
@@ -129,6 +136,9 @@ struct inDumpFrame {
 	double dMassGasMin, dMassGasMax;
 	double dMassDarkMin,dMassDarkMax;
 	double dMassStarMin,dMassStarMax;
+#ifdef GSS_DUMPFRAME
+    double dMinGasMass;
+#endif
 
 	int bNonLocal; /* Is this data going non-local? */
 	int bVDetails;
@@ -163,6 +173,10 @@ struct dfFrameSetup {
 	DFIMAGE ColStar[10],ColGas[10],ColDark[10];
         int nColStar,nColGas,nColDark;
 	int bColMassWeight;
+#ifdef GSS_DUMPFRAME
+    float ColGasPropMin, ColGasPropMax;
+    int ColGasProperty, ColDarkProperty, ColStarProperty;
+#endif
 	int bGasSph;
     int iColStarAge;
     int bColLogInterp;
@@ -216,9 +230,17 @@ struct DumpFrameContext {
 	char FileName[161];
 	};
 
+#ifdef GSS_DUMPFRAME
+void dfInitialize( struct DumpFrameContext **pdf, double dYearUnit, 
+		   double dTime,double dDumpFrameTime, double dStep, 
+		   double dDumpFrameStep,double dDelta, int iMaxRung, 
+		   int bVDetails, char*);
+#else
 void dfInitialize( struct DumpFrameContext **pdf, double dYearUnit, double dTime, 
 				  double dDumpFrameTime, double dStep, double dDumpFrameStep,
 				  double dDelta, int iMaxRung, int bVDetails, char* );
+#endif
+
 void dfFinalize( struct DumpFrameContext *df );
 
 void *dfAllocateImage( int nxPix, int nyPix );
@@ -228,11 +250,26 @@ void dfParseOptions( struct DumpFrameContext *df, char * filename );
 
 void dfParseCameraDirections( struct DumpFrameContext *df, char * filename );
 
+#ifdef GSS_DUMPFRAME
+void dfSetupFrame(struct DumpFrameContext *df,double dTime,double dStep, 
+		  double dExp,double *com,double dMinGasMass,
+		  struct inDumpFrame *in );
+#else
 void dfSetupFrame( struct DumpFrameContext *df, double dTime, double dStep, double dExp, double *com, struct inDumpFrame *in );
+#endif
 
 void dfMergeImage( struct inDumpFrame *in, void *Image1, int *nImage1, void *Image2, int *nImage2 );
 void dfClearImage( struct inDumpFrame *in, void *Image, int *nImage );
 
+#ifdef GSS_DUMPFRAME
+void dfRenderParticlePoint( struct inDumpFrame *in, void *vImage,PKD pkd,
+			    PARTICLE *p);
+void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage, PKD pkd,
+			  PARTICLE *p);
+void dfRenderParticleSolid( struct inDumpFrame *in, void *vImage, PKD pkd,
+			    PARTICLE *p);
+void pkdDumpFrame( PKD pkd, struct inDumpFrame *in, void *vImage);
+#else
 void dfRenderParticlePoint( struct inDumpFrame *in, void *vImage, 
 			    double *r, double fMass, double fSoft, double fBall2, int iActive, 
 			    double fDensity, double fAge );
@@ -249,8 +286,8 @@ void dfRenderParticle( struct inDumpFrame *in, void *vImage,
 void dfRenderParticlesInit( struct inDumpFrame *in, int iTypeGas, int iTypeDark, int iTypeStar,
 			    double *pr, double *pfMass, double *pfSoft, double *pfBall2, unsigned int *piActive, 
 			    double *pfDensity, double *pfTimeForm, void *p, int sizeofp );
-
 void dfRenderParticles( struct inDumpFrame *in, void *vImage, void *pStore, int n );
+#endif
 
 /* Relies on PKD definition -- not portable */
 #ifdef PKD_HINCLUDED

@@ -68,7 +68,7 @@ static double FMIN(double minarg1, double minarg2)
 {
     return (minarg1 < minarg2 ? minarg1 : minarg2);
 }
-
+/*
 static double MAX(double maxarg1, double maxarg2)
 {
     return (maxarg1 > maxarg2 ? maxarg1 : maxarg2);
@@ -78,7 +78,10 @@ static double MIN(double minarg1, double minarg2)
 {
     return (minarg1 < minarg2 ? minarg1 : minarg2);
 }
-#define SIGN(a,b) ((b) > 0.0 ? fabs(a) : -fabs(a))
+*/
+#define MAX(a,b) ((b) > a ?  b:a )
+#define MIN(a,b) ((b) > a ?  a:b )
+#define SIGN(a,b) ((b) > a ? fabs(a) : -fabs(a))
 
 void nrerror(char error_text[]);
 double *vector(long nl, long nh);

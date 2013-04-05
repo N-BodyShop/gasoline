@@ -9147,7 +9147,12 @@ void msrDumpFrame(MSR msr, double dTime, double dStep)
 	}
 	
 	dExp = csmTime2Exp(msr->param.csm,dTime);
+#ifdef GSS_DUMPFRAME
+	dfSetupFrame( msr->df[i], dTime, dStep, dExp, &com[0], 
+		      msr->param.stfm->dMinGasMass,&in );
+#else
 	dfSetupFrame( msr->df[i], dTime, dStep, dExp, &com[0], &in );
+#endif
 	
 	Image = dfAllocateImage( in.nxPix, in.nyPix );
 	

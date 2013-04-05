@@ -33,6 +33,7 @@
 #include <stdlib.h>     /* for exit() prototype */
 
 #include "png.h"        /* libpng header; includes zlib.h and setjmp.h */
+#include "zlib.h"
 #include "writepng.h"   /* typedefs, common macros, public prototypes */
 
 
