@@ -2190,7 +2190,7 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
 	double m,dx,dy,dz,d2,d1;
 	struct pkdCalcCellStruct cc;
 #ifdef  RADIATIVEBOX
-	double fLum = 0.0,dxg,dyg,dzg,d2g,mg;
+	double dAge,dxg,dyg,dzg,d2g,mg;
 	int j;
 #endif
 
@@ -2278,10 +2278,13 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
 		}
 		
 		if (TYPETest(&(pkd->pStore[pj]),TYPE_STAR)) {
-		  fLum = CoolLymanWerner(pkd->Cool, pkd->pStore[pj].fMassForm, pkd->pStore[pj].CoolParticle.dLymanWerner);
-		  pkd->pStore[pj].CoolParticle.dLymanWerner = fLum;
-		  for (j=0;j<3;++j) cc.cLumLW[j] += fLum*pkd->pStore[pj].r[j]; /*average location of LW source*/
-		  cc.fLW += fLum; /*Total LW radiation*/
+		  if (pkd->pStore[pj].fTimeForm >= 0 && pkd->Cool->bAgeFromMass && pkd->pStore[pj].CoolParticle.dLymanWerner == 0) { 
+                    /*If the ages of stars are not already set, this will estimate them from the mass */
+		    dAge = CoolAgeFromMass(pkd->Cool, pkd->pStore[pj].fMassForm); 
+		    pkd->pStore[pj].CoolParticle.dLymanWerner = CoolLymanWerner(pkd->Cool, dAge);
+		  }
+		  for (j=0;j<3;++j) cc.cLumLW[j] += pkd->pStore[pj].CoolParticle.dLymanWerner*pkd->pStore[pj].r[j]; /*average location of LW source*/
+		  cc.fLW += pkd->pStore[pj].CoolParticle.dLymanWerner; /*Total LW radiation*/
 		}
  /* Sums the LW flux emitted from the star particles in the bucket*/
 #endif
@@ -3295,7 +3298,8 @@ void pkdLocalFinishLWTree(PKD pkd, int iCell,
 	  fDistanceCell2 =+ (PrevcLumLW[j] - pkdn->r[j])*(PrevcLumLW[j] - pkdn->r[j]);
 	}
 	if (fDistanceCell2 < pkdn->mom.gmom) fDistanceCell2 = pkdn->mom.gmom; /* At minimum, this average distance between gas mass center of child cell and flux center of parent cell should be the moment of the gas in the child cell*/
-	fPrevAveLW = fPrevLW/fDistanceCell2; /* Calculated typical flux with radiative source being in the parent cell*/
+	if (fDistanceCell2 != 0) fPrevAveLW = fPrevLW/fDistanceCell2; /* Calculated typical flux with radiative source being in the parent cell*/
+	else fPrevAveLW = 0;
 	if (pkdn->mom.gmom == 0 || fPrevAveLW > pkdn->mom.fLW/pkdn->mom.gmom){
 	  /* If using the radiation from the parent cell would typically provide more flux, set total luminosity and average source position equal to that in parent cell */
 	  pkdn->mom.fLW = fPrevLW;

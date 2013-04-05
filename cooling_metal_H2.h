@@ -389,7 +389,8 @@ void clSetAbundanceTotals(COOL *cl, double ZMetal, double *Y_H, double *Y_He, do
 void CoolPARTICLEtoPERBARYON(COOL *cl_, PERBARYON *Y, COOLPARTICLE *cp, double ZMetal);
 void CoolPERBARYONtoPARTICLE(COOL *cl_, PERBARYON *Y, COOLPARTICLE *cp, double ZMetal);
 
-double CoolLymanWerner(COOL *cl, double fMassStar, double dlw);
+double CoolAgeFromMass(COOL *cl, double fMassStar);
+double CoolLymanWerner(COOL *cl, double dAge);
 
 double CoolEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double ZMetal);
 double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double ZMetal);
