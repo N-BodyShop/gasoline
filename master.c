@@ -8618,11 +8618,11 @@ int msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart) {
 			msr->param.achOutName, i+1);
 	      }
 	      
-	      dfInitialize( &msr->df[i], msr->param.dSecUnit/SECONDSPERYEAR, 
-			    dTime, msr->param.dDumpFrameTime, dStep, 
-			    msr->param.dDumpFrameStep, msr->param.dDelta, 
-			    msr->param.iMaxRung, msr->param.bVDetails,
-			    achFile );
+	      dfInitialize(&msr->df[i], msr->param.dSecUnit/SECONDSPERYEAR, 
+			   dTime, msr->param.dDumpFrameTime, dStep, 
+			   msr->param.dDumpFrameStep, msr->param.dDelta, 
+			   msr->param.iMaxRung, msr->param.bVDetails,
+			   achFile);
 	    }
 
 
@@ -8692,7 +8692,12 @@ void msrDumpFrame(MSR msr, double dTime, double dStep)
 	}
 	
 	dExp = csmTime2Exp(msr->param.csm,dTime);
+#ifdef GSS_DUMPFRAME
+	dfSetupFrame( msr->df[i], dTime, dStep, dExp, &com[0], 
+		      msr->param.stfm->dMinGasMass,&in );
+#else
 	dfSetupFrame( msr->df[i], dTime, dStep, dExp, &com[0], &in );
+#endif
 	
 	Image = dfAllocateImage( in.nxPix, in.nyPix );
 	
