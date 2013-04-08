@@ -75,7 +75,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    dTotMetals = 0.0;
 	    dTotMOxygen = 0.0;
 	    dTotMIron = 0.0;
-	    p->fESNrate = 0.0;
+	    p->uDotFB = 0.0;
 	    p->fNSN = 0.0;
 
 	    sfEvent.dMass = p->fMassForm*fb->dGmUnit/MSOLG;
@@ -151,7 +151,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 		fbEffects.dEnergy /= fb->dErgPerGmUnit;
 
 		dTotMassLoss += fbEffects.dMassLoss;
-		p->fESNrate += fbEffects.dEnergy*fbEffects.dMassLoss;
+		p->uDotFB += fbEffects.dEnergy*fbEffects.dMassLoss;
 		dTotMetals += fbEffects.dMetals*fbEffects.dMassLoss;
 		dTotMOxygen += fbEffects.dMOxygen*fbEffects.dMassLoss;
 		dTotMIron += fbEffects.dMIron*fbEffects.dMassLoss;
@@ -166,11 +166,12 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    /*
 	     * Modify star particle
 	     */
+//        fprintf(stderr,"Mass dTotMassLoss %d %g %g  %g %g\n",p->iOrder,p->fMass,dTotMassLoss,dTime/(fb->dSecUnit/SEC_YR),p->fTimeForm);
 	    assert(p->fMass > dTotMassLoss);
 
 	    p->fMass -= dTotMassLoss;
 	    p->fMSN = dTotMassLoss;
-	    /* The SNMetals and ESNrate used to be specific
+	    /* The SNMetals and uDotFB (SN rate) used to be specific
 	       quantities, but we are making them totals as
 	       they leave the stars so that they are easier
 	       to divvy up among the gas particles in 
@@ -201,7 +202,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	else if(pkdIsGas(pkd, p)){
 	    assert(p->u >= 0.0);
 	    assert(p->uPred >= 0.0);
-	    p->fESNrate = 0.0;	/* reset SN heating rate of gas to zero */
+	    p->uDotFB = 0.0;	/* reset SN heating rate of gas to zero */
 	    }
 	}
 

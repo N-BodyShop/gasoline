@@ -82,6 +82,17 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #else
 	    return(0.);
 #endif
+	case OUT_TEMPINC_ARRAY:
+#ifdef UNONCOOL
+	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u+p->uNoncool, p->fMetals );
+#else
+#ifndef NOCOOLING
+	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
+#else
+	    vTemp = pkd->duTFac*p->u;
+#endif
+#endif
+	    return(vTemp);
 	case OUT_TEMP_ARRAY:
 #ifndef NOCOOLING
 	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
@@ -170,21 +181,21 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return(p->divv/(p->c/sqrt(p->fBall2*0.25)));
 	case OUT_DIVONCONX_ARRAY:
 	    return(p->divv/(p->c/pow(p->fMass/p->fDensity,1./3.)));
-        case OUT_PDV_ARRAY:
-        case OUT_PDVRFC_ARRAY:
-	    return(p->PdV);
+    case OUT_UDOTHYDRO_ARRAY:
+    case OUT_PDVRFC_ARRAY:
+        return(UDOT_HYDRO(p));
 	case OUT_METALS_ARRAY:
 	    return(p->fMetals);
 #ifdef DIFFUSION
 	case OUT_METALSDOT_ARRAY:
 	    return(p->fMetalsDot);
 #endif
-#ifdef PDVDEBUG
-	case OUT_PDVPRES_ARRAY:
-	    return(p->PdVpres);
-	case OUT_PDVVISC_ARRAY:
-	    return(p->PdVvisc);
-#endif
+	case OUT_UDOTPDV_ARRAY:
+	    return(p->uDotPdV);
+	case OUT_UDOTAV_ARRAY:
+	    return(p->uDotAV);
+	case OUT_UDOTDIFF_ARRAY:
+	    return(p->uDotDiff);
 #ifdef SHOCKTRACK
 	case OUT_SHOCKTRACKER_ARRAY:
 	    return(p->ShockTracker);
@@ -210,8 +221,8 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_IRONMASSFRACDOT_ARRAY:
 	    return((FLOAT) p->fMFracIronDot);
 #endif
-	case OUT_ESNRATE_ARRAY:
-	    return((FLOAT) p->fESNrate);
+	case OUT_UDOTFB_ARRAY:
+	    return((FLOAT) p->uDotFB);
 #ifdef CHECKSF
 	case OUT_TOFF_YR_ARRAY:
 	    return((FLOAT) p->tOff );
@@ -357,6 +368,9 @@ void VecFilename(char *achFile, int iType)
 	case OUT_UNONCOOL_ARRAY:
 		strncat(achFile,"uNoncool",256);
 		break;
+	case OUT_TEMPINC_ARRAY:
+		strncat(achFile,"Tinc",256);
+		break;
 	case OUT_UDOT_ARRAY:
 		strncat(achFile,"uDot",256);
 		break;
@@ -430,19 +444,22 @@ void VecFilename(char *achFile, int iType)
 	case OUT_DIVONCONX_ARRAY:
             strncat(achFile,"dcx",256);
             break;
-        case OUT_PDV_ARRAY:
-            strncat(achFile,"PdV",256);
+    case OUT_UDOTHYDRO_ARRAY:
+            strncat(achFile,"uDotHydro",256);
             break;
-        case OUT_PDVRFC_ARRAY:
+    case OUT_PDVRFC_ARRAY:
             strncat(achFile,"PdVRFC",256);
             break;
-	case OUT_PDVPRES_ARRAY:
-	        strncat(achFile,"PdVpres",256);
+	case OUT_UDOTPDV_ARRAY:
+	        strncat(achFile,"uDotPdV",256);
             break;
-	case OUT_PDVVISC_ARRAY:
-	        strncat(achFile,"PdVvisc",256);
+	case OUT_UDOTAV_ARRAY:
+	        strncat(achFile,"uDotAV",256);
+            break;	
+	case OUT_UDOTDIFF_ARRAY:
+	        strncat(achFile,"uDotDiff",256);
             break;
-	case OUT_METALS_ARRAY:
+case OUT_METALS_ARRAY:
 	    strncat(achFile,"Metals",256);
             break;
 #ifdef DIFFUSION
@@ -485,8 +502,8 @@ void VecFilename(char *achFile, int iType)
 	    strncat(achFile,"FeMassFracdot",256);
             break;
 #endif
-	case OUT_ESNRATE_ARRAY:
-	    strncat(achFile,"ESNRate",256);
+	case OUT_UDOTFB_ARRAY:
+	    strncat(achFile,"uDotFB",256);
 	    break;
 #ifdef CHECKSF
 	case OUT_TOFF_YR_ARRAY:
@@ -614,8 +631,10 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         case OUT_SPHH_ARRAY:
         case OUT_TEMP_ARRAY:
         case OUT_GASDENSITY_ARRAY:
-        case OUT_PDVPRES_ARRAY:
-        case OUT_PDVVISC_ARRAY:
+        case OUT_UDOTHYDRO_ARRAY:
+        case OUT_UDOTPDV_ARRAY:
+        case OUT_UDOTAV_ARRAY:
+        case OUT_UDOTDIFF_ARRAY:
             nDark=nStar=0;
             break;
         case OUT_IGASORDER_ARRAY:
@@ -627,7 +646,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         case OUT_METALS_ARRAY:
         case OUT_OXYGENMASSFRAC_ARRAY:
         case OUT_IRONMASSFRAC_ARRAY:
-        case OUT_ESNRATE_ARRAY:
+        case OUT_UDOTFB_ARRAY:
             nDark=0;
             break;
 	    }

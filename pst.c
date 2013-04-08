@@ -113,6 +113,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_KICK,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstKick,
 				  sizeof(struct inKick),sizeof(struct outKick));
+	mdlAddService(mdl,PST_EMERGENCYADJUST,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstEmergencyAdjust,
+				  sizeof(struct inEmergencyAdjust),sizeof(struct outEmergencyAdjust));
 	mdlAddService(mdl,PST_KICKPATCH,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstKickPatch,
 				  sizeof(struct inKickPatch),sizeof(struct outKick));
@@ -3147,7 +3150,9 @@ void pstDtSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		assert(0);  /* unimplemented */
 		/* smDtSmooth(smx,&in->smf); */
 		smFinish(smx,&in->smf, &cs);
+#ifdef GASOLINE
 		if (out != NULL) out->dtMin = in->smf.dtMin;
+#endif
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -3384,7 +3389,7 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass,in->dSunSoft);
 			}
 		if (in->bLogHalo) {
-			pkdLogHalo(plcl->pkd);
+		        pkdLogHalo(plcl->pkd,in->dLogHaloVcirc,in->dLogHaloEps,in->dLogHaloFlat);
 			}
 		if (in->bHernquistSpheroid) {
 			pkdHernquistSpheroid(plcl->pkd);
@@ -3400,6 +3405,9 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			}
 		if (in->bBodyForce) {
 			pkdBodyForce(plcl->pkd, in->dBodyForceConst);
+			}
+		if (in->bGalaxyDiskVerticalPotential) {
+			pkdGalaxyDiskVerticalPotentialForce(plcl->pkd, in->dGalaxyDiskVerticalPotentialVc, in->dGalaxyDiskVerticalPotentialR);
 			}
 		if (in->bMiyamotoDisk) {
 			pkdMiyamotoDisk(plcl->pkd);
@@ -3530,13 +3538,44 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		pkdKick(plcl->pkd,in->dvFacOne,in->dvFacTwo,
 				in->dvPredFacOne,in->dvPredFacTwo,in->duDelta,in->duPredDelta,
-		    in->iGasModel,in->z,in->duDotLimit, in->dTimeEnd, in->dNoncoolConvRate);
+		    in->iGasModel,in->z,in->duDotLimit, in->dTimeEnd, in->uncc);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
 		out->nSum = 1;
 		}
 	if (pnOut) *pnOut = sizeof(struct outKick);
+	}
+
+void pstEmergencyAdjust(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inEmergencyAdjust *in = vin;
+	struct outEmergencyAdjust *out = vout;
+	struct outEmergencyAdjust outUp;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inEmergencyAdjust));
+
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_EMERGENCYADJUST,in,nIn);
+		pstEmergencyAdjust(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+
+		out->nUn += outUp.nUn;
+		if(outUp.iMaxRungOut > out->iMaxRungOut) {
+			out->iMaxRungOut = outUp.iMaxRungOut;
+			out->nMaxRung = outUp.nMaxRung;
+		        }
+		else if (outUp.iMaxRungOut == out->iMaxRungOut) 
+		        out->nMaxRung += outUp.nMaxRung;
+		        
+		if(outUp.iMaxRungIdeal > out->iMaxRungIdeal)
+		    out->iMaxRungIdeal = outUp.iMaxRungIdeal;
+		}
+	else {
+		pkdEmergencyAdjust(plcl->pkd,in->iRung,in->iMaxRung,in->dDelta,in->dDeltaThresh,&(out->nUn),&(out->iMaxRungIdeal), &(out->nMaxRung), &(out->iMaxRungOut) );
+		}
+	if (pnOut) *pnOut = sizeof(struct outEmergencyAdjust);
 	}
 
 void pstKickPatch(PST pst,void *vin,int nIn,void *vout,int *pnOut)
@@ -4601,7 +4640,7 @@ void pstUpdateuDot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (outUp.MaxTime > out->MaxTime) out->MaxTime = outUp.MaxTime;
 		}
 	else {
-	        pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->dNoncoolConvRate,in->iGasModel,in->bUpdateState);
+        pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->uncc,in->iGasModel,in->bUpdateState);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -4642,16 +4681,10 @@ void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		switch( in->iGasModel ) {
 		case GASMODEL_ADIABATIC: 
 		case GASMODEL_ISOTHERMAL:
-			pkdAdiabaticGasPressure(plcl->pkd, in->gammam1,
-						in->gamma, in->dResolveJeans,
-						in->dCosmoFac);
-			break;
 		case GASMODEL_COOLING:
-#ifndef NOCOOLING
-			pkdCoolingGasPressure(plcl->pkd, in->gammam1,in->gamma,
-					      in->dResolveJeans,
-					      in->dCosmoFac);
-#endif
+			pkdGasPressure(plcl->pkd, in->gammam1,in->gamma, in->dResolveJeans,
+                in->dCosmoFac, in->dtFacCourant);
+			break;
 			break;
 		case GASMODEL_GLASS:
 #ifdef GLASS		  
@@ -4810,14 +4843,14 @@ void pstSphStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inSphStep));
 	if (pst->nLeaves > 1) {
-   	        double dtMinGas;
+        double dtMinGas;
 		mdlReqService(pst->mdl,pst->idUpper,PST_SPHSTEP,in,nIn);
 		pstSphStep(pst->pstLower,in,nIn,vout,pnOut);
 		mdlGetReply(pst->mdl,pst->idUpper,&dtMinGas,pnOut);
 		if (dtMinGas < *pdtMinGas) *pdtMinGas = dtMinGas;
 		}
 	else {
-		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot,in->bViscosityLimitdt,pdtMinGas);
+		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot,in->dResolveJeans,in->bViscosityLimitdt,pdtMinGas);
 		}
 	if (pnOut) *pnOut = sizeof(double);
 	}
@@ -6157,7 +6190,7 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo,in->duDelta,
-		    in->iGasModel,in->z,in->duDotLimit,in->dTimeEnd,in->dNoncoolConvRate);
+		    in->iGasModel,in->z,in->duDotLimit,in->dTimeEnd,in->uncc);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
