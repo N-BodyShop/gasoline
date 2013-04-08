@@ -3096,7 +3096,6 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
   }
 #endif
  }
-#endif
 
 /* Module Interface routines */
 

@@ -166,7 +166,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    /*
 	     * Modify star particle
 	     */
-//        fprintf(stderr,"Mass dTotMassLoss %d %g %g  %g %g\n",p->iOrder,p->fMass,dTotMassLoss,dTime/(fb->dSecUnit/SEC_YR),p->fTimeForm);
+	    /*        fprintf(stderr,"Mass dTotMassLoss %d %g %g  %g %g\n",p->iOrder,p->fMass,dTotMassLoss,dTime/(fb->dSecUnit/SEC_YR),p->fTimeForm);*/
 	    assert(p->fMass > dTotMassLoss);
 
 	    p->fMass -= dTotMassLoss;
@@ -181,9 +181,10 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    p->fSNMetals = dTotMetals;
 	    p->fMIronOut = dTotMIron;
 	    p->fMOxygenOut = dTotMOxygen;
-	    p->fESNrate /= dDelta; /* convert to rate */
+	    p->uDotFB /= dDelta; /* convert to rate */
 
-#ifdef  RADIATIVEBOX /* Calculates LW radiation from a stellar particle of a given age and mass (assumes Kroupa IMF), CC */
+#ifdef  RADIATIVEBOX 
+/* Calculates LW radiation from a stellar particle of a given age and mass (assumes Kroupa IMF), CC */
 	    double dAge1, dAge2, dLW1, dLW2;
 	    if (dStarAge != 0) {
 	      dAge1 = dStarAge;
