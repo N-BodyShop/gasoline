@@ -1814,7 +1814,7 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
 
 	  clCoolRadrHII(Rate->T) * Y->HII * Rate->Radr_HII  +
 	  clCoolRadrHeII(Rate->T) * Y->HeII * Rate->Radr_HeII +
-	  clCoolRadrHeIII(Rate->T) * Y->HeIII * Rate->Radr_HeIII +
+	  clCoolRadrHeIII(Rate->T) * Y->HeIII * Rate->Radr_HeIII) +
       LowTCool
     + 
       Rate->Cool_Metal;
@@ -2026,7 +2026,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 #ifdef COOLDEBUG
   if (cl->p->iOrder == PARTICLEIORD) { 
     printf("dydt[0]: %e, dydt[1]: %e, dydt[2]: %e, dydt[3]: %e\n",dydt[0],dydt[1],dydt[2],dydt[3]);
-    clDerivs( d, t, yin-1, dydt-1); /*, sqrt(cl->p->fBall2/2.0) );*/
+    /*    clDerivs( d, t, yin-1, dydt-1); *//*, sqrt(cl->p->fBall2/2.0) );*/
     printf("tStep %g \n", tStep);
     printf("rho %g \n", rho*CL_B_gm); 
     printf("Temperature %g \n", d->Rate.T);
