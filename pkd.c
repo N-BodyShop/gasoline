@@ -4229,7 +4229,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 #endif
 
 #ifdef GASOLINE
-			p->fDensity *= exp(-p->fDivv_t*dDelta); // Predictor for density
 #ifdef DRHODT
 			if(pkdIsGas(pkd, p)) {
 			    p->fDensity *= exp(-p->fDivv_t*dDelta); // Predictor for density
