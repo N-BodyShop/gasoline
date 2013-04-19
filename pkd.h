@@ -96,7 +96,6 @@ typedef struct particle {
     FLOAT dtNew;            /* SPH new dt estimate */
     FLOAT dtOld;            /* SPH Old dt */
     FLOAT dtGrav;           /* suggested 1/dt^2 from gravity */
-    int GroupID;
 #ifdef SLIDING_PATCH
     FLOAT dPy;              /* Canonical momentum for Hill eqn. */
 #endif

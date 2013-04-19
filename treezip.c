@@ -3,6 +3,7 @@
 #include <math.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <rpc/types.h>
 #include <rpc/xdr.h>
 #include <rpc/rpc.h>
 #include <assert.h>

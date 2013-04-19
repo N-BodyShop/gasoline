@@ -94,7 +94,6 @@ enum outtype_arraytype {
 	OUT_DIVV_T_ARRAY,
 	OUT_DIVV_CORRECTOR_ARRAY,
 	OUT_IACTIVE_ARRAY,
-	OUT_GROUP_ARRAY,
         OUT_1D3DSPLIT,  /* NOTICE!!
                        * Everything above here is 1D 
                        * Everything below here is 3D
@@ -115,6 +114,7 @@ enum outtype_arraytype {
 
 /*void pkdOutArray(PKD pkd,char *pszFileName,int nStart, int iArrType, int iBinaryOutput);*/
 void VecFilename(char *achFile, int iType);
+FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType);
 void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,int iBinaryOutput, int N, int bStandard);
 void pkdGenericSeek(PKD pkd,FILE *fp,long nStart,int iHeader, int iElement);
 void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int nStarStart, int iVecType, int *pnOut, float minValue[3][3], float maxValue[3][3], double duTFac, double dvFac);
