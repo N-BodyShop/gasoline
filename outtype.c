@@ -186,8 +186,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
         return(UDOT_HYDRO(p));
 	case OUT_METALS_ARRAY:
 	    return(p->fMetals);
-	case OUT_GROUP_ARRAY:
-	    return(p->GroupID);
 #ifdef DIFFUSION
 	case OUT_METALSDOT_ARRAY:
 	    return(p->fMetalsDot);
@@ -460,9 +458,6 @@ void VecFilename(char *achFile, int iType)
             break;	
 	case OUT_UDOTDIFF_ARRAY:
 	        strncat(achFile,"uDotDiff",256);
-            break;
-	case OUT_GROUP_ARRAY:
-	    strncat(achFile,"grp",256);
             break;
 case OUT_METALS_ARRAY:
 	    strncat(achFile,"Metals",256);
@@ -869,12 +864,6 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                                 xdr_int(&xdrs,&(pkd->pStore[i].iOrder));
                                 }
                             break;
-                        case OUT_GROUP_ARRAY:
-                            pkdGenericSeek(pkd,fp,nStart, sizeof(int), sizeof(IntOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                xdr_int(&xdrs,&(pkd->pStore[i].GroupID));
-                                }
-                            break;
                         default:
                             pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(FloatOut));
                             for (i=0;i<pkd->nLocal;++i) {
@@ -914,13 +903,6 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                                 xdr_long(&xdrs,&LongOut);
                                 }
                             break;
-                        case OUT_GROUP_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                LongOut = pkd->pStore[i].GroupID;
-                                xdr_long(&xdrs,&LongOut);
-                                }
-                            break;
                         default:
                             pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(DoubleOut));
                             for (i=0;i<pkd->nLocal;++i) {
@@ -955,12 +937,6 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                             pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(pkd->pStore[i].iOrder));
                             for (i=0;i<pkd->nLocal;++i) {
                                 xdr_int(&xdrs,&(pkd->pStore[i].iOrder));
-                                }
-                            break;
-                        case OUT_GROUP_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(pkd->pStore[i].iOrder));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                xdr_int(&xdrs,&(pkd->pStore[i].GroupID));
                                 }
                             break;
                         default:
@@ -1020,12 +996,6 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                                 fwrite(&(pkd->pStore[i].iOrder), sizeof(IntOut), 1, fp );
                                 }
                             break;
-                        case OUT_GROUP_ARRAY:
-                            pkdGenericSeek(pkd,fp,nStart, sizeof(int), sizeof(IntOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                fwrite(&(pkd->pStore[i].GroupID), sizeof(IntOut), 1, fp );
-                                }
-                            break;
                         default:
                             pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(FloatOut));
                             for (i=0;i<pkd->nLocal;++i) {
@@ -1065,13 +1035,6 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                                 fwrite(&LongOut, sizeof(LongOut), 1, fp );
                                 }
                             break;
-                        case OUT_GROUP_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                LongOut = pkd->pStore[i].GroupID;
-                                fwrite(&LongOut, sizeof(LongOut), 1, fp );
-                                }
-                            break;
                         default:
                             pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(DoubleOut));
                             for (i=0;i<pkd->nLocal;++i) {
@@ -1106,12 +1069,6 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                             pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(pkd->pStore[i].iOrder));
                             for (i=0;i<pkd->nLocal;++i) {
                                 fwrite(&(pkd->pStore[i].iOrder), sizeof(pkd->pStore[i].iOrder), 1, fp );
-                                }
-                            break;
-                        case OUT_GROUP_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(pkd->pStore[i].iOrder));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                fwrite(&(pkd->pStore[i].GroupID), sizeof(pkd->pStore[i].iOrder), 1, fp );
                                 }
                             break;
                         default:

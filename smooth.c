@@ -960,7 +960,6 @@ void smBallScatterNP(SMX smx,FLOAT *ri,int iMarkType,int cp)
         }
     }
 
-
 #define INVDTOPENANGLE2 1
 
 void smDtBallNP(SMX smx,FLOAT *ri,FLOAT *vi,FLOAT *pdt2,FLOAT fBall2,int cp)

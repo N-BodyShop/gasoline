@@ -1969,4 +1969,4 @@ void dfFinishFrame( struct DumpFrameContext *df, double dTime, double dStep, str
 
 	}
   
-#endif /* GSS_DUMPFRAME */
+#endif /*not GSS_DUMPFRAME*/

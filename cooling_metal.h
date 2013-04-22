@@ -8,7 +8,12 @@
 #endif
 #include "floattype.h"
 #include "param.h"
-#include "rpc/xdr.h"
+#include <rpc/types.h>
+#include <rpc/xdr.h>
+#include <sys/param.h> /* for MAXPATHLEN */
+#ifndef MAXPATHLEN
+#define MAXPATHLEN 256
+#endif
 
 /* Constants */
 #define CL_B_gm         (6.022e23*(938.7830/931.494))/*Avegadro's Number * Mass_Hydrogen/Energy_AMU */

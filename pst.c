@@ -3147,7 +3147,8 @@ void pstDtSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		(&in->smf)->pkd = pst->plcl->pkd;
 		smInitialize(&smx,plcl->pkd,&in->smf,in->nSmooth,in->bPeriodic,
 					 in->bSymmetric,in->iSmoothType,0,0.0);
-		smDtSmooth(smx,&in->smf);
+		assert(0);  /* unimplemented */
+		/* smDtSmooth(smx,&in->smf); */
 		smFinish(smx,&in->smf, &cs);
 #ifdef GASOLINE
 		if (out != NULL) out->dtMin = in->smf.dtMin;
@@ -6447,11 +6448,11 @@ pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		free( Image2 );
 		}
 	else {
-#ifdef GSS_DUMPFRAME                                                           
-	    dfClearImage( in, vout, pnOut );                                
-	    /*dfRenderParticles( in, vout, p, pst->plcl->pkd->nLocal );*/   
-	    pkdDumpFrame( pst->plcl->pkd, in, vout );                       
-#else /* GSS_DUMPFRAME */
+#ifdef GSS_DUMPFRAME
+		dfClearImage( in, vout, pnOut );
+		/*dfRenderParticles( in, vout, p, pst->plcl->pkd->nLocal );*/
+		pkdDumpFrame( pst->plcl->pkd, in, vout );
+#else
 		PARTICLE *p = pst->plcl->pkd->pStore;
 		dfClearImage( in, vout, pnOut );
 		dfRenderParticlesInit( in, TYPE_GAS, TYPE_DARK, TYPE_STAR,
@@ -6464,7 +6465,7 @@ pstDumpFrame(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 #endif
 							   p, sizeof(p[0]) );
 		dfRenderParticles( in, vout, p, pst->plcl->pkd->nLocal );
-#endif /* GSS_DUMPFRAME */
+#endif
 		}
 	}
 
