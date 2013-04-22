@@ -2675,6 +2675,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef DTADJUST
 	fprintf(fp, " DTADJUST");
 #endif
+#ifdef EPSACCH
+        fprintf(fp, " ESPACCH");
+#endif
 #ifdef DIFFUSION
 	fprintf(fp, " DIFFUSION");
 #endif
