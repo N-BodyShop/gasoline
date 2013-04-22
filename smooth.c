@@ -737,6 +737,7 @@ PQ *smBallSearchNP(SMX smx,PQ *pq,FLOAT *ri,int *cpStart)
  */
 void smGrowList(SMX smx)
     {
+    smx->nListSize += 1;
     smx->nListSize *= 1.5;
     
     smx->nnList = (NN *) realloc(smx->nnList,smx->nListSize*sizeof(NN));
