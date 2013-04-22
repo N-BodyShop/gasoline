@@ -6498,8 +6498,6 @@ void msrEmergencyAdjust(MSR msr,int iRung,double dDelta)
         printf("WARNING, %d particles needed emergency rung changes (Maxrung %d -> %d)\n",out.nUn,OldCurrMaxRung, msr->iCurrMaxRung);
 
         if(out.iMaxRungIdeal > msrMaxRung(msr)) {
-            printf("WARNING, TIMESTEPS TOO LARGE, EMERGENCYADJUST: nMaxRung (%d) is greater than ideal rung (%d)\n", 
-                msrMaxRung(msr), out.iMaxRungIdeal);
             fprintf(stderr, "WARNING, TIMESTEPS TOO LARGE, EMERGENCYADJUST: nMaxRung (%d) is greater than ideal rung (%d)\n", 
                 msrMaxRung(msr), out.iMaxRungIdeal);
             }
@@ -7736,8 +7734,6 @@ void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
     pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
 
     if(out.iMaxRungIdeal > msrMaxRung(msr)) {
-        printf("WARNING, TIMESTEPS TOO LARGE: nMaxRung (%d) is greater than ideal rung (%d)\n", 
-            msrMaxRung(msr), out.iMaxRungIdeal);
         fprintf(stderr, "WARNING, TIMESTEPS TOO LARGE: nMaxRung (%d) is greater than ideal rung (%d)\n", 
             msrMaxRung(msr), out.iMaxRungIdeal);
         }
