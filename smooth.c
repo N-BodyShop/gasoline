@@ -452,7 +452,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
     /*
     ** Allocate Nearest-Neighbor List.
     */
-    smx->nListSize = smx->nSmooth;
+    smx->nListSize = (smx->nSmooth > 1 ? smx->nSmooth : 2);
     smx->nnList = (NN *)malloc(smx->nListSize*sizeof(NN));
     assert(smx->nnList != NULL);
     smx->pbRelease = (int *)malloc(smx->nListSize*sizeof(int));

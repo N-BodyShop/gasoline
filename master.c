@@ -5402,16 +5402,21 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   ** Make sure that the type of tree is a density binary tree!
   */
   assert(msr->iTreeType == MSR_TREE_DENSITY);
-#ifdef STARFORM
-  in.nSmooth = (iSmoothType == SMX_DIST_FB_ENERGY ? msr->param.nSmoothFeedback : msr->param.nSmooth);
-#else
-  in.nSmooth = msr->param.nSmooth;
-#endif
   in.bPeriodic = msr->param.bPeriodic;
   in.bSymmetric = bSymmetric;
   in.iSmoothType = iSmoothType;
-  in.dfBall2OverSoft2 = (msr->param.bLowerSoundSpeed ? 0 :
-      4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft);
+#ifdef STARFORM
+  if (iSmoothType == SMX_DIST_FB_ENERGY) {
+      in.nSmooth = msr->param.nSmoothFeedback;
+      in.dfBall2OverSoft2 = 0;
+      }
+  else
+#endif
+      {
+      in.nSmooth = msr->param.nSmooth;
+      in.dfBall2OverSoft2 = (msr->param.bLowerSoundSpeed ? 0 :
+          4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft);
+      }
   
   msrSmoothFcnParam(msr,dTime,&in.smf);
 
