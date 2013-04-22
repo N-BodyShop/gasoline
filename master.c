@@ -2696,6 +2696,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef INFLOWOUTFLOW
 	fprintf(fp, " INFLOWOUTFLOW");
 #endif
+#ifdef FBPARTICLE
+	fprintf(fp, " FBPARTICLE");
+#endif
 #ifdef STARSINK
 	fprintf(fp, " STARSINK");
 #endif
@@ -3484,8 +3487,8 @@ double msrReadTipsy(MSR msr)
 	msr->nGas = h.nsph;
 	msr->nStar = h.nstar;
 	msr->nMaxOrderGas = msr->nGas - 1;
-	msr->nMaxOrder = NGASBUFFER + msr->N - 1;  /* iOrder Buffer to allow creating NGASBUFFER gas particles */
-	msr->nMaxOrderDark = NGASBUFFER + msr->nGas + msr->nDark - 1;
+	msr->nMaxOrder = NIORDERGASBUFFER + msr->N - 1;  /* allow creating NIORDERGASBUFFER gas particles */
+	msr->nMaxOrderDark = NIORDERGASBUFFER + msr->nGas + msr->nDark - 1;
 
 	assert(msr->N == msr->nDark+msr->nGas+msr->nStar);
 
@@ -3663,14 +3666,16 @@ double msrReadTipsy(MSR msr)
 	     printf("Data read complete, Wallclock: %f secs\n",dsec);
 	}
 
-	if (msr->param.iReadIOrder) {
+	if (msr->param.iReadIOrder) { 
 		struct outGetNParts outget;
 		struct inSetNParts inset;
+
+        assert(NIORDERGASBUFFER == 0); /* Not compatible with IORDERGASBUFFER */
 		
 		pstGetNParts(msr->pst,NULL,0,&outget,NULL);
-                if (outget.iMaxOrderGas == -1) outget.iMaxOrderGas = 0;
-                if (outget.iMaxOrderDark == -1) outget.iMaxOrderDark = outget.iMaxOrderGas;
-                if (outget.iMaxOrderStar == -1) outget.iMaxOrderStar = outget.iMaxOrderDark;
+        if (outget.iMaxOrderGas == -1) outget.iMaxOrderGas = 0;
+        if (outget.iMaxOrderDark == -1) outget.iMaxOrderDark = outget.iMaxOrderGas;
+        if (outget.iMaxOrderStar == -1) outget.iMaxOrderStar = outget.iMaxOrderDark;
 		assert(outget.nGas == msr->nGas);
 		assert(outget.nDark == msr->nDark);
 		assert(outget.nStar == msr->nStar);
@@ -8364,7 +8369,7 @@ msrAddDelParticles(MSR msr)
     pstSetNParts(msr->pst,&in,sizeof(in),NULL,NULL);
     intype.nSuperCool = msr->param.nSuperCool;
 	/* This shouldn't really be necessary -- it is undesirable to do a fix-up like this */
-#ifndef INFLOWOUTFLOW
+#if !defined(INFLOWOUTFLOW) && !defined(FBPARTICLE)
     pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL); 
 
     i = msrCountType(msr, TYPE_GAS, TYPE_GAS);
@@ -9573,6 +9578,9 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		msrActiveType(msr, TYPE_STAR, TYPE_SMOOTHACTIVE);
 		assert(msr->nSmoothActive == msr->nStar);
 		msrSmooth(msr, dTime, SMX_DIST_FB_ENERGY, 1);
+#ifdef FBPARTICLE
+        msrAddDelParticles(msr);
+#endif
 		msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, &dTotFe, 
                     &dTotOx, &dTotSNEnergy, "Form stars: after feedback");
 

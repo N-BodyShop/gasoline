@@ -17,10 +17,10 @@
 #endif
 
 /* Allow for creation of this many new gas particles */
-#ifdef INFLOWOUTFLOW
-#define NGASBUFFER 1000000000
+#if defined(INFLOWOUTFLOW) || defined(FBPARTICLE)
+#define NIORDERGASBUFFER 1000000000
 #else
-#define NGASBUFFER 0
+#define NIORDERGASBUFFER 0
 #endif
 
 /*

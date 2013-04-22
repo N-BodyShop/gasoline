@@ -161,12 +161,8 @@ void pkdInitialize(PKD *ppkd,MDL mdl,int iOrder,int nStore,int nLvl,
 	pkd->nDark = nDark;
 	pkd->nGas = nGas;
 	pkd->nStar = nStar;
-	pkd->nMaxOrderGas = nGas - 1;
-#ifdef INFLOWOUTFLOW
-	pkd->nMaxOrderDark = NGASBUFFER + nGas + nDark - 1;
-#else
-	pkd->nMaxOrderDark = nGas + nDark - 1;
-#endif
+	pkd->nMaxOrderGas = NIORDERGASBUFFER + nGas - 1; 
+	pkd->nMaxOrderDark = NIORDERGASBUFFER + nGas + nDark - 1;
 	pkd->nRejects = 0;
 	for (j=0;j<3;++j) {
 		pkd->fPeriod[j] = fPeriod[j];
@@ -299,185 +295,186 @@ void pkdGenericSeek(PKD pkd,FILE *fp,long nStart,int iHeader,int iElement)
 
 void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		  int bStandard,int iReadIOrder,double dvFac,double dTuFac)
-{
-  FILE *fp,*fpiord = NULL;
+    {
+    FILE *fp,*fpiord = NULL;
 #if defined(SIMPLESF) || defined(STARFORM)
-  FILE *fpmStar = NULL, *fptCoolAgain = NULL;
+    FILE *fpmStar = NULL, *fptCoolAgain = NULL;
 #endif
-  int i,j, iSetMask;
-  PARTICLE *p;
-  struct dark_particle dp;
-  struct gas_particle gp;
-  struct star_particle sp;
-  float fTmp;
-  
-  pkd->nLocal = nLocal;
-  pkd->nActive = nLocal;
-  /*
-  ** General initialization.
-  */
-  for (i=0;i<nLocal;++i) {
-    p = &pkd->pStore[i];
-    TYPEClear(p);
-    p->iRung = 0;
-    p->fWeight = 1.0;
-    p->fDensity = 0.0;
+    int i,j, iSetMask;
+    PARTICLE *p;
+    struct dark_particle dp;
+    struct gas_particle gp;
+    struct star_particle sp;
+    float fTmp;
+    
+    pkd->nLocal = nLocal;
+    pkd->nActive = nLocal;
+    /*
+    ** General initialization.
+    */
+    for (i=0;i<nLocal;++i) {
+        p = &pkd->pStore[i];
+        TYPEClear(p);
+        p->iRung = 0;
+        p->fWeight = 1.0;
+        p->fDensity = 0.0;
 #ifdef DRHODT
-    p->fDensity_t = 0.0;
-    p->fDensity_PdV = 0.0;
-    p->fDensity_PdVcorr = 0.0;
+        p->fDensity_t = 0.0;
+        p->fDensity_PdV = 0.0;
+        p->fDensity_PdVcorr = 0.0;
 #endif
-    p->fBall2 = 0.0;
-    p->fBallMax = 0.0;
+        p->fBall2 = 0.0;
+        p->fBallMax = 0.0;
 #ifdef GASOLINE
-    p->dt = FLT_MAX;
-    p->dtNew = FLT_MAX;
-    p->u = 0.0;
-    p->uPred = 0.0;
+        p->dt = FLT_MAX;
+        p->dtNew = FLT_MAX;
+        p->u = 0.0;
+        p->uPred = 0.0;
 #ifdef UNONCOOL
-    p->uNoncool = 0.;
-    p->uNoncoolPred = 0.;
-    p->uNoncoolDot = 0.;
+        p->uNoncool = 0.;
+        p->uNoncoolPred = 0.;
+        p->uNoncoolDot = 0.;
 #endif
 #ifdef STARSINK
-    SINK_Lx(p) = 0.0;
-    SINK_Ly(p) = 0.0;
-    SINK_Lz(p) = 0.0;
+        SINK_Lx(p) = 0.0;
+        SINK_Ly(p) = 0.0;
+        SINK_Lz(p) = 0.0;
 #endif
 #ifdef STARFORM
-    p->uDotFB = 0.0;
-    p->fNSN = 0.0;
-    p->fNSNtot = 0.0;
-    p->fMOxygenOut = 0.0;
-    p->fMIronOut = 0.0;
-    p->fMFracOxygen = 0.0;
-    p->fMFracIron = 0.0;
-    p->fTimeCoolIsOffUntil = 0.0;
+        p->uDotFB = 0.0;
+        p->fNSN = 0.0;
+        p->fNSNtot = 0.0;
+        p->fMOxygenOut = 0.0;
+        p->fMIronOut = 0.0;
+        p->fMFracOxygen = 0.0;
+        p->fMFracIron = 0.0;
+        p->fTimeCoolIsOffUntil = 0.0;
 #endif
 #ifdef SIMPLESF
-    p->fMassStar = 0;
+        p->fMassStar = 0;
 #endif
 #ifdef SHOCKTRACK
-    p->ShockTracker = 0.0;
+        p->ShockTracker = 0.0;
 #endif
 #ifdef VARALPHA
 /*
-		p->alpha = 1.0;
-		p->alphaPred = 1.0;
+  p->alpha = 1.0;
+  p->alphaPred = 1.0;
 */
-    p->alpha = ALPHAMIN;
-    p->alphaPred = ALPHAMIN;
-    p->divv = 0;
+        p->alpha = ALPHAMIN;
+        p->alphaPred = ALPHAMIN;
+        p->divv = 0;
 #ifdef DODVDS
-    p->dvds = 0;
+        p->dvds = 0;
 #endif
 #endif
 #ifndef NOCOOLING		
-    /* Place holders -- later fixed in pkdInitEnergy */
-    CoolDefaultParticleData( &p->CoolParticle );
+        /* Place holders -- later fixed in pkdInitEnergy */
+        CoolDefaultParticleData( &p->CoolParticle );
 #endif
-    p->c = 0.0;
-    p->fMetals = 0.0;
-    p->fTimeForm = 1e37;
+        p->c = 0.0;
+        p->fMetals = 0.0;
+        p->fTimeForm = 1e37;
 #ifdef SINKING
-    p->fTrueMass = 0;
-    p->fSinkingTime = 1e37;  
-    p->iSinkingOnto = -1;
+        p->fTrueMass = 0;
+        p->fSinkingTime = 1e37;  
+        p->iSinkingOnto = -1;
 #endif
 #endif
 #ifdef NEED_VPRED
-    for (j=0;j<3;++j) {
-      p->vPred[j] = 0.0;
-    }
+        for (j=0;j<3;++j) {
+            p->vPred[j] = 0.0;
+            }
 #endif
-  }
-  /*
-  ** Seek past the header and up to nStart.
-  */
-  fp = fopen(pszFileName,"r");
-  mdlassert(pkd->mdl,fp != NULL);
-  /*
-  ** Seek to right place in file.
-  */
-  pkdSeek(pkd,fp,nStart,bStandard);
-  
-  /* Open iOrder file if requested */
-  if (iReadIOrder) {
-    char atmp[512];
-    sprintf(atmp,"%s.iord",pszFileName);
-    fpiord = fopen(atmp,"r");   
-    mdlassert(pkd->mdl,fpiord != NULL);
+        }
     /*
-    ** Seek to right place in file
+    ** Seek past the header and up to nStart.
     */
-    switch(iReadIOrder) {
-    case 1:
-      pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(int));
-      break;
-    case 2:
-      pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(long long));
-      if (bStandard) assert(sizeof(long)==sizeof(long long));
-      break;
-    case 3:
-      pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(pkd->pStore[0].iOrder));
-      if (bStandard) assert(sizeof(int)==sizeof(pkd->pStore[0].iOrder));
-      break;
-    default:
-      fprintf(stderr,"Don't understand iOrder format: %d\n",iReadIOrder);
-      mdlassert(pkd->mdl,0);
-    }
-  }
+    fp = fopen(pszFileName,"r");
+    mdlassert(pkd->mdl,fp != NULL);
+    /*
+    ** Seek to right place in file.
+    */
+    pkdSeek(pkd,fp,nStart,bStandard);
+    
+    /* Open iOrder file if requested */
+    if (iReadIOrder) {
+        char atmp[512];
+        sprintf(atmp,"%s.iord",pszFileName);
+        fpiord = fopen(atmp,"r");   
+        mdlassert(pkd->mdl,fpiord != NULL);
+        /*
+        ** Seek to right place in file
+        */
+        switch(iReadIOrder) {
+        case 1:
+            pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(int));
+            break;
+        case 2:
+            pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(long long));
+            if (bStandard) assert(sizeof(long)==sizeof(long long));
+            break;
+        case 3:
+            pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(pkd->pStore[0].iOrder));
+            if (bStandard) assert(sizeof(int)==sizeof(pkd->pStore[0].iOrder));
+            break;
+        default:
+            fprintf(stderr,"Don't understand iOrder format: %d\n",iReadIOrder);
+            mdlassert(pkd->mdl,0);
+            }
+        }
   
 #ifdef STARFORM
-  {
-    char atmp[512];
-    sprintf(atmp,"%s.coolontime",pszFileName);
-    fptCoolAgain = fopen(atmp,"r");
-    if (fptCoolAgain!=NULL) {
-      /*
-      ** Seek to right place in file
-      */
-      pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
-    }
-    else {
-      if(pkd->idSelf == 0)
-	fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
-    }
-  }
+        {
+        char atmp[512];
+        sprintf(atmp,"%s.coolontime",pszFileName);
+        fptCoolAgain = fopen(atmp,"r");
+        if (fptCoolAgain!=NULL) {
+            /*
+            ** Seek to right place in file
+            */
+            pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
+        }
+        else {
+            if(pkd->idSelf == 0)
+                fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+        }
+        }
 #endif
 
 #ifdef SIMPLESF
-  {
-    char atmp[512];
-    sprintf(atmp,"%s.tCoolAgain",pszFileName);
-    fptCoolAgain = fopen(atmp,"r");
-    if (fptCoolAgain!=NULL) {
-      /*
-      ** Seek to right place in file
-      */
-      pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
-    }
-    else {
-      fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
-    }
-    
-    sprintf(atmp,"%s.mStar",pszFileName);
-    fpmStar = fopen(atmp,"r");
-    if (fpmStar!=NULL) {
-      /*
-      ** Seek to right place in file
-      */
-      pkdGenericSeek(pkd,fpmStar,nStart,sizeof(int),sizeof(float));
-    }
-    else {
-      fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
-    }
-  }
+        {
+        char atmp[512];
+        sprintf(atmp,"%s.tCoolAgain",pszFileName);
+        fptCoolAgain = fopen(atmp,"r");
+        if (fptCoolAgain!=NULL) {
+            /*
+            ** Seek to right place in file
+            */
+            pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
+        }
+        else {
+            fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+        }
+        
+        sprintf(atmp,"%s.mStar",pszFileName);
+        fpmStar = fopen(atmp,"r");
+        if (fpmStar!=NULL) {
+            /*
+            ** Seek to right place in file
+            */
+            pkdGenericSeek(pkd,fpmStar,nStart,sizeof(int),sizeof(float));
+        }
+        else {
+            fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+        }
+        }
 #endif
 
 	/*
 	 ** Read Stuff!
 	 */
+        
 	if (bStandard) {
 		FLOAT vTemp;
 		long LongTmp;
@@ -488,12 +485,15 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		xdrstdio_create(&xdrstoc,fptCoolAgain,XDR_DECODE);
 #endif
 		if (iReadIOrder) xdrstdio_create(&xdrsiord,fpiord,XDR_DECODE);
-
+        
 		for (i=0;i<nLocal;++i) {
 			p = &pkd->pStore[i];
 			p->iOrder = nStart + i; /* temporary */
+#if NIORDERGASBUFFER
+            if (p->iOrder >= pkd->nGas) p->iOrder += NIORDERGASBUFFER;
+#endif            
 			if (pkdIsGasByOrder(pkd,p)) {
-			        iSetMask = TYPE_GAS; /* saves identity based on Tipsy file in case iOrder changed */
+                iSetMask = TYPE_GAS; /* saves identity based on Tipsy file in case iOrder changed */
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
 				assert(p->fMass > 0.0);
@@ -511,7 +511,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef NEED_VPRED
 					p->vPred[j] = dvFac*vTemp;
 #endif
-				}
+                    }
 #ifdef GASOLINE
 				xdr_float(&xdrs,&fTmp);
 				p->fDensity = fTmp;
@@ -550,162 +550,162 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				/* O and Fe ratio based on Asplund et al 2009 */
 				if (p->fMetals && !p->fMFracOxygen && 
 				    !p->fMFracIron) {
-				  p->fMFracOxygen = 0.43 * p->fMetals;
-				  p->fMFracIron = 0.098 * p->fMetals;
-				}
+                    p->fMFracOxygen = 0.43 * p->fMetals;
+                    p->fMFracIron = 0.098 * p->fMetals;
+                    }
 #endif
-#else
-				xdr_float(&xdrs,&fTmp);
-				xdr_float(&xdrs,&fTmp);
-				xdr_float(&xdrs,&fTmp);
+#else /* now not GASOLINE */
+				xdr_float(&xdrs,&fTmp); /* Dens */
+				xdr_float(&xdrs,&fTmp); /* T */
+				xdr_float(&xdrs,&fTmp); /* eps */
 				p->fSoft = fTmp;
 #ifdef CHANGESOFT
 				p->fSoft0 = fTmp;
 #endif
-				xdr_float(&xdrs,&fTmp);
+				xdr_float(&xdrs,&fTmp); /* metals */
 #endif
 				xdr_float(&xdrs,&fTmp);
 				p->fPot = fTmp;
-			}
-			else {
-#ifdef INFLOWOUTFLOW
-			    p->iOrder += NGASBUFFER;
-#endif
-			    if (pkdIsDarkByOrder(pkd,p)) {
-				iSetMask = TYPE_DARK;
-				xdr_float(&xdrs,&fTmp);
-				p->fMass = fTmp;
-				assert(p->fMass >= 0.0);
+                }
+			else if (pkdIsDarkByOrder(pkd,p)) {
+                iSetMask = TYPE_DARK;
+                xdr_float(&xdrs,&fTmp);
+                p->fMass = fTmp;
+                assert(p->fMass >= 0.0);
 #ifdef SINKING
-				p->fTrueMass = fTmp;
+                p->fTrueMass = fTmp;
 #endif
-				for (j=0;j<3;++j) {
-					xdr_float(&xdrs,&fTmp);
-					p->r[j] = fTmp;
-					}
-				for (j=0;j<3;++j) {
-					xdr_float(&xdrs,&fTmp);
-					vTemp = fTmp;
-					p->v[j] = dvFac*vTemp;			
-					}
-				xdr_float(&xdrs,&fTmp);
-				p->fSoft = fTmp;
+                for (j=0;j<3;++j) {
+                    xdr_float(&xdrs,&fTmp);
+                    p->r[j] = fTmp;
+                    }
+                for (j=0;j<3;++j) {
+                    xdr_float(&xdrs,&fTmp);
+                    vTemp = fTmp;
+                    p->v[j] = dvFac*vTemp;			
+                    }
+                xdr_float(&xdrs,&fTmp);
+                p->fSoft = fTmp;
 #ifdef CHANGESOFT				
-				p->fSoft0 = fTmp;
+                p->fSoft0 = fTmp;
 #endif
-				xdr_float(&xdrs,&fTmp);
-				p->fPot = fTmp;
-				}
-			    else if (pkdIsStarByOrder(pkd,p)) {
-				iSetMask = TYPE_STAR;
-				xdr_float(&xdrs,&fTmp);
-				p->fMass = fTmp;
+                xdr_float(&xdrs,&fTmp);
+                p->fPot = fTmp;
+                }
+            else if (pkdIsStarByOrder(pkd,p)) {
+                iSetMask = TYPE_STAR;
+                xdr_float(&xdrs,&fTmp);
+                p->fMass = fTmp;
 #ifdef STARFORM
-				p->fMassForm = fTmp;
+                p->fMassForm = fTmp;
 #endif
-				assert(p->fMass >= 0.0);
+                assert(p->fMass >= 0.0);
 #ifdef SINKING
-				p->fTrueMass = fTmp;
+                p->fTrueMass = fTmp;
 #endif
-				for (j=0;j<3;++j) {
-				  xdr_float(&xdrs,&fTmp);
-				  p->r[j] = fTmp;
-				}
-				for (j=0;j<3;++j) {
-				  xdr_float(&xdrs,&fTmp);
-				  vTemp = fTmp;
-				  p->v[j] = dvFac*vTemp;			
-				}
+                for (j=0;j<3;++j) {
+                    xdr_float(&xdrs,&fTmp);
+                    p->r[j] = fTmp;
+                    }
+                for (j=0;j<3;++j) {
+                    xdr_float(&xdrs,&fTmp);
+                    vTemp = fTmp;
+                    p->v[j] = dvFac*vTemp;			
+                    }
 #ifdef GASOLINE
-				xdr_float(&xdrs,&fTmp);
-				p->fMetals = fTmp;
+                xdr_float(&xdrs,&fTmp);
+                p->fMetals = fTmp;
 #ifdef DIFFUSION
-				p->fMetalsPred = fTmp;
+                p->fMetalsPred = fTmp;
 #ifdef MASSDIFF
-				p->fMass0 = p->fMass;
+                p->fMass0 = p->fMass;
 #endif
 #endif				
 #ifdef STARFORM
-				/* O and Fe ratio based on Asplund et al 2009 */
-				if (p->fMetals && !p->fMFracOxygen && 
-				    !p->fMFracIron) {
-				  p->fMFracOxygen = 0.43 * p->fMetals;
-				  p->fMFracIron = 0.098 * p->fMetals;
-				}
+                /* O and Fe ratio based on Asplund et al 2009 */
+                if (p->fMetals && !p->fMFracOxygen && 
+                    !p->fMFracIron) {
+                    p->fMFracOxygen = 0.43 * p->fMetals;
+                    p->fMFracIron = 0.098 * p->fMetals;
+                    }
 #endif
-				xdr_float(&xdrs,&fTmp);
-				p->fTimeForm = fTmp;
-#else
-				xdr_float(&xdrs,&fTmp);
-				xdr_float(&xdrs,&fTmp);
+                xdr_float(&xdrs,&fTmp);
+                p->fTimeForm = fTmp;
+#else /* not GASOLINE */
+                xdr_float(&xdrs,&fTmp);
+                xdr_float(&xdrs,&fTmp);
 #endif
-				xdr_float(&xdrs,&fTmp);
-				p->fSoft = fTmp;
+                xdr_float(&xdrs,&fTmp);
+                p->fSoft = fTmp;
 #ifdef CHANGESOFT
-				p->fSoft0 = fTmp;
+                p->fSoft0 = fTmp;
 #endif
-				xdr_float(&xdrs,&fTmp);
-				p->fPot = fTmp;
-			    }
-			    else mdlassert(pkd->mdl,0);
-			}
-
+                xdr_float(&xdrs,&fTmp);
+                p->fPot = fTmp;
+                }
+            else mdlassert(pkd->mdl,0); /* unrecognized type */
+            /* particle read from tipsy */
+        
 #ifdef STARFORM
-			    if (fptCoolAgain!=NULL) {
-			      xdr_float(&xdrstoc,&fTmp);
-			      if (pkdIsGasByOrder(pkd,p)) p->fTimeCoolIsOffUntil = fTmp;
-			    }
+            if (fptCoolAgain!=NULL) {
+                xdr_float(&xdrstoc,&fTmp);
+                if (pkdIsGasByOrder(pkd,p)) p->fTimeCoolIsOffUntil = fTmp;
+                }
 #endif
-
+            
 #ifdef SIMPLESF
-			    if (fptCoolAgain!=NULL) {
-			      fread(&fTmp,sizeof(float),1,fptCoolAgain);
-			      if (pkdIsGasByOrder(pkd,p)) p->fTimeForm = fTmp;
-			    }
-			    if (fpmStar!=NULL) {
-			      fread(&fTmp,sizeof(float),1,fpmStar);
-			      if (pkdIsGasByOrder(pkd,p)) p->fMassStar = fTmp;
-			    }
+            if (fptCoolAgain!=NULL) {
+                fread(&fTmp,sizeof(float),1,fptCoolAgain);
+                if (pkdIsGasByOrder(pkd,p)) p->fTimeForm = fTmp;
+                }
+            if (fpmStar!=NULL) {
+                fread(&fTmp,sizeof(float),1,fpmStar);
+                if (pkdIsGasByOrder(pkd,p)) p->fMassStar = fTmp;
+                }
 #endif
 #ifdef INFLOWOUTFLOW
-			    if (p->r[0] < pkd->dxInflow) { TYPESet(p,TYPE_INFLOW); assert(p->v[0] > 0); }
-			    if (p->r[0] > pkd->dxOutflow) { TYPESet(p,TYPE_OUTFLOW); assert(p->v[0] > 0); }
+            if (p->r[0] < pkd->dxInflow) { TYPESet(p,TYPE_INFLOW); assert(p->v[0] > 0); }
+            if (p->r[0] > pkd->dxOutflow) { TYPESet(p,TYPE_OUTFLOW); assert(p->v[0] > 0); }
 #endif
-			    TYPESet(p,iSetMask);
-			    /* Read iOrder last so byOrder Types not messed up */
-			    switch (iReadIOrder) {
-			    case 0:
-			      break;
-			    case 1:
-			      xdr_int(&xdrsiord,&IntTmp);
-//			      fread(&IntTmp,sizeof(IntTmp),1,fpiord);
-			      p->iOrder = IntTmp;
-			      break;
-			    case 2:
-			      xdr_long(&xdrsiord,&LongTmp);
-//			      fread(&LongTmp,sizeof(LongTmp),1,fpiord);
-			      p->iOrder = LongTmp;
-			      break;
-			    case 3:
-			      xdr_int(&xdrsiord,&IntTmp);
+            TYPESet(p,iSetMask);
+            /* Read iOrder last so byOrder Types not messed up */
+            switch (iReadIOrder) {
+            case 0:
+                break;
+            case 1:
+                xdr_int(&xdrsiord,&IntTmp);
+//			    fread(&IntTmp,sizeof(IntTmp),1,fpiord);
+                p->iOrder = IntTmp;
+                break;
+            case 2:
+                xdr_long(&xdrsiord,&LongTmp);
+//			    fread(&LongTmp,sizeof(LongTmp),1,fpiord);
+                p->iOrder = LongTmp;
+                break;
+            case 3:
+                xdr_int(&xdrsiord,&IntTmp);
 // see assert above -- I have to assume iOrder is int
-			      p->iOrder = IntTmp;
-			      break;
-			    }
-			}
-		xdr_destroy(&xdrs);
+                p->iOrder = IntTmp;
+                break;
+                }
+            }
+        xdr_destroy(&xdrs);
 #ifdef STARFORM
-		xdr_destroy(&xdrstoc);
+        xdr_destroy(&xdrstoc);
 #endif
-		if (iReadIOrder) xdr_destroy(&xdrsiord);
-		}
-	else {
+        if (iReadIOrder) xdr_destroy(&xdrsiord);
+        } /* standard read done */
+    
+    /* native format read */
+	else { 
 		long long LongTmp;
 		int IntTmp;
 		for (i=0;i<nLocal;++i) {
 			p = &pkd->pStore[i];
 			p->iOrder = nStart + i;
-
+#if NIORDERGASBUFFER
+            if (p->iOrder >= pkd->nGas) p->iOrder += NIORDERGASBUFFER;
+#endif            
 			if (pkdIsGasByOrder(pkd,p)) {
 				iSetMask = TYPE_GAS;
 				fread(&gp,sizeof(struct gas_particle),1,fp);
@@ -713,125 +713,122 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 					p->r[j] = gp.pos[j];
 					p->v[j] = dvFac*gp.vel[j];
 #ifdef NEED_VPRED
-	  p->vPred[j] = dvFac*gp.vel[j];
+                    p->vPred[j] = dvFac*gp.vel[j];
 #endif
-	}
-	p->fMass = gp.mass;
-	assert(p->fMass >= 0.0);
+                    }
+                p->fMass = gp.mass;
+                assert(p->fMass >= 0.0);
 #ifdef SINKING
-	p->fTrueMass = gp.mass;
+                p->fTrueMass = gp.mass;
 #endif
-	p->fSoft = gp.hsmooth;
+                p->fSoft = gp.hsmooth;
 #ifdef CHANGESOFT
-	p->fSoft0 = gp.hsmooth;
+                p->fSoft0 = gp.hsmooth;
 #endif
-	p->fPot = gp.phi;
+                p->fPot = gp.phi;
 #ifdef GASOLINE
-	p->fDensity = gp.rho;
-	p->u = dTuFac*gp.temp;
-	p->uPred = dTuFac*gp.temp;
+                p->fDensity = gp.rho;
+                p->u = dTuFac*gp.temp;
+                p->uPred = dTuFac*gp.temp;
 #ifdef COOLDEBUG
-	assert(p->u >= 0.0);
-	assert(p->uPred >= 0.0);
+                assert(p->u >= 0.0);
+                assert(p->uPred >= 0.0);
 #endif
-	p->fMetals = gp.metals;
+                p->fMetals = gp.metals;
 #ifdef DIFFUSION
-	p->fMetalsPred = gp.metals;
+                p->fMetalsPred = gp.metals;
 #ifdef MASSDIFF
-	p->fMass0 = p->fMass;
+                p->fMass0 = p->fMass;
 #endif
 #endif				
 #ifdef STARFORM
-	/* O and Fe ratio based on Asplund et al 2009 */
-	if (p->fMetals && !p->fMFracOxygen && !p->fMFracIron) {
-	    p->fMFracOxygen = 0.43 * p->fMetals;
-	    p->fMFracIron = 0.098 * p->fMetals;
-	    }
+                /* O and Fe ratio based on Asplund et al 2009 */
+                if (p->fMetals && !p->fMFracOxygen && !p->fMFracIron) {
+                    p->fMFracOxygen = 0.43 * p->fMetals;
+                    p->fMFracIron = 0.098 * p->fMetals;
+                    }
 #endif
 #endif
 				}
-			else {
-#ifdef INFLOWOUTFLOW
-			    p->iOrder += NGASBUFFER;
-#endif
-			    if (pkdIsDarkByOrder(pkd,p)) {
-				iSetMask = TYPE_DARK;
-				fread(&dp,sizeof(struct dark_particle),1,fp);
-				for (j=0;j<3;++j) {
-					p->r[j] = dp.pos[j];
-					p->v[j] = dvFac*dp.vel[j];
-					}
-				p->fMass = dp.mass;
-				assert(p->fMass >= 0.0);
+			else if (pkdIsDarkByOrder(pkd,p)) {
+                iSetMask = TYPE_DARK;
+                fread(&dp,sizeof(struct dark_particle),1,fp);
+                for (j=0;j<3;++j) {
+                    p->r[j] = dp.pos[j];
+                    p->v[j] = dvFac*dp.vel[j];
+                    }
+                p->fMass = dp.mass;
+                assert(p->fMass >= 0.0);
 #ifdef SINKING
-				p->fTrueMass = dp.mass;
+                p->fTrueMass = dp.mass;
 #endif
-				p->fSoft = dp.eps;
+                p->fSoft = dp.eps;
 #ifdef CHANGESOFT
-				p->fSoft0 = dp.eps;
+                p->fSoft0 = dp.eps;
 #endif
-				p->fPot = dp.phi;
-				}
-			    else if (pkdIsStarByOrder(pkd,p)) {
-				iSetMask = TYPE_STAR;
-				fread(&sp,sizeof(struct star_particle),1,fp);
-				for (j=0;j<3;++j) {
-					p->r[j] = sp.pos[j];
-					p->v[j] = dvFac*sp.vel[j];
-					}
-				p->fMass = sp.mass;
+                p->fPot = dp.phi;
+                }
+            else if (pkdIsStarByOrder(pkd,p)) {
+                iSetMask = TYPE_STAR;
+                fread(&sp,sizeof(struct star_particle),1,fp);
+                for (j=0;j<3;++j) {
+                    p->r[j] = sp.pos[j];
+                    p->v[j] = dvFac*sp.vel[j];
+                    }
+                p->fMass = sp.mass;
 #ifdef STARFORM
-				p->fMassForm = sp.mass;
+                p->fMassForm = sp.mass;
 #endif
-				assert(p->fMass >= 0.0);
+                assert(p->fMass >= 0.0);
 #ifdef SINKING
-				p->fTrueMass = sp.mass;
+                p->fTrueMass = sp.mass;
 #endif
-				p->fSoft = sp.eps;
+                p->fSoft = sp.eps;
 #ifdef CHANGESOFT
-				p->fSoft0 = sp.eps;
+                p->fSoft0 = sp.eps;
 #endif
-				p->fPot = sp.phi;
+                p->fPot = sp.phi;
 #ifdef GASOLINE
-				p->fMetals = sp.metals;
-				p->fTimeForm = sp.tform;		
+                p->fMetals = sp.metals;
+                p->fTimeForm = sp.tform;		
 #ifdef STARFORM
-				/* O and Fe ratio based on Asplund et al 2009 */
-				if (p->fMetals && !p->fMFracOxygen
-				    && !p->fMFracIron) {
-				    p->fMFracOxygen = 0.43 * p->fMetals;
-				    p->fMFracIron = 0.098 * p->fMetals;
-				    }
+                /* O and Fe ratio based on Asplund et al 2009 */
+                if (p->fMetals && !p->fMFracOxygen
+                    && !p->fMFracIron) {
+                    p->fMFracOxygen = 0.43 * p->fMetals;
+                    p->fMFracIron = 0.098 * p->fMetals;
+                    }
 #endif
 #endif
-				}
-			    else mdlassert(pkd->mdl,0);
-			    }
-
+                }
+            else mdlassert(pkd->mdl,0); /* unrecognized particle type */
+            
+            /* tipsy particle read done */
+        
 #if defined(SIMPLESF) || defined(STARFORM)
-      if (fptCoolAgain!=NULL) {
-	fread(&fTmp,sizeof(float),1,fptCoolAgain);
+            if (fptCoolAgain!=NULL) {
+                fread(&fTmp,sizeof(float),1,fptCoolAgain);
 #if defined(STARFORM)
-	if (pkdIsGasByOrder(pkd,p)) p->fTimeCoolIsOffUntil = fTmp;
+                if (pkdIsGasByOrder(pkd,p)) p->fTimeCoolIsOffUntil = fTmp;
 #else
-	if (pkdIsGasByOrder(pkd,p)) p->fTimeForm = fTmp;
+                if (pkdIsGasByOrder(pkd,p)) p->fTimeForm = fTmp;
 #endif
-      }
-      if (fpmStar!=NULL) {
-	fread(&fTmp,sizeof(float),1,fpmStar);
-	if (pkdIsGasByOrder(pkd,p)) p->fMassForm = fTmp;
-      }
+                }
+            if (fpmStar!=NULL) {
+                fread(&fTmp,sizeof(float),1,fpmStar);
+                if (pkdIsGasByOrder(pkd,p)) p->fMassForm = fTmp;
+                }
 #endif
 #ifdef INFLOWOUTFLOW
-			if (p->r[0] < pkd->dxInflow) { TYPESet(p,TYPE_INFLOW); assert(p->v[0] > 0); }
-			if (p->r[0] > pkd->dxOutflow) { TYPESet(p,TYPE_OUTFLOW); assert(p->v[0] > 0); }
+            if (p->r[0] < pkd->dxInflow) { TYPESet(p,TYPE_INFLOW); assert(p->v[0] > 0); }
+            if (p->r[0] > pkd->dxOutflow) { TYPESet(p,TYPE_OUTFLOW); assert(p->v[0] > 0); }
 #endif
-			TYPESet(p,iSetMask); /* needed to get max order info */
+            TYPESet(p,iSetMask); /* needed to get max order info */
 			/* Read iOrder last so Types not messed up */
 			switch (iReadIOrder) {
 			case 0:
-#ifndef INFLOWOUTFLOW
-				p->iOrder = nStart + i;
+#if !(NIORDERGASBUFFER)
+				p->iOrder = nStart + i; /* This should be redundant */
 #endif
 				break;
 			case 1:
@@ -846,12 +843,12 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				fread(&p->iOrder,sizeof(p->iOrder),1,fpiord);
 				break;
 				}
-
 		    }
-	    }
+        } /* native read done */
+
 	if (fpiord!=NULL) fclose(fpiord);
 	fclose(fp);
-	}
+    }
 
 
 void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pbndBall,BNDDT *pbndDt)
@@ -4830,7 +4827,7 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 	 */
 	nLocal = pkdLocal(pkd);
 	for (i=0;i<nLocal;++i) {
-    	        p = &pkd->pStore[i];
+        p = &pkd->pStore[i];
 		cp.iOrder = p->iOrder;
 		cp.fMass = p->fMass;
 #ifdef CHANGESOFT
@@ -4863,9 +4860,9 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 		cp.fTimeForm = p->fTimeForm;
 		cp.fMassForm = p->fMassForm;
 		cp.iGasOrder = p->iGasOrder;
-                cp.fTimeCoolIsOffUntil = p->fTimeCoolIsOffUntil;
-                cp.fMFracOxygen = p->fMFracOxygen;
-                cp.fMFracIron = p->fMFracIron;
+        cp.fTimeCoolIsOffUntil = p->fTimeCoolIsOffUntil;
+        cp.fMFracOxygen = p->fMFracOxygen;
+        cp.fMFracIron = p->fMFracIron;
 #endif
 #ifdef SIMPLESF
 		cp.fMassStar = p->fMassStar;
@@ -5434,7 +5431,7 @@ pkdColNParts(PKD pkd, int *pnNew, int *nAddGas, int *nAddDark,
 	if(p->iOrder == -1) {
 	    ++pj;
 	    ++nNew;
-#ifdef INFLOWOUTFLOW
+#if NIORDERGASBUFFER
 	    if (TYPETest(p,TYPE_GAS)) 
 		++naddGas;
 	    else if (TYPETest(p,TYPE_STAR)) 
@@ -5455,7 +5452,7 @@ pkdColNParts(PKD pkd, int *pnNew, int *nAddGas, int *nAddDark,
 	    }
 	else if(p->iOrder < -1){
 	    --newnLocal;
-#ifdef INFLOWOUTFLOW
+#if NIORDERGASBUFFER
 	    p->iOrder = 2000000000;
 	    if (TYPETest(p,TYPE_GAS)) 
 		++ndelGas;
@@ -5546,18 +5543,19 @@ pkdNewOrder(PKD pkd,int nStartGas, int nStartDark, int nStartStar)
     for(pi=0;pi<pkdLocal(pkd);pi++) {
 	p = &(pkd->pStore[pi]);
 	if(p->iOrder == -1) {
-#ifdef STARFORM
-	    /* Also record iOrder in the starLog table. */
-	    pkd->starLog.seTab[pkd->starLog.nOrdered].iOrdStar = nStartStar;
-	    pkd->starLog.nOrdered++;
-	    assert(pkd->starLog.nOrdered <= pkd->starLog.nLog);
-#endif
 	    if (pkdIsGas(pkd, p)) 
 		p->iOrder = nStartGas++;
 	    else if (pkdIsDark(pkd, p)) 
 		p->iOrder = nStartDark++;
-	    else 
-		p->iOrder = nStartStar++;
+	    else {
+#ifdef STARFORM
+            /* Also record iOrder in the starLog table. */
+            pkd->starLog.seTab[pkd->starLog.nOrdered].iOrdStar = nStartStar;
+            pkd->starLog.nOrdered++;
+            assert(pkd->starLog.nOrdered <= pkd->starLog.nLog);
+#endif
+            p->iOrder = nStartStar++;
+            }
 	    }
 	}
     }

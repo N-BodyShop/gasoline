@@ -77,6 +77,49 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    dTotMIron = 0.0;
 	    p->uDotFB = 0.0;
 	    p->fNSN = 0.0;
+#ifdef FBPARTICLE
+            {
+            double tstart = 4e6, tend = 30e6; /* yr */
+            double mdotonmstar = 10/100./(tend-tstart); /* gm / gm / yr */
+            double edotonmstar = 1e51/(100*2e33)/(tend-tstart); /* erg / gm / yr */
+            double mFB = 0.01*p->fMassForm; /* mass of fb particles (code units) */
+            double tFB0,tFB1,nFac;
+            int nFB0,nFB1;
+
+            tFB1 =  dTime-p->fTimeForm*fb->dSecUnit/SEC_YR;
+            tFB0 =  tFB1 - dDeltaYr;
+            if (tFB1 > tstart && tFB0 < tend) {
+                nFac = mdotonmstar*p->fMassForm/mFB;
+                nFB0 = floor(nFac*(tFB0 > tstart ? tFB0-tstart : 0)+0.5);
+                nFB1 = floor(nFac*(tFB1 < tend ? tFB1-tstart : tend-tstart)+0.5);
+                printf("FBP: %d %g %g %g %d %d\n",p->iOrder,dTime,tFB0,tFB1,nFB0,nFB1);
+                while (nFB1 > nFB0) {
+                    PARTICLE pNew;
+                    pNew = *p;
+                    TYPEReset(&pNew, TYPE_STAR|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
+                    TYPESet(&pNew, TYPE_GAS);
+                    
+                    p->fMass -= mFB;
+                    assert(p->fMass > 0);
+
+                    pNew.fMass = mFB;
+                    pNew.u = (edotonmstar/mdotonmstar)/fb->dErgPerGmUnit;
+                    pNew.uPred = pNew.u;
+                    pNew.c = sqrt(pNew.u);
+                    pNew.PoverRho2 = 0;
+                    pNew.uDot = 0;
+                    pNew.uDotPdV = 0;
+                    pNew.uDotAV = 0;
+                    pNew.uDotDiff = 0;
+                    pNew.uDotFB = 0;
+                    pkdNewParticle(pkd, pNew);
+                    printf("FBP: Particle made %g %g\n",mFB,pNew.u);
+                    nFB1--;
+                    }
+                }
+            }
+        continue; /* skip normal feedback */
+#endif                
 
 	    sfEvent.dMass = p->fMassForm*fb->dGmUnit/MSOLG;
 	    sfEvent.dTimeForm = p->fTimeForm*fb->dSecUnit/SEC_YR;
