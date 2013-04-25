@@ -181,7 +181,7 @@ CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
 #CODE_DEF += -DVOXEL #Dump voxels for volume imaging.
 CODE_DEF += -DVSIGVISC #Alternate Viscous force calculation (better?)
 CODE_DEF += -DWENDLAND #Use the Wendland C_2 Kernel (See Dehnen & Aly 2012)
-CODE_DEF += -DGSS_DUMPFRAME #Dumpframe that allows coloring by particle property
+#CODE_DEF += -DGSS_DUMPFRAME #Dumpframe that allows coloring by particle property
 
 BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 
