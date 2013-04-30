@@ -5262,7 +5262,7 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
     int i;
     int iMaxRungOut;
     int iTempRung;
-    int nMaxRung,nExceed=0;
+    int nMaxRung;
     int iMaxRungIdeal;
     int bDiag;
     
@@ -5281,8 +5281,6 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
 				if(iTempRung >= iMaxRungIdeal)
 					iMaxRungIdeal = iTempRung+1;
 				if(iTempRung >= iMaxRung) {
-                    nExceed++;
-                    if (nExceed < 10) bDiag = 1;
 					iTempRung = iMaxRung-1;
                     }
                 
