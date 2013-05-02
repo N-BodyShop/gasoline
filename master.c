@@ -2681,6 +2681,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef NODIFFUSIONTHERMAL
 	fprintf(fp, " NODIFFUSIONTHERMAL");
 #endif
+#ifdef FEEDBACKDIFFLIMIT
+	fprintf(fp, " FEEDBACKDIFFLIMIT");
+#endif
 #ifdef DIFFUSIONPRICE
 	fprintf(fp, " DIFFUSIONPRICE");
 #endif
@@ -7739,6 +7742,7 @@ void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
     in.dDelta = dDelta;
     in.iMaxRung = msrMaxRung(msr);
     in.bAll = bAll;
+    in.bDiagExceed = 1;
 
     pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
 
@@ -7754,6 +7758,7 @@ void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
                 out.nMaxRung,out.iMaxRung,out.iMaxRung-1);
         
         in.iMaxRung = out.iMaxRung; /* Note this is the forbidden rung so no -1 here */
+        in.bDiagExceed = 1;
         pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
         }
 

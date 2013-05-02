@@ -837,7 +837,7 @@ void pkdAccelStep(PKD pkd, double dEta, double dVelFac, double
 void pkdDensityStep(PKD pkd, double dEta, double dRhoFac);
 
 int pkdOneParticleDtToRung( int iRung,double dDelta,double dt);
-int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll,
+int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll, int bDiagExceed,
     int *pnMaxRung, int *piMaxRungIdeal );
 void pkdInitDt(PKD pkd, double dDelta);
 int pkdRungParticles(PKD,int);

@@ -5256,20 +5256,25 @@ pkdOneParticleDtToRung( int iRung,double dDelta,double dt)
 
 int
 pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
-	    int bAll, /* 0 => symplectic case */
-	    int *pnMaxRung,	/* number of particles on MaxRung */
-	    int *piMaxRungIdeal)  /* preferred max rung */
-{
+    int bAll, /* 0 => symplectic case */
+    int bDiagExceed, /* Diagnostics -- only in iMaxRung not reduced */
+    int *pnMaxRung,	/* number of particles on MaxRung */
+    int *piMaxRungIdeal)  /* preferred max rung */
+    {
+
     int i;
     int iMaxRungOut;
     int iTempRung;
-    int nMaxRung,nExceed=0;
+    int nMaxRung,nExceed;
     int iMaxRungIdeal;
     int bDiag;
+
+    nExceed = (bDiagExceed ? 100 : 0);
     
     iMaxRungOut = 0;
     iMaxRungIdeal = 0;
     nMaxRung = 0;
+    bDiag = 0;
     for(i=0;i<pkdLocal(pkd);++i) {
 		if(pkd->pStore[i].iRung >= iRung) {
 			mdlassert(pkd->mdl,TYPEQueryACTIVE(&(pkd->pStore[i])));
@@ -5278,38 +5283,41 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
                 assert(pkd->pStore[i].dt > 0.0);
 				iTempRung = pkdOneParticleDtToRung( iRung,dDelta,pkd->pStore[i].dt);
 
-                bDiag = 0;
 				if(iTempRung >= iMaxRungIdeal)
 					iMaxRungIdeal = iTempRung+1;
 				if(iTempRung >= iMaxRung) {
-                    nExceed++;
-                    if (nExceed < 100) bDiag = 1;
+                    if (nExceed) {
+                        nExceed--;
+                        bDiag = 1;
+                        }
 					iTempRung = iMaxRung-1;
                     }
                 
 #ifdef GASOLINE
-                if (pkd->pStore[i].iOrder == 8494772) bDiag = 1;
                 if (bDiag) {
-                    PARTICLE *p = &pkd->pStore[i];
-                    double ph = sqrt(p->fBall2*0.25);
+                    bDiag = 0;
+                    if (pkdIsGas(pkd, &pkd->pStore[i])) {
+                        PARTICLE *p = &pkd->pStore[i];
+                        double ph = sqrt(p->fBall2*0.25);
 #ifndef NOCOOLING
-                    double pTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
+                        double pTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
 #ifdef UNONCOOL
-                    double pTempTot = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u+p->uNoncool, p->fMetals );
+                        double pTempTot = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u+p->uNoncool, p->fMetals );
 #else
-                    double pTempTot = p->u;
+                        double pTempTot = p->u;
 #endif
 #else
-                    double pTemp = p->u, pTempTot = -1;
+                        double pTemp = p->u, pTempTot = -1;
 #endif
-                    double h1=0,h2=0;
+                        double h1=0,h2=0;
 #ifdef STARFORM
-                    h1 = p->uDotFB;
+                        h1 = p->uDotFB;
 #endif
 #ifndef NOCOOLING
-                    h2 = p->uDot;
+                        h2 = p->uDot;
 #endif
-                    fprintf(stderr,"p %d exceeds maxrung: %g %g %g  T %g %g udot %g %g h %g %g dt %g %g %g %g %g %g %g\n",p->iOrder,p->fDensity,p->c,sqrt(p->v[0]*p->v[0]+p->v[1]*p->v[1]+p->v[2]*p->v[2]),pTemp,pTempTot,h1,h2,ph,p->fSoft,p->dt,0.4*(ph/(p->c + 0.6*(p->c))),0.4*(ph/(p->c + 0.6*(p->c + 2*p->mumax))),0.2*sqrt(ph/sqrt(p->a[0]*p->a[0]+p->a[1]*p->a[1]+p->a[2]*p->a[2])),0.25*p->u/UDOT_HYDRO(p),1/2.8*ph*ph/(DIFFRATE(p)),p->dtOld);
+                        fprintf(stderr,"p %d exceeds maxrung: %g %g %g  T %g %g udot %g %g h %g %g dt %g %g %g %g %g %g %g\n",p->iOrder,p->fDensity,p->c,sqrt(p->v[0]*p->v[0]+p->v[1]*p->v[1]+p->v[2]*p->v[2]),pTemp,pTempTot,h1,h2,ph,p->fSoft,p->dt,0.4*(ph/(p->c + 0.6*(p->c))),0.4*(ph/(p->c + 0.6*(p->c + 2*p->mumax))),0.2*sqrt(ph/sqrt(p->a[0]*p->a[0]+p->a[1]*p->a[1]+p->a[2]*p->a[2])),0.25*p->u/UDOT_HYDRO(p),1/2.8*ph*ph/(DIFFRATE(p)),p->dtOld);
+                        }
                     }
 #endif
 
