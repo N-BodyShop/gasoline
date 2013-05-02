@@ -4439,7 +4439,6 @@ void pkdEmergencyAdjust(PKD pkd, int iRung, int iMaxRung, double dDelta, double 
     int iMaxRungIdeal=0;
     int nMaxRung=0;
     int nUn=0;
-    int nExceed=0,bDiag=0;
  
     assert(dDeltaThresh < dDelta);
 	p = pkd->pStore;
@@ -4454,12 +4453,9 @@ void pkdEmergencyAdjust(PKD pkd, int iRung, int iMaxRung, double dDelta, double 
 				iTempRung = pkdOneParticleDtToRung( iRung,dDelta,p->dt );
                 assert(iTempRung > iRung);
                 
-                bDiag = 0;
 				if(iTempRung >= iMaxRungIdeal)
 					iMaxRungIdeal = iTempRung+1;
 				if(iTempRung >= iMaxRung) {
-                    nExceed++;
-                    if (nExceed < 100) bDiag = 1;
 					iTempRung = iMaxRung-1;
                     }
 				p->iRung = iTempRung;
@@ -5266,7 +5262,7 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
     int i;
     int iMaxRungOut;
     int iTempRung;
-    int nMaxRung,nExceed=0;
+    int nMaxRung;
     int iMaxRungIdeal;
     int bDiag;
     
@@ -5285,13 +5281,10 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
 				if(iTempRung >= iMaxRungIdeal)
 					iMaxRungIdeal = iTempRung+1;
 				if(iTempRung >= iMaxRung) {
-                    nExceed++;
-                    if (nExceed < 100) bDiag = 1;
 					iTempRung = iMaxRung-1;
                     }
                 
 #ifdef GASOLINE
-                if (pkd->pStore[i].iOrder == 8494772) bDiag = 1;
                 if (bDiag) {
                     PARTICLE *p = &pkd->pStore[i];
                     double ph = sqrt(p->fBall2*0.25);
