@@ -3789,8 +3789,9 @@ void pkdHomogSpheroid(PKD pkd)
 void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R)
 {
 		  /*
-			  -  This is the external disk potential that is used together with 
-			  -  values used for Vc and R were 220 km/s and 6 kpc respectively.
+			  -  This is the external disk potential that is used together with Chris 
+			  -  Gatopolous' Enzo initial conditions for a disk slice.	The initial 
+			  -  values Chris used for Vc and R were 220 km/s and 6 kpc respectively.
 			  -  */
 		 PARTICLE *p;
 		int i,n;
@@ -4224,8 +4225,12 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 #endif
 
 #ifdef GASOLINE
-			p->fDensity *= exp(-p->fDivv_t*dDelta); // Predictor for density
 #ifdef DRHODT
+			if(pkdIsGas(pkd, p)) {
+			    p->fDensity *= exp(-p->fDivv_t*dDelta); // Predictor for density
+			    if(dDelta > 0.0)
+			       assert(p->fDensity > 0.0);
+			    }
 			p->fDensity_t *= exp(-p->fDivv_t*dDelta);
 			p->fDensity_PdV *= exp(-p->fDivv_PdV*dDelta);
 			p->fDensity_PdVcorr *= exp(-p->fDivv_PdVcorr*dDelta);

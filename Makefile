@@ -93,13 +93,14 @@ CODE_DEF += -DDIFFUSION #Enable Metal Diffusion
 #CODE_DEF += -DDIFFUSIONPRICE #Daniel Price's Thermal Diffusion
 CODE_DEF += -DDIFFUSIONTHERMAL #Thermal Diffusion
 #CODE_DEF += -DDIVVOFF #Remove the convergent flow requirement for starformation
+#CODE_DEF += -DDIVVCORRBAD #The DIVVCORRBAD corrector is better on average but is pathological with very uneven particle distributions
 #CODE_DEF += -DDKDENSITY #Calculate the density using the derivative of the kernel in the DVDX calculation of density
 CODE_DEF += -DDODVDS #Better handling of viscosity with the Balsara switch
 #CODE_DEF += -DDRHODT #Use the change in density over time (dRho/dt) as a timestep criteria
 #CODE_DEF += -DDRHODTDIVOUT #Output Divv variables used in DRHODT
 #CODE_DEF += -DDRHODTTEST #Output a large list of properties important for the DRHODT parts of the code for debugging
 CODE_DEF += -DDTADJUST #Use a more clever "anticipatory" timestep criteria for multistepping
-#CODE_DEF += -DDTTEST=6e-12
+#CODE_DEF += -DDTTEST=6e-12 #If a dt value goes below this value, print some debug information about the particle that caused it.
 CODE_DEF += -DEPSACCH #Turning this one makes the pkd code ignore dhMinOverSoft in pkdAccelStep
 #CODE_DEF += -DFITDVDX #Use a fitted version of the DenDVDX that doesn't use the stiff.h evaluator.
 CODE_DEF += -DGASOLINE #Do SPH (without this, compiles pkdgrav, just N-Body)
@@ -110,7 +111,6 @@ CODE_DEF += -DGASOLINE #Do SPH (without this, compiles pkdgrav, just N-Body)
 #CODE_DEF += -DINFLOWOUTFLOW #Enable inflow/outflow boundary conditions
 #CODE_DEF += -DJEANSSF #Use a simple Jeans length criteria for starformation
 CODE_DEF += -DJEANSSOFT #Force the smoothing & softening length to be at least as small as the Jeans scale
-CODE_DEF += -DJEANSFIXPDV
 #CODE_DEF += -DJEANSSOFTONLY #Only force the softening length to be as small as the Jeans scale
 #CODE_DEF += -DKROUPA #Use the Kroupa IMF (from Kroupa et al 1993 Bibcode:1993MNRAS.262..545K)
 #CODE_DEF += -DKROUPA01 #Use the newer Kroupa 01 IMF (DOI:10.1046/j.1365-8711.2001.04022.x)
@@ -182,7 +182,7 @@ CODE_DEF += -DSTARFORM #Make new stars according to the starformation recipe
 #CODE_DEF += -DVOXEL #Dump voxels for volume imaging.
 CODE_DEF += -DVSIGVISC #Alternate Viscous force calculation (better?)
 CODE_DEF += -DWENDLAND #Use the Wendland C_2 Kernel (See Dehnen & Aly 2012)
-CODE_DEF += -DGSS_DUMPFRAME #Dumpframe that allows coloring by particle property
+#CODE_DEF += -DGSS_DUMPFRAME #Dumpframe that allows coloring by particle property
 
 BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 

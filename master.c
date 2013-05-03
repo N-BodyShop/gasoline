@@ -9045,9 +9045,9 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     if (msr->param.bVDetails)
 	printf("SPH: nActive %d nTreeActive %d nSmoothActive %d\n",msr->nActive,
 	       msr->nTreeActive,msr->nSmoothActive);
-//#ifdef DRHODT
+#ifdef DRHODT
     msrGetGasPressure(msr, dTime);  //Based on rho predicted from div.v -- needed for timestep setting
-//#endif
+#endif
     msrBuildTree(msr,1,-1.0,1);
 
 #ifdef DRHODTTEST

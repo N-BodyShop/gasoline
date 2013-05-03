@@ -1,8 +1,8 @@
 #ifndef DUMPFRAME_HINCLUDED
 #define DUMPFRAME_HINCLUDED
 
-#define DF_NXPIXMAX 1000
-#define DF_NYPIXMAX 1000
+#define DF_NXPIXMAX 1024
+#define DF_NYPIXMAX 1024
 /* PST */
 
 #ifdef USE_PNG
@@ -128,12 +128,12 @@ struct inDumpFrame {
 	double dGasSoftMul,dDarkSoftMul,dStarSoftMul;
 	double xlim,ylim,hmul;
     double dYearUnit;
-#ifdef GSS_DUMPFRAME
-    DFCOLORTABLE dfGasCT, dfDarkCT, dfStarCT;
-#else
         float dColStar[10],dColGas[10],dColDark[10];
 	DFIMAGE ColStar[10],ColGas[10],ColDark[10];
         int nColStar,nColGas,nColDark;
+#ifdef GSS_DUMPFRAME
+    float ColGasPropMin, ColGasPropMax;
+    int ColGasProperty, ColDarkProperty, ColStarProperty;
 #endif
 	int bColMassWeight;
 	int bGasSph;
@@ -183,14 +183,14 @@ struct dfFrameSetup {
 
 	/* Rendering controllers */
 	double pScale1,pScale2;
-#ifdef GSS_DUMPFRAME
-    DFCOLORTABLE dfGasCT, dfDarkCT, dfStarCT;
-#else
         float dColStar[10],dColGas[10],dColDark[10];
 	DFIMAGE ColStar[10],ColGas[10],ColDark[10];
         int nColStar,nColGas,nColDark;
-#endif
 	int bColMassWeight;
+#ifdef GSS_DUMPFRAME
+    float ColGasPropMin, ColGasPropMax;
+    int ColGasProperty, ColDarkProperty, ColStarProperty;
+#endif
 	int bGasSph;
     int iColStarAge;
     int bColLogInterp;
