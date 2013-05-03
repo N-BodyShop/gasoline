@@ -17,7 +17,7 @@ typedef struct dfImage {
 	float r,g,b;
 	} DFIMAGE;
 
-#define DF_NBYTEDUMPFRAME (3*sizeof(DFIMAGE)*DF_NXPIXMAX*DF_NYPIXMAX)
+#define DF_NBYTEDUMPFRAME (sizeof(DFIMAGE)*DF_NXPIXMAX*DF_NYPIXMAX)
 
 #ifdef GSS_DUMPFRAME
 typedef struct dfColorVal {
@@ -29,7 +29,7 @@ typedef struct dfColorTable {
     int iProperty;
     int nColors;
     float fPropMin, fPropMax;
-    DFCOLORVAL *dfColors;
+    DFCOLORVAL dfColors[20];
     } DFCOLORTABLE;
 #endif
 
