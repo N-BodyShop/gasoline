@@ -1385,6 +1385,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"iNSNIIQuantum", 1, &msr->param.sn->iNSNIIQuantum,
 		    sizeof(int), "snQuant",
 		    "<Min # SNII per timestep> = 0.");
+	msr->param.sn->dRadPresFrac = 0.0;
+	prmAddParam(msr->prm,"dRadPresFrac", 2, &msr->param.sn->dRadPresFrac,
+		    sizeof(double), "dRadPresFrac",
+		    "<Fraction of Radiation Pressure to Feedback> = 0.0");
 	msr->param.sn->dESN = 0.1e51;
 	prmAddParam(msr->prm,"dESN", 2, &msr->param.sn->dESN,
 		    sizeof(double), "snESN",
@@ -2935,6 +2939,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dNoncoolConvTimeMin: %g",msr->param.dNoncoolConvTimeMin);
 	fprintf(fp," dNoncoolConvVelMin: %g",msr->param.dNoncoolConvVelMin);
 	fprintf(fp," iNSNIIQuantum: %d",msr->param.sn->iNSNIIQuantum);
+	fprintf(fp," dRadPresFrac: %g",msr->param.sn->dRadPresFrac);
 	fprintf(fp," bSNTurnOffCooling: %i",msr->param.bSNTurnOffCooling);
 	fprintf(fp," bShortCoolShutoff: %i",msr->param.bShortCoolShutoff);
 	fprintf(fp," dExtraCoolShutoff: %g",msr->param.dExtraCoolShutoff);
