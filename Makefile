@@ -18,8 +18,9 @@ PNG_DEF =
 # If you do dump frame stuff with png you need these libs ( -DUSE_PNG )
 #PNG_INCL = -I/usr/include
 #PNG_LIB = -L/usr/lib -lpng -lz
-#PNG_OBJ = writepng.o
-#PNG_DEF = $(PNG_INCL) -DUSE_PNG
+PNG_LIB = -lpng -lz
+PNG_OBJ = writepng.o
+PNG_DEF = $(PNG_INCL) -DUSE_PNG
 
 BASE_LD_FLAGS = $(PNG_LIB) 
 
@@ -164,11 +165,11 @@ CODE_DEF += -DSTARFORM #Make new stars according to the starformation recipe
 #CODE_DEF += -DSURFACEAREA #Calculate and output the surface area of all the particles.
 #CODE_DEF += -DTIMINGDEBUG #Used to debug the timing (walltime I believe).  Probably also handy for benchmarking.
 #CODE_DEF += -DTINY_PTHREAD_STACK #Only used on a weird old SGI architecture.  Probably can be removed.
-CODE_DEF += -DTOPHATFEEDBACK #Use a tophat kernel to smooth feedback over
+#CODE_DEF += -DTOPHATFEEDBACK #Use a tophat kernel to smooth feedback over
 #CODE_DEF += -DTUMBLER #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
 #CODE_DEF += -DTWOSMOOTH #Smooth twice rather than 3 times.  This is defined by default in master.c
 #CODE_DEF += -DTZKEY64 #Use 64 (instead of 128) bit keys for the tree.  Faster, but allows less depth.
-CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
+#CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
 #CODE_DEF += -DUNONCOOLINIT #Initialize the uNoncool to have equal energy to u (useful for hacking some tests)
 #CODE_DEF += -DUNONCOOLMERGE #Put the uNoncool energy from a checkpoint into u (for debugging)
 #CODE_DEF += -DUNONCOOLZERO #Always read noncooling energy as 0 when read from checkpoint (for debugging)
@@ -188,7 +189,7 @@ BASE_DEF = $(PNG_DEF) $(CODE_DEF) $(CC_DEF) $(COOLING_DEF)
 MD5 = ` echo $(BASE_DEF) | md5sum | cut -c1-8 `
 
 # The filename of the compiled executable
-EXE = gasoline
+EXE = gasoline.dbg
 
 #
 #       NULL defines
