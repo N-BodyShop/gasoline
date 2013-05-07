@@ -97,6 +97,7 @@ void dfInitialize( struct DumpFrameContext **pdf, double dYearUnit,
 
 
 void dfFinalize( struct DumpFrameContext *df ) {
+    int i;
     if (df != NULL) {
 	if (df->fs != NULL) free( df->fs );
 	if (df->bAllocated) free( df );
@@ -171,29 +172,32 @@ void dfProjection( struct inDumpFrame *in, struct dfFrameSetup *fs ) {
     in->pScale1 = fs->pScale1;
     in->pScale2 = fs->pScale2;
 
+    /*in->dfGasCT = (DFCOLORTABLE *)malloc(sizeof(DFCOLORTABLE) + 
+      (fs->dfGasCT->nColors-1)*sizeof(DFCOLORVAL));*/
     in->dfGasCT.iProperty = fs->dfGasCT.iProperty;
     in->dfGasCT.fPropMin = fs->dfGasCT.fPropMin;
     in->dfGasCT.fPropMax = fs->dfGasCT.fPropMax;
     in->dfGasCT.nColors = fs->dfGasCT.nColors;
-    in->dfGasCT.dfColors = malloc(fs->dfGasCT.nColors*sizeof(DFCOLORVAL));
     for (j=0;j<fs->dfGasCT.nColors;j++) {
 	in->dfGasCT.dfColors[j] = fs->dfGasCT.dfColors[j];
 	}
 
+    /*in->dfDarkCT = (DFCOLORTABLE *)malloc(sizeof(DFCOLORTABLE) + 
+      (fs->dfDarkCT->nColors-1)*sizeof(DFCOLORVAL));*/
     in->dfDarkCT.iProperty = fs->dfDarkCT.iProperty;
     in->dfDarkCT.fPropMin = fs->dfDarkCT.fPropMin;
     in->dfDarkCT.fPropMax = fs->dfDarkCT.fPropMax;
     in->dfDarkCT.nColors = fs->dfDarkCT.nColors;
-    in->dfDarkCT.dfColors = malloc(fs->dfDarkCT.nColors*sizeof(DFCOLORVAL));
     for (j=0;j<fs->dfDarkCT.nColors;j++) {
 	in->dfDarkCT.dfColors[j] = fs->dfDarkCT.dfColors[j];
 	}
 
+    /*in->dfStarCT = (DFCOLORTABLE *)malloc(sizeof(DFCOLORTABLE) + 
+      (fs->dfStarCT->nColors-1)*sizeof(DFCOLORVAL));*/
     in->dfStarCT.iProperty = fs->dfStarCT.iProperty;
     in->dfStarCT.fPropMin = fs->dfStarCT.fPropMin;
     in->dfStarCT.fPropMax = fs->dfStarCT.fPropMax;
     in->dfStarCT.nColors = fs->dfStarCT.nColors;
-    in->dfStarCT.dfColors = malloc(fs->dfStarCT.nColors*sizeof(DFCOLORVAL));
     for (j=0;j<fs->dfStarCT.nColors;j++) {
 	in->dfStarCT.dfColors[j] = fs->dfStarCT.dfColors[j];
 	}
@@ -535,12 +539,15 @@ int dfPropertyToOuttype(char *word){
     else if(!strcmp(word,"u") || !strcmp(word,"U"))
 	return OUT_U_ARRAY;
     else if(!strcmp(word,"metals") || !strcmp(word,"Metals") ||
-       !strcmp(word,"metallicity") || !strcmp(word,"Z"))
+	    !strcmp(word,"metal") || !strcmp(word,"Metal") ||
+	    !strcmp(word,"metallicity") || !strcmp(word,"Z"))
 	return OUT_METALS_ARRAY;
     else if(!strcmp(word,"tform") || !strcmp(word,"timeform") ||
 	    !strcmp(word,"formtime") || !strcmp(word,"TFORM") ||
 	    !strcmp(word,"formt") || !strcmp(word,"TIMEFORM"))
 	return OUT_TIMEFORM_ARRAY;
+    else if(!strcmp(word,"age") || !strcmp(word,"Age"))
+	return OUT_AGE_ARRAY;
     else if(!strcmp(word,"grp") || !strcmp(word,"group") ||
 	    !strcmp(word,"GRP") || !strcmp(word,"GROUP") ||
 	    !strcmp(word,"grpID") || !strcmp(word,"grpid") ||
@@ -549,12 +556,12 @@ int dfPropertyToOuttype(char *word){
     else return 0;
     }
 
-int dfReadColorMapFile(struct dfColorTable *dfCT, char *word, float scaler){
+int dfReadColorMapFile(DFCOLORTABLE *dfCT, char *word, float scaler){
     char *pachFile, *mapFile, achTemp[128], fileText[100];
     FILE *fp;
     fpos_t fpPos;
     float fVal,r,g,b;
-    int i=0,nlines=0;
+    int i=0,nlines=0,iFSret;
 
     fp = fopen("colortables.txt","r"); /* first search local directory*/
     if (fp == NULL) { /* Then try the directory where env var points */
@@ -566,16 +573,19 @@ int dfReadColorMapFile(struct dfColorTable *dfCT, char *word, float scaler){
 	}
     if (fp == NULL) return 0; 
 
-    fscanf(fp, "%s", fileText);
-    while (strcmp(word,fileText)) {
-	fscanf(fp, "%s", fileText);
+    /* find requested color table */
+    iFSret = fscanf(fp, "%s", fileText);
+    while (strcmp(word,fileText) && (iFSret != EOF)) {
+	iFSret = fscanf(fp, "%s", fileText);
 	}
+    if (iFSret == EOF) return 0; /* return 0 when nothing found */
+
+    /* read color table */
     fgetpos(fp, &fpPos);
     while (0<fscanf(fp, "%f %f %f %f\n",&fVal, &r, &g, &b)) nlines++;
     fsetpos(fp, &fpPos); /* rewind to before lines */
 
     dfCT->nColors = nlines;
-    dfCT->dfColors = (DFCOLORVAL *)realloc(dfCT->dfColors,nlines*sizeof(DFCOLORVAL));
     while (0<fscanf(fp, "%f %f %f %f\n",&fVal, &r, &g, &b)) {
         dfCT->dfColors[i].fVal = fVal;
         dfCT->dfColors[i].dfColor.r = r*scaler;
@@ -584,6 +594,7 @@ int dfReadColorMapFile(struct dfColorTable *dfCT, char *word, float scaler){
 	i++;
         }
     fclose(fp);
+    return nlines;
     }
 
 DFCOLORTABLE *dfWordToColortable(char *word, struct dfFrameSetup *fs) {
@@ -655,8 +666,8 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
     fs.bPeriodic = 0;  /* Periodic? */
     fs.iProject = DF_PROJECT_PERSPECTIVE;
     /* Render */
+    /*fs.dfDarkCT = (DFCOLORTABLE *)malloc(sizeof(DFCOLORTABLE));*/
     fs.dfDarkCT.nColors=1;
-    fs.dfDarkCT.dfColors = malloc(fs.dfDarkCT.nColors*sizeof(DFCOLORVAL));
     fs.dfDarkCT.dfColors[0].dfColor.r = 0;
     fs.dfDarkCT.dfColors[0].dfColor.g = 0;
     fs.dfDarkCT.dfColors[0].dfColor.b = 1.0;
@@ -664,8 +675,8 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
     fs.dfDarkCT.fPropMin=0;
     fs.dfDarkCT.fPropMax=1;
 
+    /*fs.dfGasCT = (DFCOLORTABLE *)malloc(sizeof(DFCOLORTABLE));*/
     fs.dfGasCT.nColors=1;
-    fs.dfGasCT.dfColors = malloc(fs.dfGasCT.nColors*sizeof(DFCOLORVAL));
     fs.dfGasCT.dfColors[0].dfColor.r = 0;
     fs.dfGasCT.dfColors[0].dfColor.g = 1.0;
     fs.dfGasCT.dfColors[0].dfColor.b = 0;
@@ -673,8 +684,8 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
     fs.dfGasCT.fPropMin=3.5;
     fs.dfGasCT.fPropMax=6;
 
+    /*fs.dfStarCT = (DFCOLORTABLE *)malloc(sizeof(DFCOLORTABLE));*/
     fs.dfStarCT.nColors=1;
-    fs.dfStarCT.dfColors = malloc(fs.dfStarCT.nColors*sizeof(DFCOLORVAL));
     fs.dfStarCT.dfColors[0].dfColor.r = 1.0;
     fs.dfStarCT.dfColors[0].dfColor.g = 0;
     fs.dfStarCT.dfColors[0].dfColor.b = 0;
@@ -907,9 +918,9 @@ void dfParseCameraDirections( struct DumpFrameContext *df, char * filename ) {
 		} 
 	    pdfCT = dfWordToColortable(word,&fs);
 	    
-	    pdfCT->dfColors[0].dfColor.r*=scaler;
-	    pdfCT->dfColors[0].dfColor.g*=scaler;
-	    pdfCT->dfColors[0].dfColor.b*=scaler;
+	    pdfCT->dfColors[0].dfColor.r=scaler*r;
+	    pdfCT->dfColors[0].dfColor.g=scaler*g;
+	    pdfCT->dfColors[0].dfColor.b=scaler*b;
 	    pdfCT->nColors = 1;
 	    if (!strcmp(word, "colstar" ))
 		fs.iColStarAge = DF_STAR_AGE_BASIC;
@@ -1147,7 +1158,10 @@ DFIMAGE dfInterpOnColorMap(DFCOLORTABLE *dfCT,FLOAT fVar, int bColLogInterp)
     DFIMAGE col;
     
     if (dfCT->nColors<=1) return dfCT->dfColors[0].dfColor;
-    fVar = bColLogInterp ? log10(fVar):fVar;
+    if (bColLogInterp) {
+	if (fVar > 0) fVar = log10(fVar);
+	else return dfCT->dfColors[0].dfColor;
+	}
     fCTrange = dfCT->dfColors[dfCT->nColors-1].fVal - dfCT->dfColors[0].fVal;
     fVar = (fVar - dfCT->fPropMin)/(dfCT->fPropMax-dfCT->fPropMin)*fCTrange;
     if (fVar <= dfCT->dfColors[0].fVal) {
@@ -1292,8 +1306,10 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage, PKD pkd,
 
     /* Place particle on color table. */
     if (!bNoMoreColCalc) {
-	col = dfInterpOnColorMap(dfCT,VecType(pkd,p,1,dfCT->iProperty),
-				 in->bColLogInterp);
+	FLOAT fTemp;
+	if (dfCT->iProperty == OUT_AGE_ARRAY) fTemp = fAge;
+	else fTemp = VecType(pkd,p,1,dfCT->iProperty);
+	col = dfInterpOnColorMap(dfCT,fTemp,in->bColLogInterp);
 	}
 
     if (in->bColMassWeight) {
