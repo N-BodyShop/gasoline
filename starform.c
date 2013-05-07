@@ -165,11 +165,11 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      */
 
 #ifdef UNONCOOL
-    if (stfm->bTempInclNoncool) 
-        T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u+p->uNoncool, p->fMetals );
-    else
+    /*if (stfm->bTempInclNoncool) */
+    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u+p->uNoncool, p->fMetals );
+#else
+    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fMetals );
 #endif
-        T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fMetals );
 
 #ifdef  COOLING_MOLECULARH
 #ifdef NEWSHEAR
