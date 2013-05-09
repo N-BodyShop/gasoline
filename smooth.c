@@ -452,7 +452,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
     /*
     ** Allocate Nearest-Neighbor List.
     */
-    smx->nListSize = smx->nSmooth;
+    smx->nListSize = (smx->nSmooth > 1 ? smx->nSmooth : 2);
     smx->nnList = (NN *)malloc(smx->nListSize*sizeof(NN));
     assert(smx->nnList != NULL);
     smx->pbRelease = (int *)malloc(smx->nListSize*sizeof(int));
@@ -737,7 +737,6 @@ PQ *smBallSearchNP(SMX smx,PQ *pq,FLOAT *ri,int *cpStart)
  */
 void smGrowList(SMX smx)
     {
-    smx->nListSize += 1;
     smx->nListSize *= 1.5;
     
     smx->nnList = (NN *) realloc(smx->nnList,smx->nListSize*sizeof(NN));
