@@ -4311,9 +4311,9 @@ void pstDtToRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	    }
 	else {
 		out->iMaxRung = pkdDtToRung(plcl->pkd, in->iRung,
-					    in->dDelta, in->iMaxRung, in->bAll,
-					    &(out->nMaxRung),
-					    &(out->iMaxRungIdeal) );
+            in->dDelta, in->iMaxRung, in->bAll, in->bDiagExceed,
+            &(out->nMaxRung),
+            &(out->iMaxRungIdeal) );
 		}
 	if (pnOut) *pnOut = sizeof(*out);
 	}

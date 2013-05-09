@@ -1050,6 +1050,7 @@ struct inDtToRung {
     double dDelta;
     int iMaxRung;
     int bAll;
+    int bDiagExceed;
     };
 struct outDtToRung {
     int iMaxRung;

@@ -17,10 +17,10 @@
 #endif
 
 /* Allow for creation of this many new gas particles */
-#ifdef INFLOWOUTFLOW
-#define NGASBUFFER 1000000000
+#if defined(INFLOWOUTFLOW) || defined(FBPARTICLE)
+#define NIORDERGASBUFFER 1000000000
 #else
-#define NGASBUFFER 0
+#define NIORDERGASBUFFER 0
 #endif
 
 /*
@@ -846,7 +846,7 @@ void pkdAccelStep(PKD pkd, double dEta, double dVelFac, double
 void pkdDensityStep(PKD pkd, double dEta, double dRhoFac);
 
 int pkdOneParticleDtToRung( int iRung,double dDelta,double dt);
-int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll,
+int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll, int bDiagExceed,
     int *pnMaxRung, int *piMaxRungIdeal );
 void pkdInitDt(PKD pkd, double dDelta);
 int pkdRungParticles(PKD,int);
