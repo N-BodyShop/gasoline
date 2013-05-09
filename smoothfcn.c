@@ -4361,6 +4361,9 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	/* diff coeff., nu ~ C L^2 S (add C via dMetalDiffusionConstant, assume L ~ h) */
 	if (smf->bConstantDiffusion) p->diff = 1;
 	else p->diff = fNorm1*0.25*BALL2(p)*sqrt(2*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz)));
+#ifdef THERMALCOND
+    p->fThermalCond = smf->dThermalCondCoeffCode*pow(p->uPred,2.5);
+#endif
 /*	printf(" %g %g   %g %g %g  %g\n",p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2],fNorm1*sqrt(2*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz))) );*/
 	}
 #endif

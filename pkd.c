@@ -299,185 +299,186 @@ void pkdGenericSeek(PKD pkd,FILE *fp,long nStart,int iHeader,int iElement)
 
 void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		  int bStandard,int iReadIOrder,double dvFac,double dTuFac)
-{
-  FILE *fp,*fpiord = NULL;
+    {
+    FILE *fp,*fpiord = NULL;
 #if defined(SIMPLESF) || defined(STARFORM)
-  FILE *fpmStar = NULL, *fptCoolAgain = NULL;
+    FILE *fpmStar = NULL, *fptCoolAgain = NULL;
 #endif
-  int i,j, iSetMask;
-  PARTICLE *p;
-  struct dark_particle dp;
-  struct gas_particle gp;
-  struct star_particle sp;
-  float fTmp;
-  
-  pkd->nLocal = nLocal;
-  pkd->nActive = nLocal;
-  /*
-  ** General initialization.
-  */
-  for (i=0;i<nLocal;++i) {
-    p = &pkd->pStore[i];
-    TYPEClear(p);
-    p->iRung = 0;
-    p->fWeight = 1.0;
-    p->fDensity = 0.0;
+    int i,j, iSetMask;
+    PARTICLE *p;
+    struct dark_particle dp;
+    struct gas_particle gp;
+    struct star_particle sp;
+    float fTmp;
+    
+    pkd->nLocal = nLocal;
+    pkd->nActive = nLocal;
+    /*
+    ** General initialization.
+    */
+    for (i=0;i<nLocal;++i) {
+        p = &pkd->pStore[i];
+        TYPEClear(p);
+        p->iRung = 0;
+        p->fWeight = 1.0;
+        p->fDensity = 0.0;
 #ifdef DRHODT
-    p->fDensity_t = 0.0;
-    p->fDensity_PdV = 0.0;
-    p->fDensity_PdVcorr = 0.0;
+        p->fDensity_t = 0.0;
+        p->fDensity_PdV = 0.0;
+        p->fDensity_PdVcorr = 0.0;
 #endif
-    p->fBall2 = 0.0;
-    p->fBallMax = 0.0;
+        p->fBall2 = 0.0;
+        p->fBallMax = 0.0;
 #ifdef GASOLINE
-    p->dt = FLT_MAX;
-    p->dtNew = FLT_MAX;
-    p->u = 0.0;
-    p->uPred = 0.0;
+        p->dt = FLT_MAX;
+        p->dtNew = FLT_MAX;
+        p->u = 0.0;
+        p->uPred = 0.0;
 #ifdef UNONCOOL
-    p->uNoncool = 0.;
-    p->uNoncoolPred = 0.;
-    p->uNoncoolDot = 0.;
+        p->uNoncool = 0.;
+        p->uNoncoolPred = 0.;
+        p->uNoncoolDot = 0.;
 #endif
 #ifdef STARSINK
-    SINK_Lx(p) = 0.0;
-    SINK_Ly(p) = 0.0;
-    SINK_Lz(p) = 0.0;
+        SINK_Lx(p) = 0.0;
+        SINK_Ly(p) = 0.0;
+        SINK_Lz(p) = 0.0;
 #endif
 #ifdef STARFORM
-    p->uDotFB = 0.0;
-    p->fNSN = 0.0;
-    p->fNSNtot = 0.0;
-    p->fMOxygenOut = 0.0;
-    p->fMIronOut = 0.0;
-    p->fMFracOxygen = 0.0;
-    p->fMFracIron = 0.0;
-    p->fTimeCoolIsOffUntil = 0.0;
+        p->uDotFB = 0.0;
+        p->fNSN = 0.0;
+        p->fNSNtot = 0.0;
+        p->fMOxygenOut = 0.0;
+        p->fMIronOut = 0.0;
+        p->fMFracOxygen = 0.0;
+        p->fMFracIron = 0.0;
+        p->fTimeCoolIsOffUntil = 0.0;
 #endif
 #ifdef SIMPLESF
-    p->fMassStar = 0;
+        p->fMassStar = 0;
 #endif
 #ifdef SHOCKTRACK
-    p->ShockTracker = 0.0;
+        p->ShockTracker = 0.0;
 #endif
 #ifdef VARALPHA
 /*
-		p->alpha = 1.0;
-		p->alphaPred = 1.0;
+  p->alpha = 1.0;
+  p->alphaPred = 1.0;
 */
-    p->alpha = ALPHAMIN;
-    p->alphaPred = ALPHAMIN;
-    p->divv = 0;
+        p->alpha = ALPHAMIN;
+        p->alphaPred = ALPHAMIN;
+        p->divv = 0;
 #ifdef DODVDS
-    p->dvds = 0;
+        p->dvds = 0;
 #endif
 #endif
 #ifndef NOCOOLING		
-    /* Place holders -- later fixed in pkdInitEnergy */
-    CoolDefaultParticleData( &p->CoolParticle );
+        /* Place holders -- later fixed in pkdInitEnergy */
+        CoolDefaultParticleData( &p->CoolParticle );
 #endif
-    p->c = 0.0;
-    p->fMetals = 0.0;
-    p->fTimeForm = 1e37;
+        p->c = 0.0;
+        p->fMetals = 0.0;
+        p->fTimeForm = 1e37;
 #ifdef SINKING
-    p->fTrueMass = 0;
-    p->fSinkingTime = 1e37;  
-    p->iSinkingOnto = -1;
+        p->fTrueMass = 0;
+        p->fSinkingTime = 1e37;  
+        p->iSinkingOnto = -1;
 #endif
 #endif
 #ifdef NEED_VPRED
-    for (j=0;j<3;++j) {
-      p->vPred[j] = 0.0;
-    }
+        for (j=0;j<3;++j) {
+            p->vPred[j] = 0.0;
+            }
 #endif
-  }
-  /*
-  ** Seek past the header and up to nStart.
-  */
-  fp = fopen(pszFileName,"r");
-  mdlassert(pkd->mdl,fp != NULL);
-  /*
-  ** Seek to right place in file.
-  */
-  pkdSeek(pkd,fp,nStart,bStandard);
-  
-  /* Open iOrder file if requested */
-  if (iReadIOrder) {
-    char atmp[512];
-    sprintf(atmp,"%s.iord",pszFileName);
-    fpiord = fopen(atmp,"r");   
-    mdlassert(pkd->mdl,fpiord != NULL);
+        }
     /*
-    ** Seek to right place in file
+    ** Seek past the header and up to nStart.
     */
-    switch(iReadIOrder) {
-    case 1:
-      pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(int));
-      break;
-    case 2:
-      pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(long long));
-      if (bStandard) assert(sizeof(long)==sizeof(long long));
-      break;
-    case 3:
-      pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(pkd->pStore[0].iOrder));
-      if (bStandard) assert(sizeof(int)==sizeof(pkd->pStore[0].iOrder));
-      break;
-    default:
-      fprintf(stderr,"Don't understand iOrder format: %d\n",iReadIOrder);
-      mdlassert(pkd->mdl,0);
-    }
-  }
+    fp = fopen(pszFileName,"r");
+    mdlassert(pkd->mdl,fp != NULL);
+    /*
+    ** Seek to right place in file.
+    */
+    pkdSeek(pkd,fp,nStart,bStandard);
+    
+    /* Open iOrder file if requested */
+    if (iReadIOrder) {
+        char atmp[512];
+        sprintf(atmp,"%s.iord",pszFileName);
+        fpiord = fopen(atmp,"r");   
+        mdlassert(pkd->mdl,fpiord != NULL);
+        /*
+        ** Seek to right place in file
+        */
+        switch(iReadIOrder) {
+        case 1:
+            pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(int));
+            break;
+        case 2:
+            pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(long long));
+            if (bStandard) assert(sizeof(long)==sizeof(long long));
+            break;
+        case 3:
+            pkdGenericSeek(pkd,fpiord,nStart,sizeof(int),sizeof(pkd->pStore[0].iOrder));
+            if (bStandard) assert(sizeof(int)==sizeof(pkd->pStore[0].iOrder));
+            break;
+        default:
+            fprintf(stderr,"Don't understand iOrder format: %d\n",iReadIOrder);
+            mdlassert(pkd->mdl,0);
+            }
+        }
   
 #ifdef STARFORM
-  {
-    char atmp[512];
-    sprintf(atmp,"%s.coolontime",pszFileName);
-    fptCoolAgain = fopen(atmp,"r");
-    if (fptCoolAgain!=NULL) {
-      /*
-      ** Seek to right place in file
-      */
-      pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
-    }
-    else {
-      if(pkd->idSelf == 0)
-	fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
-    }
-  }
+        {
+        char atmp[512];
+        sprintf(atmp,"%s.coolontime",pszFileName);
+        fptCoolAgain = fopen(atmp,"r");
+        if (fptCoolAgain!=NULL) {
+            /*
+            ** Seek to right place in file
+            */
+            pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
+        }
+        else {
+            if(pkd->idSelf == 0)
+                fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+        }
+        }
 #endif
 
 #ifdef SIMPLESF
-  {
-    char atmp[512];
-    sprintf(atmp,"%s.tCoolAgain",pszFileName);
-    fptCoolAgain = fopen(atmp,"r");
-    if (fptCoolAgain!=NULL) {
-      /*
-      ** Seek to right place in file
-      */
-      pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
-    }
-    else {
-      fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
-    }
-    
-    sprintf(atmp,"%s.mStar",pszFileName);
-    fpmStar = fopen(atmp,"r");
-    if (fpmStar!=NULL) {
-      /*
-      ** Seek to right place in file
-      */
-      pkdGenericSeek(pkd,fpmStar,nStart,sizeof(int),sizeof(float));
-    }
-    else {
-      fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
-    }
-  }
+        {
+        char atmp[512];
+        sprintf(atmp,"%s.tCoolAgain",pszFileName);
+        fptCoolAgain = fopen(atmp,"r");
+        if (fptCoolAgain!=NULL) {
+            /*
+            ** Seek to right place in file
+            */
+            pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
+        }
+        else {
+            fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+        }
+        
+        sprintf(atmp,"%s.mStar",pszFileName);
+        fpmStar = fopen(atmp,"r");
+        if (fpmStar!=NULL) {
+            /*
+            ** Seek to right place in file
+            */
+            pkdGenericSeek(pkd,fpmStar,nStart,sizeof(int),sizeof(float));
+        }
+        else {
+            fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+        }
+        }
 #endif
 
 	/*
 	 ** Read Stuff!
 	 */
+        
 	if (bStandard) {
 		FLOAT vTemp;
 		long LongTmp;
@@ -511,7 +512,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef NEED_VPRED
 					p->vPred[j] = dvFac*vTemp;
 #endif
-				}
+                    }
 #ifdef GASOLINE
 				xdr_float(&xdrs,&fTmp);
 				p->fDensity = fTmp;
@@ -846,12 +847,12 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				fread(&p->iOrder,sizeof(p->iOrder),1,fpiord);
 				break;
 				}
-
 		    }
-	    }
+        } /* native read done */
+
 	if (fpiord!=NULL) fclose(fpiord);
 	fclose(fp);
-	}
+    }
 
 
 void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pbndBall,BNDDT *pbndDt)
@@ -4830,7 +4831,7 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 	 */
 	nLocal = pkdLocal(pkd);
 	for (i=0;i<nLocal;++i) {
-    	        p = &pkd->pStore[i];
+        p = &pkd->pStore[i];
 		cp.iOrder = p->iOrder;
 		cp.fMass = p->fMass;
 #ifdef CHANGESOFT
@@ -4863,9 +4864,9 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 		cp.fTimeForm = p->fTimeForm;
 		cp.fMassForm = p->fMassForm;
 		cp.iGasOrder = p->iGasOrder;
-                cp.fTimeCoolIsOffUntil = p->fTimeCoolIsOffUntil;
-                cp.fMFracOxygen = p->fMFracOxygen;
-                cp.fMFracIron = p->fMFracIron;
+        cp.fTimeCoolIsOffUntil = p->fTimeCoolIsOffUntil;
+        cp.fMFracOxygen = p->fMFracOxygen;
+        cp.fMFracIron = p->fMFracIron;
 #endif
 #ifdef SIMPLESF
 		cp.fMassStar = p->fMassStar;

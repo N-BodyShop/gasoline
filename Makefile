@@ -162,6 +162,7 @@ CODE_DEF += -DSTARFORM #Make new stars according to the starformation recipe
 #CODE_DEF += -DSTARSINK #Star particles are also sink partikes.  (Requires -DSINKING)
 #CODE_DEF += -DSUPERCOOL #Enable "Supercool" type particles (just gas particles with mean velocities?)
 #CODE_DEF += -DSURFACEAREA #Calculate and output the surface area of all the particles.
+CODE_DEF += -DTHERMALCOND #Enable Thermal conduction using the Spitzer Solution
 #CODE_DEF += -DTIMINGDEBUG #Used to debug the timing (walltime I believe).  Probably also handy for benchmarking.
 #CODE_DEF += -DTINY_PTHREAD_STACK #Only used on a weird old SGI architecture.  Probably can be removed.
 CODE_DEF += -DTOPHATFEEDBACK #Use a tophat kernel to smooth feedback over

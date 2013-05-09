@@ -271,6 +271,8 @@ struct parameters {
 	double dResolveJeans;
     double dMetalDiffusionCoeff;
     double dThermalDiffusionCoeff;
+    double dThermalCondCoeff;
+    double dThermalCondCoeffCode;
     double dDeltaSph;
     int    bConstantDiffusion;
 	int    bDoGas;

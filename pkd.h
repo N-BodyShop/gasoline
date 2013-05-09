@@ -43,9 +43,15 @@
 #endif
 
 #ifdef DIFFUSION
+
+#if defined(FEEDBACKDIFFLIMIT) && !defined(DIFFUSIONHARMONIC)
+#define DIFFUSIONHARMONIC
+#endif
+
 #define DIFFRATE(p_) ((p_)->diff)
 #else
 #define DIFFRATE(p_) (1e-30)
+
 #endif
 
 /* Note: UDOT_HYDRO is only correct if there is only thermal pressure (no UNONCOOL or Jeans Floor) */
@@ -139,6 +145,9 @@ typedef struct particle {
     FLOAT diff;
     FLOAT fMetalsDot;
     FLOAT fMetalsPred;
+#ifdef THERMALCOND
+    FLOAT fThermalCond;
+#endif
 #ifdef MASSDIFF
     FLOAT fMassDot;
     FLOAT fMass0;

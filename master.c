@@ -1176,6 +1176,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dThermalDiffusionCoeff",2,&msr->param.dThermalDiffusionCoeff,
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
+	msr->param.dThermalCondCoeff = 0;
+	prmAddParam(msr->prm,"dThermalCondCoeff",2,&msr->param.dThermalCondCoeff,
+				sizeof(double),"thermalcond",
+				"<Coefficient in Thermal Conductivity> = 0");
 	msr->param.bConstantDiffusion = 0;
 	prmAddParam(msr->prm,"bConstantDiffusion",0,&msr->param.bConstantDiffusion,
 				sizeof(int),"constdiff",
@@ -1966,6 +1970,26 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.dErgPerGmUnit = 1;
 	    }
 
+#ifdef THERMALCOND
+    /* Thermal conductivity, c.f. Tielens p. 448 
+       Heat flux = K(T) grad T,  dE/dt = div K(T) grad T   E = rho u
+          K(T) = 6.1e-7 T^2.5 erg s^-1 deg^-7/2 cm^-1 
+          Silich: B-field reduces K(T) by ~ factor 10
+       we use du/dt = div k(u)/rho grad u    
+          u erg/gm = 1.5 k_B / (0.6*m_H) T  (ionized) */
+    /* Convert K(T) to k(u)  erg s^-1 (erg/gm)^-7/2 cm^-1 */
+    msr->param.dThermalCondCoeffCode = msr->param.dThermalCondCoeff
+        *pow(1.5*KBOLTZ/(0.6*MHYDR),-3.5);
+    /* Convert to code units */
+    msr->param.dThermalCondCoeffCode /= 
+        pow(msr->param.dErgPerGmUnit,-3.5)
+        *msr->param.dErgPerGmUnit*msr->param.dGmPerCcUnit
+        *pow(msr->param.dKpcUnit*KPCCM,2.0)
+        /msr->param.dSecUnit;
+#else
+    msr->param.dThermalCondCoeffCode = 0;
+#endif
+
 #ifndef PEXT
 	if (prmSpecified(msr->prm,"dPext")) {
 	    fprintf(stderr,"External Pressure specified but not compiled for\nUse -DPEXT during compilation\n");
@@ -1974,25 +1998,31 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #endif
 #ifndef LONGRANGESTEP
 	if (msr->param.bLongRangeStep) {
-	    fprintf(stderr,"WARNING: bLongRangeStep requires -DLONGRANGESTEP.\n");
+	    fprintf(stderr,"ERROR: bLongRangeStep requires -DLONGRANGESTEP.\n");
 	    assert(0);
 	    }
 #endif
 #ifndef DIFFUSION
 	if (prmSpecified(msr->prm,"dMetalDiffusionCoeff")) {
-	    fprintf(stderr,"Metal Diffusion Rate specified but not compiled for\nUse -DDIFFUSION during compilation\n");
+	    fprintf(stderr,"ERROR: Metal Diffusion Rate specified but not compiled for\nUse -DDIFFUSION during compilation\n");
+	    assert(0);
+	    }
+#endif
+#if !defined(DIFFUSION) || !defined(THERMALCOND)
+	if (prmSpecified(msr->prm,"dThermalCondCoeff")) {
+	    fprintf(stderr,"ERROR: Thermal Conductivity specified but not compiled for.\nUse -DDIFFUSION and -DTHERMALCOND during compilation\n");
 	    assert(0);
 	    }
 #endif
 #if !defined(DIFFUSION) || defined(NODIFFUSIONTHERMAL)
 	if (prmSpecified(msr->prm,"dThermalDiffusionCoeff")) {
-	    fprintf(stderr,"WARNING: Thermal Diffusion Rate specified but not compiled for\nSUsed -DDIFFUSION and NOT -DNODIFFUSIONTHERMAL during compilation\n");
+	    fprintf(stderr,"ERROR: Thermal Diffusion Rate specified but not compiled for\nSUsed -DDIFFUSION and NOT -DNODIFFUSIONTHERMAL during compilation\n");
 	    assert(0);
 	    }
 #endif
 #ifndef DENSITYU
 	if (prmSpecified(msr->prm,"dvturb")) {
-	    fprintf(stderr,"Turbulent v  specified but not compiled for\nUse -DDENSITYU during compilation\n");
+	    fprintf(stderr,"ERROR: Turbulent v  specified but not compiled for\nUse -DDENSITYU during compilation\n");
 	    assert(0);
 	    }
 #endif
@@ -2675,11 +2705,23 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef DTADJUST
 	fprintf(fp, " DTADJUST");
 #endif
+#ifdef EPSACCH
+        fprintf(fp, " ESPACCH");
+#endif
 #ifdef DIFFUSION
 	fprintf(fp, " DIFFUSION");
 #endif
 #ifdef NODIFFUSIONTHERMAL
 	fprintf(fp, " NODIFFUSIONTHERMAL");
+#endif
+#ifdef THERMALCOND
+	fprintf(fp, " THERMALCOND");
+#endif
+#ifdef DIFFUSIONHARMONIC
+	fprintf(fp, " DIFFUSIONHARMONIC");
+#endif
+#ifdef FEEDBACKDIFFLIMIT
+	fprintf(fp, " FEEDBACKDIFFLIMIT");
 #endif
 #ifdef DIFFUSIONPRICE
 	fprintf(fp, " DIFFUSIONPRICE");
@@ -2884,6 +2926,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dPext: %g",msr->param.dPext);
 	fprintf(fp," dMetalDiffusionCoeff: %g",msr->param.dMetalDiffusionCoeff);
 	fprintf(fp," dThermalDiffusionCoeff: %g",msr->param.dThermalDiffusionCoeff);
+	fprintf(fp," dThermalCondCoeff: %g",msr->param.dThermalCondCoeff);
 #ifdef DENSITYU
 	fprintf(fp," dvturb: %g",msr->param.dvturb);
 #endif
@@ -5340,6 +5383,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
 #ifdef DIFFUSION
     psmf->dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
     psmf->dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
+    psmf->dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
     psmf->bConstantDiffusion = msr->param.bConstantDiffusion;
 #endif
     psmf->alpha = msr->param.dConstAlpha;
@@ -5402,16 +5446,21 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   ** Make sure that the type of tree is a density binary tree!
   */
   assert(msr->iTreeType == MSR_TREE_DENSITY);
-#ifdef STARFORM
-  in.nSmooth = (iSmoothType == SMX_DIST_FB_ENERGY ? msr->param.nSmoothFeedback : msr->param.nSmooth);
-#else
-  in.nSmooth = msr->param.nSmooth;
-#endif
   in.bPeriodic = msr->param.bPeriodic;
   in.bSymmetric = bSymmetric;
   in.iSmoothType = iSmoothType;
-  in.dfBall2OverSoft2 = (msr->param.bLowerSoundSpeed ? 0 :
-      4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft);
+#ifdef STARFORM
+  if (iSmoothType == SMX_DIST_FB_ENERGY) {
+      in.nSmooth = msr->param.nSmoothFeedback;
+      in.dfBall2OverSoft2 = 0;
+      }
+  else
+#endif
+      {
+      in.nSmooth = msr->param.nSmooth;
+      in.dfBall2OverSoft2 = (msr->param.bLowerSoundSpeed ? 0 :
+          4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft);
+      }
   
   msrSmoothFcnParam(msr,dTime,&in.smf);
 
@@ -6495,8 +6544,6 @@ void msrEmergencyAdjust(MSR msr,int iRung,double dDelta)
         printf("WARNING, %d particles needed emergency rung changes (Maxrung %d -> %d)\n",out.nUn,OldCurrMaxRung, msr->iCurrMaxRung);
 
         if(out.iMaxRungIdeal > msrMaxRung(msr)) {
-            printf("WARNING, TIMESTEPS TOO LARGE, EMERGENCYADJUST: nMaxRung (%d) is greater than ideal rung (%d)\n", 
-                msrMaxRung(msr), out.iMaxRungIdeal);
             fprintf(stderr, "WARNING, TIMESTEPS TOO LARGE, EMERGENCYADJUST: nMaxRung (%d) is greater than ideal rung (%d)\n", 
                 msrMaxRung(msr), out.iMaxRungIdeal);
             }

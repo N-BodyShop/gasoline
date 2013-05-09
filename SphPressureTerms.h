@@ -30,19 +30,34 @@
 #endif
 
 #ifdef DIFFUSION 
+
+#ifdef FEEDBACKDIFFLIMIT
+#define DIFFUSIONLimitTest() (diffSum == 0 || smf->dTime < p->fTimeCoolIsOffUntil || smf->dTime < q->fTimeCoolIsOffUntil)
+#else
+#define DIFFUSIONLimitTest() (diffSum == 0)
+#endif
+
+
+#ifdef DIFFUSIONHARMONIC
+#define DIFFUSIONBase() double diffSum = (p->diff+q->diff); \
+                        double diffBase = (DIFFUSIONLimitTest() ? 0 : 4*p->diff*q->diff/diffSum);
+#else
+#define DIFFUSIONBase() double diffSum = (p->diff+q->diff); \
+                        double diffBase = (DIFFUSIONLimitTest() ? 0 : diffSum);
+#endif
 #ifdef MASSDIFF
 #define MASSDIFFFAC(pother_) ((pother_)->fMass)
-#define DIFFUSIONBase() double diffbase = 4*smf->dMetalDiffusionCoeff*(p->diff+q->diff) \
+#define DIFFUSIONMetalsBase() double diffMetalsBase = 4*smf->dMetalDiffusionCoeff*diffBase   \
      /((p->fDensity+q->fDensity)*(p->fMass+q->fMass)); 
 #define DIFFUSIONMass() \
-    { double diff = diffbase*(p->fMass - q->fMass); \
+    { double diff = diffMetalsBase*(p->fMass - q->fMass); \
       PACTIVE( p->fMassDot += diff*p->fMass*rq ); \
       QACTIVE( q->fMassDot -= diff*q->fMass*rp ); \
     }
 #define DIFFUSIONVelocity() \
-    { double diff0 = diffbase*(p->v[0] - q->v[0]); \
-      double diff1 = diffbase*(p->v[1] - q->v[1]); \
-      double diff2 = diffbase*(p->v[2] - q->v[2]); \
+    { double diff0 = diffMetalsBase*(p->v[0] - q->v[0]); \
+      double diff1 = diffMetalsBase*(p->v[1] - q->v[1]); \
+      double diff2 = diffMetalsBase*(p->v[2] - q->v[2]); \
       PACTIVE( ACCEL(p,0) += diff0*rq*MASSDIFFFAC(q) ); \
       QACTIVE( ACCEL(q,0) -= diff0*rp*MASSDIFFFAC(p) ); \
       PACTIVE( ACCEL(p,1) += diff1*rq*MASSDIFFFAC(q) ); \
@@ -52,13 +67,14 @@
     }
 #else
 #define MASSDIFFFAC(pother_) 1
-#define DIFFUSIONBase() double diffbase = 2*smf->dMetalDiffusionCoeff*(p->diff+q->diff) \
+#define DIFFUSIONMetalsBase() double diffMetalsBase = 2*smf->dMetalDiffusionCoeff*diffBase \
      /(p->fDensity+q->fDensity); 
 #define DIFFUSIONMass()
 #define DIFFUSIONVelocity()
 #endif
 #else
 #define DIFFUSIONBase()
+#define DIFFUSIONMetalsBase() 
 #define DIFFUSIONMass()
 #define DIFFUSIONVelocity()
 #endif
@@ -86,8 +102,17 @@
 #else
 #ifndef NODIFFUSIONTHERMAL
 /* Default -- thermal diffusion */
+#ifdef THERMALCOND 
+#define DIFFUSIONThermalCondBase() double dThermalCondSum = p->fThermalCond + q->fThermalCond; \
+    double dThermalCond = ( dThermalCondSum <= 0 ? 0 : 4*p->fThermalCond*q->fThermalCond/dThermalCondSum );
+#else
+#define DIFFUSIONThermalCondBase() double dThermalCond=0;
+#endif
+
 #define DIFFUSIONThermal() \
-    { double diffTh = 2*smf->dThermalDiffusionCoeff*(p->diff+q->diff)/(p->fDensity+q->fDensity); \
+    { DIFFUSIONThermalCondBase(); \
+      double diffTh = 2*(smf->dThermalDiffusionCoeff*diffBase + dThermalCond) \
+                        /(p->fDensity+q->fDensity); \
       double diffu = diffTh*(p->uPred-q->uPred);                              \
       PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
       QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \
@@ -98,16 +123,16 @@
 #endif
 
 #define DIFFUSIONMetals() \
-    { double diff = diffbase*(p->fMetals - q->fMetals); \
+    { double diff = diffMetalsBase*(p->fMetals - q->fMetals); \
       PACTIVE( p->fMetalsDot += diff*rq*MASSDIFFFAC(q) ); \
       QACTIVE( q->fMetalsDot -= diff*rp*MASSDIFFFAC(p) ); }
 #ifdef STARFORM
 #define DIFFUSIONMetalsOxygen() \
-    { double diff = diffbase*(p->fMFracOxygen - q->fMFracOxygen); \
+    { double diff = diffMetalsBase*(p->fMFracOxygen - q->fMFracOxygen); \
       PACTIVE( p->fMFracOxygenDot += diff*rq*MASSDIFFFAC(q) ); \
       QACTIVE( q->fMFracOxygenDot -= diff*rp*MASSDIFFFAC(p) ); }
 #define DIFFUSIONMetalsIron() \
-    { double diff = diffbase*(p->fMFracIron - q->fMFracIron); \
+    { double diff = diffMetalsBase*(p->fMFracIron - q->fMFracIron); \
       PACTIVE( p->fMFracIronDot += diff*rq*MASSDIFFFAC(q) ); \
       QACTIVE( q->fMFracIronDot -= diff*rp*MASSDIFFFAC(p) ); }
 #else 
@@ -187,6 +212,7 @@
 
         DIFFUSIONBase();
         DIFFUSIONThermal();
+        DIFFUSIONMetalsBase();
         DIFFUSIONMetals();
         DIFFUSIONMetalsOxygen();
         DIFFUSIONMetalsIron();
