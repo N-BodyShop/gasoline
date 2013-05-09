@@ -131,6 +131,7 @@ CODE_DEF += -DJEANSSOFT #Force the smoothing & softening length to be at least a
 #CODE_DEF += -DOLD_KEPLER #An ugly part of the collision code to prevent hard scatterings that break perturbative assumptions.
 #CODE_DEF += -DOLD_VERSION #Change the way the comet force from OLD_COMET_FORCE is calculated
 #CODE_DEF += -DPARTSHEAR #Use particle shear for the correlation length in H2 cooling 
+#CODE_DEF += -DPARTICLELOCK #Lock the positions of the particles (useful for debugging)
 #CODE_DEF += -DPDVDEBUG #Output arrays for the PdV from shock and from adiabatic compression. Useful for debugging the hydro.
 #CODE_DEF += -DPEAKEDKERNEL #Use a modified Peaked M4 kernel as per Thomas and Couchman 92 (Bibcode:1992MNRAS.257...11T)
 #CODE_DEF += -DPEXT #Allow for the use of an external pressure (Sort of the opposite of an external potential.)

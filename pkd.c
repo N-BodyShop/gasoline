@@ -4330,6 +4330,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #ifdef GLASSZ
  		                p->a[0]=0; p->a[1]=0;
 #endif
+#ifdef PARTICLELOCK
+ 		                p->a[0]=0; p->a[1]=0; p->a[2]=0;
+#endif
 				for (j=0;j<3;++j) {
 					p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
 					p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
@@ -7292,6 +7295,9 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 		if (pkdIsGas(pkd,p)) {
 #ifdef GLASSZ
 		        p->a[0]=0; p->a[1]=0;
+#endif
+#ifdef PARTICLELOCK
+ 		                p->a[0]=0; p->a[1]=0; p->a[2]=0;
 #endif
 			for (j=0;j<3;++j) {
 				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;

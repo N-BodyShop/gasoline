@@ -2639,6 +2639,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef GLASSZ
 	fprintf(fp," GLASSZ");
 #endif
+#ifdef PARTICLELOCK
+	fprintf(fp," PARTICLELOCK");
+#endif
 #ifdef HSHRINK
 	fprintf(fp," HSHRINK");
 #endif
