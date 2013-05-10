@@ -30,11 +30,20 @@
 #endif
 
 #ifdef DIFFUSION 
+
 #ifdef FEEDBACKDIFFLIMIT
-#define DIFFUSIONBase() double diffSum = (p->diff+q->diff); \
-                        double diffBase = (diffSum == 0 || smf->dTime < p->fTimeCoolIsOffUntil || smf->dTime < q->fTimeCoolIsOffUntil ? 0 : 4*p->diff*q->diff/diffSum);
+#define DIFFUSIONLimitTest() (diffSum == 0 || smf->dTime < p->fTimeCoolIsOffUntil || smf->dTime < q->fTimeCoolIsOffUntil)
 #else
-#define DIFFUSIONBase() double diffBase = (p->diff+q->diff);
+#define DIFFUSIONLimitTest() (diffSum == 0)
+#endif
+
+
+#ifdef DIFFUSIONHARMONIC
+#define DIFFUSIONBase() double diffSum = (p->diff+q->diff); \
+                        double diffBase = (DIFFUSIONLimitTest() ? 0 : 4*p->diff*q->diff/diffSum);
+#else
+#define DIFFUSIONBase() double diffSum = (p->diff+q->diff); \
+                        double diffBase = (DIFFUSIONLimitTest() ? 0 : diffSum);
 #endif
 #ifdef MASSDIFF
 #define MASSDIFFFAC(pother_) ((pother_)->fMass)
@@ -93,8 +102,17 @@
 #else
 #ifndef NODIFFUSIONTHERMAL
 /* Default -- thermal diffusion */
+#ifdef THERMALCOND 
+#define DIFFUSIONThermalCondBase() double dThermalCondSum = p->fThermalCond + q->fThermalCond; \
+    double dThermalCond = ( dThermalCondSum <= 0 ? 0 : 4*p->fThermalCond*q->fThermalCond/dThermalCondSum );
+#else
+#define DIFFUSIONThermalCondBase() double dThermalCond=0;
+#endif
+
 #define DIFFUSIONThermal() \
-    { double diffTh = 2*smf->dThermalDiffusionCoeff*diffBase/(p->fDensity+q->fDensity); \
+    { DIFFUSIONThermalCondBase(); \
+      double diffTh = 2*(smf->dThermalDiffusionCoeff*diffBase + dThermalCond) \
+                        /(p->fDensity+q->fDensity); \
       double diffu = diffTh*(p->uPred-q->uPred);                              \
       PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
       QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \

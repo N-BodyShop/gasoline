@@ -4436,7 +4436,6 @@ void pkdEmergencyAdjust(PKD pkd, int iRung, int iMaxRung, double dDelta, double 
     int iMaxRungIdeal=0;
     int nMaxRung=0;
     int nUn=0;
-    int nExceed=0,bDiag=0;
  
     assert(dDeltaThresh < dDelta);
 	p = pkd->pStore;
@@ -4451,12 +4450,9 @@ void pkdEmergencyAdjust(PKD pkd, int iRung, int iMaxRung, double dDelta, double 
 				iTempRung = pkdOneParticleDtToRung( iRung,dDelta,p->dt );
                 assert(iTempRung > iRung);
                 
-                bDiag = 0;
 				if(iTempRung >= iMaxRungIdeal)
 					iMaxRungIdeal = iTempRung+1;
 				if(iTempRung >= iMaxRung) {
-                    nExceed++;
-                    if (nExceed < 100) bDiag = 1;
 					iTempRung = iMaxRung-1;
                     }
 				p->iRung = iTempRung;
