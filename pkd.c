@@ -6670,6 +6670,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                         }
                     }
 #endif
+				printf("DEBUGCOND %d %e %e %e %e\n", p->iOrder, p->u, p->uDotPdV, p->uDotAV, p->uDotDiff);
                 if (dEtauDot > 0.0 && p->uDotPdV < 0.0) { /* Prevent rapid adiabatic cooling */
                     double PoverRhoFloorJeans=pkdPoverRhoFloorJeansParticle(pkd, dResolveJeans, p);
                     double uEff = PONRHOFLOOR+PoverRhoFloorJeans/(GAMMA_JEANS-1)+p->u;
@@ -6692,6 +6693,13 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     DTSAVE(dTD,"DIF");
                     if (dTD < dT) dT = dTD;
                     }
+#ifdef THERMALCOND
+                if (p->fThermalCond > 0) {
+                    dTD = (1/2.8*(dEtaCourant/0.4))*ph*ph/(p->fThermalCond);  
+                    DTSAVE(dTD,"DIF");
+                    if (dTD < dT) dT = dTD;
+                    }
+#endif
 #endif
 #ifdef DTTEST                
                 if (dT < DTTEST && nFail < 10) {
