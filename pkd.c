@@ -331,6 +331,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->u = 0.0;
         p->uPred = 0.0;
 #ifdef UNONCOOL
+        p->fMassNonCool = 0;
         p->uNoncool = 0.;
         p->uNoncoolPred = 0.;
         p->uNoncoolDot = 0.;
@@ -5295,6 +5296,7 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
 #ifdef GASOLINE
                 if (bDiag) {
                     bDiag = 0;
+                    if (pkdIsGas(pkd, &pkd->pStore[i])) {
                         PARTICLE *p = &pkd->pStore[i];
                         double ph = sqrt(p->fBall2*0.25);
 #ifndef NOCOOLING
@@ -7305,9 +7307,6 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 		if (pkdIsGas(pkd,p)) {
 #ifdef GLASSZ
 		        p->a[0]=0; p->a[1]=0;
-#endif
-#ifdef PARTICLELOCK
- 		                p->a[0]=0; p->a[1]=0; p->a[2]=0;
 #endif
 			for (j=0;j<3;++j) {
 				p->vPred[j] = p->vPred[j]*dvFacOne + p->a[j]*dvFacTwo;

@@ -111,8 +111,9 @@
 
 #define DIFFUSIONThermal() \
     { DIFFUSIONThermalCondBase(); \
-      double diffTh = 2*(smf->dThermalDiffusionCoeff*diffBase + dThermalCond) \
-                        /(p->fDensity+q->fDensity); \
+      double diffTh = \
+          (2*smf->dThermalDiffusionCoeff*diffBase/(p->fDensity+q->fDensity) \
+              + dThermalCond/(p->fDensity*q->fDensity)); \
       double diffu = diffTh*(p->uPred-q->uPred);                              \
       PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
       QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \

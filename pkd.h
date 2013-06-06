@@ -126,6 +126,7 @@ typedef struct particle {
     COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
 #endif
 #ifdef UNONCOOL
+    FLOAT fMassNoncool;
     FLOAT uNoncool;
     FLOAT uNoncoolPred;
     FLOAT uNoncoolDot;
