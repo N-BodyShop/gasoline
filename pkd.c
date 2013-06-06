@@ -5295,7 +5295,6 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
 #ifdef GASOLINE
                 if (bDiag) {
                     bDiag = 0;
-                    if (pkdIsGas(pkd, &pkd->pStore[i])) {
                         PARTICLE *p = &pkd->pStore[i];
                         double ph = sqrt(p->fBall2*0.25);
 #ifndef NOCOOLING
@@ -6674,7 +6673,6 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                         }
                     }
 #endif
-				printf("DEBUGCOND %d %e %e %e %e\n", p->iOrder, p->u, p->uDotPdV, p->uDotAV, p->uDotDiff);
                 if (dEtauDot > 0.0 && p->uDotPdV < 0.0) { /* Prevent rapid adiabatic cooling */
                     double PoverRhoFloorJeans=pkdPoverRhoFloorJeansParticle(pkd, dResolveJeans, p);
                     double uEff = PONRHOFLOOR+PoverRhoFloorJeans/(GAMMA_JEANS-1)+p->u;
