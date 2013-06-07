@@ -106,10 +106,10 @@
 #if (0)
 /* Harmonic average coeff */
 #define DIFFUSIONThermalCondBase() double dThermalCondSum = p->fThermalCond + q->fThermalCond; \
-    double dThermalCond = ( dThermalCondSum <= 0 ? 0 : 4*p->fThermalCond*q->fThermalCond/dThermalCondSum );
+    double dThermalCond = ( dThermalCondSum <= 0 ? 0 : 4*p->fThermalCond*q->fThermalCond/(dThermalCondSum*p->fDensity*q->fDensity) );
 #else
 /* Arithmetic average coeff */
-#define DIFFUSIONThermalCondBase() double dThermalCond = p->fThermalCond + q->fThermalCond; 
+#define DIFFUSIONThermalCondBase() double dThermalCond = (p->fThermalCond + q->fThermalCond)/(p->fDensity*q->fDensity); 
 #endif
 #else
 #define DIFFUSIONThermalCondBase() double dThermalCond=0;
@@ -117,9 +117,8 @@
 
 #define DIFFUSIONThermal() \
     { DIFFUSIONThermalCondBase(); \
-      double diffTh = \
-          (2*smf->dThermalDiffusionCoeff*diffBase/(p->fDensity+q->fDensity) \
-              + dThermalCond/(p->fDensity*q->fDensity)); \
+      double diffTh = dThermalCond + \
+          (2*smf->dThermalDiffusionCoeff*diffBase/(p->fDensity+q->fDensity)); \
       double diffu = diffTh*(p->uPred-q->uPred);                              \
       PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
       QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \

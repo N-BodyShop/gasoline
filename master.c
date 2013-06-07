@@ -1179,7 +1179,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dThermalCondCoeff = 0;
 	prmAddParam(msr->prm,"dThermalCondCoeff",2,&msr->param.dThermalCondCoeff,
 				sizeof(double),"thermalcond",
-				"<Coefficient in Thermal Conductivity> = 0");
+				"<Coefficient in Thermal Conductivity, e.g. 6.1e-7 > = 0");
+	msr->param.dThermalCondSatCoeff = 0;
+	prmAddParam(msr->prm,"dThermalCondSatCoeff",2,&msr->param.dThermalCondSatCoeff,
+				sizeof(double),"thermalcondsat",
+				"<Coefficient in Saturated Thermal Conductivity, e.g. 17 > = 0");
 	msr->param.bConstantDiffusion = 0;
 	prmAddParam(msr->prm,"bConstantDiffusion",0,&msr->param.bConstantDiffusion,
 				sizeof(int),"constdiff",
@@ -1977,6 +1981,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
           Silich: B-field reduces K(T) by ~ factor 10
        we use du/dt = div k(u)/rho grad u    
           u erg/gm = 1.5 k_B / (0.6*m_H) T  (ionized) */
+    /* Heat flux is k(u) u^2.5 grad u saturating at n_e 3/2 k T_e v_e 
+       k(u) u^2.5 has units of erg (erg/g)^-1 s^-1 cm^-1
+       saturation value ~ 17 rho c_s h  (g s^-1 cm^-1)
+       Assuming primordial v_e ~ 33 c_s, n_e ~ 0.52 n, grad u ~ u/h
+       So dThermalCondSatCoeff ~ 17, so time is 1/17 Courant time */
+
     /* Convert K(T) to k(u)  erg s^-1 (erg/gm)^-7/2 cm^-1 */
     msr->param.dThermalCondCoeffCode = msr->param.dThermalCondCoeff
         *pow(1.5*KBOLTZ/(0.6*MHYDR),-3.5);
@@ -2930,6 +2940,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dMetalDiffusionCoeff: %g",msr->param.dMetalDiffusionCoeff);
 	fprintf(fp," dThermalDiffusionCoeff: %g",msr->param.dThermalDiffusionCoeff);
 	fprintf(fp," dThermalCondCoeff: %g",msr->param.dThermalCondCoeff);
+	fprintf(fp," dThermalCondSatCoeff: %g",msr->param.dThermalCondSatCoeff);
 #ifdef DENSITYU
 	fprintf(fp," dvturb: %g",msr->param.dvturb);
 #endif
@@ -5389,6 +5400,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
     psmf->dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
     psmf->dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
+    psmf->dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
     psmf->bConstantDiffusion = msr->param.bConstantDiffusion;
 #endif
     psmf->alpha = msr->param.dConstAlpha;
