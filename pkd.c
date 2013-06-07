@@ -331,6 +331,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->u = 0.0;
         p->uPred = 0.0;
 #ifdef UNONCOOL
+        p->fMassNonCool = 0;
         p->uNoncool = 0.;
         p->uNoncoolPred = 0.;
         p->uNoncoolDot = 0.;
@@ -4329,6 +4330,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 			if (pkdIsGas(pkd, p)) {
 #ifdef GLASSZ
  		                p->a[0]=0; p->a[1]=0;
+#endif
+#ifdef ACCZERO
+ 		                p->a[0]=0; p->a[1]=0; p->a[2]=0;
 #endif
 				for (j=0;j<3;++j) {
 					p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
