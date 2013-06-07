@@ -274,13 +274,30 @@ typedef struct particle {
 #define GAMMA_JEANS    (2.0)
 #define GAMMA_NONCOOL  (5./3.)
 
+struct GasPressureContext {
+  /* Adiabatic */
+	double gamma;
+	double gammam1;
+	double dResolveJeans;
+	double dCosmoFac;
+    double dtFacCourant;
+  /* Isothermal */
+  /* Ion evolving */
+#ifdef GLASS
+    struct GlassData g;
+#endif
+#ifdef THERMALCOND
+    double dThermalCondCoeffCode;
+    double dThermalCondSatCoeff;
+#endif
+    };
+
 typedef struct uNonCoolContext {
     double dNoncoolConvRate;
     double dNoncoolConvRateMul;
     double dNoncoolConvRateMax;
     double dNoncoolConvUMin;
-    double gammam1;
-    double dResolveJeans;
+    struct GasPressureContext gpc;
     } UNCC;
 
 #define SINK_Lx(_a) (((PARTICLE *) (_a))->uDotPdV)
@@ -921,10 +938,9 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 void pkdUpdateShockTracker(PKD,double, double, double);
 double pkdDtFacCourant( double dEtaCourant, double dCosmoFac );
 double pkdPoverRhoFloorJeansParticle(PKD pkd, double dResolveJeans, PARTICLE *p);
-void pkdGasPressureParticle(PKD pkd, double gammam1, double dResolveJeans, PARTICLE *p, 
+void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p, 
     double *pPoverRhoFloorJeans, double *pPoverRhoNoncool, double *pPoverRhoGas, double *pcGas );
-void pkdGasPressure(PKD, double gammam1, double gamma,
-    double dResolveJeans, double dCosmoFac, double dtFacCourant);
+void pkdGasPressure(PKD, struct GasPressureContext *pgpc);
 void pkdGetDensityU(PKD, double);
 void pkdLowerSoundSpeed(PKD, double);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime );

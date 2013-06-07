@@ -1176,10 +1176,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dThermalDiffusionCoeff",2,&msr->param.dThermalDiffusionCoeff,
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
-	msr->param.dThermalCondCoeff = 0;
+	msr->param.dThermalCondCoeff = 6.1e-7;
 	prmAddParam(msr->prm,"dThermalCondCoeff",2,&msr->param.dThermalCondCoeff,
 				sizeof(double),"thermalcond",
-				"<Coefficient in Thermal Conductivity> = 0");
+				"<Coefficient in Thermal Conductivity, e.g. 6.1e-7 > = 0");
+	msr->param.dThermalCondSatCoeff = 17;
+	prmAddParam(msr->prm,"dThermalCondSatCoeff",2,&msr->param.dThermalCondSatCoeff,
+				sizeof(double),"thermalcondsat",
+				"<Coefficient in Saturated Thermal Conductivity, e.g. 17 > = 0");
 	msr->param.bConstantDiffusion = 0;
 	prmAddParam(msr->prm,"bConstantDiffusion",0,&msr->param.bConstantDiffusion,
 				sizeof(int),"constdiff",
@@ -1977,6 +1981,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
           Silich: B-field reduces K(T) by ~ factor 10
        we use du/dt = div k(u)/rho grad u    
           u erg/gm = 1.5 k_B / (0.6*m_H) T  (ionized) */
+    /* Heat flux is k(u) u^2.5 grad u saturating at n_e 3/2 k T_e v_e 
+       k(u) u^2.5 has units of erg (erg/g)^-1 s^-1 cm^-1
+       saturation value ~ 17 rho c_s h  (g s^-1 cm^-1)
+       Assuming primordial v_e ~ 33 c_s, n_e ~ 0.52 n, grad u ~ u/h
+       So dThermalCondSatCoeff ~ 17, so time is 1/17 Courant time */
+
     /* Convert K(T) to k(u)  erg s^-1 (erg/gm)^-7/2 cm^-1 */
     msr->param.dThermalCondCoeffCode = msr->param.dThermalCondCoeff
         *pow(1.5*KBOLTZ/(0.6*MHYDR),-3.5);
@@ -2639,9 +2649,6 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef GLASSZ
 	fprintf(fp," GLASSZ");
 #endif
-#ifdef PARTICLELOCK
-	fprintf(fp," PARTICLELOCK");
-#endif
 #ifdef HSHRINK
 	fprintf(fp," HSHRINK");
 #endif
@@ -2933,6 +2940,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dMetalDiffusionCoeff: %g",msr->param.dMetalDiffusionCoeff);
 	fprintf(fp," dThermalDiffusionCoeff: %g",msr->param.dThermalDiffusionCoeff);
 	fprintf(fp," dThermalCondCoeff: %g",msr->param.dThermalCondCoeff);
+	fprintf(fp," dThermalCondSatCoeff: %g",msr->param.dThermalCondSatCoeff);
 #ifdef DENSITYU
 	fprintf(fp," dvturb: %g",msr->param.dvturb);
 #endif
@@ -5391,7 +5399,6 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
 #ifdef DIFFUSION
     psmf->dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
     psmf->dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
-    psmf->dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
     psmf->bConstantDiffusion = msr->param.bConstantDiffusion;
 #endif
     psmf->alpha = msr->param.dConstAlpha;
@@ -6041,8 +6048,15 @@ void msrSetuNonCoolContext( MSR msr, UNCC *puncc, double a ) {
     puncc->dNoncoolConvRateMul = 1/(a*msr->param.dNoncoolConvTimeMul);
     puncc->dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
     puncc->dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
-    puncc->gammam1 = msr->param.dConstGamma-1;
-    puncc->dResolveJeans = msr->param.dResolveJeans/a;
+    puncc->gpc.gammam1 = msr->param.dConstGamma-1;
+    puncc->gpc.gamma = msr->param.dConstGamma;
+	puncc->gpc.dCosmoFac = a;
+    puncc->gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); //for DTADJUST
+    puncc->gpc.dResolveJeans = msr->param.dResolveJeans/a;
+#ifdef THERMALCOND
+    puncc->gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
+    puncc->gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
+#endif
     }
 
 void msrDrift(MSR msr,double dTime,double dDelta)
@@ -8773,17 +8787,21 @@ void msrGetGasPressure(MSR msr, double dTime)
 	case GASMODEL_ADIABATIC:
 	case GASMODEL_ISOTHERMAL:
 	case  GASMODEL_COOLING:
-		in.gamma = msr->param.dConstGamma;
-		in.gammam1 = in.gamma-1;
-		in.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
-        in.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,in.dCosmoFac); //for DTADJUST
+		in.gpc.gamma = msr->param.dConstGamma;
+		in.gpc.gammam1 = in.gpc.gamma-1;
+		in.gpc.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
+        in.gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,in.gpc.dCosmoFac); //for DTADJUST
+#ifdef THERMALCOND
+        in.gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
+        in.gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
+#endif
 		/*
 		 * If self gravitating, resolve the Jeans Mass
 		 */
 		if(msr->param.bDoGravity && msr->param.bDoSelfGravity)
-		    in.dResolveJeans = msr->param.dResolveJeans/in.dCosmoFac;
+		    in.gpc.dResolveJeans = msr->param.dResolveJeans/in.gpc.dCosmoFac;
 		else
-		    in.dResolveJeans = 0.0;
+		    in.gpc.dResolveJeans = 0.0;
 		break;
 	case GASMODEL_GLASS:
 #ifdef GLASS

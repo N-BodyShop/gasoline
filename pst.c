@@ -4682,8 +4682,7 @@ void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		case GASMODEL_ADIABATIC: 
 		case GASMODEL_ISOTHERMAL:
 		case GASMODEL_COOLING:
-			pkdGasPressure(plcl->pkd, in->gammam1,in->gamma, in->dResolveJeans,
-                in->dCosmoFac, in->dtFacCourant);
+			pkdGasPressure(plcl->pkd, &in->gpc);
 			break;
 			break;
 		case GASMODEL_GLASS:
