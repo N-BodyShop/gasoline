@@ -1176,11 +1176,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dThermalDiffusionCoeff",2,&msr->param.dThermalDiffusionCoeff,
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
-	msr->param.dThermalCondCoeff = 0;
+	msr->param.dThermalCondCoeff = 6.1e-7;
 	prmAddParam(msr->prm,"dThermalCondCoeff",2,&msr->param.dThermalCondCoeff,
 				sizeof(double),"thermalcond",
 				"<Coefficient in Thermal Conductivity, e.g. 6.1e-7 > = 0");
-	msr->param.dThermalCondSatCoeff = 0;
+	msr->param.dThermalCondSatCoeff = 17;
 	prmAddParam(msr->prm,"dThermalCondSatCoeff",2,&msr->param.dThermalCondSatCoeff,
 				sizeof(double),"thermalcondsat",
 				"<Coefficient in Saturated Thermal Conductivity, e.g. 17 > = 0");
@@ -5399,8 +5399,6 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
 #ifdef DIFFUSION
     psmf->dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
     psmf->dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
-    psmf->dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
-    psmf->dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
     psmf->bConstantDiffusion = msr->param.bConstantDiffusion;
 #endif
     psmf->alpha = msr->param.dConstAlpha;
@@ -6050,8 +6048,15 @@ void msrSetuNonCoolContext( MSR msr, UNCC *puncc, double a ) {
     puncc->dNoncoolConvRateMul = 1/(a*msr->param.dNoncoolConvTimeMul);
     puncc->dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
     puncc->dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
-    puncc->gammam1 = msr->param.dConstGamma-1;
-    puncc->dResolveJeans = msr->param.dResolveJeans/a;
+    puncc->gpc.gammam1 = msr->param.dConstGamma-1;
+    puncc->gpc.gamma = msr->param.dConstGamma;
+	puncc->gpc.dCosmoFac = a;
+    puncc->gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); //for DTADJUST
+    puncc->gpc.dResolveJeans = msr->param.dResolveJeans/a;
+#ifdef THERMALCOND
+    puncc->gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
+    puncc->gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
+#endif
     }
 
 void msrDrift(MSR msr,double dTime,double dDelta)
@@ -8782,17 +8787,21 @@ void msrGetGasPressure(MSR msr, double dTime)
 	case GASMODEL_ADIABATIC:
 	case GASMODEL_ISOTHERMAL:
 	case  GASMODEL_COOLING:
-		in.gamma = msr->param.dConstGamma;
-		in.gammam1 = in.gamma-1;
-		in.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
-        in.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,in.dCosmoFac); //for DTADJUST
+		in.gpc.gamma = msr->param.dConstGamma;
+		in.gpc.gammam1 = in.gpc.gamma-1;
+		in.gpc.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
+        in.gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,in.gpc.dCosmoFac); //for DTADJUST
+#ifdef THERMALCOND
+        in.gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
+        in.gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
+#endif
 		/*
 		 * If self gravitating, resolve the Jeans Mass
 		 */
 		if(msr->param.bDoGravity && msr->param.bDoSelfGravity)
-		    in.dResolveJeans = msr->param.dResolveJeans/in.dCosmoFac;
+		    in.gpc.dResolveJeans = msr->param.dResolveJeans/in.gpc.dCosmoFac;
 		else
-		    in.dResolveJeans = 0.0;
+		    in.gpc.dResolveJeans = 0.0;
 		break;
 	case GASMODEL_GLASS:
 #ifdef GLASS

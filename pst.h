@@ -1138,24 +1138,8 @@ void pstSetNParts(PST, void *, int, void *, int *);
 
 struct inGetGasPressure {
 	enum GasModel iGasModel; 
-  /* Adiabatic */
-	double gamma;
-	double gammam1;
-	double dResolveJeans;
-	double dCosmoFac;
-    double dtFacCourant;
-    
-  /* Isothermal */
-
-  /* Ion evolving */
-
-
-#ifdef GLASS
-    struct GlassData g;
-#endif
+    struct GasPressureContext gpc;
 	};
-
-
 
 /* PST_GETGASPRESSURE */
 void pstGetGasPressure(PST, void *,int,void *,int *);

@@ -330,8 +330,10 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->dtNew = FLT_MAX;
         p->u = 0.0;
         p->uPred = 0.0;
-#ifdef UNONCOOL
+#ifdef MASSNONCOOL
         p->fMassNonCool = 0;
+#endif
+#ifdef UNONCOOL
         p->uNoncool = 0.;
         p->uNoncoolPred = 0.;
         p->uNoncoolDot = 0.;
@@ -6159,7 +6161,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             uDotFBThermal = p->uDotFB;
 #endif
 #endif
-            pkdGasPressureParticle(pkd, uncc.gammam1, uncc.dResolveJeans, p, &PoverRhoFloorJeans, &PoverRhoNoncool, &PoverRhoGas, &cGas );
+            pkdGasPressureParticle(pkd, &uncc.gpc, p, &PoverRhoFloorJeans, &PoverRhoNoncool, &PoverRhoGas, &cGas );
             PoverRho = PoverRhoGas + PoverRhoNoncool ;
             if (PoverRho < PoverRhoFloorJeans) PoverRho = PoverRhoFloorJeans;
             
@@ -6338,16 +6340,16 @@ double pkdPoverRhoFloorJeansParticle(PKD pkd, double dResolveJeans, PARTICLE *p)
     return l2*dResolveJeans*p->fDensity;
     }
 
-void pkdGasPressureParticle(PKD pkd, double gammam1, double dResolveJeans, PARTICLE *p, 
+void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p, 
     double *pPoverRhoFloorJeans, double *pPoverRhoNoncool, double *pPoverRhoGas, double *pcGas ) 
     {
     
 #ifndef NOCOOLING
     COOL *cl = pkd->Cool;
 
-    CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, gamma, gammam1, pPoverRhoGas, pcGas );
+    CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, pgpc->gamma, pgpc->gammam1, pPoverRhoGas, pcGas );
 #else
-    PoverRhoGas = gammam1*p->uPred;
+    PoverRhoGas = pgpc->gammam1*p->uPred;
 #endif
 
 #ifdef UNONCOOL
@@ -6356,11 +6358,11 @@ void pkdGasPressureParticle(PKD pkd, double gammam1, double dResolveJeans, PARTI
     *pPoverRhoNoncool = 0;
 #endif
 
-    *pPoverRhoFloorJeans = pkdPoverRhoFloorJeansParticle(pkd, dResolveJeans, p);
+    *pPoverRhoFloorJeans = pkdPoverRhoFloorJeansParticle(pkd, pgpc->dResolveJeans, p);
     }
 
 /* Note: Uses uPred */
-void pkdGasPressure(PKD pkd, double gammam1, double gamma, double dResolveJeans, double dCosmoFac, double dtFacCourant)
+void pkdGasPressure(PKD pkd, struct GasPressureContext *pgpc)
 {
     PARTICLE *p;
     int i;
@@ -6370,12 +6372,23 @@ void pkdGasPressure(PKD pkd, double gammam1, double gamma, double dResolveJeans,
 		if (pkdIsGas(pkd,p)) {
             double PoverRho,PoverRhoGas,PoverRhoNoncool,PoverRhoMinJeans,cGas,PoverRhoJeans;
 
-            pkdGasPressureParticle(pkd, gammam1, dResolveJeans, p, &PoverRhoMinJeans, &PoverRhoNoncool, &PoverRhoGas, &cGas ); 
+            pkdGasPressureParticle(pkd, pgpc, p, &PoverRhoMinJeans, &PoverRhoNoncool, &PoverRhoGas, &cGas ); 
             PoverRho = PoverRhoGas + PoverRhoNoncool;
             PoverRhoJeans = (PoverRho < PoverRhoMinJeans ? PoverRhoMinJeans - PoverRho : 0);
             PoverRho += PoverRhoJeans;
             p->PoverRho2 = PoverRho/p->fDensity;
             p->c = sqrt(cGas*cGas+GAMMA_NONCOOL*PoverRhoNoncool+GAMMA_JEANS*PoverRhoJeans);
+#ifdef THERMALCOND
+            {
+#if (1)
+            double fThermalCond = pgpc->dThermalCondCoeffCode*pow(p->uPred,2.5);
+            double fThermalCondSat = pgpc->dThermalCondSatCoeff*p->fDensity*p->c*sqrt(0.25*p->fBall2);
+            p->fThermalCond = (fThermalCond < fThermalCondSat ? fThermalCond : fThermalCondSat);
+#else
+            p->fThermalCond = smf->dThermalCondCoeffCode*pow(p->uPred,2.5);
+#endif
+            }
+#endif
 #ifdef DTADJUST
                 {
                 double uTotDot, dt;
@@ -6383,8 +6396,8 @@ void pkdGasPressure(PKD pkd, double gammam1, double gamma, double dResolveJeans,
 #ifdef UNONCOOL
                 uTotDot += p->uNoncoolDot;
 #endif
-                if (uTotDot > 0) dt = dtFacCourant*sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
-                else dt = dtFacCourant*sqrt(p->fBall2*0.25)/(2*(p->c));
+                if (uTotDot > 0) dt = pgpc->dtFacCourant*sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
+                else dt = pgpc->dtFacCourant*sqrt(p->fBall2*0.25)/(2*(p->c));
                 if (dt < p->dt) p->dt = dt; // Update to scare the neighbours
                 }
 #endif
@@ -6693,6 +6706,14 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     DTSAVE(dTD,"DIF");
                     if (dTD < dT) dT = dTD;
                     }
+#ifdef THERMALCOND
+            /* h^2/(2.77Q) Linear stability from Brookshaw */
+                if (p->diff > 0) {
+                    dTD = (1/2.8*(dEtaCourant/0.4))*ph*ph*p->fDensity/(p->fThermalCond);  
+                    DTSAVE(dTD,"TCO");
+                    if (dTD < dT) dT = dTD;
+                    }
+#endif
 #endif
 #ifdef DTTEST                
                 if (dT < DTTEST && nFail < 10) {

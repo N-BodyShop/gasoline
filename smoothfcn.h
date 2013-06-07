@@ -67,8 +67,6 @@ typedef struct smfParameters {
 #ifdef DIFFUSION
     double dMetalDiffusionCoeff;
     double dThermalDiffusionCoeff;
-    double dThermalCondCoeffCode;
-    double dThermalCondSatCoeff;
     int bConstantDiffusion;
 #endif
 #ifdef STARFORM
