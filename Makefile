@@ -51,7 +51,7 @@ COOLING_DEF = -DCOOLING_METAL
 
 
 # Which C compiler should I use?
-CC = gcc
+CC = icc
 
 CC_DEF = 
 CODE_DEF = 
@@ -102,7 +102,7 @@ CODE_DEF += -DDTADJUST #Use a more clever "anticipatory" timestep criteria for m
 #CODE_DEF += -DDTTEST=6e-12 #If a dt value goes below this value, print some debug information about the particle that caused it.
 CODE_DEF += -DEPSACCH #Turning this one makes the pkd code ignore dhMinOverSoft in pkdAccelStep
 #CODE_DEF += -DFITDVDX #Use a fitted version of the DenDVDX that doesn't use the stiff.h evaluator.
-#CODE_DEF += -DFBPARTICLE #Use particle creation for feedback (*Very kludgey currently*)
+CODE_DEF += -DFBPARTICLE #Use particle creation for feedback (*Very kludgey currently*)
 CODE_DEF += -DGASOLINE #Do SPH (without this, compiles pkdgrav, just N-Body)
 #CODE_DEF += -DGLASS #Use this to make glass initial conditions
 #CODE_DEF += -DGR_DRAG #Enable Frame draggin (I believe)
@@ -171,7 +171,7 @@ CODE_DEF += -DTOPHATFEEDBACK #Use a tophat kernel to smooth feedback over
 #CODE_DEF += -DTUMBLER #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
 #CODE_DEF += -DTWOSMOOTH #Smooth twice rather than 3 times.  This is defined by default in master.c
 #CODE_DEF += -DTZKEY64 #Use 64 (instead of 128) bit keys for the tree.  Faster, but allows less depth.
-CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
+#CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
 #CODE_DEF += -DUNONCOOLINIT #Initialize the uNoncool to have equal energy to u (useful for hacking some tests)
 #CODE_DEF += -DUNONCOOLMERGE #Put the uNoncool energy from a checkpoint into u (for debugging)
 #CODE_DEF += -DUNONCOOLZERO #Always read noncooling energy as 0 when read from checkpoint (for debugging)

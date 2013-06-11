@@ -1184,6 +1184,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dThermalCondSatCoeff",2,&msr->param.dThermalCondSatCoeff,
 				sizeof(double),"thermalcondsat",
 				"<Coefficient in Saturated Thermal Conductivity, e.g. 17 > = 0");
+	msr->param.dEtaThermalCond = 0.4;
+	prmAddParam(msr->prm,"dEtaThermalCond",2,&msr->param.dEtaThermalCond,sizeof(double),"etaTC",
+				"<Thermal cond dt criterion> = 0.4");
 	msr->param.bConstantDiffusion = 0;
 	prmAddParam(msr->prm,"bConstantDiffusion",0,&msr->param.bConstantDiffusion,
 				sizeof(int),"constdiff",
@@ -1294,7 +1297,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		    sizeof(int), "SSF_bdivv",
 		    "<SF Use div v for star formation> = 1");
 #endif /* SIMPLESF */
-
 #ifdef STARFORM
 	stfmInitialize(&msr->param.stfm);
 	msr->param.stfm->dOverDenMin = 2.0;
@@ -1437,6 +1439,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dIonizeT", 2, &msr->param.dIonizeT,
 		    sizeof(double), "dIT",
 		    "<Ionize Time> = 8000 K");
+#ifdef MASSNONCOOL
+	msr->param.dFBInitialMassLoad = 2.0;
+	prmAddParam(msr->prm,"dFBInitialMassLoad", 2, &msr->param.dFBInitialMassLoad,
+		    sizeof(double), "dFBIML",
+		    "<Initial Mass Loading for Feedback Ejecta> = 2");
+#endif
 #endif /* STARFORM */
 #endif /* GASOLINE */
 #ifdef GLASS
@@ -2098,9 +2106,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	      GCGS/msr->param.dMsolUnit/MSOLG/msr->param.dMsolUnit/MSOLG;
 	    /* convert to system units */
 	    msr->param.stfm->dPhysDenMin *= MHYDR/msr->param.stfm->dGmPerCcUnit;
-            msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
-            msr->param.dIonizeTime *= SECONDSPERYEAR/msr->param.dSecUnit;
-            msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm;
+        msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
+        msr->param.dIonizeTime *= SECONDSPERYEAR/msr->param.dSecUnit;
+        msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm;
 	    msr->param.stfm->dZAMSDelayTime *= SECONDSPERYEAR/msr->param.dSecUnit;
 	    msr->param.dESFTime *= SECONDSPERYEAR/msr->param.dSecUnit;
 	    msr->param.dESFEnergy /= MSOLG*msr->param.dErgPerGmUnit;
@@ -2570,6 +2578,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef RTFORCE
 	fprintf(fp," RTFORCE");
 #endif
+#ifdef MASSNONCOOL
+    fprintf(fp," MASSNONCOOL");
+#endif
 #ifdef UNONCOOL
     fprintf(fp," UNONCOOL");
 #endif
@@ -2714,6 +2725,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef DTADJUST
 	fprintf(fp, " DTADJUST");
+#endif
+#ifdef DTTEST
+	fprintf(fp, " DTTEST=%g",DTTEST);
 #endif
 #ifdef EPSACCH
         fprintf(fp, " ESPACCH");
@@ -2941,6 +2955,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dThermalDiffusionCoeff: %g",msr->param.dThermalDiffusionCoeff);
 	fprintf(fp," dThermalCondCoeff: %g",msr->param.dThermalCondCoeff);
 	fprintf(fp," dThermalCondSatCoeff: %g",msr->param.dThermalCondSatCoeff);
+	fprintf(fp," dEtaThermalCond: %g",msr->param.dEtaThermalCond);
 #ifdef DENSITYU
 	fprintf(fp," dvturb: %g",msr->param.dvturb);
 #endif
@@ -4278,6 +4293,9 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
     if (msr->param.bSphStep) OutputList[(*nOutputList)++]=OUT_SPHDT_ARRAY;
+#ifdef MASSNONCOOL
+    OutputList[(*nOutputList)++]=OUT_MASSNONCOOL_ARRAY;
+#endif
 #ifdef UNONCOOL
     OutputList[(*nOutputList)++]=OUT_U_ARRAY;
     OutputList[(*nOutputList)++]=OUT_UNONCOOL_ARRAY;
@@ -9027,6 +9045,7 @@ void msrSphStep(MSR msr, double dTime, int iKickRung)
     in.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
     in.dEtaCourant = msrEtaCourant(msr);
     in.dEtauDot = msr->param.dEtauDot;
+    in.dEtaThermalCond = msr->param.dEtaThermalCond;
     if(msr->param.bDoGravity && msr->param.bDoSelfGravity)
         in.dResolveJeans = msr->param.dResolveJeans/csmTime2Exp(msr->param.csm,dTime);
     else
