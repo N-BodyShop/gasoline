@@ -6382,6 +6382,7 @@ void pkdGasPressure(PKD pkd, struct GasPressureContext *pgpc)
             double fThermalCond = pgpc->dThermalCondCoeffCode*pow(p->uPred,2.5);
             double fThermalCondSat = pgpc->dThermalCondSatCoeff*p->fDensity*p->c*sqrt(0.25*p->fBall2);
             p->fThermalCond = (fThermalCond < fThermalCondSat ? fThermalCond : fThermalCondSat);
+			/*if (p->fMass < 760) printf("DEBUGCOND: %d %e %e %e %e %e %e\n", p->iOrder, p->uPred, p->fDensity, p->c, p->fBall2, fThermalCond, fThermalCondSat);*/
 #else
             p->fThermalCond = smf->dThermalCondCoeffCode*pow(p->uPred,2.5);
 #endif
@@ -6706,7 +6707,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     }
 #ifdef THERMALCOND
             /* h^2/(2.77Q) Linear stability from Brookshaw */
-                if (p->diff > 0) {
+                if (p->fThermalCond > 0) {
                     dTD = (1/2.8*(dEtaCourant/0.4))*ph*ph*p->fDensity/(p->fThermalCond);  
                     DTSAVE(dTD,"TCO");
                     if (dTD < dT) dT = dTD;

@@ -3032,6 +3032,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	    r2 = nnList[i].fDist2*ih2;
 	    DKERNEL(rs1,r2);
+		if (p->fMass < 760 || q->fMass < 760) printf("DEBUGR: %d %d %e %e %e\n", p->iOrder, q->iOrder, rs1, fNorm1, p->fDivv_Corrector);
 	    rs1 *= fNorm1;
 //#ifdef DRHODT
 	    rs1 *= p->fDivv_Corrector;
