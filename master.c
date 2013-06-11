@@ -1184,9 +1184,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dThermalCondSatCoeff",2,&msr->param.dThermalCondSatCoeff,
 				sizeof(double),"thermalcondsat",
 				"<Coefficient in Saturated Thermal Conductivity, e.g. 17 > = 0");
-	msr->param.dEtaThermalCond = 0.4;
-	prmAddParam(msr->prm,"dEtaThermalCond",2,&msr->param.dEtaThermalCond,sizeof(double),"etaTC",
-				"<Thermal cond dt criterion> = 0.4");
+	msr->param.dEtaDiffusion = 0.1;
+	prmAddParam(msr->prm,"dEtaDiffusion",2,&msr->param.dEtaDiffusion,sizeof(double),"etadiff",
+				"<Diffusion dt criterion> = 0.1");
 	msr->param.bConstantDiffusion = 0;
 	prmAddParam(msr->prm,"bConstantDiffusion",0,&msr->param.bConstantDiffusion,
 				sizeof(int),"constdiff",
@@ -2955,7 +2955,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dThermalDiffusionCoeff: %g",msr->param.dThermalDiffusionCoeff);
 	fprintf(fp," dThermalCondCoeff: %g",msr->param.dThermalCondCoeff);
 	fprintf(fp," dThermalCondSatCoeff: %g",msr->param.dThermalCondSatCoeff);
-	fprintf(fp," dEtaThermalCond: %g",msr->param.dEtaThermalCond);
+	fprintf(fp," dEtaDiffusion: %g",msr->param.dEtaDiffusion);
 #ifdef DENSITYU
 	fprintf(fp," dvturb: %g",msr->param.dvturb);
 #endif
@@ -9045,7 +9045,9 @@ void msrSphStep(MSR msr, double dTime, int iKickRung)
     in.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
     in.dEtaCourant = msrEtaCourant(msr);
     in.dEtauDot = msr->param.dEtauDot;
-    in.dEtaThermalCond = msr->param.dEtaThermalCond;
+    in.dDiffCoeff = (msr->param.dMetalDiffusionCoeff > msr->param.dThermalDiffusionCoeff ? 
+        msr->param.dMetalDiffusionCoeff : msr->param.dThermalDiffusionCoeff);
+    in.dEtaDiffusion = msr->param.dEtaDiffusion;
     if(msr->param.bDoGravity && msr->param.bDoSelfGravity)
         in.dResolveJeans = msr->param.dResolveJeans/csmTime2Exp(msr->param.csm,dTime);
     else

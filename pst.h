@@ -1620,7 +1620,8 @@ struct inSphStep {
     double dCosmoFac;
     double dEtaCourant;
     double dEtauDot;
-    double dEtaThermalCond;
+    double dDiffCoeff;
+    double dEtaDiffusion;
     double dResolveJeans;
     int bViscosityLimitdt;
     };

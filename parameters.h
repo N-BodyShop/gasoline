@@ -274,7 +274,7 @@ struct parameters {
     double dThermalCondCoeff;
     double dThermalCondCoeffCode;
     double dThermalCondSatCoeff;
-    double dEtaThermalCond;
+    double dEtaDiffusion;
     double dDeltaSph;
     int    bConstantDiffusion;
 	int    bDoGas;

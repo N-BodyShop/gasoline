@@ -6671,8 +6671,7 @@ double pkdDtFacCourant( double dEtaCourant, double dCosmoFac ) {
 #endif
 
 void
-pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, double dEtaThermalCond, double dResolveJeans, int bViscosityLimitdt, 
-    double *pdtMinGas)
+pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, double dDiffCoeff, double dEtaDiffusion, double dResolveJeans, int bViscosityLimitdt, double *pdtMinGas)
     {
     int i;
     PARTICLE *p;    
@@ -6686,6 +6685,8 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
     *pdtMinGas = DBL_MAX;
     for(i=0;i<pkdLocal(pkd);++i) {
         p = &pkd->pStore[i];
+//        if (p->iOrder == 32773) 
+//            fprintf(stderr,"PROB %d: u %g %g c %g h %g divv %g rho %g Z %g\n",p->iOrder,p->u,p->uPred,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals);
         if(pkdIsGas(pkd, p)) {
             if (TYPEQueryACTIVE(p)) {
                 ph = sqrt(0.25*p->fBall2);
@@ -6749,23 +6750,24 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     if (dTu < dT) dT = dTu;
                     }
 #ifdef DIFFUSION
+#ifdef THERMALCOND
             /* h^2/(2.77Q) Linear stability from Brookshaw */
-                if (p->diff > 0) {
-                    dTD = (1/2.8*(dEtaCourant/0.4))*ph*ph/(p->diff);  
+                if (p->fThermalCond > 0 || (p->diff > 0 && dDiffCoeff > 0)) {
+                    dTD = dEtaDiffusion*ph*ph/(dDiffCoeff*p->diff + p->fThermalCond/p->fDensity);  
                     DTSAVE(dTD,"DIF");
                     if (dTD < dT) dT = dTD;
                     }
-#ifdef THERMALCOND
+#else
             /* h^2/(2.77Q) Linear stability from Brookshaw */
-                if (p->fThermalCond > 0) {
-                    dTD = (1/2.8*(dEtaThermalCond/0.4))*ph*ph*p->fDensity/(p->fThermalCond);  
-                    DTSAVE(dTD,"TCO");
+                if (p->diff > 0 && dDiffCoeff > 0) {
+                    dTD = dEtaDiffusion*ph*ph/(dDiffCoeff*p->diff);  
+                    DTSAVE(dTD,"DIF");
                     if (dTD < dT) dT = dTD;
                     }
 #endif
 #endif
 #ifdef DTTEST                
-                if (dT < dtCut && nFail < 10) {
+                if (p->iOrder == 14729 || (dT < dtCut && nFail < 10)) {
                     int j;
                     double T;
                     nFail++;
@@ -6776,7 +6778,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 #ifndef NOCOOLING
                     T = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
 #endif
-                    fprintf(stderr,"u %g T %g %g c %g h %g rho %g Z %g\n",p->uPred,p->uPred/4802.57,T,p->c,sqrt(0.25*p->fBall2),p->fDensity,p->fMetals);
+                    fprintf(stderr,"u %g T %g %g c %g h %g divv %g rho %g Z %g dtdiff %g %g\n",p->uPred,p->uPred/4802.57,T,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals,p->uPred/(fabs(p->uDotDiff)+1e-20),p->fThermalCond);
                     }
 #endif
                 if(dT < p->dt) p->dt = dT;
