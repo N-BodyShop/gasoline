@@ -76,6 +76,12 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return(p->fDensity*p->fDensity*p->PoverRho2);	
 	case OUT_U_ARRAY:
 	    return(p->u);
+	case OUT_MASSNONCOOL_ARRAY:
+#ifdef MASSNONCOOL
+	    return(p->fMassNoncool);
+#else
+	    return(0.);
+#endif
 	case OUT_UNONCOOL_ARRAY:
 #ifdef UNONCOOL
 	    return(p->uNoncool);
@@ -364,6 +370,9 @@ void VecFilename(char *achFile, int iType)
 #ifndef NOCOOLING
 	case OUT_U_ARRAY:
 		strncat(achFile,"u",256);
+		break;
+	case OUT_MASSNONCOOL_ARRAY:
+		strncat(achFile,"MassNoncool",256);
 		break;
 	case OUT_UNONCOOL_ARRAY:
 		strncat(achFile,"uNoncool",256);

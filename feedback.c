@@ -106,7 +106,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                     pNew.fMass = mFB;
                     pNew.u = (edotonmstar/mdotonmstar)/fb->dErgPerGmUnit;
                     pNew.uPred = pNew.u;
-                    pNew.c = sqrt(pNew.u);
+                    pNew.c = sqrt((5./3.*2/3.)*pNew.u);
                     pNew.PoverRho2 = 0;
                     pNew.uDot = 0;
                     pNew.uDotPdV = 0;

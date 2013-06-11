@@ -103,7 +103,7 @@
 #ifndef NODIFFUSIONTHERMAL
 /* Default -- thermal diffusion */
 #ifdef THERMALCOND 
-#if (1)
+#if (0)
 /* Harmonic average coeff */
 #define DIFFUSIONThermalCondBase() double dThermalCondSum = p->fThermalCond + q->fThermalCond; \
     double dThermalCond = ( dThermalCondSum <= 0 ? 0 : 4*p->fThermalCond*q->fThermalCond/(dThermalCondSum*p->fDensity*q->fDensity) );
@@ -120,7 +120,6 @@
       double diffTh = dThermalCond + \
           (2*smf->dThermalDiffusionCoeff*diffBase/(p->fDensity+q->fDensity)); \
       double diffu = diffTh*(p->uPred-q->uPred);                              \
-		if (p->fMass < 760 || q->fMass < 760) printf("DEBUGCOND: %e %e %e %e %e %e\n", p->uPred, q->uPred, p->fThermalCond, q->fThermalCond, p->fDensity, q->fDensity); \
       PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
       QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \
       DIFFUSIONThermaluNoncool(); }

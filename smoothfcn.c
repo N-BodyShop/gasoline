@@ -3032,7 +3032,6 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	    r2 = nnList[i].fDist2*ih2;
 	    DKERNEL(rs1,r2);
-		if (p->fMass < 760 || q->fMass < 760) printf("DEBUGR: %d %d %e %e %e\n", p->iOrder, q->iOrder, rs1, fNorm1, p->fDivv_Corrector);
 	    rs1 *= fNorm1;
 //#ifdef DRHODT
 	    rs1 *= p->fDivv_Corrector;
@@ -5438,11 +5437,27 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #else
     weight = rs*fNorm_u*q->fMass;
 #endif
-    if (p->fNSN == 0.0) q->uDotFB += weight*p->uDotFB;
+    if (p->fNSN == 0.0) q->uDotFB += weight*p->uDotFB;  /* uDot is erg/s not erg/g/s here */
     q->fMetals += weight*p->fSNMetals;
     q->fMFracOxygen += weight*p->fMOxygenOut;
     q->fMFracIron += weight*p->fMIronOut;
     q->fMass += weight*p->fMSN;
+#ifdef MASSNONCOOL
+    {
+    double fMassNoncool = q->fMassNoncool + weight*p->fMSN;
+    double deltaMassLoad = weight*p->fMSN*smf->dFBInitialMassLoad, uNoncool;
+    if (fMassNoncool+deltaMassLoad >= q->fMass) {
+        deltaMassLoad = q->fMass - fMassNoncool;
+        fMassNoncool = q->fMass;
+        }
+    else 
+        fMassNoncool += deltaMassLoad;
+    uNoncool = (q->uNoncool*q->fMassNoncool + weight*p->uDotFB*smf->dDeltaStarForm + deltaMassLoad*q->u)/fMassNoncool;
+    q->uNoncoolPred += (uNoncool-q->uNoncool);
+    q->uNoncool = uNoncool;
+    q->fMass = fMassNoncool;
+    }
+#endif
   }
 }
 
