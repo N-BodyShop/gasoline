@@ -274,6 +274,7 @@ struct parameters {
     double dThermalCondCoeff;
     double dThermalCondCoeffCode;
     double dThermalCondSatCoeff;
+    double dEtaDiffusion;
     double dDeltaSph;
     int    bConstantDiffusion;
 	int    bDoGas;
@@ -311,6 +312,9 @@ struct parameters {
     double SSF_dInitStarMass;
 	double SSF_dtCoolingShutoff;
     int SSF_bdivv;
+#endif
+#ifdef MASSNONCOOL
+    double dFBInitialMassLoad;
 #endif
 #ifdef STARFORM
 	STFM   stfm;

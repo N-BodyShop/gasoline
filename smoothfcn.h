@@ -69,6 +69,9 @@ typedef struct smfParameters {
     double dThermalDiffusionCoeff;
     int bConstantDiffusion;
 #endif
+#ifdef MASSNONCOOL
+    double dFBInitialMassLoad;
+#endif
 #ifdef STARFORM
     double dMinMassFrac;
     double dMaxGasMass;

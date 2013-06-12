@@ -170,7 +170,7 @@
         if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
 		if (absmu>q->mumax) q->mumax=absmu; \
 		visc_ = (ALPHA*(pc + q->c) + BETA*1.5*absmu); \
-		dt_ = smf->dtFacCourant*ph/visc_;     \
+		dt_ = smf->dtFacCourant*ph/(0.625*(pc + q->c)+0.375*visc_);     \
 		visc_ = SWITCHCOMBINE(p,q)*visc_ \
 		    *absmu/(pDensity + q->fDensity); }
 #else

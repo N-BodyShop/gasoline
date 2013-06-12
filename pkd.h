@@ -389,6 +389,9 @@ typedef struct chkParticle {
     FLOAT v[3];
 #ifdef GASOLINE
     FLOAT u;
+#ifdef MASSNONCOOL
+    FLOAT fMassNoncool;
+#endif
 #ifdef UNONCOOL
     FLOAT uNoncool;
 #endif
@@ -948,7 +951,7 @@ void pkdLowerSoundSpeed(PKD, double);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime );
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);
 int pkdSphCurrRung(PKD pkd, int iRung, int bGreater);
-void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, double dResolveJeans, int bViscosityLimitdt, double *pdtMinGas);
+void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, double dDiffCoeff, double dEtaDiffusion, double dResolveJeans, int bViscosityLimitdt, double *pdtMinGas);
 void pkdSinkStep(PKD pkd, double dtMax );
 void pkdSetSphStep(PKD pkd, double dt );
 void pkdSphViscosityLimiter(PKD pkd, int bOn, int bShockTracker);

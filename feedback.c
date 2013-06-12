@@ -82,7 +82,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
             double tstart = 4e6, tend = 30e6; /* yr */
             double mdotonmstar = 10*10/100./(tend-tstart); /* gm / gm / yr */
             double edotonmstar = 1e51/(100*2e33)/(tend-tstart); /* erg / gm / yr */
-            double mFB = 10*0.01*p->fMassForm; /* mass of fb particles (code units) */
+            double mFB = 0.025*p->fMassForm; /* mass of fb particles (code units) */
             double tFB0,tFB1,nFac;
             int nFB0,nFB1;
 
@@ -106,7 +106,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                     pNew.fMass = mFB;
                     pNew.u = (edotonmstar/mdotonmstar)/fb->dErgPerGmUnit;
                     pNew.uPred = pNew.u;
-                    pNew.c = sqrt(pNew.u);
+                    pNew.c = sqrt((5./3.*2/3.)*pNew.u);
                     pNew.PoverRho2 = 0;
                     pNew.uDot = 0;
                     pNew.uDotPdV = 0;
