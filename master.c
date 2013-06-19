@@ -1385,8 +1385,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 
 /* supernova constants */
 	fbInitialize(&msr->param.fb);
-        snInitialize(&msr->param.sn);
-        snInitConstants(msr->param.sn);
+    snInitialize(&msr->param.sn);
+    snInitConstants(msr->param.sn);
 	msr->param.iRandomSeed = 1;
 	prmAddParam(msr->prm,"iRandomSeed", 1, &msr->param.iRandomSeed,
 		    sizeof(int), "iRand",
@@ -2117,6 +2117,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
 	    msr->param.fb->dErgPerGmUnit = msr->param.dErgPerGmUnit;
 	    msr->param.fb->dInitStarMass = msr->param.stfm->dInitStarMass;
+#ifdef FBPARTICLE
+        msr->param.fb->dDelta = msr->param.dDelta;
+        msr->param.fb->dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
+        msr->param.fb->dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
+#endif
 #endif /* STARFORM */
 #ifdef SIMPLESF		
 	    assert(msr->param.SSF_dInitStarMass > 0.0);
@@ -2725,6 +2730,10 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef DTADJUST
 	fprintf(fp, " DTADJUST");
+#endif
+#ifdef TTEST
+    fprintf(stderr,"TTEST is not a valid macro\n");
+    assert(0); 
 #endif
 #ifdef DTTEST
 	fprintf(fp, " DTTEST=%g",DTTEST);
@@ -5427,6 +5436,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->Pext = msr->param.dPext;
     psmf->dtMin = FLOAT_MAXVAL; /* Read/Write */
     psmf->dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,psmf->a); 
+    psmf->dtFacDiffusion = 2*msr->param.dEtaDiffusion*psmf->a*psmf->a; 
     psmf->dEtaCourantLong = msr->param.dEtaCourantLong;
     psmf->dDelta = msr->param.dDelta;
 	{
@@ -8805,6 +8815,7 @@ void msrGetGasPressure(MSR msr, double dTime)
 	case GASMODEL_ADIABATIC:
 	case GASMODEL_ISOTHERMAL:
 	case  GASMODEL_COOLING:
+        in.gpc.iGasModel = in.iGasModel;
 		in.gpc.gamma = msr->param.dConstGamma;
 		in.gpc.gammam1 = in.gpc.gamma-1;
 		in.gpc.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
@@ -9546,7 +9557,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
     struct outFeedback outFB;
     double dTotMass = -1.0, dTotMetals = -1.0, dTotFe = -1.0, 
             dTotOx = -1.0, dTotEnergy = -1.0;
-    double dTotSNEnergy = 0.0;
+    double dTotSNEnergy = 0.0,a;
     int i;
     int iDum;
 
@@ -9554,10 +9565,10 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 
 	sec = msrTime();
 
-        msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, 
+    msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, 
             &dTotFe, &dTotOx, &dTotEnergy, "Form Stars");
-    if(msr->param.bStarForm){
-    
+
+    if(msr->param.bStarForm) {
         in.dTime = dTime;
         msr->param.stfm->dDeltaT = dDelta;
         in.stfm = *msr->param.stfm;
@@ -9574,6 +9585,9 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
             */
 	
         msrBuildTree(msr,1,dTotMass,1);
+#ifdef FBPARTICLE
+        msrActiveType(msr,TYPE_STAR|TYPE_GAS,TYPE_SMOOTHACTIVE); /* Density for star */
+#endif
         msrSmooth(msr,dTime,SMX_DENSITY,1);
         pstFormStars(msr->pst, &in, sizeof(in), &outFS, NULL);
 	/*
@@ -9633,6 +9647,11 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         inFB.dTime = dTime;
         inFB.dDelta = dDelta;
         inFB.fb  = *msr->param.fb;
+#ifdef FBPARTICLE
+        a = csmTime2Exp(msr->param.csm,dTime);
+        inFB.fb.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); 
+        inFB.fb.dtFacDiffusion = 2*msr->param.dEtaDiffusion*a*a; 
+#endif
         inFB.sn  = *msr->param.sn;
 		if (msr->param.bVDetails) printf("Calculate Feedback ...\n");
 		sec = msrTime();
@@ -9641,17 +9660,17 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		if(msr->param.bVDetails) {
 			printf("Feedback totals: mass, energy, metalicity\n");
 			for(i = 0; i < FB_NFEEDBACKS; i++){
-			  printf("feedback %d: %g %g %g\n", i,
-					   outFB.fbTotals[i].dMassLoss,
-					   outFB.fbTotals[i].dEnergy,
-					   outFB.fbTotals[i].dMassLoss != 0.0 ?
-					   outFB.fbTotals[i].dMetals
-					   /outFB.fbTotals[i].dMassLoss : 0.0);
-                                dTotMetals += outFB.fbTotals[i].dMetals;
-                                dTotFe += outFB.fbTotals[i].dMIron;
-                                dTotOx += outFB.fbTotals[i].dMOxygen;
-                                dTotSNEnergy += outFB.fbTotals[i].dEnergy;
-                                }
+                printf("feedback %d: %g %g %g\n", i,
+                    outFB.fbTotals[i].dMassLoss,
+                    outFB.fbTotals[i].dEnergy,
+                    outFB.fbTotals[i].dMassLoss != 0.0 ?
+                    outFB.fbTotals[i].dMetals
+                    /outFB.fbTotals[i].dMassLoss : 0.0);
+                dTotMetals += outFB.fbTotals[i].dMetals;
+                dTotFe += outFB.fbTotals[i].dMIron;
+                dTotOx += outFB.fbTotals[i].dMOxygen;
+                dTotSNEnergy += outFB.fbTotals[i].dEnergy;
+                }
 			}
 
 
@@ -9659,6 +9678,9 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		 * spread mass lost from FB, (along with energy and metals)
 		 * to neighboring gas particles.
 		 */
+#ifdef FBPARTICLE
+        msrAddDelParticles(msr);
+#else
 		if (msr->param.bVDetails) printf("Distribute FB Energy ...\n");
 		msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
 		msrBuildTree(msr,1,-1.0,1);
@@ -9667,8 +9689,6 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		msrActiveType(msr, TYPE_STAR, TYPE_SMOOTHACTIVE);
 		assert(msr->nSmoothActive == msr->nStar);
 		msrSmooth(msr, dTime, SMX_DIST_FB_ENERGY, 1);
-#ifdef FBPARTICLE
-        msrAddDelParticles(msr);
 #endif
 		msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, &dTotFe, 
                     &dTotOx, &dTotSNEnergy, "Form stars: after feedback");

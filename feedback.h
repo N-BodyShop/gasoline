@@ -37,11 +37,18 @@ typedef struct fbeffects {
 #define FB_NFEEDBACKS 4
 
 typedef struct fbContext 
-{
+    {
     double dGmUnit;		/* system mass in grams */
     double dSecUnit;		/* system time in seconds */
     double dErgPerGmUnit;	/* system specific energy in ergs/gm */
     double dInitStarMass; 
+#ifdef FBPARTICLE
+    double dDelta; /* overall timestep */
+    double dThermalCondCoeffCode;
+	double dThermalCondSatCoeff;
+    double dtFacDiffusion;
+    double dtFacCourant;
+#endif
     }  * FB;
 
 void fbInitialize(FB *pfb);

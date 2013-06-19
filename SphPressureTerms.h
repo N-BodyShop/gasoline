@@ -91,7 +91,7 @@
 #define DIFFUSIONThermaluNoncool()  
 #endif
 #ifdef DIFFUSIONPRICE
-#define DIFFUSIONThermal() \
+#define DIFFUSIONThermal(dt_) \
     { double irhobar = 2/(p->fDensity+q->fDensity);     \
      double vsig = sqrt(fabs(qPoverRho2*q->fDensity*q->fDensity - pPoverRho2*p->fDensity*p->fDensity)*irhobar); \
      double diffTh = smf->dThermalDiffusionCoeff*0.5*(ph+sqrt(0.25*BALL2(q)))*irhobar*vsig; \
@@ -115,16 +115,17 @@
 #define DIFFUSIONThermalCondBase() double dThermalCond=0;
 #endif
 
-#define DIFFUSIONThermal() \
+#define DIFFUSIONThermal(dt_) \
     { DIFFUSIONThermalCondBase(); \
       double diffTh = dThermalCond + \
           (2*smf->dThermalDiffusionCoeff*diffBase/(p->fDensity+q->fDensity)); \
-      double diffu = diffTh*(p->uPred-q->uPred);                              \
+      double dt_diff, diffu = diffTh*(p->uPred-q->uPred);                \
+      if (diffTh > 0 && (dt_diff = smf->dtFacDiffusion*ph*ph*p->fDensity/diffTh) < dt_) dt_ = dt_diff; \
       PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
       QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \
       DIFFUSIONThermaluNoncool(); }
 #else
-#define DIFFUSIONThermal()
+#define DIFFUSIONThermal(dt_)
 #endif
 #endif
 
@@ -206,7 +207,6 @@
             PACTIVE( Accp += visc; );
             QACTIVE( Accq += visc; );
 		}
-        SETDTNEW_PQ(dt);
 	    PACTIVE( Accp *= rq*aFac; );/* aFac - convert to comoving acceleration */
 	    QACTIVE( Accq *= rp*aFac; );
 	    PACTIVE( ACCEL(p,0) -= Accp * dx; );
@@ -217,11 +217,12 @@
 	    QACTIVE( ACCEL(q,2) += Accq * dz; );
 
         DIFFUSIONBase();
-        DIFFUSIONThermal();
+        DIFFUSIONThermal(dt);
         DIFFUSIONMetalsBase();
         DIFFUSIONMetals();
         DIFFUSIONMetalsOxygen();
         DIFFUSIONMetalsIron();
         DIFFUSIONMass();
  	    DIFFUSIONVelocity(); 
+        SETDTNEW_PQ(dt);
 
