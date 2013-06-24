@@ -150,6 +150,7 @@ typedef struct particle {
     FLOAT fMetalsPred;
 #ifdef THERMALCOND
     FLOAT fThermalCond;
+    FLOAT fThermalLength;
 #endif
 #ifdef MASSDIFF
     FLOAT fMassDot;
@@ -276,6 +277,19 @@ typedef struct particle {
 #define GAMMA_JEANS    (2.0)
 #define GAMMA_NONCOOL  (5./3.)
 
+#ifdef GLASS
+struct GlassData {
+    /* Glass */
+	double dGlassPoverRhoL;
+	double dGlassPoverRhoR;
+	double dGlassxL;
+	double dGlassxR;
+	double dxBoundL;
+	double dxBoundR;
+    double dGamma;
+    };
+#endif
+
 struct GasPressureContext {
     int iGasModel;
   /* Adiabatic */
@@ -292,6 +306,8 @@ struct GasPressureContext {
 #ifdef THERMALCOND
     double dThermalCondCoeffCode;
     double dThermalCondSatCoeff;
+    double dThermalCond2CoeffCode;
+    double dThermalCond2SatCoeff;
 #endif
     };
 
@@ -707,19 +723,6 @@ enum GasModel {
 	GASMODEL_COOLING, 
 	GASMODEL_GLASS
 	}; 
-
-#ifdef GLASS
-struct GlassData {
-    /* Glass */
-	double dGlassPoverRhoL;
-	double dGlassPoverRhoR;
-	double dGlassxL;
-	double dGlassxR;
-	double dxBoundL;
-	double dxBoundR;
-    double dGamma;
-    };
-#endif
 
 
 #define PKD_ORDERTEMP	256

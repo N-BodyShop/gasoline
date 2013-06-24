@@ -120,7 +120,7 @@
       double diffTh = dThermalCond + \
           (2*smf->dThermalDiffusionCoeff*diffBase/(p->fDensity+q->fDensity)); \
       double dt_diff, diffu = diffTh*(p->uPred-q->uPred);                \
-      if (diffTh > 0 && (dt_diff = smf->dtFacDiffusion*ph*ph*p->fDensity/diffTh) < dt_) dt_ = dt_diff; \
+      if (diffTh > 0 && (dt_diff = smf->dtFacDiffusion*ph*ph/(diffTh*p->fDensity)) < dt_) dt_ = dt_diff; \
       PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
       QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \
       DIFFUSIONThermaluNoncool(); }

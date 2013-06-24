@@ -6389,6 +6389,10 @@ double pkdPoverRhoFloorJeansParticle(PKD pkd, double dResolveJeans, PARTICLE *p)
 void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p, 
     double *pPoverRhoFloorJeans, double *pPoverRhoNoncool, double *pPoverRhoGas, double *pcGas ) 
     {
+#ifdef PCONST
+    p->u = PCONST/(pgpc->gammam1*p->fDensity);
+    p->uPred = p->u;
+#endif
 #ifdef MASSNONCOOL
     {
     double frac = p->fMassNoncool/p->fMass;
@@ -6424,9 +6428,15 @@ void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *
 
 void  pkdSetThermalCond(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p) 
     {
-    double fThermalCond = pgpc->dThermalCondCoeffCode*pow(p->uPred,2.5);
-    double fThermalCondSat = pgpc->dThermalCondSatCoeff*p->fDensity*p->c*sqrt(0.25*p->fBall2);
-    p->fThermalCond = (fThermalCond < fThermalCondSat ? fThermalCond : fThermalCondSat);
+    double fThermalCond = pgpc->dThermalCondCoeffCode*pow(p->uPred,2.5); /* flux = coeff grad u   coeff ~ flux x h/u */ 
+    double fThermalCond2 = pgpc->dThermalCond2CoeffCode*pow(p->uPred,0.5);
+    double fSat = p->fDensity*p->c*p->fThermalLength; /* Max flux x L/u */
+    double fThermalCondSat = pgpc->dThermalCondSatCoeff*fSat;
+    double fThermalCond2Sat = pgpc->dThermalCond2SatCoeff*fSat;
+
+//    printf("Saturated %d %g %g %g %g %g %g %g %g %g\n",p->iOrder,p->r[0],p->fDensity,p->uPred/4.80258,fThermalCond,fThermalCond2,fThermalCondSat,fThermalCond2Sat,p->fThermalLength,sqrt(p->fBall2*0.25));
+    p->fThermalCond = (fThermalCond < fThermalCondSat ? fThermalCond : fThermalCondSat) +
+        (fThermalCond2 < fThermalCond2Sat ? fThermalCond2 : fThermalCond2Sat);
     }
 
 
@@ -6696,6 +6706,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 //        if (p->iOrder == 32773) 
 //            fprintf(stderr,"PROB %d: u %g %g c %g h %g divv %g rho %g Z %g\n",p->iOrder,p->u,p->uPred,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals);
         if(pkdIsGas(pkd, p)) {
+#ifdef FBPARTICLE
             if (p->iOrder > 32767) {
                 double T;
 #ifndef NOCOOLING
@@ -6703,7 +6714,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 #endif
                 fprintf(stderr,"FBP %d: u %g T %g %g c %g h %g divv %g rho %g Z %g dtdiff %g dt %g %g\n",p->iOrder,p->uPred,p->uPred/4802.57,T,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals,p->uPred/(fabs(p->uDotDiff)+1e-20),p->dt,p->fThermalCond);
                 }
-
+#endif
 
             if (TYPEQueryACTIVE(p)) {
                 ph = sqrt(0.25*p->fBall2);

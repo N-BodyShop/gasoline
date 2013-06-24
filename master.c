@@ -1179,11 +1179,19 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dThermalCondCoeff = 6.1e-7;
 	prmAddParam(msr->prm,"dThermalCondCoeff",2,&msr->param.dThermalCondCoeff,
 				sizeof(double),"thermalcond",
-				"<Coefficient in Thermal Conductivity, e.g. 6.1e-7 > = 0");
+				"<Coefficient in Thermal Conductivity (electrons), e.g. 6.1e-7 > = 0");
 	msr->param.dThermalCondSatCoeff = 17;
 	prmAddParam(msr->prm,"dThermalCondSatCoeff",2,&msr->param.dThermalCondSatCoeff,
 				sizeof(double),"thermalcondsat",
 				"<Coefficient in Saturated Thermal Conductivity, e.g. 17 > = 0");
+	msr->param.dThermalCond2Coeff = 2.5e3;
+	prmAddParam(msr->prm,"dThermalCond2Coeff",2,&msr->param.dThermalCond2Coeff,
+				sizeof(double),"thermalcond2",
+				"<Coefficient in Thermal Conductivity 2 (atoms), e.g. 2.5e3 > = 0");
+	msr->param.dThermalCond2SatCoeff = 0.5;
+	prmAddParam(msr->prm,"dThermalCond2SatCoeff",2,&msr->param.dThermalCond2SatCoeff,
+				sizeof(double),"thermalcond2sat",
+				"<Coefficient in Saturated Thermal Conductivity 2, e.g. 17 > = 0");
 	msr->param.dEtaDiffusion = 0.1;
 	prmAddParam(msr->prm,"dEtaDiffusion",2,&msr->param.dEtaDiffusion,sizeof(double),"etadiff",
 				"<Diffusion dt criterion> = 0.1");
@@ -1998,14 +2006,23 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
     /* Convert K(T) to k(u)  erg s^-1 (erg/gm)^-7/2 cm^-1 */
     msr->param.dThermalCondCoeffCode = msr->param.dThermalCondCoeff
         *pow(1.5*KBOLTZ/(0.6*MHYDR),-3.5);
+    /* Convert K2(T) to k2(u)  erg s^-1 (erg/gm)^-3/2 cm^-1 */
+    msr->param.dThermalCond2CoeffCode = msr->param.dThermalCond2Coeff
+        *pow(1.5*KBOLTZ/(0.6*MHYDR),-1.5);
     /* Convert to code units */
     msr->param.dThermalCondCoeffCode /= 
         pow(msr->param.dErgPerGmUnit,-3.5)
         *msr->param.dErgPerGmUnit*msr->param.dGmPerCcUnit
         *pow(msr->param.dKpcUnit*KPCCM,2.0)
         /msr->param.dSecUnit;
+    msr->param.dThermalCond2CoeffCode /= 
+        pow(msr->param.dErgPerGmUnit,-1.5)
+        *msr->param.dErgPerGmUnit*msr->param.dGmPerCcUnit
+        *pow(msr->param.dKpcUnit*KPCCM,2.0)
+        /msr->param.dSecUnit;
 #else
     msr->param.dThermalCondCoeffCode = 0;
+    msr->param.dThermalCond2CoeffCode = 0;
 #endif
 
 #ifndef PEXT
@@ -2121,6 +2138,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
         msr->param.fb->dDelta = msr->param.dDelta;
         msr->param.fb->dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
         msr->param.fb->dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
+        msr->param.fb->dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode;
+        msr->param.fb->dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff;
 #endif
 #endif /* STARFORM */
 #ifdef SIMPLESF		
@@ -2964,6 +2983,8 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dThermalDiffusionCoeff: %g",msr->param.dThermalDiffusionCoeff);
 	fprintf(fp," dThermalCondCoeff: %g",msr->param.dThermalCondCoeff);
 	fprintf(fp," dThermalCondSatCoeff: %g",msr->param.dThermalCondSatCoeff);
+	fprintf(fp," dThermalCond2Coeff: %g",msr->param.dThermalCond2Coeff);
+	fprintf(fp," dThermalCond2SatCoeff: %g",msr->param.dThermalCond2SatCoeff);
 	fprintf(fp," dEtaDiffusion: %g",msr->param.dEtaDiffusion);
 #ifdef DENSITYU
 	fprintf(fp," dvturb: %g",msr->param.dvturb);
@@ -6084,6 +6105,8 @@ void msrSetuNonCoolContext( MSR msr, UNCC *puncc, double a ) {
 #ifdef THERMALCOND
     puncc->gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
     puncc->gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
+    puncc->gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode;
+    puncc->gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff;
 #endif
     }
 
@@ -8823,6 +8846,8 @@ void msrGetGasPressure(MSR msr, double dTime)
 #ifdef THERMALCOND
         in.gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
         in.gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
+        in.gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode;
+        in.gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff;
 #endif
 		/*
 		 * If self gravitating, resolve the Jeans Mass

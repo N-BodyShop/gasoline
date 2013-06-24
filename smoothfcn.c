@@ -4271,7 +4271,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT dvxdx , dvxdy , dvxdz, dvydx , dvydy , dvydz, dvzdx , dvzdy , dvzdz; /* comoving shear tensor */
 	FLOAT dvx,dvy,dvz,dx,dy,dz,trace;
 	FLOAT grx,gry,grz,gnorm,dvds,dvdr,c;
-#ifdef RTDENSITY
+#if defined(RTDENSITY) || defined(THERMALCOND)
 	FLOAT fDensityU = 0;
 #endif
 //#ifdef DRHODT
@@ -4312,7 +4312,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		KERNEL(rs,r2);
 #endif
 		fDensity += rs*q->fMass;
-#ifdef RTDENSITY
+#if defined(RTDENSITY) || defined(THERMALCOND)
 		fDensityU += rs*q->fMass*q->uPred;
 #endif
 		DKERNEL(rs1,r2); /* rs1 is negative */
@@ -4342,7 +4342,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 //		divvbad += (dx*dx+dy*dy+dz*dz)*rs1/p->fDensity;
 #endif
 //#endif
-		grx += (-p->uPred + q->uPred)*dx*rs1; /* Grad P estimate ( use divvnorm now? ) */
+		grx += (-p->uPred + q->uPred)*dx*rs1; /* Grad P estimate ( use divvnorm now? ) -- is it actually rho grad u ? */
 		gry += (-p->uPred + q->uPred)*dy*rs1;
 		grz += (-p->uPred + q->uPred)*dz*rs1;
 		}
@@ -4350,12 +4350,22 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 /*	printf("TEST %d  %g %g  %g %g %g\n",p->iOrder,p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]);*/
 	fDensity*=fNorm;
-#ifdef RTDENSITY	
+#if defined(RTDENSITY) || defined(THERMALCOND)
 	fDensityU*=fNorm;
+#endif
+#ifdef RTDENSITY	
 	p->fDensity = fDensityU/p->uPred; 
 #else
 	p->fDensity = fDensity; 
 #endif
+#ifdef THERMALCOND
+    {
+    double rhogradu=sqrt(grx*grx+gry*gry+grz*grz)*fNorm1;
+    p->fThermalLength = (rhogradu != 0 ? fDensityU/rhogradu : FLT_MAX);
+    if (p->fThermalLength*ih < 1) p->fThermalLength = 1/ih;
+    }
+#endif
+
 	trace = dvxdx+dvydy+dvzdz; /* same sign as divv */
 
 	fNorm1 = (divvnorm != 0 ? 3/fabs(divvnorm) : 0); /* keep Norm positive consistent w/ std 1/rho norm */
