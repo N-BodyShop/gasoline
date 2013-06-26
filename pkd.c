@@ -4389,7 +4389,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     p->u = p->u + p->uDot*duDelta;
                     if (p->u < 0) {
                         FLOAT uold = p->u - p->uDot*duDelta;
+#ifdef FBPARTICLE
                         fprintf(stderr,"FBP Negative! %d: %g %g %g %g\n",p->iOrder,uold,p->u,p->uDot,duDelta);
+#endif
                         p->uPred = uold*exp(p->uDot*duPredDelta/uold);
                         p->u = uold*exp(p->uDot*duDelta/uold);
                         }
@@ -6782,6 +6784,8 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
             /* h^2/(2.77Q) Linear stability from Brookshaw */
                 if (p->fThermalCond > 0 || (p->diff > 0 && dDiffCoeff > 0)) {
                     dTD = dEtaDiffusion*ph*ph*dCosmoFac*dCosmoFac
+                        /(dDiffCoeff*p->diff + ph/p->fThermalLength*p->fThermalCond/p->fDensity);  
+                    dTD = dEtaDiffusion*ph*ph*dCosmoFac*dCosmoFac
                         /(dDiffCoeff*p->diff + p->fThermalCond/p->fDensity);  
                     DTSAVE(dTD,"DIF");
                     if (dTD < dT) dT = dTD;
@@ -7454,7 +7458,9 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 			  p->uPred = p->uPred + p->uDot*duDelta;
 			  if (p->uPred < 0) {
 			      FLOAT uold = p->uPred - p->uDot*duDelta;
+#ifdef FBPARTICLE
                   fprintf(stderr,"FBP Negative! %d: %g %g %g %g\n",p->iOrder,uold,p->u,p->uDot,duDelta);
+#endif
 			      p->uPred = uold*exp(p->uDot*duDelta/uold);
 			      }
 #ifdef UNONCOOL
