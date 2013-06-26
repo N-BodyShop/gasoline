@@ -66,6 +66,7 @@ double msrTime(void) {
 	}
 #endif
 
+static double dPreviousTime;
 #define DEN_CGS_SYS 1.6831e6 /* multiply density in cgs by this to get
 								density in system units (AU, M_Sun) */
 
@@ -3995,7 +3996,7 @@ void msrSetSoft(MSR msr,double dSoft)
 	pstSetSoft(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
-void msrSetSink(MSR msr) 
+ void msrSetSink(MSR msr,double dTime) 
 {
     struct inSetSink in;
     struct outSetSink out;
@@ -4005,6 +4006,7 @@ void msrSetSink(MSR msr)
 	  pstSetSink(msr->pst,&in,sizeof(in),&out,NULL);
 	  if (msr->param.bVDetails) printf("Identified %d sink particles\n",out.nSink);
 	  msr->nSink = out.nSink;
+	  dPreviousTime = dTime;
 	  }
     }
 
@@ -8463,7 +8465,10 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
     /* I assume sink creation is rarer so the tree will be ok after this call most of the time */
     msrFormSinks(msr, dTime, dDelta, iKickRung ); 
    
-    if (msr->nSink == 0) return;
+    if (msr->nSink == 0){
+      dPreviousTime = dTime;
+      return;
+    }
     if (msr->param.bBHSink && dDelta <= 0.0) return;
 
     sec = msrTime();
@@ -8486,6 +8491,9 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	msr->param.iSinkCurrentRung = iKickRung;
 
 	if (msr->param.bBHSink) {
+	    /* Make sure the BH timestep is correct for accretion
+	     calculations JMB 6/7/13  */
+	    msr->param.dSinkCurrentDelta = dTime - dPreviousTime;
 	    /* Smooth Bondi-Hoyle Accretion: radius set by nSmooth */
 	    msrSmooth(msr, dTime, SMX_BHDENSITY, 1);
 	    msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
@@ -8509,6 +8517,7 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	    else {
 		msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
 		}
+	    dPreviousTime = dTime;
 	    }
 	else {
 	    /* Fixed Radius Accretion: particle by particle (cf. Bate) */
