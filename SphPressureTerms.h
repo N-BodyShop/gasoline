@@ -91,7 +91,7 @@
 #define DIFFUSIONThermaluNoncool()  
 #endif
 #ifdef DIFFUSIONPRICE
-#define DIFFUSIONThermal() \
+#define DIFFUSIONThermal(dt_) \
     { double irhobar = 2/(p->fDensity+q->fDensity);     \
      double vsig = sqrt(fabs(qPoverRho2*q->fDensity*q->fDensity - pPoverRho2*p->fDensity*p->fDensity)*irhobar); \
      double diffTh = smf->dThermalDiffusionCoeff*0.5*(ph+sqrt(0.25*BALL2(q)))*irhobar*vsig; \
@@ -109,22 +109,26 @@
     double dThermalCond = ( dThermalCondSum <= 0 ? 0 : 4*p->fThermalCond*q->fThermalCond/(dThermalCondSum*p->fDensity*q->fDensity) );
 #else
 /* Arithmetic average coeff */
-#define DIFFUSIONThermalCondBase() double dThermalCond = (p->fThermalCond + q->fThermalCond)/(p->fDensity*q->fDensity); 
+#define DIFFUSIONThermalCondBase(dt_) \
+      double dThermalCond = (p->fThermalCond + q->fThermalCond)/(p->fDensity*q->fDensity); \
+      if (dThermalCond > 0 && (dt_diff = smf->dtFacDiffusion*ph*p->fThermalLength/(dThermalCond*p->fDensity)) < dt_) dt_ = dt_diff; 
+
 #endif
 #else
-#define DIFFUSIONThermalCondBase() double dThermalCond=0;
+#define DIFFUSIONThermalCondBase(dt_) double dThermalCond=0;
 #endif
 
-#define DIFFUSIONThermal() \
-    { DIFFUSIONThermalCondBase(); \
-      double diffTh = dThermalCond + \
-          (2*smf->dThermalDiffusionCoeff*diffBase/(p->fDensity+q->fDensity)); \
-      double diffu = diffTh*(p->uPred-q->uPred);                              \
+#define DIFFUSIONThermal(dt_) \
+    { double diffTh = (2*smf->dThermalDiffusionCoeff*diffBase/(p->fDensity+q->fDensity)); \
+      double dt_diff, diffu;                                                  \
+      DIFFUSIONThermalCondBase(dt_);                                    \
+      if (diffTh > 0 && (dt_diff= smf->dtFacDiffusion*ph*ph/(diffTh*p->fDensity)) < dt_) dt_ = dt_diff; \
+      diffu = (diffTh+dThermalCond)*(p->uPred-q->uPred);              \
       PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
       QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \
       DIFFUSIONThermaluNoncool(); }
 #else
-#define DIFFUSIONThermal()
+#define DIFFUSIONThermal(dt_)
 #endif
 #endif
 
@@ -170,7 +174,7 @@
         if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
 		if (absmu>q->mumax) q->mumax=absmu; \
 		visc_ = (ALPHA*(pc + q->c) + BETA*1.5*absmu); \
-		dt_ = smf->dtFacCourant*ph/visc_;     \
+		dt_ = smf->dtFacCourant*ph/(0.625*(pc + q->c)+0.375*visc_);     \
 		visc_ = SWITCHCOMBINE(p,q)*visc_ \
 		    *absmu/(pDensity + q->fDensity); }
 #else
@@ -206,7 +210,6 @@
             PACTIVE( Accp += visc; );
             QACTIVE( Accq += visc; );
 		}
-        SETDTNEW_PQ(dt);
 	    PACTIVE( Accp *= rq*aFac; );/* aFac - convert to comoving acceleration */
 	    QACTIVE( Accq *= rp*aFac; );
 	    PACTIVE( ACCEL(p,0) -= Accp * dx; );
@@ -217,11 +220,12 @@
 	    QACTIVE( ACCEL(q,2) += Accq * dz; );
 
         DIFFUSIONBase();
-        DIFFUSIONThermal();
+        DIFFUSIONThermal(dt);
         DIFFUSIONMetalsBase();
         DIFFUSIONMetals();
         DIFFUSIONMetalsOxygen();
         DIFFUSIONMetalsIron();
         DIFFUSIONMass();
  	    DIFFUSIONVelocity(); 
+        SETDTNEW_PQ(dt);
 

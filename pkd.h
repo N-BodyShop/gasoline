@@ -150,6 +150,7 @@ typedef struct particle {
     FLOAT fMetalsPred;
 #ifdef THERMALCOND
     FLOAT fThermalCond;
+    FLOAT fThermalLength;
 #endif
 #ifdef MASSDIFF
     FLOAT fMassDot;
@@ -276,7 +277,21 @@ typedef struct particle {
 #define GAMMA_JEANS    (2.0)
 #define GAMMA_NONCOOL  (5./3.)
 
+#ifdef GLASS
+struct GlassData {
+    /* Glass */
+	double dGlassPoverRhoL;
+	double dGlassPoverRhoR;
+	double dGlassxL;
+	double dGlassxR;
+	double dxBoundL;
+	double dxBoundR;
+    double dGamma;
+    };
+#endif
+
 struct GasPressureContext {
+    int iGasModel;
   /* Adiabatic */
 	double gamma;
 	double gammam1;
@@ -291,6 +306,8 @@ struct GasPressureContext {
 #ifdef THERMALCOND
     double dThermalCondCoeffCode;
     double dThermalCondSatCoeff;
+    double dThermalCond2CoeffCode;
+    double dThermalCond2SatCoeff;
 #endif
     };
 
@@ -706,19 +723,6 @@ enum GasModel {
 	GASMODEL_GLASS
 	}; 
 
-#ifdef GLASS
-struct GlassData {
-    /* Glass */
-	double dGlassPoverRhoL;
-	double dGlassPoverRhoR;
-	double dGlassxL;
-	double dGlassxR;
-	double dxBoundL;
-	double dxBoundR;
-    double dGamma;
-    };
-#endif
-
 
 #define PKD_ORDERTEMP	256
 
@@ -943,6 +947,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 void pkdUpdateShockTracker(PKD,double, double, double);
 double pkdDtFacCourant( double dEtaCourant, double dCosmoFac );
 double pkdPoverRhoFloorJeansParticle(PKD pkd, double dResolveJeans, PARTICLE *p);
+void pkdSetThermalCond(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p);
 void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p, 
     double *pPoverRhoFloorJeans, double *pPoverRhoNoncool, double *pPoverRhoGas, double *pcGas );
 void pkdGasPressure(PKD, struct GasPressureContext *pgpc);
@@ -951,7 +956,7 @@ void pkdLowerSoundSpeed(PKD, double);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime );
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);
 int pkdSphCurrRung(PKD pkd, int iRung, int bGreater);
-void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, double dEtaThermalCond, double dResolveJeans, int bViscosityLimitdt, double *pdtMinGas);
+void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, double dDiffCoeff, double dEtaDiffusion, double dResolveJeans, int bViscosityLimitdt, double *pdtMinGas);
 void pkdSinkStep(PKD pkd, double dtMax );
 void pkdSetSphStep(PKD pkd, double dt );
 void pkdSphViscosityLimiter(PKD pkd, int bOn, int bShockTracker);

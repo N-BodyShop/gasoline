@@ -1139,6 +1139,9 @@ void pstSetNParts(PST, void *, int, void *, int *);
 struct inGetGasPressure {
 	enum GasModel iGasModel; 
     struct GasPressureContext gpc;
+#ifdef GLASS
+    struct GlassData g;
+#endif
 	};
 
 /* PST_GETGASPRESSURE */
@@ -1620,7 +1623,8 @@ struct inSphStep {
     double dCosmoFac;
     double dEtaCourant;
     double dEtauDot;
-    double dEtaThermalCond;
+    double dDiffCoeff;
+    double dEtaDiffusion;
     double dResolveJeans;
     int bViscosityLimitdt;
     };

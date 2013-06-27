@@ -45,6 +45,7 @@ typedef struct smfParameters {
     double uMin;
     double dtMin; /* Read/Write */
     double dtFacCourant;
+    double dtFacDiffusion;
     double dEtaCourantLong;
     double dDelta;
     int bGeometric;
@@ -64,6 +65,7 @@ typedef struct smfParameters {
     double dSinkFormDivAccCoeff;
     double dSinkTimeEligible;
     double dTime;
+    double dEvapCoeffCode;
 #ifdef DIFFUSION
     double dMetalDiffusionCoeff;
     double dThermalDiffusionCoeff;
