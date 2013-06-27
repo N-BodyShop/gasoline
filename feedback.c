@@ -125,8 +125,10 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                     gpc.dThermalCond2CoeffCode = fb->dThermalCond2CoeffCode;
                     gpc.dThermalCond2SatCoeff = fb->dThermalCond2SatCoeff;
                     pkdSetThermalCond(pkd, &gpc, &pNew);
-                    dt_diff = fb->dtFacDiffusion*ph*ph*p->fDensity/2*(pNew.fThermalCond); /* gas density at star */
-                    if (dt_diff < dt) dt = dt_diff;   
+					if (pNew.fThermalCond > 0) {
+						dt_diff = fb->dtFacDiffusion*ph*ph*p->fDensity/(2*pNew.fThermalCond); /* gas density at star */
+						if (dt_diff < dt) dt = dt_diff;   
+					}
 #endif
 #if (1)
                     pNew.dt = dt; 

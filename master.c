@@ -9680,6 +9680,13 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 	printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
 	LOGTIMINGUPDATE( dsec, TIMING_StarForm );
         }
+#ifdef FBPARTICLE
+	else {
+        msrBuildTree(msr,1,dTotMass,1);
+        msrActiveType(msr,TYPE_STAR|TYPE_GAS,TYPE_SMOOTHACTIVE); /* Density for star */
+        msrSmooth(msr,dTime,SMX_DENSITY,1);
+	}
+#endif
     /*
      * Calculate energy of SN for any stars for the next timestep.  This
      * requires looking at past star forming events.  Also calculate
