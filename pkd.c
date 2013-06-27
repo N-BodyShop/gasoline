@@ -523,6 +523,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				*/
 				xdr_float(&xdrs,&fTmp);
 				vTemp = fTmp;
+#ifdef FBPARTICLE
+                if (fTmp > 1e5) TYPESet(p, TYPE_FEEDBACK);
+#endif
 				p->u = dTuFac*vTemp;
 				p->uPred = dTuFac*vTemp;
 // Special purpose hack for testing noncooling
@@ -4389,6 +4392,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     p->u = p->u + p->uDot*duDelta;
                     if (p->u < 0) {
                         FLOAT uold = p->u - p->uDot*duDelta;
+#ifdef FBPARTICLE
+                        fprintf(stderr,"FBP Negative! %d: %g %g %g %g\n",p->iOrder,uold,p->u,p->uDot,duDelta);
+#endif
                         p->uPred = uold*exp(p->uDot*duPredDelta/uold);
                         p->u = uold*exp(p->uDot*duDelta/uold);
                         }
@@ -6704,7 +6710,19 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
     *pdtMinGas = DBL_MAX;
     for(i=0;i<pkdLocal(pkd);++i) {
         p = &pkd->pStore[i];
+//        if (p->iOrder == 32773) 
+//            fprintf(stderr,"PROB %d: u %g %g c %g h %g divv %g rho %g Z %g\n",p->iOrder,p->u,p->uPred,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals);
         if(pkdIsGas(pkd, p)) {
+#ifdef FBPARTICLE
+            if (p->iOrder > 32767) {
+                double T;
+#ifndef NOCOOLING
+                T = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
+#endif
+                fprintf(stderr,"FBP %d: u %g T %g %g c %g h %g divv %g rho %g Z %g dtdiff %g dt %g\n",p->iOrder,p->uPred,p->uPred/4802.57,T,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals,p->uPred/(fabs(p->uDotDiff)+1e-20),p->dt);
+                }
+#endif
+
             if (TYPEQueryACTIVE(p)) {
                 ph = sqrt(0.25*p->fBall2);
 #ifdef SINKING

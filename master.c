@@ -2148,6 +2148,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
 	    msr->param.fb->dErgPerGmUnit = msr->param.dErgPerGmUnit;
 	    msr->param.fb->dInitStarMass = msr->param.stfm->dInitStarMass;
+#ifdef FBPARTICLE
+        msr->param.fb->dDelta = msr->param.dDelta;
+        msr->param.fb->dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
+        msr->param.fb->dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
+        msr->param.fb->dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode;
+        msr->param.fb->dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff;
+#endif
 #endif /* STARFORM */
 #ifdef SIMPLESF		
 	    assert(msr->param.SSF_dInitStarMass > 0.0);
@@ -9621,6 +9628,9 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
             */
 	
         msrBuildTree(msr,1,dTotMass,1);
+#ifdef FBPARTICLE
+        msrActiveType(msr,TYPE_STAR|TYPE_GAS,TYPE_SMOOTHACTIVE); /* Density for star */
+#endif
         msrSmooth(msr,dTime,SMX_DENSITY,1);
         pstFormStars(msr->pst, &in, sizeof(in), &outFS, NULL);
 	/*
@@ -9680,6 +9690,11 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         inFB.dTime = dTime;
         inFB.dDelta = dDelta;
         inFB.fb  = *msr->param.fb;
+#ifdef FBPARTICLE
+        a = csmTime2Exp(msr->param.csm,dTime);
+        inFB.fb.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); 
+        inFB.fb.dtFacDiffusion = 2*msr->param.dEtaDiffusion*a*a; 
+#endif
         inFB.sn  = *msr->param.sn;
 		if (msr->param.bVDetails) printf("Calculate Feedback ...\n");
 		sec = msrTime();
@@ -9706,6 +9721,9 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		 * spread mass lost from FB, (along with energy and metals)
 		 * to neighboring gas particles.
 		 */
+#ifdef FBPARTICLE
+        msrAddDelParticles(msr);
+#else
 		if (msr->param.bVDetails) printf("Distribute FB Energy ...\n");
 		msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
 		msrBuildTree(msr,1,-1.0,1);
@@ -9714,11 +9732,21 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		msrActiveType(msr, TYPE_STAR, TYPE_SMOOTHACTIVE);
 		assert(msr->nSmoothActive == msr->nStar);
 		msrSmooth(msr, dTime, SMX_DIST_FB_ENERGY, 1);
-#ifdef FBPARTICLE
-        msrAddDelParticles(msr);
 #endif
 		msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, &dTotFe, 
                     &dTotOx, &dTotSNEnergy, "Form stars: after feedback");
+#ifdef PROMOTE
+		if (msr->param.bVDetails) printf("Promote cold shell to hot ...\n");
+        if (!(msr->iTreeType == MSR_TREE_DENSITY)) {
+            msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
+            msrBuildTree(msr,1,-1.0,1);
+            }
+        msrResetType(msr,TYPE_FEEDBACK,TYPE_SMOOTHDONE);
+        msrActiveType(msr, TYPE_FEEDBACK, TYPE_SMOOTHACTIVE);
+		msrReSmooth(msr, dTime, SMX_PROMOTE_TO_HOT_GAS, 1);
+        msrResetType(msr,TYPE_FEEDBACK,TYPE_SMOOTHDONE);
+		msrReSmooth(msr, dTime, SMX_SHARE_WITH_HOT_GAS, 1);
+#endif        
 
 		dsec = msrTime() - sec;
 		printf("Feedback Calculated, Wallclock: %f secs\n\n",dsec);

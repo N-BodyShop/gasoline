@@ -362,6 +362,8 @@ typedef struct uNonCoolContext {
 #define TYPE_NEWSINKING        (1<<16)
 #define TYPE_INFLOW            (1<<17)
 #define TYPE_OUTFLOW           (1<<18)
+#define TYPE_FEEDBACK          (1<<19)
+#define TYPE_PROMOTED          (1<<20)
 
 /* Combination Masks */
 #define TYPE_ALLACTIVE                  (TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
