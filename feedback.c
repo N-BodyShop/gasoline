@@ -9,12 +9,12 @@
 #include "supernova.h"
 
 void snCalcWindFeedback(SN sn, SFEvent sfEvent,
-                        double dTime, /* current time in years */
+                        double dTimeYr, /* current time in years */
                         double dDelta, /* length of timestep (years) */
                         FBEffects *fbEffects);
 
 void snCalcUVFeedback(SN sn, SFEvent sfEvent,
-		      double dTime, /* current time in years */
+		      double dTimeYr, /* current time in years */
 		      double dDelta, /* length of timestep (years) */
 		      FBEffects *fbEffects);
 
@@ -42,7 +42,7 @@ void fbInitialize(FB *pfb)
 
 void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 		 FBEffects *fbTotals)
-{
+    {
     int i;
     PARTICLE *p;
     int n = pkdLocal(pkd);
@@ -52,69 +52,102 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
     double dTotMetals;
     double dTotMOxygen;
     double dTotMIron;
-    double dDeltaYr;
     double dSNIaMassStore;
     double dNSNII, dProb, dStarAge, dMinAge;
     double dRandomNum;
+    double dTimeYr = dTime*fb->dSecUnit/SEC_YR;
+    double dDeltaYr = dDelta*fb->dSecUnit/SEC_YR;
     int j;
         
     for(i = 0; i < FB_NFEEDBACKS; i++) {
-	fbTotals[i].dMassLoss = 0.0;
-	fbTotals[i].dEnergy = 0.0;
-	fbTotals[i].dMetals = 0.0;
-	fbTotals[i].dMIron = 0.0;
-	fbTotals[i].dMOxygen = 0.0;
+        fbTotals[i].dMassLoss = 0.0;
+        fbTotals[i].dEnergy = 0.0;
+        fbTotals[i].dMetals = 0.0;
+        fbTotals[i].dMIron = 0.0;
+        fbTotals[i].dMOxygen = 0.0;
 	}
-    dTime *= fb->dSecUnit/SEC_YR;
-    dDeltaYr = dDelta*fb->dSecUnit/SEC_YR;
     
     for(i = 0; i < n; ++i) {
-	p = &pkd->pStore[i];
-	if(pkdIsStar(pkd, p) && p->fTimeForm >= 0.0) {
-	    dTotMassLoss = 0.0;
-	    dTotMetals = 0.0;
-	    dTotMOxygen = 0.0;
-	    dTotMIron = 0.0;
-	    p->uDotFB = 0.0;
-	    p->fNSN = 0.0;
+        p = &pkd->pStore[i];
+#ifdef FBPARTICLE
+        if (TYPETest(p, TYPE_FEEDBACK)) printf("FBP status: %d: %g %g %g %g\n",p->iOrder,dTimeYr,p->fTimeCoolIsOffUntil*fb->dSecUnit/SEC_YR,p->u,p->uDotFB);
+#endif
+        if (pkdIsStar(pkd, p) && p->fTimeForm >= 0.0) {
+            dTotMassLoss = 0.0;
+            dTotMetals = 0.0;
+            dTotMOxygen = 0.0;
+            dTotMIron = 0.0;
+            p->uDotFB = 0.0;
+            p->fNSN = 0.0;
 #ifdef FBPARTICLE
             {
             double tstart = 4e6, tend = 30e6; /* yr */
             double mdotonmstar = 10*10/100./(tend-tstart); /* gm / gm / yr */
             double edotonmstar = 1e51/(100*2e33)/(tend-tstart); /* erg / gm / yr */
             double mFB = 0.025*p->fMassForm; /* mass of fb particles (code units) */
-            double tFB0,tFB1,nFac;
+            double tFB0,tFB1,nFac,dDeltaFB;
             int nFB0,nFB1;
-
-            tFB1 =  dTime-p->fTimeForm*fb->dSecUnit/SEC_YR;
+            
+            tFB1 =  dTimeYr-p->fTimeForm*fb->dSecUnit/SEC_YR; /* yr */
             tFB0 =  tFB1 - dDeltaYr;
+
             if (tFB1 > tstart && tFB0 < tend) {
-                nFac = mdotonmstar*p->fMassForm/mFB;
-                nFB0 = floor(nFac*(tFB0 > tstart ? tFB0-tstart : 0)+0.5);
-                nFB1 = floor(nFac*(tFB1 < tend ? tFB1-tstart : tend-tstart)+0.5);
-                printf("FBP: %d %g %g %g %d %d\n",p->iOrder,dTime,tFB0,tFB1,nFB0,nFB1);
+                nFac = mdotonmstar*p->fMassForm/mFB; /* yr^-1 */
+                nFB0 = floor(nFac*(tFB0 > tstart ? tFB0-tstart : 0)+0.9);
+                nFB1 = floor(nFac*(tFB1 < tend ? tFB1-tstart : tend-tstart)+0.9);
+                printf("FBP: %d %g %g %g %d %d\n",p->iOrder,dTimeYr,tFB0,tFB1,nFB0,nFB1);
                 while (nFB1 > nFB0) {
                     PARTICLE pNew;
                     pNew = *p;
                     TYPEReset(&pNew, TYPE_STAR|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
-                    TYPESet(&pNew, TYPE_GAS);
+                    TYPESet(&pNew, TYPE_GAS|TYPE_FEEDBACK);
                     
                     /* For mass conservation would need to do this ... */
                     /*p->fMass -= mFB;
                       assert(p->fMass > 0);*/
+                    dDeltaFB = 1/(nFac*fb->dSecUnit/SEC_YR); /* code time */
+                    if (dDeltaFB < dDelta) dDeltaFB = dDelta;
 
                     pNew.fMass = mFB;
                     pNew.u = (edotonmstar/mdotonmstar)/fb->dErgPerGmUnit;
+                    pNew.uDotFB = (pNew.u*0.999)/dDeltaFB;
+                    pNew.fTimeCoolIsOffUntil = dTime + 0.9999*dDeltaFB;
+                    pNew.c = sqrt((5./3.*2/3.)*pNew.u); /* Estimate final C */
+                    {
+                    double ph,dt_diff, dt;
+                    struct GasPressureContext gpc;
+
+                    ph = sqrt(p->fBall2*0.25); /* gas h at star */
+                    dt = fb->dtFacCourant*ph/(2*pNew.c);	/* dt Courant */
+#ifdef THERMALCOND
+                    gpc.dThermalCondCoeffCode = fb->dThermalCondCoeffCode;
+                    gpc.dThermalCondSatCoeff = fb->dThermalCondSatCoeff;
+                    gpc.dThermalCond2CoeffCode = fb->dThermalCond2CoeffCode;
+                    gpc.dThermalCond2SatCoeff = fb->dThermalCond2SatCoeff;
+                    pkdSetThermalCond(pkd, &gpc, &pNew);
+					if (pNew.fThermalCond > 0) {
+						dt_diff = fb->dtFacDiffusion*ph*ph*p->fDensity/(2*pNew.fThermalCond); /* gas density at star */
+						if (dt_diff < dt) dt = dt_diff;   
+					}
+#endif
+#if (1)
+                    pNew.dt = dt; 
+                    pNew.iRung = pkdOneParticleDtToRung( 0,dDelta,pNew.dt );
+#else
+                    pNew.dt = 1.5625e-9; /* horrible hack! -- should be gas min dt maybe? */
+                    pNew.iRung = 6; /* horrible hack! */
+#endif
+                    }
+                    pNew.u *= 0.001;
                     pNew.uPred = pNew.u;
-                    pNew.c = sqrt((5./3.*2/3.)*pNew.u);
-                    pNew.PoverRho2 = 0;
+
+                    pNew.PoverRho2 = (2/3.)*pNew.uPred/p->fDensity;
                     pNew.uDot = 0;
                     pNew.uDotPdV = 0;
                     pNew.uDotAV = 0;
                     pNew.uDotDiff = 0;
-                    pNew.uDotFB = 0;
                     pkdNewParticle(pkd, pNew);
-                    printf("FBP: Particle made %g %g\n",mFB,pNew.u);
+                    printf("FBP: Particle made %g %g %g %g %d\n",mFB,pNew.u,dDeltaFB*fb->dSecUnit/SEC_YR,pNew.dt,pNew.iRung);
                     nFB1--;
                     }
                 }
@@ -140,7 +173,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 		dNSNII = 0;
 		switch (j) {
 		case FB_SNII:
-		    snCalcSNIIFeedback(sn, sfEvent, dTime,
+		    snCalcSNIIFeedback(sn, sfEvent, dTimeYr,
 				       dDeltaYr, &fbEffects);
 		    if( sn->dESN > 0.0)
 			dNSNII = fbEffects.dEnergy * MSOLG*fbEffects.dMassLoss/
@@ -173,18 +206,18 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 		    else p->fNSN += dNSNII;
 		    break;
 		case FB_SNIA:
-		    snCalcSNIaFeedback(sn, sfEvent, dTime,
+		    snCalcSNIaFeedback(sn, sfEvent, dTimeYr,
 				       dDeltaYr, &fbEffects);
 		    dSNIaMassStore=fbEffects.dMassLoss;
 		    break;
 		case FB_WIND:
-		    snCalcWindFeedback(sn, sfEvent, dTime,
+		    snCalcWindFeedback(sn, sfEvent, dTimeYr,
 				       dDeltaYr, &fbEffects);
 		    if(dSNIaMassStore < fbEffects.dMassLoss)
 			fbEffects.dMassLoss -= dSNIaMassStore;
 		    break;
 		case FB_UV:
-		    snCalcUVFeedback(sn, sfEvent, dTime, dDeltaYr,
+		    snCalcUVFeedback(sn, sfEvent, dTimeYr, dDeltaYr,
 				     &fbEffects);
 		    break;
 		default:
@@ -210,7 +243,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    /*
 	     * Modify star particle
 	     */
-//        fprintf(stderr,"Mass dTotMassLoss %d %g %g  %g %g\n",p->iOrder,p->fMass,dTotMassLoss,dTime/(fb->dSecUnit/SEC_YR),p->fTimeForm);
+//        fprintf(stderr,"Mass dTotMassLoss %d %g %g  %g %g\n",p->iOrder,p->fMass,dTotMassLoss,dTimeYr/(fb->dSecUnit/SEC_YR),p->fTimeForm);
 	    assert(p->fMass > dTotMassLoss);
 
 	    p->fMass -= dTotMassLoss;
@@ -269,7 +302,11 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	else if(pkdIsGas(pkd, p)){
 	    assert(p->u >= 0.0);
 	    assert(p->uPred >= 0.0);
+#ifdef FBPARTICLE
+        if (dTime > p->fTimeCoolIsOffUntil) p->uDotFB = 0;
+#else
 	    p->uDotFB = 0.0;	/* reset SN heating rate of gas to zero */
+#endif
 	    }
 	}
 
@@ -277,7 +314,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 
 
 void snCalcWindFeedback(SN sn, SFEvent sfEvent,
-                        double dTime, /* current time in years */
+                        double dTimeYr, /* current time in years */
                         double dDelta, /* length of timestep (years) */
                         FBEffects *fbEffects)
 {
@@ -294,7 +331,7 @@ void snCalcWindFeedback(SN sn, SFEvent sfEvent,
     * current timestep with respect to starbirth time in yrs */
     dMmin=1.0;
     dMmax=8.0;
-    dStarLtimeMin = dTime - sfEvent.dTimeForm; 
+    dStarLtimeMin = dTimeYr - sfEvent.dTimeForm; 
     dStarLtimeMax = dStarLtimeMin + dDelta;
 
     dMStarMin = dSTMStarLtime(&sn->ppdva, dStarLtimeMax, sfEvent.dMetals); 
@@ -336,7 +373,7 @@ void snCalcWindFeedback(SN sn, SFEvent sfEvent,
 	    }
     }
 void snCalcUVFeedback(SN sn, SFEvent sfEvent,
-		      double dTime, /* current time in years */
+		      double dTimeYr, /* current time in years */
 		      double dDelta, /* length of timestep (years) */
 		      FBEffects *fbEffects)
 {
