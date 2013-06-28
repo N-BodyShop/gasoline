@@ -9682,6 +9682,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         }
 #ifdef FBPARTICLE
 	else {
+		msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
         msrBuildTree(msr,1,dTotMass,1);
         msrActiveType(msr,TYPE_STAR|TYPE_GAS,TYPE_SMOOTHACTIVE); /* Density for star */
         msrSmooth(msr,dTime,SMX_DENSITY,1);
