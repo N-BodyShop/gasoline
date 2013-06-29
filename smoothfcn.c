@@ -3999,6 +3999,14 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 	vFac = (smf->bCannonical ? 1./a2 : 1.0); /* converts v to xdot */
 
+//#define GRADWONESIDED
+#ifdef GRADWONESIDED
+    fNorm *= 2;
+#define QISACTIVE(q) (0)
+#else
+#define QISACTIVE(q) (TYPEQueryACTIVE(q))
+#endif    
+
 	if (TYPEQueryACTIVE( p )) {
 		/* p active */
 		for (i=0;i<nSmooth;++i) {
@@ -4007,7 +4015,7 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	        r2 = nnList[i].fDist2*ih2;
 			DKERNEL(rs1,r2);
 			rs1 *= fNorm;
-			rq = rs1 * q->fMass/pDensity;
+			rq = rs1 * q->fMass/q->fDensity;
 
 			dx = nnList[i].dx;
 			dy = nnList[i].dy;
@@ -4018,18 +4026,39 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz) +
 				nnList[i].fDist2*smf->H;
 
-			if (TYPEQueryACTIVE(q)) {
+			if (QISACTIVE(q)) {
 				/* q active */
-				rp = rs1 * pMass/q->fDensity;
+				rp = rs1 * pMass/pDensity;
 				p->divv -= rq*dvdotdr;
 				q->divv -= rp*dvdotdr;
+#ifdef GRADW
+#if (0)
+#define DXFUNC(d) (d)
+#define DYFUNC(d) (d)
+#define DZFUNC(d) (d)
+#else
+#define DXFUNC(d) fabs(d)
+#define DYFUNC(d) fabs(d)
+#define DZFUNC(d) fabs(d)
+#endif
+				dv=DXFUNC(dx);
+#else
 				dv=vFac*(dvz*dy - dvy*dz);
+#endif
 				p->curlv[0] += rq*dv;
 				q->curlv[0] += rp*dv;
+#ifdef GRADW
+				dv=DYFUNC(dy);
+#else
 				dv=vFac*(dvx*dz - dvz*dx);
+#endif
 				p->curlv[1] += rq*dv;
 				q->curlv[1] += rp*dv;
+#ifdef GRADW
+				dv=DZFUNC(dz);
+#else
 				dv=vFac*(dvy*dx - dvx*dy);
+#endif
 				p->curlv[2] += rq*dv;
 				q->curlv[2] += rp*dv;
 
@@ -4047,11 +4076,23 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			else {
 		        /* q inactive */
 				p->divv -= rq*dvdotdr;
+#ifdef GRADW
+				dv=DXFUNC(dx);
+#else
 				dv=vFac*(dvz*dy - dvy*dz);
+#endif
 				p->curlv[0] += rq*dv;
+#ifdef GRADW
+				dv=DYFUNC(dy);
+#else
 				dv=vFac*(dvx*dz - dvz*dx);
+#endif
 				p->curlv[1] += rq*dv;
+#ifdef GRADW
+				dv=DZFUNC(dz);
+#else
 				dv=vFac*(dvy*dx - dvx*dy);
+#endif
 				p->curlv[2] += rq*dv;
 
 #ifdef SHOCKTRACK
@@ -4067,13 +4108,13 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		/* p not active */
 		for (i=0;i<nSmooth;++i) {
 	        q = nnList[i].pPart;
-		mdlassert(smf->pkd->mdl, TYPETest(q,TYPE_GAS));
-			if (!TYPEQueryACTIVE(q)) continue; /* neither active */
+            mdlassert(smf->pkd->mdl, TYPETest(q,TYPE_GAS));
+            if (!QISACTIVE(q)) continue; /* neither active */
 
 			r2 = nnList[i].fDist2*ih2;
 			DKERNEL(rs1,r2);
 			rs1 *=fNorm;
-			rp = rs1*pMass/q->fDensity;
+			rp = rs1*pMass/pDensity;
 
 			dx = nnList[i].dx;
 			dy = nnList[i].dy;
@@ -4085,12 +4126,24 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				+ nnList[i].fDist2*smf->H;
 			/* q active */
 			q->divv -= rp*dvdotdr;
-			dv=vFac*(dvz*dy - dvy*dz);
-			q->curlv[0] += rp*dv;
-			dv=vFac*(dvx*dz - dvz*dx);
-			q->curlv[1] += rp*dv;
-			dv=vFac*(dvy*dx - dvx*dy);
-			q->curlv[2] += rp*dv;
+#ifdef GRADW
+            dv=DXFUNC(dx);
+#else
+            dv=vFac*(dvz*dy - dvy*dz);
+#endif
+            q->curlv[0] += rp*dv;
+#ifdef GRADW
+            dv=DYFUNC(dy);
+#else
+            dv=vFac*(dvx*dz - dvz*dx);
+#endif
+            q->curlv[1] += rp*dv;
+#ifdef GRADW
+            dv=DZFUNC(dz);
+#else
+            dv=vFac*(dvy*dx - dvx*dy);
+#endif
+            q->curlv[2] += rp*dv;
 
 #ifdef SHOCKTRACK
 			q->divrhov -= rs1*dvdotdr*pMass;
@@ -4295,9 +4348,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	dvydx = 0; dvydy = 0; dvydz= 0;
 	dvzdx = 0; dvzdy = 0; dvzdz= 0;
 
-	grx = 0;
-	gry = 0;
-	grz = 0;
+	grx = 0; gry = 0; grz = 0;
 
 	qiActive = 0;
 	for (i=0;i<nSmooth;++i) {
@@ -5297,6 +5348,182 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			q->uDot = q->uPred/fTCool;
         }
 }
+
+#define PROMOTE_SUMWEIGHT(p_) (((PARTICLE *) (p_))->curlv[0])
+#define PROMOTE_SUMUPREDWEIGHT(p_) (((PARTICLE *) (p_))->curlv[1])
+#define PROMOTE_UPREDINIT(p_) (((PARTICLE *) (p_))->curlv[2])
+
+void initPromoteToHotGas(void *p1)
+    {
+    TYPEReset(((PARTICLE *) p1),TYPE_PROMOTED);
+    if (((PARTICLE *) p1)->iOrder==9873) printf("Promoted reset: %d %d\n",((PARTICLE *) p1)->iOrder,((PARTICLE *) p1)->iActive);
+    PROMOTE_SUMWEIGHT(p1) = 0; /* store weight total */
+    PROMOTE_SUMUPREDWEIGHT(p1) = 0; /* store u x weight total */
+    PROMOTE_UPREDINIT(p1) = ((PARTICLE *) p1)->uPred; /* store uPred */
+    }
+
+void combPromoteToHotGas(void *p1,void *p2)
+    {
+	if(TYPETest(((PARTICLE *) p2), TYPE_PROMOTED)) TYPESet(((PARTICLE *) p1),TYPE_PROMOTED);
+    PROMOTE_SUMWEIGHT(p1) += PROMOTE_SUMWEIGHT(p2);
+    PROMOTE_SUMUPREDWEIGHT(p1) += PROMOTE_SUMUPREDWEIGHT(p2);
+    }
+
+void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+    {	
+    PARTICLE *q;
+    FLOAT fFactor,ph,ih2,r2,rs,rstot;
+    FLOAT Tp,Tq,up52,uq52,Prm,Prob;
+	int i,nCold;
+
+#ifdef NOCOOLING
+    return;
+#else
+	assert(TYPETest(p, TYPE_GAS));
+	assert(TYPETest(p, TYPE_FEEDBACK));
+	assert(!TYPETest(p, TYPE_PROMOTED));
+    ph = sqrt(BALL2(p)*0.25);
+    ih2 = 1/(ph*ph);
+    /* Exclude cool particles */
+    Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
+    if (Tp <= 1e5) return;
+
+    up52 = pow(p->uPred,2.5);
+    rstot = 0;
+    nCold = 0;
+	for (i=0;i<nSmooth;++i) {
+        q = nnList[i].pPart;
+        if (p->iOrder == q->iOrder) continue;
+	    if (TYPETest(q, TYPE_DELETED) || (TYPETest(q, TYPE_FEEDBACK) && !TYPETest(q, TYPE_PROMOTED))) continue;
+        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+        if (Tq >= 1e5) continue;  /* Exclude hot particles */
+	    assert(TYPETest(q, TYPE_GAS));
+        assert(!TYPETest(p, TYPE_STAR));
+		r2 = nnList[i].fDist2*ih2;            
+		KERNEL(rs,r2);
+        rstot += rs;
+        nCold++;
+        }
+
+    if (rstot == 0) return;
+    /* Area = h^2 4 pi nCold/nSmooth */
+    fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*12.5664*nCold/nSmooth/rstot;
+
+	for (i=0;i<nSmooth;++i) {
+        q = nnList[i].pPart;
+        if (p->iOrder == q->iOrder) continue;
+	    if(TYPETest(q, TYPE_DELETED) || (TYPETest(q, TYPE_FEEDBACK) && !TYPETest(q, TYPE_PROMOTED))) continue;
+        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+        if (Tq >= 1e5 ) continue;  /* Exclude hot particles */
+	    assert(TYPETest(q, TYPE_GAS));
+		r2 = nnList[i].fDist2*ih2;            
+		KERNEL(rs,r2);
+        PROMOTE_SUMWEIGHT(q) += p->fMass;
+        PROMOTE_SUMUPREDWEIGHT(q) += p->fMass*p->uPred;
+		
+        /* cf. WCC'77 mdot = 4.13d-14 * (dx^2/4 !pi) (Thot^2.5-Tcold^2.5)/dx - 2 udot mHot/(k T/mu) 
+           Kernel sets total probability to 1 */
+        Prob = fFactor*(up52-pow(q->uPred,2.5))*rs/q->fMass;
+//        printf("promote?: %d %d %g %g %g  %g %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
+        if ( (rand()/((double) RAND_MAX)) < Prob) {
+            double dTimeCool = smf->dTime + 0.9999*smf->dDeltaStarForm;
+            if (dTimeCool > q->fTimeCoolIsOffUntil) q->fTimeCoolIsOffUntil = dTimeCool;
+            TYPESet(q, TYPE_PROMOTED|TYPE_FEEDBACK);
+            printf("promote? YES: %d %d %g %g %g  %g %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
+            }
+        }
+        
+#endif
+}
+
+void initShareWithHotGas(void *p1)
+    {
+	if(!TYPETest(((PARTICLE *)p1), TYPE_DELETED)) {
+		((PARTICLE *)p1)->u = 0;  
+		((PARTICLE *)p1)->uPred = 0;
+		}
+    }
+
+void combShareWithHotGas(void *vp1,void *vp2)
+    {
+	PARTICLE *p1 = vp1;
+	PARTICLE *p2 = vp2;
+
+	if(!TYPETest((p1), TYPE_DELETED)) {
+        p1->u = p1->u + p2->u;
+        p1->uPred = p1->uPred + p2->uPred;
+		}
+    }
+
+void ShareWithHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+    {
+	PARTICLE *q;
+	FLOAT rsmax,ih2,r2,rs,uavg,umin;
+	FLOAT dE,Eadd,factor,Tp,Tq;
+	int i,nPromoted;
+
+	assert(TYPETest(p, TYPE_GAS));
+	assert(TYPETest(p, TYPE_FEEDBACK));
+	assert(!TYPETest(p, TYPE_PROMOTED));
+//    KERNEL(rsmax,0.0);
+    Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
+    if (Tp <= 1e5) return;
+
+    rsmax = 1.0;
+    ih2 = 4/BALL2(p);
+    nPromoted = 0;
+
+    dE = 0;
+    umin = FLT_MAX;
+	for (i=0;i<nSmooth;++i) {
+        q = nnList[i].pPart;
+	    if (TYPETest(q, TYPE_PROMOTED)) {
+            nPromoted++;
+            uavg = (rsmax*q->fMass*PROMOTE_UPREDINIT(q) + PROMOTE_SUMUPREDWEIGHT(q))/
+                (rsmax*q->fMass + PROMOTE_SUMWEIGHT(q));
+            if (uavg < umin) umin=uavg;
+//            r2 = nnList[i].fDist2*ih2;            
+//            KERNEL(rs,r2);
+            Eadd = (uavg-PROMOTE_UPREDINIT(q))*q->fMass;
+            if (Eadd < 0) Eadd=0;
+            dE += p->fMass/PROMOTE_SUMWEIGHT(q)*Eadd;
+            }
+        }
+
+    if (!nPromoted || dE == 0 || p->uPred <= umin) return;
+    factor = ((p->uPred-umin)*p->fMass)/dE;
+    if (factor > 1) factor=1;
+
+	for (i=0;i<nSmooth;++i) {
+        q = nnList[i].pPart;
+	    if (TYPETest(q, TYPE_PROMOTED)) {
+            double Tp0,Tq0,Tp,Tq,uPredp=p->uPred;
+            Tp0 = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
+            Tq0 = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, PROMOTE_UPREDINIT(q), q->fMetals );
+            nPromoted++;
+            uavg = (rsmax*q->fMass*PROMOTE_UPREDINIT(q) + PROMOTE_SUMUPREDWEIGHT(q))/
+                (rsmax*q->fMass + PROMOTE_SUMWEIGHT(q));
+            if (uavg < umin) umin=uavg;
+//            r2 = nnList[i].fDist2*ih2;            
+//            KERNEL(rs,r2);
+            Eadd = (uavg-PROMOTE_UPREDINIT(q))*q->fMass;
+            if (Eadd < 0) Eadd=0;
+            dE = factor*p->fMass/PROMOTE_SUMWEIGHT(q)*Eadd;
+            q->uPred += dE/q->fMass;
+            q->u += dE/q->fMass;
+            p->uPred -=  dE/p->fMass;
+            p->u -=  dE/p->fMass;
+            {
+            Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
+            Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, q->uPred, q->fMetals );
+//                printf("promote YES new T: %d %d %g %g %g %g   %g  %g %g %g %g\n",p->iOrder,q->iOrder,p->fMass,q->fMass,uavg/4802.58,umin/4802.58,Tp0,Tp, Tq0,Tq);
+//            printf("promote YES new T: %d %d %g %g %g %g   %g  %g %g %g %g\n",p->iOrder,q->iOrder,p->fMass,q->fMass,uavg,umin,factor*p->fMass/PROMOTE_SUMWEIGHT(q)*Eadd,uPredp,p->uPred,PROMOTE_UPREDINIT(q),q->uPred);
+            }
+            assert(p->uPred > 0);
+            assert(p->u > 0);
+            }
+        }
+    }
 
 void DeleteGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {

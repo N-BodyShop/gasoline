@@ -327,6 +327,26 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         smx->fcnPost = NULL;
         smx->bUseBallMax = 0;
         break;
+    case SMX_PROMOTE_TO_HOT_GAS:
+        assert(bSymmetric != 0);
+        smx->fcnSmooth = PromoteToHotGas;
+        initParticle = initPromoteToHotGas;
+        initTreeParticle = initPromoteToHotGas;
+        init = initPromoteToHotGas;
+        comb = combPromoteToHotGas;
+        smx->fcnPost = NULL;
+        smx->bUseBallMax = 0;
+        break;
+    case SMX_SHARE_WITH_HOT_GAS:
+        assert(bSymmetric != 0);
+        smx->fcnSmooth = ShareWithHotGas;
+        initParticle = NULL;
+        initTreeParticle = NULL;
+        init = initShareWithHotGas;
+        comb = combShareWithHotGas;
+        smx->fcnPost = NULL;
+        smx->bUseBallMax = 0;
+        break;
     case SMX_DIST_FB_ENERGY:
         assert(bSymmetric != 0);
         smx->fcnSmooth = DistFBEnergy;
@@ -1347,6 +1367,7 @@ void smSmooth(SMX smx,SMF *smf)
     ** If desired reject fBall2 below a minimum 
     ** We may get many more than nSmooth neighbours here -- resort to a ReSmooth
     */
+
     if (smx->iLowhFix && 
             ((smx->iLowhFix==LOWHFIX_HOVERSOFT && fBall2 < smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft) ||
             (smx->iLowhFix==LOWHFIX_SINKRADIUS && fBall2 < smf->dSinkRadius*smf->dSinkRadius) ||

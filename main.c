@@ -696,7 +696,10 @@ int main(int argc,char **argv)
 #ifdef GASOLINE
             if (msr->nGas > 0) {
 		msrInitSph(msr,dTime);
-                msrCreateGasStepZeroOutputList(msr, &nOutputList,OutputList);
+        msrCreateGasStepZeroOutputList(msr, &nOutputList,OutputList);
+#ifdef GRADW
+        msrReSmooth(msr,dTime,SMX_DIVVORT,1);
+#endif
 #ifdef DENSITYU
 		OutputList[(nOutputList)++]=OUT_DENSITYU_ARRAY;
 #endif
@@ -731,16 +734,16 @@ int main(int argc,char **argv)
 		    OutputList[nOutputList++]=OUT_COOL_HEATING_ARRAY;
 		    }
 #endif
-                if (msr->param.bSphStep) {
-                    fprintf(stdout,"Adding SphStep dt\n");
-                    msrSphStep(msr,dTime,0);
-                    }
-                msrReorder(msr);
-                msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
+        if (msr->param.bSphStep) {
+            fprintf(stdout,"Adding SphStep dt\n");
+            msrSphStep(msr,dTime,0);
+            }
+        msrReorder(msr);
+        msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
 		msrFlushStarLog(msr);
 		msrFlushSinkLog(msr);
                 }
-#endif
+#endif /* GASOLINE */
             /*
              ** Build tree, activating all particles first (just in case).
              */

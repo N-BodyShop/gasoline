@@ -46,6 +46,8 @@ typedef struct fbContext
     double dDelta; /* overall timestep */
     double dThermalCondCoeffCode;
 	double dThermalCondSatCoeff;
+    double dThermalCond2CoeffCode;
+	double dThermalCond2SatCoeff;
     double dtFacDiffusion;
     double dtFacCourant;
 #endif

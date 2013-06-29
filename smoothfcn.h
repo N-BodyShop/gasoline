@@ -65,6 +65,7 @@ typedef struct smfParameters {
     double dSinkFormDivAccCoeff;
     double dSinkTimeEligible;
     double dTime;
+    double dEvapCoeffCode;
 #ifdef DIFFUSION
     double dMetalDiffusionCoeff;
     double dThermalDiffusionCoeff;
@@ -159,6 +160,8 @@ enum smx_smoothtype {
   SMX_HKVISCOSITY,
 #ifdef STARFORM
   SMX_DIST_DELETED_GAS,
+  SMX_PROMOTE_TO_HOT_GAS,
+  SMX_SHARE_WITH_HOT_GAS,
   SMX_DELETE_GAS,
   SMX_DIST_FB_ENERGY,
 #endif
@@ -361,6 +364,16 @@ void HKViscositySym(PARTICLE *,int,NN *,SMF *);
 void initDistDeletedGas(void *p1);
 void combDistDeletedGas(void *p1,void *p2);
 void DistDeletedGas(PARTICLE *, int, NN *, SMF *);
+
+/* SMX_PROMOTE_TO_HOT_GAS */
+void initPromoteToHotGas(void *p1);
+void combPromoteToHotGas(void *p1,void *p2);
+void PromoteToHotGas(PARTICLE *, int, NN *, SMF *);
+
+/* SMX_SHARE_WITH_HOT_GAS */
+void initShareWithHotGas(void *p1);
+void combShareWithHotGas(void *p1,void *p2);
+void ShareWithHotGas(PARTICLE *, int, NN *, SMF *);
 
 /* SMX_DELETE_GAS */
 void DeleteGas(PARTICLE *, int, NN *, SMF *);

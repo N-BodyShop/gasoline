@@ -523,6 +523,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				*/
 				xdr_float(&xdrs,&fTmp);
 				vTemp = fTmp;
+#ifdef FBPARTICLE
+                if (fTmp > 1e5) TYPESet(p, TYPE_FEEDBACK);
+#endif
 				p->u = dTuFac*vTemp;
 				p->uPred = dTuFac*vTemp;
 // Special purpose hack for testing noncooling
@@ -6430,6 +6433,7 @@ void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *
 
 void  pkdSetThermalCond(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p) 
     {
+#ifdef THERMALCOND
     double fThermalCond = pgpc->dThermalCondCoeffCode*pow(p->uPred,2.5); /* flux = coeff grad u   coeff ~ flux x h/u */ 
     double fThermalCond2 = pgpc->dThermalCond2CoeffCode*pow(p->uPred,0.5);
     double fSat = p->fDensity*p->c*p->fThermalLength; /* Max flux x L/u */
@@ -6439,6 +6443,7 @@ void  pkdSetThermalCond(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p)
 //    printf("Saturated %d %g %g %g %g %g %g %g %g %g\n",p->iOrder,p->r[0],p->fDensity,p->uPred/4.80258,fThermalCond,fThermalCond2,fThermalCondSat,fThermalCond2Sat,p->fThermalLength,sqrt(p->fBall2*0.25));
     p->fThermalCond = (fThermalCond < fThermalCondSat ? fThermalCond : fThermalCondSat) +
         (fThermalCond2 < fThermalCond2Sat ? fThermalCond2 : fThermalCond2Sat);
+#endif
     }
 
 
@@ -6714,7 +6719,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 #ifndef NOCOOLING
                 T = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
 #endif
-                fprintf(stderr,"FBP %d: u %g T %g %g c %g h %g divv %g rho %g Z %g dtdiff %g dt %g %g\n",p->iOrder,p->uPred,p->uPred/4802.57,T,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals,p->uPred/(fabs(p->uDotDiff)+1e-20),p->dt,p->fThermalCond);
+                fprintf(stderr,"FBP %d: u %g T %g %g c %g h %g divv %g rho %g Z %g dtdiff %g dt %g\n",p->iOrder,p->uPred,p->uPred/4802.57,T,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals,p->uPred/(fabs(p->uDotDiff)+1e-20),p->dt);
                 }
 #endif
 

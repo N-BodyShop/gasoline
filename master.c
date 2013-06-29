@@ -1176,22 +1176,26 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dThermalDiffusionCoeff",2,&msr->param.dThermalDiffusionCoeff,
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
+	msr->param.dEvapCoeff = 6.1e-7;
+	prmAddParam(msr->prm,"dEvapCoeff",2,&msr->param.dEvapCoeff,
+				sizeof(double),"evap",
+				"<Evap Coefficient due to thermal Conductivity (electrons), e.g. 6.1e-7 > = 0");
 	msr->param.dThermalCondCoeff = 6.1e-7;
 	prmAddParam(msr->prm,"dThermalCondCoeff",2,&msr->param.dThermalCondCoeff,
 				sizeof(double),"thermalcond",
-				"<Coefficient in Thermal Conductivity (electrons), e.g. 6.1e-7 > = 0");
+				"<Coefficient in Thermal Conductivity (electrons), e.g. 6.1e-7 > = 6.1e-7");
 	msr->param.dThermalCondSatCoeff = 17;
 	prmAddParam(msr->prm,"dThermalCondSatCoeff",2,&msr->param.dThermalCondSatCoeff,
 				sizeof(double),"thermalcondsat",
-				"<Coefficient in Saturated Thermal Conductivity, e.g. 17 > = 0");
+				"<Coefficient in Saturated Thermal Conductivity, e.g. 17 > = 17");
 	msr->param.dThermalCond2Coeff = 2.5e3;
 	prmAddParam(msr->prm,"dThermalCond2Coeff",2,&msr->param.dThermalCond2Coeff,
 				sizeof(double),"thermalcond2",
-				"<Coefficient in Thermal Conductivity 2 (atoms), e.g. 2.5e3 > = 0");
+				"<Coefficient in Thermal Conductivity 2 (atoms), e.g. 2.5e3 > = 2.5e3");
 	msr->param.dThermalCond2SatCoeff = 0.5;
 	prmAddParam(msr->prm,"dThermalCond2SatCoeff",2,&msr->param.dThermalCond2SatCoeff,
 				sizeof(double),"thermalcond2sat",
-				"<Coefficient in Saturated Thermal Conductivity 2, e.g. 17 > = 0");
+				"<Coefficient in Saturated Thermal Conductivity 2, e.g. 0.5 > = 0.5");
 	msr->param.dEtaDiffusion = 0.1;
 	prmAddParam(msr->prm,"dEtaDiffusion",2,&msr->param.dEtaDiffusion,sizeof(double),"etadiff",
 				"<Diffusion dt criterion> = 0.1");
@@ -1990,6 +1994,16 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.dErgPerGmUnit = 1;
 	    }
 
+    /* You enter effective thermal coefficient e.g. kappa0=6.1d-7 erg s^-1 K^-7/2 cm^-1 
+       Code then multiplies by prefactors to 4/25 kappa0 mmw/k (1.5k/mmw)^-5/2 */
+    msr->param.dEvapCoeffCode = msr->param.dEvapCoeff
+        *4/25.*(0.6*MHYDR)/KBOLTZ*pow(1.5*KBOLTZ/(0.6*MHYDR),-2.5);
+    /* Convert final units: g/cm/s (erg/g)^-2.5 to code units 
+           [Later: Multiply by u^5/2 and multiply a length gives mdot   units g/s] */
+    msr->param.dEvapCoeffCode /= 
+        pow(msr->param.dErgPerGmUnit,-2.5)
+        *msr->param.dGmPerCcUnit*pow(msr->param.dKpcUnit*KPCCM,2.0)
+        /msr->param.dSecUnit;
 #ifdef THERMALCOND
     /* Thermal conductivity, c.f. Tielens p. 448 
        Heat flux = K(T) grad T,  dE/dt = div K(T) grad T   E = rho u
@@ -2981,6 +2995,7 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dPext: %g",msr->param.dPext);
 	fprintf(fp," dMetalDiffusionCoeff: %g",msr->param.dMetalDiffusionCoeff);
 	fprintf(fp," dThermalDiffusionCoeff: %g",msr->param.dThermalDiffusionCoeff);
+	fprintf(fp," dEvapCoeff: %g",msr->param.dEvapCoeff);
 	fprintf(fp," dThermalCondCoeff: %g",msr->param.dThermalCondCoeff);
 	fprintf(fp," dThermalCondSatCoeff: %g",msr->param.dThermalCondSatCoeff);
 	fprintf(fp," dThermalCond2Coeff: %g",msr->param.dThermalCond2Coeff);
@@ -4313,6 +4328,7 @@ void msrCreateAllStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
     OutputList[(*nOutputList)++]=OUT_POT_ARRAY;
     OutputList[(*nOutputList)++]=OUT_DT_ARRAY;
     if (msrDoDensity(msr)) OutputList[(*nOutputList)++]=OUT_DENSITY_ARRAY;
+    if (msr->param.bDohOutput) OutputList[(*nOutputList)++]=OUT_H_ARRAY;
 }
 
 void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
@@ -5444,6 +5460,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->dSinkMustAccreteRadius = msr->param.dSinkMustAccreteRadius;
     psmf->iSmoothFlags = 0; /* Initial value, return value in outSmooth */
 #ifdef GASOLINE
+    psmf->dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333); /* (dx/h) factor */
 #ifdef DIFFUSION
     psmf->dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
     psmf->dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
@@ -8453,6 +8470,7 @@ msrAddDelParticles(MSR msr)
 			pColNParts[i].nAddDark != 0 || pColNParts[i].nAddStar != 0 || pColNParts[i].nDelGas != 0 ||
 			pColNParts[i].nDelDark != 0 || pColNParts[i].nDelStar != 0)
 			msr->iTreeType = MSR_TREE_NONE;
+
 		pNewOrder[i].Gas = msr->nMaxOrderGas + 1;
 		pNewOrder[i].Dark = msr->nMaxOrderDark + 1;
 		pNewOrder[i].Star = msr->nMaxOrder + 1;
@@ -9658,10 +9676,19 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         msrAddDelParticles(msr);
         msrMassCheck(msr, dTotMass, "Form stars: after particle adjustment");
 
-	dsec = msrTime() - sec;
-	printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
-	LOGTIMINGUPDATE( dsec, TIMING_StarForm );
+        dsec = msrTime() - sec;
+        printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
+        LOGTIMINGUPDATE( dsec, TIMING_StarForm );
         }
+#ifdef FBPARTICLE
+    else {
+        msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
+        msrBuildTree(msr,1,dTotMass,1);
+        msrActiveType(msr,TYPE_STAR|TYPE_GAS,TYPE_SMOOTHACTIVE); /* Density for star */
+        msrSmooth(msr,dTime,SMX_DENSITY,1);
+        }
+#endif
+
     /*
      * Calculate energy of SN for any stars for the next timestep.  This
      * requires looking at past star forming events.  Also calculate
@@ -9675,7 +9702,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 #ifdef FBPARTICLE
         a = csmTime2Exp(msr->param.csm,dTime);
         inFB.fb.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); 
-        inFB.fb.dtFacDiffusion = 2*msr->param.dEtaDiffusion*a*a; 
+        inFB.fb.dtFacDiffusion = msr->param.dEtaDiffusion*a*a; 
 #endif
         inFB.sn  = *msr->param.sn;
 		if (msr->param.bVDetails) printf("Calculate Feedback ...\n");
@@ -9717,6 +9744,17 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 #endif
 		msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, &dTotFe, 
                     &dTotOx, &dTotSNEnergy, "Form stars: after feedback");
+#ifdef PROMOTE
+		if (msr->param.bVDetails) printf("Promote cold shell to hot ...\n");
+        if (!(msr->iTreeType == MSR_TREE_DENSITY)) {
+            msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
+            msrBuildTree(msr,1,-1.0,1);
+            }
+        msrResetType(msr,TYPE_FEEDBACK,TYPE_SMOOTHDONE);
+        msrActiveType(msr, TYPE_FEEDBACK, TYPE_SMOOTHACTIVE);
+		msrReSmooth(msr, dTime, SMX_PROMOTE_TO_HOT_GAS, 1);
+		msrReSmooth(msr, dTime, SMX_SHARE_WITH_HOT_GAS, 1);
+#endif        
 
 		dsec = msrTime() - sec;
 		printf("Feedback Calculated, Wallclock: %f secs\n\n",dsec);
