@@ -2063,6 +2063,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    assert(0);
 	    }
 #endif
+#ifdef DIFFUSIONTHERMAL
+    fprintf(stderr," INFO: -DDIFFUSIONTHERMAL is not required -- thermal diffusion is on by default if -DDIFFUSION is on\n");
+#endif
 #if !defined(DIFFUSION) || defined(NODIFFUSIONTHERMAL)
 	if (prmSpecified(msr->prm,"dThermalDiffusionCoeff")) {
 	    fprintf(stderr,"ERROR: Thermal Diffusion Rate specified but not compiled for\nSUsed -DDIFFUSION and NOT -DNODIFFUSIONTHERMAL during compilation\n");
@@ -2648,6 +2651,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef WENDLAND
 	fprintf(fp," WENDLAND");
+#endif
+#ifdef NSMOOTHINNER
+	fprintf(fp," NSMOOTHINNER");
 #endif
 #ifdef CHANGESOFT
  	fprintf(fp," CHANGESOFT");
@@ -4337,6 +4343,9 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
     *nOutputList = 0;
 #ifdef GASOLINE				
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
+#ifdef DENSITYU
+    OutputList[(*nOutputList)++]=OUT_DENSITYU_ARRAY;
+#endif
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
     if (msr->param.bSphStep) OutputList[(*nOutputList)++]=OUT_SPHDT_ARRAY;
 #ifdef MASSNONCOOL
@@ -4518,6 +4527,9 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDodtOutput) OutputList[(*nOutputList)++]=OUT_DT_ARRAY;
 #ifdef GASOLINE				
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
+#ifdef DENSITYU
+    OutputList[(*nOutputList)++]=OUT_DENSITYU_ARRAY;
+#endif
     if (msr->param.bDoPressureOutput) OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
     if (msr->param.bDoCSound) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
@@ -4616,6 +4628,9 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDodtOutput) OutputList[(*nOutputList)++]=OUT_DT_ARRAY;
 #ifdef GASOLINE				
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
+#ifdef DENSITYU
+    OutputList[(*nOutputList)++]=OUT_DENSITYU_ARRAY;
+#endif
     if (msr->param.bDoPressureOutput) OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
     if (msr->param.bDoCSound) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
@@ -7082,8 +7097,9 @@ double msrReadCheck(MSR msr,int *piStep)
 	inset.nMaxOrderDark = msr->nMaxOrderDark;
 	inset.nMaxOrder = msr->nMaxOrder;
 	pstSetNParts(msr->pst,&inset,sizeof(inset),NULL,NULL);
-	intype.nSuperCool = msr->param.nSuperCool;
-	pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL);
+/*  Types stored in checkpoint now */
+//	intype.nSuperCool = msr->param.nSuperCool;
+//	pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL);
 	
 	i = msrCountType(msr, TYPE_GAS, TYPE_GAS);
 	assert(i == msr->nGas);
@@ -9333,7 +9349,7 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     msrReSmooth(msr,dTime,SMX_SMOOTHBSW,1);
 #endif
 
-#ifdef DENSITYU
+#if defined(DENSITYU) && defined(DENSITYUOLD)
     msrGetDensityU(msr);
 #endif
 /*

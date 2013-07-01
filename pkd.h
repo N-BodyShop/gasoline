@@ -42,6 +42,10 @@
 #define RTFORCE
 #endif
 
+#if defined(DENSITYUNOTP) && !defined(DENSITYU)
+#define DENSITYU
+#endif
+
 #ifdef DIFFUSION
 
 #if defined(FEEDBACKDIFFLIMIT) && !defined(DIFFUSIONHARMONIC)
@@ -402,6 +406,7 @@ int TYPEClear( PARTICLE *a );
 
 typedef struct chkParticle {
     int iOrder;
+    int iActive;
     FLOAT fMass;
     FLOAT fSoft;
     FLOAT r[3];

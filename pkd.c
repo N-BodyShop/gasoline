@@ -4704,6 +4704,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 	    
 		fread(&cp,sizeof(CHKPART),1,fp);
 		p->iOrder = cp.iOrder;
+		p->iActive = cp.iActive;
 		p->fMass = cp.fMass;
 		assert(p->fMass >= 0.0);
 #ifdef CHANGESOFT
@@ -4811,7 +4812,8 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 			p->w[j] = cp.w[j];
 		p->iColor = cp.iColor;
 #endif
-		TYPEClear(p);
+//		TYPEClear(p);
+        TYPEReset(p,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE|TYPE_DensACTIVE|TYPE_NbrOfACTIVE|TYPE_Scatter|TYPE_DensZeroed);
 		TYPESet(p,TYPE_ACTIVE);
 		p->iRung = 0;
 		p->fWeight = 1.0;
@@ -4847,6 +4849,7 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 	for (i=0;i<nLocal;++i) {
         p = &pkd->pStore[i];
 		cp.iOrder = p->iOrder;
+		cp.iActive = p->iActive;
 		cp.fMass = p->fMass;
 #ifdef CHANGESOFT
 		cp.fSoft = p->fSoft0;

@@ -123,6 +123,9 @@ typedef struct nNeighbor {
 	FLOAT dz;
 	} NN;
 
+typedef struct { double r2; NN *pNN; } ISORT;
+
+int CompISORT(const void * a, const void * b);
 
 enum smx_smoothtype {
   SMX_NULL,
