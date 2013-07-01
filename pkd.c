@@ -523,8 +523,8 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				*/
 				xdr_float(&xdrs,&fTmp);
 				vTemp = fTmp;
-#ifdef FBPARTICLE
-                if (fTmp > 1e5) TYPESet(p, TYPE_FEEDBACK);
+#ifdef FBPARTICLETSTART
+                if (fTmp > FBPARTICLETSTART) TYPESet(p, TYPE_FEEDBACK);
 #endif
 				p->u = dTuFac*vTemp;
 				p->uPred = dTuFac*vTemp;
