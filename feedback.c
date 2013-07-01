@@ -110,6 +110,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 
                     pNew.fMass = mFB;
                     pNew.u = (edotonmstar/mdotonmstar)/fb->dErgPerGmUnit;
+                    pNew.uPred = pNew.u;
                     pNew.uDotFB = (pNew.u*0.999)/dDeltaFB;
                     pNew.fTimeCoolIsOffUntil = dTime + 0.9999*dDeltaFB;
                     pNew.c = sqrt((5./3.*2/3.)*pNew.u); /* Estimate final C */
@@ -124,11 +125,12 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                     gpc.dThermalCondSatCoeff = fb->dThermalCondSatCoeff;
                     gpc.dThermalCond2CoeffCode = fb->dThermalCond2CoeffCode;
                     gpc.dThermalCond2SatCoeff = fb->dThermalCond2SatCoeff;
+                    pNew.fDensity = p->fDensity;
                     pkdSetThermalCond(pkd, &gpc, &pNew);
-					if (pNew.fThermalCond > 0) {
-						dt_diff = fb->dtFacDiffusion*ph*ph*p->fDensity/(2*pNew.fThermalCond); /* gas density at star */
-						if (dt_diff < dt) dt = dt_diff;   
-					}
+                    if (p->fThermalCond > 0) {
+                        dt_diff = fb->dtFacDiffusion*ph*ph*pNew.fDensity/pNew.fThermalCond; /* gas density at star */
+                        if (dt_diff < dt) dt = dt_diff;   
+                        }
 #endif
 #if (1)
                     pNew.dt = dt; 
