@@ -1386,6 +1386,7 @@ void smSmooth(SMX smx,SMF *smf)
             }
         }
     else {
+        int nh = 0;
         /* Limit fBall2 growth to help stability and neighbour finding */
         if (smx->bUseBallMax && p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)
             fBall2=p[pi].fBallMax*p[pi].fBallMax;
@@ -1404,6 +1405,10 @@ void smSmooth(SMX smx,SMF *smf)
             ** Move relevant data into Nearest Neighbor array.
             */
             if (pqi->fKey <= fBall2) {
+#ifdef NSMOOTHINNER
+                if (pqi->fKey <= fBall2*0.5) nh++;
+//                if (pqi->fKey <= fBall2*0.25) nh++;
+#endif
                 smx->nnList[nCnt].iPid = pqi->id;
                 smx->nnList[nCnt].iIndex = pqi->p;
                 smx->nnList[nCnt].pPart = pqi->pPart;
@@ -1420,6 +1425,26 @@ void smSmooth(SMX smx,SMF *smf)
                 h2 = pqn->fKey;
                 }
             }
+
+#ifdef NSMOOTHINNER
+        if (nh < 18) {
+//        if (nh < 6) {
+            ISORT *isort;
+            isort = (ISORT *) malloc(sizeof(ISORT)*nCnt);
+            for (i=0;i<nCnt;++i) {
+//                isort[i].pNN = smx->nnList[i];
+                isort[i].r2 = smx->nnList[i].fDist2;
+                }
+            qsort( isort, nSmooth, sizeof(ISORT), CompISORT );
+            assert(nSmooth > 22);
+            
+            p[pi].fBall2 = -isort[21].r2*2; 
+//            p[pi].fBall2 = -isort[7].r2*4; 
+            free(isort);
+            }
+        else  
+#endif 
+            {
 
 #if (defined(SLIDING_PATCH) && INTERNAL_WARNINGS)
 
@@ -1463,6 +1488,7 @@ void smSmooth(SMX smx,SMF *smf)
 
         nSmoothed++;
         smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
+                }
         }
 
     /*
@@ -1539,8 +1565,12 @@ void smSmooth(SMX smx,SMF *smf)
             fBall2 = smf->dSinkRadius*smf->dSinkRadius*1.1;
             break;
         default:
+#ifdef NSMOOTHINNER
+            fBall2 = fabs(p[pi].fBall2);
+#else
             fprintf(stderr,"Illegal value for iLowhFix %d in smooth\n",smx->iLowhFix);
             assert(0);
+#endif
             }
         for (;;) {
             p[pi].fBall2 = fBall2;
