@@ -9692,18 +9692,19 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         msrAddDelParticles(msr);
         msrMassCheck(msr, dTotMass, "Form stars: after particle adjustment");
 
-	dsec = msrTime() - sec;
-	printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
-	LOGTIMINGUPDATE( dsec, TIMING_StarForm );
+        dsec = msrTime() - sec;
+        printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
+        LOGTIMINGUPDATE( dsec, TIMING_StarForm );
         }
 #ifdef FBPARTICLE
-	else {
-		msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
+    else {
+        msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
         msrBuildTree(msr,1,dTotMass,1);
         msrActiveType(msr,TYPE_STAR|TYPE_GAS,TYPE_SMOOTHACTIVE); /* Density for star */
         msrSmooth(msr,dTime,SMX_DENSITY,1);
-	}
+        }
 #endif
+
     /*
      * Calculate energy of SN for any stars for the next timestep.  This
      * requires looking at past star forming events.  Also calculate
