@@ -5379,7 +5379,8 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 void initPromoteToHotGas(void *p1)
     {
-	TYPEReset(((PARTICLE *) p1),TYPE_PROMOTED);
+    TYPEReset(((PARTICLE *) p1),TYPE_PROMOTED);
+    if (((PARTICLE *) p1)->iOrder==9873) printf("Promoted reset: %d %d\n",((PARTICLE *) p1)->iOrder,((PARTICLE *) p1)->iActive);
     PROMOTE_SUMWEIGHT(p1) = 0; /* store weight total */
     PROMOTE_SUMUPREDWEIGHT(p1) = 0; /* store u x weight total */
     PROMOTE_UPREDINIT(p1) = ((PARTICLE *) p1)->uPred; /* store uPred */
@@ -5387,7 +5388,10 @@ void initPromoteToHotGas(void *p1)
 
 void combPromoteToHotGas(void *p1,void *p2)
     {
-	if(TYPETest(((PARTICLE *) p2), TYPE_PROMOTED)) TYPESet(((PARTICLE *) p1),TYPE_PROMOTED);
+    if(TYPETest(((PARTICLE *) p2), TYPE_PROMOTED)) {
+        TYPESet(((PARTICLE *) p1),TYPE_PROMOTED);
+        if (((PARTICLE *) p2)->fTimeCoolIsOffUntil > ((PARTICLE *) p1)->fTimeCoolIsOffUntil) ((PARTICLE *) p1)->fTimeCoolIsOffUntil = ((PARTICLE *) p2)->fTimeCoolIsOffUntil;
+        }
     PROMOTE_SUMWEIGHT(p1) += PROMOTE_SUMWEIGHT(p2);
     PROMOTE_SUMUPREDWEIGHT(p1) += PROMOTE_SUMUPREDWEIGHT(p2);
     }
@@ -5491,6 +5495,11 @@ void initShareWithHotGas(void *p1)
 	if(!TYPETest(((PARTICLE *)p1), TYPE_DELETED)) {
 		((PARTICLE *)p1)->u = 0;  
 		((PARTICLE *)p1)->uPred = 0;
+#ifdef PROMOTEPOSSHARE
+		((PARTICLE *)p1)->r[0] = 0;  
+		((PARTICLE *)p1)->r[1] = 0;  
+		((PARTICLE *)p1)->r[2] = 0;  
+#endif
 		}
     }
 
@@ -5502,6 +5511,11 @@ void combShareWithHotGas(void *vp1,void *vp2)
 	if(!TYPETest((p1), TYPE_DELETED)) {
         p1->u = p1->u + p2->u;
         p1->uPred = p1->uPred + p2->uPred;
+#ifdef PROMOTEPOSSHARE
+		p1->r[0] += p2->r[0];
+		p1->r[1] += p2->r[1];
+		p1->r[2] += p2->r[2];
+#endif
 		}
     }
 
@@ -5563,6 +5577,10 @@ void ShareWithHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             q->u += dE/q->fMass;
             p->uPred -=  dE/p->fMass;
             p->u -=  dE/p->fMass;
+#ifdef PROMOTEPOSSHARE
+            /* Code to change position of newly promoted particle */
+            assert(0);
+#endif
             {
             Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
             Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, q->uPred, q->fMetals );
