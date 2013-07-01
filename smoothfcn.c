@@ -5321,7 +5321,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     {	
     PARTICLE *q;
     FLOAT fFactor,ph,ih2,r2,rs,rstot;
-    FLOAT Tp,Tq,up52,uq52,Prm,Prob;
+    FLOAT Tp,Tq,up52,uq52,Prm,Prob,mPromoted;
 	int i,nCold;
 
 #ifdef NOCOOLING
@@ -5345,7 +5345,8 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    if (TYPETest(q, TYPE_DELETED) || (TYPETest(q, TYPE_FEEDBACK) && !TYPETest(q, TYPE_PROMOTED))) continue;
         Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
         if (Tq >= 1e5) continue;  /* Exclude hot particles */
-		assert(TYPETest(q, TYPE_GAS));
+	    assert(TYPETest(q, TYPE_GAS));
+        assert(!TYPETest(p, TYPE_STAR));
 		r2 = nnList[i].fDist2*ih2;            
 		KERNEL(rs,r2);
         rstot += rs;
@@ -5356,6 +5357,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     /* Area = h^2 4 pi nCold/nSmooth */
     fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*12.5664*nCold/nSmooth/rstot;
 
+    mPromoted = 0;
 	for (i=0;i<nSmooth;++i) {
         q = nnList[i].pPart;
         if (p->iOrder == q->iOrder) continue;
@@ -5373,11 +5375,37 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         Prob = fFactor*(up52-pow(q->uPred,2.5))*rs/q->fMass;
 //        printf("promote?: %d %d %g %g %g  %g %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
         if ( (rand()/((double) RAND_MAX)) < Prob) {
-            double dTimeCool = smf->dTime + 0.9999*smf->dDeltaStarForm;
+            mPromoted += q->fMass;
+            printf("promote? MASS: %d %d %g %g %g  %g + %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
+            }
+        }
+
+    if (mPromoted > 0) {
+        double dTimeCool = smf->dTime + 0.9999*smf->dDeltaStarForm;
+        ISORT *isort;
+
+        isort = (ISORT *) malloc(sizeof(ISORT)*nSmooth);
+        for (i=0;i<nSmooth;++i) {
+            isort[i].pNN = &(nnList[i]);
+            isort[i].r2=nnList[i].fDist2;
+            }
+        qsort( isort, nSmooth, sizeof(ISORT), CompISORT );
+
+        for (i=0;i<nSmooth;++i) {
+            q = isort[i].pNN->pPart;
+            if (p->iOrder == q->iOrder) continue;
+            if (TYPETest(q, TYPE_DELETED) || TYPETest(q, TYPE_FEEDBACK) || TYPETest(q, TYPE_PROMOTED)) continue;
+            Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+            if (Tq >= 1e5 ) continue;  /* Exclude hot particles */
+            assert(TYPETest(q, TYPE_GAS));
+
             if (dTimeCool > q->fTimeCoolIsOffUntil) q->fTimeCoolIsOffUntil = dTimeCool;
             TYPESet(q, TYPE_PROMOTED|TYPE_FEEDBACK);
-            printf("promote? YES: %d %d %g %g %g  %g %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
+            mPromoted -= q->fMass;
+            printf("promote? YES: %d %d %g %g %g  %g - %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
+            if (mPromoted < q->fMass*0.1) break;
             }
+        free(isort);
         }
         
 #endif
@@ -5553,8 +5581,6 @@ void combDistFBEnergy(void *p1,void *p2)
     ((PARTICLE *)p1)->fTimeForm = max( ((PARTICLE *)p1)->fTimeForm,
                 ((PARTICLE *)p2)->fTimeForm ); /* propagate FB time JMB 2/24/10 */
     }
-
-typedef struct { double r2; NN *pNN; } ISORT;
 
 int CompISORT(const void * a, const void * b) {
     return ( (((ISORT *) a)->r2 < ((ISORT *) b)->r2) ? -1 : 1 );
