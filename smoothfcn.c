@@ -4340,7 +4340,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT dvxdx , dvxdy , dvxdz, dvydx , dvydy , dvydz, dvzdx , dvzdy , dvzdz; /* comoving shear tensor */
 	FLOAT dvx,dvy,dvz,dx,dy,dz,trace;
 	FLOAT grx,gry,grz,gnorm,dvds,dvdr,c;
-#if defined(RTDENSITY) || defined(THERMALCOND)
+#if defined (DENSITYU) || defined(RTDENSITY) || defined(THERMALCOND)
 	FLOAT fDensityU = 0;
 #endif
 //#ifdef DRHODT
