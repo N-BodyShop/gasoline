@@ -1181,7 +1181,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				sizeof(double),"evap",
 				"<Evap Coefficient due to thermal Conductivity (electrons), e.g. 6.1e-7 > = 0");
 #ifdef FBPARTICLE
-	msr->param.dFBMassRatio = 0.25;
+	msr->param.dFBMassRatio = 0;
 	prmAddParam(msr->prm,"dFBMassRatio",2,&msr->param.dFBMassRatio,
 				sizeof(double),"massratio",
 				"<Fraction of star particle mass each feedback particle must be>");
@@ -2160,6 +2160,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #ifdef FBPARTICLE
         msr->param.fb->dDelta = msr->param.dDelta;
         msr->param.fb->dFBMassRatio = msr->param.dFBMassRatio;
+		if(msr->param.dFBMassRatio == 0) {
+			printf("Please Specify a FB mass ratio");
+			assert(0);
+		}
 		assert(msr->param.dFBMassRatio < 1);
         msr->param.fb->dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
         msr->param.fb->dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
