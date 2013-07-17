@@ -582,7 +582,7 @@ void clRatesRedshift( COOL *cl, double zIn, double dTimeIn ) {
           else
               zTimeUV = zIn;
 		  for ( i=0; i < cl->nUV && zTimeUV <= UV->zTime ; i++,UV++ );/*printf("i: %d, cl->nUV: %d, zTime: %f, UV->zTime %f\n",i, cl->nUV,zTimeUV, UV->zTime);*/
-          printf("Redshift setting for UV %g %g %g %d\n",zIn,cl->dzTimeClampUV,zTimeUV,i);
+          /*printf("Redshift setting for UV %g %g %g %d\n",zIn,cl->dzTimeClampUV,zTimeUV,i);*/
 		  }
 	  }
 
