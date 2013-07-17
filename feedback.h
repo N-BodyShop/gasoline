@@ -50,6 +50,7 @@ typedef struct fbContext
 	double dThermalCond2SatCoeff;
     double dtFacDiffusion;
     double dtFacCourant;
+	double dFBMassRatio;
 #endif
     }  * FB;
 

@@ -82,9 +82,9 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 #ifdef FBPARTICLE
             {
             double tstart = 4e6, tend = 30e6; /* yr */
-            double mdotonmstar = 10*10/100./(tend-tstart); /* gm / gm / yr */
+            double mdotonmstar = 25/100./(tend-tstart); /* gm / gm / yr */
             double edotonmstar = 1e51/(100*2e33)/(tend-tstart); /* erg / gm / yr */
-            double mFB = 0.025*p->fMassForm; /* mass of fb particles (code units) */
+            double mFB = fb->dFBMassRatio*p->fMassForm; /* mass of fb particles (code units) */
             double tFB0,tFB1,nFac,dDeltaFB;
             int nFB0,nFB1;
             
