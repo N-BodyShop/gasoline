@@ -1435,12 +1435,13 @@ void smSmooth(SMX smx,SMF *smf)
 //                isort[i].pNN = smx->nnList[i];
                 isort[i].r2 = smx->nnList[i].fDist2;
                 }
-            qsort( isort, nSmooth, sizeof(ISORT), CompISORT );
+            qsort( isort, nCnt, sizeof(ISORT), CompISORT );
             assert(nSmooth > 22);
             
             p[pi].fBall2 = -isort[21].r2*2; 
 //            p[pi].fBall2 = -isort[7].r2*4; 
             free(isort);
+			isort = NULL;
             }
         else  
 #endif 
