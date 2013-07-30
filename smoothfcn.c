@@ -5401,6 +5401,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     PARTICLE *q;
     FLOAT fFactor,ph,ih2,r2,rs,rstot;
     FLOAT Tp,Tq,up52,uq52,Prm,Prob,mPromoted;
+    double xc,yc,zc,dotcut2,dot;
 	int i,nCold;
 
 #ifdef NOCOOLING
@@ -5417,6 +5418,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
     up52 = pow(p->uPred,2.5);
     rstot = 0;
+    xc = 0; yc = 0; zc = 0;
     nCold = 0;
 	for (i=0;i<nSmooth;++i) {
         q = nnList[i].pPart;
@@ -5429,10 +5431,31 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		r2 = nnList[i].fDist2*ih2;            
 		KERNEL(rs,r2);
         rstot += rs;
+  		xc += rs*nnList[i].dx; 
+		yc += rs*nnList[i].dy;
+		zc += rs*nnList[i].dz;
+      
         nCold++;
         }
 
     if (rstot == 0) return;
+
+    /* Check for non-edge hot particle  theta = 45 deg, cos^2 = 0.5 */
+    dotcut2 = (xc*xc+yc*yc+zc*zc)*0.5;
+    
+	for (i=0;i<nSmooth;++i) {
+        q = nnList[i].pPart;
+        if (p->iOrder == q->iOrder) continue;
+	    if (TYPETest(q, TYPE_DELETED) || (TYPETest(q, TYPE_FEEDBACK) && !TYPETest(q, TYPE_PROMOTED))) continue;
+        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+        if (Tq <= 1e5) continue;  
+        dot = xc*nnList[i].dx + yc*nnList[i].dy + zc*nnList[i].dz;
+		if (dot < 0 || dot*dot < dotcut2*nnList[i].fDist2) {
+            printf("promote (hot excluded): %d %d  %g %g  (%g %g %g) (%g %g %g)\n",p->iOrder,q->iOrder,Tp, Tq,xc,yc,zc,nnList[i].dx,nnList[i].dy,nnList[i].dz);
+            return;
+            }
+        }
+
     /* Area = h^2 4 pi nCold/nSmooth */
     fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*12.5664*nCold/nSmooth/rstot;
 
@@ -5449,7 +5472,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         PROMOTE_SUMWEIGHT(q) += p->fMass;
         PROMOTE_SUMUPREDWEIGHT(q) += p->fMass*p->uPred;
 		
-        /* cf. WCC'77 mdot = 4.13d-14 * (dx^2/4 !pi) (Thot^2.5-Tcold^2.5)/dx - 2 udot mHot/(k T/mu) 
+        /* cf. Weaver etal'77 mdot = 4.13d-14 * (dx^2/4 !pi) (Thot^2.5-Tcold^2.5)/dx - 2 udot mHot/(k T/mu) 
            Kernel sets total probability to 1 */
         Prob = fFactor*(up52-pow(q->uPred,2.5))*rs/q->fMass;
 //        printf("promote?: %d %d %g %g %g  %g %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
