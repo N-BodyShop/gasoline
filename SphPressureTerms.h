@@ -103,10 +103,11 @@
 #ifndef NODIFFUSIONTHERMAL
 /* Default -- thermal diffusion */
 #ifdef THERMALCOND 
-#if (0)
+#if (1)
 /* Harmonic average coeff */
-#define DIFFUSIONThermalCondBase() double dThermalCondSum = p->fThermalCond + q->fThermalCond; \
-    double dThermalCond = ( dThermalCondSum <= 0 ? 0 : 4*p->fThermalCond*q->fThermalCond/(dThermalCondSum*p->fDensity*q->fDensity) );
+#define DIFFUSIONThermalCondBase(dt_) double dThermalCondSum = p->fThermalCond + q->fThermalCond; \
+    double dThermalCond = ( dThermalCondSum <= 0 ? 0 : 4*p->fThermalCond*q->fThermalCond/(dThermalCondSum*p->fDensity*q->fDensity) ); \
+      if (dThermalCond > 0 && (dt_diff = smf->dtFacDiffusion*ph*p->fThermalLength/(dThermalCond*p->fDensity)) < dt_) dt_ = dt_diff; 
 #else
 /* Arithmetic average coeff */
 #define DIFFUSIONThermalCondBase(dt_) \
