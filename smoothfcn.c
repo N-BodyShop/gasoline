@@ -5434,7 +5434,10 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
     if (rstot == 0) return;
     /* Area = h^2 4 pi nCold/nSmooth */
-    fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*12.5664*nCold/nSmooth/rstot;
+    /*fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*12.5664*nCold/nSmooth/rstot;*/
+    fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*3*ph*12.5664/(nSmooth-nCold)/rstot;
+	printf("CHECKAREA: %e %e", smf->dTime, 12.5664*ph*ph*nCold/nSmooth);
+	printf("CHECKAREA2: %e %e", smf->dTime, 12.5664*ph*ph/(nSmooth-nCold));
 
     mPromoted = 0;
 	for (i=0;i<nSmooth;++i) {
@@ -5452,10 +5455,10 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         /* cf. WCC'77 mdot = 4.13d-14 * (dx^2/4 !pi) (Thot^2.5-Tcold^2.5)/dx - 2 udot mHot/(k T/mu) 
            Kernel sets total probability to 1 */
         Prob = fFactor*(up52-pow(q->uPred,2.5))*rs/q->fMass;
-//        printf("promote?: %d %d %g %g %g  %g %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
+		printf("promote?: %d %d %g %g %g  %g %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
         if ( (rand()/((double) RAND_MAX)) < Prob) {
             mPromoted += q->fMass;
-            printf("promote? MASS: %d %d %g %g %g  %g + %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
+            /*printf("promote? MASS: %d %d %g %g %g  %g + %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);*/
             }
         }
 
