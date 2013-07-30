@@ -6438,7 +6438,10 @@ void  pkdSetThermalCond(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p)
     {
 #ifdef THERMALCOND
     double fThermalCond = pgpc->dThermalCondCoeffCode*pow(p->uPred,2.5); /* flux = coeff grad u   coeff ~ flux x h/u */ 
+    double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
+	if (Tp < 1e5) fThermalCond = 0;
     double fThermalCond2 = pgpc->dThermalCond2CoeffCode*pow(p->uPred,0.5);
+	if (Tp < 1e5) fThermalCond2 = 0;
     double fSat = p->fDensity*p->c*p->fThermalLength; /* Max flux x L/u */
     double fThermalCondSat = pgpc->dThermalCondSatCoeff*fSat;
     double fThermalCond2Sat = pgpc->dThermalCond2SatCoeff*fSat;
