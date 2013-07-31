@@ -5401,7 +5401,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     PARTICLE *q;
     FLOAT fFactor,ph,ih2,r2,rs,rstot;
     FLOAT Tp,Tq,up52,uq52,Prm,Prob,mPromoted;
-    double xc,yc,zc,dotcut2,dot;
+    double xc,yc,zc,dotmag,dot;
 	int i,nCold;
 
 #ifdef NOCOOLING
@@ -5441,7 +5441,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     if (rstot == 0) return;
 
     /* Check for non-edge hot particle  theta = 45 deg, cos^2 = 0.5 */
-    dotcut2 = (xc*xc+yc*yc+zc*zc)*0.5;
+    dotmag = sqrt(xc*xc+yc*yc+zc*zc);
     
 	for (i=0;i<nSmooth;++i) {
         q = nnList[i].pPart;
@@ -5450,7 +5450,8 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
         if (Tq <= 1e5) continue;  
         dot = xc*nnList[i].dx + yc*nnList[i].dy + zc*nnList[i].dz;
-		if (dot < 0 || dot*dot < dotcut2*nnList[i].fDist2) {
+		dot /= dotmag * sqrt(nnList[i].fDist2);
+		if (dot > 0.70710678118) {//1/sqrt(2)
             printf("promote (hot excluded): %d %d  %g %g  (%g %g %g) (%g %g %g)\n",p->iOrder,q->iOrder,Tp, Tq,xc,yc,zc,nnList[i].dx,nnList[i].dy,nnList[i].dz);
             return;
             }
