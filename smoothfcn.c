@@ -5450,7 +5450,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
         if (Tq <= 1e5) continue;  
         dot = xc*nnList[i].dx + yc*nnList[i].dy + zc*nnList[i].dz;
-		if (dot < 0 || dot*dot < dotcut2*nnList[i].fDist2) {
+		if (dot > 0 && dot*dot > dotcut2*nnList[i].fDist2) {
             printf("promote (hot excluded): %d %d  %g %g  (%g %g %g) (%g %g %g)\n",p->iOrder,q->iOrder,Tp, Tq,xc,yc,zc,nnList[i].dx,nnList[i].dy,nnList[i].dz);
             return;
             }
