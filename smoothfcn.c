@@ -5459,12 +5459,12 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			}
 		}
 
-	printf("CHECKFPE %e %e\n", nSmooth, nCold);
+	printf("CHECKFPE %d %d\n", nSmooth, nCold);
     /* Area = h^2 4 pi nCold/nSmooth */
 	nHot=nSmooth-nCold;
-    fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*12.5664*2.5/(nHot)/rstot;
+    fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*12.5664*1.5/(nHot)/rstot;
 	/*printf("CHECKAREA: %e %e", smf->dTime, 12.5664*ph*ph*nCold/nSmooth);*/
-	printf("CHECKAREA2: %e %d %e %d %d %e %e %e %e\n", smf->dTime, p->iOrder, 12.5664*ph*ph*2.5/(nHot), nSmooth, nCold, xc, yc, zc, rc);
+	printf("CHECKAREA2: %e %d %e %d %d %e %e %e %e\n", smf->dTime, p->iOrder, 12.5664*ph*ph*1.5/(nHot), nSmooth, nCold, xc, yc, zc, rc);
 	/*printf("CHECKAREA2: %e %d %e\n", smf->dTime, p->iOrder, 3.1415*ph*ph*sin(12.5664/(nSmooth-nCold))*sin(12.5664/(nSmooth-nCold)));*/
 
     mPromoted = 0;
