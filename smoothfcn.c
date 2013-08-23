@@ -5459,9 +5459,9 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			}
 		}
 
-	printf("CHECKFPE %d %d\n", nSmooth, nCold);
     /* Area = h^2 4 pi nCold/nSmooth */
 	nHot=nSmooth-nCold;
+	assert(nHot > 0);
     fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*12.5664*1.5/(nHot)/rstot;
 	/*printf("CHECKAREA: %e %e", smf->dTime, 12.5664*ph*ph*nCold/nSmooth);*/
 	printf("CHECKAREA2: %e %d %e %d %d %e %e %e %e\n", smf->dTime, p->iOrder, 12.5664*ph*ph*1.5/(nHot), nSmooth, nCold, xc, yc, zc, rc);
@@ -5618,6 +5618,8 @@ void ShareWithHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 //                printf("promote YES new T: %d %d %g %g %g %g   %g  %g %g %g %g\n",p->iOrder,q->iOrder,p->fMass,q->fMass,uavg/4802.58,umin/4802.58,Tp0,Tp, Tq0,Tq);
 //            printf("promote YES new T: %d %d %g %g %g %g   %g  %g %g %g %g\n",p->iOrder,q->iOrder,p->fMass,q->fMass,uavg,umin,factor*p->fMass/PROMOTE_SUMWEIGHT(q)*Eadd,uPredp,p->uPred,PROMOTE_UPREDINIT(q),q->uPred);
             }
+            assert(q->uPred > 0);
+            assert(q->u > 0);
             assert(p->uPred > 0);
             assert(p->u > 0);
             }
