@@ -5442,9 +5442,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     if (rstot == 0) return;
 
     /* Check for non-edge hot particle  theta = 45 deg, cos^2\theta = 0.5 */
-	/*dotcut2 = (xc*xc+yc*yc+zc*zc)*cos(6.283185/nSmooth)*cos(6.283185/nSmooth);*/
 	dotcut2 = (xc*xc+yc*yc+zc*zc)*0.5;
-	/*dotcut2 = (xc*xc+yc*yc+zc*zc)*cos(6.283185/(nSmooth-nCold))*cos(6.283185/(nSmooth-nCold));*/
     
 	for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
@@ -5463,9 +5461,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	nHot=nSmooth-nCold;
 	assert(nHot > 0);
     fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*12.5664*1.5/(nHot)/rstot;
-	/*printf("CHECKAREA: %e %e", smf->dTime, 12.5664*ph*ph*nCold/nSmooth);*/
 	printf("CHECKAREA2: %e %d %e %d %d %e %e %e %e\n", smf->dTime, p->iOrder, 12.5664*ph*ph*1.5/(nHot), nSmooth, nCold, xc, yc, zc, rc);
-	/*printf("CHECKAREA2: %e %d %e\n", smf->dTime, p->iOrder, 3.1415*ph*ph*sin(12.5664/(nSmooth-nCold))*sin(12.5664/(nSmooth-nCold)));*/
 
     mPromoted = 0;
 	for (i=0;i<nSmooth;++i) {
@@ -5486,7 +5482,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		printf("promote?: %d %d %g %g %g  %g %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
         if ( (rand()/((double) RAND_MAX)) < Prob) {
             mPromoted += q->fMass;
-            /*printf("promote? MASS: %d %d %g %g %g  %g + %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);*/
+            printf("promote? MASS: %d %d %g %g %g  %g + %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
             }
         }
 
@@ -5615,8 +5611,8 @@ void ShareWithHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             {
             Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
             Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, q->uPred, q->fMetals );
-//                printf("promote YES new T: %d %d %g %g %g %g   %g  %g %g %g %g\n",p->iOrder,q->iOrder,p->fMass,q->fMass,uavg/4802.58,umin/4802.58,Tp0,Tp, Tq0,Tq);
-//            printf("promote YES new T: %d %d %g %g %g %g   %g  %g %g %g %g\n",p->iOrder,q->iOrder,p->fMass,q->fMass,uavg,umin,factor*p->fMass/PROMOTE_SUMWEIGHT(q)*Eadd,uPredp,p->uPred,PROMOTE_UPREDINIT(q),q->uPred);
+                printf("promote YES new T: %d %d %g %g %g %g   %g  %g %g %g %g\n",p->iOrder,q->iOrder,p->fMass,q->fMass,uavg/4802.58,umin/4802.58,Tp0,Tp, Tq0,Tq);
+            printf("promote YES new T: %d %d %g %g %g %g   %g  %g %g %g %g\n",p->iOrder,q->iOrder,p->fMass,q->fMass,uavg,umin,factor*p->fMass/PROMOTE_SUMWEIGHT(q)*Eadd,uPredp,p->uPred,PROMOTE_UPREDINIT(q),q->uPred);
             }
             assert(q->uPred > 0);
             assert(q->u > 0);
