@@ -1176,6 +1176,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dThermalDiffusionCoeff",2,&msr->param.dThermalDiffusionCoeff,
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
+	msr->param.dEvapMinTemp = 1e5;
+	prmAddParam(msr->prm,"dEvapMinTemp",2,&msr->param.dEvapMinTemp,
+				sizeof(double),"evap",
+				"<Minimumum temperature for evaporation > = 1e5");
 	msr->param.dEvapCoeff = 6.1e-7;
 	prmAddParam(msr->prm,"dEvapCoeff",2,&msr->param.dEvapCoeff,
 				sizeof(double),"evap",
@@ -5488,6 +5492,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->iSmoothFlags = 0; /* Initial value, return value in outSmooth */
 #ifdef GASOLINE
     psmf->dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333); /* (dx/h) factor */
+    psmf->dEvapMinTemp = msr->param.dEvapMinTemp;
 #ifdef DIFFUSION
     psmf->dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
     psmf->dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
@@ -8894,6 +8899,7 @@ void msrGetGasPressure(MSR msr, double dTime)
         in.gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
         in.gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode;
         in.gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff;
+        in.gpc.dEvapMinTemp = msr->param.dEvapMinTemp;
 #endif
 		/*
 		 * If self gravitating, resolve the Jeans Mass

@@ -312,6 +312,7 @@ struct GasPressureContext {
     double dThermalCondSatCoeff;
     double dThermalCond2CoeffCode;
     double dThermalCond2SatCoeff;
+	double dEvapMinTemp;
 #endif
     };
 

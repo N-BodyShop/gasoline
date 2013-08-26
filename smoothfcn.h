@@ -66,6 +66,7 @@ typedef struct smfParameters {
     double dSinkTimeEligible;
     double dTime;
     double dEvapCoeffCode;
+    double dEvapMinTemp;
 #ifdef DIFFUSION
     double dMetalDiffusionCoeff;
     double dThermalDiffusionCoeff;
