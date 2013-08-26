@@ -2668,6 +2668,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef WENDLAND
 	fprintf(fp," WENDLAND");
 #endif
+#ifdef QUINTIC
+	fprintf(fp," QUINTIC");
+#endif
 #ifdef NSMOOTHINNER
 	fprintf(fp," NSMOOTHINNER");
 #endif
