@@ -165,6 +165,7 @@ enum smx_smoothtype {
 #ifdef STARFORM
   SMX_DIST_DELETED_GAS,
   SMX_PROMOTE_TO_HOT_GAS,
+  SMX_EVAPORATE_TO_HOT_GAS,
   SMX_SHARE_WITH_HOT_GAS,
   SMX_DELETE_GAS,
   SMX_DIST_FB_ENERGY,
@@ -368,6 +369,11 @@ void HKViscositySym(PARTICLE *,int,NN *,SMF *);
 void initDistDeletedGas(void *p1);
 void combDistDeletedGas(void *p1,void *p2);
 void DistDeletedGas(PARTICLE *, int, NN *, SMF *);
+
+/* SMX_EVAPORATE_TO_HOT_GAS */
+void initEvaporateToHotGas(void *p1);
+void combEvaporateToHotGas(void *p1,void *p2);
+void EvaporateToHotGas(PARTICLE *, int, NN *, SMF *);
 
 /* SMX_PROMOTE_TO_HOT_GAS */
 void initPromoteToHotGas(void *p1);
