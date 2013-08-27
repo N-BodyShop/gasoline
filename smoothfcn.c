@@ -5453,11 +5453,11 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
            if(fMassFlux > p->fMass-p->fMassNoncool) {
                p->uPred = p->uPred + p->uNoncoolPred;
                p->u = p->u + p->uNoncool;
-               p->uDot = p->uDot + p->uDotNoncool;
+               p->uDot = p->uDot + p->uNoncoolDot;
                p->fMassNoncool = 0;
                p->uNoncool = 0;
-               p->uPredNoncool = 0;
-               p->uDotNoncool = 0;
+               p->uNoncoolDot = 0;
+               p->uNoncoolPred = 0;
            }
            else {
                p->fMassNoncool += fMassFlux;
