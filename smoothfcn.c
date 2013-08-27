@@ -5431,9 +5431,6 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {	
 #ifdef NOCOOLING
     return;
-#endif
-#ifndef MASSNONCOOL
-    return;
 #else
     assert(TYPETest(p, TYPE_GAS));
     assert(TYPETest(p, TYPE_FEEDBACK));
@@ -5444,10 +5441,13 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
        FLOAT upnc52, fMassFlux;
        upnc52 = pow(p->uNoncoolPred, 2.5);
        assert(p->uNoncool > 0);
+       //Use the density as an estimate of the bubble radius
        fBubbleRadius = pow(p->fMassNoncool/(p->fDensity*p->uPred/p->uNoncoolPred), 0.33);
        fFactor = 
        smf->dDeltaStarForm*smf->dEvapCoeffCode*fBubbleRadius*fBubbleRadius*12.5664;
        fMassFlux = fFactor*(upnc52-up52);
+       dbgprint("EVAPINTERNAL: %d %e %e %e %e %e %e\n", p->iOrder, fMassFlux,
+               fBubbleRadius, p->fMass, p->fMassNoncool, p->uPred, p->uNoncoolPred);
        if(fMassFlux > 0) { // Make sure that the flow is in the right direction
            // If all the mass becomes hot, switch to being single-phase
            if(fMassFlux > p->fMass-p->fMassNoncool) {
@@ -5465,8 +5465,15 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                p->uNoncoolPred += p->uPred*fMassFlux/(p->fMass-p->fMassNoncool);
                p->u -= p->u*fMassFlux/(p->fMass-p->fMassNoncool);
                p->uNoncool += p->u*fMassFlux/(p->fMass-p->fMassNoncool);
+               assert(p->uPred > 0);
+               assert(p->uNoncoolPred > 0);
+               assert(p->u > 0);
+               assert(p->uNoncool > 0);
            }
        }
+    }
+    else {
+        return;
     }
     
 #endif
