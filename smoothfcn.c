@@ -5440,9 +5440,8 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     if(p->fMassNoncool < p->fMass && p->uNoncool > 0) { // Do the evaporation internally first
        FLOAT upnc52, fMassFlux;
        upnc52 = pow(p->uNoncoolPred, 2.5);
-       assert(p->uNoncool > 0);
-       //Use the density as an estimate of the bubble radius
-       fBubbleRadius = pow(p->fMassNoncool/(p->fDensity*p->uPred/p->uNoncoolPred), 0.33);
+       //Use the density as an estimate of the bubble radius (r = (3/(4pi)*M/rho)^1/3)
+       fBubbleRadius = pow(0.2387*p->fMassNoncool/(p->fDensity*p->uPred/p->uNoncoolPred), 0.33);
        fFactor = 
        smf->dDeltaStarForm*smf->dEvapCoeffCode*fBubbleRadius*fBubbleRadius*12.5664;
        fMassFlux = fFactor*(upnc52-up52);
