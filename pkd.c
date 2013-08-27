@@ -4727,7 +4727,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef GASOLINE
 		p->u = cp.u;
 		p->uPred = cp.u;
-#ifdef MASSNONCOOL;
+#ifdef MASSNONCOOL
         p->fMassNoncool = cp.fMassNoncool;
 #endif
 #ifdef UNONCOOL
