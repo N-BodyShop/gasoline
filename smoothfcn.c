@@ -5437,7 +5437,7 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     assert(!TYPETest(p, TYPE_PROMOTED));
     FLOAT fFactor, fBubbleRadius, up52;
     up52 = pow(p->uPred, 2.5);
-    if(p->fMassNoncool < p->fMass) { // Do the evaporation internally first
+    if(p->fMassNoncool < p->fMass && p->uNoncool > 0) { // Do the evaporation internally first
        FLOAT upnc52, fMassFlux;
        upnc52 = pow(p->uNoncoolPred, 2.5);
        assert(p->uNoncool > 0);
