@@ -5459,11 +5459,11 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                p->uNoncoolPred = 0;
            }
            else {
-               p->fMassNoncool += fMassFlux;
                p->uPred -= p->uPred*fMassFlux/(p->fMass-p->fMassNoncool);
                p->uNoncoolPred += p->uPred*fMassFlux/(p->fMass-p->fMassNoncool);
                p->u -= p->u*fMassFlux/(p->fMass-p->fMassNoncool);
                p->uNoncool += p->u*fMassFlux/(p->fMass-p->fMassNoncool);
+               p->fMassNoncool += fMassFlux;
                assert(p->uPred > 0);
                assert(p->uNoncoolPred > 0);
                assert(p->u > 0);
