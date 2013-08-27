@@ -42,6 +42,10 @@
 #define RTFORCE
 #endif
 
+#ifdef MASSNONCOOL
+#define UNONCOOL
+#endif
+
 #if defined(DENSITYUNOTP) && !defined(DENSITYU)
 #define DENSITYU
 #endif
