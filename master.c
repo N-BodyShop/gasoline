@@ -1462,7 +1462,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		    sizeof(double), "dIT",
 		    "<Ionize Time> = 8000 K");
 #ifdef MASSNONCOOL
-	msr->param.dFBInitialMassLoad = 2.0;
+	msr->param.dFBInitialMassLoad = 0.0;
 	prmAddParam(msr->prm,"dFBInitialMassLoad", 2, &msr->param.dFBInitialMassLoad,
 		    sizeof(double), "dFBIML",
 		    "<Initial Mass Loading for Feedback Ejecta> = 2");
