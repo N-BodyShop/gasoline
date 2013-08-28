@@ -5967,18 +5967,26 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     q->fMass += weight*p->fMSN;
 #ifdef MASSNONCOOL
     {
-    double fMassNoncool = q->fMassNoncool + weight*p->fMSN;
-    double deltaMassLoad = weight*p->fMSN*smf->dFBInitialMassLoad, uNoncool;
-    if (fMassNoncool+deltaMassLoad >= q->fMass) {
-        deltaMassLoad = q->fMass - fMassNoncool;
-        fMassNoncool = q->fMass;
-        }
-    else 
-        fMassNoncool += deltaMassLoad;
-    uNoncool = (q->uNoncool*q->fMassNoncool + weight*p->uDotFB*smf->dDeltaStarForm + deltaMassLoad*q->u)/fMassNoncool;
-    q->uNoncoolPred += (uNoncool-q->uNoncool);
-    q->uNoncool = uNoncool;
-    q->fMass = fMassNoncool;
+	FLOAT Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+	if(Tq < smf->dEvapMinTemp) {
+		double fMassNoncool = q->fMassNoncool + weight*p->fMSN;
+		double deltaMassLoad = weight*p->fMSN*smf->dFBInitialMassLoad;
+		if (fMassNoncool+deltaMassLoad >= q->fMass) {
+			deltaMassLoad = q->fMass - fMassNoncool;
+			fMassNoncool = q->fMass;
+			}
+		else 
+			fMassNoncool += deltaMassLoad;
+		double uNoncool = (q->uNoncool*q->fMassNoncool + weight*p->uDotFB*smf->dDeltaStarForm + deltaMassLoad*q->u)/fMassNoncool;
+		q->uNoncoolPred += (uNoncool-q->uNoncool);
+		q->uNoncool = uNoncool;
+		q->fMassNoncool = fMassNoncool;
+	}
+	else {
+		q->uPred += weight*p->uDotFB*smf->dDeltaStarForm;
+		q->u = q->uPred;
+		q->fMass += weight*p->fMSN;
+	}
     }
 #endif /* MASSNONCOOL */
   }
