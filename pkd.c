@@ -6207,6 +6207,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
                 if ( bCool ) {
                     cp = p->CoolParticle;
                     E = p->uNoncool;
+					dtUse = dt;
                     fDensity = PoverRhoGas/(uncc.gpc.gammam1*p->uNoncool); /* Density of bubble part of particle */
                     CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse);
                     p->uNoncoolDot = (E - p->uNoncool)/duDelta;
