@@ -5435,34 +5435,33 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     FLOAT fFactor, fBubbleRadius, up52, ph;
     up52 = pow(p->uPred, 2.5);
 	ph = sqrt(BALL2(p)*0.25);
-    if(p->fMassNoncool < p->fMass && p->uNoncool > 0) { // Do the evaporation internally first
+    if(p->uNoncool > 0) { // Do the evaporation internally first
        FLOAT upnc52, fMassFlux;
        upnc52 = pow(p->uNoncoolPred, 2.5);
        //Use the density as an estimate of the bubble radius (r = (3/(4pi)*M/rho)^1/3)
-       /*fBubbleRadius = pow(0.2387*p->fMassNoncool/(p->fDensity*p->uPred/p->uNoncoolPred), 0.33);*/
 	   fBubbleRadius = ph*pow(p->uNoncoolPred/(p->uPred+p->uNoncoolPred), 0.33);
        fFactor = 
        smf->dDeltaStarForm*smf->dEvapCoeffCode*fBubbleRadius*fBubbleRadius*12.5664;
        fMassFlux = fFactor*(upnc52-up52);
        printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e\n", 
-			   p->iOrder, fMassFlux, ph, fBubbleRadius, p->fMass-p->fMassNoncool, p->fMassNoncool, p->uPred, p->uNoncoolPred);
+			   p->iOrder, fMassFlux, ph, fBubbleRadius, p->fMass, p->fMassNoncool, p->uPred, p->uNoncoolPred);
        if(fMassFlux > 0) { // Make sure that the flow is in the right direction
            // If all the mass becomes hot, switch to being single-phase
-           if(fMassFlux > p->fMass-p->fMassNoncool) {
-               p->uPred = p->uPred + p->uNoncoolPred;
-               p->u = p->u + p->uNoncool;
-               p->uDot = p->uDot + p->uNoncoolDot;
+           if(fMassFlux > p->fMass) {
+               p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+               p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+               p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+			   p->fMass += p->fMassNoncool;
                p->fMassNoncool = 0;
                p->uNoncool = 0;
                p->uNoncoolDot = 0;
                p->uNoncoolPred = 0;
            }
            else {
-               p->uPred -= p->uPred*fMassFlux/(p->fMass-p->fMassNoncool);
-               p->uNoncoolPred += p->uPred*fMassFlux/(p->fMass-p->fMassNoncool);
-               p->u -= p->u*fMassFlux/(p->fMass-p->fMassNoncool);
-               p->uNoncool += p->u*fMassFlux/(p->fMass-p->fMassNoncool);
+               p->uNoncoolPred = (p->uPred*fMassFlux + p->uNoncoolPred*p->fMassNoncool)/(fMassFlux+p->fMassNoncool);
+               p->uNoncool = (p->u*fMassFlux + p->uNoncool*p->fMassNoncool)/(fMassFlux+p->fMassNoncool);
                p->fMassNoncool += fMassFlux;
+               p->fMass -= fMassFlux;
                assert(p->uPred > 0);
                assert(p->uNoncoolPred > 0);
                assert(p->u > 0);
@@ -5981,6 +5980,7 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q->uNoncoolPred += (uNoncool-q->uNoncool);
 		q->uNoncool = uNoncool;
 		q->fMassNoncool = fMassNoncool;
+		q->fMass += fMassNoncool;
 	}
 	else {
 		q->uPred += weight*p->uDotFB*smf->dDeltaStarForm;
