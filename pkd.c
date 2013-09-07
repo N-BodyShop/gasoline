@@ -6289,8 +6289,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 #ifdef COOLING_BOLEY
                 cp.mrho = pow(p->fMass/p->fDensity, 1./3.);
 #endif
-#ifdef MASSNONCOOL
-#endif
                 CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse);
 #endif /* !COOLING_MOLECULARH */
                 
