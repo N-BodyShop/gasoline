@@ -5341,7 +5341,7 @@ void SplitGas(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
     return; //Don't split particles that are too small FOOL
 
     PARTICLE *q;
-    PARTICLE daughter1, daughter2;
+    PARTICLE daughter;
     FLOAT theta,phi,r2,rs,rstot,rmax,ih2;
     int i;
     theta = M_PI*(double) random()/RAND_MAX;
@@ -5360,27 +5360,22 @@ void SplitGas(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
         rstot += rs;
         }
     rmax = sqrt(rmax/ih2);
-    daughter1 = *p;
-    TYPEReset(&daughter1, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
-    TYPESet(&daughter1, TYPE_GAS);
-    daughter2 = *p;
-    TYPEReset(&daughter2, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
-    TYPESet(&daughter2, TYPE_GAS);
-    daughter1.fMass /= 2.0;
+    daughter = *p;
+    TYPESet(&daughter, TYPE_GAS);
+    daughter.fMass /= 2.0;
+    p->fMass /= 2.0;
 #ifdef MASSNONCOOL
-    daughter1.fMassNoncool /= 2.0;
+    daughter.fMassNoncool /= 2.0;
+    p->fMassNoncool /= 2.0;
 #endif
-    daughter1.r[0] += 0.5*rmax*sin(theta)*cos(phi);
-    daughter1.r[1] += 0.5*rmax*sin(theta)*sin(phi);
-    daughter1.r[2] += 0.5*rmax*cos(theta);
-    daughter1.iGasOrder = p->iOrder;
-    daughter2.r[0] -= 0.5*rmax*sin(theta)*cos(phi);
-    daughter2.r[1] -= 0.5*rmax*sin(theta)*sin(phi);
-    daughter2.r[2] -= 0.5*rmax*cos(theta);
-    daughter2.iGasOrder = p->iOrder;
-    pkdDeleteParticle(smf->pkd, p);
-    pkdNewParticle(smf->pkd, daughter1);
-    pkdNewParticle(smf->pkd, daughter2);
+    daughter.r[0] += 0.5*rmax*sin(theta)*cos(phi);
+    daughter.r[1] += 0.5*rmax*sin(theta)*sin(phi);
+    daughter.r[2] += 0.5*rmax*cos(theta);
+    daughter.iGasOrder = p->iOrder;
+    p->r[0] -= 0.5*rmax*sin(theta)*cos(phi);
+    p->r[1] -= 0.5*rmax*sin(theta)*sin(phi);
+    p->r[2] -= 0.5*rmax*cos(theta);
+    pkdNewParticle(smf->pkd, daughter);
 
 }
 #endif
