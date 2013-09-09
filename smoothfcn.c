@@ -5482,6 +5482,9 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef NOCOOLING
 	return;
 #endif
+#ifndef UNONCOOL
+	return;
+#else
     assert(TYPETest(p, TYPE_GAS));
     assert(TYPETest(p, TYPE_FEEDBACK));
     assert(!TYPETest(p, TYPE_PROMOTED));
@@ -5620,6 +5623,7 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         
     }
     
+#endif
 }
 void initPromoteToHotGas(void *p1)
     {
