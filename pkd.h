@@ -42,7 +42,7 @@
 #define RTFORCE
 #endif
 
-#ifdef MASSNONCOOL
+#if defined(MASSNONCOOL)  && !defined(UNONCOOL)
 #define UNONCOOL
 #endif
 
