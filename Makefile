@@ -105,7 +105,8 @@ CODE_DEF += -DDTADJUST #Use a more clever "anticipatory" timestep criteria for m
 #CODE_DEF += -DDTTEST=6e-12 #If a dt value goes below this value, print some debug information about the particle that caused it.
 CODE_DEF += -DEPSACCH #Turning this one makes the pkd code ignore dhMinOverSoft in pkdAccelStep
 #CODE_DEF += -DFITDVDX #Use a fitted version of the DenDVDX that doesn't use the stiff.h evaluator.
-CODE_DEF += -DFBPARTICLE #Use particle creation for feedback (*Very kludgey currently*)
+#CODE_DEF += -DFBPARTICLE #Use particle creation for feedback (*Very kludgey currently*)
+CODE_DEF += -DPARTICLESPLIT #Particles will now shatter if they get too heavy
 CODE_DEF += -DPROMOTE #Make particles hot based on conduction in feedback
 CODE_DEF += -DGASOLINE #Do SPH (without this, compiles pkdgrav, just N-Body)
 #CODE_DEF += -DGLASS #Use this to make glass initial conditions
