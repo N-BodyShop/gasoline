@@ -1341,6 +1341,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dMinMassFrac", 2, &msr->param.stfm->dMinMassFrac,
 		    sizeof(double), "stMinFrac",
 		    "<Minimum fraction of average mass of neighbour particles required for gas particles to avoid deletion> = .1");
+#ifdef PARTICLESPLIT
+	msr->param.dInitGasMass = -1;
+	prmAddParam(msr->prm,"dInitGasMass", 2, &msr->param.dInitGasMass,
+		    sizeof(double), "stInitGas",
+		    "<Initial mass of a gas particle> = -1");
+#endif
 	msr->param.stfm->dMinGasMass = 0.0;
 	prmAddParam(msr->prm,"dMinGasMass", 2, &msr->param.stfm->dMinGasMass,
 		    sizeof(double), "stMinGas",
@@ -2124,6 +2130,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		   msr->param.stfm->dInitStarMass > 0.0);
 	    assert(msr->param.stfm->dMinMassFrac > 0.0 && 
 		   msr->param.stfm->dMinMassFrac < 1.0);
+#ifdef PARTICLESPLIT
+	    assert(msr->param.dInitGasMass > 0);
+#endif
 	    if (msr->param.stfm->dInitStarMass > 0) {
 	      /* if (msr->param.stfm->dMinGasMass <= 0) */
 	      /* Only allow 10% underweight star particles */
@@ -5499,6 +5508,9 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
 #ifdef GASOLINE
     psmf->dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333); /* (dx/h) factor */
     psmf->dEvapMinTemp = msr->param.dEvapMinTemp;
+#ifdef PARTICLESPLIT
+    psmf->dInitGasMass = msr->param.dInitGasMass;
+#endif
 #ifdef DIFFUSION
     psmf->dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
     psmf->dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
@@ -9707,6 +9719,10 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         /*
          * Distribute mass, and metals of deleted gas particles.
          */
+#ifdef PARTICLESPLIT
+        if (msr->param.bVDetails) printf("Splitting Gas ...\n");
+        msrSmooth(msr, dTime, SMX_SPLIT_GAS, 1);
+#endif
         if (msr->param.bVDetails) printf("Distribute Deleted Gas ...\n");
         msrActiveType(msr, TYPE_DELETED, TYPE_SMOOTHACTIVE);
         msrSmooth(msr, dTime, SMX_DIST_DELETED_GAS, 1);

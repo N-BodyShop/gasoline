@@ -5334,9 +5334,59 @@ void combDistDeletedGas(void *vp1,void *vp2)
 			}
 		}
     }
+#ifdef PARTICLESPLIT
+void SplitGas(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
+{
+    if(p->fMass < 1.5*smf->dInitGasMass)
+    return; //Don't split particles that are too small FOOL
 
+    PARTICLE *q;
+    PARTICLE daughter1, daughter2;
+    FLOAT theta,phi,r2,rs,rstot,rmax,ih2;
+    int i;
+    theta = M_PI*(double) random()/RAND_MAX;
+    phi = 2*M_PI*(double) random()/RAND_MAX;
+	ih2 = 4.0/BALL2(p);
+    rstot = 0;        
+    rmax = 0;        
+	for (i=0;i<nSmooth;++i) {
+        q = nnList[i].pPart;
+	    if(TYPETest(q, TYPE_DELETED)) continue;
+	    assert(TYPETest(q, TYPE_GAS));
+        r2 = nnList[i].fDist2*ih2;            
+        if(r2 > rmax)
+            rmax = r2;
+        KERNEL(rs,r2);
+        rstot += rs;
+        }
+    rmax = sqrt(rmax/ih2);
+    daughter1 = *p;
+    TYPEReset(&daughter1, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
+    TYPESet(&daughter1, TYPE_GAS);
+    daughter2 = *p;
+    TYPEReset(&daughter2, TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
+    TYPESet(&daughter2, TYPE_GAS);
+    daughter1.fMass /= 2.0;
+#ifdef MASSNONCOOL
+    daughter1.fMassNoncool /= 2.0;
+#endif
+    daughter1.r[0] += 0.5*rmax*sin(theta)*cos(phi);
+    daughter1.r[1] += 0.5*rmax*sin(theta)*sin(phi);
+    daughter1.r[2] += 0.5*rmax*cos(theta);
+    daughter1.iGasOrder = p->iOrder;
+    daughter2.r[0] -= 0.5*rmax*sin(theta)*cos(phi);
+    daughter2.r[1] -= 0.5*rmax*sin(theta)*sin(phi);
+    daughter2.r[2] -= 0.5*rmax*cos(theta);
+    daughter2.iGasOrder = p->iOrder;
+    pkdDeleteParticle(smf->pkd, p);
+    pkdNewParticle(smf->pkd, daughter1);
+    pkdNewParticle(smf->pkd, daughter2);
+
+}
+#endif
 void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
-{	PARTICLE *q;
+{	
+    PARTICLE *q;
 	FLOAT fNorm,ih2,r2,rs,rstot,delta_m,m_new,f1,f2;
 	FLOAT fTCool; /* time to cool to zero */
 	int i;

@@ -75,6 +75,9 @@ typedef struct smfParameters {
 #ifdef MASSNONCOOL
     double dFBInitialMassLoad;
 #endif
+#ifdef PARTICLESPLIT
+    double dInitGasMass;
+#endif
 #ifdef STARFORM
     double dMinMassFrac;
     double dMaxGasMass;
@@ -162,6 +165,9 @@ enum smx_smoothtype {
   SMX_SPHPRESSURE,
   SMX_SPHVISCOSITY,
   SMX_HKVISCOSITY,
+#ifdef PARTICLESPLIT
+  SMX_SPLIT_GAS,
+#endif
 #ifdef STARFORM
   SMX_DIST_DELETED_GAS,
   SMX_PROMOTE_TO_HOT_GAS,
@@ -387,6 +393,10 @@ void ShareWithHotGas(PARTICLE *, int, NN *, SMF *);
 
 /* SMX_DELETE_GAS */
 void DeleteGas(PARTICLE *, int, NN *, SMF *);
+#ifdef PARTICLESPLIT
+/* SMX_SPLIT_GAS */
+void SplitGas(PARTICLE *, int, NN *, SMF *);
+#endif
 
 /* SMX_DIST_FB_ENERGY */
 void initTreeParticleDistFBEnergy(void *p1);

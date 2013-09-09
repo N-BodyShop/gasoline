@@ -68,6 +68,9 @@ struct parameters {
 #ifdef  RADIATIVEBOX
     int bDoStellarLW; /*Turn this on to have the LW radiation outputted*/
 #endif
+#ifdef PARTICLESPLIT
+    double dInitGasMass;
+#endif
 	int bDoDminOutput;
 	int bSymCool;
     int bDoGravity;
