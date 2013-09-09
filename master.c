@@ -9719,10 +9719,6 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         /*
          * Distribute mass, and metals of deleted gas particles.
          */
-#ifdef PARTICLESPLIT
-        if (msr->param.bVDetails) printf("Splitting Gas ...\n");
-        msrSmooth(msr, dTime, SMX_SPLIT_GAS, 1);
-#endif
         if (msr->param.bVDetails) printf("Distribute Deleted Gas ...\n");
         msrActiveType(msr, TYPE_DELETED, TYPE_SMOOTHACTIVE);
         msrSmooth(msr, dTime, SMX_DIST_DELETED_GAS, 1);
@@ -9797,6 +9793,15 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		msrActiveType(msr, TYPE_STAR, TYPE_SMOOTHACTIVE);
 		assert(msr->nSmoothActive == msr->nStar);
 		msrSmooth(msr, dTime, SMX_DIST_FB_ENERGY, 1);
+#endif
+#ifdef PARTICLESPLIT
+        if (msr->param.bVDetails) printf("Splitting Gas ...\n");
+        msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
+        msrBuildTree(msr,1,-1.0,1);
+		msrActiveType(msr, TYPE_GAS, TYPE_SMOOTHACTIVE);
+        msrSmooth(msr, dTime, SMX_SPLIT_GAS, 0);
+		msrResetType(msr, TYPE_GAS, TYPE_SMOOTHACTIVE);
+        msrAddDelParticles(msr);
 #endif
 		msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, &dTotFe, 
                     &dTotOx, &dTotSNEnergy, "Form stars: after feedback");
