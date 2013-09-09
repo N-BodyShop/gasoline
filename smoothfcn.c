@@ -5471,7 +5471,7 @@ void combEvaporateToHotGas(void *p1,void *p2)
     PROMOTE_SUMWEIGHT(p1) += PROMOTE_SUMWEIGHT(p2);
     PROMOTE_SUMUPREDWEIGHT(p1) += PROMOTE_SUMUPREDWEIGHT(p2);
     }
-
+#ifdef MASSNONCOOL
 void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {	
 #ifdef NOCOOLING
@@ -5620,6 +5620,7 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     
 #endif
 }
+#endif
 void initPromoteToHotGas(void *p1)
     {
     TYPEReset(((PARTICLE *) p1),TYPE_PROMOTED);
@@ -6113,7 +6114,7 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef MASSNONCOOL
     {
 	FLOAT Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
-	if(Tq < smf->dEvapMinTemp) {
+	if(Tq < smf->dEvapMinTemp && weight > 0) {
 		double fMassNoncool = q->fMassNoncool + weight*p->fMSN;
 		double deltaMassLoad = weight*p->fMSN*smf->dFBInitialMassLoad;
 		if (fMassNoncool+deltaMassLoad >= q->fMass) {
