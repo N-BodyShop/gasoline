@@ -5490,13 +5490,10 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     if(p->uNoncool > 0) { // Do the evaporation internally first
        FLOAT upnc52, fMassFlux;
        upnc52 = pow(p->uNoncoolPred, 2.5);
-       //Use the density as an estimate of the bubble radius (r = (3/(4pi)*M/rho)^1/3)
-	   FLOAT fBubbleRadius = ph*pow(p->uNoncoolPred/(p->uPred+p->uNoncoolPred), 0.33);
-       fFactor = 
-       smf->dDeltaStarForm*smf->dEvapCoeffCode*fBubbleRadius*fBubbleRadius*12.5664;
+       fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*ph*3.1415;
        fMassFlux = fFactor*(upnc52-up52);
-       printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e\n", 
-			   p->iOrder, fMassFlux, ph, fBubbleRadius, p->fMass-p->fMassNoncool, p->fMassNoncool, p->uPred, p->uNoncoolPred);
+       dbgprint("EVAPINTERNAL: %d %e %e %e %e %e %e\n", 
+			   p->iOrder, fMassFlux, ph, p->fMass-p->fMassNoncool, p->fMassNoncool, p->uPred, p->uNoncoolPred);
        if(fMassFlux > 0) { // Make sure that the flow is in the right direction
            // If all the mass becomes hot, switch to being single-phase
            if(fMassFlux > (p->fMass-p->fMassNoncool)) {
