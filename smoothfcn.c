@@ -5306,7 +5306,6 @@ void SplitGas(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
     p->fMass /= 2.0;
 #ifdef MASSNONCOOL
     p->fMassNoncool /= 2.0;
-	assert(p->fMassNoncool >= 0);
 #endif
     daughter = *p;
     TYPESet(&daughter, TYPE_GAS);
@@ -5513,6 +5512,7 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                p->uNoncoolPred = (p->uPred*fMassFlux + p->uNoncoolPred*p->fMassNoncool)/(fMassFlux+p->fMassNoncool);
                p->uNoncool = (p->u*fMassFlux + p->uNoncool*p->fMassNoncool)/(fMassFlux+p->fMassNoncool);
                p->fMassNoncool += fMassFlux;
+			   assert(p->fMassNoncool >= 0);
                assert(p->uPred > 0);
                assert(p->uNoncoolPred > 0);
                assert(p->u > 0);
@@ -6123,12 +6123,14 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			deltaMassLoad = q->fMass - fMassNoncool;
 			fMassNoncool = q->fMass;
 			}
-		else 
+		else {
 			fMassNoncool += deltaMassLoad;
+		}
 		double uNoncool = (q->uNoncool*q->fMassNoncool + weight*p->uDotFB*smf->dDeltaStarForm + deltaMassLoad*q->u)/fMassNoncool;
 		q->uNoncoolPred += (uNoncool-q->uNoncool);
 		q->uNoncool = uNoncool;
 		q->fMassNoncool = fMassNoncool;
+		assert(q->fMassNoncool >= 0);
 	}
 	else {
 		q->uPred += weight*p->uDotFB*smf->dDeltaStarForm;
