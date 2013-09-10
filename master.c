@@ -5511,6 +5511,9 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
 #ifdef PARTICLESPLIT
     psmf->dInitGasMass = msr->param.dInitGasMass;
 #endif
+#ifdef MASSNONCOOL
+    psmf->dFBInitialMassLoad = msr->param.dFBInitialMassLoad;
+#endif
 #ifdef DIFFUSION
     psmf->dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
     psmf->dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
