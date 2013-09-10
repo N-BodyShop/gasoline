@@ -5337,7 +5337,7 @@ void combDistDeletedGas(void *vp1,void *vp2)
 #ifdef PARTICLESPLIT
 void SplitGas(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
 {
-    if(p->fMass < 1.5*smf->dInitGasMass)
+    if(p->fMass < 1.33*smf->dInitGasMass)
     return; //Don't split particles that are too small FOOL
 
     PARTICLE *q;
@@ -5360,14 +5360,12 @@ void SplitGas(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
         rstot += rs;
         }
     rmax = sqrt(rmax/ih2);
-    daughter = *p;
-    TYPESet(&daughter, TYPE_GAS);
-    daughter.fMass /= 2.0;
     p->fMass /= 2.0;
 #ifdef MASSNONCOOL
-    daughter.fMassNoncool /= 2.0;
     p->fMassNoncool /= 2.0;
 #endif
+    daughter = *p;
+    TYPESet(&daughter, TYPE_GAS);
     daughter.r[0] += 0.5*rmax*sin(theta)*cos(phi);
     daughter.r[1] += 0.5*rmax*sin(theta)*sin(phi);
     daughter.r[2] += 0.5*rmax*cos(theta);
