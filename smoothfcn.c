@@ -6127,12 +6127,10 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q->uNoncoolPred += (uNoncool-q->uNoncool);
 		q->uNoncool = uNoncool;
 		q->fMassNoncool = fMassNoncool;
-		q->fMass += fMassNoncool;
 	}
 	else {
 		q->uPred += weight*p->uDotFB*smf->dDeltaStarForm;
 		q->u = q->uPred;
-		q->fMass += weight*p->fMSN;
 	}
     }
 #endif /* MASSNONCOOL */
