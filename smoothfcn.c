@@ -5276,6 +5276,52 @@ void HKViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	}
 
+#ifdef PARTICLESPLIT
+
+void SplitGas(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
+{
+    if(p->fMass < 1.33*smf->dInitGasMass)
+    return; //Don't split particles that are too small FOOL
+
+    PARTICLE *q;
+    PARTICLE daughter;
+    FLOAT theta,phi,r2,rs,rstot,rmax,ih2;
+    int i;
+    theta = M_PI*(double) random()/RAND_MAX;
+    phi = 2*M_PI*(double) random()/RAND_MAX;
+	ih2 = 4.0/BALL2(p);
+    rstot = 0;        
+    rmax = 0;        
+	for (i=0;i<nSmooth;++i) {
+        q = nnList[i].pPart;
+	    if(TYPETest(q, TYPE_DELETED)) continue;
+	    assert(TYPETest(q, TYPE_GAS));
+        r2 = nnList[i].fDist2*ih2;            
+        if(r2 > rmax)
+            rmax = r2;
+        KERNEL(rs,r2);
+        rstot += rs;
+        }
+    rmax = sqrt(rmax/ih2);
+    p->fMass /= 2.0;
+#ifdef MASSNONCOOL
+    p->fMassNoncool /= 2.0;
+	assert(p->fMassNoncool >= 0);
+#endif
+    daughter = *p;
+    TYPESet(&daughter, TYPE_GAS);
+    daughter.r[0] += 0.5*rmax*sin(theta)*cos(phi);
+    daughter.r[1] += 0.5*rmax*sin(theta)*sin(phi);
+    daughter.r[2] += 0.5*rmax*cos(theta);
+    daughter.iGasOrder = p->iOrder;
+    p->r[0] -= 0.5*rmax*sin(theta)*cos(phi);
+    p->r[1] -= 0.5*rmax*sin(theta)*sin(phi);
+    p->r[2] -= 0.5*rmax*cos(theta);
+    pkdNewParticle(smf->pkd, daughter);
+
+}
+#endif
+
 #ifdef STARFORM
 void initDistDeletedGas(void *p1)
 {
@@ -5334,49 +5380,7 @@ void combDistDeletedGas(void *vp1,void *vp2)
 			}
 		}
     }
-#ifdef PARTICLESPLIT
-void SplitGas(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
-{
-    if(p->fMass < 1.33*smf->dInitGasMass)
-    return; //Don't split particles that are too small FOOL
 
-    PARTICLE *q;
-    PARTICLE daughter;
-    FLOAT theta,phi,r2,rs,rstot,rmax,ih2;
-    int i;
-    theta = M_PI*(double) random()/RAND_MAX;
-    phi = 2*M_PI*(double) random()/RAND_MAX;
-	ih2 = 4.0/BALL2(p);
-    rstot = 0;        
-    rmax = 0;        
-	for (i=0;i<nSmooth;++i) {
-        q = nnList[i].pPart;
-	    if(TYPETest(q, TYPE_DELETED)) continue;
-	    assert(TYPETest(q, TYPE_GAS));
-        r2 = nnList[i].fDist2*ih2;            
-        if(r2 > rmax)
-            rmax = r2;
-        KERNEL(rs,r2);
-        rstot += rs;
-        }
-    rmax = sqrt(rmax/ih2);
-    p->fMass /= 2.0;
-#ifdef MASSNONCOOL
-    p->fMassNoncool /= 2.0;
-#endif
-    daughter = *p;
-    TYPESet(&daughter, TYPE_GAS);
-    daughter.r[0] += 0.5*rmax*sin(theta)*cos(phi);
-    daughter.r[1] += 0.5*rmax*sin(theta)*sin(phi);
-    daughter.r[2] += 0.5*rmax*cos(theta);
-    daughter.iGasOrder = p->iOrder;
-    p->r[0] -= 0.5*rmax*sin(theta)*cos(phi);
-    p->r[1] -= 0.5*rmax*sin(theta)*sin(phi);
-    p->r[2] -= 0.5*rmax*cos(theta);
-    pkdNewParticle(smf->pkd, daughter);
-
-}
-#endif
 void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {	
     PARTICLE *q;
