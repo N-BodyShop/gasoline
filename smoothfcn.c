@@ -5492,7 +5492,6 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
        upnc52 = pow(p->uNoncoolPred, 2.5);
        fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*ph*3.1415;
        fMassFlux = fFactor*(upnc52-up52);
-	   FLOAT Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
        dbgprint("EVAPINTERNAL: %d %e %e %e %e %e %e\n", 
 			   p->iOrder, fMassFlux, ph, p->fMass-p->fMassNoncool, p->fMassNoncool, p->uPred, p->uNoncoolPred);
        if(fMassFlux > 0) { // Make sure that the flow is in the right direction

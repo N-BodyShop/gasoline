@@ -6233,8 +6233,10 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 #ifdef UNONCOOL
             /* 2nd order estimator for Conv -- note that PdV etc ...should already be 2nd order via Leap Frog */
             uNoncoolPredTmp = p->uNoncool+p->uNoncoolDot*duDelta*0.5;
+#ifdef UNONCOOLCONV
             uNoncoolDotConv = uNoncoolPredTmp*
                 pkduNoncoolConvRate(pkd,uncc,p->fBall2,uNoncoolPredTmp,p->u+p->uDot*duDelta*0.5); 
+#endif
             
             p->uNoncoolDot = p->uDotPdV*PoverRhoNoncool/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to uNoncool 
                 - uNoncoolDotConv + uNoncoolDotFB + p->uNoncoolDotDiff;
