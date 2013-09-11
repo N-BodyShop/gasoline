@@ -5492,6 +5492,7 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
        upnc52 = pow(p->uNoncoolPred, 2.5);
        fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*ph*3.1415;
        fMassFlux = fFactor*(upnc52-up52);
+	   FLOAT Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
        dbgprint("EVAPINTERNAL: %d %e %e %e %e %e %e\n", 
 			   p->iOrder, fMassFlux, ph, p->fMass-p->fMassNoncool, p->fMassNoncool, p->uPred, p->uNoncoolPred);
        if(fMassFlux > 0) { // Make sure that the flow is in the right direction
@@ -6113,7 +6114,7 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef MASSNONCOOL
     {
 	FLOAT Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
-	if(Tq < smf->dEvapMinTemp && weight > 0) {
+	if(Tq < smf->dMultiPhaseMinTemp && weight > 0) {
 		double fMassNoncool = q->fMassNoncool + weight*p->fMSN;
 		double deltaMassLoad = weight*p->fMSN*smf->dFBInitialMassLoad;
 		if (fMassNoncool+deltaMassLoad >= q->fMass) {

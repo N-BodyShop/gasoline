@@ -74,6 +74,7 @@ typedef struct smfParameters {
 #endif
 #ifdef MASSNONCOOL
     double dFBInitialMassLoad;
+    double dMultiPhaseMinTemp;
 #endif
 #ifdef PARTICLESPLIT
     double dInitGasMass;

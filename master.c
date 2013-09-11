@@ -1176,9 +1176,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dThermalDiffusionCoeff",2,&msr->param.dThermalDiffusionCoeff,
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
+	msr->param.dMultiPhaseMinTemp = 1e6;
+	prmAddParam(msr->prm,"dMultiPhaseMinTemp",2,&msr->param.dMultiPhaseMinTemp,
+				sizeof(double),"multitmin",
+				"<Temperature threshold to use multiphase feedback> = 1e6");
 	msr->param.dEvapMinTemp = 1e5;
 	prmAddParam(msr->prm,"dEvapMinTemp",2,&msr->param.dEvapMinTemp,
-				sizeof(double),"evap",
+				sizeof(double),"evaptmin",
 				"<Minimumum temperature for evaporation > = 1e5");
 	msr->param.dEvapCoeff = 6.1e-7;
 	prmAddParam(msr->prm,"dEvapCoeff",2,&msr->param.dEvapCoeff,
@@ -5513,6 +5517,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
 #endif
 #ifdef MASSNONCOOL
     psmf->dFBInitialMassLoad = msr->param.dFBInitialMassLoad;
+    psmf->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
 #endif
 #ifdef DIFFUSION
     psmf->dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
