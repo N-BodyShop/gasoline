@@ -6178,6 +6178,7 @@ void msrSetuNonCoolContext( MSR msr, UNCC *puncc, double a ) {
     puncc->gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); //for DTADJUST
     puncc->gpc.dResolveJeans = msr->param.dResolveJeans/a;
 #ifdef THERMALCOND
+    puncc->gpc.dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333); /* (dx/h) factor */
     puncc->gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
     puncc->gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
     puncc->gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode;
@@ -8921,6 +8922,7 @@ void msrGetGasPressure(MSR msr, double dTime)
 		in.gpc.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
         in.gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,in.gpc.dCosmoFac); //for DTADJUST
 #ifdef THERMALCOND
+		in.gpc.dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333); /* (dx/h) factor */
         in.gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
         in.gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
         in.gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode;

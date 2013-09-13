@@ -313,6 +313,7 @@ struct GasPressureContext {
 #endif
 #ifdef THERMALCOND
     double dThermalCondCoeffCode;
+	double dEvapCoeffCode;
     double dThermalCondSatCoeff;
     double dThermalCond2CoeffCode;
     double dThermalCond2SatCoeff;
