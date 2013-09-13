@@ -6180,19 +6180,20 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             double uNoncoolDotFB=0, uDotFBThermal=0, uDotPdVNJ, uncPdVFrac;
             int bUpdateStd=1;
 
-#if !defined(MASSNONCOOL) && defined(STARFORM)
+#if defined(STARFORM)
 #ifdef UNONCOOL
             uNoncoolDotFB = p->uDotFB; //Note: FB Added to uNoncool OR u (not both)
 #else
             uDotFBThermal = p->uDotFB;
 #endif
-#endif /* STARFORM && !MASSNONCOOL */
+#endif /* STARFORM */
 
             pkdGasPressureParticle(pkd, &uncc.gpc, p, &PoverRhoFloorJeans, &PoverRhoNoncool, &PoverRhoGas, &cGas );
             PoverRho = PoverRhoGas + PoverRhoNoncool ;
             if (PoverRho < PoverRhoFloorJeans) PoverRho = PoverRhoFloorJeans;
 
 #ifdef MASSNONCOOL        
+
             uncPdVFrac = p->fMassNoncool*p->uNoncoolPred;
             uncPdVFrac = uncPdVFrac/(uncPdVFrac+(p->fMass-p->fMassNoncool)*p->uPred);
             uDotPdVNJ = p->uDotPdV*(PoverRhoNoncool+PoverRhoGas)/(PONRHOFLOOR + PoverRho); /* remove JeansFloor */
@@ -6200,11 +6201,11 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             bUpdateStd = (p->fMassNoncool < 0.9*p->fMass);
 
             if (p->fMassNoncool > 0) {
-                assert(p->uNoncool > 0);
+                assert(p->uNoncool >= 0);
                 
                 uDotSansCooling = (uDotPdVNJ+p->uDotAV)*uncPdVFrac // Fraction of PdV related to uNoncool 
-                    + p->uNoncoolDotDiff;
-                if ( bCool ) {
+                    + p->uNoncoolDotDiff + uNoncoolDotFB;
+                if ( bCool  && 0) {
                     cp = p->CoolParticle;
                     E = p->uNoncool;
 					dtUse = dt;
@@ -6216,8 +6217,10 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
                 else 
                     p->uNoncoolDot = uDotSansCooling;
                 }
-            else 
+            else {
                 p->uNoncoolDot = 0;
+				uDotFBThermal = p->uDotFB;
+			}
 
             assert(p->uPred > 0);
             fDensity = PoverRhoGas/(uncc.gpc.gammam1*p->uPred); /* Density of non-bubble part of particle */
