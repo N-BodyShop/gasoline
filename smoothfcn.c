@@ -6080,8 +6080,10 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     q->fMFracOxygen += weight*p->fMOxygenOut;
     q->fMFracIron += weight*p->fMIronOut;
     q->fMass += weight*p->fMSN;
+	if(weight > 0) {
+		TYPESet(q, TYPE_FEEDBACK);
+	}
 #ifdef MASSNONCOOL
-    {
 	FLOAT Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
 	if(Tq < smf->dMultiPhaseMinTemp && weight > 0) {
 		double fMassNoncool = q->fMassNoncool + weight*p->fMSN;
@@ -6093,17 +6095,9 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		else {
 			fMassNoncool += deltaMassLoad;
 		}
-		double uNoncool = (q->uNoncool*q->fMassNoncool + weight*p->uDotFB*smf->dDeltaStarForm + deltaMassLoad*q->u)/fMassNoncool;
-		q->uNoncoolPred += (uNoncool-q->uNoncool);
-		q->uNoncool = uNoncool;
 		q->fMassNoncool = fMassNoncool;
 		assert(q->fMassNoncool >= 0);
 	}
-	else {
-		q->uPred += weight*p->uDotFB*smf->dDeltaStarForm;
-		q->u = q->uPred;
-	}
-    }
 #endif /* MASSNONCOOL */
   }
 }
@@ -6294,7 +6288,11 @@ void postDistFBEnergy(PARTICLE *p1, SMF *smf)
        because we are done with our conservative calculations */
     
     if(TYPETest(p1, TYPE_GAS)){
+#ifdef MASSNONCOOL
+		if (p1->fMassNoncool > 0) p1->uDotFB /= p1->fMassNoncool;
+#else
         p1->uDotFB /= p1->fMass;
+#endif
         p1->fMetals /= p1->fMass;    
         p1->fMFracIron /= p1->fMass;    
         p1->fMFracOxygen /= p1->fMass;    
