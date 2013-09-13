@@ -5487,37 +5487,7 @@ void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     FLOAT fFactor, up52, ph;
     up52 = pow(p->uPred, 2.5);
 	ph = sqrt(BALL2(p)*0.25);
-    if(p->uNoncool > 0) { // Do the evaporation internally first
-       FLOAT upnc52, fMassFlux;
-       upnc52 = pow(p->uNoncoolPred, 2.5);
-       fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*ph*3.1415;
-       fMassFlux = fFactor*(upnc52-up52);
-       dbgprint("EVAPINTERNAL: %d %e %e %e %e %e %e\n", 
-			   p->iOrder, fMassFlux, ph, p->fMass-p->fMassNoncool, p->fMassNoncool, p->uPred, p->uNoncoolPred);
-       if(fMassFlux > 0) { // Make sure that the flow is in the right direction
-           // If all the mass becomes hot, switch to being single-phase
-           if(fMassFlux > (p->fMass-p->fMassNoncool)) {
-               p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
-               p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
-               p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
-               p->fMassNoncool = 0;
-               p->uNoncool = 0;
-               p->uNoncoolDot = 0;
-               p->uNoncoolPred = 0;
-           }
-           else {
-               p->uNoncoolPred = (p->uPred*fMassFlux + p->uNoncoolPred*p->fMassNoncool)/(fMassFlux+p->fMassNoncool);
-               p->uNoncool = (p->u*fMassFlux + p->uNoncool*p->fMassNoncool)/(fMassFlux+p->fMassNoncool);
-               p->fMassNoncool += fMassFlux;
-			   assert(p->fMassNoncool >= 0);
-               assert(p->uPred > 0);
-               assert(p->uNoncoolPred > 0);
-               assert(p->u > 0);
-               assert(p->uNoncool > 0);
-           }
-       }
-    }
-    else {
+    if(p->fMassNoncool == 0) { // Do the evaporation internally first
 		/* Exclude cool particles */
 		FLOAT Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
 		if (Tp <= smf->dEvapMinTemp) return;

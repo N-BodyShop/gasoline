@@ -4403,6 +4403,47 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     p->uNoncool = p->uNoncool + p->uNoncoolDot*duDelta;
                     if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
                     if (p->uNoncool < 0) p->uNoncool = 0;
+#ifdef MASSNONCOOL
+					FLOAT upnc52, up52, fMassFlux;
+					FLOAT ph = sqrt(0.25*p->fBall2);
+				   upnc52 = pow(p->uNoncoolPred, 2.5);
+				   up52 = pow(p->uPred, 2.5);
+				   FLOAT fFactor = duPredDelta*uncc.gpc.dEvapCoeffCode*ph*ph*3.1415;
+				   fMassFlux = fFactor*(upnc52-up52);
+				   printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e\n", 
+						   p->iOrder, duDelta, duPredDelta, fMassFlux, ph, p->fMass-p->fMassNoncool, p->fMassNoncool, p->uPred, p->uNoncoolPred);
+				   if(fMassFlux > 0) { // Make sure that the flow is in the right direction
+					   // If all the mass becomes hot, switch to being single-phase
+					   if(fMassFlux > (p->fMass-p->fMassNoncool)) {
+						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->fMassNoncool = 0;
+						   p->uNoncool = 0;
+						   p->uNoncoolDot = 0;
+						   p->uNoncoolPred = 0;
+					   }
+					   else {
+						   p->uNoncoolPred = (p->uPred*fMassFlux + p->uNoncoolPred*p->fMassNoncool)/(fMassFlux+p->fMassNoncool);
+						   p->uNoncool = (p->u*fMassFlux + p->uNoncool*p->fMassNoncool)/(fMassFlux+p->fMassNoncool);
+						   p->fMassNoncool += fMassFlux;
+						   assert(p->fMassNoncool >= 0);
+						   assert(p->uPred > 0);
+						   assert(p->uNoncoolPred > 0);
+						   assert(p->u > 0);
+						   assert(p->uNoncool > 0);
+					   }
+				   }
+				   else if (p->uPred > p->uNoncoolPred) { // No sense in keeping the noncooling mass around if it is much colder than the regular mass
+						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->fMassNoncool = 0;
+						   p->uNoncool = 0;
+						   p->uNoncoolDot = 0;
+						   p->uNoncoolPred = 0;
+				   }
+#endif
 #endif
 #else /* NOCOOLING */
                     p->uPred = p->u + UDOT_HYDRO(p)*duPredDelta;
