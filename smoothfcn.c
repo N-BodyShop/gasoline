@@ -5455,141 +5455,6 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #define PROMOTE_SUMUPREDWEIGHT(p_) (((PARTICLE *) (p_))->curlv[1])
 #define PROMOTE_UPREDINIT(p_) (((PARTICLE *) (p_))->curlv[2])
 
-void initEvaporateToHotGas(void *p1)
-    {
-    TYPEReset(((PARTICLE *) p1),TYPE_PROMOTED);
-    PROMOTE_SUMWEIGHT(p1) = 0; /* store weight total */
-    PROMOTE_SUMUPREDWEIGHT(p1) = 0; /* store u x weight total */
-    PROMOTE_UPREDINIT(p1) = ((PARTICLE *) p1)->uPred; /* store uPred */
-    }
-
-void combEvaporateToHotGas(void *p1,void *p2)
-    {
-    if(TYPETest(((PARTICLE *) p2), TYPE_PROMOTED)) {
-        TYPESet(((PARTICLE *) p1),TYPE_PROMOTED);
-        if (((PARTICLE *) p2)->fTimeCoolIsOffUntil > ((PARTICLE *) p1)->fTimeCoolIsOffUntil) ((PARTICLE *) p1)->fTimeCoolIsOffUntil = ((PARTICLE *) p2)->fTimeCoolIsOffUntil;
-        }
-    PROMOTE_SUMWEIGHT(p1) += PROMOTE_SUMWEIGHT(p2);
-    PROMOTE_SUMUPREDWEIGHT(p1) += PROMOTE_SUMUPREDWEIGHT(p2);
-    }
-#ifdef MASSNONCOOL
-void EvaporateToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
-{	
-#ifdef NOCOOLING
-	return;
-#endif
-#ifndef UNONCOOL
-	return;
-#else
-    assert(TYPETest(p, TYPE_GAS));
-    assert(TYPETest(p, TYPE_FEEDBACK));
-    assert(!TYPETest(p, TYPE_PROMOTED));
-    FLOAT fFactor, up52, ph;
-    up52 = pow(p->uPred, 2.5);
-	ph = sqrt(BALL2(p)*0.25);
-    if(p->fMassNoncool == 0) { // Do the evaporation internally first
-		/* Exclude cool particles */
-		FLOAT Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
-		if (Tp <= smf->dEvapMinTemp) return;
-		FLOAT Tq, Prob, mPromoted, rstot, rs, r2, ih2;
-		double xc,yc,zc,dotcut2,dot;
-		int i, nCold=0, nHot=0;
-		PARTICLE *q;
-		for (i=0;i<nSmooth;++i) {
-			q = nnList[i].pPart;
-			if (p->iOrder == q->iOrder) continue;
-			if (TYPETest(q, TYPE_DELETED) || (TYPETest(q, TYPE_FEEDBACK) && !TYPETest(q, TYPE_PROMOTED))) continue;
-			Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
-			if (Tq >= smf->dEvapMinTemp) continue;  /* Exclude hot particles */
-			assert(TYPETest(q, TYPE_GAS));
-			assert(!TYPETest(p, TYPE_STAR));
-			r2 = nnList[i].fDist2*ih2;            
-			KERNEL(rs,r2);
-			rstot += rs;
-			xc += rs*nnList[i].dx; 
-			yc += rs*nnList[i].dy;
-			zc += rs*nnList[i].dz;
-			nCold++;
-			}
-		if (rstot == 0) return;
-
-		/* Check for non-edge hot particle  theta = 45 deg, cos^2 = 0.5 */
-		dotcut2 = (xc*xc+yc*yc+zc*zc)*0.5;
-		
-		for (i=0;i<nSmooth;++i) {
-			q = nnList[i].pPart;
-			if (p->iOrder == q->iOrder) continue;
-			if (TYPETest(q, TYPE_DELETED)) continue;
-			Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
-			if (q->uNoncool == 0 || Tq <= smf->dEvapMinTemp) continue;  
-			dot = xc*nnList[i].dx + yc*nnList[i].dy + zc*nnList[i].dz;
-			if (dot > 0 && dot*dot > dotcut2*nnList[i].fDist2) {
-				dbgprint("promote (hot excluded): %d %d  %g %g  (%g %g %g) (%g %g %g)\n",p->iOrder,q->iOrder,Tp, Tq,xc,yc,zc,nnList[i].dx,nnList[i].dy,nnList[i].dz);
-				return;
-				}
-			}
-		/* Area = h^2 4 pi nCold/nSmooth */
-		nHot=nSmooth-nCold;
-		assert(nHot > 0);
-		fFactor = smf->dDeltaStarForm*smf->dEvapCoeffCode*ph*12.5664*1.5/(nHot)/rstot;
-		dbgprint("CHECKAREA2: %e %d %e %d %d %e %e %e\n", smf->dTime, p->iOrder, 12.5664*ph*ph*1.5/(nHot), nSmooth, nCold, xc, yc, zc);
-
-		mPromoted = 0;
-		for (i=0;i<nSmooth;++i) {
-			q = nnList[i].pPart;
-			Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
-			assert(TYPETest(q, TYPE_GAS));
-			r2 = nnList[i].fDist2*ih2;            
-			KERNEL(rs,r2);
-			PROMOTE_SUMWEIGHT(q) += p->fMass;
-			PROMOTE_SUMUPREDWEIGHT(q) += p->fMass*p->uPred;
-			
-			/* cf. Weaver etal'77 mdot = 4.13d-14 * (dx^2/4 !pi) (Thot^2.5-Tcold^2.5)/dx - 2 udot mHot/(k T/mu) 
-			   Kernel sets total probability to 1 */
-			Prob = fFactor*(up52-pow(q->uPred,2.5))*rs/q->fMass;
-			dbgprint("promote?: %d %d %g %g %g  %g %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
-			if (p->iOrder == q->iOrder) continue;
-			if(TYPETest(q, TYPE_DELETED) || (TYPETest(q, TYPE_FEEDBACK) && !TYPETest(q, TYPE_PROMOTED))) continue;
-			if (Tq >= smf->dEvapMinTemp ) continue;  /* Exclude hot particles */
-			if ( (rand()/((double) RAND_MAX)) < Prob) {
-				mPromoted += q->fMass;
-				dbgprint("promote? MASS: %d %d %g %g %g  %g + %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
-				}
-			}
-
-		if (mPromoted > 0) {
-			double dTimeCool = smf->dTime + 0.9999*smf->dDeltaStarForm;
-			ISORT *isort;
-
-			isort = (ISORT *) malloc(sizeof(ISORT)*nSmooth);
-			for (i=0;i<nSmooth;++i) {
-				isort[i].pNN = &(nnList[i]);
-				isort[i].r2=nnList[i].fDist2;
-				}
-			qsort( isort, nSmooth, sizeof(ISORT), CompISORT );
-
-			for (i=0;i<nSmooth;++i) {
-				q = isort[i].pNN->pPart;
-				if (p->iOrder == q->iOrder) continue;
-				if (TYPETest(q, TYPE_DELETED) || TYPETest(q, TYPE_FEEDBACK) || TYPETest(q, TYPE_PROMOTED)) continue;
-				Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
-				if (Tq >= smf->dEvapMinTemp ) continue;  /* Exclude hot particles */
-				assert(TYPETest(q, TYPE_GAS));
-
-				if (dTimeCool > q->fTimeCoolIsOffUntil) q->fTimeCoolIsOffUntil = dTimeCool;
-				TYPESet(q, TYPE_PROMOTED|TYPE_FEEDBACK);
-				mPromoted -= q->fMass;
-				printf("promote? YES: %d %d %g %g %g  %g - %g %g\n",p->iOrder,q->iOrder,Tp, Tq, ph, fFactor*(up52-pow(q->uPred,2.5))*rs, q->fMass, Prob);
-				if (mPromoted < q->fMass*0.1) break;
-				}
-			free(isort);
-        }
-        
-    }
-    
-#endif
-}
-#endif
 void initPromoteToHotGas(void *p1)
     {
     TYPEReset(((PARTICLE *) p1),TYPE_PROMOTED);
@@ -5660,7 +5525,11 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		if (p->iOrder == q->iOrder) continue;
 		if (TYPETest(q, TYPE_DELETED)) continue;
 		Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+#ifdef MASSNONCOOL
+		if (q->uNoncool == 0 && Tq <= smf->dEvapMinTemp) continue;  
+#else
 		if (Tq <= smf->dEvapMinTemp) continue;  
+#endif /* MASSNONCOOL */
 		dot = xc*nnList[i].dx + yc*nnList[i].dy + zc*nnList[i].dz;
 		if (dot > 0 && dot*dot > dotcut2*nnList[i].fDist2) {
             dbgprint("promote (hot excluded): %d %d  %g %g  (%g %g %g) (%g %g %g)\n",p->iOrder,q->iOrder,Tp, Tq,xc,yc,zc,nnList[i].dx,nnList[i].dy,nnList[i].dz);

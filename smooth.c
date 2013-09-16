@@ -341,19 +341,11 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         break;
     case SMX_PROMOTE_TO_HOT_GAS:
         assert(bSymmetric != 0);
-#ifdef MASSNONCOOL
-        smx->fcnSmooth = EvaporateToHotGas;
-        initParticle = initEvaporateToHotGas;
-        initTreeParticle = initEvaporateToHotGas;
-        init = initEvaporateToHotGas;
-        comb = combEvaporateToHotGas;
-#else /* MASSNONCOOL */
         smx->fcnSmooth = PromoteToHotGas;
         initParticle = initPromoteToHotGas;
         initTreeParticle = initPromoteToHotGas;
         init = initPromoteToHotGas;
         comb = combPromoteToHotGas;
-#endif /* MASSNONCOOL */
         smx->fcnPost = NULL;
         smx->bUseBallMax = 0;
         break;
