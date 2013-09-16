@@ -51,7 +51,7 @@ COOLING_DEF = -DCOOLING_METAL
 
 
 # Which C compiler should I use?
-CC = gcc
+CC = icc
 
 CC_DEF = 
 CODE_DEF = 
@@ -175,11 +175,11 @@ CODE_DEF += -DSTARFORM #Make new stars according to the starformation recipe
 CODE_DEF += -DTHERMALCOND #Enable Thermal conduction using the Spitzer Solution
 #CODE_DEF += -DTIMINGDEBUG #Used to debug the timing (walltime I believe).  Probably also handy for benchmarking.
 #CODE_DEF += -DTINY_PTHREAD_STACK #Only used on a weird old SGI architecture.  Probably can be removed.
-CODE_DEF += -DTOPHATFEEDBACK #Use a tophat kernel to smooth feedback over
+#CODE_DEF += -DTOPHATFEEDBACK #Use a tophat kernel to smooth feedback over
 #CODE_DEF += -DTUMBLER #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
 #CODE_DEF += -DTWOSMOOTH #Smooth twice rather than 3 times.  This is defined by default in master.c
 #CODE_DEF += -DTZKEY64 #Use 64 (instead of 128) bit keys for the tree.  Faster, but allows less depth.
-#CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
+CODE_DEF += -DUNONCOOL #Enable noncooling energy for feedback
 #CODE_DEF += -DUNONCOOLINIT #Initialize the uNoncool to have equal energy to u (useful for hacking some tests)
 #CODE_DEF += -DUNONCOOLMERGE #Put the uNoncool energy from a checkpoint into u (for debugging)
 #CODE_DEF += -DUNONCOOLZERO #Always read noncooling energy as 0 when read from checkpoint (for debugging)
