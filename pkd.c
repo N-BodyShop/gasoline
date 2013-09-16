@@ -4410,7 +4410,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				   up52 = pow(p->uPred, 2.5);
 				   FLOAT fFactor = duPredDelta*uncc.gpc.dEvapCoeffCode*ph*ph*3.1415;
 				   fMassFlux = fFactor*(upnc52-up52);
-				   printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e\n", 
+				   dbgprint("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e\n", 
 						   p->iOrder, duDelta, duPredDelta, fMassFlux, ph, p->fMass-p->fMassNoncool, p->fMassNoncool, p->uPred, p->uNoncoolPred);
 				   if(fMassFlux > 0) { // Make sure that the flow is in the right direction
 					   // If all the mass becomes hot, switch to being single-phase
