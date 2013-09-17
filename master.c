@@ -1176,10 +1176,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dThermalDiffusionCoeff",2,&msr->param.dThermalDiffusionCoeff,
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
+#ifdef MASSNONCOOL
 	msr->param.dMultiPhaseMinTemp = 1e6;
 	prmAddParam(msr->prm,"dMultiPhaseMinTemp",2,&msr->param.dMultiPhaseMinTemp,
 				sizeof(double),"multitmin",
 				"<Temperature threshold to use multiphase feedback> = 1e6");
+#endif 
 	msr->param.dEvapMinTemp = 1e5;
 	prmAddParam(msr->prm,"dEvapMinTemp",2,&msr->param.dEvapMinTemp,
 				sizeof(double),"evaptmin",

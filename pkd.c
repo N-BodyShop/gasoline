@@ -29,6 +29,7 @@
 #ifdef AGGS
 #include "aggs.h"
 #endif
+#include "debug.h"
 
 #ifdef SLIDING_PATCH
 #include <sys/types.h> /* for getpid() */
