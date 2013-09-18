@@ -1419,7 +1419,6 @@ void smSmooth(SMX smx,SMF *smf)
             if (pqi->fKey <= fBall2) {
 #ifdef NSMOOTHINNER
                 if (pqi->fKey <= fBall2*0.5) nh++;
-//                if (pqi->fKey <= fBall2*0.25) nh++;
 #endif
                 smx->nnList[nCnt].iPid = pqi->id;
                 smx->nnList[nCnt].iIndex = pqi->p;
@@ -1578,10 +1577,10 @@ void smSmooth(SMX smx,SMF *smf)
             break;
         default:
 #ifdef NSMOOTHINNER
-            fBall2 = fabs(p[pi].fBall2);
+		fBall2 = fabs(p[pi].fBall2);
 #else
-            fprintf(stderr,"Illegal value for iLowhFix %d in smooth\n",smx->iLowhFix);
-            assert(0);
+		 fprintf(stderr,"Illegal value for iLowhFix %d in smooth\n",smx->iLowhFix);
+		 assert(0);
 #endif
             }
         for (;;) {
