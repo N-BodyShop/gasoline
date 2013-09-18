@@ -6832,8 +6832,6 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                 if (p->fThermalCond > 0 || (p->diff > 0 && dDiffCoeff > 0)) {
                     dTD = dEtaDiffusion*ph*ph*dCosmoFac*dCosmoFac
                         /(dDiffCoeff*p->diff + ph/p->fThermalLength*p->fThermalCond/p->fDensity);  
-                    dTD = dEtaDiffusion*ph*ph*dCosmoFac*dCosmoFac
-                        /(dDiffCoeff*p->diff + p->fThermalCond/p->fDensity);  
                     DTSAVE(dTD,"DIF");
                     if (dTD < dT) dT = dTD;
                     }
