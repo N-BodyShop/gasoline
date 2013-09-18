@@ -6247,8 +6247,8 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
                 
                 uDotSansCooling = (uDotPdVNJ+p->uDotAV)*uncPdVFrac // Fraction of PdV related to uNoncool 
                     + p->uNoncoolDotDiff + uNoncoolDotFB;
-                /*if ( bCool && p->uNoncool > 0) {*/
-                if ( 0) {//I am paranoid about letting the hot phase cool, turned off by default
+				if ( bCool && p->uNoncool > 0) {
+                /*if ( 0) {//I am paranoid about letting the hot phase cool, turned off by default*/
                     cp = p->CoolParticle;
                     E = p->uNoncool;
 					dtUse = dt;
@@ -6857,7 +6857,11 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 #ifndef NOCOOLING
                     T = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
 #endif
+#ifdef THERMALCOND
                     fprintf(stderr,"u %g T %g %g c %g h %g divv %g rho %g Z %g dtdiff %g %g\n",p->uPred,p->uPred/4802.57,T,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals,p->uPred/(fabs(p->uDotDiff)+1e-20),p->fThermalCond);
+#else
+                    fprintf(stderr,"u %g T %g %g c %g h %g divv %g rho %g Z %g dtdiff %g \n",p->uPred,p->uPred/4802.57,T,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals,p->uPred/(fabs(p->uDotDiff)+1e-20));
+#endif
                     }
 #endif
                 if(dT < p->dt) p->dt = dT;
