@@ -1749,6 +1749,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	  }
 	}
 
+#ifdef GASOLINE
 #ifdef VARALPHA
 	if (!msr->param.bVariableAlpha) {
 	    fprintf(stderr,"ERROR: with -DVARALPHA you must use dalphadt, bVariableAlpha=1\n");
@@ -1759,6 +1760,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    fprintf(stderr,"ERROR: You must compile with -DVARALPHA to use dalphadt\n");
 	    _msrExit(msr,1);
 	    }
+#endif
 #endif
 	/*
 	 ** Determine the period of the box that we are using.
