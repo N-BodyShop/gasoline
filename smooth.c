@@ -28,6 +28,9 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
     smx->dfBall2OverSoft2 = dfBall2OverSoft2;
     smx->iLowhFix = ( dfBall2OverSoft2 > 0.0 ? LOWHFIX_HOVERSOFT : LOWHFIX_NONE );
     smx->bUseBallMax = 1;
+#ifdef NSMOOTHINNER
+    smx->bSmallBall = 0;
+#endif
 #ifdef SLIDING_PATCH
     smx->dTime = smf->dTime;
     smx->PP = &smf->PP;
@@ -362,6 +365,9 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
     case SMX_DIST_FB_ENERGY:
         assert(bSymmetric != 0);
         smx->fcnSmooth = DistFBEnergy;
+#ifdef NSMOOTHINNER
+        smx->bSmallBall = 1;
+#endif
         initParticle = NULL;
         initTreeParticle = initTreeParticleDistFBEnergy;
         init = initDistFBEnergy;
@@ -1438,7 +1444,7 @@ void smSmooth(SMX smx,SMF *smf)
             }
 
 #ifdef NSMOOTHINNER
-        if (nh < 18) {
+        if (nh < 18 && !smx->bSmallBall) {
 //        if (nh < 6) {
             ISORT *isort;
             isort = (ISORT *) malloc(sizeof(ISORT)*nCnt);
