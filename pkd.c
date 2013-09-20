@@ -6802,9 +6802,14 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 #ifdef DTADJUST
                     {
                     double uTotDot, dtExtrap;
+#ifdef MASSNONCOOL
+					double x = p->fMassNoncool/p->fMass;
+					uTotDot = p->uNoncoolDot*(1-x)+p->uDot*x;
+#else
                     uTotDot = p->uDot;
 #ifdef UNONCOOL
                     uTotDot += p->uNoncoolDot;
+#endif /* MASSNONCOOL */
 #endif
                     if (uTotDot > 0) {
                         dtExtrap = pkdDtFacCourant(dEtaCourant,dCosmoFac)
