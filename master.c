@@ -942,6 +942,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dhMinOverSoft",2,&msr->param.dhMinOverSoft,
 				sizeof(double),"hmin",
 				"<Minimum h as a fraction of Softening> = 0.0");
+#ifdef NSMOOTHINNER
+	if(msr->param.dhMinOverSoft == 0)
+	{
+		printf("dhMinOverSoft is incompatible with NSMOOTHINNER");
+		assert(0);
+	}
+#endif
 	msr->param.dResolveJeans = 0.0;
 	prmAddParam(msr->prm,"dResolveJeans",2,&msr->param.dResolveJeans,
 				sizeof(double),"resjeans",
