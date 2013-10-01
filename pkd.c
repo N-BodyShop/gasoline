@@ -4435,7 +4435,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 						   assert(p->uNoncool > 0);
 					   }
 				   }
-				   else if (p->uPred > p->uNoncoolPred) { // No sense in keeping the noncooling mass around if it is much colder than the regular mass
+				   else if (p->uPred > p->uNoncoolPred && p->uNoncoolPred > 0) { // No sense in keeping the noncooling mass around if it is much colder than the regular mass
 						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
 						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
 						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
@@ -6252,7 +6252,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
                     cp = p->CoolParticle;
                     E = p->uNoncool;
 					dtUse = dt;
-                    fDensity = PoverRhoGas/(uncc.gpc.gammam1*p->uNoncool); /* Density of bubble part of particle */
+                    fDensity = p->fDensity*PoverRhoGas/(uncc.gpc.gammam1*p->uNoncool); /* Density of bubble part of particle */
                     CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse);
                     p->uNoncoolDot = (E - p->uNoncool)/duDelta;
                     if (bUpdateState && !bUpdateStd) p->CoolParticle = cp;
@@ -6266,9 +6266,12 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 			}
 
             assert(p->uPred > 0);
-            fDensity = PoverRhoGas/(uncc.gpc.gammam1*p->uPred); /* Density of non-bubble part of particle */
+            fDensity = p->fDensity*PoverRhoGas/(uncc.gpc.gammam1*p->uPred); /* Density of non-bubble part of particle */
+#ifdef DENSITYU
+            if (p->fDensityU < p->fDensity) fDensity = p->fDensityU*PoverRhoGas/(uncc.gpc.gammam1*p->uPred); 
+#endif
 
-            uDotSansCooling = (p->uDotPdV+p->uDotAV)*(1-uncPdVFrac) // Fraction of PdV related to u thermal
+            uDotSansCooling = (uDotPdVNJ+p->uDotAV)*(1-uncPdVFrac) // Fraction of PdV related to u thermal
                     + p->uDotDiff;
 #else /* !MASSNONCOOL */
 
