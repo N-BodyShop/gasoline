@@ -28,8 +28,8 @@
 #include "cooling_metal_H2.h"
 #else
 
-#ifdef COOLING_BATE
-#include "cooling_bate.h"
+#ifdef COOLING_POLY
+#include "cooling_poly.h"
 #else
 
 #error "No valid cooling function specified"

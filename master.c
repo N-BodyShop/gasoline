@@ -2652,6 +2652,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef WENDLAND
 	fprintf(fp," WENDLAND");
 #endif
+#ifdef QUINTIC
+	fprintf(fp," QUINTIC");
+#endif
 #ifdef NSMOOTHINNER
 	fprintf(fp," NSMOOTHINNER");
 #endif
@@ -5489,7 +5492,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->Pext = msr->param.dPext;
     psmf->dtMin = FLOAT_MAXVAL; /* Read/Write */
     psmf->dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,psmf->a); 
-    psmf->dtFacDiffusion = 2*msr->param.dEtaDiffusion*psmf->a*psmf->a; 
+    psmf->dtFacDiffusion = 2*msr->param.dEtaDiffusion; 
     psmf->dEtaCourantLong = msr->param.dEtaCourantLong;
     psmf->dDelta = msr->param.dDelta;
 	{
@@ -6135,10 +6138,10 @@ void msrSetuNonCoolContext( MSR msr, UNCC *puncc, double a ) {
     puncc->gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); //for DTADJUST
     puncc->gpc.dResolveJeans = msr->param.dResolveJeans/a;
 #ifdef THERMALCOND
-    puncc->gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
-    puncc->gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
-    puncc->gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode;
-    puncc->gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff;
+    puncc->gpc.dThermalCondCoeffCodez = msr->param.dThermalCondCoeffCode*a;
+    puncc->gpc.dThermalCondSatCoeffz = msr->param.dThermalCondSatCoeff/a;
+    puncc->gpc.dThermalCond2CoeffCodez = msr->param.dThermalCond2CoeffCode*a;
+    puncc->gpc.dThermalCond2SatCoeffz = msr->param.dThermalCond2SatCoeff/a;
 #endif
     }
 
@@ -8878,10 +8881,10 @@ void msrGetGasPressure(MSR msr, double dTime)
 		in.gpc.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
         in.gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,in.gpc.dCosmoFac); //for DTADJUST
 #ifdef THERMALCOND
-        in.gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
-        in.gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
-        in.gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode;
-        in.gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff;
+        in.gpc.dThermalCondCoeffCodez = msr->param.dThermalCondCoeffCode*in.gpc.dCosmoFac;
+        in.gpc.dThermalCondSatCoeffz = msr->param.dThermalCondSatCoeff/in.gpc.dCosmoFac;
+        in.gpc.dThermalCond2CoeffCodez = msr->param.dThermalCond2CoeffCode*in.gpc.dCosmoFac;
+        in.gpc.dThermalCond2SatCoeffz = msr->param.dThermalCond2SatCoeff/in.gpc.dCosmoFac;
 #endif
 		/*
 		 * If self gravitating, resolve the Jeans Mass
@@ -9718,7 +9721,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 #ifdef FBPARTICLE
         a = csmTime2Exp(msr->param.csm,dTime);
         inFB.fb.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); 
-        inFB.fb.dtFacDiffusion = msr->param.dEtaDiffusion*a*a; 
+        inFB.fb.dtFacDiffusion = msr->param.dEtaDiffusion; 
 #endif
         inFB.sn  = *msr->param.sn;
 		if (msr->param.bVDetails) printf("Calculate Feedback ...\n");

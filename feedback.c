@@ -121,10 +121,12 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                     ph = sqrt(p->fBall2*0.25); /* gas h at star */
                     dt = fb->dtFacCourant*ph/(2*pNew.c);	/* dt Courant */
 #ifdef THERMALCOND
-                    gpc.dThermalCondCoeffCode = fb->dThermalCondCoeffCode;
-                    gpc.dThermalCondSatCoeff = fb->dThermalCondSatCoeff;
-                    gpc.dThermalCond2CoeffCode = fb->dThermalCond2CoeffCode;
-                    gpc.dThermalCond2SatCoeff = fb->dThermalCond2SatCoeff;
+                        { double a=1;  /* horrible hack */
+                    gpc.dThermalCondCoeffCodez = fb->dThermalCondCoeffCode*a;
+                    gpc.dThermalCondSatCoeffz = fb->dThermalCondSatCoeff/a;
+                    gpc.dThermalCond2CoeffCodez = fb->dThermalCond2CoeffCode*a;
+                    gpc.dThermalCond2SatCoeffz = fb->dThermalCond2SatCoeff/a;
+                        }
                     pNew.fDensity = p->fDensity;
                     pkdSetThermalCond(pkd, &gpc, &pNew);
                     if (p->fThermalCond > 0) {

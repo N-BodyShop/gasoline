@@ -308,10 +308,10 @@ struct GasPressureContext {
     struct GlassData g;
 #endif
 #ifdef THERMALCOND
-    double dThermalCondCoeffCode;
-    double dThermalCondSatCoeff;
-    double dThermalCond2CoeffCode;
-    double dThermalCond2SatCoeff;
+    double dThermalCondCoeffCodez;
+    double dThermalCondSatCoeffz;
+    double dThermalCond2CoeffCodez;
+    double dThermalCond2SatCoeffz;
 #endif
     };
 

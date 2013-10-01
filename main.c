@@ -752,6 +752,9 @@ int main(int argc,char **argv)
                     msrDomainDecomp(msr,0,1);
                     msrBuildTree(msr,0,-1.0,1);
                     msrMassCheck(msr,dMass,"After msrBuildTree in OutSingle Density");
+                    printf("Calculating DENSITYTMP\n");
+                    /* Note: this is a gather-scatter density -- different to SPH DENDVDX 
+                       (same if we used msrSmooth(msr,dTime,SMX_DENSITYTMP,0) */
                     msrSmooth(msr,dTime,SMX_DENSITYTMP,1);
                     msrMassCheck(msr,dMass,"After msrSmooth in OutSingle Density");
                     } 

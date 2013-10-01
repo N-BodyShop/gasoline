@@ -74,9 +74,42 @@
 
 #endif
 
+/* KERNEL is the kernel normalized so that only a division by pi is necessary 
+   DKERNEL is the kernel derivative divided by (r/h) and normalized so that only a division by pi is necessary */
+
+#define BALL2(a) ((a)->fBall2)
+#ifdef QUINTIC
+/* Quintic spline. Safe Nsmooths: 108-180    Stable against pairing to NS ~ 190  (Dehnen & Aly 2012) */
+#define KERNEL(ak,ar2) 	{                                               \
+        double ak1 = sqrt(ar2*0.25),ak2;                                \
+        ak2 = (1-ak1); ak=(ak2*ak2)*(ak2*ak2)*ak2;                      \
+        if (ak1 < (2./3.)) {                                            \
+            ak2 = ((2./3.)-ak1); ak -= 6*(ak2*ak2)*(ak2*ak2)*ak2;       \
+            if (ak1 < (1./3.)) {                                        \
+                ak2 = ((1./3.)-ak1); ak += 15*(ak2*ak2)*(ak2*ak2)*ak2;  \
+                }                                                       \
+            }                                                           \
+        ak *= (2187./40./8.);                                          \
+        }
+#define DKERNEL(adk,ar2) {                                              \
+        double ak1 = sqrt(ar2*0.25),ak2;                                \
+        ak2 = (1-ak1); adk=(ak2*ak2)*(ak2*ak2);                         \
+        if (ak1 < (2./3.)) {                                            \
+            ak2 = ((2./3.)-ak1); adk -= 6*(ak2*ak2)*(ak2*ak2);          \
+            if (ak1 < (1./3.)) {                                        \
+                if (ak1 <= 0) {                                         \
+                    adk = 0; ak1 = 1;                                   \
+                    }                                                   \
+                else {                                                  \
+                    ak2 = ((1./3.)-ak1); adk += 15*(ak2*ak2)*(ak2*ak2); \
+                    }                                                   \
+                }                                                       \
+            }                                                           \
+        adk *= (-5*2187./40./8./4.)/ak1;                                  \
+        }
+#else
 #ifdef WENDLAND
 /* Wendland C_2 Kernel */
-#define BALL2(a) ((a)->fBall2)
 #ifdef SPH1D
 /* Need a new normalization for this Kernel for 1D */
 #define KERNEL(ak,ar2) 	{						\
@@ -106,7 +139,6 @@
 #else
 #ifdef PEAKEDKERNEL
 /* Standard M_4 Kernel with central peak for dW/du according to Thomas and Couchman 92 (Steinmetz 96) */
-#define BALL2(a) ((a)->fBall2)
 #define KERNEL(ak,ar2) { \
 		ak = 2.0 - sqrt(ar2); \
 		if (ar2 < 1.0) ak = (1.0 - 0.75*ak*ar2); \
@@ -129,7 +161,6 @@
 #else
 #ifdef M43D
 /* M43D Creates a 3D kernel by convolution of 3D tophats the way M4(1D) is made in 1D */
-#define BALL2(a) ((a)->fBall2)
 #define KERNEL(ak,ar2) { \
 		ak = sqrt(ar2); \
 		if (ar2 < 1.0) ak = 6.*0.25/350./3. *(1360+ar2*(-2880 \
@@ -149,6 +180,7 @@
 #ifdef HSHRINK
 /* HSHRINK M4 Kernel uses an effective h of (pi/6)^(1/3) times h for nSmooth neighbours */
 #define dSHRINKFACTOR        0.805995977
+#undef BALL2
 #define BALL2(a) ((a)->fBall2*(dSHRINKFACTOR*dSHRINKFACTOR))
 #define KERNEL(ak,ar2) { \
 		ak = 2.0 - sqrt(ar2); \
@@ -169,7 +201,6 @@
 
 #else
 /* Standard M_4 Kernel */
-#define BALL2(a) ((a)->fBall2)
 #define KERNEL(ak,ar2) { \
 		ak = 2.0 - sqrt(ar2); \
 		if (ar2 < 1.0) ak = (1.0 - 0.75*ak*ar2); \
@@ -187,7 +218,8 @@
 #endif
 #endif
 #endif
-#endif
+#endif /* WENDLAND */
+#endif /* QUINTIC */
 
 void NullSmooth(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf) {
 }
@@ -4425,7 +4457,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     KERNEL(rs,0.0);
 	p->fDensityU = (fDensityU-rs*p->fMass*p->uPred*fNorm)/p->uPred*fDensity/(fDensity-rs*p->fMass*fNorm); 
 #else
-	p->fDensity = fDensityU/p->uPred; 
+	p->fDensityU = fDensityU/p->uPred; 
 #endif
 #endif
 #ifdef RTDENSITY	
@@ -4459,7 +4491,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	p->curlv[0] = fNorm1*(dvzdy - dvydz); /* same in all coordinates */
 	p->curlv[1] = fNorm1*(dvxdz - dvzdx);
 	p->curlv[2] = fNorm1*(dvydx - dvxdy);
-
 /* Prior: ALPHAMUL 10 on top -- make pre-factor for c instead then switch is limited to 1 or less */
 #ifndef ALPHACMUL 
 #define ALPHACMUL 0.1
@@ -5413,7 +5444,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     ph = sqrt(BALL2(p)*0.25);
     ih2 = 1/(ph*ph);
     /* Exclude cool particles */
-    Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
+    Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, p->fMetals );
     if (Tp <= 1e5) return;
 
     up52 = pow(p->uPred,2.5);
@@ -5424,7 +5455,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         q = nnList[i].pPart;
         if (p->iOrder == q->iOrder) continue;
 	    if (TYPETest(q, TYPE_DELETED) || (TYPETest(q, TYPE_FEEDBACK) && !TYPETest(q, TYPE_PROMOTED))) continue;
-        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
         if (Tq >= 1e5) continue;  /* Exclude hot particles */
 	    assert(TYPETest(q, TYPE_GAS));
         assert(!TYPETest(p, TYPE_STAR));
@@ -5447,7 +5478,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         q = nnList[i].pPart;
         if (p->iOrder == q->iOrder) continue;
 	    if (TYPETest(q, TYPE_DELETED) || (TYPETest(q, TYPE_FEEDBACK) && !TYPETest(q, TYPE_PROMOTED))) continue;
-        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
         if (Tq <= 1e5) continue;  
         dot = xc*nnList[i].dx + yc*nnList[i].dy + zc*nnList[i].dz;
 		if (dot > 0 && dot*dot > dotcut2*nnList[i].fDist2) {
@@ -5464,7 +5495,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         q = nnList[i].pPart;
         if (p->iOrder == q->iOrder) continue;
 	    if(TYPETest(q, TYPE_DELETED) || (TYPETest(q, TYPE_FEEDBACK) && !TYPETest(q, TYPE_PROMOTED))) continue;
-        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
         if (Tq >= 1e5 ) continue;  /* Exclude hot particles */
 	    assert(TYPETest(q, TYPE_GAS));
 		r2 = nnList[i].fDist2*ih2;            
@@ -5497,7 +5528,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             q = isort[i].pNN->pPart;
             if (p->iOrder == q->iOrder) continue;
             if (TYPETest(q, TYPE_DELETED) || TYPETest(q, TYPE_FEEDBACK) || TYPETest(q, TYPE_PROMOTED)) continue;
-            Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+            Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
             if (Tq >= 1e5 ) continue;  /* Exclude hot particles */
             assert(TYPETest(q, TYPE_GAS));
 
@@ -5553,7 +5584,7 @@ void ShareWithHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	assert(TYPETest(p, TYPE_FEEDBACK));
 	assert(!TYPETest(p, TYPE_PROMOTED));
 //    KERNEL(rsmax,0.0);
-    Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
+    Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred,  p->fDensity, p->fMetals );
     if (Tp <= 1e5) return;
 
     rsmax = 1.0;
@@ -5585,8 +5616,8 @@ void ShareWithHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         q = nnList[i].pPart;
 	    if (TYPETest(q, TYPE_PROMOTED)) {
             double Tp0,Tq0,Tp,Tq,uPredp=p->uPred;
-            Tp0 = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
-            Tq0 = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, PROMOTE_UPREDINIT(q), q->fMetals );
+            Tp0 = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, p->fMetals );
+            Tq0 = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, PROMOTE_UPREDINIT(q), q->fDensity, q->fMetals );
             nPromoted++;
             uavg = (rsmax*q->fMass*PROMOTE_UPREDINIT(q) + PROMOTE_SUMUPREDWEIGHT(q))/
                 (rsmax*q->fMass + PROMOTE_SUMWEIGHT(q));
@@ -5605,8 +5636,8 @@ void ShareWithHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             assert(0);
 #endif
             {
-            Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
-            Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, q->uPred, q->fMetals );
+            Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, p->fMetals );
+            Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, q->uPred, q->fDensity, q->fMetals );
 //                printf("promote YES new T: %d %d %g %g %g %g   %g  %g %g %g %g\n",p->iOrder,q->iOrder,p->fMass,q->fMass,uavg/4802.58,umin/4802.58,Tp0,Tp, Tq0,Tq);
 //            printf("promote YES new T: %d %d %g %g %g %g   %g  %g %g %g %g\n",p->iOrder,q->iOrder,p->fMass,q->fMass,uavg,umin,factor*p->fMass/PROMOTE_SUMWEIGHT(q)*Eadd,uPredp,p->uPred,PROMOTE_UPREDINIT(q),q->uPred);
             }
@@ -5786,7 +5817,7 @@ void DistIonize(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
   for (i=0;i<nSmooth;++i) {
       q = isort[i].pNN->pPart;
-	  T = CoolCodeEnergyToTemperature(smf->pkd->Cool,&q->CoolParticle, q->u, q->fMetals/q->fMass);
+	  T = CoolCodeEnergyToTemperature(smf->pkd->Cool,&q->CoolParticle, q->u, q->fDensity, q->fMetals/q->fMass);
       if (T > smf->dIonizeTMin) continue;
       /* Stop once we have enough cold mass ionized 
 	 -- currently only checks nSmooth neighbours max so may truncate if in a hot region 

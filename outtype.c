@@ -90,10 +90,10 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #endif
 	case OUT_TEMPINC_ARRAY:
 #ifdef UNONCOOL
-	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u+p->uNoncool, p->fMetals );
+	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u+p->uNoncool, p->fDensity, p->fMetals );
 #else
 #ifndef NOCOOLING
-	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
+	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 #else
 	    vTemp = pkd->duTFac*p->u;
 #endif
@@ -101,7 +101,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return(vTemp);
 	case OUT_TEMP_ARRAY:
 #ifndef NOCOOLING
-	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
+	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 #else
 	    vTemp = pkd->duTFac*p->u;
 #endif
