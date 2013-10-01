@@ -943,7 +943,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				sizeof(double),"hmin",
 				"<Minimum h as a fraction of Softening> = 0.0");
 #ifdef NSMOOTHINNER
-	if(msr->param.dhMinOverSoft == 0)
+	if(msr->param.dhMinOverSoft != 0)
 	{
 		printf("dhMinOverSoft is incompatible with NSMOOTHINNER");
 		assert(0);
