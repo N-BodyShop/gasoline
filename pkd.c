@@ -6272,7 +6272,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 #endif
 
             uDotSansCooling = (uDotPdVNJ+p->uDotAV)*(1-uncPdVFrac) // Fraction of PdV related to u thermal
-                    + p->uDotDiff;
+                    + p->uDotDiff +uDotFBThermal;
 #else /* !MASSNONCOOL */
 
             fDensity = p->fDensity; /* Density for cooling */
