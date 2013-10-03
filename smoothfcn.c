@@ -6158,7 +6158,11 @@ void postDistFBEnergy(PARTICLE *p1, SMF *smf)
     
     if(TYPETest(p1, TYPE_GAS)){
 #ifdef MASSNONCOOL
-		if (p1->fMassNoncool > 0) p1->uDotFB /= p1->fMassNoncool;
+		if (p1->fMassNoncool > 0) {
+			p1->uDotFB /= p1->fMassNoncool};
+		else {
+			p1->uDotFB /= p1->fMass;
+		}
 #else
         p1->uDotFB /= p1->fMass;
 #endif
