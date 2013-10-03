@@ -4419,6 +4419,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
 						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
 						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDotFB *= p->fMassNoncool/p->fMass; //Damn these scaled uDots, we should use a different name!
 						   p->fMassNoncool = 0;
 						   p->uNoncool = 0;
 						   p->uNoncoolDot = 0;
@@ -4427,6 +4428,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 					   else {
 						   p->uNoncoolPred = (p->uPred*fMassFlux + p->uNoncoolPred*p->fMassNoncool)/(fMassFlux+p->fMassNoncool);
 						   p->uNoncool = (p->u*fMassFlux + p->uNoncool*p->fMassNoncool)/(fMassFlux+p->fMassNoncool);
+						   p->uDotFB *= p->fMassNoncool/(p->fMassNoncool+fMassFlux);
 						   p->fMassNoncool += fMassFlux;
 						   assert(p->fMassNoncool >= 0);
 						   assert(p->uPred > 0);
@@ -4439,6 +4441,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
 						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
 						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDotFB *= p->fMassNoncool/p->fMass;//Damn these scaled uDots, we should use a different name!
 						   p->fMassNoncool = 0;
 						   p->uNoncool = 0;
 						   p->uNoncoolDot = 0;
@@ -6272,7 +6275,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 #endif
 
             uDotSansCooling = (uDotPdVNJ+p->uDotAV)*(1-uncPdVFrac) // Fraction of PdV related to u thermal
-                    + p->uDotDiff +uDotFBThermal;
+                    + p->uDotDiff + uDotFBThermal;
 #else /* !MASSNONCOOL */
 
             fDensity = p->fDensity; /* Density for cooling */
@@ -6812,8 +6815,8 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     uTotDot = p->uDot;
 #ifdef UNONCOOL
                     uTotDot += p->uNoncoolDot;
-#endif /* MASSNONCOOL */
 #endif
+#endif /* MASSNONCOOL */
                     if (uTotDot > 0) {
                         dtExtrap = pkdDtFacCourant(dEtaCourant,dCosmoFac)
                             *sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
