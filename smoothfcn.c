@@ -5739,7 +5739,16 @@ void initTreeParticleDistFBEnergy(void *p1)
      */
     
     if(TYPETest((PARTICLE *)p1, TYPE_GAS)){
+#ifdef MASSNONCOOL
+		if(((PARTICLE *)p1)->fMassNoncool > 0) {
+			((PARTICLE *)p1)->uDotFB *= ((PARTICLE *)p1)->fMassNoncool;
+		}
+		else {
+			((PARTICLE *)p1)->uDotFB *= ((PARTICLE *)p1)->fMass;
+		}
+#else
         ((PARTICLE *)p1)->uDotFB *= ((PARTICLE *)p1)->fMass;
+#endif /* MASSNONCOOL*/
         ((PARTICLE *)p1)->fMetals *= ((PARTICLE *)p1)->fMass;    
         ((PARTICLE *)p1)->fMFracOxygen *= ((PARTICLE *)p1)->fMass;    
         ((PARTICLE *)p1)->fMFracIron *= ((PARTICLE *)p1)->fMass;    
