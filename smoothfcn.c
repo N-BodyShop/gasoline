@@ -5765,6 +5765,7 @@ void initDistFBEnergy(void *p1)
      * mass.  Note: original particle curlv's never modified.
      */
     ((PARTICLE *)p1)->curlv[0] = ((PARTICLE *)p1)->fMass;
+    ((PARTICLE *)p1)->curlv[1] = ((PARTICLE *)p1)->fMassNoncool;
 
     /*
      * Zero out accumulated quantities.
@@ -5781,8 +5782,10 @@ void combDistFBEnergy(void *p1,void *p2)
      * See kludgery notice above.
      */
     FLOAT fAddedMass = ((PARTICLE *)p2)->fMass - ((PARTICLE *)p2)->curlv[0];
+    FLOAT fAddedMassNoncool = ((PARTICLE *)p2)->fMassNoncool - ((PARTICLE *)p2)->curlv[1];
     
     ((PARTICLE *)p1)->fMass += fAddedMass;
+    ((PARTICLE *)p1)->fMassNoncool += fAddedMassNoncool;
     ((PARTICLE *)p1)->uDotFB += ((PARTICLE *)p2)->uDotFB;
     ((PARTICLE *)p1)->fMetals += ((PARTICLE *)p2)->fMetals;
     ((PARTICLE *)p1)->fMFracOxygen += ((PARTICLE *)p2)->fMFracOxygen;
