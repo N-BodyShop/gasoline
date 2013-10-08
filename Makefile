@@ -102,7 +102,7 @@ CODE_DEF += -DDODVDS #Better handling of viscosity with the Balsara switch
 #CODE_DEF += -DDRHODTDIVOUT #Output Divv variables used in DRHODT
 #CODE_DEF += -DDRHODTTEST #Output a large list of properties important for the DRHODT parts of the code for debugging
 CODE_DEF += -DDTADJUST #Use a more clever "anticipatory" timestep criteria for multistepping
-#CODE_DEF += -DDTTEST=6e-12 #If a dt value goes below this value, print some debug information about the particle that caused it.
+#CODE_DEF += -DDTTEST=1e-9 #If a dt value goes below this value, print some debug information about the particle that caused it.
 CODE_DEF += -DEPSACCH #Turning this one makes the pkd code ignore dhMinOverSoft in pkdAccelStep
 #CODE_DEF += -DFITDVDX #Use a fitted version of the DenDVDX that doesn't use the stiff.h evaluator.
 #CODE_DEF += -DFBPARTICLE #Use particle creation for feedback (*Very kludgey currently*)
@@ -120,7 +120,7 @@ CODE_DEF += -DJEANSSOFT #Force the smoothing & softening length to be at least a
 #CODE_DEF += -DJEANSSOFTONLY #Only force the softening length to be as small as the Jeans scale
 #CODE_DEF += -DKROUPA #Use the Kroupa IMF (from Kroupa et al 1993 Bibcode:1993MNRAS.262..545K)
 #CODE_DEF += -DKROUPA01 #Use the newer Kroupa 01 IMF (DOI:10.1046/j.1365-8711.2001.04022.x)
-#CODE_DEF += -DLONGRANGESTEP #Predict what particles will need to be put onto a longer timestep.
+#CODE_DEF += -DLONGRANGESTEP #Predict what particles will need to be put onto a longer timestep. (DEPRECATED)
 #CODE_DEF += -DM43D #Use a fancier 3D derived M4 Kernel
 #CODE_DEF += -DMASSDIFF #Enable Mass diffusion (probably not a good idea right now)
 CODE_DEF += -DMASSNONCOOL #Use multiphase particles for feedback
@@ -156,7 +156,7 @@ CODE_DEF += -DNSMOOTHINNER #Ensure at least 18 neighbours inside 1.41 h
 CODE_DEF += -DRTFORCE #Use an alternate method for forces a la. Ritchie & Thomas 2001 (DOI:10.1046/j.1365-8711.2001.04268.x)
 #CODE_DEF += -DRUBBLE_ZML #Use "Rubble Pile" collision model (Requires -DCOLLISION)
 #CODE_DEF += -DSAND_PILE #Use the "Sand Pile" collision model (Requires -DCOLLISION)
-CODE_DEF += -DSETTRAPFPE #Enable Floating point exceptions.  VERY USEFUL for debugging.
+#CODE_DEF += -DSETTRAPFPE #Enable Floating point exceptions.  VERY USEFUL for debugging.
 #CODE_DEF += -DSFCONDITIONS #Use additional conditions for deciding if you form stars (Jeans length vs. h)
 #CODE_DEF += -DSHOCKTRACK #Output additional data in order to more easily track shocks (grad rho, div rho*v)
 #CODE_DEF += -DSIMPLE_GAS_DRAG #Apply a drag to the gas velocities using either the Epstein regime, or stopping time
