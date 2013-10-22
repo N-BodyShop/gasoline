@@ -4447,6 +4447,19 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 						   p->uNoncoolDot = 0;
 						   p->uNoncoolPred = 0;
 				   }
+                    FLOAT TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uNoncoolPred, p->fMetals );
+                    if(TpNC < uncc.dMultiPhaseMinTemp)//Check to make sure the hot phase is still actually hot
+                    {
+						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDotFB *= p->fMassNoncool/p->fMass;//Damn these scaled uDots, we should use a different name!
+						   p->fMassNoncool = 0;
+						   p->uNoncool = 0;
+						   p->uNoncoolDot = 0;
+						   p->uNoncoolPred = 0;
+                    }
+                    
 #endif
 #endif
 #else /* NOCOOLING */

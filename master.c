@@ -1184,7 +1184,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
 #ifdef MASSNONCOOL
-	msr->param.dMultiPhaseMinTemp = 1e6;
+	msr->param.dMultiPhaseMinTemp = 1e5;
 	prmAddParam(msr->prm,"dMultiPhaseMinTemp",2,&msr->param.dMultiPhaseMinTemp,
 				sizeof(double),"multitmin",
 				"<Temperature threshold to use multiphase feedback> = 1e6");
@@ -6192,6 +6192,9 @@ void msrSetuNonCoolContext( MSR msr, UNCC *puncc, double a ) {
     puncc->gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
     puncc->gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode;
     puncc->gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff;
+#endif
+#ifdef MASSNONCOOL
+    puncc->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
 #endif
     }
 

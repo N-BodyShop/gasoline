@@ -329,6 +329,9 @@ typedef struct uNonCoolContext {
     double dNoncoolConvRateMax;
     double dNoncoolConvUMin;
     struct GasPressureContext gpc;
+#ifdef MASSNONCOOL
+    double dMultiPhaseMinTemp;
+#endif
     } UNCC;
 
 #define SINK_Lx(_a) (((PARTICLE *) (_a))->uDotPdV)
