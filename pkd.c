@@ -6262,8 +6262,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
                 
                 uDotSansCooling = (uDotPdVNJ+p->uDotAV)*uncPdVFrac // Fraction of PdV related to uNoncool 
                     + p->uNoncoolDotDiff + uNoncoolDotFB;
-				/*if ( bCool && p->uNoncool > 0) {*/
-				if ( 0) {//I am paranoid about letting the hot phase cool, turned off by default
+				if ( bCool && p->uNoncool > 0) {
                     cp = p->CoolParticle;
                     E = p->uNoncool;
 					dtUse = dt;
