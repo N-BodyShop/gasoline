@@ -4405,6 +4405,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
                     if (p->uNoncool < 0) p->uNoncool = 0;
 #ifdef MASSNONCOOL
+                    double fDensity,PoverRho,PoverRhoGas,PoverRhoNoncool,PoverRhoFloorJeans,cGas;
+                    pkdGasPressureParticle(pkd, &uncc.gpc, p, &PoverRhoFloorJeans, &PoverRhoNoncool, &PoverRhoGas, &cGas );
+                   fDensity = p->fDensity*PoverRhoGas/(uncc.gpc.gammam1*p->uNoncool); /* Density of bubble part of particle */
 					FLOAT upnc52, up52, fMassFlux;
 				   upnc52 = pow(p->uNoncoolPred, 2.5);
 				   up52 = pow(p->uPred, 2.5);
@@ -4412,8 +4415,8 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                    /* The Saturation Coefficient S is related to the evaporation Coefficient C by:
                     * C_{saturation} = \frac{6}{25}S \rho c_s h
                     */
+                   FLOAT fMassFluxSat = 0.24*(duPredDelta*uncc.gpc.dThermalCondSatCoeff*fDensity*cGas*ph*ph*3.1415);
 				   fMassFlux = fFactor*(upnc52-up52);
-                   FLOAT fMassFluxSat = (duPredDelta*uncc.gpc.dThermalCondSatCoeff*p->fDensity*p->c*ph*ph*3.1415)*(upnc52-up52);
 				   dbgprint("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e %e\n", 
 						   p->iOrder, duDelta, duPredDelta, fMassFlux, fMassFluxSat, ph, p->fMass-p->fMassNoncool, p->fMassNoncool, p->uPred, p->uNoncoolPred);
                    fMassFlux = (fMassFlux < fMassFluxSat ? fMassFlux : fMassFluxSat);
