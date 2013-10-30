@@ -4406,7 +4406,6 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     if (p->uNoncool < 0) p->uNoncool = 0;
 #ifdef MASSNONCOOL
 					FLOAT upnc52, up52, fMassFlux;
-					FLOAT ph = sqrt(0.25*p->fBall2);
 				   upnc52 = pow(p->uNoncoolPred, 2.5);
 				   up52 = pow(p->uPred, 2.5);
 				   FLOAT fFactor = duPredDelta*uncc.gpc.dEvapCoeffCode*ph*3.1415;
@@ -4453,7 +4452,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 						   p->uNoncoolPred = 0;
 				   }
                     FLOAT TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uNoncoolPred, p->fMetals );
-                    if(TpNC < uncc.dMultiPhaseMinTemp)//Check to make sure the hot phase is still actually hot
+                    if(TpNC < uncc.dMultiPhaseMinTemp && p->uNoncoolPred > 0)//Check to make sure the hot phase is still actually hot
                     {
 						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
 						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
