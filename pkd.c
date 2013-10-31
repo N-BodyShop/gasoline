@@ -4405,6 +4405,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
                     if (p->uNoncool < 0) p->uNoncool = 0;
 #ifdef MASSNONCOOL
+					double ph = sqrt(p->fBall2*0.25);
                     double fDensity,PoverRho,PoverRhoGas,PoverRhoNoncool,PoverRhoFloorJeans,cGas;
                     pkdGasPressureParticle(pkd, &uncc.gpc, p, &PoverRhoFloorJeans, &PoverRhoNoncool, &PoverRhoGas, &cGas );
                    fDensity = p->fDensity*PoverRhoGas/(uncc.gpc.gammam1*p->uNoncool); /* Density of bubble part of particle */
