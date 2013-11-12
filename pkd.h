@@ -213,6 +213,7 @@ typedef struct particle {
 #endif
 #ifdef STARFORM
     FLOAT uDotFB;
+    FLOAT uDotESF;
     FLOAT fMSN;
     FLOAT fNSN;           
     FLOAT fMOxygenOut;

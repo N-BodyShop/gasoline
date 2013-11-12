@@ -346,6 +346,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
 #ifdef STARFORM
         p->uDotFB = 0.0;
+        p->uDotESF = 0.0;
         p->fNSN = 0.0;
         p->fNSNtot = 0.0;
         p->fMOxygenOut = 0.0;
@@ -4405,6 +4406,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
                     if (p->uNoncool < 0) p->uNoncool = 0;
 #ifdef MASSNONCOOL
+                    double ph = sqrt(p->fBall2*0.25);
                     double fDensity,PoverRho,PoverRhoGas,PoverRhoNoncool,PoverRhoFloorJeans,cGas;
                     pkdGasPressureParticle(pkd, &uncc.gpc, p, &PoverRhoFloorJeans, &PoverRhoNoncool, &PoverRhoGas, &cGas );
                    fDensity = p->fDensity*PoverRhoGas/(uncc.gpc.gammam1*p->uNoncool); /* Density of bubble part of particle */
@@ -4713,6 +4715,7 @@ void pkdCreateInflow(PKD pkd, int Ny, int iGasModel, double dTuFac, double pmass
 #endif				
 #ifdef STARFORM
 	    p.uDotFB = 0.0;
+	    p.uDotESF = 0.0;
 	    p.fNSN = 0.0;
 	    p.fNSNtot = 0.0;
 	    p.fMOxygenOut = 0.0;
@@ -4822,6 +4825,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #endif
 #ifdef STARFORM 
 		p->uDotFB = 0.0;
+		p->uDotESF = 0.0;
 		p->fTimeForm = cp.fTimeForm;
 		p->fMassForm = cp.fMassForm;
 		p->iGasOrder = cp.iGasOrder;
@@ -5154,7 +5158,12 @@ void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, double *dTotMetals,
                 *dTotOx += pkd->pStore[i].fMass*pkd->pStore[i].fMFracOxygen;
                 *dTotFe += pkd->pStore[i].fMass*pkd->pStore[i].fMFracIron;
                 if ( TYPETest(&pkd->pStore[i], TYPE_GAS) ){
+#ifdef MASSNONCOOL
+		  *dTotEnergy += pkd->pStore[i].fMassNoncool*pkd->pStore[i].uDotFB;
+#else
 		  *dTotEnergy += pkd->pStore[i].fMass*pkd->pStore[i].uDotFB;
+#endif
+		  *dTotEnergy += pkd->pStore[i].fMass*pkd->pStore[i].uDotESF;
                     }
 #endif
 #endif
@@ -6295,7 +6304,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 #endif
 
             uDotSansCooling = (uDotPdVNJ+p->uDotAV)*(1-uncPdVFrac) // Fraction of PdV related to u thermal
-                    + p->uDotDiff + uDotFBThermal;
+                    + p->uDotDiff + uDotFBThermal + p->uDotESF;
 #else /* !MASSNONCOOL */
 
             fDensity = p->fDensity; /* Density for cooling */
@@ -6315,7 +6324,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 #endif    
             uDotSansCooling = p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to u thermal
                 + p->uDotAV                                                   // Only u thermal energy gets shock heating
-                + uNoncoolDotConv + uDotFBThermal + p->uDotDiff;
+                + uNoncoolDotConv + uDotFBThermal + p->uDotDiff + p->uDotESF;
 #endif /* !MASSNONCOOL */
 
             if ( bCool ) {
