@@ -1485,10 +1485,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dFBInitialMassLoad", 2, &msr->param.dFBInitialMassLoad,
 		    sizeof(double), "dFBIML",
 		    "<Initial Mass Loading for Feedback Ejecta> = 2");
-	msr->param.dMultiPhaseMaxTime= 30.0;
-	prmAddParam(msr->prm,"dMultiPhaseMaxTime", 2, &msr->param.dMultiPhaseMaxTime,
-		    sizeof(double), "fMPMT",
-		    "Maximum time to let multiphase particles persist = 2");
 #endif
 #endif /* STARFORM */
 #endif /* GASOLINE */
@@ -6198,7 +6194,6 @@ void msrSetuNonCoolContext( MSR msr, UNCC *puncc, double a ) {
     puncc->gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff;
 #endif
 #ifdef MASSNONCOOL
-    puncc->dMultiPhaseMaxTime = msr->param.dMultiPhaseMaxTime*msr->param.dSecUnit*3.1557e13;
     puncc->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
 #endif
     }

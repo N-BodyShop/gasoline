@@ -134,8 +134,7 @@ typedef struct particle {
     COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
 #endif
 #ifdef MASSNONCOOL
-    FLOAT fMassNoncool;		/* The mass of the particle that is in the hot bubble phase */
-	FLOAT fMultiPhaseMTime; /* The last time a multiphase particle has been heated by SNe*/
+    FLOAT fMassNoncool;
 #endif
 #ifdef UNONCOOL
     FLOAT uNoncool;
@@ -333,7 +332,6 @@ typedef struct uNonCoolContext {
     struct GasPressureContext gpc;
 #ifdef MASSNONCOOL
     double dMultiPhaseMinTemp;
-    double dMultiPhaseMaxTime;
 #endif
     } UNCC;
 
@@ -429,7 +427,6 @@ typedef struct chkParticle {
     FLOAT u;
 #ifdef MASSNONCOOL
     FLOAT fMassNoncool;
-    FLOAT fMultiPhaseMTime;
 #endif
 #ifdef UNONCOOL
     FLOAT uNoncool;

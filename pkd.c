@@ -333,7 +333,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->uPred = 0.0;
 #ifdef MASSNONCOOL
         p->fMassNoncool = 0;
-        p->fMultiPhaseMTime = 0;
 #endif
 #ifdef UNONCOOL
         p->uNoncool = 0.;
@@ -4457,6 +4456,18 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 						   p->uNoncoolDot = 0;
 						   p->uNoncoolPred = 0;
 				   }
+                    FLOAT TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uNoncoolPred, p->fMetals );
+                    if(TpNC < uncc.dMultiPhaseMinTemp && p->uNoncoolPred > 0)//Check to make sure the hot phase is still actually hot
+                    {
+						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDotFB *= p->fMassNoncool/p->fMass;//Damn these scaled uDots, we should use a different name!
+						   p->fMassNoncool = 0;
+						   p->uNoncool = 0;
+						   p->uNoncoolDot = 0;
+						   p->uNoncoolPred = 0;
+                    }
                     
 #endif
 #endif
@@ -4786,7 +4797,6 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 		p->uPred = cp.u;
 #ifdef MASSNONCOOL
         p->fMassNoncool = cp.fMassNoncool;
-        p->fMassNoncool = cp.fMultiPhaseMTime;
 #endif
 #ifdef UNONCOOL
 #ifdef UNONCOOLMERGE
@@ -4923,7 +4933,6 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 		cp.u = p->u;
 #ifdef MASSNONCOOL
 		cp.fMassNoncool = p->fMassNoncool;
-		cp.fMassNoncool = p->fMultiPhaseMTime;
 #endif
 #ifdef UNONCOOL
 		cp.uNoncool = p->uNoncool;
@@ -6265,17 +6274,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             
             bUpdateStd = (p->fMassNoncool < 0.9*p->fMass);
 
-			if(p->fMultiPhaseMTime < uncc.dMultiPhaseMaxTime+dTime && p->uNoncoolPred > 0)//Check to make sure the hot phase is still actually hot
-			{
-				   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
-				   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
-				   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
-				   p->uDotFB *= p->fMassNoncool/p->fMass;//Damn these scaled uDots, we should use a different name!
-				   p->fMassNoncool = 0;
-				   p->uNoncool = 0;
-				   p->uNoncoolDot = 0;
-				   p->uNoncoolPred = 0;
-			}
             if (p->fMassNoncool > 0) {
                 assert(p->uNoncool >= 0);
                 
