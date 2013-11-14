@@ -308,6 +308,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
         if (dTime > p->fTimeCoolIsOffUntil) p->uDotFB = 0;
 #else
 	    p->uDotFB = 0.0;	/* reset SN heating rate of gas to zero */
+	    p->uDotESF = 0.0;	/* reset SN heating rate of gas to zero */
 #endif
 	    }
 	}

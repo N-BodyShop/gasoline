@@ -5749,6 +5749,7 @@ void initTreeParticleDistFBEnergy(void *p1)
 #else
         ((PARTICLE *)p1)->uDotFB *= ((PARTICLE *)p1)->fMass;
 #endif /* MASSNONCOOL*/
+        ((PARTICLE *)p1)->uDotESF *= ((PARTICLE *)p1)->fMass;
         ((PARTICLE *)p1)->fMetals *= ((PARTICLE *)p1)->fMass;    
         ((PARTICLE *)p1)->fMFracOxygen *= ((PARTICLE *)p1)->fMass;    
         ((PARTICLE *)p1)->fMFracIron *= ((PARTICLE *)p1)->fMass;    
@@ -5773,6 +5774,7 @@ void initDistFBEnergy(void *p1)
      * Zero out accumulated quantities.
      */
     ((PARTICLE *)p1)->uDotFB = 0.0;
+    ((PARTICLE *)p1)->uDotESF = 0.0;
     ((PARTICLE *)p1)->fMetals = 0.0;
     ((PARTICLE *)p1)->fMFracOxygen = 0.0;
     ((PARTICLE *)p1)->fMFracIron = 0.0;
@@ -5793,6 +5795,7 @@ void combDistFBEnergy(void *p1,void *p2)
     
     ((PARTICLE *)p1)->fMass += fAddedMass;
     ((PARTICLE *)p1)->uDotFB += ((PARTICLE *)p2)->uDotFB;
+    ((PARTICLE *)p1)->uDotESF += ((PARTICLE *)p2)->uDotESF;
     ((PARTICLE *)p1)->fMetals += ((PARTICLE *)p2)->fMetals;
     ((PARTICLE *)p1)->fMFracOxygen += ((PARTICLE *)p2)->fMFracOxygen;
     ((PARTICLE *)p1)->fMFracIron += ((PARTICLE *)p2)->fMFracIron;
@@ -5853,7 +5856,7 @@ void DistESF(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #else
 	weight = rs*fNorm_u*q->fMass;
 #endif
-	q->uDotFB += weight*ESFRate;
+	q->uDotESF += weight*ESFRate;
   }
 }
 
@@ -6186,6 +6189,7 @@ void postDistFBEnergy(PARTICLE *p1, SMF *smf)
 #else
         p1->uDotFB /= p1->fMass;
 #endif
+        p1->uDotESF /= p1->fMass;
         p1->fMetals /= p1->fMass;    
         p1->fMFracIron /= p1->fMass;    
         p1->fMFracOxygen /= p1->fMass;    
