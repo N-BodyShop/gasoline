@@ -5787,6 +5787,8 @@ void combDistFBEnergy(void *p1,void *p2)
 #ifdef MASSNONCOOL
     FLOAT fAddedMassNoncool = ((PARTICLE *)p2)->fMassNoncool - ((PARTICLE *)p2)->curlv[1];
     ((PARTICLE *)p1)->fMassNoncool += fAddedMassNoncool;
+    ((PARTICLE *)p1)->fMultiPhaseMTime = max( ((PARTICLE *)p1)->fMultiPhaseMTime,
+                ((PARTICLE *)p2)->fMultiPhaseMTime );
 #endif
     
     ((PARTICLE *)p1)->fMass += fAddedMass;
@@ -5971,6 +5973,7 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef MASSNONCOOL
 	FLOAT Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
 	if(Tq < smf->dMultiPhaseMinTemp && weight > 0) {
+		q->fMultiPhaseMTime = smf->dTime;
 		double fMassNoncool = q->fMassNoncool + weight*p->fMSN;
 		double deltaMassLoad = weight*p->fMSN*smf->dFBInitialMassLoad;
 		if (fMassNoncool+deltaMassLoad >= q->fMass) {
