@@ -1444,7 +1444,7 @@ void smSmooth(SMX smx,SMF *smf)
             }
 
 #ifdef NSMOOTHINNER
-        if (nh < 18 && !smx->bSmallBall) {
+        if (nCnt > 22 && nh < 18 && !smx->bSmallBall) {
 //        if (nh < 6) {
             ISORT *isort;
             isort = (ISORT *) malloc(sizeof(ISORT)*nCnt);
@@ -1455,7 +1455,23 @@ void smSmooth(SMX smx,SMF *smf)
             qsort( isort, nCnt, sizeof(ISORT), CompISORT );
             assert(nCnt > 22);
             
-            p[pi].fBall2 = -isort[21].r2*2; 
+
+			int nCntNew;
+			if (smx->bPeriodic) {
+				nCntNew = smBallGather(smx,2*isort[21].r2,p[pi].r);
+				}
+			else {
+				nCntNew = smBallGatherNP(smx,2*isort[21].r2,p[pi].r,ROOT);
+				}
+			if (nCntNew < 10*nSmooth)
+			{
+				p[pi].fBall2 = -isort[21].r2*2; 
+			}
+			else
+			{
+
+				printf("NSMOOTHTESTER: %d %d\n", p[pi].iOrder, nCntNew);
+			}
 //            p[pi].fBall2 = -isort[7].r2*4; 
             free(isort);
             }
