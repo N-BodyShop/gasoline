@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <assert.h>
 #include "smooth.h"
+#include "debug.h"
 #include "pkd.h"
 #include "smoothfcn.h"
 
