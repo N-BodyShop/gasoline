@@ -1444,6 +1444,7 @@ void smSmooth(SMX smx,SMF *smf)
             }
 
 #ifdef NSMOOTHINNER
+		int nCntCheck = 0;
         if (nCnt > 22 && nh < 18 && !smx->bSmallBall) {
 //        if (nh < 6) {
             ISORT *isort;
@@ -1469,13 +1470,13 @@ void smSmooth(SMX smx,SMF *smf)
 			}
 			else
 			{
-
-				printf("NSMOOTHTESTER: %d %d\n", p[pi].iOrder, nCntNew);
+				nCntCheck = 1;
+				dbgprint("TOO MANY NEIGHBOURS: %d %d\n", p[pi].iOrder, nCntNew);
 			}
 //            p[pi].fBall2 = -isort[7].r2*4; 
             free(isort);
             }
-        else  
+        if (nCnt <= 22 || nh >= 18 || smx->bSmallBall || nCntCheck) 
 #endif 
             {
 
