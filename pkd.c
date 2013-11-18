@@ -6858,8 +6858,13 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     double uEff = PONRHOFLOOR+PoverRhoFloorJeans/(GAMMA_JEANS-1)+p->u;
                             
                     assert(p->u > 0.0);
+#ifdef MASSNONCOOL
+					double x = p->fMassNoncool/p->fMass;
+                    uEff += x*(p->uNoncool-p->u);
+#else
 #ifdef UNONCOOL
                     uEff += p->uNoncool;
+#endif
 #endif
                     dTu = dEtauDot*uEff/fabs(p->uDotPdV);
                     DTSAVE(dTu,"PDV");
