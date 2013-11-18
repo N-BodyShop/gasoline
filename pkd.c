@@ -6838,7 +6838,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     double uTotDot, dtExtrap;
 #ifdef MASSNONCOOL
 					double x = p->fMassNoncool/p->fMass;
-					uTotDot = p->uNoncoolDot*(1-x)+p->uDot*x;
+					uTotDot = p->uNoncoolDot*x+p->uDot*(1-x);
 #else
                     uTotDot = p->uDot;
 #ifdef UNONCOOL
