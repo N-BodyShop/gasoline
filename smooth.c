@@ -1445,20 +1445,29 @@ void smSmooth(SMX smx,SMF *smf)
             }
 
 #ifdef NSMOOTHINNER
-        if (nCnt > 22 && nh < 18 && !smx->bSmallBall) {
+		int innerCount = floor(nSmooth/2.8);  //The number of neighbours within sqrt(2)h if particles are uniformly distributed.
+		assert(innerCount > 4);
+        if (nCnt > innerCount && nh < innerCount-4 && !smx->bSmallBall) {
             ISORT *isort;
             isort = (ISORT *) malloc(sizeof(ISORT)*nCnt);
             for (i=0;i<nCnt;++i) {
                 isort[i].r2 = smx->nnList[i].fDist2;
                 }
             qsort( isort, nCnt, sizeof(ISORT), CompISORT );
-            assert(nCnt > 22);
+            assert(nCnt > innerCount);
             
 
-			p[pi].fBall2 = -isort[21].r2*2; 
+			p[pi].fBall2 = -isort[innerCount-1].r2*2; 
 			if(p[pi].fBall2 > smf->dBall2Max)
 			{
-				p[pi].fBall2 = -smf->dBall2Max;
+				if (p[pi].fBall2 < smf->dBall2Max)
+				{
+					p[pi].fBall2 = -smf->dBall2Max;
+				}
+				else 
+				{
+					p[pi].fBall2 = -p[pi].fBall2;
+				}
 			}
             free(isort);
             }
