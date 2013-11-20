@@ -1446,8 +1446,8 @@ void smSmooth(SMX smx,SMF *smf)
 
 #ifdef NSMOOTHINNER
 		int innerCount = floor(nSmooth/2.8);  //The number of neighbours within sqrt(2)h if particles are uniformly distributed.
-		assert(innerCount > 4);
         if (nCnt > innerCount && nh < innerCount-4 && !smx->bSmallBall) {
+			assert(innerCount > 4);
             ISORT *isort;
             isort = (ISORT *) malloc(sizeof(ISORT)*nCnt);
             for (i=0;i<nCnt;++i) {
