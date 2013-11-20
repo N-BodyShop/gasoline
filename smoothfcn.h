@@ -34,6 +34,7 @@ typedef struct smfParameters {
     int bBHMindv;
     int bBHAccreteAll;
     int bDoBHKick;
+	double dBall2Max;
     double dSinkCurrentDelta;
     double dDeltaStarForm;
 #ifdef GASOLINE

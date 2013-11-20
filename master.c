@@ -530,6 +530,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dSoft = 0.0;
 	prmAddParam(msr->prm,"dSoft",2,&msr->param.dSoft,sizeof(double),"e",
 				"<gravitational softening length> = 0.0");
+	msr->param.dBall2Max = FLT_MAX;
+	prmAddParam(msr->prm,"dBall2Max",2,&msr->param.dSoftMax,sizeof(double),"dBall2Max",
+				"<maximum SPH smoothing length>");
 	msr->param.dSoftMax = 0.0;
 	prmAddParam(msr->prm,"dSoftMax",2,&msr->param.dSoftMax,sizeof(double),"eMax",
 				"<maximum comoving gravitational softening length (abs or multiplier)> = 0.0");
@@ -5521,6 +5524,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
 #ifdef GASOLINE
     psmf->dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333); /* (dx/h) factor */
     psmf->dEvapMinTemp = msr->param.dEvapMinTemp;
+    psmf->dBall2Max = msr->param.dBall2Max;
 #ifdef PARTICLESPLIT
     psmf->dInitGasMass = msr->param.dInitGasMass;
 #endif

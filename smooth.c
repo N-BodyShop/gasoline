@@ -1445,39 +1445,24 @@ void smSmooth(SMX smx,SMF *smf)
             }
 
 #ifdef NSMOOTHINNER
-		int nCntCheck = 0;
         if (nCnt > 22 && nh < 18 && !smx->bSmallBall) {
-//        if (nh < 6) {
             ISORT *isort;
             isort = (ISORT *) malloc(sizeof(ISORT)*nCnt);
             for (i=0;i<nCnt;++i) {
-//                isort[i].pNN = smx->nnList[i];
                 isort[i].r2 = smx->nnList[i].fDist2;
                 }
             qsort( isort, nCnt, sizeof(ISORT), CompISORT );
             assert(nCnt > 22);
             
 
-			int nCntNew;
-			if (smx->bPeriodic) {
-				nCntNew = smBallGather(smx,2*isort[21].r2,p[pi].r);
-				}
-			else {
-				nCntNew = smBallGatherNP(smx,2*isort[21].r2,p[pi].r,ROOT);
-				}
-			if (nCntNew < 10*nSmooth)
+			p[pi].fBall2 = -isort[21].r2*2; 
+			if(p[pi].fBall2 > smf->dBall2Max)
 			{
-				p[pi].fBall2 = -isort[21].r2*2; 
+				p[pi].fBall2 = -smf->dBall2Max;
 			}
-			else
-			{
-				nCntCheck = 1;
-				dbgprint("TOO MANY NEIGHBOURS: %d %d\n", p[pi].iOrder, nCntNew);
-			}
-//            p[pi].fBall2 = -isort[7].r2*4; 
             free(isort);
             }
-        if (nCnt <= 22 || nh >= 18 || smx->bSmallBall || nCntCheck) 
+		else 
 #endif 
             {
 
