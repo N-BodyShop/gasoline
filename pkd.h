@@ -332,6 +332,7 @@ typedef struct uNonCoolContext {
     struct GasPressureContext gpc;
 #ifdef MASSNONCOOL
     double dMultiPhaseMinTemp;
+    int bMultiPhaseTempThreshold;
 #endif
     } UNCC;
 

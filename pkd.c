@@ -4457,7 +4457,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 						   p->uNoncoolPred = 0;
 				   }
                     FLOAT TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uNoncoolPred, p->fMetals );
-                    if(TpNC < uncc.dMultiPhaseMinTemp && p->uNoncoolPred > 0)//Check to make sure the hot phase is still actually hot
+                    if(TpNC < uncc.dMultiPhaseMinTemp && uncc.bMultiPhaseTempThreshold && p->uNoncoolPred > 0)//Check to make sure the hot phase is still actually hot
                     {
 						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
 						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);

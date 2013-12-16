@@ -327,6 +327,7 @@ struct parameters {
 #ifdef MASSNONCOOL
     double dFBInitialMassLoad;
     double dMultiPhaseMinTemp;
+	int bMultiPhaseTempThreshold;
 #endif
 #ifdef STARFORM
 	STFM   stfm;
