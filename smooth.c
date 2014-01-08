@@ -307,6 +307,16 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         smx->fcnPost = NULL;
         break;
 #ifdef STARFORM
+    case SMX_STARCLUSTERFORM:
+        smx->fcnSmooth = StarClusterForm;
+        initParticle = NULL; /* Original Particle */
+        initTreeParticle = NULL; /* Original Particle */
+        init = initStarClusterForm; /* Cached copies */
+        comb = combStarClusterForm;
+        smx->fcnPost = NULL;
+        smx->iLowhFix = LOWHFIX_SINKRADIUS;
+        smx->bUseBallMax = 0;
+        break;
     case SMX_DELETE_GAS:
         assert(bSymmetric == 0);
         smx->fcnSmooth = DeleteGas;

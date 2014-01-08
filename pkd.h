@@ -64,6 +64,9 @@
 #define PONRHOFLOOR 0
 #endif
 
+#define StarClusterFormfBall2Save(p) (p->curlv[0])
+#define StarClusterFormiOrder(p) (p->curlv[1])
+
 /* (note bVWarnings still applies) */
 #define INTERNAL_WARNINGS 1 /* 0=none,1=once,2=always */
 #define INTERNAL_WARNINGS_ONCE (INTERNAL_WARNINGS == 1)
@@ -206,6 +209,9 @@ typedef struct particle {
 #if defined(SIMPLESF) || defined(EXTRASINKDATA)
     FLOAT rForm[3];         /* record pos and vel of star formation */
     FLOAT vForm[3];
+#endif
+#ifdef SFBOUND
+    FLOAT fSigma2;
 #endif
 #ifdef STARFORM
     FLOAT uDotFB;
@@ -368,6 +374,8 @@ typedef struct uNonCoolContext {
 #define TYPE_OUTFLOW           (1<<18)
 #define TYPE_FEEDBACK          (1<<19)
 #define TYPE_PROMOTED          (1<<20)
+#define TYPE_DENMAX            (1<<21)
+#define TYPE_STARFORM          (1<<22)
 
 /* Combination Masks */
 #define TYPE_ALLACTIVE                  (TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
@@ -935,7 +943,7 @@ void pkdGetNParts(PKD pkd, struct outGetNParts *out );
 void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int, int nMaxOrderGas,
     int nMaxOrderDark);
 void pkdSunIndirect(PKD,double *,int,double,double);
-void pkdLogHalo(PKD, double, double, double);
+void pkdLogHalo(PKD, double, double, double, double);
 void pkdHernquistSpheroid(PKD pkd);
 void pkdNFWSpheroid(PKD pkd, double M_200, double r_200, double c, double dSoft);
 void pkdElliptical(PKD pkd, int bEllipticalDarkNFW);

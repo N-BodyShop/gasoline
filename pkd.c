@@ -3578,7 +3578,7 @@ void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass,double dSunS
 	}
 
 
-void pkdLogHalo(PKD pkd, double Vcirc, double Eps, double Flat)
+void pkdLogHalo(PKD pkd, double Vcirc, double Eps, double Flat, double twoh)
 {
 	PARTICLE *p;
 	int i,n;
@@ -3589,22 +3589,44 @@ void pkdLogHalo(PKD pkd, double Vcirc, double Eps, double Flat)
 	const double Flat = 1.0; flattening */
 	p = pkd->pStore;
 	n = pkdLocal(pkd);
-	for (i=0;i<n;++i) {
-		if (TYPEQueryACTIVE(&(p[i]))) {
-			double x = p[i].r[0];
-			double y = p[i].r[1];
-			double z = p[i].r[2];
-			/*
-			 **	Do the logarithmic halo potential.
-			 */
-			double r2 = (x*x + y*y + z*z/(Flat*Flat));
-			double C = Vcirc*Vcirc/(r2 + Eps*Eps);	
-			p[i].a[0] -= x*C;
-			p[i].a[1] -= y*C;
-			p[i].a[2] -= z*C/(Flat*Flat);
-			p[i].fPot += 0.5*Vcirc*Vcirc*log(r2 + Eps*Eps);
-			}
-		}
+    if (twoh > 0) {
+        for (i=0;i<n;++i) {
+            if (TYPEQueryACTIVE(&(p[i]))) {
+                double x = p[i].r[0];
+                double y = p[i].r[1];
+                double z = p[i].r[2];
+                /*
+                **	Do the logarithmic halo potential.
+                */
+                double r2 = (x*x + y*y + z*z/(Flat*Flat));
+                double C = Vcirc*Vcirc/(r2 + Eps*Eps);	
+                double d2 = z*z,a,b;
+                SPLINE(d2,twoh,a,b);
+                p[i].a[0] -= x*C;
+                p[i].a[1] -= y*C;
+                p[i].a[2] -= z*C/(Flat*Flat)*b*fabs(z)*d2;
+                p[i].fPot += 0.5*Vcirc*Vcirc*log(r2 + Eps*Eps);
+                }
+            }
+        }
+    else {
+        for (i=0;i<n;++i) {
+            if (TYPEQueryACTIVE(&(p[i]))) {
+                double x = p[i].r[0];
+                double y = p[i].r[1];
+                double z = p[i].r[2];
+                /*
+                **	Do the logarithmic halo potential.
+                */
+                double r2 = (x*x + y*y + z*z/(Flat*Flat));
+                double C = Vcirc*Vcirc/(r2 + Eps*Eps);	
+                p[i].a[0] -= x*C;
+                p[i].a[1] -= y*C;
+                p[i].a[2] -= z*C/(Flat*Flat);
+                p[i].fPot += 0.5*Vcirc*Vcirc*log(r2 + Eps*Eps);
+                }
+            }
+        }
 	}
 
 

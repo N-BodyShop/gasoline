@@ -305,7 +305,15 @@ void CoolDefaultParticleData( COOLPARTICLE *cp )
 void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp, double ZMetal )
 {
 	cp->Y_Total = cl->Y_Total;
+#ifdef WOLFIRE
+        {
+        double u,PonRho,T;
+        WolfirePressureEnergySoundSpeed(dDensity*cl->dGmPerCcUnit,&u,&PonRho,&T);
+        *E = CoolErgPerGmToCodeEnergy(cl, u);
+        }
+#else
 	*E = clThermalEnergy(cp->Y_Total,dTemp)*cl->diErgPerGmUnit;
+#endif
 	}
 
 void CoolInitRatesTable( COOL *cl, COOLPARAM CoolParam ) {
@@ -321,7 +329,7 @@ void CoolSetTime( COOL *cl, double dTime, double z ) {
 double CoolEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double rho ) {
 #ifdef WOLFIRE
     double u,PonRho,T;
-    GetPressureEnergySoundspeed(rho,u,PonRho,T);
+    WolfirePressureEnergySoundSpeed(rho,&u,&PonRho,&T);
     return T;
 #else
     assert(0);
@@ -331,6 +339,117 @@ double CoolEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double r
 double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double rho, double ZMetal ) {
 	return CoolEnergyToTemperature( Cool, cp, E*Cool->dErgPerGmUnit, rho*Cool->dGmPerCcUnit );
 	}
+
+#ifdef WOLFIRE
+/* Solar metallicity Y_H = 0.676 Y_He = 0.31 Y_Z = 0.014 => mmw = 2.4 for all H2
+   nH is hydrogen nuclei = rho*0.676/mH
+   T(nH) Based on Wolfire et al. 2003 R = 8.5 kpc T(nH)   
+   fH2(nH) Based on Gnedin et al 2009 (solar case)
+   n = nH*(1-0.5*fH2(nH)+(0.31*0.24+0.014/12.)/0.676)
+   P = n k_B T(nH)
+   double dTdn = -1e4*2*nH/(0.8*0.8)/(iT1*iT1) - 50*(1/30.)/(iT2*iT2);  
+   double dfH2dn = 2*30.*30./(nH*nH*nH)*fH2*fH2;                        
+   approximate cs max as sqrt(dPdrho*max(gamma_eff)*1.4)  max(gamma_eff) = 1
+   add in factor of 1.4 to help code stability since c_s is just for timesteps
+   Note: dP/drho is negative (min ~ -0.75) near nH ~ 1-10 H/cc anyway -- useless
+*/
+void WolfirePressureEnergySoundSpeed(double rho,double *u,double *PonRho,double *T) 
+    {                                                                   
+    double nB=rho/1.672e-24;                                           
+    double nH=nB*0.676;                                                 
+    double iT1 = (nH*nH/(0.8*0.8)+1), iT2 = (nH/30.+1);                 
+    double Temp = 1e4/iT1 + 50/iT2 + 10;                                   
+    double fH2 = 1/(1+(30.*30.)/(nH*nH));                               
+    double nmono = nB*((1-fH2)*0.676+0.31*0.25 + 0.014/12.);            
+    double ndi = nB*fH2*0.676*0.5;                                      
+    double kB = 1.38066e-16,Epergm;                                           
+#ifdef WOLFIRE_NOTWOPHASE
+    if (nH > .8093477708 && (nmono+ndi)*Temp < 4516.73) Temp=4516.73/(nmono+ndi);
+#endif
+    Epergm = kB*Temp/rho;                                         
+    *T = Temp;                                                             
+    *u = (1.5*nmono+2.5*ndi)*Epergm;                                    
+    *PonRho = (nmono+ndi)*Epergm;                                       
+    }
+
+void CoolCodePressureOnDensitySoundSpeed( COOL *cl, COOLPARTICLE *cp, double uPred, double fDensity, double gamma, double gammam1, double *PoverRho, double *c ) {
+    double rho = (fDensity)*(cl)->dGmPerCcUnit;                 
+    double uCGS, PonRhoCGS, T, gammaEff = 1.4; 
+                 
+    WolfirePressureEnergySoundSpeed(rho,&uCGS,&PonRhoCGS,&T);            
+    *PoverRho = PonRhoCGS*(cl)->diErgPerGmUnit;                 
+    *c = sqrt((gammaEff)*(*(PoverRho))); 
+    } 
+
+#endif
+#ifdef MODBATEPOLY
+/* Taken from Bate, ApJ, 508, L95 (1998) 
+   rho = powerlaw with 4 gamma values 
+   PoverRho has units of ergs per gm (same as speed squared)
+*/
+/* close to "opacity limit" of Bate et al. -- corrected up to actual T when used */
+//#define RHOMIN 1e-16
+//#define RHOMIN 3.5e-19
+#define RHOMIN 1.5e-15
+  /* mu=2.33, T=1 K  P/rho = kT/(mu*mH) */
+#define PONRHOMIN (1.38066e-16/(2.33*1.67e-24)*1)
+#define GetGammaEff(rho__,gammaEff__, PonRho__) { \
+  if ( rho__ <= RHOMIN ) { \
+     gammaEff__ = 1.0; \
+     PonRho__  = PONRHOMIN; \
+  } else if ( rho__ <= RHOMIN*10 ) { \
+     double x_ = log10(rho__/RHOMIN); \
+     if (x_ < 0.5) { \
+       gammaEff__ = 1+2*x_*x_; \
+       PonRho__  = PONRHOMIN*pow(10.,2/3.*x_*x_*x_); \
+       } \
+     else { \
+       gammaEff__ = 4*x_-2*x_*x_; \
+       PonRho__  = PONRHOMIN*pow(10.,2*x_*x_-2./3.*x_*x_*x_+4./24.-x_); \
+       } \
+  } else { \
+     gammaEff__ = 2; \
+     PonRho__  = rho__*PONRHOMIN/RHOMIN*0.316228; \
+  } \
+}
+
+#define CoolCodePressureOnDensitySoundSpeed( cl__, cp__, uPred__, fDensity__, gamma__, gammam1__, PoverRho__, c__ ) { \
+  double rho__ = (fDensity__)*(cl__)->dGmPerCcUnit; \
+  double gammaEff__, PonRhoCGS__; \
+  GetGammaEff(rho__,gammaEff__, PonRhoCGS__); \
+  PonRhoCGS__ *= cl->BaseT; \
+  *(PoverRho__) = PonRhoCGS__*(cl__)->diErgPerGmUnit; \
+  *(c__) = sqrt((gammaEff__)*(*(PoverRho__))); } 
+
+#endif
+/*default*/
+#ifdef BATEPOLY
+#define GetGammaEff(rho__,gammaEff__, KEff__) { \
+  double coeff__ = 0.1*18321.359*18321.359; /* mu=2.46, T=1 K, gamma=7/5   2.0e4*2.0e4; */ \
+  if ( rho__ <= 1e-13 ) { \
+     gammaEff__ = 1.0; \
+     KEff__  = coeff__; \
+  } else if ( rho__ <= 5.7e-8 ) { \
+     gammaEff__ = 1.4; \
+     KEff__  = coeff__*158489.; \
+  } else if ( rho__ <= 1e-3 ) { \
+     gammaEff__ = 1.15; \
+     KEff__  = coeff__*158489.*0.0154514; \
+  } else { \
+     gammaEff__ = 5./3.; \
+     KEff__  = coeff__*158489.*0.0154514*35.4813; \
+  } \
+}
+
+#define CoolCodePressureOnDensitySoundSpeed( cl__, cp__, uPred__, fDensity__, gamma__, gammam1__, PoverRho__, c__ ) { \
+  double rho__ = (fDensity__)*(cl__)->dGmPerCcUnit; \
+  double gammaEff__, KEff__; \
+  GetGammaEff(rho__,gammaEff__, KEff__); \
+  KEff__ *= cl->BaseT; \
+  *(PoverRho__) = KEff__*pow(rho__,gammaEff__-1.)*(cl__)->diErgPerGmUnit; \
+  *(c__) = sqrt((gammaEff__)*(*(PoverRho__))); } 
+
+#endif
 
 /* Integration Routines */
 
@@ -344,7 +463,7 @@ void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *ECode,
 	double gammaEffco; 
 #ifdef WOLFIRE
 	double PonRho,T; 
-	GetPressureEnergySoundspeed(rho,Ephys,PonRho,T);
+	WolfirePressureEnergySoundSpeed(rho,&Ephys,&PonRho,&T);
 	*ECode = CoolErgPerGmToCodeEnergy(cl, Ephys);
 #endif
 #ifdef MODBATEPOLY

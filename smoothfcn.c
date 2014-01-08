@@ -3053,6 +3053,9 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT ph,pc,pDensity,dt,visc,absmu,Accp,Accq,gammam1 = smf->gamma-1;
 	FLOAT fNorm,fNorm1,aFac,vFac,divvi,divvj;
 	int i;
+#ifdef STARCLUSTERFORM
+    int iDenMax=1;
+#endif
 
 	pc = p->c;
 	pDensity = p->fDensity;
@@ -3091,7 +3094,15 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    rs1 *= nnList[i].fDist2*q->fMass;
 	    divvi += rs1/p->fDensity;
 	    divvj += rs1/q->fDensity;
+#ifdef STARCLUSTERFORM
+        iDenMax &= (q->fDensity <= p->fDensity);
+#endif
 	    }
+#ifdef STARCLUSTERFORM
+    if (iDenMax) TYPESet(p,TYPE_DENMAX);
+    else TYPEReset(p,TYPE_DENMAX);
+#endif
+
 #ifdef RTFORCE
 /* The DIVVCORRBAD corrector is better on average but is pathological with very
    uneven particle distributions (very large density gradients) */
@@ -4381,6 +4392,9 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	PARTICLE *q;
 	int i;
 	unsigned int qiActive;
+#ifdef SFBOUND
+    double fSigma2 = 0;
+#endif
 
 	ih2 = 4.0/BALL2(p);
 	ih = sqrt(ih2);
@@ -4422,6 +4436,11 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dvx = (-p->vPred[0] + q->vPred[0])*vFac; 
 		dvy = (-p->vPred[1] + q->vPred[1])*vFac;
 		dvz = (-p->vPred[2] + q->vPred[2])*vFac;
+#ifdef SFBOUND
+        /* Note: No correction for expansion (e.g. Hubble or vfac) */
+	    fSigma2 += (dvx*dvx+dvy*dvy+dvz*dvz)*rs*q->fMass;
+#endif
+
 		dvxdx += dvx*dx*rs1;
 		dvxdy += dvx*dy*rs1;
 		dvxdz += dvx*dz*rs1;
@@ -4446,6 +4465,10 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		grz += (-p->uPred + q->uPred)*dz*rs1;
 		}
 	if (qiActive & TYPE_ACTIVE) TYPESet(p,TYPE_NbrOfACTIVE);
+
+#ifdef SFBOUND
+    p->fSigma2 = fSigma2/fDensity;
+#endif
 
 /*	printf("TEST %d  %g %g  %g %g %g\n",p->iOrder,p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]);*/
 	fDensity*=fNorm;
@@ -6106,6 +6129,68 @@ void postDistFBEnergy(PARTICLE *p1, SMF *smf)
         }
     
     }
+
+void initStarClusterForm(void *p)
+{
+    TYPEReset( ((PARTICLE *) p), TYPE_STARFORM );
+	}
+
+void combStarClusterForm(void *p1,void *p2)
+    {
+    if (TYPETest( ((PARTICLE *) p2), TYPE_STARFORM ) && !TYPETest( ((PARTICLE *) p1), TYPE_STARFORM ) ) {
+		TYPESet( ((PARTICLE *) p1), TYPE_STARFORM );
+        StarClusterFormiOrder(((PARTICLE *) p1)) = StarClusterFormiOrder(((PARTICLE *) p1));
+        }
+    }
+
+void StarClusterForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
+{
+#ifdef GASOLINE
+	int i;
+	PARTICLE *q;
+    double r2,rs;
+    double dv2,Etherm,Mass;
+	double vFac,dvx,dvy,dvz;
+    
+    vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
+
+    dv2 = 0;
+    Etherm = 0;
+    Mass = 0;
+	for (i=0;i<nSmooth;++i) {
+		q = nnList[i].pPart;
+#if SCFSMOOTHED
+		r2 = nnList[i].fDist2*ih2;
+		KERNEL(rs,r2);
+		rs *= q->fMass;
+#else
+        rs = q->fMass;
+#endif
+
+		dvx = (-p->vPred[0] + q->vPred[0])*vFac; 
+		dvy = (-p->vPred[1] + q->vPred[1])*vFac;
+		dvz = (-p->vPred[2] + q->vPred[2])*vFac;
+        dv2 +=  (dvx*dvx+dvy*dvy*dvz*dvz)*rs;
+        Etherm += q->uPred*rs;  /* Note: only first 3 dof count, not rotations, not P_floor etc... */
+        Mass += rs;
+	    }
+
+    if (0.5*dv2+Etherm <= smf->dStarClusterRatio*Mass*Mass/sqrt(p->fBall2)) { // G=1, default ratio 0.5*3/5
+        printf("SCF: %8d %g %g %g Cluster BOUND ENOUGH: FORM\n",p->iOrder,0.5*dv2,Etherm,smf->dStarClusterRatio*Mass*Mass/sqrt(p->fBall2));
+        for (i=0;i<nSmooth;++i) {
+            q = nnList[i].pPart;
+            TYPESet(q,TYPE_STARFORM);
+            StarClusterFormiOrder(q) = p->iOrder;
+            }
+        }
+    else {
+        printf("SCF: %8d %g %g %g Cluster NOT BOUND ENOUGH\n",p->iOrder,0.5*dv2,Etherm,smf->dStarClusterRatio*Mass*Mass/sqrt(p->fBall2));
+        if (StarClusterFormiOrder(p) == -1) TYPEReset(p,TYPE_STARFORM); /* Allow for other cluster to use this particle */
+        }
+
+    p->fBall2 = StarClusterFormfBall2Save(p); /* Restore fBall2 */
+#endif
+}
 
 #endif /* STARFORM */
 

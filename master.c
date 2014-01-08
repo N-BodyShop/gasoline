@@ -982,6 +982,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dLogHaloFlat = 1;
 	prmAddParam(msr->prm,"dLogHaloFlat",2,&msr->param.dLogHaloFlat,
 				sizeof(double),"haloflat","galaxy halo flat");
+	msr->param.dLogHaloSoft = 0;
+	prmAddParam(msr->prm,"dLogHaloSoft",2,&msr->param.dLogHaloSoft,
+				sizeof(double),"halosoft","galaxy halo softening");
 	msr->param.bHernquistSpheroid = 0;
 	prmAddParam(msr->prm,"bHernquistSpheroid",0,&msr->param.bHernquistSpheroid,
 				sizeof(int),"hspher","use/don't use galaxy Hernquist Spheroid = -hspher");
@@ -1372,6 +1375,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.stfm->dInitBHMass = 0.0;
 	prmAddParam(msr->prm,"dInitBHMass",2,&msr->param.stfm->dInitBHMass,
 		    sizeof(double),"bhm0", "<initial BH mass> = 0.0");
+	msr->param.stfm->dStarClusterMass = 1e6;
+	prmAddParam(msr->prm,"dStarClusterMass", 2, &msr->param.stfm->dStarClusterMass,
+		    sizeof(double), "stStarClusterMass",
+		    "<Target Star Cluster Mass> = 1.5e4");
+	msr->param.stfm->dStarClusterRatio = 0.5*(3./5.);
+	prmAddParam(msr->prm,"dStarClusterRatio", 2, &msr->param.stfm->dStarClusterRatio,
+		    sizeof(double), "StarClusterRatio",
+		    "<Star Cluster Ratios> = 0.5*(3./5.)");
 	msr->param.dDeltaStarForm = 1e6;
 	prmAddParam(msr->prm,"dDeltaStarForm", 2, &msr->param.dDeltaStarForm,
 		    sizeof(double), "dDeltaStarForm",
@@ -2146,6 +2157,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.stfm->dZAMSDelayTime *= SECONDSPERYEAR/msr->param.dSecUnit;
 	    msr->param.dESFTime *= SECONDSPERYEAR/msr->param.dSecUnit;
 	    msr->param.dESFEnergy /= MSOLG*msr->param.dErgPerGmUnit;
+        msr->param.stfm->dStarClusterMass /= msr->param.dMsolUnit;
 
 	    msr->param.fb->dSecUnit = msr->param.dSecUnit;
 	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
@@ -2915,6 +2927,7 @@ void msrLogParams(MSR msr,FILE *fp)
             fprintf(fp," dLogHaloVcirc: %g",msr->param.dLogHaloVcirc );
             fprintf(fp," dLogHaloEps: %g",msr->param.dLogHaloEps );
             fprintf(fp," dLogHaloFlat: %g",msr->param.dLogHaloFlat );
+            fprintf(fp," dLogHaloSoft: %g",msr->param.dLogHaloSoft );
 	    }
 	fprintf(fp," bHernquistSpheroid: %d",msr->param.bHernquistSpheroid );
 	fprintf(fp," bNFWSpheroid: %d",msr->param.bNFWSpheroid );
@@ -3068,6 +3081,10 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bBHForm: %i",msr->param.bBHForm);
 	fprintf(fp," dBHFormProb: %g",msr->param.dBHFormProb);
 	fprintf(fp," dInitBHMass: %g",msr->param.dInitBHMass);
+#ifdef STARCLUSTERFORM
+	fprintf(fp," dStarClusterMass: %g",msr->param.stfm->dStarClusterMass);
+	fprintf(fp," dStarClusterRatio: %g",msr->param.stfm->dStarClusterRatio);
+#endif
 #ifdef COOLING_MOLECULARH
 	fprintf(fp," dStarFormEfficiencyH2: %g",msr->param.stfm->dStarFormEfficiencyH2);
 #endif
@@ -4372,6 +4389,9 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
         OutputList[(*nOutputList)++]=OUT_NORMAL_VECTOR;
 #endif
 #endif
+#ifdef SFBOUND
+        OutputList[(*nOutputList)++]=OUT_SIGMA2_ARRAY;
+#endif
         OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
         OutputList[(*nOutputList)++]=OUT_MUMAX_ARRAY;
         if (msr->param.bShockTracker) {
@@ -4535,10 +4555,16 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
 #endif
     if (msr->param.bDoPressureOutput) OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
-    if (msr->param.bDoCSound) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
+    if (msr->param.bDoCSound) {
+#ifdef SFBOUND
+        OutputList[(*nOutputList)++]=OUT_SIGMA2_ARRAY;
+#endif
+        OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
+        }
 #ifdef UNONCOOL
     OutputList[(*nOutputList)++]=OUT_U_ARRAY;
     OutputList[(*nOutputList)++]=OUT_UNONCOOL_ARRAY;
+    OutputList[(*nOutputList)++]=OUT_TEMPINC_ARRAY;
 #endif
     if (msr->param.bDoHydroOutput) {    
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
@@ -4636,7 +4662,12 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
 #endif
     if (msr->param.bDoPressureOutput) OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
-    if (msr->param.bDoCSound) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
+    if (msr->param.bDoCSound) {
+#ifdef SFBOUND
+        OutputList[(*nOutputList)++]=OUT_SIGMA2_ARRAY;
+#endif
+        OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
+        }
     if (msr->param.bDoHydroOutput) {    
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
@@ -5526,6 +5557,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->bESF = msr->param.bESF;
     psmf->dESFTime = msr->param.dESFTime;
     psmf->dESFEnergy = msr->param.dESFEnergy;
+    psmf->dStarClusterRatio = msr->param.stfm->dStarClusterRatio;
 #endif /*STARFORM*/
 #ifdef COLLISIONS
     psmf->dCentMass = msr->param.dCentMass; /* for Hill sphere checks */
@@ -5884,6 +5916,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		    inExt.dLogHaloVcirc = msr->param.dLogHaloVcirc/(sqrt(GCGS*msr->param.dMsolUnit*MSOLG/(msr->param.dKpcUnit*KPCCM))/1e5);
 		    inExt.dLogHaloEps = msr->param.dLogHaloEps/msr->param.dKpcUnit;
 		    inExt.dLogHaloFlat = msr->param.dLogHaloFlat;
+		    inExt.dLogHaloTwoh = 2*msr->param.dLogHaloSoft;
 		    }
 		inExt.bHernquistSpheroid = msr->param.bHernquistSpheroid;
 		inExt.bNFWSpheroid = msr->param.bNFWSpheroid;
@@ -9631,8 +9664,12 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
             &dTotFe, &dTotOx, &dTotEnergy, "Form Stars");
 
     if(msr->param.bStarForm) {
+        double dExp;
         in.dTime = dTime;
         msr->param.stfm->dDeltaT = dDelta;
+        dExp = csmTime2Exp(msr->param.csm,dTime);
+        msr->param.stfm->dExp = dExp;
+        msr->param.stfm->dCosmoFac = dExp*dExp*dExp;
         in.stfm = *msr->param.stfm;
         
         if (msr->param.bVDetails) printf("Form Stars ... ");
@@ -9645,12 +9682,27 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
             * as described in method 2 below.  Does not scale well otherwise.
             * msrDomainDecomp(msr, 0, 1);
             */
-	
+
         msrBuildTree(msr,1,dTotMass,1);
+#ifdef STARCLUSTERFORM
+        /* Set density maxima as active (could also filter on density/temp) */
+        msrActiveExactType(msr,TYPE_GAS|TYPE_DENMAX,TYPE_GAS|TYPE_DENMAX,TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
+        msrSmooth(msr,dTime,SMX_DENSITY,0); 
+        {
+        struct inStarClusterFormPrecondition in;
+        struct outStarClusterFormPrecondition out;
+        in.dTime = dTime;
+        msr->param.stfm->dDeltaT = dDelta;
+        in.stfm = *msr->param.stfm;
+        pstStarClusterFormPrecondition(msr->pst, &in, sizeof(in), &out, NULL);
+        }
+        msrReSmooth(msr,dTime,SMX_STARCLUSTERFORM,1); 
+#else
+        msrSmooth(msr,dTime,SMX_DENSITY,1); 
+#endif
 #ifdef FBPARTICLE
         msrActiveType(msr,TYPE_STAR|TYPE_GAS,TYPE_SMOOTHACTIVE); /* Density for star */
 #endif
-        msrSmooth(msr,dTime,SMX_DENSITY,1);
         pstFormStars(msr->pst, &in, sizeof(in), &outFS, NULL);
 	/*
 	 * N.B. no particle shuffling (e.g. treebuilds) can happen

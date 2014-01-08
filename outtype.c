@@ -208,6 +208,10 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_DIVRHOV_ARRAY:
 	    return(p->divrhov);
 #endif
+#ifdef SFBOUND
+	case OUT_SIGMA2_ARRAY:
+	    return(p->fSigma2);
+#endif
 #ifdef STARFORM
 	case OUT_IGASORDER_ARRAY:
 	    return((FLOAT) p->iGasOrder);
@@ -484,6 +488,9 @@ case OUT_METALS_ARRAY:
 	        strncat(achFile,"divrhov",256);
             break;
 #endif
+	case OUT_SIGMA2_ARRAY:
+	    strncat(achFile,"sigma2",256);
+            break;
 #ifdef STARFORM
 	case OUT_IGASORDER_ARRAY:
 	    strncat(achFile,"igasorder",256);

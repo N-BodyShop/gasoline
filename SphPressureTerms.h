@@ -150,7 +150,7 @@
 #define DIFFUSIONMetalsIron() 
 #endif /* STARFORM */
 #else /* No diffusion */
-#define DIFFUSIONThermal()
+#define DIFFUSIONThermal(dt_)
 #define DIFFUSIONMetals() 
 #define DIFFUSIONMetalsOxygen() 
 #define DIFFUSIONMetalsIron() 

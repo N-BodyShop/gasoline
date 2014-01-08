@@ -242,6 +242,7 @@ enum pst_service {
       PST_BALLMAX,
       PST_FORMSINKS,
       PST_FORMSTARS,
+      PST_STARCLUSTERFORMPRECONDITION,
       PST_FEEDBACK,
       PST_GRAVINFLOW,
       PST_CREATEINFLOW,
@@ -563,6 +564,7 @@ struct inGravExternal {
         double dLogHaloVcirc;
         double dLogHaloEps;
         double dLogHaloFlat;
+        double dLogHaloTwoh;
 	int bHernquistSpheroid;
     int bNFWSpheroid;
         double dNFWm200;
@@ -1673,6 +1675,10 @@ struct outFormStars
     };
 
 void pstFormStars(PST,void *,int,void *,int *);
+
+/* PST_FORMSTARS */
+/* see starform.h for in and out structs */
+void pstStarClusterFormPrecondition(PST,void *,int,void *,int *);
 
 struct inFeedback
 {

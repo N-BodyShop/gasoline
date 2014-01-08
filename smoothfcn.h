@@ -93,6 +93,7 @@ typedef struct smfParameters {
     int bESF;
     double dESFTime;
     double dESFEnergy; 
+    double dStarClusterRatio;
 #endif    
 #ifdef COLLISIONS
     double dDelta;
@@ -162,6 +163,7 @@ enum smx_smoothtype {
   SMX_SPHVISCOSITY,
   SMX_HKVISCOSITY,
 #ifdef STARFORM
+  SMX_STARCLUSTERFORM,
   SMX_DIST_DELETED_GAS,
   SMX_PROMOTE_TO_HOT_GAS,
   SMX_SHARE_WITH_HOT_GAS,
@@ -362,6 +364,11 @@ void HKViscosity(PARTICLE *,int,NN *,SMF *);
 void HKViscositySym(PARTICLE *,int,NN *,SMF *);
 
 #ifdef STARFORM
+
+/* SMX_STARCLUSTERFORM */
+void initStarClusterForm(void *);
+void combStarClusterForm(void *,void *);
+void StarClusterForm(PARTICLE *,int,NN *,SMF *);
 
 /* SMX_DIST_DELETED_GAS */
 void initDistDeletedGas(void *p1);

@@ -497,6 +497,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_FORMSTARS,pst,
 		      (void (*)(void *,void *,int,void *,int *)) pstFormStars,
 		      sizeof(struct inFormStars),sizeof(struct outFormStars));
+    mdlAddService(mdl,PST_STARCLUSTERFORMPRECONDITION,pst,
+              (void (*)(void *,void *,int,void *,int *)) pstStarClusterFormPrecondition,
+              sizeof(struct inStarClusterFormPrecondition),sizeof(struct outStarClusterFormPrecondition));
 	
 	mdlAddService(mdl,PST_FEEDBACK,pst,
 		      (void (*)(void *,void *,int,void *,int *))
@@ -3389,7 +3392,7 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass,in->dSunSoft);
 			}
 		if (in->bLogHalo) {
-		        pkdLogHalo(plcl->pkd,in->dLogHaloVcirc,in->dLogHaloEps,in->dLogHaloFlat);
+            pkdLogHalo(plcl->pkd,in->dLogHaloVcirc,in->dLogHaloEps,in->dLogHaloFlat,in->dLogHaloTwoh);
 			}
 		if (in->bHernquistSpheroid) {
 			pkdHernquistSpheroid(plcl->pkd);
@@ -6263,6 +6266,26 @@ pstFormStars(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			     &out->nFormed, &out->dMassFormed, &out->nDeleted);
 		}
 	if (pnOut) *pnOut = sizeof(struct outFormStars);
+	}
+
+void
+pstStarClusterFormPrecondition(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inStarClusterFormPrecondition *in = vin;
+	struct outStarClusterFormPrecondition *out = vout;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inStarClusterFormPrecondition));
+	if (pst->nLeaves > 1) {
+	    struct outFormStars fsStats;
+	    
+		mdlReqService(pst->mdl,pst->idUpper,PST_STARCLUSTERFORMPRECONDITION,in,nIn);
+		pstStarClusterFormPrecondition(pst->pstLower,in,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,&fsStats,NULL);
+		}
+	else {
+		pkdStarClusterFormPrecondition(pst->plcl->pkd,*in);
+		}
+	if (pnOut) *pnOut = sizeof(struct outStarClusterFormPrecondition);
 	}
 
 void
