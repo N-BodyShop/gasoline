@@ -68,6 +68,9 @@ struct parameters {
 #ifdef  RADIATIVEBOX
     int bDoStellarLW; /*Turn this on to have the LW radiation outputted*/
 #endif
+#ifdef PARTICLESPLIT
+    double dInitGasMass;
+#endif
 	int bDoDminOutput;
 	int bSymCool;
     int bDoGravity;
@@ -269,9 +272,11 @@ struct parameters {
 	int    bFastGas;
 	double dFracFastGas;
 	double dhMinOverSoft;
+	double dBall2Max;
 	double dResolveJeans;
     double dMetalDiffusionCoeff;
     double dThermalDiffusionCoeff;
+	double dFBMassRatio;
     double dThermalCondCoeff;
     double dThermalCondCoeffCode;
     double dThermalCondSatCoeff;
@@ -279,6 +284,7 @@ struct parameters {
     double dThermalCond2CoeffCode;
     double dThermalCond2SatCoeff;
     double dEvapCoeff;
+    double dEvapMinTemp;
     double dEvapCoeffCode;
     double dEtaDiffusion;
     double dDeltaSph;
@@ -321,6 +327,8 @@ struct parameters {
 #endif
 #ifdef MASSNONCOOL
     double dFBInitialMassLoad;
+    double dMultiPhaseMinTemp;
+	int bMultiPhaseTempThreshold;
 #endif
 #ifdef STARFORM
 	STFM   stfm;

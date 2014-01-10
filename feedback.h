@@ -44,12 +44,16 @@ typedef struct fbContext
     double dInitStarMass; 
 #ifdef FBPARTICLE
     double dDelta; /* overall timestep */
+    double a; /* cosmic scale factor*/
+#ifdef THERMALCOND
     double dThermalCondCoeffCode;
 	double dThermalCondSatCoeff;
     double dThermalCond2CoeffCode;
 	double dThermalCond2SatCoeff;
+#endif
     double dtFacDiffusion;
     double dtFacCourant;
+	double dFBMassRatio;
 #endif
     }  * FB;
 

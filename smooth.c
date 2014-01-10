@@ -28,6 +28,9 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
     smx->dfBall2OverSoft2 = dfBall2OverSoft2;
     smx->iLowhFix = ( dfBall2OverSoft2 > 0.0 ? LOWHFIX_HOVERSOFT : LOWHFIX_NONE );
     smx->bUseBallMax = 1;
+#ifdef NSMOOTHINNER
+    smx->bSmallBall = 0;
+#endif
 #ifdef SLIDING_PATCH
     smx->dTime = smf->dTime;
     smx->PP = &smf->PP;
@@ -327,6 +330,18 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         smx->fcnPost = NULL;
         smx->bUseBallMax = 0;
         break;
+#ifdef PARTICLESPLIT
+    case SMX_SPLIT_GAS:
+        assert(bSymmetric == 0);
+        smx->fcnSmooth = SplitGas;
+        initParticle = NULL;
+        initTreeParticle = NULL;
+        init = NULL;
+        comb = NULL;
+        smx->fcnPost = NULL;
+        smx->bUseBallMax = 0;
+        break;
+#endif
     case SMX_DIST_DELETED_GAS:
         assert(bSymmetric != 0);
         smx->fcnSmooth = DistDeletedGas;
@@ -360,6 +375,9 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
     case SMX_DIST_FB_ENERGY:
         assert(bSymmetric != 0);
         smx->fcnSmooth = DistFBEnergy;
+#ifdef NSMOOTHINNER
+        smx->bSmallBall = 1;
+#endif
         initParticle = NULL;
         initTreeParticle = initTreeParticleDistFBEnergy;
         init = initDistFBEnergy;
@@ -1417,7 +1435,6 @@ void smSmooth(SMX smx,SMF *smf)
             if (pqi->fKey <= fBall2) {
 #ifdef NSMOOTHINNER
                 if (pqi->fKey <= fBall2*0.5) nh++;
-//                if (pqi->fKey <= fBall2*0.25) nh++;
 #endif
                 smx->nnList[nCnt].iPid = pqi->id;
                 smx->nnList[nCnt].iIndex = pqi->p;
@@ -1437,22 +1454,33 @@ void smSmooth(SMX smx,SMF *smf)
             }
 
 #ifdef NSMOOTHINNER
-        if (nh < 18) {
-//        if (nh < 6) {
+		int innerCount = floor(nSmooth/2.8);  //The number of neighbours within sqrt(2)h if particles are uniformly distributed.
+        if (nCnt > innerCount && nh < innerCount-4 && !smx->bSmallBall) {
+			assert(innerCount > 4);
             ISORT *isort;
             isort = (ISORT *) malloc(sizeof(ISORT)*nCnt);
             for (i=0;i<nCnt;++i) {
-//                isort[i].pNN = smx->nnList[i];
                 isort[i].r2 = smx->nnList[i].fDist2;
                 }
             qsort( isort, nCnt, sizeof(ISORT), CompISORT );
-            assert(nCnt > 22);
+            assert(nCnt > innerCount);
             
-            p[pi].fBall2 = -isort[21].r2*2; 
-//            p[pi].fBall2 = -isort[7].r2*4; 
+
+			p[pi].fBall2 = -isort[innerCount-1].r2*2; 
+			if(p[pi].fBall2 > smf->dBall2Max)
+			{
+				if (p[pi].fBall2 < smf->dBall2Max)
+				{
+					p[pi].fBall2 = -smf->dBall2Max;
+				}
+				else 
+				{
+					p[pi].fBall2 = -p[pi].fBall2;
+				}
+			}
             free(isort);
             }
-        else  
+		else 
 #endif 
             {
 
@@ -1576,10 +1604,10 @@ void smSmooth(SMX smx,SMF *smf)
             break;
         default:
 #ifdef NSMOOTHINNER
-            fBall2 = fabs(p[pi].fBall2);
+		fBall2 = fabs(p[pi].fBall2);
 #else
-            fprintf(stderr,"Illegal value for iLowhFix %d in smooth\n",smx->iLowhFix);
-            assert(0);
+		 fprintf(stderr,"Illegal value for iLowhFix %d in smooth\n",smx->iLowhFix);
+		 assert(0);
 #endif
             }
         for (;;) {

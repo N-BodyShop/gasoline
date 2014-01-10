@@ -345,6 +345,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
 #ifdef STARFORM
         p->uDotFB = 0.0;
+        p->uDotESF = 0.0;
         p->fNSN = 0.0;
         p->fNSNtot = 0.0;
         p->fMOxygenOut = 0.0;
@@ -4425,6 +4426,71 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     p->uNoncool = p->uNoncool + p->uNoncoolDot*duDelta;
                     if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
                     if (p->uNoncool < 0) p->uNoncool = 0;
+#ifdef MASSNONCOOL
+                    double ph = sqrt(p->fBall2*0.25);
+                    double fDensity,PoverRho,PoverRhoGas,PoverRhoNoncool,PoverRhoFloorJeans,cGas;
+                    pkdGasPressureParticle(pkd, &uncc.gpc, p, &PoverRhoFloorJeans, &PoverRhoNoncool, &PoverRhoGas, &cGas );
+                   fDensity = p->fDensity*PoverRhoGas/(uncc.gpc.gammam1*p->uNoncool); /* Density of bubble part of particle */
+					FLOAT upnc52, up52, fMassFlux;
+				   upnc52 = pow(p->uNoncoolPred, 2.5);
+				   up52 = pow(p->uPred, 2.5);
+				   FLOAT fFactor = duPredDelta*uncc.gpc.dEvapCoeffCode*ph*3.1415;
+                   /* The Saturation Coefficient S is related to the evaporation Coefficient C by:
+                    * C_{saturation} = \frac{6}{25}S \rho c_s h
+                    */
+                   FLOAT fMassFluxSat = 0.24*(duPredDelta*uncc.gpc.dThermalCondSatCoeff*fDensity*cGas*ph*ph*3.1415);
+				   fMassFlux = fFactor*(upnc52-up52);
+				   //printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e %e\n", 
+						   p->iOrder, duDelta, duPredDelta, fMassFlux, fMassFluxSat, ph, p->fMass-p->fMassNoncool, p->fMassNoncool, p->uPred, p->uNoncoolPred);
+                   fMassFlux = (fMassFlux < fMassFluxSat ? fMassFlux : fMassFluxSat);
+				   if(fMassFlux > 0) { // Make sure that the flow is in the right direction
+					   // If all the mass becomes hot, switch to being single-phase
+					   if(fMassFlux > (p->fMass-p->fMassNoncool)) {
+						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDotFB *= p->fMassNoncool/p->fMass; //Damn these scaled uDots, we should use a different name!
+						   p->fMassNoncool = 0;
+						   p->uNoncool = 0;
+						   p->uNoncoolDot = 0;
+						   p->uNoncoolPred = 0;
+					   }
+					   else {
+						   p->uNoncoolPred = (p->uPred*fMassFlux + p->uNoncoolPred*p->fMassNoncool)/(fMassFlux+p->fMassNoncool);
+						   p->uNoncool = (p->u*fMassFlux + p->uNoncool*p->fMassNoncool)/(fMassFlux+p->fMassNoncool);
+						   p->uDotFB *= p->fMassNoncool/(p->fMassNoncool+fMassFlux);
+						   p->fMassNoncool += fMassFlux;
+						   assert(p->fMassNoncool >= 0);
+						   assert(p->uPred > 0);
+						   assert(p->uNoncoolPred > 0);
+						   assert(p->u > 0);
+						   assert(p->uNoncool > 0);
+					   }
+				   }
+				   else if (p->uPred > p->uNoncoolPred && p->uNoncoolPred > 0) { // No sense in keeping the noncooling mass around if it is much colder than the regular mass
+						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDotFB *= p->fMassNoncool/p->fMass;//Damn these scaled uDots, we should use a different name!
+						   p->fMassNoncool = 0;
+						   p->uNoncool = 0;
+						   p->uNoncoolDot = 0;
+						   p->uNoncoolPred = 0;
+				   }
+                    FLOAT TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uNoncoolPred, p->fMetals );
+                    if(TpNC < uncc.dMultiPhaseMinTemp && uncc.bMultiPhaseTempThreshold && p->uNoncoolPred > 0)//Check to make sure the hot phase is still actually hot
+                    {
+						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uDotFB *= p->fMassNoncool/p->fMass;//Damn these scaled uDots, we should use a different name!
+						   p->fMassNoncool = 0;
+						   p->uNoncool = 0;
+						   p->uNoncoolDot = 0;
+						   p->uNoncoolPred = 0;
+                    }
+                    
+#endif
 #endif
 #else /* NOCOOLING */
                     p->uPred = p->u + UDOT_HYDRO(p)*duPredDelta;
@@ -4670,6 +4736,7 @@ void pkdCreateInflow(PKD pkd, int Ny, int iGasModel, double dTuFac, double pmass
 #endif				
 #ifdef STARFORM
 	    p.uDotFB = 0.0;
+	    p.uDotESF = 0.0;
 	    p.fNSN = 0.0;
 	    p.fNSNtot = 0.0;
 	    p.fMOxygenOut = 0.0;
@@ -4749,7 +4816,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef GASOLINE
 		p->u = cp.u;
 		p->uPred = cp.u;
-#ifdef MASSNONCOOL;
+#ifdef MASSNONCOOL
         p->fMassNoncool = cp.fMassNoncool;
 #endif
 #ifdef UNONCOOL
@@ -4779,6 +4846,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #endif
 #ifdef STARFORM 
 		p->uDotFB = 0.0;
+		p->uDotESF = 0.0;
 		p->fTimeForm = cp.fTimeForm;
 		p->fMassForm = cp.fMassForm;
 		p->iGasOrder = cp.iGasOrder;
@@ -5111,7 +5179,12 @@ void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, double *dTotMetals,
                 *dTotOx += pkd->pStore[i].fMass*pkd->pStore[i].fMFracOxygen;
                 *dTotFe += pkd->pStore[i].fMass*pkd->pStore[i].fMFracIron;
                 if ( TYPETest(&pkd->pStore[i], TYPE_GAS) ){
+#ifdef MASSNONCOOL
+		  *dTotEnergy += pkd->pStore[i].fMassNoncool*pkd->pStore[i].uDotFB;
+#else
 		  *dTotEnergy += pkd->pStore[i].fMass*pkd->pStore[i].uDotFB;
+#endif
+		  *dTotEnergy += pkd->pStore[i].fMass*pkd->pStore[i].uDotESF;
                     }
 #endif
 #endif
@@ -6202,13 +6275,13 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             double uNoncoolDotFB=0, uDotFBThermal=0, uDotPdVNJ, uncPdVFrac;
             int bUpdateStd=1;
 
-#if !defined(MASSNONCOOL) && defined(STARFORM)
+#if defined(STARFORM)
 #ifdef UNONCOOL
             uNoncoolDotFB = p->uDotFB; //Note: FB Added to uNoncool OR u (not both)
 #else
             uDotFBThermal = p->uDotFB;
 #endif
-#endif /* STARFORM && !MASSNONCOOL */
+#endif /* STARFORM */
 
             pkdGasPressureParticle(pkd, &uncc.gpc, p, &PoverRhoFloorJeans, &PoverRhoNoncool, &PoverRhoGas, &cGas );
             PoverRho = PoverRhoGas + PoverRhoNoncool ;
@@ -6222,14 +6295,15 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             bUpdateStd = (p->fMassNoncool < 0.9*p->fMass);
 
             if (p->fMassNoncool > 0) {
-                assert(p->uNoncool > 0);
+                assert(p->uNoncool >= 0);
                 
                 uDotSansCooling = (uDotPdVNJ+p->uDotAV)*uncPdVFrac // Fraction of PdV related to uNoncool 
-                    + p->uNoncoolDotDiff;
-                if ( bCool ) {
+                    + p->uNoncoolDotDiff + uNoncoolDotFB;
+				if ( bCool && p->uNoncool > 0) {
                     cp = p->CoolParticle;
                     E = p->uNoncool;
-                    fDensity = PoverRhoGas/(uncc.gpc.gammam1*p->uNoncool); /* Density of bubble part of particle */
+					dtUse = dt;
+                    fDensity = p->fDensity*PoverRhoGas/(uncc.gpc.gammam1*p->uNoncool); /* Density of bubble part of particle */
                     CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse);
                     p->uNoncoolDot = (E - p->uNoncool)/duDelta;
                     if (bUpdateState && !bUpdateStd) p->CoolParticle = cp;
@@ -6237,14 +6311,19 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
                 else 
                     p->uNoncoolDot = uDotSansCooling;
                 }
-            else 
+            else {
                 p->uNoncoolDot = 0;
+				uDotFBThermal = p->uDotFB;
+			}
 
             assert(p->uPred > 0);
-            fDensity = PoverRhoGas/(uncc.gpc.gammam1*p->uPred); /* Density of non-bubble part of particle */
+            fDensity = p->fDensity*PoverRhoGas/(uncc.gpc.gammam1*p->uPred); /* Density of non-bubble part of particle */
+#ifdef DENSITYU
+            if (p->fDensityU < p->fDensity) fDensity = p->fDensityU*PoverRhoGas/(uncc.gpc.gammam1*p->uPred); 
+#endif
 
-            uDotSansCooling = (p->uDotPdV+p->uDotAV)*(1-uncPdVFrac) // Fraction of PdV related to u thermal
-                    + p->uDotDiff;
+            uDotSansCooling = (uDotPdVNJ+p->uDotAV)*(1-uncPdVFrac) // Fraction of PdV related to u thermal
+                    + p->uDotDiff + uDotFBThermal + p->uDotESF;
 #else /* !MASSNONCOOL */
 
             fDensity = p->fDensity; /* Density for cooling */
@@ -6254,15 +6333,17 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 #ifdef UNONCOOL
             /* 2nd order estimator for Conv -- note that PdV etc ...should already be 2nd order via Leap Frog */
             uNoncoolPredTmp = p->uNoncool+p->uNoncoolDot*duDelta*0.5;
+#ifdef UNONCOOLCONV
             uNoncoolDotConv = uNoncoolPredTmp*
                 pkduNoncoolConvRate(pkd,uncc,p->fBall2,uNoncoolPredTmp,p->u+p->uDot*duDelta*0.5); 
+#endif
             
             p->uNoncoolDot = p->uDotPdV*PoverRhoNoncool/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to uNoncool 
                 - uNoncoolDotConv + uNoncoolDotFB + p->uNoncoolDotDiff;
 #endif    
             uDotSansCooling = p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to u thermal
                 + p->uDotAV                                                   // Only u thermal energy gets shock heating
-                + uNoncoolDotConv + uDotFBThermal + p->uDotDiff;
+                + uNoncoolDotConv + uDotFBThermal + p->uDotDiff + p->uDotESF;
 #endif /* !MASSNONCOOL */
 
             if ( bCool ) {
@@ -6309,8 +6390,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
                 
 #ifdef COOLING_BOLEY
                 cp.mrho = pow(p->fMass/p->fDensity, 1./3.);
-#endif
-#ifdef MASSNONCOOL
 #endif
                 CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse);
 #endif /* !COOLING_MOLECULARH */
@@ -6459,11 +6538,14 @@ void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *
 void  pkdSetThermalCond(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p) 
     {
 #ifdef THERMALCOND
-    double fThermalCond = pgpc->dThermalCondCoeffCodez*pow(p->uPred,2.5); /* flux = coeff grad u   coeff ~ flux x h/u */ 
-    double fThermalCond2 = pgpc->dThermalCond2CoeffCodez*pow(p->uPred,0.5);
+    double fThermalCond = pgpc->dThermalCondCoeffCode*pow(p->uPred,2.5); /* flux = coeff grad u   coeff ~ flux x h/u */ 
+    double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
+	if (Tp < pgpc->dEvapMinTemp) fThermalCond = 0;
+    double fThermalCond2 = pgpc->dThermalCond2CoeffCode*pow(p->uPred,0.5);
+	if (Tp < pgpc->dEvapMinTemp) fThermalCond2 = 0;
     double fSat = p->fDensity*p->c*p->fThermalLength; /* Max flux x L/u */
-    double fThermalCondSat = pgpc->dThermalCondSatCoeffz*fSat;
-    double fThermalCond2Sat = pgpc->dThermalCond2SatCoeffz*fSat;
+    double fThermalCondSat = pgpc->dThermalCondSatCoeff*fSat;
+    double fThermalCond2Sat = pgpc->dThermalCond2SatCoeff*fSat;
 
 //    printf("Saturated %d %g %g %g %g %g %g %g %g %g\n",p->iOrder,p->r[0],p->fDensity,p->uPred/4.80258,fThermalCond,fThermalCond2,fThermalCondSat,fThermalCond2Sat,p->fThermalLength,sqrt(p->fBall2*0.25));
     p->fThermalCond = (fThermalCond < fThermalCondSat ? fThermalCond : fThermalCondSat) +
@@ -6735,18 +6817,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
     *pdtMinGas = DBL_MAX;
     for(i=0;i<pkdLocal(pkd);++i) {
         p = &pkd->pStore[i];
-//        if (p->iOrder == 32773) 
-//            fprintf(stderr,"PROB %d: u %g %g c %g h %g divv %g rho %g Z %g\n",p->iOrder,p->u,p->uPred,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals);
         if(pkdIsGas(pkd, p)) {
-#ifdef FBPARTICLE
-            if (p->iOrder > 32767) {
-                double T;
-#ifndef NOCOOLING
-                T = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, p->fMetals );
-#endif
-                fprintf(stderr,"FBP %d: u %g T %g %g c %g h %g divv %g rho %g Z %g dtdiff %g dt %g\n",p->iOrder,p->uPred,p->uPred/4802.57,T,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals,p->uPred/(fabs(p->uDotDiff)+1e-20),p->dt);
-                }
-#endif
 
             if (TYPEQueryACTIVE(p)) {
                 ph = sqrt(0.25*p->fBall2);
@@ -6786,14 +6857,14 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     {
                     double uTotDot, dtExtrap;
 #ifdef MASSNONCOOL
-                    double x = p->fMassNoncool/p->fMass;
-                    uTotDot = p->uDot*(1-x)+p->uNoncoolDot*x;
+					double x = p->fMassNoncool/p->fMass;
+					uTotDot = p->uNoncoolDot*x+p->uDot*(1-x);
 #else
                     uTotDot = p->uDot;
 #ifdef UNONCOOL
                     uTotDot += p->uNoncoolDot;
 #endif
-#endif
+#endif /* MASSNONCOOL */
                     if (uTotDot > 0) {
                         dtExtrap = pkdDtFacCourant(dEtaCourant,dCosmoFac)
                             *sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
@@ -6807,8 +6878,13 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     double uEff = PONRHOFLOOR+PoverRhoFloorJeans/(GAMMA_JEANS-1)+p->u;
                             
                     assert(p->u > 0.0);
+#ifdef MASSNONCOOL
+					double x = p->fMassNoncool/p->fMass;
+                    uEff += x*(p->uNoncool-p->u);
+#else
 #ifdef UNONCOOL
                     uEff += p->uNoncool;
+#endif
 #endif
                     dTu = dEtauDot*uEff/fabs(p->uDotPdV);
                     DTSAVE(dTu,"PDV");

@@ -17,7 +17,7 @@
 #endif
 
 /* Allow for creation of this many new gas particles */
-#if defined(INFLOWOUTFLOW) || defined(FBPARTICLE)
+#if defined(INFLOWOUTFLOW) || defined(FBPARTICLE) || defined(PARTICLESPLIT)
 #define NIORDERGASBUFFER 1000000000
 #else
 #define NIORDERGASBUFFER 0
@@ -40,6 +40,10 @@
 #ifdef RTF
 #define RTDENSITY
 #define RTFORCE
+#endif
+
+#if defined(MASSNONCOOL)  && !defined(UNONCOOL)
+#define UNONCOOL
 #endif
 
 #if defined(DENSITYUNOTP) && !defined(DENSITYU)
@@ -215,6 +219,7 @@ typedef struct particle {
 #endif
 #ifdef STARFORM
     FLOAT uDotFB;
+    FLOAT uDotESF;
     FLOAT fMSN;
     FLOAT fNSN;           
     FLOAT fMOxygenOut;
@@ -314,10 +319,14 @@ struct GasPressureContext {
     struct GlassData g;
 #endif
 #ifdef THERMALCOND
-    double dThermalCondCoeffCodez;
-    double dThermalCondSatCoeffz;
-    double dThermalCond2CoeffCodez;
-    double dThermalCond2SatCoeffz;
+    double dThermalCondCoeffCode;
+    double dThermalCondSatCoeff;
+    double dThermalCond2CoeffCode;
+    double dThermalCond2SatCoeff;
+#endif
+#ifdef PROMOTE
+	double dEvapCoeffCode;
+	double dEvapMinTemp;
 #endif
     };
 
@@ -327,6 +336,10 @@ typedef struct uNonCoolContext {
     double dNoncoolConvRateMax;
     double dNoncoolConvUMin;
     struct GasPressureContext gpc;
+#ifdef MASSNONCOOL
+    double dMultiPhaseMinTemp;
+    int bMultiPhaseTempThreshold;
+#endif
     } UNCC;
 
 #define SINK_Lx(_a) (((PARTICLE *) (_a))->uDotPdV)

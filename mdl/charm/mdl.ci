@@ -1,0 +1,45 @@
+mainmodule mdl {
+  readonly CProxy_AMdl aId;
+  readonly CProxy_Main MainId;
+  readonly CProxy_grpCache CacheId;
+
+  message[varsize] MdlMsg;
+  message[varsize] MdlSwapMsg;
+  message[varsize] MdlCacheMsg;
+  message[varsize] MdlCacheFlshMsg;
+
+  mainchare Main {
+    entry Main(CkArgMsg *m);
+    entry [threaded] void startMain();
+    entry void done(void);
+  };
+
+  nodegroup grpCache {
+    entry grpCache();
+    entry [immediate] void CacheRequest(MdlCacheMsg *mesg);
+    entry void CacheReply(MdlCacheMsg *mesg);
+    entry void flushreply();
+  };
+
+  group treeMap {
+	entry treeMap(int);
+  };
+
+  array [1D] AMdl {
+    entry AMdl(int bDiag, const std::string& progname);
+    entry [threaded] void AMdlInit(void *fcnChild);
+    entry [threaded] void swapInit(int, int); // XXX - threaded to fix a
+					      // synchronization problem.
+    entry void swapSendMore();
+    entry [threaded] void swapGetMore(MdlSwapMsg *);
+    entry void swapDone();
+    entry void reqReply(MdlMsg *);
+    entry void stopSrv();
+    entry [threaded] void reqHandle(MdlMsg *);
+    entry void unblockCache(MdlCacheMsg *);
+    entry void CacheFlush(MdlCacheMsg *mesg);
+    entry void CacheFlushAll(MdlCacheFlshMsg *mesg);
+    entry void barrierEnter(CkReductionMsg *);
+    entry void waitflushAwaken();
+  };
+};

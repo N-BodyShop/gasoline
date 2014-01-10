@@ -143,11 +143,26 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	  return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, correL) );
 #else
 	case OUT_COOL_EDOT_ARRAY:
-	  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	  if(pkdIsGas(pkd, p)) {
+		  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	  }
+	  else {
+		  return 0;
+	  }
 	case OUT_COOL_COOLING_ARRAY:
-	  return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	  if(pkdIsGas(pkd, p)) {
+		  return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	  }
+	  else {
+		  return 0;
+	  }
 	case OUT_COOL_HEATING_ARRAY:
+	  if(pkdIsGas(pkd, p)) {
 	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	  }
+	  else {
+		  return 0;
+	  }
 #endif
 #else
 #ifdef COOLING_MOLECULARH

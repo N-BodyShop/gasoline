@@ -34,6 +34,7 @@ typedef struct smfParameters {
     int bBHMindv;
     int bBHAccreteAll;
     int bDoBHKick;
+	double dBall2Max;
     double dSinkCurrentDelta;
     double dDeltaStarForm;
 #ifdef GASOLINE
@@ -66,6 +67,7 @@ typedef struct smfParameters {
     double dSinkTimeEligible;
     double dTime;
     double dEvapCoeffCode;
+    double dEvapMinTemp;
 #ifdef DIFFUSION
     double dMetalDiffusionCoeff;
     double dThermalDiffusionCoeff;
@@ -73,6 +75,10 @@ typedef struct smfParameters {
 #endif
 #ifdef MASSNONCOOL
     double dFBInitialMassLoad;
+    double dMultiPhaseMinTemp;
+#endif
+#ifdef PARTICLESPLIT
+    double dInitGasMass;
 #endif
 #ifdef STARFORM
     double dMinMassFrac;
@@ -162,10 +168,14 @@ enum smx_smoothtype {
   SMX_SPHPRESSURE,
   SMX_SPHVISCOSITY,
   SMX_HKVISCOSITY,
+#ifdef PARTICLESPLIT
+  SMX_SPLIT_GAS,
+#endif
 #ifdef STARFORM
   SMX_STARCLUSTERFORM,
   SMX_DIST_DELETED_GAS,
   SMX_PROMOTE_TO_HOT_GAS,
+  SMX_EVAPORATE_TO_HOT_GAS,
   SMX_SHARE_WITH_HOT_GAS,
   SMX_DELETE_GAS,
   SMX_DIST_FB_ENERGY,
@@ -375,6 +385,11 @@ void initDistDeletedGas(void *p1);
 void combDistDeletedGas(void *p1,void *p2);
 void DistDeletedGas(PARTICLE *, int, NN *, SMF *);
 
+/* SMX_EVAPORATE_TO_HOT_GAS */
+void initEvaporateToHotGas(void *p1);
+void combEvaporateToHotGas(void *p1,void *p2);
+void EvaporateToHotGas(PARTICLE *, int, NN *, SMF *);
+
 /* SMX_PROMOTE_TO_HOT_GAS */
 void initPromoteToHotGas(void *p1);
 void combPromoteToHotGas(void *p1,void *p2);
@@ -387,6 +402,10 @@ void ShareWithHotGas(PARTICLE *, int, NN *, SMF *);
 
 /* SMX_DELETE_GAS */
 void DeleteGas(PARTICLE *, int, NN *, SMF *);
+#ifdef PARTICLESPLIT
+/* SMX_SPLIT_GAS */
+void SplitGas(PARTICLE *, int, NN *, SMF *);
+#endif
 
 /* SMX_DIST_FB_ENERGY */
 void initTreeParticleDistFBEnergy(void *p1);

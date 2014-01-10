@@ -82,9 +82,9 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 #ifdef FBPARTICLE
             {
             double tstart = 4e6, tend = 30e6; /* yr */
-            double mdotonmstar = 10*10/100./(tend-tstart); /* gm / gm / yr */
+            double mdotonmstar = 25/100./(tend-tstart); /* gm / gm / yr */
             double edotonmstar = 1e51/(100*2e33)/(tend-tstart); /* erg / gm / yr */
-            double mFB = 0.025*p->fMassForm; /* mass of fb particles (code units) */
+            double mFB = fb->dFBMassRatio*p->fMassForm; /* mass of fb particles (code units) */
             double tFB0,tFB1,nFac,dDeltaFB;
             int nFB0,nFB1;
             
@@ -121,11 +121,11 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                     ph = sqrt(p->fBall2*0.25); /* gas h at star */
                     dt = fb->dtFacCourant*ph/(2*pNew.c);	/* dt Courant */
 #ifdef THERMALCOND
-                        { double a=1;  /* horrible hack */
-                    gpc.dThermalCondCoeffCodez = fb->dThermalCondCoeffCode*a;
-                    gpc.dThermalCondSatCoeffz = fb->dThermalCondSatCoeff/a;
-                    gpc.dThermalCond2CoeffCodez = fb->dThermalCond2CoeffCode*a;
-                    gpc.dThermalCond2SatCoeffz = fb->dThermalCond2SatCoeff/a;
+                        { 
+                    gpc.dThermalCondCoeffCode = fb->dThermalCondCoeffCode*fb->a;
+                    gpc.dThermalCondSatCoeff = fb->dThermalCondSatCoeff/fb->a;
+                    gpc.dThermalCond2CoeffCode = fb->dThermalCond2CoeffCode*fb->a;
+                    gpc.dThermalCond2SatCoeff = fb->dThermalCond2SatCoeff/fb->a;
                         }
                     pNew.fDensity = p->fDensity;
                     pkdSetThermalCond(pkd, &gpc, &pNew);
@@ -310,6 +310,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
         if (dTime > p->fTimeCoolIsOffUntil) p->uDotFB = 0;
 #else
 	    p->uDotFB = 0.0;	/* reset SN heating rate of gas to zero */
+	    p->uDotESF = 0.0;	/* reset SN heating rate of gas to zero */
 #endif
 	    }
 	}

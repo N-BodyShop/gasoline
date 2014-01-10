@@ -53,6 +53,9 @@ typedef struct smContext {
     double dTime;
     PATCH_PARAMS *PP;
 #endif
+#ifdef NSMOOTHINNER
+	int bSmallBall; //Sometimes need to allow less than 22 neighbours.
+#endif
 	} * SMX;
 
 

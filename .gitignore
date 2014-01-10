@@ -1,3 +1,9 @@
+*.~
+*.pyc
+*.swp
+.#*
+gasoline.*
+buildlog.*
+*.tar
+*.tar.gz
 *.o
-Makefile
-gasoline*
