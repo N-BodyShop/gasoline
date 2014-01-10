@@ -5557,7 +5557,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->dSinkMustAccreteRadius = msr->param.dSinkMustAccreteRadius;
     psmf->iSmoothFlags = 0; /* Initial value, return value in outSmooth */
 #ifdef GASOLINE
-    psmf->dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333); /* (dx/h) factor */
+    psmf->dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333)*psmf->a; /* (dx/h) factor */
     psmf->dEvapMinTemp = msr->param.dEvapMinTemp;
     psmf->dBall2Max = msr->param.dBall2Max;
 #ifdef PARTICLESPLIT
