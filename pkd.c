@@ -4440,8 +4440,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     */
                    FLOAT fMassFluxSat = 0.24*(duPredDelta*uncc.gpc.dThermalCondSatCoeff*fDensity*cGas*ph*ph*3.1415);
 				   fMassFlux = fFactor*(upnc52-up52);
-				   //printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e %e\n", 
-						   p->iOrder, duDelta, duPredDelta, fMassFlux, fMassFluxSat, ph, p->fMass-p->fMassNoncool, p->fMassNoncool, p->uPred, p->uNoncoolPred);
+				   //printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e %e\n",   p->iOrder, duDelta, duPredDelta, fMassFlux, fMassFluxSat, ph, p->fMass-p->fMassNoncool, p->fMassNoncool, p->uPred, p->uNoncoolPred);
                    fMassFlux = (fMassFlux < fMassFluxSat ? fMassFlux : fMassFluxSat);
 				   if(fMassFlux > 0) { // Make sure that the flow is in the right direction
 					   // If all the mass becomes hot, switch to being single-phase
@@ -4477,7 +4476,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 						   p->uNoncoolDot = 0;
 						   p->uNoncoolPred = 0;
 				   }
-                    FLOAT TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uNoncoolPred, p->fMetals );
+                    FLOAT TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uNoncoolPred, fDensity, p->fMetals );
                     if(TpNC < uncc.dMultiPhaseMinTemp && uncc.bMultiPhaseTempThreshold && p->uNoncoolPred > 0)//Check to make sure the hot phase is still actually hot
                     {
 						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
@@ -6539,7 +6538,7 @@ void  pkdSetThermalCond(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p)
     {
 #ifdef THERMALCOND
     double fThermalCond = pgpc->dThermalCondCoeffCode*pow(p->uPred,2.5); /* flux = coeff grad u   coeff ~ flux x h/u */ 
-    double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
+    double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, p->fMetals );
 	if (Tp < pgpc->dEvapMinTemp) fThermalCond = 0;
     double fThermalCond2 = pgpc->dThermalCond2CoeffCode*pow(p->uPred,0.5);
 	if (Tp < pgpc->dEvapMinTemp) fThermalCond2 = 0;

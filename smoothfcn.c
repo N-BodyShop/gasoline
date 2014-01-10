@@ -5513,7 +5513,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     ph = sqrt(BALL2(p)*0.25);
     ih2 = 1/(ph*ph);
     /* Exclude cool particles */
-    Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
+    Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, p->fMetals );
     if (Tp <= smf->dEvapMinTemp) return;
 
     up52 = pow(p->uPred,2.5);
@@ -5524,7 +5524,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         q = nnList[i].pPart;
         if (p->iOrder == q->iOrder) continue;
 	    if (TYPETest(q, TYPE_DELETED) || (TYPETest(q, TYPE_FEEDBACK) && !TYPETest(q, TYPE_PROMOTED))) continue;
-        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
         if (Tq >= smf->dEvapMinTemp) continue;  /* Exclude hot particles */
 	    assert(TYPETest(q, TYPE_GAS));
         assert(!TYPETest(p, TYPE_STAR));
@@ -5546,7 +5546,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q = nnList[i].pPart;
 		if (p->iOrder == q->iOrder) continue;
 		if (TYPETest(q, TYPE_DELETED)) continue;
-		Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+		Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
 #ifdef MASSNONCOOL
 		if (q->uNoncool == 0 && Tq <= smf->dEvapMinTemp) continue;  
 #else
@@ -5570,7 +5570,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         q = nnList[i].pPart;
         if (p->iOrder == q->iOrder) continue;
 	    if(TYPETest(q, TYPE_DELETED) || (TYPETest(q, TYPE_FEEDBACK) && !TYPETest(q, TYPE_PROMOTED))) continue;
-        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+        Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
         if (Tq >= smf->dEvapMinTemp ) continue;  /* Exclude hot particles */
 	    assert(TYPETest(q, TYPE_GAS));
 		r2 = nnList[i].fDist2*ih2;            
@@ -5603,7 +5603,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             q = isort[i].pNN->pPart;
             if (p->iOrder == q->iOrder) continue;
             if (TYPETest(q, TYPE_DELETED) || TYPETest(q, TYPE_FEEDBACK) || TYPETest(q, TYPE_PROMOTED)) continue;
-            Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+            Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
             if (Tq >= smf->dEvapMinTemp ) continue;  /* Exclude hot particles */
             assert(TYPETest(q, TYPE_GAS));
 
@@ -5659,7 +5659,7 @@ void ShareWithHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	assert(TYPETest(p, TYPE_FEEDBACK));
 	assert(!TYPETest(p, TYPE_PROMOTED));
 //    KERNEL(rsmax,0.0);
-    Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fMetals );
+    Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, p->fMetals );
     if (Tp <= smf->dEvapMinTemp) return;
 
     rsmax = 1.0;
@@ -5994,7 +5994,7 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		TYPESet(q, TYPE_FEEDBACK);
 	}
 #ifdef MASSNONCOOL
-	FLOAT Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fMetals );
+	FLOAT Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
 	if(Tq < smf->dMultiPhaseMinTemp && weight > 0) {
 		double fMassNoncool = q->fMassNoncool + weight*p->fMSN;
 		double deltaMassLoad = weight*p->fMSN*smf->dFBInitialMassLoad;
