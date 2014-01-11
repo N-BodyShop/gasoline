@@ -1,5 +1,5 @@
-#ifndef FLOATTYPE_INCLUDED
-#define FLOATTYPE_INCLUDED
+#ifndef FLOATTYPE_HINCLUDED
+#define FLOATTYPE_HINCLUDED
 
 #include <limits.h>
 #include <float.h>

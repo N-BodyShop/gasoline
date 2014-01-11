@@ -769,7 +769,7 @@ int main(int argc,char **argv)
                     msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);*/
                     msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Density");
 
-#if OLD_KEPLER/*DEBUG*/
+#if OLD_KEPLER /*DEBUG*/
                     {
                     struct inSmooth smooth;
                     int sec,dsec;

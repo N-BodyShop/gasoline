@@ -830,9 +830,6 @@ void SinkAccreteTest(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			    fBindingEnergy(q) = Eq;
 			    iOrderSink(q) = p->iOrder; /* Particle q belongs to sink p */
 			    TYPESet(q, TYPE_NEWSINKING);
-#ifdef SINKDBG
-			    if (q->iOrder == 80) printf("FORCETESTACCRETE %d with %d \n",p->iOrder,q->iOrder);
-#endif
 			    }
 			}
 		    }
@@ -921,9 +918,6 @@ void initSinkAccrete(void *p)
 #ifdef SINKING
     if (TYPETest( ((PARTICLE *) p), TYPE_SINKING )) {
 	bRVAUpdate(p) = 0; /* Indicator for r,v,a update */
-#ifdef SINKDBG
-	if (((PARTICLE *)p)->iOrder == 80) printf("FORCESINKACCRETEINIT %d with %d \n",-1,((PARTICLE *)p)->iOrder);
-#endif
 	}
 #endif
     }
@@ -940,9 +934,6 @@ void combSinkAccrete(void *p1,void *p2)
     else if (TYPETest( ((PARTICLE *) p2), TYPE_SINKING ) && !TYPETest( ((PARTICLE *) p1), TYPE_SINKING ))  {
 	PARTICLE *p=p1,*q=p2;
 	int j;
-#ifdef SINKDBG
-	printf("SINKING Sinking particle on other processor -- sinking properties combined %d %g\n",p->iOrder,p->fMetals);
-#endif
 	bRVAUpdate(p) = 1;
 	assert(!TYPETest(p,TYPE_SINK));
 	assert(!TYPETest(q,TYPE_SINK));
@@ -981,9 +972,6 @@ void combSinkAccrete(void *p1,void *p2)
 	    p->a[0] = q->a[0];
 	    p->a[1] = q->a[1];
 	    p->a[2] = q->a[2];
-#ifdef SINKDBG
-	    if (((PARTICLE *)p1)->iOrder == 80) printf("FORCESINKACCRETECOMB %d with %d \n",-1,((PARTICLE *)p1)->iOrder);
-#endif
 	    }
 	}
 #endif
@@ -1051,9 +1039,6 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		if (r2 < smf->dSinkMustAccreteRadius*smf->dSinkMustAccreteRadius || 
 		    (TYPETest(q, TYPE_SINKING) && 
 		     q->rSinking0Mag + q->vSinkingr0*(smf->dTime-q->fSinkingTime) < smf->dSinkMustAccreteRadius)) {
-#ifdef SINKDBG
-		    if (q->iOrder == 55) printf("FORCESINKACCRETE0 %d with %d \n",p->iOrder,q->iOrder);
-#endif
 		    if (!TYPETest(q, TYPE_SINKING)) {
 			FLOAT mp,mq,rx,ry,rz,vx,vy,vz;
 			mp = p->fTrueMass; mq = q->fMass;
@@ -1265,9 +1250,6 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			+q->vSinkingr0*(costh2*q->rSinking0Unit[j]+sinth2*q->vSinkingTang0Unit[j]);
 		    }
 		bRVAUpdate(q) = 1; /* Indicator for r,v,a update */
-#ifdef SINKDBG
-		if (q->iOrder == 160460) printf("SINKINGFORCESHARE %d  %g %g %g  %g %g %g  %g %g %g (%g)\n",q->iOrder,smf->dTime,r2,sqrt(pow(q->r[0]-p->r[0],2.)+pow(q->r[1]-p->r[1],2.)+pow(q->r[2]-p->r[2],2.)), q->r[0]-p->r[0],q->r[1]-p->r[1],q->r[2]-p->r[2],q->vPred[0]-p->v[0],q->vPred[1]-p->v[1],q->vPred[2]-p->v[2],(q->vPred[0]-p->v[0])*(q->r[0]-p->r[0])+(q->vPred[1]-p->v[1])*(q->r[1]-p->r[1])+(q->vPred[2]-p->v[2])*(q->r[2]-p->r[2]));
-#endif
 		TYPEReset(q,TYPE_NEWSINKING);
 		}
 
@@ -1303,9 +1285,6 @@ void combSinkingForceShare(void *p1,void *p2)
 	    p->a[0] = q->a[0];
 	    p->a[1] = q->a[1];
 	    p->a[2] = q->a[2];
-#ifdef SINKDBG
-	    if (((PARTICLE *)p1)->iOrder == 160460) printf("SINKFORCESHARECOMB %d with %d \n",-1,((PARTICLE *)p1)->iOrder);
-#endif
 	    }
 	}
 #endif
@@ -3205,15 +3184,7 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT fNorm,fNorm1,aFac,vFac;
 	int i;
 
-#ifdef PDVCHECK
-	char ach[456];
-#endif
 
-#ifdef TESTSPH
-	if (TYPETest(p, (1<<20))) {
-	    printf("DUMP: %d %g %g %g  %g %g %g  %g\n",p->iOrder,p->r[0],p->r[1],p->r[2],p->vPred[0],p->vPred[1],p->vPred[2],p->fMetals);
-	    }
-#endif
 
 #ifdef DEBUGFORCE
 	pa[0]=0.0;
@@ -3278,12 +3249,6 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				/* q active */
 				rp = rs1 * pMass;
 				if (dvdotdr>0.0) {
-#ifdef PDVCHECK
-					if (p->iOrder==880556 || q->iOrder==880556 || !finite(rq * pPoverRho2 * dvdotdr) || !finite(rp * q->PoverRho2 * dvdotdr) || fabs(rq * pPoverRho2 * dvdotdr * 1e-5) > p->u || fabs(rp * q->PoverRho2 * dvdotdr *1e-5) > q->u) {
-						sprintf(ach,"PDV-ERR-1 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g \n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax);
-						mdlDiag(smf->pkd->mdl,ach);
-						}
-#endif
 					p->uDotPdV += rq*PRES_PDV(pPoverRho2,qPoverRho2)*dvdotdr;
 					q->uDotPdV += rp*PRES_PDV(qPoverRho2,pPoverRho2)*dvdotdr;
 					rq *= (PRES_ACC(pPoverRho2f,qPoverRho2f));
@@ -3297,12 +3262,6 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					ACCEL(q,1) += rp * dy;
 					ACCEL(q,2) += rp * dz;
 					DEBUGFORCE("sphA");
-#ifdef PDVCHECK
-					if (p->iOrder==880556 || q->iOrder==880556 || fabs(rq) > 1e50 || fabs(rp) > 1e50 || fabs(ACCEL(p,0))+fabs(ACCEL(p,1))+fabs(ACCEL(p,2))+fabs(pa[0])+fabs(pa[1])+fabs(pa[2]) > 1e50 || fabs(ACCEL(q,0))+fabs(ACCEL(q,1))+fabs(ACCEL(q,2)) > 1e50) {
-						sprintf(ach,"PDV-ACC-1 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
-						mdlDiag(smf->pkd->mdl,ach);
-						}
-#endif
               		}
 				else {
              		/* h mean - using just hp probably ok */
@@ -3318,14 +3277,6 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					visc = SWITCHCOMBINE(p,q)*
 					  (smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
 					  *absmu/(pDensity + q->fDensity);
-#ifdef PDVCHECK
-					if (p->iOrder==880556 || q->iOrder==880556 || !finite(rq * (pPoverRho2 + 0.5*visc) * dvdotdr) || !finite(rp * (q->PoverRho2 + 0.5*visc) * dvdotdr) || fabs(rq * (pPoverRho2 + 0.5*visc) * dvdotdr * 1e-5) > p->u || fabs(rp * (q->PoverRho2 + 0.5*visc) * dvdotdr *1e-5) > q->u) {
-						sprintf(ach,"PDV-ERR-2 %d - %d: Den %g - %g u %g %g PdV+ %g %g %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * (pPoverRho2 + 0.5*visc) * dvdotdr,rq * (pPoverRho2) * dvdotdr,rq * (0.5*visc) * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax);
-						mdlDiag(smf->pkd->mdl,ach);
-						sprintf(ach,"PDV-ERR-2 PdV %g %g %g Parts %g %g %g %g %g %g %g %g %g uPred %g %g %g %g %d %d \n",rq * (pPoverRho2 + 0.5*visc) * dvdotdr,rq * (pPoverRho2) * dvdotdr,rq * (0.5*visc) * dvdotdr, visc, dvdotdr, pc, q->c, absmu, hav, smf->a,p->BalsaraSwitch,q->BalsaraSwitch,p->uPred,q->uPred,p->uDot,q->uDot,p->iRung,q->iRung);
-						mdlDiag(smf->pkd->mdl,ach);
-						}
-#endif
 					p->uDotPdV += rq*(PRES_PDV(pPoverRho2,q->PoverRho2))*dvdotdr;
 					q->uDotPdV += rp*(PRES_PDV(q->PoverRho2,pPoverRho2))*dvdotdr;
 					p->uDotAV += rq*(0.5*visc)*dvdotdr;
@@ -3342,23 +3293,11 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					ACCEL(q,1) += rp*dy;
 					ACCEL(q,2) += rp*dz;
 					DEBUGFORCE("sphAV");
-#ifdef PDVCHECK
-					if (p->iOrder==880556 || q->iOrder==880556 || fabs(rq) > 1e50 || fabs(rp) > 1e50 || fabs(ACCEL(p,0))+fabs(ACCEL(p,1))+fabs(ACCEL(p,2))+fabs(pa[0])+fabs(pa[1])+fabs(pa[2]) > 1e50 || fabs(ACCEL(q,0))+fabs(ACCEL(q,1))+fabs(ACCEL(q,2)) > 1e50) {
-						sprintf(ach,"PDV-ACC-2 %d - %d: Den %g - %g u %g - %g PdV+ %g a %g %g %g %g %g %g vPred %g %g %g a %g %g %g vPred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,ACCEL(p,0),ACCEL(p,1),ACCEL(p,2),p->vPred[0],p->vPred[1],p->vPred[2],ACCEL(q,0),ACCEL(q,1),ACCEL(q,2),q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
-						mdlDiag(smf->pkd->mdl,ach);
-						}
-#endif
               		}
 				}
 			else {
 				/* q not active */
 				if (dvdotdr>0.0) {
-#ifdef PDVCHECK
-					if (p->iOrder==880556 || q->iOrder==880556 || !finite(rq * pPoverRho2 * dvdotdr) || !finite(rp * q->PoverRho2 * dvdotdr) || fabs(rq * pPoverRho2 * dvdotdr * 1e-5) > p->u || fabs(rp * q->PoverRho2 * dvdotdr *1e-5) > q->u) {
-						sprintf(ach,"PDV-ERR-3 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g \n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax);
-						mdlDiag(smf->pkd->mdl,ach);
-						}
-#endif
 
 					p->uDotPdV += rq*PRES_PDV(pPoverRho2,q->PoverRho2)*dvdotdr;
 					rq *= (PRES_ACC(pPoverRho2f,qPoverRho2f));
@@ -3368,12 +3307,6 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					pa[1] -= rq*dy;
 					pa[2] -= rq*dz;
 					DEBUGFORCE("sphB ");
-#ifdef PDVCHECK
-					if (p->iOrder==880556 || q->iOrder==880556 || fabs(rq) > 1e50 || fabs(ACCEL(p,0))+fabs(ACCEL(p,1))+fabs(ACCEL(p,2))+fabs(pa[0])+fabs(pa[1])+fabs(pa[2]) > 1e50) {
-						sprintf(ach,"PDV-ACC-3 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
-						mdlDiag(smf->pkd->mdl,ach);
-						}
-#endif
               		}
 				else {
              		/* h mean */
@@ -3388,12 +3321,6 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					visc = SWITCHCOMBINE(p,q)*
 					  (smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
 					  *absmu/(pDensity + q->fDensity);
-#ifdef PDVCHECK
-					if (p->iOrder==880556 || q->iOrder==880556 || !finite(rq * (pPoverRho2 + 0.5*visc) * dvdotdr) || !finite(rp * (q->PoverRho2 + 0.5*visc) * dvdotdr) || fabs(rq * (pPoverRho2 + 0.5*visc) * dvdotdr * 1e-5) > p->u || fabs(rp * (q->PoverRho2 + 0.5*visc) * dvdotdr *1e-5) > q->u) {
-						sprintf(ach,"PDV-ERR-4 %d - %d: Den %g - %g u %g - %g PdV+ %g %g %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g \n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * (pPoverRho2 + 0.5*visc) * dvdotdr,rq * (pPoverRho2) * dvdotdr,rq * (0.5*visc) * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax);
-						mdlDiag(smf->pkd->mdl,ach);
-						}
-#endif
 					p->uDotPdV += rq*(PRES_PDV(pPoverRho2,q->PoverRho2))*dvdotdr;
 					p->uDotAV += rq*(0.5*visc)*dvdotdr;
 					rq *= (PRES_ACC(pPoverRho2f,qPoverRho2f) + visc);
@@ -3403,12 +3330,6 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 					pa[1] -= rq*dy;
 					pa[2] -= rq*dz; 
 					DEBUGFORCE("sphBV");
-#ifdef PDVCHECK
-					if (p->iOrder==880556 || q->iOrder==880556 || fabs(rq) > 1e50 || fabs(ACCEL(p,0))+fabs(ACCEL(p,1))+fabs(ACCEL(p,2))+fabs(pa[0])+fabs(pa[1])+fabs(pa[2]) > 1e50 ) {
-						sprintf(ach,"PDV-ACC-4 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
-						mdlDiag(smf->pkd->mdl,ach);
-						}
-#endif
              		}
 				}
 	        }
@@ -3448,8 +3369,6 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 
 			if (dvdotdr>0.0) {
-#ifdef PDVCHECK
-#endif
 				q->uDotPdV += rp*PRES_PDV(q->PoverRho2,pPoverRho2)*dvdotdr;
 				rp *= (PRES_ACC(pPoverRho2f,qPoverRho2f));
 				rp *= aFac; /* convert to comoving acceleration */
@@ -3458,12 +3377,6 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		        ACCEL(q,1) += rp*dy;
 		        ACCEL(q,2) += rp*dz;
 			DEBUGFORCE("sphC ");
-#ifdef PDVCHECK
-				if (p->iOrder==880556 || q->iOrder==880556 || fabs(rp) > 1e50 || fabs(ACCEL(q,0))+fabs(ACCEL(q,1))+fabs(ACCEL(q,2)) > 1e50) {
-					sprintf(ach,"PDV-ACC-5 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
-					mdlDiag(smf->pkd->mdl,ach);
-					}
-#endif
 				}
 			else {
 				/* h mean */
@@ -3478,8 +3391,6 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				visc = SWITCHCOMBINE(p,q)*
 				  (smf->alpha*(pc + q->c) + smf->beta*2*absmu) 
 				  *absmu/(pDensity + q->fDensity);
-#ifdef PDVCHECK
-#endif
 				q->uDotPdV += rp*(PRES_PDV(q->PoverRho2,pPoverRho2))*dvdotdr;
 				q->uDotAV += rp*(0.5*visc)*dvdotdr;
 				rp *= (PRES_ACC(pPoverRho2f,qPoverRho2f) + visc);
@@ -3489,12 +3400,6 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		        ACCEL(q,1) += rp*dy;
 		        ACCEL(q,2) += rp*dz;
 			DEBUGFORCE("sphCV");
-#ifdef PDVCHECK
-				if (p->iOrder==880556 || q->iOrder==880556 || fabs(rp) > 1e50 || fabs(ACCEL(q,0))+fabs(ACCEL(q,1))+fabs(ACCEL(q,2)) > 1e50) {
-					sprintf(ach,"PDV-ACC-6 %d - %d: Den %g - %g u %g - %g PdV+ %g v %g %g %g Pred %g %g %g v %g %g %g Pred %g %g %g fB %g %g - %g %g a %g - %g\n",p->iOrder,q->iOrder,p->fDensity,q->fDensity,p->u,q->u,rq * pPoverRho2 * dvdotdr,p->v[0],p->v[1],p->v[2],p->vPred[0],p->vPred[1],p->vPred[2],q->v[0],q->v[1],q->v[2],q->vPred[0],q->vPred[1],q->vPred[2],sqrt(p->fBall2),p->fBallMax,sqrt(q->fBall2),q->fBallMax,rp,rq);
-					mdlDiag(smf->pkd->mdl,ach);
-					}
-#endif
 				}
 	        }
 		} 
@@ -5624,11 +5529,6 @@ void initShareWithHotGas(void *p1)
 	if(!TYPETest(((PARTICLE *)p1), TYPE_DELETED)) {
 		((PARTICLE *)p1)->u = 0;  
 		((PARTICLE *)p1)->uPred = 0;
-#ifdef PROMOTEPOSSHARE
-		((PARTICLE *)p1)->r[0] = 0;  
-		((PARTICLE *)p1)->r[1] = 0;  
-		((PARTICLE *)p1)->r[2] = 0;  
-#endif
 		}
     }
 
@@ -5640,11 +5540,6 @@ void combShareWithHotGas(void *vp1,void *vp2)
 	if(!TYPETest((p1), TYPE_DELETED)) {
         p1->u = p1->u + p2->u;
         p1->uPred = p1->uPred + p2->uPred;
-#ifdef PROMOTEPOSSHARE
-		p1->r[0] += p2->r[0];
-		p1->r[1] += p2->r[1];
-		p1->r[2] += p2->r[2];
-#endif
 		}
     }
 
@@ -5706,10 +5601,6 @@ void ShareWithHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             q->u += dE/q->fMass;
             p->uPred -=  dE/p->fMass;
             p->u -=  dE/p->fMass;
-#ifdef PROMOTEPOSSHARE
-            /* Code to change position of newly promoted particle */
-            assert(0);
-#endif
             {
             Tp = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, p->fMetals );
             Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &p->CoolParticle, q->uPred, q->fDensity, q->fMetals );

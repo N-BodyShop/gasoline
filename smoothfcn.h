@@ -1,5 +1,5 @@
-#ifndef SMOOTHFCN_INCLUDED
-#define SMOOTHFCN_INCLUDED
+#ifndef SMOOTHFCN_HINCLUDED
+#define SMOOTHFCN_HINCLUDED
 
 #include "pkd.h"
 #include "floattype.h"

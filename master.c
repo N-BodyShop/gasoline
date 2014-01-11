@@ -2770,9 +2770,6 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef DEBUG
 	fprintf(fp," DEBUG");
 #endif
-#ifdef ALTSPH
-	fprintf(fp," ALTSPH");
-#endif
 #ifdef SUPERCOOL
 	fprintf(fp," SUPERCOOL");
 #endif
@@ -9286,15 +9283,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     {
 #ifdef GASOLINE
 
-#ifdef TESTSPH
-    int iDump = 0;
-    if (dTime > 30351.157 && iKickRung == 0) {
-/*    if (dTime > 30 && iKickRung == 0) {*/
-        printf("DUMP: Starting Dump\n");
-        iDump = 1;
-        msrActiveType(msr,TYPE_GAS,(1<<20));
-        }
-#endif
 
 /*
 ** Build Tree for SPH
@@ -9476,12 +9464,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     
     msrBallMax(msr,iKickRung,1);
 
-#ifdef TESTSPH
-    if (iDump) {
-	printf("DUMP: Terminating\n");
-	assert(0);
-	}
-#endif
 
     
 #else

@@ -524,9 +524,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				*/
 				xdr_float(&xdrs,&fTmp);
 				vTemp = fTmp;
-#ifdef FBPARTICLETSTART
-                if (fTmp > FBPARTICLETSTART) TYPESet(p, TYPE_FEEDBACK);
-#endif
 				p->u = dTuFac*vTemp;
 				p->uPred = dTuFac*vTemp;
 // Special purpose hack for testing noncooling
@@ -1814,9 +1811,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 	}
 #ifdef SINKINGOUTVPRED
 	if (TYPETest(p,TYPE_SINKING)) {
-#ifdef SINKDBG
-	  if (p->iOrder == 55) printf("SINKINGKICKOUT %d, %g %g  %g %g  %g %g\n",p->iOrder,p->vPred[0],p->v[0],p->vPred[1],p->v[1],p->vPred[2],p->v[2]);
-#endif
 	  for (j=0;j<3;++j) {
 	    vTemp = dvFac*p->vPred[j];			
 	    fTmp = vTemp;
@@ -4239,11 +4233,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 						    +(sinth2-sinth1)*p->vSinkingTang0Unit[j]);
 				}
 #endif
-#ifdef SINKDBG
-			    if (p->iOrder == 55) {
-				printf("SINKINGDRIFT %d: %g %g %lf %lf, %g %g\n",p->iOrder,th1,th2,r1,r2,dTime,dTime+dDelta);
-				}
-#endif
 			    }
 		    
 #endif
@@ -4317,11 +4306,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 #endif
 
 #ifdef SINKING
-#ifdef SINKDBG
-			if (p->iOrder == 55) {
-			    printf("SINKDRIFT %g, %g %g %g, %g %g %g: %d %g\n",dTime+dDelta,p->v[0],p->v[1],p->v[2],p->r[0],p->r[1],p->r[2],p->iOrder,p->fMass);
-			    }
-#endif
 #endif
 #ifdef SLIDING_PATCH
 			p->v[1] += fShear;
@@ -4405,9 +4389,6 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 					p->vPred[j] += p->vSinkingTang0Mag*sqr02*(-sinth2*p->rSinking0Unit[j]+costh2*p->vSinkingTang0Unit[j])+p->vSinkingr0*(costh2*p->rSinking0Unit[j]+sinth2*p->vSinkingTang0Unit[j]);
 					}
 				    }
-#ifdef SINKDBG
-				if (p->iOrder == 55) printf("SINKINGKICK %d %g, %g %g  %g %g  %g %g\n",p->iOrder,dTimeEnd,p->vPred[0],p->v[0],p->vPred[1],p->v[1],p->vPred[2],p->v[2]);
-#endif
 #endif /* SINKING */
 				if (iGasModel != GASMODEL_ISOTHERMAL && iGasModel != GASMODEL_GLASS) {
 #ifndef NOCOOLING				
@@ -6332,7 +6313,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 #ifdef UNONCOOL
             /* 2nd order estimator for Conv -- note that PdV etc ...should already be 2nd order via Leap Frog */
             uNoncoolPredTmp = p->uNoncool+p->uNoncoolDot*duDelta*0.5;
-#ifdef UNONCOOLCONV
+#ifndef MASSNONCOOL
             uNoncoolDotConv = uNoncoolPredTmp*
                 pkduNoncoolConvRate(pkd,uncc,p->fBall2,uNoncoolPredTmp,p->u+p->uDot*duDelta*0.5); 
 #endif
@@ -7555,9 +7536,6 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 				}
 			    }
 #endif /* (0) */
-#ifdef SINKDBG
-			if (p->iOrder == 55) printf("SINKINGKICKVPRED %d %g, %g %g  %g %g  %g %g\n",p->iOrder,dTimeEnd,p->vPred[0],p->v[0],p->vPred[1],p->v[1],p->vPred[2],p->v[2]);
-#endif
 #endif
 			if (iGasModel != GASMODEL_ISOTHERMAL && iGasModel != GASMODEL_GLASS) {
 #ifndef NOCOOLING

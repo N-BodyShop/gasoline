@@ -1,5 +1,5 @@
-#ifndef TREEZIPTYPES_H
-#define TREEZIPTYPES_H
+#ifndef TREEZIPTYPES_HINCLUDED
+#define TREEZIPTYPES_HINCLUDED
 
 #define TZ_UINT8  unsigned char
 #define TZ_UINT16 unsigned short
