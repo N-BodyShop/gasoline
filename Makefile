@@ -383,8 +383,8 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  smoothfcn.o collision.o qqsmooth.o $(COOLING_OBJ) cosmo.o romberg.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
 	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o \
-	  gss_dumpframe.o rotbar.o special.o ssio.o $(PNG_OBJ) \
-	  treezip.o debug.o
+	  rotbar.o special.o ssio.o $(PNG_OBJ) \
+	  treezip.o 
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 
