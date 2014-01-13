@@ -1,8 +1,13 @@
 #!/bin/bash
 
+#These are defines used for internal purposes that don't need to be user-enabled.
+EXCLUDES='^__i386__$|^__AGGS_H$|HINCLUDED$|^COOLING_COSMO$|^COOLING_BATE$|^COOLING_METAL$|^[/][*]|^TRUE$|^FALSE$|^\#ifdef$|^Y_EMIN$|^AMPI$|^NOCOOLING$|^COOLING_MOLECULARH$|^_CRAYMPP$|^CRAY_T3D$|^CRAY_XT3$|^BOOLEAN$|^MAX$|^COOLING_BOLEY$|^COOLING_DISK$|^COOLING_PLANET$|^COOLING_POLY$|^__crayx1$|^__DATE__$|^__TIME__$|^DBL_MAX$|^FLT_MAX$|^lint$|^__FAST_MATH__$|^__LINALG_H$|^_REENTRANT$|^TWO_PI$|^SINGLE$|^MAXPATHLEN$|^NEWTIME$|^SGN$|^_LARGE_FILES$|^MAXLISTLEN$|^N_DIM$|^SUPPRESSMASSCHECKREPORT$|^DEBUGFORCE$|^NEWGLASS$|^LARGEFBALL$|^NEWINTEG$|^TESTRATE$'
+#Get the defines that are in the Makefile
 MAKEDEFS=`grep "CODE_DEF +=" ../Makefile | sed -e 's/=/ /g' | awk '{print $3;}' | sed -e 's/-D//' | sort | uniq`
-DEFSFOUND=`grep 'ifdef\|ifndef' ../*.[ch] | awk '{print $2;}' |  sort | uniq | grep -v '^__i386__$' | grep -v '^__AGGS_H$' | grep -v 'HINCLUDED$' | grep -v '^COOLING_COSMO$' | grep -v '^COOLING_BATE$' | grep -v '^COOLING_METAL$'  | grep -v "^[/][*]" | grep -v "^TRUE$" | grep -v "^FALSE$" | grep -v "^\#ifdef$" | grep -v "^Y_EMIN$" | grep -v "^AMPI$" | grep -v "^NOCOOLING$" | grep -v "^COOLING_MOLECULARH$" | grep -v "^_CRAYMPP$" | grep -v "^CRAY_T3D$" | grep -v "^CRAY_XT3$" | grep -v "^BOOLEAN$" | grep -v "^MAX$" | grep -v "^COOLING_BOLEY$" | grep -v "^COOLING_DISK$" | grep -v "^COOLING_PLANET$" | grep -v "^COOLING_POLY$" | grep -v "^__crayx1$" | grep -v "^__DATE__$" | grep -v "^__TIME__$" | grep -v "^DBL_MAX$" | grep -v "^FLT_MAX$" | grep -v "^lint$" | grep -v "^__FAST_MATH__$" | grep -v "^__LINALG_H$" | grep -v "^_REENTRANT$" | grep -v "^TWO_PI$" | grep -v "^SINGLE$" | grep -v "^MAXPATHLEN$" | grep -v "^NEWTIME$" | grep -v "^SGN$" | grep -v "^_LARGE_FILES$" | grep -v "^MAXLISTLEN$" | grep -v "^N_DIM$" | grep -v "^SUPPRESSMASSCHECKREPORT$" | grep -v "^DEBUGFORCE$" | grep -v "^NEWGLASS$" | grep -v "^LARGEFBALL$" | grep -v "^NEWINTEG$" | grep -v "^TESTRATE$"`
+#Get the defines that are in the code
+DEFSFOUND=`grep 'ifdef\|ifndef' ../*.[ch] | awk '{print $2;}' |  sort | uniq | grep -v -E $EXCLUDES`
 PASS=true
+#Check for defines missing in the makefile but found in the C
 for DEF in $DEFSFOUND
 do
     echo $MAKEDEFS | grep $DEF> /dev/null
@@ -16,6 +21,8 @@ do
         done
     fi
 done
+
+#Vice Versa
 for DEF in $MAKEDEFS
 do
     echo $DEFSFOUND | grep $DEF> /dev/null
