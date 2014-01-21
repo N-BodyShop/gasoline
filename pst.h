@@ -242,6 +242,7 @@ enum pst_service {
       PST_BALLMAX,
       PST_FORMSINKS,
       PST_FORMSTARS,
+      PST_STARCLUSTERFORMPRECONDITION,
       PST_FEEDBACK,
       PST_GRAVINFLOW,
       PST_CREATEINFLOW,
@@ -563,6 +564,7 @@ struct inGravExternal {
         double dLogHaloVcirc;
         double dLogHaloEps;
         double dLogHaloFlat;
+        double dLogHaloTwoh;
 	int bHernquistSpheroid;
     int bNFWSpheroid;
         double dNFWm200;
@@ -1050,6 +1052,7 @@ struct inDtToRung {
     double dDelta;
     int iMaxRung;
     int bAll;
+    int bDiagExceed;
     };
 struct outDtToRung {
     int iMaxRung;
@@ -1137,24 +1140,11 @@ void pstSetNParts(PST, void *, int, void *, int *);
 
 struct inGetGasPressure {
 	enum GasModel iGasModel; 
-  /* Adiabatic */
-	double gamma;
-	double gammam1;
-	double dResolveJeans;
-	double dCosmoFac;
-    double dtFacCourant;
-    
-  /* Isothermal */
-
-  /* Ion evolving */
-
-
+    struct GasPressureContext gpc;
 #ifdef GLASS
     struct GlassData g;
 #endif
 	};
-
-
 
 /* PST_GETGASPRESSURE */
 void pstGetGasPressure(PST, void *,int,void *,int *);
@@ -1635,6 +1625,8 @@ struct inSphStep {
     double dCosmoFac;
     double dEtaCourant;
     double dEtauDot;
+    double dDiffCoeff;
+    double dEtaDiffusion;
     double dResolveJeans;
     int bViscosityLimitdt;
     };
@@ -1683,6 +1675,10 @@ struct outFormStars
     };
 
 void pstFormStars(PST,void *,int,void *,int *);
+
+/* PST_FORMSTARS */
+/* see starform.h for in and out structs */
+void pstStarClusterFormPrecondition(PST,void *,int,void *,int *);
 
 struct inFeedback
 {

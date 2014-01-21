@@ -497,6 +497,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_FORMSTARS,pst,
 		      (void (*)(void *,void *,int,void *,int *)) pstFormStars,
 		      sizeof(struct inFormStars),sizeof(struct outFormStars));
+    mdlAddService(mdl,PST_STARCLUSTERFORMPRECONDITION,pst,
+              (void (*)(void *,void *,int,void *,int *)) pstStarClusterFormPrecondition,
+              sizeof(struct inStarClusterFormPrecondition),sizeof(struct outStarClusterFormPrecondition));
 	
 	mdlAddService(mdl,PST_FEEDBACK,pst,
 		      (void (*)(void *,void *,int,void *,int *))
@@ -879,7 +882,6 @@ int _pstRejMatch(PST pst,int n1,OREJ *p1,int n2,OREJ *p2,int *pidSwap)
 #define MAX_ITTR	64
 #define EPS_BOUND	0.01
 #define MASS_EPS	1e-11
-/* #define PARANOID_CHECK */
 
 void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 		   int bDoSplitDimFind, int bSplitWork)
@@ -915,9 +917,6 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 	mdlTimer t;
 
 	struct outMassCheck outMass;
-#ifdef PARANOID_CHECK
-	int i,iLowSum,iHighSum;
-#endif
 	int pFlag;	/* 0 => we are splitting all particles at once. 
 			   1 => we first split active, and then inactive. */
 	int nTotalActive;
@@ -1309,40 +1308,6 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 
 	mdlPrintTimer(pst->mdl,"TIME Collected Rejects _pstRootSplit ",&t);
 
-#ifdef PARANOID_CHECK
-	/*
-	 ** This paranoid check no longer works for Active particles, need
-	 ** to modify or remove this!
-	 */
-	iLowSum = 0;
-	iHighSum = 0;
-	for (i=0;i<pst->nLower;++i) {
-		iLowSum += pLowerRej[i].nLocal;
-		iHighSum += pLowerRej[i].nRejects;
-		}
-	for (i=0;i<pst->nUpper;++i) {
-		iHighSum += pUpperRej[i].nLocal;
-		iLowSum += pUpperRej[i].nRejects;
-		}
-	mdlprintf(pst->mdl,"%d l:%d Paranoid Check Final nLow:%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
-		   nLowTot,iLowSum,nHighTot,iHighSum);
-	iLowSum = 0;
-	iHighSum = 0;
-	for (i=0;i<pst->nLower;++i) {
-		iLowSum += pLowerRej[i].nLocal;
-		iHighSum += pLowerRej[i].nRejects;
-		}
-	mdlprintf(pst->mdl,"%d l:%d Paranoid Check Low: nLow:%d == %d, nHigh(rejects):%d == %d\n",pst->idSelf,pst->iLvl,
-		   outWtLow.nLow,iLowSum,outWtLow.nHigh,iHighSum);
-	iLowSum = 0;
-	iHighSum = 0;
-	for (i=0;i<pst->nUpper;++i) {
-		iHighSum += pUpperRej[i].nLocal;
-		iLowSum += pUpperRej[i].nRejects;
-		}
-	mdlprintf(pst->mdl,"%d l:%d Paranoid Check High: nLow(rejects):%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
-		   outWtHigh.nLow,iLowSum,outWtHigh.nHigh,iHighSum);
-#endif
 	
 	pstMassCheck(pst,NULL,0,&outMass,NULL);
 #if 0
@@ -1418,9 +1383,6 @@ void _pstRootSplit_Active_Inactive(PST pst,int iSplitDim,double dMass, int bDoRo
 	char ach[256];	/* Debug */
 
 	struct outMassCheck outMass;
-#ifdef PARANOID_CHECK
-	int i,iLowSum,iHighSum;
-#endif
 	int pFlag,	/* 0 => we are splitting all particles at once. 
 				   1 => we first split active, and then inactive. */
 	    nTotalActive;
@@ -1875,40 +1837,6 @@ void _pstRootSplit_Active_Inactive(PST pst,int iSplitDim,double dMass, int bDoRo
 	mdlGetReply(pst->mdl,pst->idUpper,pUpperRej,&nOut);
 	mdlassert(pst->mdl,nOut/sizeof(OREJ) == pst->nUpper);
 
-#ifdef PARANOID_CHECK
-	/*
-	 ** This paranoid check no longer works for Active particles, need
-	 ** to modify or remove this!
-	 */
-	iLowSum = 0;
-	iHighSum = 0;
-	for (i=0;i<pst->nLower;++i) {
-		iLowSum += pLowerRej[i].nLocal;
-		iHighSum += pLowerRej[i].nRejects;
-		}
-	for (i=0;i<pst->nUpper;++i) {
-		iHighSum += pUpperRej[i].nLocal;
-		iLowSum += pUpperRej[i].nRejects;
-		}
-	printf("%d l:%d nLow:%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
-		   nLow,iLowSum,nHigh,iHighSum);
-	iLowSum = 0;
-	iHighSum = 0;
-	for (i=0;i<pst->nLower;++i) {
-		iLowSum += pLowerRej[i].nLocal;
-		iHighSum += pLowerRej[i].nRejects;
-		}
-	printf("%d l:%d nLow:%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
-		   outWtLow.nLow,iLowSum,outWtLow.nHigh,iHighSum);
-	iLowSum = 0;
-	iHighSum = 0;
-	for (i=0;i<pst->nUpper;++i) {
-		iHighSum += pUpperRej[i].nLocal;
-		iLowSum += pUpperRej[i].nRejects;
-		}
-	printf("%d l:%d nLow:%d == %d, nHigh:%d == %d\n",pst->idSelf,pst->iLvl,
-		   outWtHigh.nLow,iLowSum,outWtHigh.nHigh,iHighSum);
-#endif
 	
 	pstMassCheck(pst,NULL,0,&outMass,NULL);
 #if 0
@@ -3389,7 +3317,7 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			pkdSunIndirect(plcl->pkd,in->aSun,in->bDoSun,in->dSunMass,in->dSunSoft);
 			}
 		if (in->bLogHalo) {
-		        pkdLogHalo(plcl->pkd,in->dLogHaloVcirc,in->dLogHaloEps,in->dLogHaloFlat);
+            pkdLogHalo(plcl->pkd,in->dLogHaloVcirc,in->dLogHaloEps,in->dLogHaloFlat,in->dLogHaloTwoh);
 			}
 		if (in->bHernquistSpheroid) {
 			pkdHernquistSpheroid(plcl->pkd);
@@ -4311,9 +4239,9 @@ void pstDtToRung(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	    }
 	else {
 		out->iMaxRung = pkdDtToRung(plcl->pkd, in->iRung,
-					    in->dDelta, in->iMaxRung, in->bAll,
-					    &(out->nMaxRung),
-					    &(out->iMaxRungIdeal) );
+            in->dDelta, in->iMaxRung, in->bAll, in->bDiagExceed,
+            &(out->nMaxRung),
+            &(out->iMaxRungIdeal) );
 		}
 	if (pnOut) *pnOut = sizeof(*out);
 	}
@@ -4682,8 +4610,7 @@ void pstGetGasPressure(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		case GASMODEL_ADIABATIC: 
 		case GASMODEL_ISOTHERMAL:
 		case GASMODEL_COOLING:
-			pkdGasPressure(plcl->pkd, in->gammam1,in->gamma, in->dResolveJeans,
-                in->dCosmoFac, in->dtFacCourant);
+			pkdGasPressure(plcl->pkd, &in->gpc);
 			break;
 			break;
 		case GASMODEL_GLASS:
@@ -4850,7 +4777,7 @@ void pstSphStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (dtMinGas < *pdtMinGas) *pdtMinGas = dtMinGas;
 		}
 	else {
-		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot,in->dResolveJeans,in->bViscosityLimitdt,pdtMinGas);
+		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot,in->dDiffCoeff,in->dEtaDiffusion,in->dResolveJeans,in->bViscosityLimitdt,pdtMinGas);
 		}
 	if (pnOut) *pnOut = sizeof(double);
 	}
@@ -6264,6 +6191,26 @@ pstFormStars(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			     &out->nFormed, &out->dMassFormed, &out->nDeleted);
 		}
 	if (pnOut) *pnOut = sizeof(struct outFormStars);
+	}
+
+void
+pstStarClusterFormPrecondition(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inStarClusterFormPrecondition *in = vin;
+	struct outStarClusterFormPrecondition *out = vout;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inStarClusterFormPrecondition));
+	if (pst->nLeaves > 1) {
+	    struct outFormStars fsStats;
+	    
+		mdlReqService(pst->mdl,pst->idUpper,PST_STARCLUSTERFORMPRECONDITION,in,nIn);
+		pstStarClusterFormPrecondition(pst->pstLower,in,nIn,vout,pnOut);
+		mdlGetReply(pst->mdl,pst->idUpper,&fsStats,NULL);
+		}
+	else {
+		pkdStarClusterFormPrecondition(pst->plcl->pkd,*in);
+		}
+	if (pnOut) *pnOut = sizeof(struct outStarClusterFormPrecondition);
 	}
 
 void

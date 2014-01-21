@@ -1,5 +1,5 @@
-#ifndef STARTIME_H_INCLUDED
-#define STARTIME_H_INCLUDED
+#ifndef STARTIME_HINCLUDED
+#define STARTIME_HINCLUDED
 /*
   Uses Raiteri, Villata, and Navarro (A&A, 315, 105, 1996) fit to 
   Padova group stellar models to find stellar lifetimes as a 

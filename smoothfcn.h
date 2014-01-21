@@ -1,5 +1,5 @@
-#ifndef SMOOTHFCN_INCLUDED
-#define SMOOTHFCN_INCLUDED
+#ifndef SMOOTHFCN_HINCLUDED
+#define SMOOTHFCN_HINCLUDED
 
 #include "pkd.h"
 #include "floattype.h"
@@ -34,6 +34,7 @@ typedef struct smfParameters {
     int bBHMindv;
     int bBHAccreteAll;
     int bDoBHKick;
+	double dBall2Max;
     double dSinkCurrentDelta;
     double dDeltaStarForm;
 #ifdef GASOLINE
@@ -45,6 +46,7 @@ typedef struct smfParameters {
     double uMin;
     double dtMin; /* Read/Write */
     double dtFacCourant;
+    double dtFacDiffusion;
     double dEtaCourantLong;
     double dDelta;
     int bGeometric;
@@ -64,10 +66,19 @@ typedef struct smfParameters {
     double dSinkFormDivAccCoeff;
     double dSinkTimeEligible;
     double dTime;
+    double dEvapCoeffCode;
+    double dEvapMinTemp;
 #ifdef DIFFUSION
     double dMetalDiffusionCoeff;
     double dThermalDiffusionCoeff;
     int bConstantDiffusion;
+#endif
+#ifdef MASSNONCOOL
+    double dFBInitialMassLoad;
+    double dMultiPhaseMinTemp;
+#endif
+#ifdef PARTICLESPLIT
+    double dInitGasMass;
 #endif
 #ifdef STARFORM
     double dMinMassFrac;
@@ -88,6 +99,7 @@ typedef struct smfParameters {
     int bESF;
     double dESFTime;
     double dESFEnergy; 
+    double dStarClusterRatio;
 #endif    
 #ifdef COLLISIONS
     double dDelta;
@@ -118,6 +130,9 @@ typedef struct nNeighbor {
 	FLOAT dz;
 	} NN;
 
+typedef struct { double r2; NN *pNN; } ISORT;
+
+int CompISORT(const void * a, const void * b);
 
 enum smx_smoothtype {
   SMX_NULL,
@@ -153,8 +168,15 @@ enum smx_smoothtype {
   SMX_SPHPRESSURE,
   SMX_SPHVISCOSITY,
   SMX_HKVISCOSITY,
+#ifdef PARTICLESPLIT
+  SMX_SPLIT_GAS,
+#endif
 #ifdef STARFORM
+  SMX_STARCLUSTERFORM,
   SMX_DIST_DELETED_GAS,
+  SMX_PROMOTE_TO_HOT_GAS,
+  SMX_EVAPORATE_TO_HOT_GAS,
+  SMX_SHARE_WITH_HOT_GAS,
   SMX_DELETE_GAS,
   SMX_DIST_FB_ENERGY,
 #endif
@@ -353,13 +375,37 @@ void HKViscositySym(PARTICLE *,int,NN *,SMF *);
 
 #ifdef STARFORM
 
+/* SMX_STARCLUSTERFORM */
+void initStarClusterForm(void *);
+void combStarClusterForm(void *,void *);
+void StarClusterForm(PARTICLE *,int,NN *,SMF *);
+
 /* SMX_DIST_DELETED_GAS */
 void initDistDeletedGas(void *p1);
 void combDistDeletedGas(void *p1,void *p2);
 void DistDeletedGas(PARTICLE *, int, NN *, SMF *);
 
+/* SMX_EVAPORATE_TO_HOT_GAS */
+void initEvaporateToHotGas(void *p1);
+void combEvaporateToHotGas(void *p1,void *p2);
+void EvaporateToHotGas(PARTICLE *, int, NN *, SMF *);
+
+/* SMX_PROMOTE_TO_HOT_GAS */
+void initPromoteToHotGas(void *p1);
+void combPromoteToHotGas(void *p1,void *p2);
+void PromoteToHotGas(PARTICLE *, int, NN *, SMF *);
+
+/* SMX_SHARE_WITH_HOT_GAS */
+void initShareWithHotGas(void *p1);
+void combShareWithHotGas(void *p1,void *p2);
+void ShareWithHotGas(PARTICLE *, int, NN *, SMF *);
+
 /* SMX_DELETE_GAS */
 void DeleteGas(PARTICLE *, int, NN *, SMF *);
+#ifdef PARTICLESPLIT
+/* SMX_SPLIT_GAS */
+void SplitGas(PARTICLE *, int, NN *, SMF *);
+#endif
 
 /* SMX_DIST_FB_ENERGY */
 void initTreeParticleDistFBEnergy(void *p1);

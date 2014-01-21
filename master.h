@@ -24,7 +24,7 @@
 #define MSR_TREE_NONE		0
 #define MSR_TREE_SPATIAL	1
 #define MSR_TREE_DENSITY	2
-#ifdef OLD_KEPLER/*DEBUG*/
+#ifdef OLD_KEPLER /*DEBUG*/
 #define MSR_TREE_QQ			3
 #endif
 

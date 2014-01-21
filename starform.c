@@ -48,6 +48,7 @@ void stfmInitialize(STFM *pstfm)
     stfm->dBHFormProb = 0.0; /* new BH params */
     stfm->bBHForm = 0;
     stfm->dInitBHMass = 0.0;
+    stfm->dStarClusterMass = 0;
     *pstfm = stfm;
     }
 
@@ -108,28 +109,19 @@ void pkdStarLogFlush(PKD pkd, char *pszFileName)
 
 */
 
-
-void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
-		   double dTime, /* current time */
-		   int *nFormed, /* number of stars formed */
-		   double *dMassFormed,	/* mass of stars formed */
-		   int *nDeleted) /* gas particles deleted */
-{
+/* Returns probability of converting all gas to star in this step */
+double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p, 
+    double dTime /* current time */)
+    {
     double tdyn;
     double tform;
     double tsound;
     double tcool;
     double E,T;
     COOL *cl = pkd->Cool;
-    double dExp = 1.0/(1.0 + cl->z);
-    double dCosmoFac = dExp*dExp*dExp;
-    PARTICLE starp;
-    double dMprob;
-    double dDeltaM;
+    double dMProb;
     double l_jeans2;
     int small_jeans = 0;
-    int j;
-    int newbh; /* tracking whether a new seed BH has formed JMB  */
  #ifdef COOLING_MOLECULARH
     double correL = 1.0;/*correlation length used for H2 shielding, CC*/
     double yH;
@@ -147,29 +139,32 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      * Is particle in convergent part of flow?
      */
 
+#ifdef STARCLUSTERFORM
+#define DIVVOFF
+#endif
+
 #ifndef DIVVOFF
-    if(p->divv >= 0.0)
-	return;
+    if(p->divv >= 0.0) return 0;
 #endif /*DIVVOFF*/
 #ifdef JEANSSF
     T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fMetals );
-    l_jeans2 = M_PI*p->c*p->c/p->fDensity*dCosmoFac;
+    l_jeans2 = M_PI*p->c*p->c/p->fDensity*stfm->dCosmoFac;
 #endif
     /*
      * Determine dynamical time.
      */
-    tdyn = 1.0/sqrt(4.0*M_PI*p->fDensity/dCosmoFac);
+    tdyn = 1.0/sqrt(4.0*M_PI*p->fDensity/stfm->dCosmoFac);
 
     /*
      * Determine cooling time.
      */
 
 #ifdef UNONCOOL
-    /*if (stfm->bTempInclNoncool) */
-    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u+p->uNoncool, p->fMetals );
-#else
-    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fMetals );
+    if (stfm->bTempInclNoncool) 
+        T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u+p->uNoncool, p->fDensity, p->fMetals );
+    else
 #endif
+        T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 
 #ifdef  COOLING_MOLECULARH
 #ifdef NEWSHEAR
@@ -231,7 +226,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     p->small_jeans = small_jeans;
 #endif
 #ifdef SFCONDITIONS
-    if(tcool < 0.0 && T > stfm->dTempMax) return;
+    if(tcool < 0.0 && T > stfm->dTempMax) return 0;
     /*
      * Determine sound crossing time.
      */
@@ -249,12 +244,11 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 #ifdef CHECKSF
     p->small_jeans = small_jeans;
 #endif /*CHECKSF*/
-    if (!small_jeans && tsound <= tdyn)
-        return;
+    if (!small_jeans && tsound <= tdyn) return 0;
 
 #else /* old code (0) */
 /* New code: physical L_J vs. physics smoothing length (with multiplier) */
-    if (l_jeans2 >= 0.25*p->fBall2*dExp*dExp*stfm->dSoftMin*stfm->dSoftMin) return;
+    if (l_jeans2 >= 0.25*p->fBall2*stfm->dExp*stfm->dExp*stfm->dSoftMin*stfm->dSoftMin) return 0;
 
 #ifdef CHECKSF
     p->small_jeans = 1;
@@ -262,7 +256,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 #endif /* old code (0) */
 
 #else /* CHECKSF */
-    if(T > stfm->dTempMax) return;
+    if(T > stfm->dTempMax) return 0;
 #endif /*SFCONDITIONS*/
 
     /*
@@ -270,54 +264,59 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      */
     
     if(p->fDensity < stfm->dOverDenMin ||
-       p->fDensity/dCosmoFac < stfm->dPhysDenMin)
-	return;
+        p->fDensity/stfm->dCosmoFac < stfm->dPhysDenMin) return 0;
 
     if(tcool < 0.0 || tdyn > tcool || T < stfm->dTempMax)
         tform = tdyn;
     else
         tform = tcool;
+
+#ifdef SFBOUND
+    if (p->fDensity < (p->fSigma2+1.8*p->c*p->c)/(p->fBall2*0.25) ) return 0;
+#endif
+
 #ifdef COOLING_MOLECULARH
     if (p->fMetals <= 0.1) yH = 1.0 - 4.0*((0.236 + 2.1*p->fMetals)/4.0) - p->fMetals;
     else yH = 1.0 - 4.0*((-0.446*(p->fMetals - 0.1)/0.9 + 0.446)/4.0) - p->fMetals;
 
     /* For non-zero values of dStarFormEfficiencyH2, set SF efficiency as a multiple of H2 fractional abundance and dStarFormEfficiencyH2, CC*/
     if (stfm->dStarFormEfficiencyH2 == 0) 
-         dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
-    else dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform*
+         dMProb = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
+    else dMProb = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform*
          stfm->dStarFormEfficiencyH2*(2.0*p->CoolParticle.f_H2/yH));
 #ifdef MOLECFRAC_SF_CUTOFF /*Flag to limit star formation to particles with an H2 abundance greater than a threshold value (0.1 below) */
-    if (2.0*p->CoolParticle.f_H2/yH < 0.1) dMprob = 0;
+    if (2.0*p->CoolParticle.f_H2/yH < 0.1) dMProb = 0;
 #endif /* MOLECULAR_SF_CUTOFF */
 #ifdef RHOSF
     /* This is an implementation of SF in which it scales linearly with density above a certain threshold (100 amu/cc below)*/
     if (p->fDensity/dCosmoFac > 100*MHYDR/stfm->dGmPerCcUnit) tform = 1.0/sqrt(4.0*M_PI*100.0*MHYDR/stfm->dGmPerCcUnit);
-    dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform*
+    dMProb = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform*
 		       stfm->dStarFormEfficiencyH2*(2.0*p->CoolParticle.f_H2/yH));
 #endif /* RHOSF */
 #else  /* COOLING_MOLECULARH */  
-    dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
+    dMProb = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
 #ifdef RHOSF
     tform = 1.0/sqrt(4.0*M_PI*stfm->dPhysDenMin);
-    dMprob = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
+    dMProb = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
 #endif /* RHOSF */
 #endif /* COOLING_MOLECULARH */    
 
-    /*
-     * Decrement mass of particle.
-     */
+    return dMProb;
+    }
 
-    if (stfm->dInitStarMass > 0) 
-        dDeltaM = stfm->dInitStarMass;
-    else 
-        dDeltaM = p->fMass*stfm->dStarEff;
 
-    /* No negative or very tiny masses please! */
-    if ( (dDeltaM > p->fMass) ) dDeltaM = p->fMass;
-
-    if(dMprob*p->fMass < dDeltaM*(rand()/((double) RAND_MAX)))
-	return;
-
+void stfmFormStarParticle(STFM stfm, PKD pkd, PARTICLE *p,
+    double dDeltaM, /* Star mass */
+    double dTime, /* current time */
+    int *nFormed, /* number of stars formed */
+    double *dMassFormed,	/* mass of stars formed */
+    int *nDeleted) /* gas particles deleted */
+    { 
+    /* This code makes stars and black holes (some of the time) */
+    PARTICLE starp;
+    int newbh; /* tracking whether a new seed BH has formed JMB  */
+    int j;
+ 
     /* 
      * Note on number of stars formed:
      * n = log(dMinGasMass/dInitMass)/log(1-dStarEff) = max no. stars 
@@ -333,7 +332,7 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      */
 
     starp.fTimeForm = dTime + stfm->dZAMSDelayTime;
-    printf("star   KDK %g %g %g\n",dTime,starp.fTimeForm,stfm->dZAMSDelayTime); //DEBUG dTime for SF
+/*    printf("star   KDK %g %g %g\n",dTime,starp.fTimeForm,stfm->dZAMSDelayTime); //DEBUG dTime for SF */
     starp.fBallMax = 0.0;
     starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in
 				       NewParticle() */
@@ -341,26 +340,26 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     /* Seed BH Formation JMB 1/19/09*/
      newbh = 0;  /* BH tracker */
      if (stfm->bBHForm == 1 && starp.fMetals <= 1.0e-6 && stfm->dBHFormProb > (rand()/((double) RAND_MAX ))) {
-       starp.fTimeForm = -1.0*starp.fTimeForm;
-       newbh = 1;      
-       /* Decrement mass of particle.*/
-       if (stfm->dInitBHMass > 0) 
-	 dDeltaM = stfm->dInitBHMass;  /* reassigning dDeltaM to be initBHmass JMB 6/16/09 */
-       else 
-	 dDeltaM = p->fMass*stfm->dStarEff;
-       /* No negative or very tiny masses please! */
-       if ( (dDeltaM > p->fMass) ) dDeltaM = p->fMass;
-       p->fMass -= dDeltaM;
-       assert(p->fMass >= 0.0);
-       starp.fMass = dDeltaM;
-       starp.fMassForm = dDeltaM;
-	 }
+         starp.fTimeForm = -1.0*starp.fTimeForm;
+         newbh = 1;      
+         /* Decrement mass of particle.*/
+         if (stfm->dInitBHMass > 0) 
+             dDeltaM = stfm->dInitBHMass;  /* reassigning dDeltaM to be initBHmass JMB 6/16/09 */
+         else 
+             dDeltaM = p->fMass*stfm->dStarEff;
+         /* No negative or very tiny masses please! */
+         if ( (dDeltaM > p->fMass) ) dDeltaM = p->fMass;
+         p->fMass -= dDeltaM;
+         assert(p->fMass >= 0.0);
+         starp.fMass = dDeltaM;
+         starp.fMassForm = dDeltaM;
+         }
      else {
-       p->fMass -= dDeltaM;
-       assert(p->fMass >= 0.0);
-       starp.fMass = dDeltaM;
-       starp.fMassForm = dDeltaM;
-     }
+         p->fMass -= dDeltaM;
+         assert(p->fMass >= -dDeltaM*1e-6);
+         starp.fMass = dDeltaM;
+         starp.fMassForm = dDeltaM;
+         }
 
     if(p->fMass < stfm->dMinGasMass) {
 		(*nDeleted)++;
@@ -390,8 +389,8 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 	    pSfEv->vForm[j] = starp.v[j];
 	    }
 	pSfEv->massForm = starp.fMassForm;
-	pSfEv->rhoForm = starp.fDensity/dCosmoFac;
-	pSfEv->TForm = T;
+	pSfEv->rhoForm = starp.fDensity/stfm->dCosmoFac;
+    pSfEv->TForm = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 #ifdef COOLING_MOLECULARH /* Output the H2 fractional abundance in the gas particle*/
 	pSfEv->H2fracForm = 2.0*p->CoolParticle.f_H2/yH;
 #endif
@@ -412,7 +411,43 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
     *dMassFormed += dDeltaM;
     
     pkdNewParticle(pkd, starp);    
+}
 
+void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
+		   double dTime, /* current time */
+		   int *nFormed, /* number of stars formed */
+		   double *dMassFormed,	/* mass of stars formed */
+		   int *nDeleted) /* gas particles deleted */
+{
+double dDeltaM,dMProb;
+    
+#ifdef STARCLUSTERFORM
+    if (TYPETest(p, TYPE_STARFORM)) {
+        dMProb = stfmFormStarProb(stfm, pkd, p, dTime);
+        if (dMProb > 0) {
+            dDeltaM = p->fMass;
+            printf("SCF Clus: %8d %12g %12g STAR from %d\n",p->iOrder,p->fDensity,dMProb,(int) StarClusterFormiOrder(p));
+            stfmFormStarParticle(stfm, pkd, p, dDeltaM, dTime, nFormed,dMassFormed,nDeleted);
+            }
+        else printf("SCF Clus: %8d %12g %12g NO from %d\n",p->iOrder,p->fDensity,dMProb,(int) StarClusterFormiOrder(p));
+        }      
+#else
+    /* probability of converting all gas to star in this step */
+    dMProb = stfmFormStarProb(stfm, pkd, p, dTime);
+    if (dMProb > 0) {
+        /* mass of star particle. */
+        if (stfm->dInitStarMass > 0) 
+            dDeltaM = stfm->dInitStarMass;
+        else 
+            dDeltaM = p->fMass*stfm->dStarEff;
+        /* No negative or very tiny masses please! */
+        if ( (dDeltaM > p->fMass) ) dDeltaM = p->fMass;
+        /* Reduce probability for just dDeltaM/p->fMass becoming star */
+        if(dMProb*p->fMass < dDeltaM*(rand()/((double) RAND_MAX))) return; /* no star */
+
+        stfmFormStarParticle(stfm, pkd, p, dDeltaM, dTime, nFormed,dMassFormed,nDeleted);
+    }
+#endif
 }
 
 void pkdFormStars(PKD pkd, STFM stfm, double dTime, int *nFormed,
@@ -436,6 +471,31 @@ void pkdFormStars(PKD pkd, STFM stfm, double dTime, int *nFormed,
         }
     }
 
+void pkdStarClusterFormPrecondition(PKD pkd, struct inStarClusterFormPrecondition in) {
+    int i;
+    PARTICLE *p;
+    int n = pkdLocal(pkd);
+    
+    for(i = 0; i < n; ++i) {
+        p = &pkd->pStore[i];
+        TYPEReset(p,TYPE_SMOOTHACTIVE|TYPE_ACTIVE|TYPE_STARFORM);
+        if(pkdIsGas(pkd, p) && TYPETest(p, TYPE_DENMAX)) { 
+            double dMProb;
+            dMProb = stfmFormStarProb(&in.stfm, pkd, p,  in.dTime);
+            /* See if all gas becomes star(s) */
+            if(dMProb < (rand()/((double) RAND_MAX))) {
+                printf("SCFPre: %8d %12g %12g DENMAX: NO STAR CLUSTER\n",p->iOrder,p->fDensity,dMProb);
+                continue; /* no star */
+                }
+            printf("SCFPre: %8d %12g %12g DENMAX: STAR CLUSTER ?\n",p->iOrder,p->fDensity,dMProb);
+
+            StarClusterFormfBall2Save(p) = p->fBall2;
+            StarClusterFormiOrder(p) = -1;
+            p->fBall2 = pow(in.stfm.dStarClusterMass/(p->fDensity*(4./3.*M_PI)),0.66666666666667);
+            TYPESet(p,TYPE_SMOOTHACTIVE|TYPE_ACTIVE|TYPE_STARFORM);
+            }
+        }
+    }
 #endif
 
 #ifdef SIMPLESF

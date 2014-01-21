@@ -1,5 +1,5 @@
-#ifndef TREEZIP_H
-#define TREEZIP_H
+#ifndef TREEZIP_HINCLUDED
+#define TREEZIP_HINCLUDED
 
 #include "treeziptypes.h"
 
@@ -30,9 +30,7 @@ typedef unsigned int LABELTYPE;
 
 typedef struct {
 	tzkey k;
-#ifndef NOLABEL
 	LABELTYPE label;
-#endif
 #ifdef DEBUG
 	float pos[3];
 #endif

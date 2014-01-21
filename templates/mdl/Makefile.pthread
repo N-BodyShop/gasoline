@@ -1,0 +1,15 @@
+#
+# Makefile build template for pthread mdl
+#
+
+VPATH	= ..
+CC	= BUILD_CC
+CFLAGS	= BUILD_CFLAGS -D_REENTRANT
+
+default: mdl.o
+
+clean:
+	-rm -f $(OBJ)
+
+mdl.o: ../Makefile.tmpl ../../../pkdgrav/build
+

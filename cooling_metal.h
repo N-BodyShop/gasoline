@@ -324,8 +324,8 @@ void CoolPARTICLEtoPERBARYON(COOL *cl_, PERBARYON *Y, COOLPARTICLE *cp, double Z
 void CoolPERBARYONtoPARTICLE(COOL *cl_, PERBARYON *Y, COOLPARTICLE *cp, double ZMetal);
 
 
-double CoolEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double ZMetal);
-double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double ZMetal);
+double CoolEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double, double ZMetal);
+double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double, double ZMetal);
 
 /* Note: nod to cosmology (z parameter) unavoidable unless we want to access cosmo.[ch] from here */
 void CoolSetTime( COOL *Cool, double dTime, double z );

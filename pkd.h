@@ -17,10 +17,10 @@
 #endif
 
 /* Allow for creation of this many new gas particles */
-#ifdef INFLOWOUTFLOW
-#define NGASBUFFER 1000000000
+#if defined(INFLOWOUTFLOW) || defined(FBPARTICLE) || defined(PARTICLESPLIT)
+#define NIORDERGASBUFFER 1000000000
 #else
-#define NGASBUFFER 0
+#define NIORDERGASBUFFER 0
 #endif
 
 /*
@@ -42,10 +42,24 @@
 #define RTFORCE
 #endif
 
+#if defined(MASSNONCOOL)  && !defined(UNONCOOL)
+#define UNONCOOL
+#endif
+
+#if defined(DENSITYUNOTP) && !defined(DENSITYU)
+#define DENSITYU
+#endif
+
 #ifdef DIFFUSION
+
+#if defined(FEEDBACKDIFFLIMIT) && !defined(DIFFUSIONHARMONIC)
+#define DIFFUSIONHARMONIC
+#endif
+
 #define DIFFRATE(p_) ((p_)->diff)
 #else
 #define DIFFRATE(p_) (1e-30)
+
 #endif
 
 /* Note: UDOT_HYDRO is only correct if there is only thermal pressure (no UNONCOOL or Jeans Floor) */
@@ -53,6 +67,9 @@
 #ifndef PONRHOFLOOR
 #define PONRHOFLOOR 0
 #endif
+
+#define StarClusterFormfBall2Save(p) (p->curlv[0])
+#define StarClusterFormiOrder(p) (p->curlv[1])
 
 /* (note bVWarnings still applies) */
 #define INTERNAL_WARNINGS 1 /* 0=none,1=once,2=always */
@@ -119,6 +136,9 @@ typedef struct particle {
     FLOAT uDot;                 /* Rate of change of u -- for predicting u */
     COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
 #endif
+#ifdef MASSNONCOOL
+    FLOAT fMassNoncool;
+#endif
 #ifdef UNONCOOL
     FLOAT uNoncool;
     FLOAT uNoncoolPred;
@@ -139,6 +159,10 @@ typedef struct particle {
     FLOAT diff;
     FLOAT fMetalsDot;
     FLOAT fMetalsPred;
+#ifdef THERMALCOND
+    FLOAT fThermalCond;
+    FLOAT fThermalLength;
+#endif
 #ifdef MASSDIFF
     FLOAT fMassDot;
     FLOAT fMass0;
@@ -190,8 +214,12 @@ typedef struct particle {
     FLOAT rForm[3];         /* record pos and vel of star formation */
     FLOAT vForm[3];
 #endif
+#ifdef SFBOUND
+    FLOAT fSigma2;
+#endif
 #ifdef STARFORM
     FLOAT uDotFB;
+    FLOAT uDotESF;
     FLOAT fMSN;
     FLOAT fNSN;           
     FLOAT fMOxygenOut;
@@ -264,13 +292,54 @@ typedef struct particle {
 #define GAMMA_JEANS    (2.0)
 #define GAMMA_NONCOOL  (5./3.)
 
+#ifdef GLASS
+struct GlassData {
+    /* Glass */
+	double dGlassPoverRhoL;
+	double dGlassPoverRhoR;
+	double dGlassxL;
+	double dGlassxR;
+	double dxBoundL;
+	double dxBoundR;
+    double dGamma;
+    };
+#endif
+
+struct GasPressureContext {
+    int iGasModel;
+  /* Adiabatic */
+	double gamma;
+	double gammam1;
+	double dResolveJeans;
+	double dCosmoFac;
+    double dtFacCourant;
+  /* Isothermal */
+  /* Ion evolving */
+#ifdef GLASS
+    struct GlassData g;
+#endif
+#ifdef THERMALCOND
+    double dThermalCondCoeffCode;
+    double dThermalCondSatCoeff;
+    double dThermalCond2CoeffCode;
+    double dThermalCond2SatCoeff;
+#endif
+#ifdef PROMOTE
+	double dEvapCoeffCode;
+	double dEvapMinTemp;
+#endif
+    };
+
 typedef struct uNonCoolContext {
     double dNoncoolConvRate;
     double dNoncoolConvRateMul;
     double dNoncoolConvRateMax;
     double dNoncoolConvUMin;
-    double gammam1;
-    double dResolveJeans;
+    struct GasPressureContext gpc;
+#ifdef MASSNONCOOL
+    double dMultiPhaseMinTemp;
+    int bMultiPhaseTempThreshold;
+#endif
     } UNCC;
 
 #define SINK_Lx(_a) (((PARTICLE *) (_a))->uDotPdV)
@@ -316,6 +385,10 @@ typedef struct uNonCoolContext {
 #define TYPE_NEWSINKING        (1<<16)
 #define TYPE_INFLOW            (1<<17)
 #define TYPE_OUTFLOW           (1<<18)
+#define TYPE_FEEDBACK          (1<<19)
+#define TYPE_PROMOTED          (1<<20)
+#define TYPE_DENMAX            (1<<21)
+#define TYPE_STARFORM          (1<<22)
 
 /* Combination Masks */
 #define TYPE_ALLACTIVE                  (TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
@@ -354,12 +427,16 @@ int TYPEClear( PARTICLE *a );
 
 typedef struct chkParticle {
     int iOrder;
+    int iActive;
     FLOAT fMass;
     FLOAT fSoft;
     FLOAT r[3];
     FLOAT v[3];
 #ifdef GASOLINE
     FLOAT u;
+#ifdef MASSNONCOOL
+    FLOAT fMassNoncool;
+#endif
 #ifdef UNONCOOL
     FLOAT uNoncool;
 #endif
@@ -674,19 +751,6 @@ enum GasModel {
 	GASMODEL_GLASS
 	}; 
 
-#ifdef GLASS
-struct GlassData {
-    /* Glass */
-	double dGlassPoverRhoL;
-	double dGlassPoverRhoR;
-	double dGlassxL;
-	double dGlassxR;
-	double dxBoundL;
-	double dxBoundR;
-    double dGamma;
-    };
-#endif
-
 
 #define PKD_ORDERTEMP	256
 
@@ -837,7 +901,7 @@ void pkdAccelStep(PKD pkd, double dEta, double dVelFac, double
 void pkdDensityStep(PKD pkd, double dEta, double dRhoFac);
 
 int pkdOneParticleDtToRung( int iRung,double dDelta,double dt);
-int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll,
+int pkdDtToRung(PKD pkd, int iRung, double dDelta, int iMaxRung, int bAll, int bDiagExceed,
     int *pnMaxRung, int *piMaxRungIdeal );
 void pkdInitDt(PKD pkd, double dDelta);
 int pkdRungParticles(PKD,int);
@@ -892,7 +956,7 @@ void pkdGetNParts(PKD pkd, struct outGetNParts *out );
 void pkdSetNParts(PKD pkd, int nGas, int nDark, int nStar, int, int nMaxOrderGas,
     int nMaxOrderDark);
 void pkdSunIndirect(PKD,double *,int,double,double);
-void pkdLogHalo(PKD, double, double, double);
+void pkdLogHalo(PKD, double, double, double, double);
 void pkdHernquistSpheroid(PKD pkd);
 void pkdNFWSpheroid(PKD pkd, double M_200, double r_200, double c, double dSoft);
 void pkdElliptical(PKD pkd, int bEllipticalDarkNFW);
@@ -911,16 +975,16 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 void pkdUpdateShockTracker(PKD,double, double, double);
 double pkdDtFacCourant( double dEtaCourant, double dCosmoFac );
 double pkdPoverRhoFloorJeansParticle(PKD pkd, double dResolveJeans, PARTICLE *p);
-void pkdGasPressureParticle(PKD pkd, double gammam1, double dResolveJeans, PARTICLE *p, 
+void pkdSetThermalCond(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p);
+void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p, 
     double *pPoverRhoFloorJeans, double *pPoverRhoNoncool, double *pPoverRhoGas, double *pcGas );
-void pkdGasPressure(PKD, double gammam1, double gamma,
-    double dResolveJeans, double dCosmoFac, double dtFacCourant);
+void pkdGasPressure(PKD, struct GasPressureContext *pgpc);
 void pkdGetDensityU(PKD, double);
 void pkdLowerSoundSpeed(PKD, double);
 void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime );
 void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta);
 int pkdSphCurrRung(PKD pkd, int iRung, int bGreater);
-void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, double dResolveJeans, int bViscosityLimitdt, double *pdtMinGas);
+void pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, double dDiffCoeff, double dEtaDiffusion, double dResolveJeans, int bViscosityLimitdt, double *pdtMinGas);
 void pkdSinkStep(PKD pkd, double dtMax );
 void pkdSetSphStep(PKD pkd, double dt );
 void pkdSphViscosityLimiter(PKD pkd, int bOn, int bShockTracker);
@@ -953,7 +1017,7 @@ void pkdMarkEncounters(PKD pkd, double dt);
 void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
     double dTime);
 #endif
-#ifdef OLD_KEPLER/*DEBUG*/
+#ifdef OLD_KEPLER /*DEBUG*/
 int pkdLowerQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);
 int pkdUpperQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);
 void pkdQQCalcBound(PKD pkd, BND *pbnd, BND *pbndActive);

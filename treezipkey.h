@@ -1,5 +1,5 @@
-#ifndef TREEZIPKEY_H
-#define TREEZIPKEY_H
+#ifndef TREEZIPKEY_HINCLUDED
+#define TREEZIPKEY_HINCLUDED
 
 #include "treeziptypes.h"
 

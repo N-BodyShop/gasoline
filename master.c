@@ -530,6 +530,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dSoft = 0.0;
 	prmAddParam(msr->prm,"dSoft",2,&msr->param.dSoft,sizeof(double),"e",
 				"<gravitational softening length> = 0.0");
+	msr->param.dBall2Max = FLT_MAX;
+	prmAddParam(msr->prm,"dBall2Max",2,&msr->param.dSoftMax,sizeof(double),"dBall2Max",
+				"<maximum SPH smoothing length>");
 	msr->param.dSoftMax = 0.0;
 	prmAddParam(msr->prm,"dSoftMax",2,&msr->param.dSoftMax,sizeof(double),"eMax",
 				"<maximum comoving gravitational softening length (abs or multiplier)> = 0.0");
@@ -942,6 +945,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dhMinOverSoft",2,&msr->param.dhMinOverSoft,
 				sizeof(double),"hmin",
 				"<Minimum h as a fraction of Softening> = 0.0");
+#ifdef NSMOOTHINNER
+	if(msr->param.dhMinOverSoft != 0)
+	{
+		printf("dhMinOverSoft is incompatible with NSMOOTHINNER");
+		assert(0);
+	}
+#endif
 	msr->param.dResolveJeans = 0.0;
 	prmAddParam(msr->prm,"dResolveJeans",2,&msr->param.dResolveJeans,
 				sizeof(double),"resjeans",
@@ -982,6 +992,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dLogHaloFlat = 1;
 	prmAddParam(msr->prm,"dLogHaloFlat",2,&msr->param.dLogHaloFlat,
 				sizeof(double),"haloflat","galaxy halo flat");
+	msr->param.dLogHaloSoft = 0;
+	prmAddParam(msr->prm,"dLogHaloSoft",2,&msr->param.dLogHaloSoft,
+				sizeof(double),"halosoft","galaxy halo softening");
 	msr->param.bHernquistSpheroid = 0;
 	prmAddParam(msr->prm,"bHernquistSpheroid",0,&msr->param.bHernquistSpheroid,
 				sizeof(int),"hspher","use/don't use galaxy Hernquist Spheroid = -hspher");
@@ -1176,6 +1189,49 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dThermalDiffusionCoeff",2,&msr->param.dThermalDiffusionCoeff,
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
+#ifdef MASSNONCOOL
+	msr->param.dMultiPhaseMinTemp = 1e5;
+	prmAddParam(msr->prm,"dMultiPhaseMinTemp",2,&msr->param.dMultiPhaseMinTemp,
+				sizeof(double),"multitmin",
+				"<Temperature threshold to use multiphase feedback> = 1e6");
+	msr->param.bMultiPhaseTempThreshold  = 1;
+	prmAddParam(msr->prm,"bMultiPhaseTempThreshold",0,&msr->param.bMultiPhaseTempThreshold ,
+				sizeof(int),"multitthresh",
+				"<Multiphase particles convert when they fall below the above temperature>");
+#endif 
+	msr->param.dEvapMinTemp = 1e5;
+	prmAddParam(msr->prm,"dEvapMinTemp",2,&msr->param.dEvapMinTemp,
+				sizeof(double),"evaptmin",
+				"<Minimumum temperature for evaporation > = 1e5");
+	msr->param.dEvapCoeff = 6.1e-7;
+	prmAddParam(msr->prm,"dEvapCoeff",2,&msr->param.dEvapCoeff,
+				sizeof(double),"evap",
+				"<Evap Coefficient due to thermal Conductivity (electrons), e.g. 6.1e-7 > = 0");
+#ifdef FBPARTICLE
+	msr->param.dFBMassRatio = 0;
+	prmAddParam(msr->prm,"dFBMassRatio",2,&msr->param.dFBMassRatio,
+				sizeof(double),"massratio",
+				"<Fraction of star particle mass each feedback particle must be>");
+#endif
+	msr->param.dThermalCondCoeff = 6.1e-7;
+	prmAddParam(msr->prm,"dThermalCondCoeff",2,&msr->param.dThermalCondCoeff,
+				sizeof(double),"thermalcond",
+				"<Coefficient in Thermal Conductivity (electrons), e.g. 6.1e-7 > = 6.1e-7");
+	msr->param.dThermalCondSatCoeff = 17;
+	prmAddParam(msr->prm,"dThermalCondSatCoeff",2,&msr->param.dThermalCondSatCoeff,
+				sizeof(double),"thermalcondsat",
+				"<Coefficient in Saturated Thermal Conductivity, e.g. 17 > = 17");
+	msr->param.dThermalCond2Coeff = 2.5e3;
+	prmAddParam(msr->prm,"dThermalCond2Coeff",2,&msr->param.dThermalCond2Coeff,
+				sizeof(double),"thermalcond2",
+				"<Coefficient in Thermal Conductivity 2 (atoms), e.g. 2.5e3 > = 2.5e3");
+	msr->param.dThermalCond2SatCoeff = 0.5;
+	prmAddParam(msr->prm,"dThermalCond2SatCoeff",2,&msr->param.dThermalCond2SatCoeff,
+				sizeof(double),"thermalcond2sat",
+				"<Coefficient in Saturated Thermal Conductivity 2, e.g. 0.5 > = 0.5");
+	msr->param.dEtaDiffusion = 0.1;
+	prmAddParam(msr->prm,"dEtaDiffusion",2,&msr->param.dEtaDiffusion,sizeof(double),"etadiff",
+				"<Diffusion dt criterion> = 0.1");
 	msr->param.bConstantDiffusion = 0;
 	prmAddParam(msr->prm,"bConstantDiffusion",0,&msr->param.bConstantDiffusion,
 				sizeof(int),"constdiff",
@@ -1286,7 +1342,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		    sizeof(int), "SSF_bdivv",
 		    "<SF Use div v for star formation> = 1");
 #endif /* SIMPLESF */
-
 #ifdef STARFORM
 	stfmInitialize(&msr->param.stfm);
 	msr->param.stfm->dOverDenMin = 2.0;
@@ -1309,6 +1364,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dMinMassFrac", 2, &msr->param.stfm->dMinMassFrac,
 		    sizeof(double), "stMinFrac",
 		    "<Minimum fraction of average mass of neighbour particles required for gas particles to avoid deletion> = .1");
+#ifdef PARTICLESPLIT
+	msr->param.dInitGasMass = -1;
+	prmAddParam(msr->prm,"dInitGasMass", 2, &msr->param.dInitGasMass,
+		    sizeof(double), "stInitGas",
+		    "<Initial mass of a gas particle> = -1");
+#endif
 	msr->param.stfm->dMinGasMass = 0.0;
 	prmAddParam(msr->prm,"dMinGasMass", 2, &msr->param.stfm->dMinGasMass,
 		    sizeof(double), "stMinGas",
@@ -1350,6 +1411,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.stfm->dInitBHMass = 0.0;
 	prmAddParam(msr->prm,"dInitBHMass",2,&msr->param.stfm->dInitBHMass,
 		    sizeof(double),"bhm0", "<initial BH mass> = 0.0");
+	msr->param.stfm->dStarClusterMass = 1e6;
+	prmAddParam(msr->prm,"dStarClusterMass", 2, &msr->param.stfm->dStarClusterMass,
+		    sizeof(double), "stStarClusterMass",
+		    "<Target Star Cluster Mass> = 1.5e4");
+	msr->param.stfm->dStarClusterRatio = 0.5*(3./5.);
+	prmAddParam(msr->prm,"dStarClusterRatio", 2, &msr->param.stfm->dStarClusterRatio,
+		    sizeof(double), "StarClusterRatio",
+		    "<Star Cluster Ratios> = 0.5*(3./5.)");
 	msr->param.dDeltaStarForm = 1e6;
 	prmAddParam(msr->prm,"dDeltaStarForm", 2, &msr->param.dDeltaStarForm,
 		    sizeof(double), "dDeltaStarForm",
@@ -1375,8 +1444,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 
 /* supernova constants */
 	fbInitialize(&msr->param.fb);
-        snInitialize(&msr->param.sn);
-        snInitConstants(msr->param.sn);
+    snInitialize(&msr->param.sn);
+    snInitConstants(msr->param.sn);
 	msr->param.iRandomSeed = 1;
 	prmAddParam(msr->prm,"iRandomSeed", 1, &msr->param.iRandomSeed,
 		    sizeof(int), "iRand",
@@ -1385,10 +1454,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"iNSNIIQuantum", 1, &msr->param.sn->iNSNIIQuantum,
 		    sizeof(int), "snQuant",
 		    "<Min # SNII per timestep> = 0.");
-	msr->param.sn->dRadPresFrac = 0.0;
-	prmAddParam(msr->prm,"dRadPresFrac", 2, &msr->param.sn->dRadPresFrac,
-		    sizeof(double), "dRadPresFrac",
-		    "<Fraction of Radiation Pressure to Feedback> = 0.0");
 	msr->param.sn->dESN = 0.1e51;
 	prmAddParam(msr->prm,"dESN", 2, &msr->param.sn->dESN,
 		    sizeof(double), "snESN",
@@ -1433,6 +1498,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dIonizeT", 2, &msr->param.dIonizeT,
 		    sizeof(double), "dIT",
 		    "<Ionize Time> = 8000 K");
+#ifdef MASSNONCOOL
+	msr->param.dFBInitialMassLoad = 0.0;
+	prmAddParam(msr->prm,"dFBInitialMassLoad", 2, &msr->param.dFBInitialMassLoad,
+		    sizeof(double), "dFBIML",
+		    "<Initial Mass Loading for Feedback Ejecta> = 0");
+#endif
 #endif /* STARFORM */
 #endif /* GASOLINE */
 #ifdef GLASS
@@ -1970,6 +2041,51 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.dErgPerGmUnit = 1;
 	    }
 
+    /* You enter effective thermal coefficient e.g. kappa0=6.1d-7 erg s^-1 K^-7/2 cm^-1 
+       Code then multiplies by prefactors to 4/25 kappa0 mmw/k (1.5k/mmw)^-5/2 */
+    msr->param.dEvapCoeffCode = msr->param.dEvapCoeff
+        *4/25.*(0.6*MHYDR)/KBOLTZ*pow(1.5*KBOLTZ/(0.6*MHYDR),-2.5);
+    /* Convert final units: g/cm/s (erg/g)^-2.5 to code units 
+           [Later: Multiply by u^5/2 and multiply a length gives mdot   units g/s] */
+    msr->param.dEvapCoeffCode /= 
+        pow(msr->param.dErgPerGmUnit,-2.5)
+        *msr->param.dGmPerCcUnit*pow(msr->param.dKpcUnit*KPCCM,2.0)
+        /msr->param.dSecUnit;
+#ifdef THERMALCOND
+    /* Thermal conductivity, c.f. Tielens p. 448 
+       Heat flux = K(T) grad T,  dE/dt = div K(T) grad T   E = rho u
+          K(T) = 6.1e-7 T^2.5 erg s^-1 deg^-7/2 cm^-1 
+          Silich: B-field reduces K(T) by ~ factor 10
+       we use du/dt = div k(u)/rho grad u    
+          u erg/gm = 1.5 k_B / (0.6*m_H) T  (ionized) */
+    /* Heat flux is k(u) u^2.5 grad u saturating at n_e 3/2 k T_e v_e 
+       k(u) u^2.5 has units of erg (erg/g)^-1 s^-1 cm^-1
+       saturation value ~ 17 rho c_s h  (g s^-1 cm^-1)
+       Assuming primordial v_e ~ 33 c_s, n_e ~ 0.52 n, grad u ~ u/h
+       So dThermalCondSatCoeff ~ 17, so time is 1/17 Courant time */
+
+    /* Convert K(T) to k(u)  erg s^-1 (erg/gm)^-7/2 cm^-1 */
+    msr->param.dThermalCondCoeffCode = msr->param.dThermalCondCoeff
+        *pow(1.5*KBOLTZ/(0.6*MHYDR),-3.5);
+    /* Convert K2(T) to k2(u)  erg s^-1 (erg/gm)^-3/2 cm^-1 */
+    msr->param.dThermalCond2CoeffCode = msr->param.dThermalCond2Coeff
+        *pow(1.5*KBOLTZ/(0.6*MHYDR),-1.5);
+    /* Convert to code units */
+    msr->param.dThermalCondCoeffCode /= 
+        pow(msr->param.dErgPerGmUnit,-3.5)
+        *msr->param.dErgPerGmUnit*msr->param.dGmPerCcUnit
+        *pow(msr->param.dKpcUnit*KPCCM,2.0)
+        /msr->param.dSecUnit;
+    msr->param.dThermalCond2CoeffCode /= 
+        pow(msr->param.dErgPerGmUnit,-1.5)
+        *msr->param.dErgPerGmUnit*msr->param.dGmPerCcUnit
+        *pow(msr->param.dKpcUnit*KPCCM,2.0)
+        /msr->param.dSecUnit;
+#else
+    msr->param.dThermalCondCoeffCode = 0;
+    msr->param.dThermalCond2CoeffCode = 0;
+#endif
+
 #ifndef PEXT
 	if (prmSpecified(msr->prm,"dPext")) {
 	    fprintf(stderr,"External Pressure specified but not compiled for\nUse -DPEXT during compilation\n");
@@ -1978,25 +2094,34 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #endif
 #ifndef LONGRANGESTEP
 	if (msr->param.bLongRangeStep) {
-	    fprintf(stderr,"WARNING: bLongRangeStep requires -DLONGRANGESTEP.\n");
+	    fprintf(stderr,"ERROR: bLongRangeStep requires -DLONGRANGESTEP.\n");
 	    assert(0);
 	    }
 #endif
 #ifndef DIFFUSION
 	if (prmSpecified(msr->prm,"dMetalDiffusionCoeff")) {
-	    fprintf(stderr,"Metal Diffusion Rate specified but not compiled for\nUse -DDIFFUSION during compilation\n");
+	    fprintf(stderr,"ERROR: Metal Diffusion Rate specified but not compiled for\nUse -DDIFFUSION during compilation\n");
 	    assert(0);
 	    }
 #endif
+#if !defined(DIFFUSION) || !defined(THERMALCOND)
+	if (prmSpecified(msr->prm,"dThermalCondCoeff")) {
+	    fprintf(stderr,"ERROR: Thermal Conductivity specified but not compiled for.\nUse -DDIFFUSION and -DTHERMALCOND during compilation\n");
+	    assert(0);
+	    }
+#endif
+#ifdef DIFFUSIONTHERMAL
+    fprintf(stderr," INFO: -DDIFFUSIONTHERMAL is not required -- thermal diffusion is on by default if -DDIFFUSION is on\n");
+#endif
 #if !defined(DIFFUSION) || defined(NODIFFUSIONTHERMAL)
 	if (prmSpecified(msr->prm,"dThermalDiffusionCoeff")) {
-	    fprintf(stderr,"WARNING: Thermal Diffusion Rate specified but not compiled for\nSUsed -DDIFFUSION and NOT -DNODIFFUSIONTHERMAL during compilation\n");
+	    fprintf(stderr,"ERROR: Thermal Diffusion Rate specified but not compiled for\nSUsed -DDIFFUSION and NOT -DNODIFFUSIONTHERMAL during compilation\n");
 	    assert(0);
 	    }
 #endif
 #ifndef DENSITYU
 	if (prmSpecified(msr->prm,"dvturb")) {
-	    fprintf(stderr,"Turbulent v  specified but not compiled for\nUse -DDENSITYU during compilation\n");
+	    fprintf(stderr,"ERROR: Turbulent v  specified but not compiled for\nUse -DDENSITYU during compilation\n");
 	    assert(0);
 	    }
 #endif
@@ -2036,6 +2161,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 		   msr->param.stfm->dInitStarMass > 0.0);
 	    assert(msr->param.stfm->dMinMassFrac > 0.0 && 
 		   msr->param.stfm->dMinMassFrac < 1.0);
+#ifdef PARTICLESPLIT
+	    assert(msr->param.dInitGasMass > 0);
+#endif
 	    if (msr->param.stfm->dInitStarMass > 0) {
 	      /* if (msr->param.stfm->dMinGasMass <= 0) */
 	      /* Only allow 10% underweight star particles */
@@ -2062,17 +2190,31 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	      GCGS/msr->param.dMsolUnit/MSOLG/msr->param.dMsolUnit/MSOLG;
 	    /* convert to system units */
 	    msr->param.stfm->dPhysDenMin *= MHYDR/msr->param.stfm->dGmPerCcUnit;
-            msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
-            msr->param.dIonizeTime *= SECONDSPERYEAR/msr->param.dSecUnit;
-            msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm;
+        msr->param.dDeltaStarForm *= SECONDSPERYEAR/msr->param.dSecUnit;
+        msr->param.dIonizeTime *= SECONDSPERYEAR/msr->param.dSecUnit;
+        msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm;
 	    msr->param.stfm->dZAMSDelayTime *= SECONDSPERYEAR/msr->param.dSecUnit;
 	    msr->param.dESFTime *= SECONDSPERYEAR/msr->param.dSecUnit;
 	    msr->param.dESFEnergy /= MSOLG*msr->param.dErgPerGmUnit;
+        msr->param.stfm->dStarClusterMass /= msr->param.dMsolUnit;
 
 	    msr->param.fb->dSecUnit = msr->param.dSecUnit;
 	    msr->param.fb->dGmUnit = msr->param.dMsolUnit*MSOLG;
 	    msr->param.fb->dErgPerGmUnit = msr->param.dErgPerGmUnit;
 	    msr->param.fb->dInitStarMass = msr->param.stfm->dInitStarMass;
+#ifdef FBPARTICLE
+        msr->param.fb->dDelta = msr->param.dDelta;
+        msr->param.fb->dFBMassRatio = msr->param.dFBMassRatio;
+		if(msr->param.dFBMassRatio == 0) {
+			printf("Please Specify a FB mass ratio");
+			assert(0);
+		}
+		assert(msr->param.dFBMassRatio < 1);
+        msr->param.fb->dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode;
+        msr->param.fb->dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff;
+        msr->param.fb->dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode;
+        msr->param.fb->dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff;
+#endif
 #endif /* STARFORM */
 #ifdef SIMPLESF		
 	    assert(msr->param.SSF_dInitStarMass > 0.0);
@@ -2534,6 +2676,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef RTFORCE
 	fprintf(fp," RTFORCE");
 #endif
+#ifdef MASSNONCOOL
+    fprintf(fp," MASSNONCOOL");
+#endif
 #ifdef UNONCOOL
     fprintf(fp," UNONCOOL");
 #endif
@@ -2563,6 +2708,12 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef WENDLAND
 	fprintf(fp," WENDLAND");
+#endif
+#ifdef QUINTIC
+	fprintf(fp," QUINTIC");
+#endif
+#ifdef NSMOOTHINNER
+	fprintf(fp," NSMOOTHINNER");
 #endif
 #ifdef CHANGESOFT
  	fprintf(fp," CHANGESOFT");
@@ -2618,9 +2769,6 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef DEBUG
 	fprintf(fp," DEBUG");
-#endif
-#ifdef ALTSPH
-	fprintf(fp," ALTSPH");
 #endif
 #ifdef SUPERCOOL
 	fprintf(fp," SUPERCOOL");
@@ -2679,11 +2827,30 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef DTADJUST
 	fprintf(fp, " DTADJUST");
 #endif
+#ifdef TTEST
+    fprintf(stderr,"TTEST is not a valid macro\n");
+    assert(0); 
+#endif
+#ifdef DTTEST
+	fprintf(fp, " DTTEST=%g",DTTEST);
+#endif
+#ifdef EPSACCH
+        fprintf(fp, " ESPACCH");
+#endif
 #ifdef DIFFUSION
 	fprintf(fp, " DIFFUSION");
 #endif
 #ifdef NODIFFUSIONTHERMAL
 	fprintf(fp, " NODIFFUSIONTHERMAL");
+#endif
+#ifdef THERMALCOND
+	fprintf(fp, " THERMALCOND");
+#endif
+#ifdef DIFFUSIONHARMONIC
+	fprintf(fp, " DIFFUSIONHARMONIC");
+#endif
+#ifdef FEEDBACKDIFFLIMIT
+	fprintf(fp, " FEEDBACKDIFFLIMIT");
 #endif
 #ifdef DIFFUSIONPRICE
 	fprintf(fp, " DIFFUSIONPRICE");
@@ -2699,6 +2866,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef INFLOWOUTFLOW
 	fprintf(fp, " INFLOWOUTFLOW");
+#endif
+#ifdef FBPARTICLE
+	fprintf(fp, " FBPARTICLE");
 #endif
 #ifdef STARSINK
 	fprintf(fp, " STARSINK");
@@ -2799,6 +2969,7 @@ void msrLogParams(MSR msr,FILE *fp)
             fprintf(fp," dLogHaloVcirc: %g",msr->param.dLogHaloVcirc );
             fprintf(fp," dLogHaloEps: %g",msr->param.dLogHaloEps );
             fprintf(fp," dLogHaloFlat: %g",msr->param.dLogHaloFlat );
+            fprintf(fp," dLogHaloSoft: %g",msr->param.dLogHaloSoft );
 	    }
 	fprintf(fp," bHernquistSpheroid: %d",msr->param.bHernquistSpheroid );
 	fprintf(fp," bNFWSpheroid: %d",msr->param.bNFWSpheroid );
@@ -2888,6 +3059,12 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dPext: %g",msr->param.dPext);
 	fprintf(fp," dMetalDiffusionCoeff: %g",msr->param.dMetalDiffusionCoeff);
 	fprintf(fp," dThermalDiffusionCoeff: %g",msr->param.dThermalDiffusionCoeff);
+	fprintf(fp," dEvapCoeff: %g",msr->param.dEvapCoeff);
+	fprintf(fp," dThermalCondCoeff: %g",msr->param.dThermalCondCoeff);
+	fprintf(fp," dThermalCondSatCoeff: %g",msr->param.dThermalCondSatCoeff);
+	fprintf(fp," dThermalCond2Coeff: %g",msr->param.dThermalCond2Coeff);
+	fprintf(fp," dThermalCond2SatCoeff: %g",msr->param.dThermalCond2SatCoeff);
+	fprintf(fp," dEtaDiffusion: %g",msr->param.dEtaDiffusion);
 #ifdef DENSITYU
 	fprintf(fp," dvturb: %g",msr->param.dvturb);
 #endif
@@ -2939,7 +3116,6 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dNoncoolConvTimeMin: %g",msr->param.dNoncoolConvTimeMin);
 	fprintf(fp," dNoncoolConvVelMin: %g",msr->param.dNoncoolConvVelMin);
 	fprintf(fp," iNSNIIQuantum: %d",msr->param.sn->iNSNIIQuantum);
-	fprintf(fp," dRadPresFrac: %g",msr->param.sn->dRadPresFrac);
 	fprintf(fp," bSNTurnOffCooling: %i",msr->param.bSNTurnOffCooling);
 	fprintf(fp," bShortCoolShutoff: %i",msr->param.bShortCoolShutoff);
 	fprintf(fp," dExtraCoolShutoff: %g",msr->param.dExtraCoolShutoff);
@@ -2947,6 +3123,10 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bBHForm: %i",msr->param.bBHForm);
 	fprintf(fp," dBHFormProb: %g",msr->param.dBHFormProb);
 	fprintf(fp," dInitBHMass: %g",msr->param.dInitBHMass);
+#ifdef STARCLUSTERFORM
+	fprintf(fp," dStarClusterMass: %g",msr->param.stfm->dStarClusterMass);
+	fprintf(fp," dStarClusterRatio: %g",msr->param.stfm->dStarClusterRatio);
+#endif
 #ifdef COOLING_MOLECULARH
 	fprintf(fp," dStarFormEfficiencyH2: %g",msr->param.stfm->dStarFormEfficiencyH2);
 #endif
@@ -3489,8 +3669,8 @@ double msrReadTipsy(MSR msr)
 	msr->nGas = h.nsph;
 	msr->nStar = h.nstar;
 	msr->nMaxOrderGas = msr->nGas - 1;
-	msr->nMaxOrder = NGASBUFFER + msr->N - 1;  /* iOrder Buffer to allow creating NGASBUFFER gas particles */
-	msr->nMaxOrderDark = NGASBUFFER + msr->nGas + msr->nDark - 1;
+	msr->nMaxOrder = NIORDERGASBUFFER + msr->N - 1;  /* allow creating NIORDERGASBUFFER gas particles */
+	msr->nMaxOrderDark = NIORDERGASBUFFER + msr->nGas + msr->nDark - 1;
 
 	assert(msr->N == msr->nDark+msr->nGas+msr->nStar);
 
@@ -3668,14 +3848,16 @@ double msrReadTipsy(MSR msr)
 	     printf("Data read complete, Wallclock: %f secs\n",dsec);
 	}
 
-	if (msr->param.iReadIOrder) {
+	if (msr->param.iReadIOrder) { 
 		struct outGetNParts outget;
 		struct inSetNParts inset;
+
+        assert(NIORDERGASBUFFER == 0); /* Not compatible with IORDERGASBUFFER */
 		
 		pstGetNParts(msr->pst,NULL,0,&outget,NULL);
-                if (outget.iMaxOrderGas == -1) outget.iMaxOrderGas = 0;
-                if (outget.iMaxOrderDark == -1) outget.iMaxOrderDark = outget.iMaxOrderGas;
-                if (outget.iMaxOrderStar == -1) outget.iMaxOrderStar = outget.iMaxOrderDark;
+        if (outget.iMaxOrderGas == -1) outget.iMaxOrderGas = 0;
+        if (outget.iMaxOrderDark == -1) outget.iMaxOrderDark = outget.iMaxOrderGas;
+        if (outget.iMaxOrderStar == -1) outget.iMaxOrderStar = outget.iMaxOrderDark;
 		assert(outget.nGas == msr->nGas);
 		assert(outget.nDark == msr->nDark);
 		assert(outget.nStar == msr->nStar);
@@ -4214,6 +4396,7 @@ void msrCreateAllStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
     OutputList[(*nOutputList)++]=OUT_POT_ARRAY;
     OutputList[(*nOutputList)++]=OUT_DT_ARRAY;
     if (msrDoDensity(msr)) OutputList[(*nOutputList)++]=OUT_DENSITY_ARRAY;
+    if (msr->param.bDohOutput) OutputList[(*nOutputList)++]=OUT_H_ARRAY;
 }
 
 void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
@@ -4222,8 +4405,14 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
     *nOutputList = 0;
 #ifdef GASOLINE				
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
+#ifdef DENSITYU
+    OutputList[(*nOutputList)++]=OUT_DENSITYU_ARRAY;
+#endif
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
     if (msr->param.bSphStep) OutputList[(*nOutputList)++]=OUT_SPHDT_ARRAY;
+#ifdef MASSNONCOOL
+    OutputList[(*nOutputList)++]=OUT_MASSNONCOOL_ARRAY;
+#endif
 #ifdef UNONCOOL
     OutputList[(*nOutputList)++]=OUT_U_ARRAY;
     OutputList[(*nOutputList)++]=OUT_UNONCOOL_ARRAY;
@@ -4241,6 +4430,9 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
 #ifdef NORMAL
         OutputList[(*nOutputList)++]=OUT_NORMAL_VECTOR;
 #endif
+#endif
+#ifdef SFBOUND
+        OutputList[(*nOutputList)++]=OUT_SIGMA2_ARRAY;
 #endif
         OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
         OutputList[(*nOutputList)++]=OUT_MUMAX_ARRAY;
@@ -4400,12 +4592,24 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDodtOutput) OutputList[(*nOutputList)++]=OUT_DT_ARRAY;
 #ifdef GASOLINE				
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
+#ifdef DENSITYU
+    OutputList[(*nOutputList)++]=OUT_DENSITYU_ARRAY;
+#endif
     if (msr->param.bDoPressureOutput) OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
-    if (msr->param.bDoCSound) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
+    if (msr->param.bDoCSound) {
+#ifdef SFBOUND
+        OutputList[(*nOutputList)++]=OUT_SIGMA2_ARRAY;
+#endif
+        OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
+        }
+#ifdef MASSNONCOOL
+    OutputList[(*nOutputList)++]=OUT_MASSNONCOOL_ARRAY;
+#endif
 #ifdef UNONCOOL
     OutputList[(*nOutputList)++]=OUT_U_ARRAY;
     OutputList[(*nOutputList)++]=OUT_UNONCOOL_ARRAY;
+    OutputList[(*nOutputList)++]=OUT_TEMPINC_ARRAY;
 #endif
     if (msr->param.bDoHydroOutput) {    
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
@@ -4498,9 +4702,17 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDodtOutput) OutputList[(*nOutputList)++]=OUT_DT_ARRAY;
 #ifdef GASOLINE				
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
+#ifdef DENSITYU
+    OutputList[(*nOutputList)++]=OUT_DENSITYU_ARRAY;
+#endif
     if (msr->param.bDoPressureOutput) OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
-    if (msr->param.bDoCSound) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
+    if (msr->param.bDoCSound) {
+#ifdef SFBOUND
+        OutputList[(*nOutputList)++]=OUT_SIGMA2_ARRAY;
+#endif
+        OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
+        }
     if (msr->param.bDoHydroOutput) {    
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
@@ -5342,6 +5554,16 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->dSinkMustAccreteRadius = msr->param.dSinkMustAccreteRadius;
     psmf->iSmoothFlags = 0; /* Initial value, return value in outSmooth */
 #ifdef GASOLINE
+    psmf->dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333)*psmf->a; /* (dx/h) factor */
+    psmf->dEvapMinTemp = msr->param.dEvapMinTemp;
+    psmf->dBall2Max = msr->param.dBall2Max;
+#ifdef PARTICLESPLIT
+    psmf->dInitGasMass = msr->param.dInitGasMass;
+#endif
+#ifdef MASSNONCOOL
+    psmf->dFBInitialMassLoad = msr->param.dFBInitialMassLoad;
+    psmf->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
+#endif
 #ifdef DIFFUSION
     psmf->dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
     psmf->dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
@@ -5355,6 +5577,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->Pext = msr->param.dPext;
     psmf->dtMin = FLOAT_MAXVAL; /* Read/Write */
     psmf->dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,psmf->a); 
+    psmf->dtFacDiffusion = 2*msr->param.dEtaDiffusion; 
     psmf->dEtaCourantLong = msr->param.dEtaCourantLong;
     psmf->dDelta = msr->param.dDelta;
 	{
@@ -5388,6 +5611,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->bESF = msr->param.bESF;
     psmf->dESFTime = msr->param.dESFTime;
     psmf->dESFEnergy = msr->param.dESFEnergy;
+    psmf->dStarClusterRatio = msr->param.stfm->dStarClusterRatio;
 #endif /*STARFORM*/
 #ifdef COLLISIONS
     psmf->dCentMass = msr->param.dCentMass; /* for Hill sphere checks */
@@ -5407,16 +5631,21 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   ** Make sure that the type of tree is a density binary tree!
   */
   assert(msr->iTreeType == MSR_TREE_DENSITY);
-#ifdef STARFORM
-  in.nSmooth = (iSmoothType == SMX_DIST_FB_ENERGY ? msr->param.nSmoothFeedback : msr->param.nSmooth);
-#else
-  in.nSmooth = msr->param.nSmooth;
-#endif
   in.bPeriodic = msr->param.bPeriodic;
   in.bSymmetric = bSymmetric;
   in.iSmoothType = iSmoothType;
-  in.dfBall2OverSoft2 = (msr->param.bLowerSoundSpeed ? 0 :
-      4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft);
+#ifdef STARFORM
+  if (iSmoothType == SMX_DIST_FB_ENERGY) {
+      in.nSmooth = msr->param.nSmoothFeedback;
+      in.dfBall2OverSoft2 = 0;
+      }
+  else
+#endif
+      {
+      in.nSmooth = msr->param.nSmooth;
+      in.dfBall2OverSoft2 = (msr->param.bLowerSoundSpeed ? 0 :
+          4.0*msr->param.dhMinOverSoft*msr->param.dhMinOverSoft);
+      }
   
   msrSmoothFcnParam(msr,dTime,&in.smf);
 
@@ -5741,6 +5970,7 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		    inExt.dLogHaloVcirc = msr->param.dLogHaloVcirc/(sqrt(GCGS*msr->param.dMsolUnit*MSOLG/(msr->param.dKpcUnit*KPCCM))/1e5);
 		    inExt.dLogHaloEps = msr->param.dLogHaloEps/msr->param.dKpcUnit;
 		    inExt.dLogHaloFlat = msr->param.dLogHaloFlat;
+		    inExt.dLogHaloTwoh = 2*msr->param.dLogHaloSoft;
 		    }
 		inExt.bHernquistSpheroid = msr->param.bHernquistSpheroid;
 		inExt.bNFWSpheroid = msr->param.bNFWSpheroid;
@@ -5989,8 +6219,22 @@ void msrSetuNonCoolContext( MSR msr, UNCC *puncc, double a ) {
     puncc->dNoncoolConvRateMul = 1/(a*msr->param.dNoncoolConvTimeMul);
     puncc->dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
     puncc->dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
-    puncc->gammam1 = msr->param.dConstGamma-1;
-    puncc->dResolveJeans = msr->param.dResolveJeans/a;
+    puncc->gpc.gammam1 = msr->param.dConstGamma-1;
+    puncc->gpc.gamma = msr->param.dConstGamma;
+	puncc->gpc.dCosmoFac = a;
+    puncc->gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); //for DTADJUST
+    puncc->gpc.dResolveJeans = msr->param.dResolveJeans/a;
+#ifdef THERMALCOND
+    puncc->gpc.dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333)*a; /* (dx/h) factor */
+    puncc->gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode*a;
+    puncc->gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff/a;
+    puncc->gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode*a;
+    puncc->gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff/a;
+#endif
+#ifdef MASSNONCOOL
+    puncc->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
+    puncc->bMultiPhaseTempThreshold = msr->param.bMultiPhaseTempThreshold;
+#endif
     }
 
 void msrDrift(MSR msr,double dTime,double dDelta)
@@ -6500,8 +6744,6 @@ void msrEmergencyAdjust(MSR msr,int iRung,double dDelta)
         printf("WARNING, %d particles needed emergency rung changes (Maxrung %d -> %d)\n",out.nUn,OldCurrMaxRung, msr->iCurrMaxRung);
 
         if(out.iMaxRungIdeal > msrMaxRung(msr)) {
-            printf("WARNING, TIMESTEPS TOO LARGE, EMERGENCYADJUST: nMaxRung (%d) is greater than ideal rung (%d)\n", 
-                msrMaxRung(msr), out.iMaxRungIdeal);
             fprintf(stderr, "WARNING, TIMESTEPS TOO LARGE, EMERGENCYADJUST: nMaxRung (%d) is greater than ideal rung (%d)\n", 
                 msrMaxRung(msr), out.iMaxRungIdeal);
             }
@@ -6950,8 +7192,9 @@ double msrReadCheck(MSR msr,int *piStep)
 	inset.nMaxOrderDark = msr->nMaxOrderDark;
 	inset.nMaxOrder = msr->nMaxOrder;
 	pstSetNParts(msr->pst,&inset,sizeof(inset),NULL,NULL);
-	intype.nSuperCool = msr->param.nSuperCool;
-	pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL);
+/*  Types stored in checkpoint now */
+//	intype.nSuperCool = msr->param.nSuperCool;
+//	pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL);
 	
 	i = msrCountType(msr, TYPE_GAS, TYPE_GAS);
 	assert(i == msr->nGas);
@@ -7734,12 +7977,11 @@ void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
     in.dDelta = dDelta;
     in.iMaxRung = msrMaxRung(msr);
     in.bAll = bAll;
+    in.bDiagExceed = 1;
 
     pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
 
     if(out.iMaxRungIdeal > msrMaxRung(msr)) {
-        printf("WARNING, TIMESTEPS TOO LARGE: nMaxRung (%d) is greater than ideal rung (%d)\n", 
-            msrMaxRung(msr), out.iMaxRungIdeal);
         fprintf(stderr, "WARNING, TIMESTEPS TOO LARGE: nMaxRung (%d) is greater than ideal rung (%d)\n", 
             msrMaxRung(msr), out.iMaxRungIdeal);
         }
@@ -7749,6 +7991,7 @@ void msrDtToRung(MSR msr, int iRung, double dDelta, int bAll)
                 out.nMaxRung,out.iMaxRung,out.iMaxRung-1);
         
         in.iMaxRung = out.iMaxRung; /* Note this is the forbidden rung so no -1 here */
+        in.bDiagExceed = 1;
         pstDtToRung(msr->pst, &in, sizeof(in), &out, NULL);
         }
 
@@ -8338,6 +8581,7 @@ msrAddDelParticles(MSR msr)
 			pColNParts[i].nAddDark != 0 || pColNParts[i].nAddStar != 0 || pColNParts[i].nDelGas != 0 ||
 			pColNParts[i].nDelDark != 0 || pColNParts[i].nDelStar != 0)
 			msr->iTreeType = MSR_TREE_NONE;
+
 		pNewOrder[i].Gas = msr->nMaxOrderGas + 1;
 		pNewOrder[i].Dark = msr->nMaxOrderDark + 1;
 		pNewOrder[i].Star = msr->nMaxOrder + 1;
@@ -8369,7 +8613,7 @@ msrAddDelParticles(MSR msr)
     pstSetNParts(msr->pst,&in,sizeof(in),NULL,NULL);
     intype.nSuperCool = msr->param.nSuperCool;
 	/* This shouldn't really be necessary -- it is undesirable to do a fix-up like this */
-#ifndef INFLOWOUTFLOW
+#if !defined(INFLOWOUTFLOW) && !defined(FBPARTICLE) && !defined(PARTICLESPLIT)
     pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL); 
 
     i = msrCountType(msr, TYPE_GAS, TYPE_GAS);
@@ -8723,17 +8967,26 @@ void msrGetGasPressure(MSR msr, double dTime)
 	case GASMODEL_ADIABATIC:
 	case GASMODEL_ISOTHERMAL:
 	case  GASMODEL_COOLING:
-		in.gamma = msr->param.dConstGamma;
-		in.gammam1 = in.gamma-1;
-		in.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
-        in.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,in.dCosmoFac); //for DTADJUST
+        in.gpc.iGasModel = in.iGasModel;
+		in.gpc.gamma = msr->param.dConstGamma;
+		in.gpc.gammam1 = in.gpc.gamma-1;
+		in.gpc.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
+        in.gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,in.gpc.dCosmoFac); //for DTADJUST
+#ifdef THERMALCOND
+		in.gpc.dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333)*in.gpc.dCosmoFac; /* (dx/h) factor */
+        in.gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode*in.gpc.dCosmoFac;
+        in.gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff/in.gpc.dCosmoFac;
+        in.gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode*in.gpc.dCosmoFac;
+        in.gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff/in.gpc.dCosmoFac;
+        in.gpc.dEvapMinTemp = msr->param.dEvapMinTemp;
+#endif
 		/*
 		 * If self gravitating, resolve the Jeans Mass
 		 */
 		if(msr->param.bDoGravity && msr->param.bDoSelfGravity)
-		    in.dResolveJeans = msr->param.dResolveJeans/in.dCosmoFac;
+		    in.gpc.dResolveJeans = msr->param.dResolveJeans/in.gpc.dCosmoFac;
 		else
-		    in.dResolveJeans = 0.0;
+		    in.gpc.dResolveJeans = 0.0;
 		break;
 	case GASMODEL_GLASS:
 #ifdef GLASS
@@ -8959,6 +9212,9 @@ void msrSphStep(MSR msr, double dTime, int iKickRung)
     in.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
     in.dEtaCourant = msrEtaCourant(msr);
     in.dEtauDot = msr->param.dEtauDot;
+    in.dDiffCoeff = (msr->param.dMetalDiffusionCoeff > msr->param.dThermalDiffusionCoeff ? 
+        msr->param.dMetalDiffusionCoeff : msr->param.dThermalDiffusionCoeff);
+    in.dEtaDiffusion = msr->param.dEtaDiffusion;
     if(msr->param.bDoGravity && msr->param.bDoSelfGravity)
         in.dResolveJeans = msr->param.dResolveJeans/csmTime2Exp(msr->param.csm,dTime);
     else
@@ -9027,15 +9283,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     {
 #ifdef GASOLINE
 
-#ifdef TESTSPH
-    int iDump = 0;
-    if (dTime > 30351.157 && iKickRung == 0) {
-/*    if (dTime > 30 && iKickRung == 0) {*/
-        printf("DUMP: Starting Dump\n");
-        iDump = 1;
-        msrActiveType(msr,TYPE_GAS,(1<<20));
-        }
-#endif
 
 /*
 ** Build Tree for SPH
@@ -9190,7 +9437,7 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     msrReSmooth(msr,dTime,SMX_SMOOTHBSW,1);
 #endif
 
-#ifdef DENSITYU
+#if defined(DENSITYU) && defined(DENSITYUOLD)
     msrGetDensityU(msr);
 #endif
 /*
@@ -9217,12 +9464,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     
     msrBallMax(msr,iKickRung,1);
 
-#ifdef TESTSPH
-    if (iDump) {
-	printf("DUMP: Terminating\n");
-	assert(0);
-	}
-#endif
 
     
 #else
@@ -9457,7 +9698,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
     struct outFeedback outFB;
     double dTotMass = -1.0, dTotMetals = -1.0, dTotFe = -1.0, 
             dTotOx = -1.0, dTotEnergy = -1.0;
-    double dTotSNEnergy = 0.0;
+    double dTotSNEnergy = 0.0,a;
     int i;
     int iDum;
 
@@ -9465,12 +9706,16 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 
 	sec = msrTime();
 
-        msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, 
+    msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, 
             &dTotFe, &dTotOx, &dTotEnergy, "Form Stars");
-    if(msr->param.bStarForm){
-    
+
+    if(msr->param.bStarForm) {
+        double dExp;
         in.dTime = dTime;
         msr->param.stfm->dDeltaT = dDelta;
+        dExp = csmTime2Exp(msr->param.csm,dTime);
+        msr->param.stfm->dExp = dExp;
+        msr->param.stfm->dCosmoFac = dExp*dExp*dExp;
         in.stfm = *msr->param.stfm;
         
         if (msr->param.bVDetails) printf("Form Stars ... ");
@@ -9483,9 +9728,27 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
             * as described in method 2 below.  Does not scale well otherwise.
             * msrDomainDecomp(msr, 0, 1);
             */
-	
+
         msrBuildTree(msr,1,dTotMass,1);
-        msrSmooth(msr,dTime,SMX_DENSITY,1);
+#ifdef STARCLUSTERFORM
+        /* Set density maxima as active (could also filter on density/temp) */
+        msrActiveExactType(msr,TYPE_GAS|TYPE_DENMAX,TYPE_GAS|TYPE_DENMAX,TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
+        msrSmooth(msr,dTime,SMX_DENSITY,0); 
+        {
+        struct inStarClusterFormPrecondition in;
+        struct outStarClusterFormPrecondition out;
+        in.dTime = dTime;
+        msr->param.stfm->dDeltaT = dDelta;
+        in.stfm = *msr->param.stfm;
+        pstStarClusterFormPrecondition(msr->pst, &in, sizeof(in), &out, NULL);
+        }
+        msrReSmooth(msr,dTime,SMX_STARCLUSTERFORM,1); 
+#else
+        msrSmooth(msr,dTime,SMX_DENSITY,1); 
+#endif
+#ifdef FBPARTICLE
+        msrActiveType(msr,TYPE_STAR|TYPE_GAS,TYPE_SMOOTHACTIVE); /* Density for star */
+#endif
         pstFormStars(msr->pst, &in, sizeof(in), &outFS, NULL);
 	/*
 	 * N.B. no particle shuffling (e.g. treebuilds) can happen
@@ -9530,10 +9793,19 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         msrAddDelParticles(msr);
         msrMassCheck(msr, dTotMass, "Form stars: after particle adjustment");
 
-	dsec = msrTime() - sec;
-	printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
-	LOGTIMINGUPDATE( dsec, TIMING_StarForm );
+        dsec = msrTime() - sec;
+        printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec);
+        LOGTIMINGUPDATE( dsec, TIMING_StarForm );
         }
+#ifdef FBPARTICLE
+    else {
+        msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
+        msrBuildTree(msr,1,dTotMass,1);
+        msrActiveType(msr,TYPE_STAR|TYPE_GAS,TYPE_SMOOTHACTIVE); /* Density for star */
+        msrSmooth(msr,dTime,SMX_DENSITY,1);
+        }
+#endif
+
     /*
      * Calculate energy of SN for any stars for the next timestep.  This
      * requires looking at past star forming events.  Also calculate
@@ -9544,6 +9816,12 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         inFB.dTime = dTime;
         inFB.dDelta = dDelta;
         inFB.fb  = *msr->param.fb;
+#ifdef FBPARTICLE
+        a = csmTime2Exp(msr->param.csm,dTime);
+        inFB.fb.a = a;
+        inFB.fb.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); 
+        inFB.fb.dtFacDiffusion = msr->param.dEtaDiffusion; 
+#endif
         inFB.sn  = *msr->param.sn;
 		if (msr->param.bVDetails) printf("Calculate Feedback ...\n");
 		sec = msrTime();
@@ -9552,17 +9830,17 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		if(msr->param.bVDetails) {
 			printf("Feedback totals: mass, energy, metalicity\n");
 			for(i = 0; i < FB_NFEEDBACKS; i++){
-			  printf("feedback %d: %g %g %g\n", i,
-					   outFB.fbTotals[i].dMassLoss,
-					   outFB.fbTotals[i].dEnergy,
-					   outFB.fbTotals[i].dMassLoss != 0.0 ?
-					   outFB.fbTotals[i].dMetals
-					   /outFB.fbTotals[i].dMassLoss : 0.0);
-                                dTotMetals += outFB.fbTotals[i].dMetals;
-                                dTotFe += outFB.fbTotals[i].dMIron;
-                                dTotOx += outFB.fbTotals[i].dMOxygen;
-                                dTotSNEnergy += outFB.fbTotals[i].dEnergy;
-                                }
+                printf("feedback %d: %g %g %g\n", i,
+                    outFB.fbTotals[i].dMassLoss,
+                    outFB.fbTotals[i].dEnergy,
+                    outFB.fbTotals[i].dMassLoss != 0.0 ?
+                    outFB.fbTotals[i].dMetals
+                    /outFB.fbTotals[i].dMassLoss : 0.0);
+                dTotMetals += outFB.fbTotals[i].dMetals;
+                dTotFe += outFB.fbTotals[i].dMIron;
+                dTotOx += outFB.fbTotals[i].dMOxygen;
+                dTotSNEnergy += outFB.fbTotals[i].dEnergy;
+                }
 			}
 
 
@@ -9570,6 +9848,9 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		 * spread mass lost from FB, (along with energy and metals)
 		 * to neighboring gas particles.
 		 */
+#ifdef FBPARTICLE
+        msrAddDelParticles(msr);
+#else
 		if (msr->param.bVDetails) printf("Distribute FB Energy ...\n");
 		msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
 		msrBuildTree(msr,1,-1.0,1);
@@ -9578,8 +9859,29 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		msrActiveType(msr, TYPE_STAR, TYPE_SMOOTHACTIVE);
 		assert(msr->nSmoothActive == msr->nStar);
 		msrSmooth(msr, dTime, SMX_DIST_FB_ENERGY, 1);
+#endif
+#ifdef PARTICLESPLIT
+        if (msr->param.bVDetails) printf("Splitting Gas ...\n");
+        msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
+        msrBuildTree(msr,1,-1.0,1);
+		msrActiveType(msr, TYPE_GAS, TYPE_SMOOTHACTIVE);
+        msrSmooth(msr, dTime, SMX_SPLIT_GAS, 0);
+		msrResetType(msr, TYPE_GAS, TYPE_SMOOTHACTIVE);
+        msrAddDelParticles(msr);
+#endif
 		msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, &dTotFe, 
                     &dTotOx, &dTotSNEnergy, "Form stars: after feedback");
+#ifdef PROMOTE
+		if (msr->param.bVDetails) printf("Promote cold shell to hot ...\n");
+        if (!(msr->iTreeType == MSR_TREE_DENSITY)) {
+            msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
+            msrBuildTree(msr,1,-1.0,1);
+            }
+        msrResetType(msr,TYPE_FEEDBACK,TYPE_SMOOTHDONE);
+        msrActiveType(msr, TYPE_FEEDBACK, TYPE_SMOOTHACTIVE);
+		msrReSmooth(msr, dTime, SMX_PROMOTE_TO_HOT_GAS, 1);
+		msrReSmooth(msr, dTime, SMX_SHARE_WITH_HOT_GAS, 1);
+#endif        
 
 		dsec = msrTime() - sec;
 		printf("Feedback Calculated, Wallclock: %f secs\n\n",dsec);

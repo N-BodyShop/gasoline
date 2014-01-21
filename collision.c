@@ -1035,7 +1035,7 @@ void pkdDoCollision(PKD pkd,double dt,const COLLIDER *pc1,const COLLIDER *pc2,
 		else if ((CP->iSlideOption == EscVel && v2 < CP->dSlideLimit2*ve2) ||
 				 (CP->iSlideOption == MaxTrv && v2 < CP->dSlideLimit2)) {
 			/*#define EXPERIMENTAL*//*DEBUG*/
-#ifdef EXPERIMENTAL
+#ifdef INELASTICCOLLAPSE
 			/*DEBUG -- new inelastic collapse strategy! does not allow parallel, sliding friction, zero-mass particles, or ghosts though*/
 			double rn[3],vr=0,r2,imr2;
 			(void) fprintf(stderr,"***** COLLAPSE *****\n");
@@ -1264,7 +1264,7 @@ void pkdResetColliders(PKD pkd,int iOrder1,int iOrder2)
 		}
 	}
 
-#ifdef OLD_KEPLER/*DEBUG broken code*/
+#ifdef OLD_KEPLER /*DEBUG broken code*/
 /*
  **	dInteract solves a thorny problem in our planetesimal code, namely
  ** when two elliptical orbits come close enough to be considered 

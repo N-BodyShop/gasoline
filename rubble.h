@@ -1,5 +1,5 @@
-#ifndef _RUBBLE_H
-#define _RUBBLE_H
+#ifndef _RUBBLE_HINCLUDED
+#define _RUBBLE_HINCLUDED
 
 #ifdef RUBBLE_ZML
 

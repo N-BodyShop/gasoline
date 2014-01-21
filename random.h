@@ -1,5 +1,5 @@
-#ifndef RANDOM_H
-#define RANDOM_H
+#ifndef RANDOM_HINCLUDED
+#define RANDOM_HINCLUDED
 
 /* define your favorite random number generator here */
 /* synopsis: rangen() returns random value between 0 and 1 */

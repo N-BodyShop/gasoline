@@ -76,6 +76,12 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return(p->fDensity*p->fDensity*p->PoverRho2);	
 	case OUT_U_ARRAY:
 	    return(p->u);
+	case OUT_MASSNONCOOL_ARRAY:
+#ifdef MASSNONCOOL
+	    return(p->fMassNoncool);
+#else
+	    return(0.);
+#endif
 	case OUT_UNONCOOL_ARRAY:
 #ifdef UNONCOOL
 	    return(p->uNoncool);
@@ -84,10 +90,10 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #endif
 	case OUT_TEMPINC_ARRAY:
 #ifdef UNONCOOL
-	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u+p->uNoncool, p->fMetals );
+	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u+p->uNoncool, p->fDensity, p->fMetals );
 #else
 #ifndef NOCOOLING
-	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
+	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 #else
 	    vTemp = pkd->duTFac*p->u;
 #endif
@@ -95,7 +101,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return(vTemp);
 	case OUT_TEMP_ARRAY:
 #ifndef NOCOOLING
-	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fMetals );
+	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 #else
 	    vTemp = pkd->duTFac*p->u;
 #endif
@@ -137,11 +143,26 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	  return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, correL) );
 #else
 	case OUT_COOL_EDOT_ARRAY:
-	  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	  if(pkdIsGas(pkd, p)) {
+		  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	  }
+	  else {
+		  return 0;
+	  }
 	case OUT_COOL_COOLING_ARRAY:
-	  return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	  if(pkdIsGas(pkd, p)) {
+		  return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	  }
+	  else {
+		  return 0;
+	  }
 	case OUT_COOL_HEATING_ARRAY:
+	  if(pkdIsGas(pkd, p)) {
 	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+	  }
+	  else {
+		  return 0;
+	  }
 #endif
 #else
 #ifdef COOLING_MOLECULARH
@@ -201,6 +222,10 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return(p->ShockTracker);
 	case OUT_DIVRHOV_ARRAY:
 	    return(p->divrhov);
+#endif
+#ifdef SFBOUND
+	case OUT_SIGMA2_ARRAY:
+	    return(p->fSigma2);
 #endif
 #ifdef STARFORM
 	case OUT_IGASORDER_ARRAY:
@@ -365,6 +390,9 @@ void VecFilename(char *achFile, int iType)
 	case OUT_U_ARRAY:
 		strncat(achFile,"u",256);
 		break;
+	case OUT_MASSNONCOOL_ARRAY:
+		strncat(achFile,"MassNoncool",256);
+		break;
 	case OUT_UNONCOOL_ARRAY:
 		strncat(achFile,"uNoncool",256);
 		break;
@@ -475,6 +503,9 @@ case OUT_METALS_ARRAY:
 	        strncat(achFile,"divrhov",256);
             break;
 #endif
+	case OUT_SIGMA2_ARRAY:
+	    strncat(achFile,"sigma2",256);
+            break;
 #ifdef STARFORM
 	case OUT_IGASORDER_ARRAY:
 	    strncat(achFile,"igasorder",256);

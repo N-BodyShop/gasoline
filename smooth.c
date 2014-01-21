@@ -28,6 +28,9 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
     smx->dfBall2OverSoft2 = dfBall2OverSoft2;
     smx->iLowhFix = ( dfBall2OverSoft2 > 0.0 ? LOWHFIX_HOVERSOFT : LOWHFIX_NONE );
     smx->bUseBallMax = 1;
+#ifdef NSMOOTHINNER
+    smx->bSmallBall = 0;
+#endif
 #ifdef SLIDING_PATCH
     smx->dTime = smf->dTime;
     smx->PP = &smf->PP;
@@ -307,6 +310,16 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         smx->fcnPost = NULL;
         break;
 #ifdef STARFORM
+    case SMX_STARCLUSTERFORM:
+        smx->fcnSmooth = StarClusterForm;
+        initParticle = NULL; /* Original Particle */
+        initTreeParticle = NULL; /* Original Particle */
+        init = initStarClusterForm; /* Cached copies */
+        comb = combStarClusterForm;
+        smx->fcnPost = NULL;
+        smx->iLowhFix = LOWHFIX_SINKRADIUS;
+        smx->bUseBallMax = 0;
+        break;
     case SMX_DELETE_GAS:
         assert(bSymmetric == 0);
         smx->fcnSmooth = DeleteGas;
@@ -317,6 +330,18 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         smx->fcnPost = NULL;
         smx->bUseBallMax = 0;
         break;
+#ifdef PARTICLESPLIT
+    case SMX_SPLIT_GAS:
+        assert(bSymmetric == 0);
+        smx->fcnSmooth = SplitGas;
+        initParticle = NULL;
+        initTreeParticle = NULL;
+        init = NULL;
+        comb = NULL;
+        smx->fcnPost = NULL;
+        smx->bUseBallMax = 0;
+        break;
+#endif
     case SMX_DIST_DELETED_GAS:
         assert(bSymmetric != 0);
         smx->fcnSmooth = DistDeletedGas;
@@ -327,9 +352,32 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         smx->fcnPost = NULL;
         smx->bUseBallMax = 0;
         break;
+    case SMX_PROMOTE_TO_HOT_GAS:
+        assert(bSymmetric != 0);
+        smx->fcnSmooth = PromoteToHotGas;
+        initParticle = initPromoteToHotGas;
+        initTreeParticle = initPromoteToHotGas;
+        init = initPromoteToHotGas;
+        comb = combPromoteToHotGas;
+        smx->fcnPost = NULL;
+        smx->bUseBallMax = 0;
+        break;
+    case SMX_SHARE_WITH_HOT_GAS:
+        assert(bSymmetric != 0);
+        smx->fcnSmooth = ShareWithHotGas;
+        initParticle = NULL;
+        initTreeParticle = NULL;
+        init = initShareWithHotGas;
+        comb = combShareWithHotGas;
+        smx->fcnPost = NULL;
+        smx->bUseBallMax = 0;
+        break;
     case SMX_DIST_FB_ENERGY:
         assert(bSymmetric != 0);
         smx->fcnSmooth = DistFBEnergy;
+#ifdef NSMOOTHINNER
+        smx->bSmallBall = 1;
+#endif
         initParticle = NULL;
         initTreeParticle = initTreeParticleDistFBEnergy;
         init = initDistFBEnergy;
@@ -452,7 +500,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
     /*
     ** Allocate Nearest-Neighbor List.
     */
-    smx->nListSize = smx->nSmooth;
+    smx->nListSize = (smx->nSmooth > 1 ? smx->nSmooth : 2);
     smx->nnList = (NN *)malloc(smx->nListSize*sizeof(NN));
     assert(smx->nnList != NULL);
     smx->pbRelease = (int *)malloc(smx->nListSize*sizeof(int));
@@ -737,7 +785,6 @@ PQ *smBallSearchNP(SMX smx,PQ *pq,FLOAT *ri,int *cpStart)
  */
 void smGrowList(SMX smx)
     {
-    smx->nListSize += 1;
     smx->nListSize *= 1.5;
     
     smx->nnList = (NN *) realloc(smx->nnList,smx->nListSize*sizeof(NN));
@@ -1367,6 +1414,7 @@ void smSmooth(SMX smx,SMF *smf)
             }
         }
     else {
+        int nh = 0;
         /* Limit fBall2 growth to help stability and neighbour finding */
         if (smx->bUseBallMax && p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)
             fBall2=p[pi].fBallMax*p[pi].fBallMax;
@@ -1385,6 +1433,9 @@ void smSmooth(SMX smx,SMF *smf)
             ** Move relevant data into Nearest Neighbor array.
             */
             if (pqi->fKey <= fBall2) {
+#ifdef NSMOOTHINNER
+                if (pqi->fKey <= fBall2*0.5) nh++;
+#endif
                 smx->nnList[nCnt].iPid = pqi->id;
                 smx->nnList[nCnt].iIndex = pqi->p;
                 smx->nnList[nCnt].pPart = pqi->pPart;
@@ -1401,6 +1452,37 @@ void smSmooth(SMX smx,SMF *smf)
                 h2 = pqn->fKey;
                 }
             }
+
+#ifdef NSMOOTHINNER
+		int innerCount = floor(nSmooth/2.8);  //The number of neighbours within sqrt(2)h if particles are uniformly distributed.
+        if (nCnt > innerCount && nh < innerCount-4 && !smx->bSmallBall) {
+			assert(innerCount > 4);
+            ISORT *isort;
+            isort = (ISORT *) malloc(sizeof(ISORT)*nCnt);
+            for (i=0;i<nCnt;++i) {
+                isort[i].r2 = smx->nnList[i].fDist2;
+                }
+            qsort( isort, nCnt, sizeof(ISORT), CompISORT );
+            assert(nCnt > innerCount);
+            
+
+			p[pi].fBall2 = -isort[innerCount-1].r2*2; 
+			if(p[pi].fBall2 > smf->dBall2Max)
+			{
+				if (p[pi].fBall2 < smf->dBall2Max)
+				{
+					p[pi].fBall2 = -smf->dBall2Max;
+				}
+				else 
+				{
+					p[pi].fBall2 = -p[pi].fBall2;
+				}
+			}
+            free(isort);
+            }
+		else 
+#endif 
+            {
 
 #if (defined(SLIDING_PATCH) && INTERNAL_WARNINGS)
 
@@ -1444,6 +1526,7 @@ void smSmooth(SMX smx,SMF *smf)
 
         nSmoothed++;
         smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
+                }
         }
 
     /*
@@ -1520,8 +1603,12 @@ void smSmooth(SMX smx,SMF *smf)
             fBall2 = smf->dSinkRadius*smf->dSinkRadius*1.1;
             break;
         default:
-            fprintf(stderr,"Illegal value for iLowhFix %d in smooth\n",smx->iLowhFix);
-            assert(0);
+#ifdef NSMOOTHINNER
+		fBall2 = fabs(p[pi].fBall2);
+#else
+		 fprintf(stderr,"Illegal value for iLowhFix %d in smooth\n",smx->iLowhFix);
+		 assert(0);
+#endif
             }
         for (;;) {
             p[pi].fBall2 = fBall2;

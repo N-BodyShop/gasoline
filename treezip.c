@@ -255,7 +255,6 @@ void tzWriteNode( TZX *tz, tznode *c, int l ) {
 	else {
 /* testing label compression */
 #if (0)
-#ifndef NOLABEL
 		LABELTYPE labelmin,labelmax;
 		unsigned int j,k;
 
@@ -272,7 +271,6 @@ void tzWriteNode( TZX *tz, tznode *c, int l ) {
 /*
 		fprintf(stderr,"label: %i-%i, range %i, %i\n",labelmin,labelmax,labelmax-labelmin,k);
 */
-#endif
 #endif
 		bits = 0;
 #ifdef DEBUG2
@@ -410,9 +408,7 @@ void tzAddPos( TZX *tz, double *r, LABELTYPE label ) {
 			if (c->n < tz->nPerBucket) {
 				/* Bucket isn't full -- add this particle to it and exit */
 				p.k = k;
-#ifndef NOLABEL
 				p.label = label;
-#endif
 #ifdef DEBUG
 				p.pos[0] = r[0];
 				p.pos[1] = r[1];
