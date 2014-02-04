@@ -600,6 +600,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 iSetMask = TYPE_STAR;
                 xdr_float(&xdrs,&fTmp);
                 p->fMass = fTmp;
+#ifdef MASSNONCOOLINIT
+                p->fMassNoncool = 0.5*fTmp;
+#endif
 #ifdef STARFORM
                 p->fMassForm = fTmp;
 #endif

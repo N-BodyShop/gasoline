@@ -135,6 +135,7 @@ CODE_DEF += -DJEANSSOFT #Force the smoothing & softening length to be at least a
 #CODE_DEF += -DM43D #Use a fancier 3D derived M4 Kernel
 #CODE_DEF += -DMASSDIFF #Enable Mass diffusion (probably not a good idea right now)
 CODE_DEF += -DMASSNONCOOL #Use multiphase particles for feedback
+#CODE_DEF += -DMASSNONCOOLINIT #Put half the initial particle mass into noncooling mass.  Useful for debugging.
 #CODE_DEF += -DMODBATEPOLY #Use a polytropic equation of state with COOLING_BATE
 #CODE_DEF += -DMOLECFRAC_SF_CUTOFF #Add a molecular hydrogen threshold for starformation (10% H2)
 #CODE_DEF += -DMS_TST #Print out testing data for the Miller-Scalo IMF
