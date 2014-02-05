@@ -500,6 +500,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 iSetMask = TYPE_GAS; /* saves identity based on Tipsy file in case iOrder changed */
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
+#ifdef MASSNONCOOLINIT
+                p->fMassNoncool = 0.5*fTmp;
+#endif
 				assert(p->fMass > 0.0);
 #ifdef SINKING
 				p->fTrueMass = fTmp;
@@ -527,6 +530,12 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->u = dTuFac*vTemp;
 				p->uPred = dTuFac*vTemp;
 // Special purpose hack for testing noncooling
+#ifdef MASSNONCOOLINIT
+				p->uNoncool = 1e4*p->u; //Make it 1e4 times hotter than the cold component
+				p->uNoncoolPred = 1e4*p->u;
+                p->u = p->u;
+                p->uPred = p->u;
+#endif
 #ifdef UNONCOOLINIT
 				p->uNoncool = p->u;
 				p->uNoncoolPred = p->u;
@@ -600,9 +609,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 iSetMask = TYPE_STAR;
                 xdr_float(&xdrs,&fTmp);
                 p->fMass = fTmp;
-#ifdef MASSNONCOOLINIT
-                p->fMassNoncool = 0.5*fTmp;
-#endif
 #ifdef STARFORM
                 p->fMassForm = fTmp;
 #endif
