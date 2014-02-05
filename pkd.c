@@ -6261,7 +6261,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 
             double PoverRho,PoverRhoGas,PoverRhoNoncool,PoverRhoFloorJeans,cGas;
             double uNoncoolDotConv=0, uNoncoolPredTmp;
-            double uNoncoolDotFB=0, uDotFBThermal=0, uDotPdVNJ, uncPdVFrac;
+            double uNoncoolDotFB=0, uDotFBThermal=0, uDotPdVNJ, uMean;
             int bUpdateStd=1;
 
 #if defined(STARFORM)
@@ -6277,8 +6277,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             if (PoverRho < PoverRhoFloorJeans) PoverRho = PoverRhoFloorJeans;
 
 #ifdef MASSNONCOOL        
-            uncPdVFrac = p->fMassNoncool*p->uNoncoolPred;
-            uncPdVFrac = uncPdVFrac/(uncPdVFrac+(p->fMass-p->fMassNoncool)*p->uPred);
+			uMean = (p->fMassNoncool*p->uNoncoolPred+(p->fMass-p->fMassNoncool)*p->uPred)/p->fMass;
             uDotPdVNJ = p->uDotPdV*(PoverRhoNoncool+PoverRhoGas)/(PONRHOFLOOR + PoverRho); /* remove JeansFloor */
             
             bUpdateStd = (p->fMassNoncool < 0.9*p->fMass);
@@ -6286,7 +6285,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             if (p->fMassNoncool > 0) {
                 assert(p->uNoncool >= 0);
                 
-                uDotSansCooling = (uDotPdVNJ+p->uDotAV)*uncPdVFrac // Fraction of PdV related to uNoncool 
+                uDotSansCooling = (uDotPdVNJ+p->uDotAV)*p->uNoncoolPred/uMean// Fraction of PdV related to uNoncool 
                     + p->uNoncoolDotDiff + uNoncoolDotFB;
 				if ( bCool && p->uNoncool > 0) {
                     cp = p->CoolParticle;
@@ -6311,7 +6310,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             if (p->fDensityU < p->fDensity) fDensity = p->fDensityU*PoverRhoGas/(uncc.gpc.gammam1*p->uPred); 
 #endif
 
-            uDotSansCooling = (uDotPdVNJ+p->uDotAV)*(1-uncPdVFrac) // Fraction of PdV related to u thermal
+            uDotSansCooling = (uDotPdVNJ+p->uDotAV)*p->uPred/uMean// Fraction of PdV related to u thermal
                     + p->uDotDiff + uDotFBThermal + p->uDotESF;
 #else /* !MASSNONCOOL */
 
