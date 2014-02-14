@@ -4444,10 +4444,10 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 						   p->uDotFB *= p->fMassNoncool/(p->fMassNoncool+fMassFlux);
 						   p->fMassNoncool += fMassFlux;
 						   assert(p->fMassNoncool >= 0);
-						   assert(p->uPred > 0);
-						   assert(p->uNoncoolPred > 0);
-						   assert(p->u > 0);
-						   assert(p->uNoncool > 0);
+						   assert(p->uPred >= 0);
+						   assert(p->uNoncoolPred >= 0);
+						   assert(p->u >= 0);
+						   assert(p->uNoncool >= 0);
 					   }
 				   }
 				   else if (p->uPred > p->uNoncoolPred && p->uNoncoolPred > 0) { // No sense in keeping the noncooling mass around if it is much colder than the regular mass
@@ -6299,7 +6299,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 				uDotFBThermal = p->uDotFB;
 			}
 
-            assert(p->uPred > 0);
+            assert(p->uPred >= 0);
             fDensity = p->fDensity*PoverRhoGas/(uncc.gpc.gammam1*p->uPred); /* Density of non-bubble part of particle */
 #ifdef DENSITYU
             if (p->fDensityU < p->fDensity) fDensity = p->fDensityU*PoverRhoGas/(uncc.gpc.gammam1*p->uPred); 
