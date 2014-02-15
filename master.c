@@ -3356,7 +3356,8 @@ void msrSetStopStep(MSR msr, double dTime)
 	else
 	    msr->param.iStopStep = msr->param.nSteps;
 
-	if (msr->param.iStopStep < msr->param.iStartStep) {
+	if (msr->param.nSteps != 0
+            && msr->param.iStopStep < msr->param.iStartStep) {
 	    fprintf(stderr,"ERROR: iStartStep %d > iStopStep %d (nSteps %d)\n",
 		    msr->param.iStartStep,msr->param.iStopStep,
 		    msr->param.nSteps);
