@@ -500,6 +500,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 iSetMask = TYPE_GAS; /* saves identity based on Tipsy file in case iOrder changed */
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
+#ifdef MASSNONCOOLINIT
+                p->fMassNoncool = 0.5*fTmp;
+#endif
 				assert(p->fMass > 0.0);
 #ifdef SINKING
 				p->fTrueMass = fTmp;
@@ -527,6 +530,12 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->u = dTuFac*vTemp;
 				p->uPred = dTuFac*vTemp;
 // Special purpose hack for testing noncooling
+#ifdef MASSNONCOOLINIT
+				p->uNoncool = 1e4*p->u; //Make it 1e4 times hotter than the cold component
+				p->uNoncoolPred = 1e4*p->u;
+                p->u = p->u;
+                p->uPred = p->u;
+#endif
 #ifdef UNONCOOLINIT
 				p->uNoncool = p->u;
 				p->uNoncoolPred = p->u;
@@ -600,9 +609,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 iSetMask = TYPE_STAR;
                 xdr_float(&xdrs,&fTmp);
                 p->fMass = fTmp;
-#ifdef MASSNONCOOLINIT
-                p->fMassNoncool = 0.5*fTmp;
-#endif
 #ifdef STARFORM
                 p->fMassForm = fTmp;
 #endif
@@ -4436,9 +4442,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 				   if(fMassFlux > 0) { // Make sure that the flow is in the right direction
 					   // If all the mass becomes hot, switch to being single-phase
 					   if(fMassFlux > (p->fMass-p->fMassNoncool)) {
-						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
-						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
-						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uPred = (p->uPred*(p->fMass-p->fMassNoncool) + p->uNoncoolPred*p->fMassNoncool)/p->fMass;
+						   p->u = (p->u*(p->fMass-p->fMassNoncool) + p->uNoncool*p->fMassNoncool)/p->fMass;
+						   p->uDot = (p->uDot*(p->fMass-p->fMassNoncool) + p->uNoncoolDot*p->fMassNoncool)/p->fMass;
 						   p->uDotFB *= p->fMassNoncool/p->fMass; //Damn these scaled uDots, we should use a different name!
 						   p->fMassNoncool = 0;
 						   p->uNoncool = 0;
@@ -4458,9 +4464,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 					   }
 				   }
 				   else if (p->uPred > p->uNoncoolPred && p->uNoncoolPred > 0) { // No sense in keeping the noncooling mass around if it is much colder than the regular mass
-						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
-						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
-						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uPred = (p->uPred*(p->fMass-p->fMassNoncool) + p->uNoncoolPred*p->fMassNoncool)/p->fMass;
+						   p->u = (p->u*(p->fMass-p->fMassNoncool) + p->uNoncool*p->fMassNoncool)/p->fMass;
+						   p->uDot = (p->uDot*(p->fMass-p->fMassNoncool) + p->uNoncoolDot*p->fMassNoncool)/p->fMass;
 						   p->uDotFB *= p->fMassNoncool/p->fMass;//Damn these scaled uDots, we should use a different name!
 						   p->fMassNoncool = 0;
 						   p->uNoncool = 0;
@@ -4470,9 +4476,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     FLOAT TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uNoncoolPred, fDensity, p->fMetals );
                     if(TpNC < uncc.dMultiPhaseMinTemp && uncc.bMultiPhaseTempThreshold && p->uNoncoolPred > 0)//Check to make sure the hot phase is still actually hot
                     {
-						   p->uPred = (p->uPred*p->fMass + p->uNoncoolPred*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
-						   p->u = (p->u*p->fMass + p->uNoncool*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
-						   p->uDot = (p->uDot*p->fMass + p->uNoncoolDot*p->fMassNoncool)/(p->fMass+p->fMassNoncool);
+						   p->uPred = (p->uPred*(p->fMass-p->fMassNoncool) + p->uNoncoolPred*p->fMassNoncool)/p->fMass;
+						   p->u = (p->u*(p->fMass-p->fMassNoncool) + p->uNoncool*p->fMassNoncool)/p->fMass;
+						   p->uDot = (p->uDot*(p->fMass-p->fMassNoncool) + p->uNoncoolDot*p->fMassNoncool)/p->fMass;
 						   p->uDotFB *= p->fMassNoncool/p->fMass;//Damn these scaled uDots, we should use a different name!
 						   p->fMassNoncool = 0;
 						   p->uNoncool = 0;
@@ -6262,7 +6268,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 
             double PoverRho,PoverRhoGas,PoverRhoNoncool,PoverRhoFloorJeans,cGas;
             double uNoncoolDotConv=0, uNoncoolPredTmp;
-            double uNoncoolDotFB=0, uDotFBThermal=0, uDotPdVNJ, uncPdVFrac;
+            double uNoncoolDotFB=0, uDotFBThermal=0, uDotPdVNJ, uMean;
             int bUpdateStd=1;
 
 #if defined(STARFORM)
@@ -6278,8 +6284,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             if (PoverRho < PoverRhoFloorJeans) PoverRho = PoverRhoFloorJeans;
 
 #ifdef MASSNONCOOL        
-            uncPdVFrac = p->fMassNoncool*p->uNoncoolPred;
-            uncPdVFrac = uncPdVFrac/(uncPdVFrac+(p->fMass-p->fMassNoncool)*p->uPred);
+			uMean = (p->fMassNoncool*p->uNoncoolPred+(p->fMass-p->fMassNoncool)*p->uPred)/p->fMass;
             uDotPdVNJ = p->uDotPdV*(PoverRhoNoncool+PoverRhoGas)/(PONRHOFLOOR + PoverRho); /* remove JeansFloor */
             
             bUpdateStd = (p->fMassNoncool < 0.9*p->fMass);
@@ -6287,7 +6292,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             if (p->fMassNoncool > 0) {
                 assert(p->uNoncool >= 0);
                 
-                uDotSansCooling = (uDotPdVNJ+p->uDotAV)*uncPdVFrac // Fraction of PdV related to uNoncool 
+                uDotSansCooling = (uDotPdVNJ+p->uDotAV)*p->uNoncoolPred/uMean// Fraction of PdV related to uNoncool 
                     + p->uNoncoolDotDiff + uNoncoolDotFB;
 				if ( bCool && p->uNoncool > 0) {
                     cp = p->CoolParticle;
@@ -6312,7 +6317,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             if (p->fDensityU < p->fDensity) fDensity = p->fDensityU*PoverRhoGas/(uncc.gpc.gammam1*p->uPred); 
 #endif
 
-            uDotSansCooling = (uDotPdVNJ+p->uDotAV)*(1-uncPdVFrac) // Fraction of PdV related to u thermal
+            uDotSansCooling = (uDotPdVNJ+p->uDotAV)*p->uPred/uMean// Fraction of PdV related to u thermal
                     + p->uDotDiff + uDotFBThermal + p->uDotESF;
 #else /* !MASSNONCOOL */
 
