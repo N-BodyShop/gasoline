@@ -375,7 +375,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"enable/disable per thread diagnostic output");
 	msr->param.bOverwrite = 0;
 	prmAddParam(msr->prm,"bOverwrite",0,&msr->param.bOverwrite,sizeof(int),
-				"overwrite","enable/disable checkpoint overwrite = +overwrite");
+				"overwrite","enable/disable checkpoint overwrite = -overwrite");
 	msr->param.bVWarnings = 1;
 	prmAddParam(msr->prm,"bVWarnings",0,&msr->param.bVWarnings,sizeof(int),
 				"vwarnings","enable/disable warnings = +vwarnings");
