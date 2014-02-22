@@ -4670,15 +4670,9 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
 
     for (i=0; i<nOutputList;i++){
         code = FLOAT32;
-        nDim = ((OutputList[i]&OUTTYPEMASK) > OUT_1D3DSPLIT) ? 3 : 1;
-	if ((OutputList[i]&OUTTYPEMASK)!=OutputList[i]) {
-	    nTypes[0] = (OutputList[i]&TYPE_GAS ? msr->nGas : 0);
-	    nTypes[1] = (OutputList[i]&TYPE_DARK ? msr->nDark : 0);
-	    nTypes[2] = (OutputList[i]&TYPE_STAR ? msr->nStar : 0);
-	    }
-	else {
-	    nTypes[0] = msr->nGas;nTypes[1] = msr->nDark;nTypes[2] = msr->nStar;
-	    switch (OutputList[i]){
+        nTypes[0] = msr->nGas;nTypes[1] = msr->nDark;nTypes[2] = msr->nStar;
+        nDim = (OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
+        switch (OutputList[i]){
         case OUT_TIMEFORM_ARRAY:
         case OUT_MASSFORM_ARRAY:
             nTypes[0]=nTypes[1]=0;
@@ -4716,7 +4710,6 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
             nTypes[1]=0;
             break;
             }
-	    }
     
 	/*
 	 * Create vector files
@@ -4725,7 +4718,7 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
             _msrMakePath(plcl->pszDataPath,inOut.achOutFile,achOutFile);
             if (nTypes[k]) {
                 sprintf(achTmpOutFile,"%s/%s/",achOutFile,typenames[k]);
-                VecFilename(achTmpOutFile,OutputList[i]&OUTTYPEMASK);
+                VecFilename(achTmpOutFile,OutputList[i]);
                 fp = fopen(achTmpOutFile,"w");
                 assert(fp != NULL);
                 xdrstdio_create(&xdrs,fp,XDR_ENCODE);
@@ -4775,7 +4768,7 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
             if (nTypes[k]) {
 		
                 sprintf(achTmpOutFile,"%s/%s/",achOutFile,typenames[k]);
-                VecFilename(achTmpOutFile,OutputList[i]&OUTTYPEMASK);
+                VecFilename(achTmpOutFile,OutputList[i]);
                 fp = fopen(achTmpOutFile,"r+");
                 assert(fp != NULL);
                 xdrstdio_create(&xdrs,fp,XDR_ENCODE);

@@ -603,15 +603,8 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     
     pkd->duTFac = duTFac;
     pkd->dvFac = dvFac;
-    if ((iVecType&OUTTYPEMASK)!=iVecType) {
-	nGas = ((iVecType & TYPE_GAS) ? pkd->nGas : 0);
-	nDark = ((iVecType & TYPE_DARK) ? pkd->nDark : 0);
-	nStar = ((iVecType & TYPE_STAR) ? pkd->nStar : 0);
-	iVecType = iVecType&OUTTYPEMASK;
-    }
-    else {
-	nGas = pkd->nGas; nDark = pkd->nDark; nStar = pkd->nStar;
-	switch (iVecType){
+    nGas = pkd->nGas; nDark = pkd->nDark; nStar = pkd->nStar;
+    switch (iVecType){
 	    /* Gas only floats */
         case OUT_COOLTURNONTIME_ARRAY:
         case OUT_DIVV_ARRAY:
@@ -649,8 +642,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         case OUT_UDOTFB_ARRAY:
             nDark=0;
             break;
-	    }
-	}
+        }
         
     /*
      * N-Chilada has a 28 byte header (see FieldHeader in

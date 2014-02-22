@@ -304,7 +304,6 @@ typedef struct uNonCoolContext {
 #define TYPE_DARK              (1<<9)
 #define TYPE_STAR              (1<<10)
 #define TYPE_SUPERCOOL         (1<<11)
-#define OUTTYPEMASK            (TYPE_GAS-1)
 
 /* Particle marked for deletion.  Will be deleted in next
    msrAddDelParticles(); */
