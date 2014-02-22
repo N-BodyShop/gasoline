@@ -628,6 +628,18 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
         case OUT_UDOTPDV_ARRAY:
         case OUT_UDOTAV_ARRAY:
         case OUT_UDOTDIFF_ARRAY:
+        case OUT_PRES_ARRAY:
+        case OUT_BALSARASWITCH_ARRAY:
+        case OUT_SPHDT_ARRAY:
+        case OUT_CSOUND_ARRAY:
+        case OUT_MUMAX_ARRAY:
+        case OUT_METALSDOT_ARRAY:
+        case OUT_OXYGENMASSFRACDOT_ARRAY:
+        case OUT_IRONMASSFRACDOT_ARRAY:
+        case OUT_COOL_EDOT_ARRAY:
+        case OUT_COOL_COOLING_ARRAY:
+        case OUT_COOL_HEATING_ARRAY:
+        case OUT_CURLV_VECTOR:
             nDark=nStar=0;
             break;
         case OUT_IGASORDER_ARRAY:

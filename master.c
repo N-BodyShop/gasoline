@@ -4702,6 +4702,19 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
         case OUT_UDOTPDV_ARRAY:
         case OUT_UDOTAV_ARRAY:
         case OUT_UDOTDIFF_ARRAY:
+        case OUT_PRES_ARRAY:
+        case OUT_DIVV_ARRAY:
+        case OUT_BALSARASWITCH_ARRAY:
+        case OUT_SPHDT_ARRAY:
+        case OUT_CSOUND_ARRAY:
+        case OUT_MUMAX_ARRAY:
+        case OUT_METALSDOT_ARRAY:
+        case OUT_OXYGENMASSFRACDOT_ARRAY:
+        case OUT_IRONMASSFRACDOT_ARRAY:
+        case OUT_COOL_EDOT_ARRAY:
+        case OUT_COOL_COOLING_ARRAY:
+        case OUT_COOL_HEATING_ARRAY:
+        case OUT_CURLV_VECTOR:
             nTypes[1]=nTypes[2]=0;
             break;
         case OUT_OXYGENMASSFRAC_ARRAY:
