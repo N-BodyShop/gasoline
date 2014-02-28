@@ -35,13 +35,17 @@ typedef struct pqNode {
 typedef struct smContext {
 	PKD pkd;
 	int nSmooth;
+    int nSmoothMax;
+    int nSmoothInner;
+    double fBall2InnerFrac;
 	int bPeriodic;
 	int iLowhFix;
     int bUseBallMax;
 	double dfBall2OverSoft2;
+    FLOAT lx,ly,lz;
 	void (*fcnSmooth)(PARTICLE *,int,NN *,SMF *);
 	void (*fcnPost)(PARTICLE *,SMF *);
-	int *piMark;
+	int *piMark; /* deprecated MARK code */
 	int nListSize;
 	NN *nnList;
 	int *pbRelease;
@@ -52,9 +56,6 @@ typedef struct smContext {
 #ifdef SLIDING_PATCH
     double dTime;
     PATCH_PARAMS *PP;
-#endif
-#ifdef NSMOOTHINNER
-	int bSmallBall; //Sometimes need to allow less than 22 neighbours.
 #endif
 	} * SMX;
 
@@ -609,15 +610,34 @@ typedef struct smContext {
     DTEST_dvdr += (DTEST_dvz < DTEST_dvz1 ? DTEST_dvz : DTEST_dvz1);    \
     DTEST_fDist = sqrt(DTEST_dx*DTEST_dx + DTEST_dy*DTEST_dy + DTEST_dz*DTEST_dz); \
     dt_est = DTEST_fDist/((pkdn)->bndDt.cMax - (DTEST_dvdr < 0 ? DTEST_dvdr/DTEST_fDist : 0)); }
-    
 
+void smInitList(SMX smx, int nSmooth);
+void smFinishList(SMX smx);
+void smGrowList(SMX smx);
 int smInitialize(SMX *,PKD,SMF *,int,int,int,int,int,double);
 void smFinish(SMX smx,SMF *smf, CASTAT *pcs);
+void smLargefBallCheck(SMX smx,PARTICLE *p,FLOAT lx, FLOAT ly, FLOAT lz);
+
+PQ *smLoadPQ(SMX smx, int pi, int nSmooth, int nTree, FLOAT x, FLOAT y, FLOAT z,  FLOAT lx, FLOAT ly, FLOAT lz);
+PQ *smRecentrePQ(SMX smx, PQ *pqn, int nSmooth, FLOAT x, FLOAT y, FLOAT z);
+PQ *smBallSearch(SMX smx,PQ *pq,FLOAT *ri,int *cpStart);
+PQ *smBallSearchNP(SMX smx,PQ *pq,FLOAT *ri,int *cpStart);
+PQ *smBallSearchAll(SMX smx, PQ *pq, int pi, FLOAT x, FLOAT y, FLOAT z,  FLOAT lx, FLOAT ly, FLOAT lz);
+void smLoadNNFromPQ(NN *nnList,PQ *pqi);
+
+int smBallGather(SMX smx,FLOAT fBall2,FLOAT *ri);
+int smBallGatherNP(SMX smx,FLOAT fBall2,FLOAT *ri,int cp);
+void smBallScatter(SMX smx,FLOAT *ri,int iMarkType);
+void smBallScatterNP(SMX smx,FLOAT *ri,int iMarkType,int cp);
+void smDtBall(SMX smx,FLOAT *ri,FLOAT *vi,FLOAT *pdt2,FLOAT fBall2);
+void smDtBallNP(SMX smx,FLOAT *ri,FLOAT *vi,FLOAT *pdt2,FLOAT fBall2,int cp);
+
+int smResmoothParticle(SMX smx,SMF *smf,int pi,FLOAT fBall2,int cp,FLOAT lx,FLOAT ly,FLOAT lz);
+
 void smSmooth(SMX,SMF *);
 void smMarkSmooth(SMX,SMF *, int);
 void smReSmooth(SMX,SMF *);
 void smDtSmooth(SMX,SMF *);
-void smGrowList(SMX smx);
 
 #ifdef OLD_KEPLER
 void smQQSmooth(SMX smx, SMF *smf);

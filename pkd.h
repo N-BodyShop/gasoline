@@ -389,6 +389,8 @@ typedef struct uNonCoolContext {
 #define TYPE_PROMOTED          (1<<20)
 #define TYPE_DENMAX            (1<<21)
 #define TYPE_STARFORM          (1<<22)
+#define TYPE_MARK              (1<<23)
+#define TYPE_RESMOOTHINNER     (1<<24)
 
 /* Combination Masks */
 #define TYPE_ALLACTIVE                  (TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)
