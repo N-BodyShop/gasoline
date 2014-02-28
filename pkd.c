@@ -537,10 +537,10 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->uPred = p->u;
 #endif
 #ifdef UNONCOOLINIT
-				p->uNoncool = p->u;
-				p->uNoncoolPred = p->u;
-                p->u = 0;
-                p->uPred = 0;
+				p->uNoncool = 0.5*p->u;
+				p->uNoncoolPred = 0.5*p->u;
+                p->u *= 0.5;
+                p->uPred *= 0.5;
 #endif
 #ifdef COOLDEBUG
 				assert(p->u >= 0.0);
@@ -6911,7 +6911,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 #ifndef NOCOOLING
                     T = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, p->fMetals );
 #endif
-                    fprintf(stderr,"u %g T %g %g c %g h %g divv %g rho %g Z %g dtdiff %g %g\n",p->uPred,p->uPred/4802.57,T,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals,p->uPred/(fabs(p->uDotDiff)+1e-20),p->fThermalCond);
+                    /*fprintf(stderr,"u %g T %g %g c %g h %g divv %g rho %g Z %g dtdiff %g %g\n",p->uPred,p->uPred/4802.57,T,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals,p->uPred/(fabs(p->uDotDiff)+1e-20),p->fThermalCond);*/
                     }
 #endif
                 if(dT < p->dt) p->dt = dT;

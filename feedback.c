@@ -230,6 +230,24 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 
 		fbEffects.dMassLoss *= MSOLG/fb->dGmUnit;
 		fbEffects.dEnergy /= fb->dErgPerGmUnit;
+#ifdef FBPARTICLEMIMIC
+		double tstart = 4e6, tend = 30e6; 
+		double mdotonmstar = 25/100./(tend-tstart); 
+		double edotonmstar = 1e51/(100*2e33)/(tend-tstart); 
+		double tFB0,tFB1,dDeltaFB;
+		
+		tFB1 =  dTimeYr-p->fTimeForm*fb->dSecUnit/SEC_YR; 
+		tFB0 =  tFB1 - dDeltaYr;
+
+		if (tFB1 > tstart && tFB0 < tend) {
+			fbEffects.dMassLoss = dDeltaYr*p->fMassForm*mdotonmstar/FB_NFEEDBACKS;
+			fbEffects.dEnergy = (edotonmstar/mdotonmstar)/fb->dErgPerGmUnit;
+		}
+		else {
+			fbEffects.dMassLoss = 0;
+			fbEffects.dEnergy = 0;
+		}
+#endif
 
 		dTotMassLoss += fbEffects.dMassLoss;
 		p->uDotFB += fbEffects.dEnergy*fbEffects.dMassLoss;
