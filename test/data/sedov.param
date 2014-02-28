@@ -47,6 +47,8 @@ iLogInterval    = 1
 bOverwrite      = 1
 dMsolUnit       = 232521.37
 dKpcUnit        = 1.0
-bLongRangeStep  = 1
+dThermalCondCoeff = 0
+dThermalCond2Coeff = 0
+dEvapCoeff = 0
 #G=1 => kmsunit = 1.0, timeunit = 978.46905 Myr = 3.0857000e+16 sec
 #6.7747465e+46 J injected
