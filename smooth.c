@@ -21,6 +21,9 @@
 #define smResetMARK(pi__) TYPEReset( (&p[pi__]), TYPE_MARK )
 #endif 
 
+//#define NSI_DEBUG(xxx) xxx
+#define NSI_DEBUG(xxx) 
+
 void smInitList(SMX smx, int nSmooth) {
     /*
     ** Allocate Nearest-Neighbor List.
@@ -1516,7 +1519,8 @@ void smSmooth(SMX smx,SMF *smf)
     PQ *pq,*pqi,*pqNext;
     int iDum;
     int nTree,nLocal;
-    int nSmoothed = 0,nSmoothInnerFail=0,nSmoothInnerCut = smx->nSmoothInner*0.8;
+    int nSmoothed = 0,nSmoothedInner = 0,nSmoothedFixh = 0;
+    int nInner,nSmoothInnerFail=0,nSmoothInnerCut = smx->nSmoothInner*0.8;
 
     nSmooth = smx->nSmooth;
     nTree = c[pkd->iRoot].pUpper + 1;
@@ -1530,136 +1534,135 @@ void smSmooth(SMX smx,SMF *smf)
 #ifdef NSMOOTHINNER
         TYPEReset(&p[pi],TYPE_RESMOOTHINNER);
 #endif
-    }
+        }
     for (j=0;j<smx->nHash;++j) smx->pqHash[j] = NULL;
 
-    pNext = 0;
-    StartParticle:
-    /*
-    ** Check if we are finished!
-    */
-    if (pNext == nLocal) {
-        goto DoneSmooth;
-        }
+    for (pNext=0;pNext<nLocal;++pNext) { 
+        /* Check every particle -- some done out of order by the snake */
+        if (!TYPEFilter(&(pkd->pStore[pNext]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
 
-    if (!TYPEFilter(&(pkd->pStore[pNext]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) {
-        ++pNext;
-        goto StartParticle;
-        }
+        pi = pNext;
+        x = p[pi].r[0];    y = p[pi].r[1];    z = p[pi].r[2];
+        /* Build PQ of nSmooth particles -- not a ball yet */
+        pq = smLoadPQ(smx,pi,nSmooth,nTree,x,y,z,lx,ly,lz);
+        
+        for (;;) { /* Snake Loop */
+            /*
+            ** Priority Queue must be built. 'pi' must be defined.
+            ** Squeeze PQ to actual ball 
+            */
+            pq = smBallSearchAll(smx,pq,pi,x,y,z,lx,ly,lz);
+            /*
+            ** Create Nearest-Neighbor List and try to pick next particle.
+            */
+            pqNext = NULL;
+            r2Next = 2.0*pq->fKey;   /* arbitrarily bigger than pq->fKey! */
+            fBall2 = pq->fKey;
+            nCnt = 0;
+            /* 
+            ** If desired reject fBall2 below a minimum 
+            ** We may get many more than nSmooth neighbours here -- resort to a ReSmooth
+            */
+            if (smx->iLowhFix && 
+                    ((smx->iLowhFix==LOWHFIX_HOVERSOFT && fBall2 < smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft) ||
+                    (smx->iLowhFix==LOWHFIX_SINKRADIUS && fBall2 < smf->dSinkRadius*smf->dSinkRadius) ||
+                    (smx->iLowhFix==LOWHFIX_SINKRADIUS_BUFF && fBall2 < smf->dSinkRadius*smf->dSinkRadius*1.1)) ) {
+                /* We Resmooth for this guy later */
+                p[pi].fBall2 = -1.0; /* any value < 0 will do -- see code after "DoneSmooth:" below */
+                TYPESet(&p[pi],TYPE_SMOOTHDONE);
 
-    pi = pNext;
-    x = p[pi].r[0];    y = p[pi].r[1];    z = p[pi].r[2];
-    /* Build PQ of nSmooth particles -- not a ball yet */
-    pq = smLoadPQ(smx,pi,nSmooth,nTree,x,y,z,lx,ly,lz);
-
-    PrioqBuilt:
-    /*
-    ** Priority Queue must be built. 'pi' must be defined.
-    ** Squeeze PQ to actual ball 
-    */
-    pq = smBallSearchAll(smx,pq,pi,x,y,z,lx,ly,lz);
-    /*
-    ** Create Nearest-Neighbor List and try to pick next particle.
-    */
-    pqNext = NULL;
-    r2Next = 2.0*pq->fKey;   /* arbitrarily bigger than pq->fKey! */
-    fBall2 = pq->fKey;
-    nCnt = 0;
-    /* 
-    ** If desired reject fBall2 below a minimum 
-    ** We may get many more than nSmooth neighbours here -- resort to a ReSmooth
-    */
-    if (smx->iLowhFix && 
-            ((smx->iLowhFix==LOWHFIX_HOVERSOFT && fBall2 < smx->dfBall2OverSoft2*p[pi].fSoft*p[pi].fSoft) ||
-            (smx->iLowhFix==LOWHFIX_SINKRADIUS && fBall2 < smf->dSinkRadius*smf->dSinkRadius) ||
-            (smx->iLowhFix==LOWHFIX_SINKRADIUS_BUFF && fBall2 < smf->dSinkRadius*smf->dSinkRadius*1.1)) ) {
-        /* We ReSmooth for this guy later */
-        p[pi].fBall2 = -1.0; /* any value < 0 will do -- see code after "DoneSmooth:" below */
-        TYPESet(&p[pi],TYPE_SMOOTHDONE);
-
-        /* Get the next in line */
-        for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
-            if (pqi->id != pkd->idSelf) continue;
-            if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
-            if (pqi->fKey < r2Next) { /* prefer candidate closest to old centre */
-                pqNext = pqi;
-                r2Next = pqNext->fKey;
+                /* Get the next in line */
+                for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
+                    if (pqi->id != pkd->idSelf) continue;
+                    if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
+                    if (pqi->fKey < r2Next) { /* prefer candidate closest to old centre */
+                        pqNext = pqi;
+                        r2Next = pqNext->fKey;
+                        }
+                    }
                 }
-            }
-        }
-    else {
-        int nh = 0;
-        /* Limit fBall2 growth to help stability and neighbour finding */
-        if (smx->bUseBallMax && p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)
-            fBall2=p[pi].fBallMax*p[pi].fBallMax;
+            else {
+                /* Limit fBall2 growth to help stability and neighbour finding */
+                if (smx->bUseBallMax && p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)
+                    fBall2=p[pi].fBallMax*p[pi].fBallMax;
 
-        p[pi].fBall2 = fBall2;
-        TYPESet(&p[pi],TYPE_SMOOTHDONE);
+                p[pi].fBall2 = fBall2;
+                TYPESet(&p[pi],TYPE_SMOOTHDONE);
 
-        for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
-            /*
-            ** There are cases like in collisions where we do want to include the
-            ** single nearest neighbor. So include the most distant particle.
-            **
-            if (pqi == pq) continue;
-            */
-            /*
-            ** Move relevant data into Nearest Neighbor array.
-            */
-            if (pqi->fKey <= fBall2) {
+                nInner = 0;
+                for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
+                    /*
+                    ** There are cases like in collisions where we do want to include the
+                    ** single nearest neighbor. So include the most distant particle.
+                    **
+                    if (pqi == pq) continue;
+                    */
+                    /*
+                    ** Move relevant data into Nearest Neighbor array.
+                    */
+                    if (pqi->fKey <= fBall2) {
 #ifdef NSMOOTHINNER
-                if (pqi->fKey <= fBall2*smx->fBall2InnerFrac) nh++;
+                        if (pqi->fKey <= fBall2*smx->fBall2InnerFrac) nInner++;
 #endif
-                smLoadNNFromPQ(&smx->nnList[nCnt],pqi);
-                ++nCnt;
-                } 
-            if (pqi->id != pkd->idSelf) continue;
-            if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
-            if (pqi->fKey < r2Next) {
-                pqNext = pqi;
-                r2Next = pqNext->fKey;
-                }
-            }
+                        smLoadNNFromPQ(&smx->nnList[nCnt],pqi);
+                        ++nCnt;
+                        } 
+                    if (pqi->id != pkd->idSelf) continue;
+                    if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,TYPE_SMOOTHACTIVE)) continue;
+                    if (pqi->fKey < r2Next) {
+                        pqNext = pqi;
+                        r2Next = pqNext->fKey;
+                        }
+                    }
 
 #ifdef NSMOOTHINNER
-        if (nh < nSmoothInnerCut) { /* Defer smooth */
-            ISORT *isort;
-            isort = (ISORT *) malloc(sizeof(ISORT)*nCnt);
-            for (i=0;i<nCnt;++i) {
-                isort[i].r2 = smx->nnList[i].fDist2;
-                }
-            qsort( isort, nCnt, sizeof(ISORT), CompISORT );
-            assert(nCnt > smx->nSmoothInner);
+                if (nInner < nSmoothInnerCut) { /* Defer smooth */
+                    ISORT *isort;
+                    isort = (ISORT *) malloc(sizeof(ISORT)*nCnt);
+                    for (i=0;i<nCnt;++i) {
+                        isort[i].r2 = smx->nnList[i].fDist2;
+                        }
+                    qsort( isort, nCnt, sizeof(ISORT), CompISORT );
+                    assert(nCnt > smx->nSmoothInner);
             
-            p[pi].fBall2 = -isort[smx->nSmoothInner-1].r2/smx->fBall2InnerFrac; 
-            TYPESet(&p[pi],TYPE_RESMOOTHINNER);
-            nSmoothInnerFail++;
-            free(isort);
-            }
-        else  
+                    NSI_DEBUG(fprintf(stderr,"%d: nSmooth Inner Fail %d : nSm %d %d %d  fBall: %f %f\n",pkd->idSelf,p[pi].iOrder,nInner,nSmoothInnerCut,smx->nSmoothInner,sqrt(p[pi].fBall2),sqrt(isort[smx->nSmoothInner-1].r2/smx->fBall2InnerFrac)););
+                    p[pi].fBall2 = -isort[smx->nSmoothInner-1].r2/smx->fBall2InnerFrac; 
+                    TYPESet(&p[pi],TYPE_RESMOOTHINNER);
+                    nSmoothInnerFail++;
+                    free(isort);
+                    }
+                else  
 #endif 
-            {
-            smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
-            nSmoothed++;
+                    {
+                    smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
+                    nSmoothed++;
+                    smLargefBallCheck(smx,&p[pi],lx,ly,lz);
+                    }
+                }
 
-            smLargefBallCheck(smx,&p[pi],lx,ly,lz);
+            /*
+            ** Need to do a CACHE recombine (ie. finish up Smooth)
+            ** to deliver info to particles on other processors.
+            */
+            /*
+            ** Try a cache check to improve responsiveness.
+            */
+            mdlCacheCheck(mdl);
+
+            if (!pqNext) break; /* end Snake */
+            /*
+            ** Recalculate the priority queue using the previous particles.
+            ** "THE SNAKE"
+            */
+            pi = pqNext->p;
+            x = p[pi].r[0];    y = p[pi].r[1];    z = p[pi].r[2];
+            pq = smRecentrePQ(smx,pqNext,nSmooth,x,y,z);
             }
-        }
-
-    /*
-    ** Need to do a CACHE recombine (ie. finish up Smooth)
-    ** to deliver info to particles on other processors.
-    */
-    /*
-    ** Try a cache check to improve responsiveness.
-    */
-    mdlCacheCheck(mdl);
-    /*
-    ** No next candidate in current nbr list 
-    ** Clean up Marks, pqHash, and release all acquired pointers!
-    ** Start PQ from scratch again
-    */
-    if (!pqNext) { 
+        /*
+        ** No next candidate in current nbr list 
+        ** Clean up Marks, pqHash, and release all acquired pointers!
+        ** Start PQ from scratch again
+        */
         for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
             if (pqi->id == pkd->idSelf) smResetMARK(pqi->p);
             else {
@@ -1667,18 +1670,7 @@ void smSmooth(SMX smx,SMF *smf)
                 PQ_HASHDEL(smx->pqHash,smx->nHash,pqi);
                 }
             }
-        goto StartParticle;
         }
-    /*
-    ** Recalculate the priority queue using the previous particles.
-    ** "THE SNAKE"
-    */
-    pi = pqNext->p;
-    x = p[pi].r[0];    y = p[pi].r[1];    z = p[pi].r[2];
-    pq = smRecentrePQ(smx,pqNext,nSmooth,x,y,z);
-    goto PrioqBuilt;
-        
-    DoneSmooth:
     /* 
     ** Regular smooth complete -- standard PQ no-longer needed
     ** fix failed smooth candidates 
@@ -1697,28 +1689,53 @@ void smSmooth(SMX smx,SMF *smf)
         }
 #endif
 
-    for (pi=0;pi<nLocal;++pi) {
-        if (!TYPETest(&(p[pi]),TYPE_SMOOTHACTIVE) || p[pi].fBall2 >= 0.0) continue;
+    for (pNext=0;pNext<nLocal;++pNext) {
+        if (!TYPETest(&(p[pNext]),TYPE_SMOOTHACTIVE) || p[pNext].fBall2 >= 0.0) continue;
+        pi = pNext;
 #ifdef NSMOOTHINNER
         if (TYPETest(&p[pi],TYPE_RESMOOTHINNER)) {
             /* Cap max nbrs:   original nSmooth < nCnt <= nSmoothMax */
             x = p[pi].r[0];        y = p[pi].r[1];         z = p[pi].r[2];
             pq = smLoadPQ(smx,pi,nSmooth,nTree,x,y,z,lx,ly,lz);
-            pq = smBallSearchAll(smx,pq,pi,x,y,z,lx,ly,lz);
-            fBall2 = pq->fKey;
-            p[pi].fBall2 = fabs(p[pi].fBall2);
-            if (fBall2 > p[pi].fBall2) fBall2 = p[pi].fBall2;
-            else p[pi].fBall2 = fBall2;
+            for (;;) { /* SNAKE loop */
+                pq = smBallSearchAll(smx,pq,pi,x,y,z,lx,ly,lz);
+                pqNext = NULL;
+                r2Next = 2.0*pq->fKey;  
+                fBall2 = pq->fKey;
+                p[pi].fBall2 = fabs(p[pi].fBall2);
+                if (fBall2 > p[pi].fBall2) fBall2 = p[pi].fBall2;
+                else p[pi].fBall2 = fBall2;
+                TYPESet(&p[pi],TYPE_SMOOTHDONE);
+                
+                nCnt = 0;
+                NSI_DEBUG(nInner = 0;)
+                for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
+                    NSI_DEBUG(if (pqi->fKey <= fBall2*smx->fBall2InnerFrac) nInner++;);
+                    if (pqi->fKey <= fBall2) {
+                        smLoadNNFromPQ(&smx->nnList[nCnt],pqi);
+                        ++nCnt;
+                        } 
+                    if (pqi->id != pkd->idSelf) continue;
+                    if (!TYPEFilter(&(pkd->pStore[pqi->p]),TYPE_RESMOOTHINNER|TYPE_SMOOTHDONE,TYPE_RESMOOTHINNER)) continue;
+                    if (pqi->fKey < r2Next) {
+                        pqNext = pqi;
+                        r2Next = pqNext->fKey;
+                        }
+                    }
+                NSI_DEBUG(fprintf(stderr,"%d nSmooth Inner Redo %d : nSm %d %d %d  fBall: %f\n",pkd->idSelf,p[pi].iOrder,nInner,smx->nSmoothInner,nCnt,sqrt(p[pi].fBall2)););
 
-            nCnt = 0;
-            for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
-                if (pqi->fKey <= fBall2) {
-                    smLoadNNFromPQ(&smx->nnList[nCnt],pqi);
-                    ++nCnt;
-                    } 
+
+                smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
+                nSmoothed++;
+                nSmoothedInner++;
+                smLargefBallCheck(smx,&p[pi],lx,ly,lz);
+                mdlCacheCheck(mdl);
+                if (!pqNext) break;
+                pi = pqNext->p;
+                x = p[pi].r[0];    y = p[pi].r[1];    z = p[pi].r[2];
+                pq = smRecentrePQ(smx,pqNext,nSmooth,x,y,z);
                 }
-            smx->fcnSmooth(&p[pi],nCnt,smx->nnList,smf);
-            nSmoothed++;
+            /* Snake end: Clean up marking/release cache */
             for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
                 if (pqi->id == pkd->idSelf) smResetMARK(pqi->p);
                 else {
@@ -1749,8 +1766,13 @@ void smSmooth(SMX smx,SMF *smf)
             p[pi].cpStart = cp = 0;
             smResmoothParticle(smx,smf,pi,fBall2,cp,lx,ly,lz);
             nSmoothed++;
+            nSmoothedFixh++;
             }
         }
+    assert(nSmoothedInner == nSmoothInnerFail);
+    smf->nSmoothed = nSmoothed;
+    smf->nSmoothedInner = nSmoothedInner;
+    smf->nSmoothedFixh = nSmoothedFixh;
     }
 
 

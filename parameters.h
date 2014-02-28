@@ -272,7 +272,6 @@ struct parameters {
 	int    bFastGas;
 	double dFracFastGas;
 	double dhMinOverSoft;
-	double dBall2Max;
 	double dResolveJeans;
     double dMetalDiffusionCoeff;
     double dThermalDiffusionCoeff;

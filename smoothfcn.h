@@ -1,5 +1,5 @@
-#ifndef SMOOTHFCN_HINCLUDED
-#define SMOOTHFCN_HINCLUDED
+#ifndef SMOOTHFCN_INCLUDED
+#define SMOOTHFCN_INCLUDED
 
 #include "pkd.h"
 #include "floattype.h"
@@ -34,7 +34,6 @@ typedef struct smfParameters {
     int bBHMindv;
     int bBHAccreteAll;
     int bDoBHKick;
-	double dBall2Max;
     double dSinkCurrentDelta;
     double dDeltaStarForm;
 #ifdef GASOLINE
@@ -62,6 +61,9 @@ typedef struct smfParameters {
     int nSinkFormMin;
     int iSinkCurrentRung;
     int iSmoothFlags; /* Read/Write locally.  Master sets initial value. */
+    int nSmoothed;
+    int nSmoothedInner;
+    int nSmoothedFixh;
     double dSinkFormDivVCoeff;
     double dSinkFormDivAccCoeff;
     double dSinkTimeEligible;
