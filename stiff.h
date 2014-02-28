@@ -1,52 +1,48 @@
-#define KMAXX 7 
-#define IMAXX (KMAXX+1)
-
+/** @brief Context for stiff integration
+ */
 typedef struct StiffContextStructure {
-  double **d, *x;
-  double eps,eps1;
-  double     hMin; /* Trying to keep the integrator sane */
-
-  /* stifbs */
-  double *dfdx,**dfdy,*err,*yerr,*ysav,*yseq;
-
-  int first,kmax,kopt;
-  int iAbort;
-  double xnew;
-  double a[IMAXX+1];
-  double alf[KMAXX+1][KMAXX+1];
-  int nseq[IMAXX+1];
-
-  /* simpr */
-  int *indx;
-  double **simpr_a, *del, *ytemp;
-
-  /* pzextr */
-  double *c;
-  int nv;
-
-  void *Data; /* Pointer to fixed data used by derivs/jacobn */
-  void (*derivs)(void *Data, double, double [], double []);
-  void (*jacobn)(void *Data, double x, double y[], double dfdx[], double **dfdy);
+    double epsmin;		/* relative accuracy criterion */
+    double sqreps;		/* parameter to calculate initial timestep */
+    double epscl;		/* 1/epsmin */
+    double epsmax;		/* repeat timestep if correction is
+				   greater than epsmax*epsmin*y(i) */   
+    double dtmin;		/* minimum timestep allowed */
+    int itermax;		/* number of corrector iterations */
+    int nv; 			/* number of dependent variables */
+    double *ymin;		/* minimum value for y */
+    double *y0;			/* initial y for global timestep */
+    double *y1;			/* predicted value */
+    double *q;			/* scratch for creation rate */
+    double *d;			/* scratch for destruction rate */
+    double *rtau;		/* ratio of timestep to timescale */
+    double *ys;			/* initial y for individual timesteps */
+    double *qs;			/* initial production rate */
+    double *rtaus;		/* initial rtau */
+    double *scrarray;
+    void *Data; /* Pointer to fixed data used by derivs */
+    void (*derivs)(void *Data, double, const double [], double [], double []);
 } STIFF;
+
 
 /*
  * Integrator Step Headers
  */
 
-STIFF *StiffInit( double eps, int nv, void *Data, 
-		   void (*derivs)(void *Data, double, double [], double []),
-		   void (*jacobn)(void *Data, double x, double y[], double dfdx[], double **dfdy) );
+STIFF *StiffInit(double eps, 	/* relative accuracy parameter */
+		 int nv,	/* number of dependent variables */
+		 void *Data, 	/* pointer to extra data */
+		 void (*derivs)(void *Data,
+				double t, const double yin[],  /* input */
+				double yheat[],	/* heating or creation
+						   rate */
+			       double ycool[]	/* cooling or
+						   destruction rate */
+				)
+		 );
 		   
 void StiffFinalize( STIFF *s );
-void StiffStep(STIFF *s, double y[], double dydx[], double *xx, double htry, 
-		double yscal[], double *hdid, double *hnext );
-
-void simpr(STIFF *s, double y[], double dydx[], double dfdx[], double **dfdy,
-	   double xs, double htot, int nstep, double yout[] );
-void pzextr(STIFF *s, int iest, double xest, double yest[], double yz[], double dy[] );
-
-void lubksb(double **a, int n, int *indx, double b[]);
-void ludcmp(double **a, int n, int *indx, double *d);
+void StiffStep(STIFF *s, double y[], double tstart, double htry) ;
+void StiffSetYMin(STIFF *s, const double *ymin);
 
 /* 
  * Root Finder Header
