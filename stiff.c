@@ -21,13 +21,6 @@
 #include <assert.h>
 #include "stiff.h"
 
-/* XXX delete this when we can */
-void nrerror(char *junk) 
-{
-    assert(0);
-    }
-
-
 inline double max(double x, double y) 
 {
     if(x > y) return x;
@@ -469,77 +462,139 @@ void derivs(double x, double y[], double dydx[])
   dydx[2] = -0.013*y[0]-1000.0*y[0]*y[2]-2500.0*y[1]*y[2];
 }
 
+/*
+ * The following is an implementation of the Brent root finding
+ * algorithm.  This is based on code from the GSL which has the
+ * following copyright.  The code was modified to avoid the overhead
+ * that is somewhat unnecessary for such a simple routine.
+ */
+/* roots/brent.c
+ * 
+ * Copyright (C) 1996, 1997, 1998, 1999, 2000, 2007 Reid Priedhorsky, Brian Gough
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or (at
+ * your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
 
-#define ITMAX 100
-#define EPS 3.0e-8
+const int itmaxRoot = 100;
+const double epsRoot = 3.0e-8;
 
-double RootFind(double (*func)(void *Data, double), void *Data, double x1, double x2, double tol)
+double RootFind(double (*func)(void *Data, double), void *Data, double x1,
+		double x2, double tol)
 {
-  void nrerror(char error_text[]);
-  int iter;
-  double a=x1,b=x2,c=x2,d,e,min1,min2;
-  double fa=(*func)(Data, a),fb=(*func)(Data, b),fc,p,q,r,s,tol1,xm;
+    int i;
+    double a = x1;
+    double fa = (*func)(Data, a);
+    double b = x2;
+    double fb = (*func)(Data, b);
+    double c = x2;
+    double fc = fb;
+    double d = x2 - x1;
+    double e = x2 - x1;
+    
+    if ((fa < 0.0 && fb < 0.0) || (fa > 0.0 && fb > 0.0))
+    {
+	fprintf(stderr, "RootFind: endpoints do not straddle y=0");
+	assert(0);
+	}
+    
+    for(i = 0; i < itmaxRoot; i++) {
+	double m;
+	double dTol;
 
-  if ((fa > 0.0 && fb > 0.0) || (fa < 0.0 && fb < 0.0))
-    nrerror("Root must be bracketed in zbrent");
-  fc=fb;
-  for (iter=1;iter<=ITMAX;iter++) {
-    if ((fb > 0.0 && fc > 0.0) || (fb < 0.0 && fc < 0.0)) {
-      c=a;
-      fc=fa;
-      e=d=b-a;
-    }
-    if (fabs(fc) < fabs(fb)) {
-      a=b;
-      b=c;
-      c=a;
-      fa=fb;
-      fb=fc;
-      fc=fa;
-    }
-    tol1=2.0*EPS*fabs(b)+0.5*tol;
-    xm=0.5*(c-b);
-    if (fabs(xm) <= tol1 || fb == 0.0) return b;
-    if (fabs(e) >= tol1 && fabs(fa) > fabs(fb)) {
-      s=fb/fa;
-      if (a == c) {
-        p=2.0*xm*s;
-        q=1.0-s;
-      } else {
-        q=fa/fc;
-        r=fb/fc;
-        p=s*(2.0*xm*q*(q-r)-(b-a)*(r-1.0));
-        q=(q-1.0)*(r-1.0)*(s-1.0);
-      }
-      if (p > 0.0) q = -q;
-      p=fabs(p);
-      min1=3.0*xm*q-fabs(tol1*q);
-      min2=fabs(e*q);
-      if (2.0*p < (min1 < min2 ? min1 : min2)) {
-        e=d;
-        d=p/q;
-      } else {
-        d=xm;
-        e=d;
-      }
-    } else {
-      d=xm;
-      e=d;
-    }
-    a=b;
-    fa=fb;
-    if (fabs(d) > tol1)
-      b += d;
-    else
-      b += (xm > 0.0 ? fabs(tol1) : -fabs(tol1));
-    fb=(*func)(Data, b);
-  }
-  nrerror("Maximum number of iterations exceeded in zbrent");
-  return 0.0;
-}
+	int ac_equal = 0;
 
-#undef ITMAX
-#undef EPS
+	if ((fb < 0 && fc < 0) || (fb > 0 && fc > 0)) {
+	    ac_equal = 1;
+	    c = a;
+	    fc = fa;
+	    d = b - a;
+	    e = b - a;
+	    }
+  
+	if (fabs (fc) < fabs (fb)) {
+	    ac_equal = 1;
+	    a = b;
+	    b = c;
+	    c = a;
+	    fa = fb;
+	    fb = fc;
+	    fc = fa;
+	    }
+  
+	dTol = 0.5 * epsRoot * fabs (b) + 0.5*tol;
+	m = 0.5 * (c - b);
+  
+	if (fb == 0) {
+	    return b;	/* SUCCESS */
+	    }
+	if (fabs (m) <= dTol) {
+	    return b; /* SUCCESS */
+	    }
+  
+	if (fabs (e) < dTol || fabs (fa) <= fabs (fb)) {
+	    d = m;            /* use bisection */
+	    e = m;
+	    }
+	else {
+	    double p, q, r;   /* use inverse cubic interpolation */
+	    double s = fb / fa;
+      
+	    if (ac_equal) {
+		p = 2 * m * s;
+		q = 1 - s;
+		}
+	    else {
+		q = fa / fc;
+		r = fb / fc;
+		p = s * (2 * m * q * (q - r) - (b - a) * (r - 1));
+		q = (q - 1) * (r - 1) * (s - 1);
+		}
+	    if (p > 0) {
+		q = -q;
+		}
+	    else {
+		p = -p;
+		}
+      
+	    if (2 * p < min(3 * m * q - fabs (dTol * q), fabs (e * q))) {
+		e = d;
+		d = p / q;
+		}
+	    else {
+		/* interpolation failed, fall back to bisection */
+		d = m;
+		e = m;
+		}
+	    }
+	a = b;
+	fa = fb;
+  
+	if (fabs (d) > dTol) {
+	    b += d;
+	    }
+	else {
+	    b += (m > 0 ? +dTol : -dTol);
+	    }
+	fb = (*func)(Data, b);
+	}
+    
+    fprintf(stderr, "brent: number of interations exceeded");
+    assert(0);
+    return 0.0;
+    }
+
 #endif
 #endif
 
