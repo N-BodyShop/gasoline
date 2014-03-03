@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef DUMPVOXEL_HINCLUDED
 #define DUMPVOXEL_HINCLUDED
 

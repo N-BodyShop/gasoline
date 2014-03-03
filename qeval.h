@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef QEVAL_HINCLUDED
 #define QEVAL_HINCLUDED
 /*

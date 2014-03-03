@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef EWALD_HINCLUDED
 #define EWALD_HINCLUDED
 

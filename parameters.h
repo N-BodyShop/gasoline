@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef PARAMETERS_HINCLUDED
 #define PARAMETERS_HINCLUDED
 

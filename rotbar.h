@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef ROTBAR_HINCLUDED
 #define ROTBAR_HINCLUDED
 

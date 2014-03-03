@@ -1,3 +1,4 @@
+#include "define.h"
 #include <stdlib.h>
 #include <stddef.h>
 #include <math.h>

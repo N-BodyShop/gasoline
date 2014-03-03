@@ -1,3 +1,4 @@
+#include "define.h"
 /*
  ** This function solves Kepler's equation, M = E - e*sin(E), for E.
  ** It is mainly called by conversion from the Delaunay elements to 

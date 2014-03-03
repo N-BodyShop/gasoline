@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef COOLING_PLANET_HINCLUDED
 #define COOLING_PLANET_HINCLUDED
 

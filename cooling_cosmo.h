@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef COOLING_COSMO_HINCLUDED
 #define COOLING_COSMO_HINCLUDED
 

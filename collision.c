@@ -1,3 +1,4 @@
+#include "define.h"
 #ifdef COLLISIONS
 
 #include <stdio.h>

@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef HTABLE_HINCLUDED
 
 typedef struct hash_table {

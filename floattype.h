@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef FLOATTYPE_HINCLUDED
 #define FLOATTYPE_HINCLUDED
 

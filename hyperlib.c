@@ -1,3 +1,4 @@
+#include "define.h"
 #include <math.h>
 
 double asinh(double a)

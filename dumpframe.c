@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef GSS_DUMPFRAME
 #include <stdio.h>
 #include <stdlib.h>

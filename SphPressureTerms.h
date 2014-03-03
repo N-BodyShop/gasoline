@@ -1,3 +1,4 @@
+#include "define.h"
 /* 
    Macros for function: 
        void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)

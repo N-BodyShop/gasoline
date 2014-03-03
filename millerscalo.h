@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef MILLERSCALO_HINCLUDED
 #define MILLERSCALO_HINCLUDED
 #ifdef CHABRIER

@@ -1,3 +1,4 @@
+#include "define.h"
 
 #ifndef COOLING_METAL_HINCLUDED
 #define COOLING_METAL_HINCLUDED

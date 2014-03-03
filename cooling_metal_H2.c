@@ -1,3 +1,4 @@
+#include "define.h"
 /*#define ASSERTENEG*/
 
 #ifdef GASOLINE

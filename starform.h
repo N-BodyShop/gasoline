@@ -1,3 +1,4 @@
+#include "define.h"
 #ifdef STARFORM
 #ifndef STARFORM_HINCLUDED
 #define STARFORM_HINCLUDED

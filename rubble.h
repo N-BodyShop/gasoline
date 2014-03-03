@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef _RUBBLE_HINCLUDED
 #define _RUBBLE_HINCLUDED
 

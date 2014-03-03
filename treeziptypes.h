@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef TREEZIPTYPES_HINCLUDED
 #define TREEZIPTYPES_HINCLUDED
 

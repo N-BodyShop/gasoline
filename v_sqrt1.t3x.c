@@ -1,3 +1,4 @@
+#include "define.h"
 /*
  * Version for T3[DE]: where sizeof(int) == sizeof(double) == 8.
  */

@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef PKD_HINCLUDED
 #define PKD_HINCLUDED
 

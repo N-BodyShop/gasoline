@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef RANDOM_HINCLUDED
 #define RANDOM_HINCLUDED
 

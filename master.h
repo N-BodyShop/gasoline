@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef MASTER_HINCLUDED
 #define MASTER_HINCLUDED
 

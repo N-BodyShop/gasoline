@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef SPECIAL_HINCLUDED
 #define SPECIAL_HINCLUDED
 

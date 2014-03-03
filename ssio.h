@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef SSIO_HINCLUDED
 #define SSIO_HINCLUDED
 

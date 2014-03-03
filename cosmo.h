@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef COSMO_HINCLUDED
 #define COSMO_HINCLUDED
 

@@ -1,3 +1,4 @@
+#include "define.h"
 #define KMAXX 7 
 #define IMAXX (KMAXX+1)
 

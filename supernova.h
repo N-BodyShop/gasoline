@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef SUPERNOVA_HINCLUDED
 #define SUPERNOVA_HINCLUDED
 #include "startime.h"

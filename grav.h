@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef GRAV_HINCLUDED
 #define GRAV_HINCLUDED
 

@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef OPENTYPE_HINCLUDED
 #define OPENTYPE_HINCLUDED
 

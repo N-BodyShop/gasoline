@@ -1,3 +1,4 @@
+#include "define.h"
 #ifdef COLLISIONS /* pkdgrav version should otherwise match with ss version */
 
 /*

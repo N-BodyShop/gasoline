@@ -1,3 +1,4 @@
+#include "define.h"
 #ifdef STARFORM
 #include <stdio.h>
 #include <stdlib.h>

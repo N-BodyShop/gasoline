@@ -1,3 +1,4 @@
+#include "define.h"
 #ifndef OUTTYPE_HINCLUDED
 #define OUTTYPE_HINCLUDED
 

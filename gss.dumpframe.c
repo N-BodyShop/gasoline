@@ -1,3 +1,4 @@
+#include "define.h"
 /*
  * This alternative dumpframe was created to:
  * 1) allow coloring by all particle properties
