@@ -325,7 +325,7 @@ struct parameters {
 	double SSF_dtCoolingShutoff;
     int SSF_bdivv;
 #endif
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
     double dFBInitialMassLoad;
     double dMultiPhaseMinTemp;
 	int bMultiPhaseTempThreshold;

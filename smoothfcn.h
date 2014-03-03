@@ -76,7 +76,7 @@ typedef struct smfParameters {
     double dThermalDiffusionCoeff;
     int bConstantDiffusion;
 #endif
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
     double dFBInitialMassLoad;
     double dMultiPhaseMinTemp;
 #endif

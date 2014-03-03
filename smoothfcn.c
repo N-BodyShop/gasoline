@@ -5232,7 +5232,7 @@ void SplitGas(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
         }
     rmax = sqrt(rmax/ih2);
     p->fMass /= 2.0;
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
     p->fMassNoncool /= 2.0;
 #endif
     daughter = *p;
@@ -5453,11 +5453,11 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		if (p->iOrder == q->iOrder) continue;
 		if (TYPETest(q, TYPE_DELETED)) continue;
 		Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
 		if (q->uNoncool == 0 && Tq <= smf->dEvapMinTemp) continue;  
 #else
 		if (Tq <= smf->dEvapMinTemp) continue;  
-#endif /* MASSNONCOOL */
+#endif /* TWOPHASE */
 		dot = xc*nnList[i].dx + yc*nnList[i].dy + zc*nnList[i].dz;
 		if (dot > 0 && dot*dot > dotcut2*nnList[i].fDist2) {
             //printf("promote (hot excluded): %d %d  %g %g  (%g %g %g) (%g %g %g)\n",p->iOrder,q->iOrder,Tp, Tq,xc,yc,zc,nnList[i].dx,nnList[i].dy,nnList[i].dz);
@@ -5653,7 +5653,7 @@ void initTreeParticleDistFBEnergy(void *p1)
      */
     
     if(TYPETest((PARTICLE *)p1, TYPE_GAS)){
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
 		if(((PARTICLE *)p1)->fMassNoncool > 0) {
 			((PARTICLE *)p1)->uDotFB *= ((PARTICLE *)p1)->fMassNoncool;
 		}
@@ -5662,7 +5662,7 @@ void initTreeParticleDistFBEnergy(void *p1)
 		}
 #else
         ((PARTICLE *)p1)->uDotFB *= ((PARTICLE *)p1)->fMass;
-#endif /* MASSNONCOOL*/
+#endif /* TWOPHASE*/
         ((PARTICLE *)p1)->uDotESF *= ((PARTICLE *)p1)->fMass;
         ((PARTICLE *)p1)->fMetals *= ((PARTICLE *)p1)->fMass;    
         ((PARTICLE *)p1)->fMFracOxygen *= ((PARTICLE *)p1)->fMass;    
@@ -5680,7 +5680,7 @@ void initDistFBEnergy(void *p1)
      * mass.  Note: original particle curlv's never modified.
      */
     ((PARTICLE *)p1)->curlv[0] = ((PARTICLE *)p1)->fMass;
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
     ((PARTICLE *)p1)->curlv[1] = ((PARTICLE *)p1)->fMassNoncool;
 #endif
 
@@ -5700,7 +5700,7 @@ void combDistFBEnergy(void *p1,void *p2)
      * See kludgery notice above.
      */
     FLOAT fAddedMass = ((PARTICLE *)p2)->fMass - ((PARTICLE *)p2)->curlv[0];
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
     FLOAT fAddedMassNoncool = ((PARTICLE *)p2)->fMassNoncool - ((PARTICLE *)p2)->curlv[1];
     ((PARTICLE *)p1)->fMassNoncool += fAddedMassNoncool;
 #endif
@@ -5885,7 +5885,7 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	if(weight > 0) {
 		TYPESet(q, TYPE_FEEDBACK);
 	}
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
 	FLOAT Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
 	if(Tq < smf->dMultiPhaseMinTemp && weight > 0) {
 		double fMassNoncool = q->fMassNoncool + weight*p->fMSN;
@@ -5900,7 +5900,7 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q->fMassNoncool = fMassNoncool;
 		assert(q->fMassNoncool >= 0);
 	}
-#endif /* MASSNONCOOL */
+#endif /* TWOPHASE */
   }
 }
 
@@ -6090,7 +6090,7 @@ void postDistFBEnergy(PARTICLE *p1, SMF *smf)
        because we are done with our conservative calculations */
     
     if(TYPETest(p1, TYPE_GAS)){
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
 		if (p1->fMassNoncool > 0) {
 			p1->uDotFB /= p1->fMassNoncool;
 		}

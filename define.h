@@ -75,8 +75,6 @@
 //#define LONGRANGESTEP #Predict what particles will need to be put onto a longer timestep. (DEPRECATED)
 //#define M43D #Use a fancier 3D derived M4 Kernel
 //#define MASSDIFF #Enable Mass diffusion (probably not a good idea right now)
-#define MASSNONCOOL //Use multiphase particles for feedback
-//#define MASSNONCOOLINIT #Put half the initial particle mass into noncooling mass. Useful for debugging.
 //#define MODBATEPOLY #Use a polytropic equation of state with COOLING_BATE
 //#define MOLECFRAC_SF_CUTOFF #Add a molecular hydrogen threshold for starformation (10% H2)
 //#define MS_TST #Print out testing data for the Miller-Scalo IMF
@@ -140,6 +138,8 @@
 //#define TINY_PTHREAD_STACK #Only used on a weird old SGI architecture. Probably can be removed.
 //#define TOPHATFEEDBACK #Use a tophat kernel to smooth feedback over
 //#define TUMBLER #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
+#define TWOPHASE //Use multiphase particles for feedback
+//#define TWOPHASEINIT #Put half the initial particle mass into noncooling mass. Useful for debugging.
 //#define TWOSMOOTH #Smooth twice rather than 3 times. This is defined by default in master.c
 //#define TZKEY64 #Use 64 (instead of 128) bit keys for the tree. Faster, but allows less depth.
 //#define UNONCOOL #Enable noncooling energy for feedback

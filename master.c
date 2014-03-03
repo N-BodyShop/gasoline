@@ -1187,7 +1187,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dThermalDiffusionCoeff",2,&msr->param.dThermalDiffusionCoeff,
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
 	msr->param.dMultiPhaseMinTemp = 1e5;
 	prmAddParam(msr->prm,"dMultiPhaseMinTemp",2,&msr->param.dMultiPhaseMinTemp,
 				sizeof(double),"multitmin",
@@ -1496,7 +1496,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dIonizeT", 2, &msr->param.dIonizeT,
 		    sizeof(double), "dIT",
 		    "<Ionize Time> = 8000 K");
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
 	msr->param.dFBInitialMassLoad = 0.0;
 	prmAddParam(msr->prm,"dFBInitialMassLoad", 2, &msr->param.dFBInitialMassLoad,
 		    sizeof(double), "dFBIML",
@@ -2674,8 +2674,8 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef RTFORCE
 	fprintf(fp," RTFORCE");
 #endif
-#ifdef MASSNONCOOL
-    fprintf(fp," MASSNONCOOL");
+#ifdef TWOPHASE
+    fprintf(fp," TWOPHASE");
 #endif
 #ifdef UNONCOOL
     fprintf(fp," UNONCOOL");
@@ -4408,8 +4408,8 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
 #endif
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
     if (msr->param.bSphStep) OutputList[(*nOutputList)++]=OUT_SPHDT_ARRAY;
-#ifdef MASSNONCOOL
-    OutputList[(*nOutputList)++]=OUT_MASSNONCOOL_ARRAY;
+#ifdef TWOPHASE
+    OutputList[(*nOutputList)++]=OUT_TWOPHASE_ARRAY;
 #endif
 #ifdef UNONCOOL
     OutputList[(*nOutputList)++]=OUT_U_ARRAY;
@@ -4601,8 +4601,8 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
 #endif
         OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
         }
-#ifdef MASSNONCOOL
-    OutputList[(*nOutputList)++]=OUT_MASSNONCOOL_ARRAY;
+#ifdef TWOPHASE
+    OutputList[(*nOutputList)++]=OUT_TWOPHASE_ARRAY;
 #endif
 #ifdef UNONCOOL
     OutputList[(*nOutputList)++]=OUT_U_ARRAY;
@@ -5557,7 +5557,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
 #ifdef PARTICLESPLIT
     psmf->dInitGasMass = msr->param.dInitGasMass;
 #endif
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
     psmf->dFBInitialMassLoad = msr->param.dFBInitialMassLoad;
     psmf->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
 #endif
@@ -6228,7 +6228,7 @@ void msrSetuNonCoolContext( MSR msr, UNCC *puncc, double a ) {
     puncc->gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode*a;
     puncc->gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff/a;
 #endif
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
     puncc->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
     puncc->bMultiPhaseTempThreshold = msr->param.bMultiPhaseTempThreshold;
 #endif

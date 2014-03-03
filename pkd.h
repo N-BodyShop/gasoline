@@ -43,7 +43,7 @@
 #define RTFORCE
 #endif
 
-#if defined(MASSNONCOOL)  && !defined(UNONCOOL)
+#if defined(TWOPHASE)  && !defined(UNONCOOL)
 #define UNONCOOL
 #endif
 
@@ -137,7 +137,7 @@ typedef struct particle {
     FLOAT uDot;                 /* Rate of change of u -- for predicting u */
     COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
 #endif
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
     FLOAT fMassNoncool;
 #endif
 #ifdef UNONCOOL
@@ -337,7 +337,7 @@ typedef struct uNonCoolContext {
     double dNoncoolConvRateMax;
     double dNoncoolConvUMin;
     struct GasPressureContext gpc;
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
     double dMultiPhaseMinTemp;
     int bMultiPhaseTempThreshold;
 #endif
@@ -437,7 +437,7 @@ typedef struct chkParticle {
     FLOAT v[3];
 #ifdef GASOLINE
     FLOAT u;
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
     FLOAT fMassNoncool;
 #endif
 #ifdef UNONCOOL

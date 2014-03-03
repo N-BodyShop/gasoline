@@ -331,7 +331,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->dtNew = FLT_MAX;
         p->u = 0.0;
         p->uPred = 0.0;
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
         p->fMassNoncool = 0;
 #endif
 #ifdef UNONCOOL
@@ -501,7 +501,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 iSetMask = TYPE_GAS; /* saves identity based on Tipsy file in case iOrder changed */
 				xdr_float(&xdrs,&fTmp);
 				p->fMass = fTmp;
-#ifdef MASSNONCOOLINIT
+#ifdef TWOPHASEINIT
                 p->fMassNoncool = 0.5*fTmp;
 #endif
 				assert(p->fMass > 0.0);
@@ -531,7 +531,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 				p->u = dTuFac*vTemp;
 				p->uPred = dTuFac*vTemp;
 // Special purpose hack for testing noncooling
-#ifdef MASSNONCOOLINIT
+#ifdef TWOPHASEINIT
 				p->uNoncool = 1e4*p->u; //Make it 1e4 times hotter than the cold component
 				p->uNoncoolPred = 1e4*p->u;
                 p->u = p->u;
@@ -3996,7 +3996,7 @@ void pkdCalcEandL(PKD pkd,double *T,double *U,double *Eth,double L[])
 #ifdef GASOLINE
 		if (pkdIsGas(pkd,&p[i]))
 			*Eth += p[i].fMass*p[i].u
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
                 + p[i].fMassNoncool*(p[i].uNoncool-p[i].u)
 #else
 #ifdef UNONCOOL
@@ -4417,7 +4417,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     p->uNoncool = p->uNoncool + p->uNoncoolDot*duDelta;
                     if (p->uNoncoolPred < 0) p->uNoncoolPred = 0;
                     if (p->uNoncool < 0) p->uNoncool = 0;
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
                     double ph = sqrt(p->fBall2*0.25);
                     double fDensity,PoverRho,PoverRhoGas,PoverRhoNoncool,PoverRhoFloorJeans,cGas;
                     pkdGasPressureParticle(pkd, &uncc.gpc, p, &PoverRhoFloorJeans, &PoverRhoNoncool, &PoverRhoGas, &cGas );
@@ -4813,7 +4813,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef GASOLINE
 		p->u = cp.u;
 		p->uPred = cp.u;
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
         p->fMassNoncool = cp.fMassNoncool;
 #endif
 #ifdef UNONCOOL
@@ -4949,7 +4949,7 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 			}
 #ifdef GASOLINE
 		cp.u = p->u;
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
 		cp.fMassNoncool = p->fMassNoncool;
 #endif
 #ifdef UNONCOOL
@@ -5176,7 +5176,7 @@ void pkdMassMetalsEnergyCheck(PKD pkd, double *dTotMass, double *dTotMetals,
                 *dTotOx += pkd->pStore[i].fMass*pkd->pStore[i].fMFracOxygen;
                 *dTotFe += pkd->pStore[i].fMass*pkd->pStore[i].fMFracIron;
                 if ( TYPETest(&pkd->pStore[i], TYPE_GAS) ){
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
 		  *dTotEnergy += pkd->pStore[i].fMassNoncool*pkd->pStore[i].uDotFB;
 #else
 		  *dTotEnergy += pkd->pStore[i].fMass*pkd->pStore[i].uDotFB;
@@ -6284,7 +6284,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             PoverRho = PoverRhoGas + PoverRhoNoncool ;
             if (PoverRho < PoverRhoFloorJeans) PoverRho = PoverRhoFloorJeans;
 
-#ifdef MASSNONCOOL        
+#ifdef TWOPHASE        
 			uMean = (p->fMassNoncool*p->uNoncoolPred+(p->fMass-p->fMassNoncool)*p->uPred)/p->fMass;
             uDotPdVNJ = p->uDotPdV*(PoverRhoNoncool+PoverRhoGas)/(PONRHOFLOOR + PoverRho); /* remove JeansFloor */
             
@@ -6320,7 +6320,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 
             uDotSansCooling = (uDotPdVNJ+p->uDotAV)*p->uPred/uMean// Fraction of PdV related to u thermal
                     + p->uDotDiff + uDotFBThermal + p->uDotESF;
-#else /* !MASSNONCOOL */
+#else /* !TWOPHASE */
 
             fDensity = p->fDensity; /* Density for cooling */
 #ifdef DENSITYU
@@ -6329,7 +6329,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
 #ifdef UNONCOOL
             /* 2nd order estimator for Conv -- note that PdV etc ...should already be 2nd order via Leap Frog */
             uNoncoolPredTmp = p->uNoncool+p->uNoncoolDot*duDelta*0.5;
-#ifndef MASSNONCOOL
+#ifndef TWOPHASE
             uNoncoolDotConv = uNoncoolPredTmp*
                 pkduNoncoolConvRate(pkd,uncc,p->fBall2,uNoncoolPredTmp,p->u+p->uDot*duDelta*0.5); 
 #endif
@@ -6340,7 +6340,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, i
             uDotSansCooling = p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to u thermal
                 + p->uDotAV                                                   // Only u thermal energy gets shock heating
                 + uNoncoolDotConv + uDotFBThermal + p->uDotDiff + p->uDotESF;
-#endif /* !MASSNONCOOL */
+#endif /* !TWOPHASE */
 
             if ( bCool ) {
                 cp = p->CoolParticle;
@@ -6498,7 +6498,7 @@ void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *
     p->u = PCONST/(pgpc->gammam1*p->fDensity);
     p->uPred = p->u;
 #endif
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
     {
     double frac = p->fMassNoncool/p->fMass;
     /* Note: assuming that P/rho = (gamma-1) u (e.g. cooling_metal)
@@ -6507,7 +6507,7 @@ void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *
     *pPoverRhoNoncool = 0;
     *pcGas = sqrt(pgpc->gamma*(*pPoverRhoGas));
     }
-#else /* !MASSNONCOOL */
+#else /* !TWOPHASE */
 #ifndef NOCOOLING
     if (pgpc->iGasModel == 2) {
         COOL *cl = pkd->Cool;
@@ -6526,7 +6526,7 @@ void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *
 #else
     *pPoverRhoNoncool = 0;
 #endif
-#endif /* !MASSNONCOOL */
+#endif /* !TWOPHASE */
 
     *pPoverRhoFloorJeans = pkdPoverRhoFloorJeansParticle(pkd, pgpc->dResolveJeans, p);
     }
@@ -6852,7 +6852,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 #ifdef DTADJUST
                     {
                     double uTotDot, dtExtrap;
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
 					double x = p->fMassNoncool/p->fMass;
 					uTotDot = p->uNoncoolDot*x+p->uDot*(1-x);
 #else
@@ -6860,7 +6860,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 #ifdef UNONCOOL
                     uTotDot += p->uNoncoolDot;
 #endif
-#endif /* MASSNONCOOL */
+#endif /* TWOPHASE */
                     if (uTotDot > 0) {
                         dtExtrap = pkdDtFacCourant(dEtaCourant,dCosmoFac)
                             *sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
@@ -6874,7 +6874,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     double uEff = PONRHOFLOOR+PoverRhoFloorJeans/(GAMMA_JEANS-1)+p->u;
                             
                     assert(p->u > 0.0);
-#ifdef MASSNONCOOL
+#ifdef TWOPHASE
 					double x = p->fMassNoncool/p->fMass;
                     uEff += x*(p->uNoncool-p->u);
 #else
