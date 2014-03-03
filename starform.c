@@ -161,8 +161,8 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
      */
 
 #ifdef UNONCOOL
-    if (stfm->bTempInclNoncool) 
-        T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u+p->uNoncool, p->fDensity, p->fMetals );
+    if (stfm->bTempInclHot) 
+        T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u+p->uHot, p->fDensity, p->fMetals );
     else
 #endif
         T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals );

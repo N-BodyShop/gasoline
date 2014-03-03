@@ -656,7 +656,7 @@ struct inUpdateuDot {
 	double duDelta;
 	double dTime;	
 	double z;
-    UNCC uncc;
+    UHC uhc;
 	int iGasModel;
     double dResolveJeans;
 	int bUpdateState;
@@ -682,7 +682,7 @@ struct inKick {
 	int iGasModel;
     double z;
     double dTimeEnd;
-    UNCC uncc;
+    UHC uhc;
 	};
 struct outKick {
 	double Time;
@@ -1839,7 +1839,7 @@ struct inKickVpred {
 	int iGasModel;
 	double z;
     double dTimeEnd;
-    UNCC uncc;
+    UHC uhc;
 	};
 void pstKickVpred(PST,void *,int,void *,int *);
 #endif

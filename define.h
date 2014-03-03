@@ -143,8 +143,8 @@
 //#define TWOSMOOTH             //Smooth twice rather than 3 times. This is defined by default in master.c
 //#define TZKEY64               //Use 64 (instead of 128) bit keys for the tree. Faster, but allows less depth.
 //#define UNONCOOL              //Enable noncooling energy for feedback
-//#define UNONCOOLINIT          //Initialize the uNoncool to have equal energy to u (useful for hacking some tests)
-//#define UNONCOOLMERGE         //Put the uNoncool energy from a checkpoint into u (for debugging)
+//#define UNONCOOLINIT          //Initialize the uHot to have equal energy to u (useful for hacking some tests)
+//#define UNONCOOLMERGE         //Put the uHot energy from a checkpoint into u (for debugging)
 //#define UNROLLED_VSQRT        //Unroll the v_sqrt function for speed
 //#define USEHMIN               //Use a floor to keep the integrator for stiff equations from blowing up
 //#define USE_PNG               //Use PNG encoding for dumpframes

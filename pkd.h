@@ -138,13 +138,13 @@ typedef struct particle {
     COOLPARTICLE CoolParticle;  /* Abundances and any other cooling internal variables */
 #endif
 #ifdef TWOPHASE
-    FLOAT fMassNoncool;
+    FLOAT fMassHot;
 #endif
 #ifdef UNONCOOL
-    FLOAT uNoncool;
-    FLOAT uNoncoolPred;
-    FLOAT uNoncoolDot;
-    FLOAT uNoncoolDotDiff;  /* Noncool Energy diffusion */
+    FLOAT uHot;
+    FLOAT uHotPred;
+    FLOAT uHotDot;
+    FLOAT uHotDotDiff;  /* Hot Energy diffusion */
 #endif
     FLOAT divv;             
 #ifdef DODVDS
@@ -331,17 +331,17 @@ struct GasPressureContext {
 #endif
     };
 
-typedef struct uNonCoolContext {
-    double dNoncoolConvRate;
-    double dNoncoolConvRateMul;
-    double dNoncoolConvRateMax;
-    double dNoncoolConvUMin;
+typedef struct uHotContext {
+    double dHotConvRate;
+    double dHotConvRateMul;
+    double dHotConvRateMax;
+    double dHotConvUMin;
     struct GasPressureContext gpc;
 #ifdef TWOPHASE
     double dMultiPhaseMinTemp;
     int bMultiPhaseTempThreshold;
 #endif
-    } UNCC;
+    } UHC;
 
 #define SINK_Lx(_a) (((PARTICLE *) (_a))->uDotPdV)
 #define SINK_Ly(_a) (((PARTICLE *) (_a))->uDotAV)
@@ -438,10 +438,10 @@ typedef struct chkParticle {
 #ifdef GASOLINE
     FLOAT u;
 #ifdef TWOPHASE
-    FLOAT fMassNoncool;
+    FLOAT fMassHot;
 #endif
 #ifdef UNONCOOL
-    FLOAT uNoncool;
+    FLOAT uHot;
 #endif
 #ifdef STARSINK
     FLOAT Lx,Ly,Lz;
@@ -875,11 +875,11 @@ void pkdCalcEandL(PKD,double *,double *,double *,double []);
 void pkdCalcEandLExt(PKD,double *,double[],double [],double *);
 void pkdDrift(PKD,double,FLOAT *,int,int,int,FLOAT,double);
 
-double pkduNoncoolConvRate(PKD pkd, UNCC uncc, FLOAT fBall2, double uNoncoolPred, double uPred);
-void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, int iGasModel, int bUpdateState );
+double pkduHotConvRate(PKD pkd, UHC uhc, FLOAT fBall2, double uHotPred, double uPred);
+void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int iGasModel, int bUpdateState );
 void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
     double dvPredFacTwo, double duDelta, double duPredDelta, int iGasModel,
-    double z, double duDotLimit, double dTimeEnd, UNCC uncc );
+    double z, double duDotLimit, double dTimeEnd, UHC uhc );
 void pkdEmergencyAdjust(PKD pkd, int iRung, int iMaxRung, double dDelta, double dDeltaThresh, int *pnUn, int *piMaxRungIdeal, int *pnMaxRung, int *piMaxRungOut);
 void pkdKickPatch(PKD pkd, double dvFacOne, double dvFacTwo,
     double dOrbFreq, int bOpen);
@@ -974,13 +974,13 @@ void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);
 
 #ifdef GASOLINE
 
-void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UNCC uncc, int iGasModel, int bUpdateState );
+void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int iGasModel, int bUpdateState );
 void pkdUpdateShockTracker(PKD,double, double, double);
 double pkdDtFacCourant( double dEtaCourant, double dCosmoFac );
 double pkdPoverRhoFloorJeansParticle(PKD pkd, double dResolveJeans, PARTICLE *p);
 void pkdSetThermalCond(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p);
 void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p, 
-    double *pPoverRhoFloorJeans, double *pPoverRhoNoncool, double *pPoverRhoGas, double *pcGas );
+    double *pPoverRhoFloorJeans, double *pPoverRhoHot, double *pPoverRhoGas, double *pcGas );
 void pkdGasPressure(PKD, struct GasPressureContext *pgpc);
 void pkdGetDensityU(PKD, double);
 void pkdLowerSoundSpeed(PKD, double);
@@ -1033,7 +1033,7 @@ void pkdMassInR(PKD pkd, double R, double *pdMass, FLOAT *com);
 #ifdef NEED_VPRED
 #ifdef GASOLINE
 void pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
-    int iGasModel,double z,double duDotLimit, double dTimeEnd,UNCC uncc);
+    int iGasModel,double z,double duDotLimit, double dTimeEnd,UHC uhc);
 #else
 void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
 #endif

@@ -79,19 +79,19 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return(p->u);
 	case OUT_TWOPHASE_ARRAY:
 #ifdef TWOPHASE
-	    return(p->fMassNoncool);
+	    return(p->fMassHot);
 #else
 	    return(0.);
 #endif
 	case OUT_UNONCOOL_ARRAY:
 #ifdef UNONCOOL
-	    return(p->uNoncool);
+	    return(p->uHot);
 #else
 	    return(0.);
 #endif
 	case OUT_TEMPINC_ARRAY:
 #ifdef UNONCOOL
-	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u+p->uNoncool, p->fDensity, p->fMetals );
+	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u+p->uHot, p->fDensity, p->fMetals );
 #else
 #ifndef NOCOOLING
 	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
@@ -392,10 +392,10 @@ void VecFilename(char *achFile, int iType)
 		strncat(achFile,"u",256);
 		break;
 	case OUT_TWOPHASE_ARRAY:
-		strncat(achFile,"MassNoncool",256);
+		strncat(achFile,"MassHot",256);
 		break;
 	case OUT_UNONCOOL_ARRAY:
-		strncat(achFile,"uNoncool",256);
+		strncat(achFile,"uHot",256);
 		break;
 	case OUT_TEMPINC_ARRAY:
 		strncat(achFile,"Tinc",256);

@@ -83,13 +83,13 @@
 
 #ifdef DIFFUSION
 #ifdef UNONCOOL
-#define DIFFUSIONThermaluNoncool() \
-        { double diffuNc = diffTh*(p->uNoncoolPred-q->uNoncoolPred); \
-        PACTIVE( p->uNoncoolDotDiff += diffuNc*rq );        \
-        QACTIVE( q->uNoncoolDotDiff -= diffuNc*rp );        \
+#define DIFFUSIONThermaluHot() \
+        { double diffuNc = diffTh*(p->uHotPred-q->uHotPred); \
+        PACTIVE( p->uHotDotDiff += diffuNc*rq );        \
+        QACTIVE( q->uHotDotDiff -= diffuNc*rp );        \
         }
 #else
-#define DIFFUSIONThermaluNoncool()  
+#define DIFFUSIONThermaluHot()  
 #endif
 #ifdef DIFFUSIONPRICE
 #define DIFFUSIONThermal(dt_) \
@@ -99,7 +99,7 @@
      double diffu = diffTh*(p->uPred-q->uPred);             \
      PACTIVE( p->uDotDiff += diffu*rq );                     \
      QACTIVE( q->uDotDiff-= diffu*rp );                     \
-     DIFFUSIONThermaluNoncool(); }
+     DIFFUSIONThermaluHot(); }
 #else
 #ifndef NODIFFUSIONTHERMAL
 /* Default -- thermal diffusion */
@@ -128,7 +128,7 @@
       diffu = (diffTh+dThermalCond)*(p->uPred-q->uPred);              \
       PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
       QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \
-      DIFFUSIONThermaluNoncool(); }
+      DIFFUSIONThermaluHot(); }
 #else
 #define DIFFUSIONThermal(dt_)
 #endif

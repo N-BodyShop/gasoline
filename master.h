@@ -299,7 +299,7 @@ int msrMaxRung(MSR msr);
 
 void msrInitTimeSteps(MSR,double,double);
 
-void msrSetuNonCoolContext( MSR msr, UNCC *puncc, double a );
+void msrSetuHotContext( MSR msr, UHC *puhc, double a );
 
 #ifdef GASOLINE
 void msrUpdateuDot(MSR,double,double,int);

@@ -344,10 +344,10 @@ struct parameters {
     int iRandomSeed;
 	int nSmoothFeedback;
 #endif
-    double dNoncoolConvTime;
-    double dNoncoolConvTimeMul;
-    double dNoncoolConvTimeMin;
-    double dNoncoolConvVelMin;
+    double dHotConvTime;
+    double dHotConvTimeMul;
+    double dHotConvTimeMin;
+    double dHotConvVelMin;
     int bESF;
     double dESFEnergy;
     double dESFTime;

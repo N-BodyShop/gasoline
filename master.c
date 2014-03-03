@@ -1144,20 +1144,20 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dKBoltzUnit",2,&msr->param.dKBoltzUnit,
 				sizeof(double),"kb",
 				"<Boltzmann Constant in System Units>");
-	msr->param.dNoncoolConvTime = 1e7;
-	prmAddParam(msr->prm,"dNoncoolConvTime",2,&msr->param.dNoncoolConvTime,
+	msr->param.dHotConvTime = 1e7;
+	prmAddParam(msr->prm,"dHotConvTime",2,&msr->param.dHotConvTime,
 				sizeof(double),"ncct",
 				"<Timescale to convert noncooling to cooling (yr)>");
-	msr->param.dNoncoolConvTimeMul = 4;
-	prmAddParam(msr->prm,"dNoncoolConvTimeMul",2,&msr->param.dNoncoolConvTimeMul,
+	msr->param.dHotConvTimeMul = 4;
+	prmAddParam(msr->prm,"dHotConvTimeMul",2,&msr->param.dHotConvTimeMul,
 				sizeof(double),"ncctmul",
 				"<Timescale Multiplier to convert noncooling to cooling>");
-	msr->param.dNoncoolConvTimeMin = 1e6;
-	prmAddParam(msr->prm,"dNoncoolConvTimeMin",2,&msr->param.dNoncoolConvTimeMin,
+	msr->param.dHotConvTimeMin = 1e6;
+	prmAddParam(msr->prm,"dHotConvTimeMin",2,&msr->param.dHotConvTimeMin,
 				sizeof(double),"ncctm",
 				"<Minimum Timescale to convert noncooling to cooling (yr)>");
-	msr->param.dNoncoolConvVelMin = 1e-6; // Prevents negative ueff 
-	prmAddParam(msr->prm,"dNoncoolConvVelMin",2,&msr->param.dNoncoolConvVelMin,
+	msr->param.dHotConvVelMin = 1e-6; // Prevents negative ueff 
+	prmAddParam(msr->prm,"dHotConvVelMin",2,&msr->param.dHotConvVelMin,
 				sizeof(double),"nccvm",
 				"<Minimum velocity to convert noncooling to cooling (km/s)>");
 	msr->param.bESF = 0;
@@ -1384,10 +1384,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dCStar", 2, &msr->param.stfm->dCStar,
 		    sizeof(double), "stCStar",
 		    "<Star formation coefficient> = 0.1");
-	msr->param.stfm->bTempInclNoncool = 0;
-	prmAddParam(msr->prm,"bTempInclNoncool", 0, &msr->param.stfm->bTempInclNoncool,
-		    sizeof(int), "bTempInclNoncool",
-		    "<Include uNoncool in temp estimate for Temp>");
+	msr->param.stfm->bTempInclHot = 0;
+	prmAddParam(msr->prm,"bTempInclHot", 0, &msr->param.stfm->bTempInclHot,
+		    sizeof(int), "bTempInclHot",
+		    "<Include uHot in temp estimate for Temp>");
 	msr->param.stfm->dTempMax = 1.5e4;
 	prmAddParam(msr->prm,"dTempMax", 2, &msr->param.stfm->dTempMax,
 		    sizeof(double), "stTempMax",
@@ -3113,9 +3113,9 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bESF: %d",msr->param.bESF);
 	fprintf(fp," dESFTime: %g",msr->param.dESFTime);
 	fprintf(fp," dESFEnergy: %g",msr->param.dESFEnergy);
-	fprintf(fp," dNoncoolConvTime: %g",msr->param.dNoncoolConvTime);
-	fprintf(fp," dNoncoolConvTimeMin: %g",msr->param.dNoncoolConvTimeMin);
-	fprintf(fp," dNoncoolConvVelMin: %g",msr->param.dNoncoolConvVelMin);
+	fprintf(fp," dHotConvTime: %g",msr->param.dHotConvTime);
+	fprintf(fp," dHotConvTimeMin: %g",msr->param.dHotConvTimeMin);
+	fprintf(fp," dHotConvVelMin: %g",msr->param.dHotConvVelMin);
 	fprintf(fp," iNSNIIQuantum: %d",msr->param.sn->iNSNIIQuantum);
 	fprintf(fp," bSNTurnOffCooling: %i",msr->param.bSNTurnOffCooling);
 	fprintf(fp," bShortCoolShutoff: %i",msr->param.bShortCoolShutoff);
@@ -6218,26 +6218,26 @@ void msrCalcEandL(MSR msr,int bFirst,double dTime,double *E,double *T,
 	*E = (*T) + (*U) - msr->dEcosmo + a*a*(*Eth);
 	}
 
-void msrSetuNonCoolContext( MSR msr, UNCC *puncc, double a ) {
-    puncc->dNoncoolConvRate = 1/(msr->param.dNoncoolConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
-    puncc->dNoncoolConvRateMul = 1/(a*msr->param.dNoncoolConvTimeMul);
-    puncc->dNoncoolConvRateMax = 1/(msr->param.dNoncoolConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
-    puncc->dNoncoolConvUMin = 0.5e10*msr->param.dNoncoolConvVelMin*msr->param.dNoncoolConvVelMin/msr->param.dErgPerGmUnit;
-    puncc->gpc.gammam1 = msr->param.dConstGamma-1;
-    puncc->gpc.gamma = msr->param.dConstGamma;
-	puncc->gpc.dCosmoFac = a;
-    puncc->gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); //for DTADJUST
-    puncc->gpc.dResolveJeans = msr->param.dResolveJeans/a;
+void msrSetuHotContext( MSR msr, UHC *puhc, double a ) {
+    puhc->dHotConvRate = 1/(msr->param.dHotConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
+    puhc->dHotConvRateMul = 1/(a*msr->param.dHotConvTimeMul);
+    puhc->dHotConvRateMax = 1/(msr->param.dHotConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
+    puhc->dHotConvUMin = 0.5e10*msr->param.dHotConvVelMin*msr->param.dHotConvVelMin/msr->param.dErgPerGmUnit;
+    puhc->gpc.gammam1 = msr->param.dConstGamma-1;
+    puhc->gpc.gamma = msr->param.dConstGamma;
+	puhc->gpc.dCosmoFac = a;
+    puhc->gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); //for DTADJUST
+    puhc->gpc.dResolveJeans = msr->param.dResolveJeans/a;
 #ifdef THERMALCOND
-    puncc->gpc.dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333)*a; /* (dx/h) factor */
-    puncc->gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode*a;
-    puncc->gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff/a;
-    puncc->gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode*a;
-    puncc->gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff/a;
+    puhc->gpc.dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333)*a; /* (dx/h) factor */
+    puhc->gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode*a;
+    puhc->gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff/a;
+    puhc->gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode*a;
+    puhc->gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff/a;
 #endif
 #ifdef TWOPHASE
-    puncc->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
-    puncc->bMultiPhaseTempThreshold = msr->param.bMultiPhaseTempThreshold;
+    puhc->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
+    puhc->bMultiPhaseTempThreshold = msr->param.bMultiPhaseTempThreshold;
 #endif
     }
 
@@ -6331,7 +6331,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.z = 1/a - 1;
 		invpr.duDotLimit = msr->param.duDotLimit;
 		invpr.dTimeEnd = dTime + dDelta/2.0;
-        msrSetuNonCoolContext( msr, &(invpr.uncc), a );
+        msrSetuHotContext( msr, &(invpr.uhc), a );
 		}
 	else {
 		double H;
@@ -6350,7 +6350,7 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.z = 1/a - 1;
 		invpr.duDotLimit = msr->param.duDotLimit;
 		invpr.dTimeEnd = dTime + dDelta/2.0;
-        msrSetuNonCoolContext( msr, &(invpr.uncc), a );
+        msrSetuHotContext( msr, &(invpr.uhc), a );
 		}
 	if (dDelta != 0.0) {
 		struct outKick out;
@@ -6509,7 +6509,7 @@ void msrKickDKD(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-        msrSetuNonCoolContext( msr, &(in.uncc), a );
+        msrSetuHotContext( msr, &(in.uhc), a );
 #endif /* NEED_VPRED */
 		}
 	pstKick(msr->pst,&in,sizeof(in),&out,NULL);
@@ -6563,7 +6563,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		a = csmTime2Exp(msr->param.csm,dTime);
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-        msrSetuNonCoolContext( msr, &(in.uncc), a );
+        msrSetuHotContext( msr, &(in.uhc), a );
 #endif /* NEED_VPRED */
 		}
 	else {
@@ -6586,7 +6586,7 @@ void msrKickKDKOpen(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-        msrSetuNonCoolContext( msr, &(in.uncc), a );
+        msrSetuHotContext( msr, &(in.uhc), a );
 #endif /* NEED_VPRED */
 		}
 	if(!msr->param.bPatch) {
@@ -6668,7 +6668,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		a = csmTime2Exp(msr->param.csm,dTime);
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-        msrSetuNonCoolContext( msr, &(in.uncc), a );
+        msrSetuHotContext( msr, &(in.uhc), a );
 #endif /* NEED_VPRED */
 		}
 	else {
@@ -6691,7 +6691,7 @@ void msrKickKDKClose(MSR msr,double dTime,double dDelta)
 		in.iGasModel = msr->param.iGasModel;
 		in.z = 1/a - 1;
 		in.duDotLimit = msr->param.duDotLimit;
-        msrSetuNonCoolContext( msr, &(in.uncc), a );
+        msrSetuHotContext( msr, &(in.uhc), a );
 #endif /* NEED_VPRED */
 		}
 	if(!msr->param.bPatch) {
@@ -9050,7 +9050,7 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateState)
 	a = csmTime2Exp(msr->param.csm,dTime);
 	in.z = 1/a - 1;
 	in.dTime = dTime;
-    msrSetuNonCoolContext( msr, &(in.uncc), a );
+    msrSetuHotContext( msr, &(in.uhc), a );
 	in.iGasModel = msr->param.iGasModel;
     in.dResolveJeans = msr->param.dResolveJeans/a;
 	in.bUpdateState = bUpdateState;

@@ -3473,7 +3473,7 @@ void pstKick(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	else {
 		pkdKick(plcl->pkd,in->dvFacOne,in->dvFacTwo,
 				in->dvPredFacOne,in->dvPredFacTwo,in->duDelta,in->duPredDelta,
-		    in->iGasModel,in->z,in->duDotLimit, in->dTimeEnd, in->uncc);
+		    in->iGasModel,in->z,in->duDotLimit, in->dTimeEnd, in->uhc);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -4575,7 +4575,7 @@ void pstUpdateuDot(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (outUp.MaxTime > out->MaxTime) out->MaxTime = outUp.MaxTime;
 		}
 	else {
-        pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->uncc,in->iGasModel,in->bUpdateState);
+        pkdUpdateuDot(plcl->pkd,in->duDelta,in->dTime,in->z,in->uhc,in->iGasModel,in->bUpdateState);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;
@@ -6124,7 +6124,7 @@ void pstKickVpred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	else {
 		pkdKickVpred(plcl->pkd,in->dvFacOne,in->dvFacTwo,in->duDelta,
-		    in->iGasModel,in->z,in->duDotLimit,in->dTimeEnd,in->uncc);
+		    in->iGasModel,in->z,in->duDotLimit,in->dTimeEnd,in->uhc);
 		out->Time = pkdGetTimer(plcl->pkd,1);
 		out->MaxTime = out->Time;
 		out->SumTime = out->Time;

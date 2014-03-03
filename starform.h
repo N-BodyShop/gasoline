@@ -17,7 +17,7 @@ typedef struct stfmContext
     double dPhysDenMin;		/* Physical density minimum for star
 				   formation (in system units) */
     double dOverDenMin;		/* Overdensity minimum for star formation */
-    int bTempInclNoncool;   /* Include uNoncool in temp estimate for TempMax */
+    int bTempInclHot;   /* Include uHot in temp estimate for TempMax */
     double dTempMax;		/* Form stars below this temperature
 				   EVEN IF the gas is not cooling. */
     double dSoftMin;		/* Jean's length as a fraction of

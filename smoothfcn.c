@@ -2954,7 +2954,7 @@ void initSphPressureTermsParticle(void *p)
 		((PARTICLE *)p)->uDotPdV = 0.0;
         ((PARTICLE *)p)->uDotAV = 0.0;
 #ifdef UNONCOOL
-        ((PARTICLE *)p)->uNoncoolDotDiff = 0.0;
+        ((PARTICLE *)p)->uHotDotDiff = 0.0;
 #endif
 #ifdef DRHODT
 		((PARTICLE *)p)->fDivv_PdV = 0.0;
@@ -2983,7 +2983,7 @@ void initSphPressureTerms(void *p)
         ((PARTICLE *)p)->uDotPdV = 0.0;
 		((PARTICLE *)p)->uDotAV = 0.0;
 #ifdef UNONCOOL
-        ((PARTICLE *)p)->uNoncoolDotDiff = 0.0;
+        ((PARTICLE *)p)->uHotDotDiff = 0.0;
 #endif
 #ifdef DRHODT
 		((PARTICLE *)p)->fDivv_PdV = 0.0;
@@ -3012,7 +3012,7 @@ void combSphPressureTerms(void *p1,void *p2)
         ((PARTICLE *)p1)->uDotPdV += ((PARTICLE *)p2)->uDotPdV;
         ((PARTICLE *)p1)->uDotAV += ((PARTICLE *)p2)->uDotAV;
 #ifdef UNONCOOL
-        ((PARTICLE *)p1)->uNoncoolDotDiff += ((PARTICLE *)p2)->uNoncoolDotDiff;
+        ((PARTICLE *)p1)->uHotDotDiff += ((PARTICLE *)p2)->uHotDotDiff;
 #endif
 #ifdef DRHODT
  	        ((PARTICLE *)p1)->fDivv_PdV += ((PARTICLE *)p2)->fDivv_PdV;
@@ -5254,7 +5254,7 @@ void SplitGas(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
     rmax = sqrt(rmax/ih2);
     p->fMass /= 2.0;
 #ifdef TWOPHASE
-    p->fMassNoncool /= 2.0;
+    p->fMassHot /= 2.0;
 #endif
     daughter = *p;
     TYPESet(&daughter, TYPE_GAS);
@@ -5475,7 +5475,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		if (TYPETest(q, TYPE_DELETED)) continue;
 		Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
 #ifdef TWOPHASE
-		if (q->uNoncool == 0 && Tq <= smf->dEvapMinTemp) continue;  
+		if (q->uHot == 0 && Tq <= smf->dEvapMinTemp) continue;  
 #else
 		if (Tq <= smf->dEvapMinTemp) continue;  
 #endif /* TWOPHASE */
@@ -5675,8 +5675,8 @@ void initTreeParticleDistFBEnergy(void *p1)
     
     if(TYPETest((PARTICLE *)p1, TYPE_GAS)){
 #ifdef TWOPHASE
-		if(((PARTICLE *)p1)->fMassNoncool > 0) {
-			((PARTICLE *)p1)->uDotFB *= ((PARTICLE *)p1)->fMassNoncool;
+		if(((PARTICLE *)p1)->fMassHot > 0) {
+			((PARTICLE *)p1)->uDotFB *= ((PARTICLE *)p1)->fMassHot;
 		}
 		else {
 			((PARTICLE *)p1)->uDotFB *= ((PARTICLE *)p1)->fMass;
@@ -5702,7 +5702,7 @@ void initDistFBEnergy(void *p1)
      */
     ((PARTICLE *)p1)->curlv[0] = ((PARTICLE *)p1)->fMass;
 #ifdef TWOPHASE
-    ((PARTICLE *)p1)->curlv[1] = ((PARTICLE *)p1)->fMassNoncool;
+    ((PARTICLE *)p1)->curlv[1] = ((PARTICLE *)p1)->fMassHot;
 #endif
 
     /*
@@ -5722,8 +5722,8 @@ void combDistFBEnergy(void *p1,void *p2)
      */
     FLOAT fAddedMass = ((PARTICLE *)p2)->fMass - ((PARTICLE *)p2)->curlv[0];
 #ifdef TWOPHASE
-    FLOAT fAddedMassNoncool = ((PARTICLE *)p2)->fMassNoncool - ((PARTICLE *)p2)->curlv[1];
-    ((PARTICLE *)p1)->fMassNoncool += fAddedMassNoncool;
+    FLOAT fAddedMassHot = ((PARTICLE *)p2)->fMassHot - ((PARTICLE *)p2)->curlv[1];
+    ((PARTICLE *)p1)->fMassHot += fAddedMassHot;
 #endif
     
     ((PARTICLE *)p1)->fMass += fAddedMass;
@@ -5909,17 +5909,17 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef TWOPHASE
 	FLOAT Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
 	if(Tq < smf->dMultiPhaseMinTemp && weight > 0) {
-		double fMassNoncool = q->fMassNoncool + weight*p->fMSN;
+		double fMassHot = q->fMassHot + weight*p->fMSN;
 		double deltaMassLoad = weight*p->fMSN*smf->dFBInitialMassLoad;
-		if (fMassNoncool+deltaMassLoad >= q->fMass) {
-			deltaMassLoad = q->fMass - fMassNoncool;
-			fMassNoncool = q->fMass;
+		if (fMassHot+deltaMassLoad >= q->fMass) {
+			deltaMassLoad = q->fMass - fMassHot;
+			fMassHot = q->fMass;
 			}
 		else {
-			fMassNoncool += deltaMassLoad;
+			fMassHot += deltaMassLoad;
 		}
-		q->fMassNoncool = fMassNoncool;
-		assert(q->fMassNoncool >= 0);
+		q->fMassHot = fMassHot;
+		assert(q->fMassHot >= 0);
 	}
 #endif /* TWOPHASE */
   }
@@ -6112,8 +6112,8 @@ void postDistFBEnergy(PARTICLE *p1, SMF *smf)
     
     if(TYPETest(p1, TYPE_GAS)){
 #ifdef TWOPHASE
-		if (p1->fMassNoncool > 0) {
-			p1->uDotFB /= p1->fMassNoncool;
+		if (p1->fMassHot > 0) {
+			p1->uDotFB /= p1->fMassHot;
 		}
 		else {
 			p1->uDotFB /= p1->fMass;
