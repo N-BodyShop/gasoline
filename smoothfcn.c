@@ -122,7 +122,7 @@
 	}
 #else
 #define KERNEL(ak,ar2) 	{						\
-	if (ar2 <= 0) ak = (21/16.)*(1-0.0454684); /* Dehnen & Aly 2012 correction for Ns=64 */ \
+    if (ar2 <= 0) ak = (21/16.)*(1-0.0294*pow(nSmooth*0.01,-0.977)); /* Dehnen & Aly 2012 correction (1-0.0454684 at Ns=64) */ \
 	else {								\
 	    double au = sqrt(ar2*0.25);					\
 	    ak = 1-au;							\
@@ -137,6 +137,26 @@
 	adk = 1-au;					\
 	adk = (-21/16.*20./4.)*adk*adk*adk;	\
 	}
+#else
+#ifdef WENDLANDC4
+/* Wendland C_4 Kernel */
+#define KERNEL(ak,ar2) 	{						\
+	if (ar2 <= 0) ak = (495/32./8.)*(1-0.01342*pow(nSmooth*0.01,-1.579)); /* Dehnen & Aly 2012 correction */ \
+	else {								\
+	    double au = sqrt(ar2*0.25);					\
+	    ak = 1-au;							\
+	    ak = ak*ak*ak;							\
+	    ak = ak*ak;							\
+	    ak = (495/32./8.)*ak*(1+6*au+(35/3.)*au*au); \
+	    }								\
+	}
+#define DKERNEL(adk,ar2) {                                  \
+        double _a2,au = sqrt(ar2*0.25);                     \
+        adk = 1-au;                                         \
+        _a2 = adk*adk;                                      \
+        adk = (-495/32.*7./3./4.)*_a2*_a2*adk*(1+5*au);        \
+	}
+
 #else
 #ifdef PEAKEDKERNEL
 /* Standard M_4 Kernel with central peak for dW/du according to Thomas and Couchman 92 (Steinmetz 96) */
@@ -219,6 +239,7 @@
 #endif
 #endif
 #endif
+#endif /* WENDLANDC4 */
 #endif /* WENDLAND */
 #endif /* QUINTIC */
 

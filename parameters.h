@@ -124,6 +124,7 @@ struct parameters {
 	int iStopStep;
 	int nSteps;
 	int nSmooth;
+	int nSmoothMax;
 	int iMaxRung;
 	int nSuperCool;
 	int nGrowMass;

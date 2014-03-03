@@ -2707,6 +2707,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef WENDLAND
 	fprintf(fp," WENDLAND");
 #endif
+#ifdef WENDLANDC4
+	fprintf(fp," WENDLANDC4");
+#endif
 #ifdef QUINTIC
 	fprintf(fp," QUINTIC");
 #endif
@@ -5618,6 +5621,9 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->PP = msr->param.PP; /* struct copy */
     psmf->dCentMass = 0.0; /* to disable Hill sphere checks */
 #endif
+    psmf->nSmoothed = 0;
+    psmf->nSmoothedInner = 0;
+    psmf->nSmoothedFixh = 0;
     }
 
 void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
@@ -5649,6 +5655,7 @@ void msrSmooth(MSR msr,double dTime,int iSmoothType,int bSymmetric)
   if (msr->param.bVStep) {
       struct outSmooth out;
       LOGTIME( pstSmooth(msr->pst,&in,sizeof(in),&out,NULL), "Smooth Calculated", TIMING_Smooth );
+	  printf("nSmoothed %d (inner %d, fixh %d)\n",out.nSmoothed,out.nSmoothedInner,out.nSmoothedFixh);
       if (msr->nThreads > 1) {
 	  double iP = 1.0/msr->nThreads;
 	  printf("Particle Cache Statistics (average per processor):\n");

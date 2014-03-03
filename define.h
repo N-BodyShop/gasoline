@@ -153,6 +153,7 @@
 //#define VOLUMEFEEDBACK #Smooth FB energy over a volume rather than mass
 //#define VOXEL #Dump voxels for volume imaging.
 #define VSIGVISC //Alternate Viscous force calculation (better?)
-#define WENDLAND //Use the Wendland C_2 Kernel (See Dehnen & Aly 2012)
+//#define WENDLAND //Use the Wendland C_2 Kernel (See Dehnen & Aly 2012)
+#define WENDLANDC4 //Use the Wendland C_4 Kernel (See Dehnen & Aly 2012)
 //#define WOLFIRE #Use the Wolfire values for the metal cooling rate with UV heating
 //#define WOLFIRE_NOTWOPHASE #Use an imposed cooling rate without a two-phase instability

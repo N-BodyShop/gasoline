@@ -2987,6 +2987,9 @@ void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
 		if (out != NULL) {
 		    out->iSmoothFlags |= outUp.iSmoothFlags;
+            out->nSmoothed += outUp.nSmoothed;
+            out->nSmoothedInner += outUp.nSmoothedInner;
+            out->nSmoothedFixh += outUp.nSmoothedFixh;
 		/*
 		 ** Cache statistics sums.
 		 */
@@ -3012,6 +3015,9 @@ void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		
 		if (out != NULL) {
 		    out->iSmoothFlags |= in->smf.iSmoothFlags;
+            out->nSmoothed += outUp.nSmoothed;
+            out->nSmoothedInner += outUp.nSmoothedInner;
+            out->nSmoothedFixh += outUp.nSmoothedFixh;
 		/*
 		 ** Cache statistics
 		 */
