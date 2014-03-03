@@ -84,8 +84,12 @@ static double MIN(double minarg1, double minarg2)
     return (minarg1 < minarg2 ? minarg1 : minarg2);
 }
 */
+#ifndef MAX
 #define MAX(a,b) ((b) > a ?  b:a )
+#endif
+#ifndef MIN
 #define MIN(a,b) ((b) > a ?  a:b )
+#endif
 #define SIGN(a,b) ((b) > a ? fabs(a) : -fabs(a))
 
 void nrerror(char error_text[]);
