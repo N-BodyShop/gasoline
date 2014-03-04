@@ -352,7 +352,6 @@ void tzWriteHeader( TZX *tz ) {
 	}
 
 void tzWriteTreeZip( TZX *tz ) {
-	tznode *c ;
 
 	/* Initialize bitstream */
 	tz->nbits = 0;
@@ -477,7 +476,7 @@ void tzAddPos( TZX *tz, double *r, LABELTYPE label ) {
 							p1++;
 							c->child[1].n++;
 							*p0 = *pend;
-							*pend--;
+							pend--;
 							}
 						else {
 							TZKEY_RSHIFT1(p0->k);
@@ -496,7 +495,7 @@ void tzAddPos( TZX *tz, double *r, LABELTYPE label ) {
 							p1++;
 							c->child[1].n++;
 							*p0 = *pend;
-						*pend--;
+						pend--;
 							}
 						else {
 							TZKEY_RSHIFT1(p0->k);

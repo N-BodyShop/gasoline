@@ -216,11 +216,10 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
 {
   double dMStarMin, dMStarMax;
   double dMStarMinIa, dMStarMaxIa;
-  double dMSNTypeIa, dESNTypeIa, dNSNTypeIa;
+  double dESNTypeIa, dNSNTypeIa;
   struct inMSIMFSec mssn;    
   double dStarLtimeMin, dStarLtimeMax;
   double dMtot;
-  double  dDeltaMSNrem;
 
   mssn.ms = sn->MSparam;		/* needed by SN Ia functions */
   mssn.sn = *sn;				/* needed by SN Ia functions */
@@ -242,11 +241,6 @@ void snCalcSNIaFeedback(SN sn, SFEvent sfEvent,
 
     assert (dMStarMinIa < dMStarMaxIa && dMStarMinIa >0.0 && dMStarMaxIa > 0.0);
         
-    /* mass of stars that go SNIa based on normalized IMF */
-    /*        dMSNTypeIa = dMSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 
-	      dMSNTypeIa /= dMtot;	/* convert to mass fraction of stars /
-	      /* convert to mass of stars that go SNIa / 
-	      dMSNTypeIa *= sfEvent.dMass; */
 
     /* number of stars that go SNIa */        
     dNSNTypeIa = dNSNIa (&mssn, dMStarMinIa, dMStarMaxIa); 

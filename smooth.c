@@ -1280,7 +1280,7 @@ PQ *smLoadPQ(SMX smx, int pi, int nSmooth, int nTree, FLOAT x, FLOAT y, FLOAT z,
     PARTICLE *p = pkd->pStore;
     KDN *pkdn;
     PARTICLE *pPart;
-    int i,j,pj;
+    int i,pj;
     int cell,id;
     FLOAT dx,dy,dz,sx,sy,sz;
     PQ *pq,*pqi;
@@ -1423,7 +1423,7 @@ PQ *smBallSearchAll(SMX smx, PQ *pq, int pi, FLOAT x, FLOAT y, FLOAT z,  FLOAT l
     PARTICLE *p = pkd->pStore;
     KDN *pkdn;
     PARTICLE *pPart;
-    int i,j,pj;
+    int pj;
     int cell,idcell,cp,id,ct,idct;
     FLOAT fBall2,fDist2,dx,dy,dz,sx,sy,sz;
     int iDum;
@@ -1516,13 +1516,15 @@ void smSmooth(SMX smx,SMF *smf)
     PARTICLE *p = pkd->pStore;
     int nSmooth,i,j,pi,pNext,nCnt;
     int cp;
-    FLOAT fBall2,x,y,z,dx,dy,dz,lx,ly,lz,r2Next;
+    FLOAT fBall2,x,y,z,lx,ly,lz,r2Next;
     PQ *pq,*pqi,*pqNext;
     int iDum;
     int nTree,nLocal;
     int nSmoothed = 0,nSmoothedInner = 0,nSmoothedFixh = 0;
-    int nInner,nSmoothInnerFail=0,nSmoothInnerCut = smx->nSmoothInner*0.8;
-
+    int nSmoothInnerFail=0;
+#ifdef NSMOOTHINNER
+    int  nInner,nSmoothInnerCut = smx->nSmoothInner*0.8;
+#endif
     nSmooth = smx->nSmooth;
     nTree = c[pkd->iRoot].pUpper + 1;
     nLocal = pkd->nLocal;
@@ -1590,7 +1592,9 @@ void smSmooth(SMX smx,SMF *smf)
                 p[pi].fBall2 = fBall2;
                 TYPESet(&p[pi],TYPE_SMOOTHDONE);
 
+#ifdef NSMOOTHINNER
                 nInner = 0;
+#endif
                 for (i=0,pqi=smx->pq;i<nSmooth;++i,++pqi) {
                     /*
                     ** There are cases like in collisions where we do want to include the
@@ -1781,7 +1785,7 @@ void smReSmooth(SMX smx,SMF *smf)
     {
     PKD pkd = smx->pkd;
     PARTICLE *p = smx->pkd->pStore;
-    int pi,cp,id,i;
+    int pi,cp;
     FLOAT lx,ly,lz,fBall2;
     int nTree;
         
@@ -1892,7 +1896,7 @@ void smDtSmooth(SMX smx,SMF *smf)
     PARTICLE *pPart;
     KDN *pkdn;
     int pi,pj,cp,id;
-    FLOAT dt2,dtEst2,dtNew,dtMin,dtMax2,dx,dy,dz,dvx,dvy,dvz;
+    FLOAT dt2,dtEst2,dtNew,dtMin,dx,dy,dz,dvx,dvy,dvz;
     FLOAT x,y,z,lx,ly,lz,sx,sy,sz,vx,vy,vz,fDist2,vdotr,fBall2;
     int iDum;
     int nTree;
@@ -1910,7 +1914,6 @@ void smDtSmooth(SMX smx,SMF *smf)
         lz = FLOAT_MAXVAL;
         }
     dtMin = FLOAT_MAXVAL;
-//    dtMax2 = smf->dDelta*smf->dDelta;
 
     nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
     for (pi=0;pi<nTree;++pi) {
@@ -1923,7 +1926,6 @@ void smDtSmooth(SMX smx,SMF *smf)
         */
         TYPESet(&p[pi],TYPE_SMOOTHDONE);
         dt2 = p[pi].dt;
-//	if (dt2 > dtMax2) dt2 = dtMax2;
         dt2 /= smf->dEtaCourantLong; /* factor of (1/eta) corrected later */
         dt2 = dt2*dt2;
         fBall2 = p[pi].fBall2;

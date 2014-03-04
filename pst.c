@@ -920,7 +920,6 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 	struct outMassCheck outMass;
 	int pFlag;	/* 0 => we are splitting all particles at once. 
 			   1 => we first split active, and then inactive. */
-	int nTotalActive;
 	int dBnd;
 
 	mdlZeroTimer(pst->mdl,&t);
@@ -988,16 +987,12 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 	     inWt.iSplitSide = 0;
 	     pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
 	     mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
-	     nTotalActive = outWtLow.nLow + outWtHigh.nLow
-	       + outWtLow.nHigh + outWtHigh.nHigh;
 	     if (!bDoRootFind) {
 	          pFlag = 0; /* Divide them all */
 		  mdlReqService(pst->mdl,pst->idUpper,PST_WEIGHT,&inWt,sizeof(inWt));
 		  inWt.iSplitSide = 0;
 		  pstWeight(pst->pstLower,&inWt,sizeof(inWt),&outWtLow,NULL);
 		  mdlGetReply(pst->mdl,pst->idUpper,&outWtHigh,NULL);
-		  nTotalActive = outWtLow.nLow + outWtHigh.nLow
-		    + outWtLow.nHigh + outWtHigh.nHigh;
 	          }
 
 	     /*
@@ -6204,7 +6199,6 @@ void
 pstStarClusterFormPrecondition(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	struct inStarClusterFormPrecondition *in = vin;
-	struct outStarClusterFormPrecondition *out = vout;
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inStarClusterFormPrecondition));
 	if (pst->nLeaves > 1) {

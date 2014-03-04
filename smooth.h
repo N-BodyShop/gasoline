@@ -476,7 +476,6 @@ typedef struct smContext {
     if (rMin2 > DTIS_MaxDist2) goto label;                              \
 	}
 
-//	if ((x+.5)*(x+.5)+y*y+z*z < 0.033*0.033) printf("MAXDIST2 %g %g %g %f %f  %f  ",(pkdn)->bndDt.cMax,(pkdn)->bndDt.vMin[0],(pkdn)->bndDt.vMax[0],DTIS_dv2,dt2,DTIS_MaxDist2); \
 
 #define DTINTERSECT(pkdn,dt2,rMin2,lx,ly,lz,x,y,z,sx,sy,sz,bPeriodic,vx,vy,vz,label) \
     {                                                                   \

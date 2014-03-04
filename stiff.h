@@ -59,38 +59,16 @@ double RootFind(double (*func)(void *Data, double), void *Data, double x1, doubl
  * Utils
  */
 
-static double SQR(double a) 
-{
-    return a*a;
-}
 
-static double FMAX(double maxarg1, double maxarg2)
-{
-    return (maxarg1 > maxarg2 ? maxarg1 : maxarg2);
-}
-
-static double FMIN(double minarg1, double minarg2)
-{
-    return (minarg1 < minarg2 ? minarg1 : minarg2);
-}
-/*
-static double MAX(double maxarg1, double maxarg2)
-{
-    return (maxarg1 > maxarg2 ? maxarg1 : maxarg2);
-}
-
-static double MIN(double minarg1, double minarg2)
-{
-    return (minarg1 < minarg2 ? minarg1 : minarg2);
-}
-*/
 #ifndef MAX
 #define MAX(a,b) ((b) > a ?  b:a )
 #endif
 #ifndef MIN
 #define MIN(a,b) ((b) > a ?  a:b )
 #endif
+#ifndef SIGN
 #define SIGN(a,b) ((b) > a ? fabs(a) : -fabs(a))
+#endif
 
 void nrerror(char error_text[]);
 double *vector(long nl, long nh);

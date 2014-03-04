@@ -116,13 +116,10 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
     {
     double tdyn;
     double tform;
-    double tsound;
     double tcool;
-    double E,T;
+    double T;
     COOL *cl = pkd->Cool;
     double dMProb;
-    double l_jeans2;
-    int small_jeans = 0;
  #ifdef COOLING_MOLECULARH
     double correL = 1.0;/*correlation length used for H2 shielding, CC*/
     double yH;
@@ -148,6 +145,7 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
     if(p->divv >= 0.0) return 0;
 #endif /*DIVVOFF*/
 #ifdef JEANSSF
+    double l_jeans2;
     T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fMetals );
     l_jeans2 = M_PI*p->c*p->c/p->fDensity*stfm->dCosmoFac;
 #endif
@@ -189,7 +187,7 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
 #endif/* COOLING_MOLECULARH */
 
 #if (0)
-    E = CoolCodeEnergyToErgPerGm( cl, p->u );
+    double E = CoolCodeEnergyToErgPerGm( cl, p->u );
 #ifdef  COOLING_MOLECULARH
     tcool = E/(-CoolHeatingRate( cl, &p->CoolParticle, T, 
             CodeDensityToComovingGmPerCc(cl,p->fDensity ), p->fMetals, correL )
@@ -219,6 +217,7 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
 #endif
           -UDOT_HYDRO(p) );
 #ifdef CHECKSF
+    int small_jeans = 0;
     p->tOff = CoolCodeTimeToSeconds( cl, p->fTimeCoolIsOffUntil - dTime)/3.1557e7;  /* years - never used */
     p->tcool = CoolCodeTimeToSeconds( cl, tcool)/3.1557e7;
     p->tdyn = CoolCodeTimeToSeconds( cl, tdyn)/3.1557e7;
@@ -227,6 +226,7 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
     p->small_jeans = small_jeans;
 #endif
 #ifdef SFCONDITIONS
+    double tsound;
     if(tcool < 0.0 && T > stfm->dTempMax) return 0;
     /*
      * Determine sound crossing time.

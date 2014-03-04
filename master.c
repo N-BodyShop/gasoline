@@ -2039,6 +2039,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    msr->param.dErgPerGmUnit = 1;
 	    }
 
+#if defined(PROMOTE) || defined(TWOPHASE)
     /* You enter effective thermal coefficient e.g. kappa0=6.1d-7 erg s^-1 K^-7/2 cm^-1 
        Code then multiplies by prefactors to 4/25 kappa0 mmw/k (1.5k/mmw)^-5/2 */
     msr->param.dEvapCoeffCode = msr->param.dEvapCoeff
@@ -2049,6 +2050,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
         pow(msr->param.dErgPerGmUnit,-2.5)
         *msr->param.dGmPerCcUnit*pow(msr->param.dKpcUnit*KPCCM,2.0)
         /msr->param.dSecUnit;
+#endif
 #ifdef THERMALCOND
     /* Thermal conductivity, c.f. Tielens p. 448 
        Heat flux = K(T) grad T,  dE/dt = div K(T) grad T   E = rho u
@@ -4508,7 +4510,6 @@ void msrCreateOutputListFromString(MSR msr,int (*pnOutputList), int OutputList[]
     {
     int iVecType,iOutGas,iOutDark,iOutStar;
     char achName[256];
-    char *start;
 
     (*pnOutputList) = 0;
     
@@ -4818,7 +4819,7 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
 {
     FILE *fp;
     char dirname[256];
-    int i, k, iDim, nDim, code, preminmax, magic=1062053;
+    int i, k, iDim, nDim, code, magic=1062053;
     LCL *plcl = msr->pst->plcl;
     char achOutFile[PST_FILENAME_SIZE], achTmpOutFile[PST_FILENAME_SIZE];
     char *typenames[3];
@@ -4849,7 +4850,6 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
 #else
     inOut.duTFac = 1.0;
 #endif
-    preminmax = 4*sizeof(int)+sizeof(double);
     typenames[0]="gas";
     typenames[1]="dark";
     typenames[2]="star";
@@ -6217,8 +6217,8 @@ void msrCalcEandL(MSR msr,int bFirst,double dTime,double *E,double *T,
 #endif
 	*E = (*T) + (*U) - msr->dEcosmo + a*a*(*Eth);
 	}
-
 void msrSetuHotContext( MSR msr, UHC *puhc, double a ) {
+#ifdef GASOLINE
     puhc->dHotConvRate = 1/(msr->param.dHotConvTime*SECONDSPERYEAR/msr->param.dSecUnit);
     puhc->dHotConvRateMul = 1/(a*msr->param.dHotConvTimeMul);
     puhc->dHotConvRateMax = 1/(msr->param.dHotConvTimeMin*SECONDSPERYEAR/msr->param.dSecUnit);
@@ -6228,8 +6228,10 @@ void msrSetuHotContext( MSR msr, UHC *puhc, double a ) {
 	puhc->gpc.dCosmoFac = a;
     puhc->gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); //for DTADJUST
     puhc->gpc.dResolveJeans = msr->param.dResolveJeans/a;
-#ifdef THERMALCOND
+#if defined(PROMOTE) || defined(TWOPHASE)
     puhc->gpc.dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333)*a; /* (dx/h) factor */
+#endif
+#if defined(THERMALCOND) || defined(TWOPHASE)
     puhc->gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode*a;
     puhc->gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff/a;
     puhc->gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode*a;
@@ -6238,6 +6240,7 @@ void msrSetuHotContext( MSR msr, UHC *puhc, double a ) {
 #ifdef TWOPHASE
     puhc->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
     puhc->bMultiPhaseTempThreshold = msr->param.bMultiPhaseTempThreshold;
+#endif
 #endif
     }
 
@@ -6331,7 +6334,9 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 		invpr.z = 1/a - 1;
 		invpr.duDotLimit = msr->param.duDotLimit;
 		invpr.dTimeEnd = dTime + dDelta/2.0;
+#ifdef GASOLINE
         msrSetuHotContext( msr, &(invpr.uhc), a );
+#endif
 		}
 	else {
 		double H;
@@ -6895,7 +6900,6 @@ double msrReadCheck(MSR msr,int *piStep)
 {
 	struct inReadCheck in;
 	struct inSetNParts inset;
-	struct inSetParticleTypes intype;
 	char achInFile[PST_FILENAME_SIZE];
 	int i;
 	LCL *plcl = msr->pst->plcl;
@@ -7196,9 +7200,6 @@ double msrReadCheck(MSR msr,int *piStep)
 	inset.nMaxOrderDark = msr->nMaxOrderDark;
 	inset.nMaxOrder = msr->nMaxOrder;
 	pstSetNParts(msr->pst,&inset,sizeof(inset),NULL,NULL);
-/*  Types stored in checkpoint now */
-//	intype.nSuperCool = msr->param.nSuperCool;
-//	pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL);
 	
 	i = msrCountType(msr, TYPE_GAS, TYPE_GAS);
 	assert(i == msr->nGas);
@@ -8565,7 +8566,6 @@ msrAddDelParticles(MSR msr)
     struct outColNParts *pColNParts;
     struct inNewOrder *pNewOrder;
     struct inSetNParts in;
-    struct inSetParticleTypes intype;
     int iOut;
     int i;
     
@@ -8615,9 +8615,10 @@ msrAddDelParticles(MSR msr)
     in.nMaxOrder = msr->nMaxOrder;
 
     pstSetNParts(msr->pst,&in,sizeof(in),NULL,NULL);
-    intype.nSuperCool = msr->param.nSuperCool;
 	/* This shouldn't really be necessary -- it is undesirable to do a fix-up like this */
 #if !defined(INFLOWOUTFLOW) && !defined(FBPARTICLE) && !defined(PARTICLESPLIT)
+    struct inSetParticleTypes intype;
+    intype.nSuperCool = msr->param.nSuperCool;
     pstSetParticleTypes(msr->pst,&intype,sizeof(intype),NULL,NULL); 
 
     i = msrCountType(msr, TYPE_GAS, TYPE_GAS);
@@ -8976,13 +8977,15 @@ void msrGetGasPressure(MSR msr, double dTime)
 		in.gpc.gammam1 = in.gpc.gamma-1;
 		in.gpc.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
         in.gpc.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,in.gpc.dCosmoFac); //for DTADJUST
-#ifdef THERMALCOND
+#if defined(PROMOTE) || defined(TWOPHASE)
 		in.gpc.dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333)*in.gpc.dCosmoFac; /* (dx/h) factor */
+        in.gpc.dEvapMinTemp = msr->param.dEvapMinTemp;
+#endif
+#if defined(THERMALCOND) || defined(TWOPHASE)
         in.gpc.dThermalCondCoeffCode = msr->param.dThermalCondCoeffCode*in.gpc.dCosmoFac;
         in.gpc.dThermalCondSatCoeff = msr->param.dThermalCondSatCoeff/in.gpc.dCosmoFac;
         in.gpc.dThermalCond2CoeffCode = msr->param.dThermalCond2CoeffCode*in.gpc.dCosmoFac;
         in.gpc.dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff/in.gpc.dCosmoFac;
-        in.gpc.dEvapMinTemp = msr->param.dEvapMinTemp;
 #endif
 		/*
 		 * If self gravitating, resolve the Jeans Mass
@@ -9702,7 +9705,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
     struct outFeedback outFB;
     double dTotMass = -1.0, dTotMetals = -1.0, dTotFe = -1.0, 
             dTotOx = -1.0, dTotEnergy = -1.0;
-    double dTotSNEnergy = 0.0,a;
+    double dTotSNEnergy = 0.0;
     int i;
     int iDum;
 

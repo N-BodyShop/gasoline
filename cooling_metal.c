@@ -918,7 +918,7 @@ void clRateMetalTable(COOL *cl, RATE *Rate, double T, double rho, double Y_H, do
 
   xnHlog = (nHlog - cl->MetalnHlogMin)*cl->rDeltanHlog; 
   inHlog = xnHlog;
-  if (inHlog == cl->nnHMetalTable - 1) inHlog == cl->nnHMetalTable - 2; /*CC; To prevent running over the table.  Should not be used*/
+  if (inHlog == cl->nnHMetalTable - 1) inHlog = cl->nnHMetalTable - 2; /*CC; To prevent running over the table.  Should not be used*/
   
   Cool000 = cl->MetalCoolln[iz][inHlog][iTlog];
   Cool001 = cl->MetalCoolln[iz][inHlog][iTlog+1];
@@ -1309,7 +1309,6 @@ void clAbunds( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal) {
 
   double yH;
   double yHI = 0; 
-  double yHII = 0; 
 
   double yHe; 
   double yHeI = 0.;
@@ -1319,11 +1318,9 @@ void clAbunds( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal) {
   double yeMax;
   double rye,ye;
   double fHI,fHeI,fHeII,rfHe,yHI_old,yHeII_old; 
-  double Rate_Phot_HI;
   int i;  
 
   clSetAbundanceTotals(cl,ZMetal,&yH,&yHe,&yeMax);
-  Rate_Phot_HI = Rate->Phot_HI;
 
   for ( i=0 ; i<MAXABUNDITERATIONS ; i++ ) {
     yHI_old   = yHI;
@@ -1332,7 +1329,6 @@ void clAbunds( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal) {
     ye = (yeMax-(yHI + 2 * yHeI + yHeII)); /*Free electrons*/
     if (ye <= 0) {
       ye = 0;
-      yHII = 0;
       yHeI = yHe;
       yHeII = 0;
       yHeIII = 0;
@@ -1893,7 +1889,7 @@ void clTempIteration( clDerivsData *d )
 
 void clDerivs(void *Data, double x, double *y, double *dydx) {
   clDerivsData *d = Data;
-  double T,ne,nHI, internalheat = 0, externalheat = 0;
+  double T,ne,internalheat = 0, externalheat = 0;
   double en_B = d->rho*CL_B_gm;
 
   d->E = y[1];
@@ -1922,7 +1918,6 @@ void clDerivs(void *Data, double x, double *y, double *dydx) {
     dydx[1] = internalheat + externalheat;
   }
   ne =  en_B*d->Y.e;
-  nHI = en_B*d->Y.HI;
   dydx[2] = ne*(d->Y.HII*d->Rate.Radr_HII - 
 	     d->Y.HI*d->Rate.Coll_HI) - 
              d->Y.HI*d->Rate.Phot_HI;
@@ -2042,7 +2037,6 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
   clDerivsData *d = cl->DerivsData;
   STIFF *sbs = d->IntegratorContext;
   int its = 0;
-  FILE *fp; 
  
   if (tStep == 0) return;
   d->bCool = 1;
@@ -2375,11 +2369,11 @@ double CoolCodeEnergyToTemperature( COOL *cl, COOLPARTICLE *cp, double E, double
 
 void CoolTableReadInfo( COOLPARAM *CoolParam, int cntTable, int *nTableColumns, char *suffix )
 {
-   int localcntTable = 0;
 
 
    *nTableColumns = 0;
 #if (0)
+   int localcntTable = 0;
    if (CoolParam->bMetal) { 
        /* Use self-consistent UV from metal data file for metal cooling */
        return; 

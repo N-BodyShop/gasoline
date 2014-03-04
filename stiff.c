@@ -56,8 +56,6 @@ STIFF *StiffInit( double eps, int nv, void *Data,
 
   /* stifbs setup */
   s->first = 1;
-  s->kmax;
-  s->kopt;
   s->xnew = -1.0e29;
   assert(IMAXX >= 8);
   s->nseq[0] = 0;
@@ -122,9 +120,9 @@ void StiffFinalize( STIFF *s )
 void StiffStep(STIFF *s, double y[], double dydx[], double *xx, double htry, 
 		double yscal[], double *hdid, double *hnext )
 {
-  int i,iq,k,kk,km, nv = s->nv;
+  int i,k,kk,km, nv = s->nv;
   double errmax,fact,h,red,scale,work,wrkmin,xest;
-  double *dfdx = s->dfdx,**dfdy = s->dfdy,*err = s->err;
+  double *err = s->err;
   double *yerr = s->yerr,*ysav = s->ysav,*yseq = s->yseq;
   int reduct,exitflag=0;
 

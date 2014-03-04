@@ -484,9 +484,10 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 		FLOAT vTemp;
 		long LongTmp;
 		int IntTmp;
-		XDR xdrs,xdrstoc,xdrsiord;
+		XDR xdrs,xdrsiord;
 		xdrstdio_create(&xdrs,fp,XDR_DECODE);
 #ifdef STARFORM
+        XDR xdrstoc;
 		xdrstdio_create(&xdrstoc,fptCoolAgain,XDR_DECODE);
 #endif
 		if (iReadIOrder) xdrstdio_create(&xdrsiord,fpiord,XDR_DECODE);
@@ -2292,7 +2293,6 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
 				 struct pkdCalcCellStruct *pcc)
 {
 	int pj;
-	int bSinkCell=0;
 	double m,dx,dy,dz,d2,d1;
 	struct pkdCalcCellStruct cc;
 #ifdef  RADIATIVEBOX
@@ -2365,6 +2365,7 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
 		d1 = sqrt(d2);
 		if (d1 > cc.Bmax) cc.Bmax = d1;
 #ifdef STARSINK
+        int bSinkCell=0;
 		if (TYPETest(&(pkd->pStore[pj]),TYPE_STAR)) bSinkCell=1;
 #endif
 		cc.B2 += m*d2;
@@ -4419,7 +4420,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     if (p->uHot < 0) p->uHot = 0;
 #ifdef TWOPHASE
                     double ph = sqrt(p->fBall2*0.25);
-                    double fDensity,PoverRho,PoverRhoGas,PoverRhoHot,PoverRhoFloorJeans,cGas;
+                    double fDensity,PoverRhoGas,PoverRhoHot,PoverRhoFloorJeans,cGas;
                     pkdGasPressureParticle(pkd, &uhc.gpc, p, &PoverRhoFloorJeans, &PoverRhoHot, &PoverRhoGas, &cGas );
                     if (p->uHot != 0)
                     {
@@ -5383,14 +5384,14 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
     int iTempRung;
     int nMaxRung,nExceed;
     int iMaxRungIdeal;
-    int bDiag;
-
+#ifdef GASOLINE
+    int bDiag=0;
+#endif
     nExceed = (bDiagExceed ? 100 : 0);
     
     iMaxRungOut = 0;
     iMaxRungIdeal = 0;
     nMaxRung = 0;
-    bDiag = 0;
     for(i=0;i<pkdLocal(pkd);++i) {
 		if(pkd->pStore[i].iRung >= iRung) {
 			mdlassert(pkd->mdl,TYPEQueryACTIVE(&(pkd->pStore[i])));
@@ -5404,7 +5405,9 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
 				if(iTempRung >= iMaxRung) {
                     if (nExceed) {
                         nExceed--;
+#ifdef GASOLINE
                         bDiag = 1;
+#endif
                         }
 					iTempRung = iMaxRung-1;
                     }
@@ -6093,7 +6096,7 @@ pkdSoughtParticleList(PKD pkd, int iTypeSought, int nMax, int *n, struct SoughtP
 void
 pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *l)
     {
-#ifndef NOCOOLING
+#ifdef COOLING_DISK
     int i,j;
 	double r2,r2min,dx,mass_min;
 	PARTICLE *p = pkd->pStore;
@@ -6121,10 +6124,8 @@ pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *l)
 		      mass_min = l[0].m;
 		      }
 		}
-#ifdef COOLING_DISK
 		p[i].CoolParticle.r = sqrt(r2min);
 		p[i].CoolParticle.StarMass = mass_min;
-#endif
 	  }
 	}
 #endif
@@ -6165,18 +6166,13 @@ void pkdInitAccel(PKD pkd)
 
 void pkdModifyAccel(PKD pkd, double a)
 {
-    int i,j;
+    int i;
     PARTICLE *p;
-    FLOAT dxSmooth, xSmooth, factor;
-    dxSmooth = (pkd->dxInflow+pkd->fPeriod[0]*.5);
-    xSmooth = pkd->dxInflow + dxSmooth;
 
     for(i=0;i<pkdLocal(pkd);++i) {
       p = &(pkd->pStore[i]);
       if (p->r[0] < pkd->dxInflow) {
 #ifdef GASOLINE
-/*	    factor = 0;
-	    if (p->r[0] > pkd->dxInflow && p->r[0] < xSmooth) factor = 1-(p->r[0]-pkd->dxInflow)/dxSmooth;*/
 	    pkd->pStore[i].uDotPdV = 0;
 	    pkd->pStore[i].uDotAV = 0;
 	    pkd->pStore[i].uDotDiff = 0;
@@ -6187,8 +6183,6 @@ void pkdModifyAccel(PKD pkd, double a)
 	    }
 	else if (p->r[0] > pkd->dxOutflow) {
 #ifdef GASOLINE
-/*	    factor = 0;
-	    if (p->r[0] > pkd->dxInflow && p->r[0] < xSmooth) factor = 1-(p->r[0]-pkd->dxInflow)/dxSmooth;*/
 	    pkd->pStore[i].uDotPdV = 0;
 	    pkd->pStore[i].uDotAV = 0;
 	    pkd->pStore[i].uDotDiff = 0;
@@ -6268,15 +6262,14 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
             double fDensity;
 
             double PoverRho,PoverRhoGas,PoverRhoHot,PoverRhoFloorJeans,cGas;
-            double uHotDotConv=0, uHotPredTmp;
-            double uHotDotFB=0, uDotFBThermal=0, uDotPdVNJ, uMean;
+            double uDotFBThermal=0;
             int bUpdateStd=1;
 
 #if defined(STARFORM)
 #ifdef UNONCOOL
-            uHotDotFB = p->uDotFB; //Note: FB Added to uHot OR u (not both)
+            double uHotDotFB = p->uDotFB+p->uDotESF; //Note: FB Added to uHot OR u (not both)
 #else
-            uDotFBThermal = p->uDotFB;
+            uDotFBThermal = p->uDotFB+p->uDotESF;
 #endif
 #endif /* STARFORM */
 
@@ -6285,8 +6278,8 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
             if (PoverRho < PoverRhoFloorJeans) PoverRho = PoverRhoFloorJeans;
 
 #ifdef TWOPHASE        
-			uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
-            uDotPdVNJ = p->uDotPdV*(PoverRhoHot+PoverRhoGas)/(PONRHOFLOOR + PoverRho); /* remove JeansFloor */
+			double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
+            double uDotPdVNJ = p->uDotPdV*(PoverRhoHot+PoverRhoGas)/(PONRHOFLOOR + PoverRho); /* remove JeansFloor */
             
             bUpdateStd = (p->fMassHot < 0.9*p->fMass);
 
@@ -6326,20 +6319,23 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
 #ifdef DENSITYU
             if (p->fDensityU < fDensity) fDensity = p->fDensityU;
 #endif
+#ifndef TWOPHASE
 #ifdef UNONCOOL
+            double uHotDotConv=0, uHotPredTmp;
             /* 2nd order estimator for Conv -- note that PdV etc ...should already be 2nd order via Leap Frog */
             uHotPredTmp = p->uHot+p->uHotDot*duDelta*0.5;
-#ifndef TWOPHASE
             uHotDotConv = uHotPredTmp*
                 pkduHotConvRate(pkd,uhc,p->fBall2,uHotPredTmp,p->u+p->uDot*duDelta*0.5); 
-#endif
-            
             p->uHotDot = p->uDotPdV*PoverRhoHot/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to uHot 
                 - uHotDotConv + uHotDotFB + p->uHotDotDiff;
+#else
+            double uHotDotConv=0;
+#endif
+            
 #endif    
             uDotSansCooling = p->uDotPdV*PoverRhoGas/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to u thermal
                 + p->uDotAV                                                   // Only u thermal energy gets shock heating
-                + uHotDotConv + uDotFBThermal + p->uDotDiff + p->uDotESF;
+                + uHotDotConv + uDotFBThermal + p->uDotDiff;
 #endif /* !TWOPHASE */
 
             if ( bCool ) {
@@ -6471,7 +6467,7 @@ printf("r %g PdV %g a %g %g %g SW %g %g %g\n",sqrt(p->r[0]*p->r[0]+p->r[1]*p->r[
 
 double pkdPoverRhoFloorJeansParticle(PKD pkd, double dResolveJeans, PARTICLE *p) 
     {
-    double e2,l2;
+    double l2;
     /*
      * Add pressure floor to keep Jeans Mass
      * resolved.  In comparison with Agertz et
@@ -6484,7 +6480,7 @@ double pkdPoverRhoFloorJeansParticle(PKD pkd, double dResolveJeans, PARTICLE *p)
 #else
     l2 = 0.25*p->fBall2; 
 #ifdef JEANSSOFT
-    e2 = p->fSoft*p->fSoft; 
+    double e2 = p->fSoft*p->fSoft; 
     if (l2 < e2) l2 = e2; /* Jeans scale can't be smaller than softening */
 #endif
 #endif
@@ -6510,9 +6506,8 @@ void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *
 #else /* !TWOPHASE */
 #ifndef NOCOOLING
     if (pgpc->iGasModel == 2) {
-        COOL *cl = pkd->Cool;
 
-        CoolCodePressureOnDensitySoundSpeed( cl, &p->CoolParticle, p->uPred, p->fDensity, pgpc->gamma, pgpc->gammam1, pPoverRhoGas, pcGas );
+        CoolCodePressureOnDensitySoundSpeed( pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, pgpc->gamma, pgpc->gammam1, pPoverRhoGas, pcGas );
         }
     else
 #endif
@@ -6535,10 +6530,15 @@ void  pkdSetThermalCond(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p)
     {
 #ifdef THERMALCOND
     double fThermalCond = pgpc->dThermalCondCoeffCode*pow(p->uPred,2.5); /* flux = coeff grad u   coeff ~ flux x h/u */ 
-    double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, p->fMetals );
-	if (Tp < pgpc->dEvapMinTemp) fThermalCond = 0;
     double fThermalCond2 = pgpc->dThermalCond2CoeffCode*pow(p->uPred,0.5);
-	if (Tp < pgpc->dEvapMinTemp) fThermalCond2 = 0;
+#if defined(PROMOTE) || defined(TWOPHASE)
+    double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, p->fMetals );
+	if (Tp < pgpc->dEvapMinTemp) 
+    {
+        fThermalCond = 0;
+	    fThermalCond2 = 0;
+    }
+#endif
     double fSat = p->fDensity*p->c*p->fThermalLength; /* Max flux x L/u */
     double fThermalCondSat = pgpc->dThermalCondSatCoeff*fSat;
     double fThermalCond2Sat = pgpc->dThermalCond2SatCoeff*fSat;
@@ -6803,7 +6803,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
     {
     int i;
     PARTICLE *p;    
-    double dT,dTC,dTu,dTD,ph;
+    double dT,dTu;
 #ifdef DTTEST
     double dTSave[12],dtCut=DTTEST;
     char dTLabel[12][4];
@@ -6816,7 +6816,9 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
         if(pkdIsGas(pkd, p)) {
 
             if (TYPEQueryACTIVE(p)) {
-                ph = sqrt(0.25*p->fBall2);
+#if defined(DIFFUSION) || !defined(DRHODT) && !defined(DTADJUST)
+                double ph = sqrt(0.25*p->fBall2);
+#endif
 #ifdef SINKING
                 if (TYPETest( p, TYPE_SINKING)) {
                     p->dt = FLT_MAX; /* reset later to min gas step */
@@ -6832,6 +6834,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                 DTSAVE(dT,"SPH");
                 p->dtNew = FLT_MAX;
 #else /* If not doing DTADJUST */
+                double dTC;
                 if (p->mumax>0.0) {
                     if (bViscosityLimitdt) 
                         dTC = dEtaCourant*dCosmoFac*(ph/(p->c + 0.6*(p->c + 2*p->BalsaraSwitch*p->mumax)));
@@ -6890,7 +6893,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 #ifdef THERMALCOND
             /* h^2/(2.77Q) Linear stability from Brookshaw */
                 if (p->fThermalCond > 0 || (p->diff > 0 && dDiffCoeff > 0)) {
-                    dTD = dEtaDiffusion*ph*ph
+                    double dTD = dEtaDiffusion*ph*ph
                       /(dDiffCoeff*p->diff + ph/p->fThermalLength*p->fThermalCond/p->fDensity);  
 /*                    dTD = dEtaDiffusion*ph*ph
                       /(dDiffCoeff*p->diff + p->fThermalCond/p->fDensity);  */
@@ -6900,7 +6903,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 #else
             /* h^2/(2.77Q) Linear stability from Brookshaw */
                 if (p->diff > 0 && dDiffCoeff > 0) {
-                    dTD = dEtaDiffusion*ph*ph
+                    double dTD = dEtaDiffusion*ph*ph
                         /(dDiffCoeff*p->diff);  
                     DTSAVE(dTD,"DIF");
                     if (dTD < dT) dT = dTD;
@@ -6954,7 +6957,6 @@ pkdSetSphStep(PKD pkd, double dt)
 {
     int i;
     PARTICLE *p;    
-	int n=0;
 
     for(i=0;i<pkdLocal(pkd);++i) {
         p = &pkd->pStore[i];

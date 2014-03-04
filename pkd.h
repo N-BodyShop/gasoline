@@ -156,14 +156,14 @@ typedef struct particle {
 #endif
     FLOAT curlv[3];         /* Note this is used as workspace and value is not preserved */
     FLOAT BalsaraSwitch;    /* Balsara viscosity reduction */
-#ifdef DIFFUSION
-    FLOAT diff;
-    FLOAT fMetalsDot;
-    FLOAT fMetalsPred;
 #ifdef THERMALCOND
     FLOAT fThermalCond;
     FLOAT fThermalLength;
 #endif
+#ifdef DIFFUSION
+    FLOAT diff;
+    FLOAT fMetalsDot;
+    FLOAT fMetalsPred;
 #ifdef MASSDIFF
     FLOAT fMassDot;
     FLOAT fMass0;
@@ -319,13 +319,13 @@ struct GasPressureContext {
 #ifdef GLASS
     struct GlassData g;
 #endif
-#ifdef THERMALCOND
+#if defined(THERMALCOND) || defined(TWOPHASE)
     double dThermalCondCoeffCode;
     double dThermalCondSatCoeff;
     double dThermalCond2CoeffCode;
     double dThermalCond2SatCoeff;
 #endif
-#ifdef PROMOTE
+#if defined(PROMOTE) || defined(TWOPHASE)
 	double dEvapCoeffCode;
 	double dEvapMinTemp;
 #endif
@@ -968,6 +968,7 @@ void pkdBodyForce(PKD pkd, double dConst);
 void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R);
 void pkdMiyamotoDisk(PKD pkd);
 void pkdTimeVarying(PKD pkd,double dTime);
+double pkdDtFacCourant( double dEtaCourant, double dCosmoFac );
 #ifdef ROT_FRAME
 void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);
 #endif
@@ -976,7 +977,6 @@ void pkdRotFrame(PKD pkd, double dOmega, double dOmegaDot);
 
 void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int iGasModel, int bUpdateState );
 void pkdUpdateShockTracker(PKD,double, double, double);
-double pkdDtFacCourant( double dEtaCourant, double dCosmoFac );
 double pkdPoverRhoFloorJeansParticle(PKD pkd, double dResolveJeans, PARTICLE *p);
 void pkdSetThermalCond(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p);
 void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p, 
