@@ -87,7 +87,7 @@
 //#define NOMETALCOOLING        //Just use heating from H2, not from metal lines (Requires -DCOOLING_MOLECULARH)
 //#define NOMOLECULARHCOOLING   //Turns COOLING_MOLECULARH into COOLING_METAL
 //#define NORMAL                //Calculate and output surface normals for particles (Needs -DSURFACEAREA)
-//#define NSMOOTHINNER          //Ensure at least 18 neighbours inside 1.41 h
+#define NSMOOTHINNER          //Ensure at least 18 neighbours inside 1.41 h
 //#define OLDINITSPHCODE        //Use the older multi-resmooth msrInitSph (deprecated?)
 //#define OLD_COMET_FORCE       //Enable the do_force for special rubble pile particles (ie comets).
 //#define OLD_COMET_STUFF       //Initialize special particles (this is a huge kludge)
