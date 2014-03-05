@@ -333,7 +333,6 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
      */
 
     starp.fTimeForm = dTime + stfm->dZAMSDelayTime;
-    printf("star   KDK %g %g %g\n",dTime,starp.fTimeForm,stfm->dZAMSDelayTime); //DEBUG dTime for SF
     starp.fBallMax = 0.0;
     starp.iGasOrder = starp.iOrder; /* iOrder gets reassigned in
 				       NewParticle() */
