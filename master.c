@@ -1201,28 +1201,28 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dEvapMinTemp",2,&msr->param.dEvapMinTemp,
 				sizeof(double),"evaptmin",
 				"<Minimumum temperature for evaporation > = 1e5");
-	msr->param.dEvapCoeff = 6.1e-7;
+	msr->param.dEvapCoeff = 1.2e-7;
 	prmAddParam(msr->prm,"dEvapCoeff",2,&msr->param.dEvapCoeff,
 				sizeof(double),"evap",
-				"<Evap Coefficient due to thermal Conductivity (electrons), e.g. 6.1e-7 > = 0");
+				"<Evap Coefficient due to thermal Conductivity (electrons), e.g. 1.2e-7 > = 0");
 #ifdef FBPARTICLE
 	msr->param.dFBMassRatio = 0;
 	prmAddParam(msr->prm,"dFBMassRatio",2,&msr->param.dFBMassRatio,
 				sizeof(double),"massratio",
 				"<Fraction of star particle mass each feedback particle must be>");
 #endif
-	msr->param.dThermalCondCoeff = 6.1e-7;
+	msr->param.dThermalCondCoeff = 1.2e-7;
 	prmAddParam(msr->prm,"dThermalCondCoeff",2,&msr->param.dThermalCondCoeff,
 				sizeof(double),"thermalcond",
-				"<Coefficient in Thermal Conductivity (electrons), e.g. 6.1e-7 > = 6.1e-7");
+				"<Coefficient in Thermal Conductivity (electrons), e.g. 1.2e-7 > = 0");
 	msr->param.dThermalCondSatCoeff = 17;
 	prmAddParam(msr->prm,"dThermalCondSatCoeff",2,&msr->param.dThermalCondSatCoeff,
 				sizeof(double),"thermalcondsat",
 				"<Coefficient in Saturated Thermal Conductivity, e.g. 17 > = 17");
-	msr->param.dThermalCond2Coeff = 2.5e3;
+	msr->param.dThermalCond2Coeff = 5.0e2;
 	prmAddParam(msr->prm,"dThermalCond2Coeff",2,&msr->param.dThermalCond2Coeff,
 				sizeof(double),"thermalcond2",
-				"<Coefficient in Thermal Conductivity 2 (atoms), e.g. 2.5e3 > = 2.5e3");
+				"<Coefficient in Thermal Conductivity 2 (atoms), e.g. 5.0e2 > = 0");
 	msr->param.dThermalCond2SatCoeff = 0.5;
 	prmAddParam(msr->prm,"dThermalCond2SatCoeff",2,&msr->param.dThermalCond2SatCoeff,
 				sizeof(double),"thermalcond2sat",
