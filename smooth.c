@@ -1628,10 +1628,14 @@ void smSmooth(SMX smx,SMF *smf)
                         isort[i].r2 = smx->nnList[i].fDist2;
                         }
                     qsort( isort, nCnt, sizeof(ISORT), CompISORT );
-                    assert(nCnt > smx->nSmoothInner);
-            
-                    NSI_DEBUG(fprintf(stderr,"%d: nSmooth Inner Fail %d : nSm %d %d %d  fBall: %f %f\n",pkd->idSelf,p[pi].iOrder,nInner,nSmoothInnerCut,smx->nSmoothInner,sqrt(p[pi].fBall2),sqrt(isort[smx->nSmoothInner-1].r2/smx->fBall2InnerFrac)););
-                    p[pi].fBall2 = -isort[smx->nSmoothInner-1].r2/smx->fBall2InnerFrac; 
+                    if(nCnt > smx->nSmoothInner) { 
+                        NSI_DEBUG(fprintf(stderr,"%d: nSmooth Inner Fail %d : nSm %d %d %d  fBall: %f %f\n",pkd->idSelf,p[pi].iOrder,nInner,nSmoothInnerCut,smx->nSmoothInner,sqrt(p[pi].fBall2),sqrt(isort[smx->nSmoothInner-1].r2/smx->fBall2InnerFrac)););
+                        p[pi].fBall2 = -isort[smx->nSmoothInner-1].r2/smx->fBall2InnerFrac; 
+                    }
+                    else {
+                        NSI_DEBUG(fprintf(stderr,"%d: nSmooth Inner Fail %d : nSm %d %d %d  fBall: %f %f\n",pkd->idSelf,p[pi].iOrder,nInner,nSmoothInnerCut,nCnt,sqrt(p[pi].fBall2),sqrt(isort[nCnt-1].r2/smx->fBall2InnerFrac)););
+                        p[pi].fBall2 = -isort[nCnt-1].r2/smx->fBall2InnerFrac; 
+                    }
                     TYPESet(&p[pi],TYPE_RESMOOTHINNER);
                     nSmoothInnerFail++;
                     free(isort);
