@@ -163,7 +163,7 @@ void msrWriteTipsy(MSR,char *,double);
 void msrWriteTipsyHead(MSR msr,char *achOutFile,double dTime, struct inWriteTipsy *in);
 void msrWriteTipsyBody(MSR msr,char *pszFileName,double dTime, struct inWriteTipsy *in);
 void msrSetSoft(MSR msr,double);
-void msrSetSink(MSR msr);
+void msrSetSink(MSR msr,double dTime);
 void msrDomainDecomp(MSR,int,int);
 void msrBuildTree(MSR,int,double,int);
 void msrDomainColor(MSR);
