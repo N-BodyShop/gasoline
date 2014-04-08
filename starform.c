@@ -163,6 +163,13 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
         T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u+p->uHot, p->fDensity, p->fMetals );
     else
 #endif
+#ifdef TWOPHASE
+    if (stfm->bTempInclHot) {
+        double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
+        T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, uMean, p->fDensity, p->fMetals );
+    }
+    else
+#endif
         T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 
 #ifdef  COOLING_MOLECULARH
