@@ -122,7 +122,7 @@
 	}
 #else
 #define KERNEL(ak,ar2) 	{						\
-    if (ar2 <= 0) ak = (21/16.)*(1-0.0294*pow(nSmooth*0.01,-0.977)); /* Dehnen & Aly 2012 correction (1-0.0454684 at Ns=64) */ \
+    if (ar2 <= 0) ak = (21/16.)*(1-0.0294*pow(smf->nSmooth*0.01,-0.977)); /* Dehnen & Aly 2012 correction (1-0.0454684 at Ns=64) */ \
 	else {								\
 	    double au = sqrt(ar2*0.25);					\
 	    ak = 1-au;							\
@@ -141,7 +141,7 @@
 #ifdef WENDLANDC4
 /* Wendland C_4 Kernel */
 #define KERNEL(ak,ar2) 	{						\
-	if (ar2 <= 0) ak = (495/32./8.)*(1-0.01342*pow(nSmooth*0.01,-1.579)); /* Dehnen & Aly 2012 correction */ \
+	if (ar2 <= 0) ak = (495/32./8.)*(1-0.01342*pow(smf->nSmooth*0.01,-1.579)); /* Dehnen & Aly 2012 correction */ \
 	else {								\
 	    double au = sqrt(ar2*0.25);					\
 	    ak = 1-au;							\
