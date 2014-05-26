@@ -41,11 +41,11 @@
 
 #ifdef USETABLE
 #define CLRATES( _cl, _Rate, _T, _rho)                clRates_Table( _cl, _Rate, _T, _rho)
-#define CLEDOTINSTANT( _cl, _Y, _Rate, _rho, _ZMetal ) clEdotInstant_Table( _cl, _Y, _Rate, _rho, _ZMetal)
+#define CLEDOTINSTANT( _cl, _Y, _Rate, _rho, _ZMetal, _Heat, _Cool ) clEdotInstant_Table( _cl, _Y, _Rate, _rho, _ZMetal, _Heat, _Cool)
 
 #else
 #define CLRATES( _cl, _Rate, _T, _rho)   clRates( _cl, _Rate, _T, _rho)
-#define CLEDOTINSTANT( _cl, _Y, _Rate, _rho, _ZMetal ) clEdotInstant( _cl, _Y, _Rate, _rho, _ZMetal)
+#define CLEDOTINSTANT( _cl, _Y, _Rate, _rho, _ZMetal, _Heat, _Cool ) clEdotInstant( _cl, _Y, _Rate, _rho, _ZMetal, _Heat, _Cool)
 
 #endif
 
@@ -108,7 +108,7 @@ COOL *CoolInit( )
   cl->DerivsData = malloc(sizeof(clDerivsData));
   assert(cl->DerivsData != NULL);
   ((clDerivsData *) (cl->DerivsData))->IntegratorContext = 
-    StiffInit( EPSINTEG, 4, cl->DerivsData, clDerivs, clJacobn ); 
+    StiffInit( EPSINTEG, 4, cl->DerivsData, clDerivs); 
   return cl;
 }
 
@@ -152,7 +152,6 @@ void clInitConstants( COOL *cl, double dGmPerCcUnit, double dComovingGmPerCcUnit
     assert(Data != NULL);
 
     Data->cl = cl;
-    Data->dlnE = (log(EMUL)-log(1/EMUL));
    }
 }
 
@@ -1697,14 +1696,15 @@ double clCoolLowT( double T ) {
 
 /* Returns Heating - Cooling excluding External Heating, units of ergs s^-1 g^-1 
    Public interface CoolEdotInstantCode */
-double clEdotInstant_Table( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal )
+double clEdotInstant_Table( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
+			    double ZMetal, double *dEdotHeat, double *dEdotCool )
 {
   double en_B = rho*CL_B_gm;
   double xTln,wTln0,wTln1;/*,wTln0d,wTln1d;*/
   RATES_T *RT0,*RT1;/*,*RT0d,*RT1d;*/
   int iTln;
 
-  double Edot,ne,LowTCool;
+  double ne,LowTCool;
 
   ne = Y->e*en_B;
 
@@ -1743,12 +1743,11 @@ double clEdotInstant_Table( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, doub
 	  *x*(3-3*fabs(x)+x*x);
       }
 
-  Edot = 
+  *dEdotCool = 
 #ifndef NOCOMPTON
-    - 
       Y->e * cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb ) 
 #endif
-    - 
+    + 
     ne * (TABLEINTERP( Cool_Brem_1 ) * ( Y->HII + Y->HeII ) +
 	  TABLEINTERP( Cool_Brem_2 ) * Y->HeIII +
 	  
@@ -1765,11 +1764,12 @@ double clEdotInstant_Table( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, doub
 	  cl->R.Cool_Coll_HI * Y->HI * Rate->Coll_HI +
 	  cl->R.Cool_Coll_HeI * Y->HeI * Rate->Coll_HeI + 
 	  cl->R.Cool_Coll_HeII * Y->HeII * Rate->Coll_HeII )
-    - 
-      LowTCool
-    -
-      Rate->Cool_Metal
     + 
+      LowTCool
+    +
+      Rate->Cool_Metal;
+
+  *dEdotHeat =
       Rate->Heat_Metal
     +
       Y->HI   * cl->R.Heat_Phot_HI * Rate->Phot_HI +
@@ -1777,15 +1777,16 @@ double clEdotInstant_Table( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, doub
       Y->HeII * cl->R.Heat_Phot_HeII * Rate->Phot_HeII
       ;
 
-  return Edot;
+  return *dEdotHeat - *dEdotCool;
 }
 
 /* Returns Heating - Cooling excluding External Heating, units of ergs s^-1 g^-1 
    Public interface CoolEdotInstantCode */
-double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal )
+double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
+		      double ZMetal, double *dEdotHeat, double *dEdotCool )
 {
   double en_B = rho*CL_B_gm;
-  double Edot,ne,LowTCool;
+  double ne,LowTCool;
   ne = Y->e*en_B;
 
 #define DTFRACLOWTCOOL 0.25
@@ -1798,34 +1799,25 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMe
       LowTCool = -clCoolLowT(Rate->T)*cl->R.Cool_LowTFactor*en_B*ZMetal
 	  *x*(3-3*fabs(x)+x*x);
       }
-  Edot = 
+  *dEdotCool =
 #ifndef NOCOMPTON
-    -
      Y->e * cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb ) 
 #endif
-    - 
-    ne * (clCoolBrem1(Rate->T) * ( Y->HII + Y->HeII ) +
-        clCoolBrem2(Rate->T) * Y->HeIII +
-        
-        cl->R.Cool_Diel_HeII * Y->HeII * Rate->Diel_HeII +
-        
-        clCoolRadrHII(Rate->T) * Y->HII * Rate->Radr_HII  +
-        clCoolRadrHeII(Rate->T) * Y->HeII * Rate->Radr_HeII +
-        clCoolRadrHeIII(Rate->T) * Y->HeIII * Rate->Radr_HeIII +
-        
-        clCoolLineHI(Rate->T) * Y->HI +
-        clCoolLineHeI(Rate->T) * Y->HeI +
-        clCoolLineHeII(Rate->T) * Y->HeII +
-        
-        cl->R.Cool_Coll_HI * Y->HI * Rate->Coll_HI +
-        cl->R.Cool_Coll_HeI * Y->HeI * Rate->Coll_HeI + 
-        cl->R.Cool_Coll_HeII * Y->HeII * Rate->Coll_HeII )
-    -
-      LowTCool
-    - 
-      Rate->Cool_Metal
     + 
-      Rate->Heat_Metal  
+    ne * (clCoolBrem1(Rate->T) * ( Y->HII + Y->HeII ) +
+	  clCoolBrem2(Rate->T) * Y->HeIII +
+	  
+	  cl->R.Cool_Diel_HeII * Y->HeII * Rate->Diel_HeII +
+
+	  clCoolRadrHII(Rate->T) * Y->HII * Rate->Radr_HII  +
+	  clCoolRadrHeII(Rate->T) * Y->HeII * Rate->Radr_HeII +
+	  clCoolRadrHeIII(Rate->T) * Y->HeIII * Rate->Radr_HeIII) +
+      LowTCool
+    + 
+      Rate->Cool_Metal;
+  
+  *dEdotHeat =
+      Rate->Heat_Metal 
     + 
       cl->R.Heat_Photoelectric * Y->HI / (1+cl->R.nMin_Photoelectric/en_B) * ZMetal/ZSOLAR
     +
@@ -1833,7 +1825,7 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMe
       Y->HeI  * cl->R.Heat_Phot_HeI  * Rate->Phot_HeI +
       Y->HeII * cl->R.Heat_Phot_HeII * Rate->Phot_HeII;
 
-  return Edot;
+  return *dEdotHeat - *dEdotCool;
 }
 
 /*
@@ -1887,18 +1879,20 @@ void clTempIteration( clDerivsData *d )
  clAbunds( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal);
 }
 
-void clDerivs(void *Data, double x, double *y, double *dydx) {
+void clDerivs(void *Data, double x, const double *y, double *dGain,
+	      double *dLoss) {
   clDerivsData *d = Data;
-  double T,ne,internalheat = 0, externalheat = 0;
+  double T,ne,nHI, internalheat = 0, externalheat = 0;
+  double internalcool = 0;
   double en_B = d->rho*CL_B_gm;
 
-  d->E = y[1];
-  d->Y.HI = y[2];
+  d->E = y[0];
+  d->Y.HI = y[1];
   d->Y.HII = d->Y_H - d->Y.HI;
   if(d->Y.HII < 0) d->Y.HII = 0;  
  
-  d->Y.HeI = y[3];
-  d->Y.HeII = y[4];
+  d->Y.HeI = y[2];
+  d->Y.HeII = y[3];
   d->Y.HeIII = d->Y_He - d->Y.HeI - d->Y.HeII; 
   if(d->Y.HeIII < 0) d->Y.HeIII = 0; 
  
@@ -1911,72 +1905,35 @@ void clDerivs(void *Data, double x, double *y, double *dydx) {
   T = clTemperature( d->Y.Total, d->E );
   CLRATES( d->cl, &d->Rate, T, d->rho ); 
   externalheat = d->ExternalHeating;
-  dydx[1] = externalheat;
   if (d->bCool) {
     clRateMetalTable(d->cl, &d->Rate, T, d->rho, d->Y_H, d->ZMetal);
-    internalheat = CLEDOTINSTANT( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal );
-    dydx[1] = internalheat + externalheat;
+    CLEDOTINSTANT( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal, &internalheat, &internalcool );
+    
+    dGain[0] = internalheat;
+    dLoss[0] = internalcool;
   }
+  if(externalheat > 0.0)
+      dGain[0] += externalheat;
+  else
+      dLoss[0] -= externalheat;
+  
   ne =  en_B*d->Y.e;
-  dydx[2] = ne*(d->Y.HII*d->Rate.Radr_HII - 
-	     d->Y.HI*d->Rate.Coll_HI) - 
+  nHI = en_B*d->Y.HI;
+  dGain[1] = ne*d->Y.HII*d->Rate.Radr_HII;
+  dLoss[1] = ne*d->Y.HI*d->Rate.Coll_HI + 
              d->Y.HI*d->Rate.Phot_HI;
-  dydx[3] = ne*(d->Y.HeII*d->Rate.Totr_HeII - 
-	     d->Y.HeI*d->Rate.Coll_HeI) - 
+
+  dGain[2] = ne*d->Y.HeII*d->Rate.Totr_HeII;
+  dLoss[2] = ne*d->Y.HeI*d->Rate.Coll_HeI + 
              d->Y.HeI*d->Rate.Phot_HeI;
-  dydx[4] = ne*(d->Y.HeIII*d->Rate.Radr_HeIII - 
-	     d->Y.HeII*d->Rate.Coll_HeII) - 
-             d->Y.HeII*d->Rate.Phot_HeII - 
-             dydx[3];
+  dGain[3] = ne*d->Y.HeIII*d->Rate.Radr_HeIII +
+	     dLoss[2];
+  dLoss[3] = ne*d->Y.HeII*d->Rate.Coll_HeII + 
+             d->Y.HeII*d->Rate.Phot_HeII + 
+             dGain[2];
 }
 
-void clJacobn(void *Data, double x, double y[], double dfdx[], double **dfdy) {
-  clDerivsData *d = Data;
-  int i,j;
-  const int array_length = 5;
-  double ystd[array_length],ytmp[array_length],f1[array_length],f2[array_length],f0[array_length],ymax[array_length]; /*ydiff*/  /* Note: using NR convention - arrays start at 1 */
-
-  dfdx[1] = 0;
-  dfdx[2] = 0;
-  dfdx[3] = 0;
-  dfdx[4] = 0; /* when density time dependence introduced will be non-zero */
-  /* Note: when doing dfdy, note that ne depends on y[2-4] for df[i]dy[2-4] 
-     Also note that all the rates depend on T and thus E y[1] for df[i]dy[1] */
-
-#define ESMALL 1e-10
-
-  for (i=1;i<=array_length-1;i++) {
-      ystd[i] = y[i];
-      if (ystd[i] < ESMALL) ystd[i] = ESMALL;
-      }
-  clDerivs( Data, x, ystd, f0 );
-
-  ymax[1] = 1e37;
-  ymax[2] = (d->Y_H)*(1/EMUL/EMUL); 
-  ymax[3] = (d->Y_He-ystd[4])*(1/EMUL/EMUL);
-  ymax[4] = (d->Y_He-ystd[3])*(1/EMUL/EMUL);
-
-  /* Approximate derivatives dfdy[j][i] = df_j/dy_i 
-     Note that we cannot use 1+e for Y_HI etc... if Y_HI(1+e) > YH then YHII < 0!
-     So those derivates are only first order */
-  for (i=1;i<=array_length-1;i++) {
-      for (j=1;j<=array_length-1;j++) ytmp[j] = ystd[j];
-      if (ystd[i] > ymax[i]) {
-	  ytmp[i] = ystd[i]*(1/EMUL);
-	  clDerivs( Data, x, ytmp, f2 );
-	  for (j=1;j<=array_length-1;j++) dfdy[j][i] = (f0[j]-f2[j])/(ystd[i]*0.5*d->dlnE); 
-      }
-      else {
-	  /* Second order for Energy etc... */
-	  ytmp[i] = ystd[i]*EMUL;
-	  clDerivs( Data, x, ytmp, f1 );
-	  ytmp[i] = ystd[i]*(1/EMUL);
-	  clDerivs( Data, x, ytmp, f2 );
-	  for (j=1;j<=array_length-1;j++) dfdy[j][i] = (f1[j]-f2[j])/(ystd[i]*d->dlnE); 
-	  }
-      }
-}
-
+#if 0
 void clSetyscale( COOL *cl, double Y_H, double Y_He, double *y, double *yscale) {
     double YHII, YHeIII;
 
@@ -2021,6 +1978,7 @@ void clSetyscale( COOL *cl, double Y_H, double Y_He, double *y, double *yscale) 
 	if (yscale[3] < YSCALEMIN) yscale[3] = YSCALEMIN;
 
 }
+#endif
 
 void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E, 
 		       double ExternalHeating, double rho, double ZMetal, double tStep ) {
@@ -2029,11 +1987,10 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 #define YHMIN 1e-12
 #define YHeMIN 1e-13
 
-  const int array_length=5;
+  const int array_length=4;
 
-  double dydt[array_length-1],y[array_length-1],yin[array_length-1],EMin,YTotal ;
-  double yscale[array_length-1]; 
-  double t=0,dtused,dtnext,tstop,dtEst;
+  double y[array_length],yin[array_length],EMin,YTotal ;
+  double t=0;
   clDerivsData *d = cl->DerivsData;
   STIFF *sbs = d->IntegratorContext;
   int its = 0;
@@ -2044,7 +2001,6 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
       tStep = fabs(tStep);
       d->bCool = 0;
       }
-  tstop = tStep*(1-1e-8);
 
 #ifdef Y_EMIN
   if (Y->e < Y_EMIN) Y->e = Y_EMIN;
@@ -2068,7 +2024,7 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 #ifdef COOLDEBUG
   if (cl->p->iOrder == PARTICLEIORD) { 
     printf("dydt[0]: %e, dydt[1]: %e, dydt[2]: %e, dydt[3]: %e\n",dydt[0],dydt[1],dydt[2],dydt[3]);
-    clDerivs( d, t, yin-1, dydt-1); /*, sqrt(cl->p->fBall2/2.0) );*/
+    /*    clDerivs( d, t, yin-1, dydt-1); *//*, sqrt(cl->p->fBall2/2.0) );*/
     printf("tStep %g \n", tStep);
     printf("rho %g \n", rho*CL_B_gm); 
     printf("Temperature %g \n", d->Rate.T);
@@ -2114,40 +2070,19 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
   }
  #endif
 
-  dtnext = tStep;
-#if (1)   
-  clSetyscale( cl, d->Y_H, d->Y_He, y, yscale);
-  clDerivs( d, t, y-1, dydt-1 );
-  if (fabs(dydt[0]) > 1e-150) {
-      dtEst = 0.5*fabs(yscale[0]/dydt[0]);
-      if (dtnext > dtEst) dtnext = dtEst; 
-      }
-  if (fabs(dydt[1]) > 1e-150) {
-      dtEst = 0.5*fabs(yscale[1]/dydt[1]);
-      if (dtnext > dtEst) dtnext = dtEst; 
-      }
-  if (fabs(dydt[2]) > 1e-150){
-      dtEst = 0.5*fabs(yscale[2]/dydt[2]);
-      if (dtnext > dtEst) dtnext = dtEst; 
-      }
-  if (fabs(dydt[3]) > 1e-150) {
-      dtEst = 0.5*fabs(yscale[3]/dydt[3]);
-      if (dtnext > dtEst) dtnext = dtEst; 
-      }
-#endif
-
-
  {
-   while (t<tstop) {
-      its++;
-      if (its>MAXINTEGITS) break;
-      if (dtnext >= tStep-t)   dtnext = tStep-t;
-      clSetyscale( cl, d->Y_H, d->Y_He, y, yscale);
-      /* Must call derivs once to get started ... */
-      
-      clDerivs( d, t, y-1, dydt-1 );
+     double ymin[array_length];
+     ymin[1] = YHMIN;
+     ymin[2] = YHeMIN;
+     ymin[3] = YHeMIN;
 
-      StiffStep( sbs, y-1, dydt-1,  &t, dtnext, yscale-1, &dtused, &dtnext );
+      YTotal = (d->Y_H) + (d->Y_H - ymin[1]) + d->Y_He + ymin[3] +
+	2.0*(d->Y_He - ymin[2] - ymin[3]) + d->ZMetal/MU_METAL;
+      EMin = clThermalEnergy( YTotal, cl->TMin );
+      ymin[0] = EMin;
+      StiffSetYMin(sbs, ymin);
+      
+      StiffStep( sbs, y, t, tStep);
       if(y[1] > d->Y_H) y[1] = d->Y_H;
       if(y[2] > d->Y_He) y[2] = d->Y_He;
       if(y[3] > d->Y_He) y[3] = d->Y_He;
@@ -2175,16 +2110,11 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
       assert(*y > 0.0);
 #else
       if (y[0] < EMin) {
-          y[0] = EMin;
-          break;
+	y[0] = EMin;
       }
 #endif   
-    }
-   cl->its = its;
+   cl->its = 1;
    }
-
- if (its > MAXINTEGITS) printf(" No convergence in clIntegrateEnergy %d\n", its);/*assert(its<MAXINTEGITS);*/
-
 
    *E = y[0];
    d->E = y[0];
@@ -2501,6 +2431,7 @@ double CoolEdotInstantCode(COOL *cl, COOLPARTICLE *cp, double ECode,
     RATE Rate;
     double T,E,rho,Edot;
     double Y_H, Y_He, Y_eMax;
+    double dHeat, dCool;
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
 
     E = CoolCodeEnergyToErgPerGm( cl, ECode );
@@ -2509,7 +2440,7 @@ double CoolEdotInstantCode(COOL *cl, COOLPARTICLE *cp, double ECode,
     CoolPARTICLEtoPERBARYON(cl, &Y, cp, ZMetal);
     CLRATES(cl, &Rate, T, rho);
     clRateMetalTable(cl, &Rate, T, rho, Y_H, ZMetal); 
-    Edot = CLEDOTINSTANT( cl, &Y, &Rate, rho, ZMetal );
+    Edot = CLEDOTINSTANT( cl, &Y, &Rate, rho, ZMetal, &dHeat, &dCool );
 
     return CoolErgPerGmPerSecToCodeWork( cl, Edot );
     }

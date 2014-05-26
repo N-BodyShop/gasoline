@@ -266,7 +266,7 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    /*
 	     * Modify star particle
 	     */
-//        fprintf(stderr,"Mass dTotMassLoss %d %g %g  %g %g\n",p->iOrder,p->fMass,dTotMassLoss,dTimeYr/(fb->dSecUnit/SEC_YR),p->fTimeForm);
+	    /*        fprintf(stderr,"Mass dTotMassLoss %d %g %g  %g %g\n",p->iOrder,p->fMass,dTotMassLoss,dTime/(fb->dSecUnit/SEC_YR),p->fTimeForm);*/
 	    assert(p->fMass > dTotMassLoss);
 
 	    p->fMass -= dTotMassLoss;
@@ -282,44 +282,22 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
 	    p->fMIronOut = dTotMIron;
 	    p->fMOxygenOut = dTotMOxygen;
 	    p->uDotFB /= dDelta; /* convert to rate */
-#ifdef  RADIATIVEBOX /* Calculates LW radiation from a stellar particle of a given age and mass (assumes Kroupa IMF), CC */
-	    double  a0 = -84550.812,
-	      a1 =  54346.066,
-	      a2 = -13934.144,
-	      a3 =  1782.1741,
-	      a4 = -113.68717,
-	      a5 =  2.8930795;
 
-	    double a0old =  70.908586,
-	      a1old = -4.0643123;
-	    
-	    double Alog101, Alog102, dLW1, dLW2;
-	    if (dStarAge < 0) p->CoolParticle.dLymanWerner = 0; /*If BH, no LW radiation*/
-	    else {
-	      Alog101 = dStarAge;
-	      if (Alog101 < 1e7) Alog101 = 7; /*used Alog10 = 1e6, at one point*/
-	      else Alog101 = log10(Alog101);
-	      if (Alog101 < 9.0) dLW1 = pow(10,a0
-		       + a1*Alog101
-		       + a2*Alog101*Alog101
-		       + a3*Alog101*Alog101*Alog101
-		       + a4*Alog101*Alog101*Alog101*Alog101
-		       + a5*Alog101*Alog101*Alog101*Alog101*Alog101 - 30.0);
-	      else dLW1 = pow(10,a0old + a1old*Alog101 - 30.0);
-
-	      Alog102 = dStarAge + dDeltaYr;
-	      if (Alog102 < 1e7) Alog102 = 7; /*used Alog10 = 1e6, at one point*/
-	      else Alog102 = log10(Alog102);
-	      if (Alog102 < 9.0) dLW2 = pow(10,a0
-		       + a1*Alog102
-		       + a2*Alog102*Alog102
-		       + a3*Alog102*Alog102*Alog102
-		       + a4*Alog102*Alog102*Alog102*Alog102
-		       + a5*Alog102*Alog102*Alog102*Alog102*Alog102 - 30.0); /*Divide by 1e30 to keep things in bounds*/
-	      else dLW2 = pow(10,a0old + a1old*Alog102 - 30.0);
-
-	      p->CoolParticle.dLymanWerner = pkd->Cool->dMsolUnit*pkd->Cool->dInitStarMass*(dLW1 + dLW2)/2; 
+#ifdef  RADIATIVEBOX 
+/* Calculates LW radiation from a stellar particle of a given age and mass (assumes Kroupa IMF), CC */
+	    double dAge1, dAge2, dLW1, dLW2;
+	    if (dStarAge != 0) {
+	      dAge1 = dStarAge;
 	    }
+	    else {
+	      /*Avoids log of zero error*/
+	      dAge1 = dDeltaYr;
+	    }
+	    dAge2 = dStarAge + dDeltaYr;
+	    dLW1 = CoolLymanWerner(pkd->Cool, dAge1);
+	    dLW2 = CoolLymanWerner(pkd->Cool, dAge2);
+  
+	    p->CoolParticle.dLymanWerner = (dLW1 + dLW2)/2;
 #endif
 	    }
 	else if(pkdIsGas(pkd, p)){
