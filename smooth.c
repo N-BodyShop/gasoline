@@ -1621,7 +1621,7 @@ void smSmooth(SMX smx,SMF *smf)
                     }
 
 #ifdef NSMOOTHINNER
-                if (nInner < nSmoothInnerCut) { /* Defer smooth */
+                if (nInner < nSmoothInnerCut && nCnt > 1) { /* Defer smooth */
                     ISORT *isort;
                     isort = (ISORT *) malloc(sizeof(ISORT)*nCnt);
                     for (i=0;i<nCnt;++i) {

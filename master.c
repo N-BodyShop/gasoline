@@ -67,6 +67,7 @@ double msrTime(void) {
 	}
 #endif
 
+static double dPreviousTime;
 #define DEN_CGS_SYS 1.6831e6 /* multiply density in cgs by this to get
 								density in system units (AU, M_Sun) */
 
@@ -375,7 +376,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"enable/disable per thread diagnostic output");
 	msr->param.bOverwrite = 0;
 	prmAddParam(msr->prm,"bOverwrite",0,&msr->param.bOverwrite,sizeof(int),
-				"overwrite","enable/disable checkpoint overwrite = +overwrite");
+				"overwrite","enable/disable checkpoint overwrite = -overwrite");
 	msr->param.bVWarnings = 1;
 	prmAddParam(msr->prm,"bVWarnings",0,&msr->param.bVWarnings,sizeof(int),
 				"vwarnings","enable/disable warnings = +vwarnings");
@@ -1821,6 +1822,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	  }
 	}
 
+#ifdef GASOLINE
 #ifdef VARALPHA
 	if (!msr->param.bVariableAlpha) {
 	    fprintf(stderr,"ERROR: with -DVARALPHA you must use dalphadt, bVariableAlpha=1\n");
@@ -1831,6 +1833,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    fprintf(stderr,"ERROR: You must compile with -DVARALPHA to use dalphadt\n");
 	    _msrExit(msr,1);
 	    }
+#endif
 #endif
 	/*
 	 ** Determine the period of the box that we are using.
@@ -3538,7 +3541,8 @@ void msrSetStopStep(MSR msr, double dTime)
 	else
 	    msr->param.iStopStep = msr->param.nSteps;
 
-	if (msr->param.iStopStep < msr->param.iStartStep) {
+	if (msr->param.nSteps != 0
+            && msr->param.iStopStep < msr->param.iStartStep) {
 	    fprintf(stderr,"ERROR: iStartStep %d > iStopStep %d (nSteps %d)\n",
 		    msr->param.iStartStep,msr->param.iStopStep,
 		    msr->param.nSteps);
@@ -4182,7 +4186,7 @@ void msrSetSoft(MSR msr,double dSoft)
 	pstSetSoft(msr->pst,&in,sizeof(in),NULL,NULL);
 	}
 
-void msrSetSink(MSR msr) 
+ void msrSetSink(MSR msr,double dTime) 
 {
     struct inSetSink in;
     struct outSetSink out;
@@ -4192,6 +4196,7 @@ void msrSetSink(MSR msr)
 	  pstSetSink(msr->pst,&in,sizeof(in),&out,NULL);
 	  if (msr->param.bVDetails) printf("Identified %d sink particles\n",out.nSink);
 	  msr->nSink = out.nSink;
+	  dPreviousTime = dTime;
 	  }
     }
 
@@ -4881,15 +4886,9 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
 
     for (i=0; i<nOutputList;i++){
         code = FLOAT32;
-        nDim = ((OutputList[i]&OUTTYPEMASK) > OUT_1D3DSPLIT) ? 3 : 1;
-	if ((OutputList[i]&OUTTYPEMASK)!=OutputList[i]) {
-	    nTypes[0] = (OutputList[i]&TYPE_GAS ? msr->nGas : 0);
-	    nTypes[1] = (OutputList[i]&TYPE_DARK ? msr->nDark : 0);
-	    nTypes[2] = (OutputList[i]&TYPE_STAR ? msr->nStar : 0);
-	    }
-	else {
-	    nTypes[0] = msr->nGas;nTypes[1] = msr->nDark;nTypes[2] = msr->nStar;
-	    switch (OutputList[i]){
+        nTypes[0] = msr->nGas;nTypes[1] = msr->nDark;nTypes[2] = msr->nStar;
+        nDim = (OutputList[i] > OUT_1D3DSPLIT) ? 3 : 1;
+        switch (OutputList[i]){
         case OUT_TIMEFORM_ARRAY:
         case OUT_MASSFORM_ARRAY:
             nTypes[0]=nTypes[1]=0;
@@ -4918,6 +4917,19 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
         case OUT_UDOTPDV_ARRAY:
         case OUT_UDOTAV_ARRAY:
         case OUT_UDOTDIFF_ARRAY:
+        case OUT_PRES_ARRAY:
+        case OUT_DIVV_ARRAY:
+        case OUT_BALSARASWITCH_ARRAY:
+        case OUT_SPHDT_ARRAY:
+        case OUT_CSOUND_ARRAY:
+        case OUT_MUMAX_ARRAY:
+        case OUT_METALSDOT_ARRAY:
+        case OUT_OXYGENMASSFRACDOT_ARRAY:
+        case OUT_IRONMASSFRACDOT_ARRAY:
+        case OUT_COOL_EDOT_ARRAY:
+        case OUT_COOL_COOLING_ARRAY:
+        case OUT_COOL_HEATING_ARRAY:
+        case OUT_CURLV_VECTOR:
             nTypes[1]=nTypes[2]=0;
             break;
         case OUT_OXYGENMASSFRAC_ARRAY:
@@ -4927,7 +4939,6 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
             nTypes[1]=0;
             break;
             }
-	    }
     
 	/*
 	 * Create vector files
@@ -4936,7 +4947,7 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
             _msrMakePath(plcl->pszDataPath,inOut.achOutFile,achOutFile);
             if (nTypes[k]) {
                 sprintf(achTmpOutFile,"%s/%s/",achOutFile,typenames[k]);
-                VecFilename(achTmpOutFile,OutputList[i]&OUTTYPEMASK);
+                VecFilename(achTmpOutFile,OutputList[i]);
                 fp = fopen(achTmpOutFile,"w");
                 assert(fp != NULL);
                 xdrstdio_create(&xdrs,fp,XDR_ENCODE);
@@ -4986,7 +4997,7 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
             if (nTypes[k]) {
 		
                 sprintf(achTmpOutFile,"%s/%s/",achOutFile,typenames[k]);
-                VecFilename(achTmpOutFile,OutputList[i]&OUTTYPEMASK);
+                VecFilename(achTmpOutFile,OutputList[i]);
                 fp = fopen(achTmpOutFile,"r+");
                 assert(fp != NULL);
                 xdrstdio_create(&xdrs,fp,XDR_ENCODE);
@@ -5621,6 +5632,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->PP = msr->param.PP; /* struct copy */
     psmf->dCentMass = 0.0; /* to disable Hill sphere checks */
 #endif
+    psmf->nSmooth = msr->param.nSmooth;
     psmf->nSmoothed = 0;
     psmf->nSmoothedInner = 0;
     psmf->nSmoothedFixh = 0;
@@ -8713,7 +8725,10 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
     /* I assume sink creation is rarer so the tree will be ok after this call most of the time */
     msrFormSinks(msr, dTime, dDelta, iKickRung ); 
    
-    if (msr->nSink == 0) return;
+    if (msr->nSink == 0){
+      dPreviousTime = dTime;
+      return;
+    }
     if (msr->param.bBHSink && dDelta <= 0.0) return;
 
     sec = msrTime();
@@ -8736,6 +8751,9 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	msr->param.iSinkCurrentRung = iKickRung;
 
 	if (msr->param.bBHSink) {
+	    /* Make sure the BH timestep is correct for accretion
+	     calculations JMB 6/7/13  */
+	    msr->param.dSinkCurrentDelta = dTime - dPreviousTime;
 	    /* Smooth Bondi-Hoyle Accretion: radius set by nSmooth */
 	    msrSmooth(msr, dTime, SMX_BHDENSITY, 1);
 	    msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
@@ -8759,6 +8777,7 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
 	    else {
 		msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
 		}
+	    dPreviousTime = dTime;
 	    }
 	else {
 	    /* Fixed Radius Accretion: particle by particle (cf. Bate) */
