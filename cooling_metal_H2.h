@@ -351,15 +351,16 @@ double clCoolLineH2_e( double T );
 double clCoolLineH2_HII( double T );
 double clCoolLowT( double T );
 double clRateDustFormH2(double z, double clump); 
-double clEdotInstant ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal, double *dEdotHeat, double *dEdotCool );
+double clEdotInstant ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal );
 void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E, 
 		       double ExternalHeating, double rho, double ZMetal, double dt, double correL, double dLymanWerner  );
 void clIntegrateEnergyDEBUG(COOL *cl, PERBARYON *Y, double *E, 
 		       double ExternalHeating, double rho, double ZMetal,  double dt );
 
 
-void clDerivs(void *Data, double x, const double *y, double *yheat,
-	      double *ycool) ;
+void clDerivs(void *Data, double x, double *y, double *dydx) ;
+
+void clJacobn(void *Data, double x, double y[], double dfdx[], double **dfdy) ;
   
 void CoolAddParams( COOLPARAM *CoolParam, PRM );
 void CoolLogParams( COOLPARAM *CoolParam, FILE *fp );
@@ -390,8 +391,7 @@ void clSetAbundanceTotals(COOL *cl, double ZMetal, double *Y_H, double *Y_He, do
 void CoolPARTICLEtoPERBARYON(COOL *cl_, PERBARYON *Y, COOLPARTICLE *cp, double ZMetal);
 void CoolPERBARYONtoPARTICLE(COOL *cl_, PERBARYON *Y, COOLPARTICLE *cp, double ZMetal);
 
-double CoolAgeFromMass(COOL *cl, double fMassStar);
-double CoolLymanWerner(COOL *cl, double dAge);
+double CoolLymanWerner(COOL *cl, double fMassStar, double dlw);
 
 double CoolEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double, double ZMetal);
 double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, double, double ZMetal);
