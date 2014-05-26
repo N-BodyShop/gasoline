@@ -62,7 +62,9 @@ typedef struct smfParameters {
     int nSinkFormMin;
     int iSinkCurrentRung;
     int iSmoothFlags; /* Read/Write locally.  Master sets initial value. */
-    int nSmooth;
+#if defined(WENDLAND) || defined(WENDLANDC4)
+    int Wzero;
+#endif
     int nSmoothed;
     int nSmoothedInner;
     int nSmoothedFixh;

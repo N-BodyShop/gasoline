@@ -5632,7 +5632,12 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->PP = msr->param.PP; /* struct copy */
     psmf->dCentMass = 0.0; /* to disable Hill sphere checks */
 #endif
-    psmf->nSmooth = msr->param.nSmooth;
+#ifdef WENDLAND
+    psmf->Wzero = (21/16.)*(1-0.0294*pow(msr->param.nSmooth*0.01,-0.977)); 
+#endif
+#ifdef WENDLANDC4
+    psmf->Wzero = (495/32./8.)*(1-0.01342*pow(msr->param.nSmooth*0.01,-1.579));
+#endif
     psmf->nSmoothed = 0;
     psmf->nSmoothedInner = 0;
     psmf->nSmoothedFixh = 0;
