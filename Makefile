@@ -379,3 +379,5 @@ treezip.o: treezip.c treezip.h treezipkey.h treeziptypes.h
 writepng.o: writepng.c writepng.h
 walk.o: walk.h pkd.h floattype.h cooling.h
 rotbar.o: 
+cooling_metal.o: cooling_metal.h cooling_metal.c
+
