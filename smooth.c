@@ -651,7 +651,7 @@ PQ *smBallSearch(SMX smx,PQ *pq,FLOAT *ri,int *cpStart)
     FLOAT fBall2,fDist2,dx,dy,dz,lx,ly,lz,sx,sy,sz,x,y,z;
 
     x = ri[0];    y = ri[1];    z = ri[2];
-    lx = smx->lx; ly = smx->ly; lz = smx->ly;
+    lx = smx->lx; ly = smx->ly; lz = smx->lz;
     idSelf = smx->pkd->idSelf;
     fBall2 = pq->fKey;
     cell = ROOT;
@@ -866,7 +866,7 @@ int smBallGather(SMX smx,FLOAT fBall2,FLOAT *ri)
     int iDum;
 
     x = ri[0];    y = ri[1];    z = ri[2];
-    lx = smx->lx; ly = smx->ly; lz = smx->ly;
+    lx = smx->lx; ly = smx->ly; lz = smx->lz;
     nCnt = 0;
     cp = ROOT;
     if(c[cp].pLower > c[cp].pUpper) {
@@ -973,7 +973,7 @@ void smBallScatter(SMX smx,FLOAT *ri,int iMarkType)
 
     /*mdlDiag(smx->pkd->mdl, "smBallScatter:Start\n" );*/
     x = ri[0];    y = ri[1];    z = ri[2];
-    lx = smx->lx; ly = smx->ly; lz = smx->ly;
+    lx = smx->lx; ly = smx->ly; lz = smx->lz;
 
     cp = ROOT;
     while (1) {
@@ -1528,7 +1528,7 @@ void smSmooth(SMX smx,SMF *smf)
     nSmooth = smx->nSmooth;
     nTree = c[pkd->iRoot].pUpper + 1;
     nLocal = pkd->nLocal;
-    lx = smx->lx; ly = smx->ly; lz = smx->ly;
+    lx = smx->lx; ly = smx->ly; lz = smx->lz;
     /*
     ** Clear Mark array and pqHash.
     */
@@ -1834,7 +1834,7 @@ void smMarkSmooth(SMX smx,SMF *smf,int iMarkType)
     char DiagStr[100];
         
     mdlDiag(smx->pkd->mdl,"smMarkSmooth:Start\n" );
-    lx = smx->lx; ly = smx->ly; lz = smx->ly;
+    lx = smx->lx; ly = smx->ly; lz = smx->lz;
     nTree = pkd->kdNodes[pkd->iRoot].pUpper + 1;
     for (pi=0;pi<nTree;++pi) {
         if (!TYPEFilter(&(p[pi]),TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE,
