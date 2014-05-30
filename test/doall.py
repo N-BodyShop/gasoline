@@ -18,10 +18,11 @@ def parse_param(paramfile):
 	args = ''
 	paramdict = {}
 	for i in params:
+                i = i.strip()
 		if i.split()[0] == 'MAKEFILE':
 			makefile = i.split()[-1]
 		elif i.split()[0] == 'ARGS':
-			rags = i.split()[-1]
+			args = i.split('=')[-1]
 		else:
 			paramdict[i.split()[0]] = i
 			

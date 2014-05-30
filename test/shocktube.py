@@ -28,9 +28,10 @@ def plot_pressure(testdir, infile, step):
 	sim = pyn.load(testdir+"/"+infile)
 	plt.plot(sim.g['x'], sim.g['rho']*sim.g['temp'], 'r.')
 	plt.xlabel('position')
-	plt.ylabel(r'$\rho$')
+	plt.ylabel('pressure')
 
 def make_plots(testdir):
+        plt.rc('text', usetex=True)
 	for infile, step in [("shocktube.std", "000"), ("shocktube.00100", "100"), 
 			("shocktube.00200", "200"), ("shocktube.00300", "300"),
 			("shocktube.00400", "400")]:
@@ -43,7 +44,9 @@ def make_plots(testdir):
 		plot_velocity(testdir, infile, step)
 		plt.subplot(224)
 		plot_pressure(testdir, infile, step)
-		plt.tight_layout(pad=0.1)
+                # Early matplotlib versions don't have this
+		try: plt.tight_layout(pad=0.1)
+                except AttributeError: pass
 		plt.savefig(testdir+"/shocktube_step%s.png" %step, dpi=150)
 		plt.clf()
 
