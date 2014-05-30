@@ -1586,8 +1586,8 @@ void smSmooth(SMX smx,SMF *smf)
                 }
             else {
                 /* Limit fBall2 growth to help stability and neighbour finding */
-                if (smx->bUseBallMax && p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)
-                    fBall2=p[pi].fBallMax*p[pi].fBallMax;
+                /*if (smx->bUseBallMax && p[pi].fBallMax > 0.0 && fBall2 > p[pi].fBallMax*p[pi].fBallMax)*/
+                    /*fBall2=p[pi].fBallMax*p[pi].fBallMax;*/
 
                 p[pi].fBall2 = fBall2;
                 TYPESet(&p[pi],TYPE_SMOOTHDONE);
