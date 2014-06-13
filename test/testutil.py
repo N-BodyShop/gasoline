@@ -43,7 +43,10 @@ def run_gasoline(testdir, files, param, exe="gasoline", args="", params={}):
 def build_gasoline(makefile, obj="gasoline", mdl="pthread"):
     os.mkdir("buildtmp")
     shutil.copy(makefile, "buildtmp/Makefile")
-    shutil.copytree("../mdl/", "buildtmp/mdl", ignore=shutil.ignore_patterns("*.o"))
+    try:
+        shutil.copytree("../mdl/", "buildtmp/mdl", ignore=shutil.ignore_patterns("*.o"))
+    except OSError:
+        shutil.copytree("../../mdl/", "buildtmp/mdl", ignore=shutil.ignore_patterns("*.o"))
     for i in glob.iglob("../*c"):
         shutil.copy(i, "buildtmp/")
     for i in glob.iglob("../*h"):
