@@ -4298,9 +4298,11 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	grx = 0; gry = 0; grz = 0;
 
 	qiActive = 0;
+    int check = 0;
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2*ih2;
 		q = nnList[i].pPart;
+        if (q->iOrder == p->iOrder) check = 1;
 		if (TYPETest(p,TYPE_ACTIVE)) TYPESet(q,TYPE_NbrOfACTIVE); /* important for SPH */
 		qiActive |= q->iActive;
 #ifdef DKDENSITY
@@ -4363,7 +4365,13 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef DENSITYU
 #ifdef DENSITYUNOTP
     KERNEL(rs,0.0);
-	p->fDensityU = (fDensityU-rs*p->fMass*p->uPred*fNorm)/p->uPred*fDensity/(fDensity-rs*p->fMass*fNorm); 
+	p->fDensityU = fDensityU/p->uPred; 
+    if (check)	p->fDensityU = (fDensityU-rs*p->fMass*p->uPred*fNorm)/p->uPred*fDensity/(fDensity-rs*p->fMass*fNorm); 
+    if (p->fDensityU < 0)
+    {
+            printf("NEGATIVERHO, DenDVDX3: %d %e %e %e %e %e %e %e\n", p->iOrder, p->fDensityU, fDensityU, rs, p->fMass, p->uPred, fNorm, fDensity);
+            assert(0);
+    }
 #else
 	p->fDensityU = fDensityU/p->uPred; 
 #endif
@@ -4468,6 +4476,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         }    
 #endif
 	
+        assert(p->fDensityU > 0);
 	}
 
 #else /* FITDVDX */
