@@ -707,6 +707,9 @@ typedef struct pkdContext {
 #ifndef NOCOOLING
 	COOL *Cool;
 #endif
+#ifdef OUTURBDRIVER
+    void *outurb;
+#endif
     STARLOG starLog;
 #endif
     SINKLOG sinkLog;

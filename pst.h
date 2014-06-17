@@ -7,6 +7,7 @@
 #include "smoothfcn.h"
 #include "floattype.h"
 #include "dumpframe.h"
+#include "outurb.h"
 
 #ifdef COLLISIONS
 #include "collision.h"
@@ -235,6 +236,8 @@ enum pst_service {
       PST_SPHVISCOSITYLIMITER,
       PST_FINISHLWTREE,
       PST_INITCOOLING,
+      PST_INITOUTURB,
+      PST_ACCELOUTURB,
       PST_COOLTABLEREAD,
       PST_GROWMASS,
       PST_CLEARTIMER,
@@ -1165,6 +1168,9 @@ void pstLowerSoundSpeed(PST, void *,int,void *,int *);
 void pstInitEnergy(PST, void *,int,void *,int *);
 void pstInitCooling(PST,void *,int,void *,int *);
 void pstCoolTableRead(PST,void *,int,void *,int *);
+
+void pstInitouturb(PST,void *,int,void *,int *);
+void pstAccelouturb(PST,void *,int,void *,int *);
 
 /* PST_KICKVPRED */
 struct inKickRhopred {

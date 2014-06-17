@@ -22,7 +22,11 @@ PNG_DEF =
 #PNG_OBJ = writepng.o
 #PNG_DEF = $(PNG_INCL) -DUSE_PNG
 
-BASE_LD_FLAGS = $(PNG_LIB) 
+# if you use OUTURBDRIVER you need libgsl
+#GSL_LIB = 
+GSL_LIB = -L /usr/lib64 -lgsl
+
+BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
 
 # The following pairs of lines define which cooling method to use.  Uncomment 
 # only one pair
@@ -225,7 +229,7 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  smoothfcn.o collision.o qqsmooth.o $(COOLING_OBJ) cosmo.o romberg.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
 	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o \
-	  rotbar.o special.o ssio.o $(PNG_OBJ) \
+	  rotbar.o special.o ssio.o $(PNG_OBJ) outurb.o \
 	  treezip.o 
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
@@ -359,6 +363,7 @@ master.o: parameters.h cosmo.h tipsydefs.h opentype.h fdl.h htable.h
 master.o: outtype.h
 millerscalo.o: millerscalo.h
 outtype.o: pkd.h floattype.h cooling.h outtype.h
+outurb.o: pkd.h outurb.h
 param.o: param.h
 pkd.o: pkd.h floattype.h cooling.h ewald.h grav.h walk.h opentype.h
 pkd.o: tipsydefs.h dumpframe.h

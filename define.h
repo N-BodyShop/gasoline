@@ -93,6 +93,7 @@
 //#define OLD_COMET_STUFF       //Initialize special particles (this is a huge kludge)
 //#define OLD_KEPLER            //An ugly part of the collision code to stop hard scatterings 
 //#define OLD_VERSION           //Change the way the comet force from OLD_COMET_FORCE is calculated
+#define OUTURBDRIVER          //Drive turbulence as in Price & Federrath 2010 with OU variables
 //#define PARTSHEAR             //Use particle shear for the correlation length in H2 cooling 
 //#define PCONST=?              //Use a constant pressure specified for all gas
 //#define PEAKEDKERNEL          //Use a modified Peaked M4 kernel as per Thomas and Couchman 92 (Bibcode:1992MNRAS.257...11T)

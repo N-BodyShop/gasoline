@@ -312,6 +312,9 @@ void msrSphViscosityLimiter(MSR msr, double dTime);
 void msrInitCooling(MSR msr);
 #endif
 #endif
+void msrInitouturb(MSR msr, double dTime);
+void msrAccelouturb(MSR msr, double dTime);
+
 void msrSph(MSR msr, double dTime, int iKickRung);
 
 int msrDumpFrameInit(MSR msr, double dTime, double dStep, int bRestart);
