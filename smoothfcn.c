@@ -4476,7 +4476,9 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         }    
 #endif
 	
+#ifdef DENSITYU
         assert(p->fDensityU > 0);
+#endif
 	}
 
 #else /* FITDVDX */
