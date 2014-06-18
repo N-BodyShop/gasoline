@@ -33,7 +33,8 @@
 #define PRES_PDV(a,b) sqrt(a*b)
 #define PRES_ACC(a,b) (sqrt(a*b)*2)
 #endif
-
+//There are a handful of TYPE bits we never want leaving a local thread.
+#define COMB_MASK (~TYPE_RESMOOTHINNER & ~TYPE_MARK)
 /*
  Change the way the Balsara Switch is applied:
 */
@@ -458,7 +459,7 @@ void combMarkDensity(void *p1,void *p2)
 		((PARTICLE *)p1)->fDensityU = ((PARTICLE *)p2)->fDensityU;
 #endif
 		}
-	((PARTICLE *)p1)->iActive |= ((PARTICLE *)p2)->iActive;
+    ((PARTICLE *)p1)->iActive |= (((PARTICLE *)p2)->iActive & COMB_MASK);
 	}
 
 void MarkDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
@@ -587,7 +588,7 @@ void combMarkIIDensity(void *p1,void *p2)
 	    TYPESet((PARTICLE *)p1,TYPE_DensZeroed);
 	    }
 	}
-    ((PARTICLE *)p1)->iActive |= ((PARTICLE *)p2)->iActive;
+    ((PARTICLE *)p1)->iActive |= (((PARTICLE *)p2)->iActive & COMB_MASK);
     }
 
 void MarkIIDensity(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
@@ -704,7 +705,7 @@ void initMark(void *p)
 
 void combMark(void *p1,void *p2)
 {
-	((PARTICLE *)p1)->iActive |= ((PARTICLE *)p2)->iActive;
+    ((PARTICLE *)p1)->iActive |= (((PARTICLE *)p2)->iActive & COMB_MASK);
 	}
 
 
@@ -4257,7 +4258,7 @@ void initDenDVDX(void *p)
 
 void combDenDVDX(void *p1,void *p2)
 {
-	((PARTICLE *)p1)->iActive |= ((PARTICLE *)p2)->iActive;
+    ((PARTICLE *)p1)->iActive |= (((PARTICLE *)p2)->iActive & COMB_MASK);
 	}
 
 #ifndef FITDVDX
@@ -4298,7 +4299,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	grx = 0; gry = 0; grz = 0;
 
 	qiActive = 0;
-    int check = 0;
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2*ih2;
 		q = nnList[i].pPart;
@@ -4365,13 +4365,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef DENSITYU
 #ifdef DENSITYUNOTP
     KERNEL(rs,0.0);
-	p->fDensityU = fDensityU/p->uPred; 
-    if (check)	p->fDensityU = (fDensityU-rs*p->fMass*p->uPred*fNorm)/p->uPred*fDensity/(fDensity-rs*p->fMass*fNorm); 
-    if (p->fDensityU < 0)
-    {
-            printf("NEGATIVERHO, DenDVDX3: %d %e %e %e %e %e %e %e\n", p->iOrder, p->fDensityU, fDensityU, rs, p->fMass, p->uPred, fNorm, fDensity);
-            assert(0);
-    }
+    p->fDensityU = (fDensityU-rs*p->fMass*p->uPred*fNorm)/p->uPred*fDensity/(fDensity-rs*p->fMass*fNorm); 
 #else
 	p->fDensityU = fDensityU/p->uPred; 
 #endif
