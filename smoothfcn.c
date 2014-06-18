@@ -4302,7 +4302,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2*ih2;
 		q = nnList[i].pPart;
-        if (q->iOrder == p->iOrder) check = 1;
 		if (TYPETest(p,TYPE_ACTIVE)) TYPESet(q,TYPE_NbrOfACTIVE); /* important for SPH */
 		qiActive |= q->iActive;
 #ifdef DKDENSITY
