@@ -82,7 +82,7 @@
 
 
 #ifdef DIFFUSION
-#ifdef UNONCOOL
+#if defined(UNONCOOL) && !defined(TWOPHASE)
 #define DIFFUSIONThermaluHot() \
         { double diffuNc = diffTh*(p->uHotPred-q->uHotPred); \
         PACTIVE( p->uHotDotDiff += diffuNc*rq );        \
