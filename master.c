@@ -4447,6 +4447,7 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
         }
 
         OutputList[(*nOutputList)++]=OUT_ACCEL_VECTOR;
+        if (msr->param.bDoSoftOutput) OutputList[(*nOutputList)++]=OUT_SOFT_ARRAY;
         OutputList[(*nOutputList)++]=OUT_CURLV_VECTOR;
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
