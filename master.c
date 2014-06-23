@@ -944,13 +944,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dhMinOverSoft",2,&msr->param.dhMinOverSoft,
 				sizeof(double),"hmin",
 				"<Minimum h as a fraction of Softening> = 0.0");
-#ifdef NSMOOTHINNER
-	if(msr->param.dhMinOverSoft != 0)
-	{
-		printf("dhMinOverSoft is incompatible with NSMOOTHINNER");
-		assert(0);
-	}
-#endif
 	msr->param.dResolveJeans = 0.0;
 	prmAddParam(msr->prm,"dResolveJeans",2,&msr->param.dResolveJeans,
 				sizeof(double),"resjeans",
@@ -1460,7 +1453,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dESN", 2, &msr->param.sn->dESN,
 		    sizeof(double), "snESN",
 		    "<Energy of supernova in ergs> = 0.1e51");
-#ifndef UNONCOOL
+#if defined(UNONCOOL) || defined(TWOPHASE)
 	if (msr->param.sn->dESN > 0.0) msr->param.bSmallSNSmooth = 1;
     else 
 #endif
@@ -1469,7 +1462,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"bSmallSNSmooth", 0, &msr->param.bSmallSNSmooth,
 		    sizeof(int), "bSmallSNSmooth",
 		    "<smooth SN ejecta over blast or smoothing radius> = blast radius");
-#ifdef UNONCOOL
+#if defined(UNONCOOL) || defined(TWOPHASE)
         msr->param.bSNTurnOffCooling = 0;
 #else
         msr->param.bSNTurnOffCooling = 1;
@@ -4457,6 +4450,7 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
         }
 
         OutputList[(*nOutputList)++]=OUT_ACCEL_VECTOR;
+        if (msr->param.bDoSoftOutput) OutputList[(*nOutputList)++]=OUT_SOFT_ARRAY;
         OutputList[(*nOutputList)++]=OUT_CURLV_VECTOR;
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
