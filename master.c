@@ -9233,7 +9233,7 @@ void msrInitouturb(MSR msr, double dTime)
 	sec = msrTime();
 
     in.outurbparam = msr->param.outurbparam;
-    in.BoxSize = msr->param.dPeriod;
+    in.BoxSize = msr->param.dxPeriod; //Careful!
     in.dTime = dTime;
     in.bDetails = msr->param.bVDetails;
     pstInitouturb(msr->pst,&in,sizeof(struct inInitouturb),NULL,NULL);
