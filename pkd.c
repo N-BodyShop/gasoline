@@ -5329,6 +5329,9 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
 				}
 			if (dT < pkd->pStore[i].dt)
 				pkd->pStore[i].dt = dT;
+#ifdef DTTEST
+            pkd->pStore[i].dt_accel = dT;
+#endif
 			}
 		}
     }
@@ -5397,6 +5400,12 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
     iMaxRungIdeal = 0;
     nMaxRung = 0;
     for(i=0;i<pkdLocal(pkd);++i) {
+#ifdef DTTEST
+        PARTICLE *p = &pkd->pStore[i];
+        if(p->dt < DTTEST) {
+            fprintf(stderr, "p %d dt %e too small. accel: %e gaspressure: %e uex: %e pdv: %e diff: %e Sph_diff: %e Sph_cond: %e Sph_dvdotdr: %e Sph_av: %e\n", p->iOrder, p->dt, p->dt_accel, p->dt_gaspressure, p->dt_uex, p->dt_pdv, p->dt_diff, p->dt_Sph_diff, p->dt_Sph_cond, p->dt_Sph_dvdotdr, p->dt_Sph_av);
+        }
+#endif
 		if(pkd->pStore[i].iRung >= iRung) {
 			mdlassert(pkd->mdl,TYPEQueryACTIVE(&(pkd->pStore[i])));
 			if(bAll) {          /* Assign all rungs at iRung and above */
@@ -6584,6 +6593,9 @@ void pkdGasPressure(PKD pkd, struct GasPressureContext *pgpc)
                 if (uTotDot > 0) dt = pgpc->dtFacCourant*sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
                 else dt = pgpc->dtFacCourant*sqrt(p->fBall2*0.25)/(2*(p->c));
                 if (dt < p->dt) p->dt = dt; // Update to scare the neighbours
+#ifdef DTTEST
+                p->dt_gaspressure = dt;
+#endif
                 }
 #endif
             }
@@ -6873,6 +6885,9 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                             *sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
                         DTSAVE(dtExtrap,"UEX");
                         if (dtExtrap < dT) dT = dtExtrap; 
+#ifdef DTTEST
+                        p->dt_uex = dtExtrap;
+#endif
                         }
                     }
 #endif
@@ -6892,6 +6907,9 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     dTu = dEtauDot*uEff/fabs(p->uDotPdV);
                     DTSAVE(dTu,"PDV");
                     if (dTu < dT) dT = dTu;
+#ifdef DTTEST
+                    p->dt_pdv = dTu;
+#endif
                     }
 #ifdef DIFFUSION
 #ifdef THERMALCOND
@@ -6911,6 +6929,9 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                         /(dDiffCoeff*p->diff);  
                     DTSAVE(dTD,"DIF");
                     if (dTD < dT) dT = dTD;
+#ifdef DTTEST
+                    p->dt_diff = dTD;
+#endif
                     }
 #endif
 #endif

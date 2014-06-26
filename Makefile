@@ -24,7 +24,7 @@ PNG_DEF =
 
 # if you use OUTURBDRIVER you need libgsl
 #GSL_LIB = 
-GSL_LIB = -L /usr/lib64 -lgsl
+GSL_LIB = -lgsl -lgslcblas
 
 BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
 

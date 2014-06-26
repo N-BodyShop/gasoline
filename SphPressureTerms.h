@@ -120,6 +120,21 @@
 #define DIFFUSIONThermalCondBase(dt_) double dThermalCond=0;
 #endif
 
+#ifdef DTTEST
+#define DIFFUSIONThermal(dt_) \
+    { double diffTh = (2*smf->dThermalDiffusionCoeff*diffBase/(p->fDensity+q->fDensity)); \
+      double dt_diff, diffu;                                                  \
+      DIFFUSIONThermalCondBase(dt_);                                    \
+      p->dt_Sph_cond = dt_; \
+      q->dt_Sph_cond = dt_; \
+      if (diffTh > 0 && (dt_diff= smf->dtFacDiffusion*ph*ph/(diffTh*p->fDensity)) < dt_) dt_ = dt_diff; \
+      p->dt_Sph_diff = dt_; \
+      q->dt_Sph_diff = dt_; \
+      diffu = (diffTh+dThermalCond)*(p->uPred-q->uPred);              \
+      PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
+      QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \
+      DIFFUSIONThermaluHot(); }
+#else
 #define DIFFUSIONThermal(dt_) \
     { double diffTh = (2*smf->dThermalDiffusionCoeff*diffBase/(p->fDensity+q->fDensity)); \
       double dt_diff, diffu;                                                  \
@@ -129,6 +144,7 @@
       PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
       QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \
       DIFFUSIONThermaluHot(); }
+#endif
 #else
 #define DIFFUSIONThermal(dt_)
 #endif
@@ -204,9 +220,21 @@
         QACTIVE( Accq = (PRES_ACC(qPoverRho2f,pPoverRho2f)); );
 	    if (dvdotdr>=0.0) {
             dt = smf->dtFacCourant*ph/(2*(pc > q->c ? pc : q->c));	
+#ifdef DTTEST
+            p->dt_Sph_dvdotdr = dt;
+            q->dt_Sph_dvdotdr = dt;
+            p->dt_Sph_av = 0;
+            q->dt_Sph_av = 0;
+#endif
             }
 	    else {  
             ARTIFICIALVISCOSITY(visc,dt); /* Calculate Artificial viscosity terms and associated dt */		
+#ifdef DTTEST
+            p->dt_Sph_dvdotdr = 0;
+            q->dt_Sph_dvdotdr = 0;
+            p->dt_Sph_av = dt;
+            q->dt_Sph_av = dt;
+#endif
             PACTIVE( p->uDotAV += rq*(0.5*visc)*dvdotdr; );
             QACTIVE( q->uDotAV += rp*(0.5*visc)*dvdotdr; );
             PACTIVE( Accp += visc; );
