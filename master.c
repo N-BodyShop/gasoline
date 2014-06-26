@@ -9238,7 +9238,7 @@ void msrInitouturb(MSR msr, double dTime)
 
 void msrAccelouturb(MSR msr, double dTime)
     {
-    struct inInitouturb in;
+    struct inAccelouturb in;
 	double sec,dsec;
 	sec = msrTime();
     

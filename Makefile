@@ -57,6 +57,7 @@ COOLING_DEF = -DCOOLING_METAL
 
 # Which C compiler should I use?
 CC = icc
+CC = gcc
 
 CC_DEF = 
 
@@ -71,7 +72,8 @@ EXE = gasoline
 #       NULL defines
 #
 NULL_MDL		= ../mdl/null
-NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF) 
+#NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF) 
+NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(BASE_DEF) 
 NULL_LD_FLAGS	= $(BASE_LD_FLAGS) #-L/usr/lib -L/lib
 NULL_XOBJ		= erf.o v_sqrt1.o
 NULL_LIBMDL		= $(NULL_MDL)/mdl.o -lm
@@ -343,7 +345,7 @@ $(EXE): $(OBJ) $(XOBJ)
 	echo $(BASE_DEF) > buildlog.$(MD5)
 	cat define.h >> buildlog.$(MD5)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -o $@ $(OBJ) $(XOBJ) $(LIBMDL)
-	@mv $(EXE) $(EXE).$(MD5)
+#	@mv $(EXE) $(EXE).$(MD5)
 
 $(OBJ) $(EXTRA_OBJ): Makefile
 
