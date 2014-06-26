@@ -288,6 +288,17 @@ typedef struct particle {
                                collide with another planetesimal during
                                the top step interval */
 #endif
+#ifdef DTTEST
+    FLOAT dt_accel;               /* From pkdAccelStep() */
+    FLOAT dt_gaspressure;         /* From pkdGasPressure() */
+    FLOAT dt_uex;         /* From pkdSphStep() */
+    FLOAT dt_pdv;         /* From pkdSphStep() */
+    FLOAT dt_diff;         /* From pkdSphStep() */
+    FLOAT dt_Sph_diff;         /* From SphPressureTerms.h */
+    FLOAT dt_Sph_cond;         /* From SphPressureTerms.h */
+    FLOAT dt_Sph_dvdotdr;         /* From SphPressureTerms.h */
+    FLOAT dt_Sph_av;         /* From SphPressureTerms.h */
+#endif
     } PARTICLE;
 
 #define GAMMA_JEANS    (2.0)
