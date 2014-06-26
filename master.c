@@ -1106,6 +1106,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #ifndef NOCOOLING
 	CoolAddParams( &msr->param.CoolParam, msr->prm );
 #endif
+#ifdef OUTURBDRIVER
+    outurb_AddParams ( &msr->param.outurbparam, msr->prm );
+#endif
 	msr->param.dShockTrackerA = 0.16; 
 	prmAddParam(msr->prm,"dShockTrackerA",2,&msr->param.dShockTrackerA,
 				sizeof(double),"STA",
@@ -9217,6 +9220,36 @@ void msrInitCooling(MSR msr)
 }
 #endif
 
+void msrInitouturb(MSR msr, double dTime)
+    {
+    struct inInitouturb in;
+	double sec,dsec;
+	sec = msrTime();
+
+    in.outurbparam = msr->param.outurbparam;
+    in.BoxSize = msr->param.dPeriod;
+    in.dTime = dTime;
+    in.bDetails = msr->param.bVDetails;
+    pstInitouturb(msr->pst,&in,sizeof(struct inInitouturb),NULL,NULL);
+
+    dsec = msrTime() - sec;
+    printf("OUturb: Init Completed, Wallclock: %f secs\n\n",dsec);
+}
+
+void msrAccelouturb(MSR msr, double dTime)
+    {
+    struct inAccelouturb in;
+	double sec,dsec;
+	sec = msrTime();
+    
+    in.dTime = dTime;
+
+    pstAccelouturb(msr->pst,&in,sizeof(struct inAccelouturb),NULL,NULL);
+
+    dsec = msrTime() - sec;
+    printf("OUturb: Accel Completed, Wallclock: %f secs\n\n",dsec);
+}
+
 int msrSphCurrRung(MSR msr, int iRung, int bGreater)
 {
     struct inSphCurrRung in;
@@ -9488,8 +9521,9 @@ void msrSph(MSR msr, double dTime, int iKickRung)
         }
     
     msrBallMax(msr,iKickRung,1);
-
-
+#ifdef OUTURBDRIVER
+    msrAccelouturb(msr,dTime);
+#endif
     
 #else
     fprintf(stderr, "Attempt to use SPH without -DGASOLINE compile flag.\n");

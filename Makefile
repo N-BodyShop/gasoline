@@ -22,7 +22,11 @@ PNG_DEF =
 #PNG_OBJ = writepng.o
 #PNG_DEF = $(PNG_INCL) -DUSE_PNG
 
-BASE_LD_FLAGS = $(PNG_LIB) 
+# if you use OUTURBDRIVER you need libgsl
+#GSL_LIB = 
+GSL_LIB = -L /usr/lib64 -lgsl
+
+BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
 
 # The following pairs of lines define which cooling method to use.  Uncomment 
 # only one pair
@@ -53,6 +57,7 @@ COOLING_DEF = -DCOOLING_METAL
 
 # Which C compiler should I use?
 CC = icc
+CC = gcc
 
 CC_DEF = 
 
@@ -67,7 +72,8 @@ EXE = gasoline
 #       NULL defines
 #
 NULL_MDL		= ../mdl/null
-NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF) 
+#NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF) 
+NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(BASE_DEF) 
 NULL_LD_FLAGS	= $(BASE_LD_FLAGS) #-L/usr/lib -L/lib
 NULL_XOBJ		= erf.o v_sqrt1.o
 NULL_LIBMDL		= $(NULL_MDL)/mdl.o -lm
@@ -225,7 +231,7 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  smoothfcn.o collision.o qqsmooth.o $(COOLING_OBJ) cosmo.o romberg.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
 	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o \
-	  rotbar.o special.o ssio.o $(PNG_OBJ) \
+	  rotbar.o special.o ssio.o $(PNG_OBJ) outurb.o \
 	  treezip.o 
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
@@ -339,7 +345,7 @@ $(EXE): $(OBJ) $(XOBJ)
 	echo $(BASE_DEF) > buildlog.$(MD5)
 	cat define.h >> buildlog.$(MD5)
 	$(CC) $(CFLAGS) $(LD_FLAGS) -o $@ $(OBJ) $(XOBJ) $(LIBMDL)
-	@mv $(EXE) $(EXE).$(MD5)
+#	@mv $(EXE) $(EXE).$(MD5)
 
 $(OBJ) $(EXTRA_OBJ): Makefile
 
@@ -359,6 +365,7 @@ master.o: parameters.h cosmo.h tipsydefs.h opentype.h fdl.h htable.h
 master.o: outtype.h
 millerscalo.o: millerscalo.h
 outtype.o: pkd.h floattype.h cooling.h outtype.h
+outurb.o: pkd.h outurb.h
 param.o: param.h
 pkd.o: pkd.h floattype.h cooling.h ewald.h grav.h walk.h opentype.h
 pkd.o: tipsydefs.h dumpframe.h

@@ -155,8 +155,14 @@ int main(int argc,char **argv)
 		if (msr->param.iGasModel == GASMODEL_COOLING
 			|| msr->param.bStarForm) 
 		    msrInitCooling(msr);
+#ifdef OUTURBDRIVER
+        msrInitouturb(msr, dTime);
+#endif
 		if(msr->param.bStarForm)
 		    msrInitStarLog(msr);
+#endif
+#ifdef OUTURBDRIVER
+        msrInitouturb(msr, dTime);
 #endif
 		if(msr->param.bDoSinks && !msr->param.bBHSink)
 		    msrInitSinkLog(msr);
@@ -318,6 +324,9 @@ int main(int argc,char **argv)
 	if (msr->param.iGasModel == GASMODEL_COOLING ||
 		msr->param.bStarForm)
 		msrInitCooling(msr);
+#ifdef OUTURBDRIVER
+    msrInitouturb(msr, dTime);
+#endif
 	if(msr->param.bStarForm)
 	    msrInitStarLog(msr);
 #endif

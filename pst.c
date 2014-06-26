@@ -325,6 +325,14 @@ pstAddServices(PST pst,MDL mdl)
 				  (void (*)(void *,void *,int,void *,int *)) pstCoolTableRead,
 				  CL_NMAXBYTETABLE,0);
 #endif
+#ifdef OUTURBDRIVER
+	mdlAddService(mdl,PST_INITOUTURB,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstInitouturb,
+				  sizeof(struct inInitouturb),0);
+	mdlAddService(mdl,PST_ACCELOUTURB,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstAccelouturb,
+				  sizeof(struct inAccelouturb),0);
+#endif
 	mdlAddService(mdl,PST_DENSCHECK,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstDensCheck,
 				  sizeof(struct inDensCheck),sizeof(struct outDensCheck));
@@ -4722,6 +4730,39 @@ void pstCoolTableRead(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 #endif
+
+void pstInitouturb(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inInitouturb *in = vin;
+
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_INITOUTURB,in,nIn);
+		pstInitouturb(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		outurb_init( (OUTURB *) &plcl->pkd->outurb, in->outurbparam, plcl->pkd->idSelf, in->bDetails, in->BoxSize, in->dTime);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+
+
+void pstAccelouturb(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inAccelouturb *in = vin;
+
+	if (pst->nLeaves > 1) {
+		mdlReqService(pst->mdl,pst->idUpper,PST_ACCELOUTURB,in,nIn);
+		pstAccelouturb(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+		outurb_add_turb_accel( (OUTURB) plcl->pkd->outurb, in->dTime, plcl->pkd->pStore, plcl->pkd->nLocal);
+		}
+	if (pnOut) *pnOut = 0;
+	}
 
 
 void pstKickRhopred(PST pst,void *vin,int nIn,void *vout,int *pnOut)

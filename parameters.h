@@ -297,6 +297,9 @@ struct parameters {
 #if defined(GASOLINE) && !defined(NOCOOLING)
 	COOLPARAM CoolParam;
 #endif
+#ifdef OUTURBDRIVER
+    OUTURBPARAM outurbparam;
+#endif
 	int    bSN;
 	double dSNRhoCut;
  	double dSNTMin;
