@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef STARTIME_HINCLUDED
 #define STARTIME_HINCLUDED
 /*

@@ -1,4 +1,4 @@
-#include "define.h"
+
 /*
  * File with string to keep track of the gasoline version.
  */

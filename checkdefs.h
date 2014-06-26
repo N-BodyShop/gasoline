@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef CHECKDEFS_HINCLUDED
 #define CHECKDEFS_HINCLUDED
 

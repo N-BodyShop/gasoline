@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifdef OLD_KEPLER /*DEBUG these routines are now broken -- DCR 00-04-11*/
 #ifdef COLLISIONS
 

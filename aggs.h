@@ -1,4 +1,4 @@
-#include "define.h"
+
 /* aggs.h
  * 
  * PKDGRAV Source Code

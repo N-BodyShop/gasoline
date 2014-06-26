@@ -1,4 +1,4 @@
-#include "define.h"
+
 #include <stdio.h>
 #include <stdlib.h> /* includes malloc() macros */
 #include <unistd.h> /* for unlink() */

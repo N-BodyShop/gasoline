@@ -1,4 +1,4 @@
-#include "define.h"
+
 #include <math.h>
 #include <assert.h>
 #include "smoothfcn.h"

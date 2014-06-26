@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef SMOOTH_HINCLUDED
 #define SMOOTH_HINCLUDED
 
