@@ -9220,6 +9220,7 @@ void msrInitCooling(MSR msr)
 }
 #endif
 
+#ifdef OUTURBDRIVER
 void msrInitouturb(MSR msr, double dTime)
     {
     struct inInitouturb in;
@@ -9249,6 +9250,7 @@ void msrAccelouturb(MSR msr, double dTime)
     dsec = msrTime() - sec;
     printf("OUturb: Accel Completed, Wallclock: %f secs\n\n",dsec);
 }
+#endif
 
 int msrSphCurrRung(MSR msr, int iRung, int bGreater)
 {

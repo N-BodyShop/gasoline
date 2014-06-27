@@ -4731,6 +4731,7 @@ void pstCoolTableRead(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	}
 #endif
 
+#ifdef OUTURBDRIVER
 void pstInitouturb(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -4762,7 +4763,8 @@ void pstAccelouturb(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		outurb_add_turb_accel( (OUTURB) plcl->pkd->outurb, in->dTime, plcl->pkd->pStore, plcl->pkd->nLocal);
 		}
 	if (pnOut) *pnOut = 0;
-	}
+}
+#endif
 
 
 void pstKickRhopred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
