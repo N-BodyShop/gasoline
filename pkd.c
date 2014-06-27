@@ -6590,6 +6590,10 @@ void pkdGasPressure(PKD pkd, struct GasPressureContext *pgpc)
 #ifdef UNONCOOL
                 uTotDot += p->uHotDot;
 #endif
+#ifdef TWOPHASE
+                double x = p->fMassHot/p->fMass;
+                uTotDot = p->uHotDot*x+p->uDot*(1-x);
+#endif
                 if (uTotDot > 0) dt = pgpc->dtFacCourant*sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
                 else dt = pgpc->dtFacCourant*sqrt(p->fBall2*0.25)/(2*(p->c));
                 if (dt < p->dt) p->dt = dt; // Update to scare the neighbours
