@@ -72,8 +72,8 @@ EXE = gasoline
 #       NULL defines
 #
 NULL_MDL		= ../mdl/null
-#NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF) 
-NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(BASE_DEF) 
+NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF) 
+#NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(BASE_DEF) 
 NULL_LD_FLAGS	= $(BASE_LD_FLAGS) #-L/usr/lib -L/lib
 NULL_XOBJ		= erf.o v_sqrt1.o
 NULL_LIBMDL		= $(NULL_MDL)/mdl.o -lm

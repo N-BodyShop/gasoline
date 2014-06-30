@@ -2732,6 +2732,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef COOLING_MOLECULARH
  	fprintf(fp," COOLING_MOLECULARH");
 #endif
+#ifdef OUTURBDRIVER
+ 	fprintf(fp," OUTURBDRIVER");
+#endif
 #ifdef COLUMNLENGTH
  	fprintf(fp," COLUMNLENGTH"); /* Use smoothing length for correlation length*/
 /*Made using the smoothing length the default, as it has been used that way in all production runs to Jun 4th, 2012, CC*/
@@ -3094,6 +3097,9 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," dSNHeatFraction: %g",msr->param.dSNHeatFraction);
 #ifndef NOCOOLING
 	CoolLogParams( &msr->param.CoolParam, fp );
+#endif
+#ifdef OUTURBDRIVER
+	outurbLogParams( &msr->param.outurbparam, fp );
 #endif
 #endif
 #ifdef STARFORM
@@ -9228,7 +9234,7 @@ void msrInitouturb(MSR msr, double dTime)
 	sec = msrTime();
 
     in.outurbparam = msr->param.outurbparam;
-    in.BoxSize = msr->param.dPeriod;
+    in.BoxSize = msr->param.dxPeriod; //Careful!
     in.dTime = dTime;
     in.bDetails = msr->param.bVDetails;
     pstInitouturb(msr->pst,&in,sizeof(struct inInitouturb),NULL,NULL);
