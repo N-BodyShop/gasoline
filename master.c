@@ -3086,12 +3086,6 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp," bSphStep: %d",msr->param.bSphStep);
 	fprintf(fp," bSphSingleStep: %d",msr->param.bSphSingleStep);
 	fprintf(fp," ddHonHLimit: %g",msr->param.ddHonHLimit);
-	fprintf(fp,"\n#bSN: %d",msr->param.bSN);
-	fprintf(fp," dSNRhoCut: %g",msr->param.dSNRhoCut);
- 	fprintf(fp," dSNTMin: %g",msr->param.dSNTMin);
-        fprintf(fp," dSNTMax: %g",msr->param.dSNTMax);
-	fprintf(fp," dSNMetalCut: %g",msr->param.dSNMetalCut);
-	fprintf(fp," dSNHeatFraction: %g",msr->param.dSNHeatFraction);
 #ifndef NOCOOLING
 	CoolLogParams( &msr->param.CoolParam, fp );
 #endif
