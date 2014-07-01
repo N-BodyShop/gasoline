@@ -390,7 +390,7 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
 	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o \
 	  rotbar.o special.o ssio.o $(PNG_OBJ) outurb.o \
-	  treezip.o 
+	  treezip.o log.o
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 
@@ -540,6 +540,6 @@ dffuncs.o: dffuncs.c dumpframe.h
 treezip.o: treezip.c treezip.h treezipkey.h treeziptypes.h
 writepng.o: writepng.c writepng.h
 walk.o: walk.h pkd.h floattype.h cooling.h
-rotbar.o: 
+rotbar.o: master.h rotbar.h
 cooling_metal.o: cooling_metal.h cooling_metal.c
-
+log.o: log.h 

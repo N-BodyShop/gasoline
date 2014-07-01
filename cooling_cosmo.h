@@ -2,6 +2,10 @@
 #ifndef COOLING_COSMO_HINCLUDED
 #define COOLING_COSMO_HINCLUDED
 
+#ifndef LOG_HINCLUDED
+#include "log.h"
+#endif
+
 /* Global consts */
 #if defined(COOLDEBUG)
 #include "mdl.h"
@@ -251,7 +255,7 @@ void clDerivs(void *Data, double x, const double *y, double *yheat,
 	      double *ycool) ;
 
 void CoolAddParams( COOLPARAM *CoolParam, PRM );
-void CoolLogParams( COOLPARAM *CoolParam, FILE *fp );
+void CoolLogParams( COOLPARAM *CoolParam, LOGGER lgr, FILE *fp );
 void CoolOutputArray( COOLPARAM *CoolParam, int, int *, char * );
 
 #define COOL_ARRAY0_EXT  "HI"

@@ -182,7 +182,7 @@ int main(int argc,char **argv)
 			fprintf(fpLog,"# RESTART (dTime = %g)\n# ",dTime);
 			for (i=0;i<argc;++i) fprintf(fpLog,"%s ",argv[i]);
 			fprintf(fpLog,"\n");
-			msrLogParams(msr,fpLog);
+			msrLogHeader(msr,fpLog);
 			/* Timing data, if requested */
 			if ((fpLogTiming = LogTimingInit( msr, "a" ))) {
 			    fprintf(fpLogTiming,"# RESTART (dTime = %g)\n# ",dTime);
@@ -380,7 +380,7 @@ int main(int argc,char **argv)
 			fprintf(fpLog,"# ");
 			for (i=0;i<argc;++i) fprintf(fpLog,"%s ",argv[i]);
 			fprintf(fpLog,"\n");
-			msrLogParams(msr,fpLog);
+			msrLogHeader(msr,fpLog);
 			/* Timing data, if requested */
 			fpLogTiming = LogTimingInit( msr, "w" );
 			}

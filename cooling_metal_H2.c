@@ -3159,22 +3159,37 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 
 	}
 	
-void CoolLogParams( COOLPARAM *CoolParam, FILE *fp ) {
-    fprintf(fp,"\n# Cooling: bIonNonEqm: %d",CoolParam->bIonNonEqm);
-    fprintf(fp," bUV: %d",CoolParam->bUV);
-    fprintf(fp," bUVTableUsesTime: %d",CoolParam->bUVTableUsesTime);
-    fprintf(fp," dMassFracHelium: %g",CoolParam->dMassFracHelium);
-    fprintf(fp," dCoolingTmin: %g",CoolParam->dCoolingTmin);
-    fprintf(fp," dCoolingTmax: %g",CoolParam->dCoolingTmax);
-    fprintf(fp," nCoolingTable: %d",CoolParam->nCoolingTable);
-    fprintf(fp," bDoIonOutput: %d",CoolParam->bDoIonOutput);
-    fprintf(fp," bLowTCool: %d",CoolParam->bLowTCool);
-    fprintf(fp," bMetal: %d",CoolParam->bMetal);
-    fprintf(fp," bShieldHI: %d",CoolParam->bShieldHI);
-    fprintf(fp," dClump: %g",CoolParam->dClump);
+void CoolLogParams( COOLPARAM *CoolParam, LOGGER lgr, FILE *fp ) {
+    char param[160];
+    sprintf(param,"\n# Cooling: bIonNonEqm: %d",CoolParam->bIonNonEqm);
+    LogParams(lgr, "COOLING", param, fp); 
+    sprintf(param," bUV: %d",CoolParam->bUV);
+    LogParams(lgr, "COOLING", param, fp); 
+    sprintf(param," bUVTableUsesTime: %d",CoolParam->bUVTableUsesTime);
+    LogParams(lgr, "COOLING", param, fp); 
+    sprintf(param," dMassFracHelium: %g",CoolParam->dMassFracHelium);
+    LogParams(lgr, "COOLING", param, fp); 
+    sprintf(param," dCoolingTmin: %g",CoolParam->dCoolingTmin);
+    LogParams(lgr, "COOLING", param, fp); 
+    sprintf(param," dCoolingTmax: %g",CoolParam->dCoolingTmax);
+    LogParams(lgr, "COOLING", param, fp); 
+    sprintf(param," nCoolingTable: %d",CoolParam->nCoolingTable);
+    LogParams(lgr, "COOLING", param, fp); 
+    sprintf(param," bDoIonOutput: %d",CoolParam->bDoIonOutput);
+    LogParams(lgr, "COOLING", param, fp); 
+    sprintf(param," bLowTCool: %d",CoolParam->bLowTCool);
+    LogParams(lgr, "COOLING", param, fp); 
+    sprintf(param," bMetal: %d",CoolParam->bMetal);
+    LogParams(lgr, "COOLING", param, fp); 
+    sprintf(param," bShieldHI: %d",CoolParam->bShieldHI);
+    LogParams(lgr, "COOLING", param, fp); 
+    sprintf(param," dClump: %g",CoolParam->dClump);
+    LogParams(lgr, "COOLING", param, fp); 
 #ifdef  RADIATIVEBOX
-    fprintf(fp," bAgeFromMass: %d",CoolParam->bAgeFromMass);
-    fprintf(fp," dLymanWernerFrac: %g",CoolParam->dLymanWernerFrac);
+    sprintf(param," bAgeFromMass: %d",CoolParam->bAgeFromMass);
+    LogParams(lgr, "COOLING", param, fp); 
+    sprintf(param," dLymanWernerFrac: %g",CoolParam->dLymanWernerFrac);
+    LogParams(lgr, "COOLING", param, fp); 
 #endif
 
     }
