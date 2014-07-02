@@ -72,11 +72,11 @@ void outurb_AddParams( OUTURBPARAM *outurbparam, PRM prm ) {
                 "<OU Turb driving Scale Height (Gaussian)> = 1e30");
 
     outurbparam->StSeed = 42;
-    prmAddParam(prm,"StSeed",0,&outurbparam->StSeed,
+    prmAddParam(prm,"StSeed",1,&outurbparam->StSeed,
                 sizeof(int),"StSeed",
                 "<OU Turb driving seed> = 42");
     outurbparam->StSpectForm = 0;
-    prmAddParam(prm,"StSpectForm",0,&outurbparam->StSpectForm,
+    prmAddParam(prm,"StSpectForm",1,&outurbparam->StSpectForm,
                 sizeof(int),"StSpectForm",
                 "<OU Turb driving Spectral Form> = 2");
     }
