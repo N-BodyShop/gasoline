@@ -2908,12 +2908,22 @@ void msrLogHeader(MSR msr,FILE *fp)
 			msr->param.bVDetails);
     char param[160];
     LOGGER *lgr = initLog();
+	sprintf(param,"dMsolUnit: %g",msr->param.dMsolUnit);
+    LogParams(lgr, "UNITS", param);
+	sprintf(param,"dKpcUnit: %g",msr->param.dKpcUnit);
+    LogParams(lgr, "UNITS", param);
 	sprintf(param,"bPeriodic: %d",msr->param.bPeriodic);
     LogParams(lgr, "BOX PARAMETERS", param);
 	sprintf(param,"bRestart: %d",msr->param.bRestart);
     LogParams(lgr, "BOX PARAMETERS", param);
 	sprintf(param,"bComove: %d",msr->param.csm->bComove);
     LogParams(lgr, "BOX PARAMETERS", param);
+	sprintf(param,"iStartStep: %d",msr->param.iStartStep);
+    LogParams(lgr, "RUN DURATION", param);
+	sprintf(param,"iStopStep: %d",msr->param.iStopStep);
+    LogParams(lgr, "RUN DURATION", param);
+	sprintf(param,"nSteps: %d",msr->param.nSteps);
+    LogParams(lgr, "RUN DURATION", param);
 #ifdef INFLOWOUTFLOW
 	sprintf(param,"bInflowOutflow: %d",msr->param.bInflowOutflow);
     LogParams(lgr, "INFLOW/OUTFLOW", param);
@@ -2932,6 +2942,14 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "READ/WRITE", param);
 	sprintf(param,"bCannonical: %d",msr->param.bCannonical);
     LogParams(lgr, "INTEGRATION", param);
+	sprintf(param,"dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"dFracNoDomainDimChoice: %g",msr->param.dFracNoDomainDimChoice);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"bFastGas: %d",msr->param.bFastGas);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"dFracFastGas: %g",msr->param.dFracFastGas);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
 	sprintf(param,"bStandard: %d",msr->param.bStandard);
     LogParams(lgr, "READ/WRITE", param);
 	sprintf(param,"bKDK: %d",msr->param.bKDK);
@@ -2964,20 +2982,38 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "INTEGRATION", param);
 	sprintf(param,"dEwhCut: %f",msr->param.dEwhCut);
     LogParams(lgr, "INTEGRATION", param);
-	sprintf(param,"iStartStep: %d",msr->param.iStartStep);
-    LogParams(lgr, "RUN DURATION", param);
-	sprintf(param,"iStopStep: %d",msr->param.iStopStep);
-    LogParams(lgr, "RUN DURATION", param);
-	sprintf(param,"nSteps: %d",msr->param.nSteps);
-    LogParams(lgr, "RUN DURATION", param);
-	sprintf(param,"nSmooth: %d",msr->param.nSmooth);
-    LogParams(lgr, "SPH", param);
 	sprintf(param,"dExtraStore: %f",msr->param.dExtraStore);
     LogParams(lgr, "READ/WRITE", param);
 	if (prmSpecified(msr->prm,"dSoft"))
 		sprintf(param,"dSoft: %g",msr->param.dSoft);
 	else
-		sprintf(param,"dSoft: input");
+	sprintf(param,"dDelta: %g",msr->param.dDelta);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"dEta: %g",msr->param.dEta);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"dEtaDeltaAccel: %g",msr->param.dEtaDeltaAccel);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"dEtaCourant: %g (%g)",msr->param.dEtaCourant,msr->param.dEtaCourantLong);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"iMaxRung: %d",msr->param.iMaxRung);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"bGravStep: %d",msr->param.bGravStep);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"bEpsAccStep: %d",msr->param.bEpsAccStep);
+    LogParams(lgr, "TIMESTEPPING", param);
+    sprintf(param,"dSoft: input");
+	sprintf(param,"dHubble0: %g",msr->param.csm->dHubble0);
+    LogParams(lgr, "COSMOLOGY", param);
+	sprintf(param,"dOmega0: %g",msr->param.csm->dOmega0);
+    LogParams(lgr, "COSMOLOGY", param);
+	sprintf(param,"dLambda: %g",msr->param.csm->dLambda);
+    LogParams(lgr, "COSMOLOGY", param);
+	sprintf(param,"dOmegaRad: %g",msr->param.csm->dOmegaRad);
+    LogParams(lgr, "COSMOLOGY", param);
+	sprintf(param,"dOmegab: %g",msr->param.csm->dOmegab);
+    LogParams(lgr, "COSMOLOGY", param);
+	sprintf(param,"dQuintess: %g",msr->param.csm->dQuintess);
+    LogParams(lgr, "COSMOLOGY", param);
     LogParams(lgr, "SOFTENING", param);
 	sprintf(param,"bPhysicalSoft: %d",msr->param.bPhysicalSoft);
     LogParams(lgr, "SOFTENING", param);
@@ -2993,20 +3029,6 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "SOFTENING", param);
 	sprintf(param,"bDoSoftOutput: %d",msr->param.bDoSoftOutput);
     LogParams(lgr, "SOFTENING", param);
-	sprintf(param,"dDelta: %g",msr->param.dDelta);
-    LogParams(lgr, "TIMESTEPPING", param);
-	sprintf(param,"dEta: %g",msr->param.dEta);
-    LogParams(lgr, "TIMESTEPPING", param);
-	sprintf(param,"dEtaDeltaAccel: %g",msr->param.dEtaDeltaAccel);
-    LogParams(lgr, "TIMESTEPPING", param);
-	sprintf(param,"dEtaCourant: %g (%g)",msr->param.dEtaCourant,msr->param.dEtaCourantLong);
-    LogParams(lgr, "TIMESTEPPING", param);
-	sprintf(param,"iMaxRung: %d",msr->param.iMaxRung);
-    LogParams(lgr, "TIMESTEPPING", param);
-	sprintf(param,"bGravStep: %d",msr->param.bGravStep);
-    LogParams(lgr, "TIMESTEPPING", param);
-	sprintf(param,"bEpsAccStep: %d",msr->param.bEpsAccStep);
-    LogParams(lgr, "TIMESTEPPING", param);
 	sprintf(param,"bSqrtPhiStep: %d",msr->param.bSqrtPhiStep);
     LogParams(lgr, "GRAVITY", param);
     LogParams(lgr, "TIMESTEPPING", param);
@@ -3087,6 +3109,8 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "GRAVITY", param);
 	sprintf(param,"dOmegaDot: %g",msr->param.dOmegaDot);
     LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"bPatch: %d",msr->param.bPatch);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
 	sprintf(param,"bDoSinks: %d",msr->param.bDoSinks );
     LogParams(lgr, "SINKS", param);
 	sprintf(param,"bBHSink: %d",msr->param.bBHSink );
@@ -3147,14 +3171,8 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "SINKS", param);
 	sprintf(param,"dSinkTimeEligible: %g",msr->param.dSinkTimeEligible);
     LogParams(lgr, "SINKS", param);
-	sprintf(param,"dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
-    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
-	sprintf(param,"dFracNoDomainDimChoice: %g",msr->param.dFracNoDomainDimChoice);
-    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
-	sprintf(param,"bFastGas: %d",msr->param.bFastGas);
-    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
-	sprintf(param,"dFracFastGas: %g",msr->param.dFracFastGas);
-    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"nSmooth: %d",msr->param.nSmooth);
+    LogParams(lgr, "SPH", param);
 	sprintf(param,"dhMinOverSoft: %g",msr->param.dhMinOverSoft);
     LogParams(lgr, "SPH", param);
 	sprintf(param,"dResolveJeans: %g",msr->param.dResolveJeans);
@@ -3229,10 +3247,6 @@ void msrLogHeader(MSR msr,FILE *fp)
 	sprintf(param,"dvturb: %g",msr->param.dvturb);
     LogParams(lgr, "GAS PHYSICS", param);
 #endif
-	sprintf(param,"dMsolUnit: %g",msr->param.dMsolUnit);
-    LogParams(lgr, "UNITS", param);
-	sprintf(param,"dKpcUnit: %g",msr->param.dKpcUnit);
-    LogParams(lgr, "UNITS", param);
 	if(prmSpecified(msr->prm, "dMsolUnit") &&
 	   prmSpecified(msr->prm, "dKpcUnit")) {
 	    sprintf(param,"dErgPerGmUnit: %g", msr->param.dErgPerGmUnit );
@@ -3445,8 +3459,6 @@ void msrLogHeader(MSR msr,FILE *fp)
 	sprintf(param,"SSF_bdivv: %d",msr->param.SSF_bdivv);
     LogParams(lgr, "STAR FORMATION", param);
 #endif
-	sprintf(param,"bPatch: %d",msr->param.bPatch);
-    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
 	if (msr->param.bPatch) {
 	  PATCH_PARAMS *PP = &msr->param.PP;
 	  sprintf(param,"dOrbDist: %g",PP->dOrbDist);
@@ -3673,18 +3685,6 @@ void msrLogHeader(MSR msr,FILE *fp)
 	sprintf(param,"dzPeriod: %g",
 			msr->param.dzPeriod >= FLOAT_MAXVAL ? 0 : msr->param.dzPeriod);
     LogParams(lgr, "BOX PARAMETERS", param);
-	sprintf(param,"dHubble0: %g",msr->param.csm->dHubble0);
-    LogParams(lgr, "COSMOLOGY", param);
-	sprintf(param,"dOmega0: %g",msr->param.csm->dOmega0);
-    LogParams(lgr, "COSMOLOGY", param);
-	sprintf(param,"dLambda: %g",msr->param.csm->dLambda);
-    LogParams(lgr, "COSMOLOGY", param);
-	sprintf(param,"dOmegaRad: %g",msr->param.csm->dOmegaRad);
-    LogParams(lgr, "COSMOLOGY", param);
-	sprintf(param,"dOmegab: %g",msr->param.csm->dOmegab);
-    LogParams(lgr, "COSMOLOGY", param);
-	sprintf(param,"dQuintess: %g",msr->param.csm->dQuintess);
-    LogParams(lgr, "COSMOLOGY", param);
 	sprintf(param,"achInFile: %s",msr->param.achInFile);
     LogParams(lgr, "READ/WRITE", param);
 	sprintf(param,"achOutName: %s",msr->param.achOutName); 
