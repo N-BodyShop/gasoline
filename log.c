@@ -32,8 +32,8 @@ void LogParams(LOGGER * lgr, char *label, char *param)
         lgr->labelCnt++;
         lgr->label = memcpy(malloc(lgr->labelCnt*sizeof(char*)), lgr->label, curlabel*sizeof(char*));
         lgr->line = memcpy(malloc(lgr->labelCnt*sizeof(char*)), lgr->line, curlabel*sizeof(char*));
-        lgr->label[curlabel] = malloc(LOGCOL*sizeof(char));
-        lgr->line[curlabel] = malloc(LOGCOL*sizeof(char));
+        lgr->label[curlabel] = malloc(LOGCOL+1);
+        lgr->line[curlabel] = malloc(LOGCOL+1);
         strcpy(lgr->label[curlabel], label);
         lgr->line[curlabel][0] = '\0';
     }
@@ -54,7 +54,7 @@ void LogParams(LOGGER * lgr, char *label, char *param)
     //with the requested label.
     else
     {
-        lgr->line[curlabel] = memcpy(malloc((strlen(lgr->line[curlabel])+LOGCOL)*sizeof(char)), lgr->line[curlabel], 1+strlen(lgr->line[curlabel])*sizeof(char));
+        lgr->line[curlabel] = strcpy(malloc(strlen(lgr->line[curlabel])+LOGCOL+1), lgr->line[curlabel]);
         strcat(lgr->line[curlabel], "\n# ");
         strcat(lgr->line[curlabel], lgr->label[curlabel]);
         strcat(lgr->line[curlabel], ": ");
