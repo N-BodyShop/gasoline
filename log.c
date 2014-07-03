@@ -68,8 +68,6 @@ void LogFlush(LOGGER * lgr, FILE *fp)
     for(i=0;i<lgr->labelCnt;i++)
     {
         fprintf(fp, lgr->line[i]);
-        /*free(lgr->line[i]);*/
-        /*free(lgr->label[i]);*/
     }
-    /*free(lgr);*/
+    free(lgr);
 }
