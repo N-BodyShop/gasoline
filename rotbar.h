@@ -49,7 +49,7 @@ typedef struct rotbarContext {
     } *ROTBAR;
 
 void rotbarAddParams(ROTBAR rotbar, PRM prm);
-void rotbarLogParams(ROTBAR rotbar, LOGGER lgr, FILE *fp );
+void rotbarLogParams(ROTBAR rotbar, LOGGER *lgr);
 void rotbarCheckWrite(ROTBAR rotbar, FDL_CTX *fdl);
 void rotbarCheckRead(ROTBAR rotbar, FDL_CTX *fdl);
 void rotbarInitialize(ROTBAR *protbar);

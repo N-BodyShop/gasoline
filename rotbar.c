@@ -52,43 +52,43 @@ void rotbarAddParams(ROTBAR rotbar, PRM prm)
 		    sizeof(double), "rbcratio", "c/b ratio of bar = 0.1");
     }
 
-void rotbarLogParams(ROTBAR rotbar, LOGGER lgr,FILE *fp )
+void rotbarLogParams(ROTBAR rotbar, LOGGER *lgr)
 {
     char param[LOGCOL];
 	sprintf(param,"dRotBarMass: %g",rotbar->dMass );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarLength: %g",rotbar->dLength );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarCorotFac: %g",rotbar->dCorotFac );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarTurnOff: %g",rotbar->dTurnOff );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarTurnOn: %g",rotbar->dTurnOn );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarAmpFac: %g",rotbar->dAmpFac );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarDuration: %g",rotbar->dDuration );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarPosAng: %g",rotbar->dPosAng );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarTime0: %g",rotbar->dTime0 );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarOmega: %g",rotbar->dOmega );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarB5: %g",rotbar->dB5 );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarIz: %g",rotbar->dIz );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarLz: %g",rotbar->dLz );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarLz0: %g",rotbar->dLz0 );
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"bFixedBar: %d",rotbar->bFixedBar);
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"bBarMonopole: %d",rotbar->bMonopole);
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
 	sprintf(param,"dRotBarMonoPoleFac: %g",rotbar->dMonopoleFac);
-    LogParams(lgr, "ROTATING BAR", param, fp);
+    LogParams(lgr, "ROTATING BAR", param);
     }
 
 void rotbarCheckWrite(ROTBAR rotbar, FDL_CTX *fdl)

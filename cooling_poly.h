@@ -106,7 +106,7 @@ void clDerivs(void *Data, double x, double *y, double *dydx) ;
 void clJacobn(void *Data, double x, double y[], double dfdx[], double **dfdy) ;
   
 void CoolAddParams( COOLPARAM *CoolParam, PRM );
-void CoolLogParams( COOLPARAM *CoolParam, LOGGER lgr, FILE *fp );
+void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr);
 void CoolOutputArray( COOLPARAM *CoolParam, int, int *, char * );
 
 #define COOL_ARRAY0_EXT "Y"

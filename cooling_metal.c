@@ -2265,38 +2265,38 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
         "<Photoelectric Inner Radius (flat inside this radius) = 4 kpc");
 	}
 	
-void CoolLogParams( COOLPARAM *CoolParam, LOGGER lgr, FILE *fp ) {
-  char param[160];
-  sprintf(param,"\n# Cooling: bIonNonEqm: %d",CoolParam->bIonNonEqm);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," bUV: %d",CoolParam->bUV);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," bUVTableUsesTime: %d",CoolParam->bUVTableUsesTime);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," dMassFracHelium: %g",CoolParam->dMassFracHelium);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," dCoolingTmin: %g",CoolParam->dCoolingTmin);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," dCoolingTmax: %g",CoolParam->dCoolingTmax);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," nCoolingTable: %d",CoolParam->nCoolingTable);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," bDoIonOutput: %d",CoolParam->bDoIonOutput);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," bLowTCool: %d",CoolParam->bLowTCool);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," bMetal: %d",CoolParam->bMetal);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," dPhotoelectricHeating: %g",CoolParam->dPhotoelectricHeating);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," dPhotoelectricScaleLength: %g",CoolParam->dPhotoelectricScaleLength);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," dPhotoelectricInnerRadius: %g",CoolParam->dPhotoelectricInnerRadius);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," dzTimeClampUV: %g",CoolParam->dzTimeClampUV);
-    LogParams(lgr, "COOLING", param, fp); 
-  sprintf(param," dMetalCoolFactor: %g",CoolParam->dMetalCoolFactor);
-    LogParams(lgr, "COOLING", param, fp); 
+void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr) {
+  char param[LOGCOL];
+  sprintf(param,"bIonNonEqm: %d",CoolParam->bIonNonEqm);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"bUV: %d",CoolParam->bUV);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"bUVTableUsesTime: %d",CoolParam->bUVTableUsesTime);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"dMassFracHelium: %g",CoolParam->dMassFracHelium);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"dCoolingTmin: %g",CoolParam->dCoolingTmin);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"dCoolingTmax: %g",CoolParam->dCoolingTmax);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"nCoolingTable: %d",CoolParam->nCoolingTable);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"bDoIonOutput: %d",CoolParam->bDoIonOutput);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"bLowTCool: %d",CoolParam->bLowTCool);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"bMetal: %d",CoolParam->bMetal);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"dPhotoelectricHeating: %g",CoolParam->dPhotoelectricHeating);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"dPhotoelectricScaleLength: %g",CoolParam->dPhotoelectricScaleLength);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"dPhotoelectricInnerRadius: %g",CoolParam->dPhotoelectricInnerRadius);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"dzTimeClampUV: %g",CoolParam->dzTimeClampUV);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"dMetalCoolFactor: %g",CoolParam->dMetalCoolFactor);
+    LogParams(lgr, "COOLING", param); 
 
 }
 

@@ -3,6 +3,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // How many characters wide should our logs be?
@@ -12,8 +13,8 @@ typedef struct LogFormatter {
     int labelCnt;
     char **label;
     char **line;
-} * LOGGER;
+} LOGGER;
 
-void LogParams(LOGGER lgr, char *label, char *param, FILE *fp);
-void LogFlush(LOGGER lgr, FILE *fp);
-
+void LogParams(LOGGER *lgr, char *label, char *param);
+void LogFlush(LOGGER *lgr, FILE *fp);
+LOGGER *initLog();

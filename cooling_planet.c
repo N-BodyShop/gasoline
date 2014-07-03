@@ -218,22 +218,22 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 				"<Maximum Temperature for Cooling> = 1e9K");
 	}
 	
-void CoolLogParams( COOLPARAM *CoolParam, LOGGER lgr, FILE *fp ) {
-    char param[160];
-	sprintf(param,"\n# Cooling: CooldParam1: %g",CoolParam->dParam1);
-    LogParams(lgr, "COOLING", param, fp); 
-	sprintf(param," CooldParam2: %g",CoolParam->dParam2);
-    LogParams(lgr, "COOLING", param, fp); 
-	sprintf(param," CooldParam3: %g",CoolParam->dParam3);
-    LogParams(lgr, "COOLING", param, fp); 
-	sprintf(param," ColldParam4: %g",CoolParam->dParam4);
-    LogParams(lgr, "COOLING", param, fp); 
-    sprintf(param," Y_Total: %g",CoolParam->Y_Total);
-    LogParams(lgr, "COOLING", param, fp); 
-    sprintf(param," dCoolingTmin: %g",CoolParam->dCoolingTmin);
-    LogParams(lgr, "COOLING", param, fp); 
-    sprintf(param," dCoolingTmax: %g",CoolParam->dCoolingTmax);
-    LogParams(lgr, "COOLING", param, fp); 
+void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr) {
+    char param[LOGCOL];
+	sprintf(param,"CooldParam1: %g",CoolParam->dParam1);
+    LogParams(lgr, "COOLING", param); 
+	sprintf(param,"CooldParam2: %g",CoolParam->dParam2);
+    LogParams(lgr, "COOLING", param); 
+	sprintf(param,"CooldParam3: %g",CoolParam->dParam3);
+    LogParams(lgr, "COOLING", param); 
+	sprintf(param,"ColldParam4: %g",CoolParam->dParam4);
+    LogParams(lgr, "COOLING", param); 
+    sprintf(param,"Y_Total: %g",CoolParam->Y_Total);
+    LogParams(lgr, "COOLING", param); 
+    sprintf(param,"dCoolingTmin: %g",CoolParam->dCoolingTmin);
+    LogParams(lgr, "COOLING", param); 
+    sprintf(param,"dCoolingTmax: %g",CoolParam->dCoolingTmax);
+    LogParams(lgr, "COOLING", param); 
 	}
 
 void CoolOutputArray( COOLPARAM *CoolParam, int cnt, int *type, char *suffix ) {
