@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef PARAMETERS_HINCLUDED
 #define PARAMETERS_HINCLUDED
 
@@ -300,12 +300,6 @@ struct parameters {
 #ifdef OUTURBDRIVER
     OUTURBPARAM outurbparam;
 #endif
-	int    bSN;
-	double dSNRhoCut;
- 	double dSNTMin;
-	double dSNTMax;
-	double dSNMetalCut;
-	double dSNHeatFraction;
 	double dDumpFrameStep;
 	double dDumpFrameTime;
 	int iTreeZipStep;

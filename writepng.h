@@ -1,4 +1,4 @@
-#include "define.h"
+
 /*---------------------------------------------------------------------------
 
    wpng - simple PNG-writing program                             writepng.h

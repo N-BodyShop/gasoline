@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef SMOOTHFCN_INCLUDED
 #define SMOOTHFCN_INCLUDED
 

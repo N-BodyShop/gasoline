@@ -1,4 +1,4 @@
-#include "define.h"
+
 double
 dRombergO(void *CTX,double (*func)(void *, double),double a,double b,
 	  double eps);

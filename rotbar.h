@@ -1,7 +1,10 @@
-#include "define.h"
+
 #ifndef ROTBAR_HINCLUDED
 #define ROTBAR_HINCLUDED
 
+#ifndef LOG_HINCLUDED
+#include "log.h"
+#endif
 #include "fdl.h"
 #include "param.h"
 
@@ -46,7 +49,7 @@ typedef struct rotbarContext {
     } *ROTBAR;
 
 void rotbarAddParams(ROTBAR rotbar, PRM prm);
-void rotbarLogParams(ROTBAR rotbar, FILE *fp );
+void rotbarLogParams(ROTBAR rotbar, LOGGER *lgr);
 void rotbarCheckWrite(ROTBAR rotbar, FDL_CTX *fdl);
 void rotbarCheckRead(ROTBAR rotbar, FDL_CTX *fdl);
 void rotbarInitialize(ROTBAR *protbar);

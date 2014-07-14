@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifdef SETTRAPFPE
 #include <fenv.h>
 #endif
@@ -182,7 +182,7 @@ int main(int argc,char **argv)
 			fprintf(fpLog,"# RESTART (dTime = %g)\n# ",dTime);
 			for (i=0;i<argc;++i) fprintf(fpLog,"%s ",argv[i]);
 			fprintf(fpLog,"\n");
-			msrLogParams(msr,fpLog);
+			msrLogHeader(msr,fpLog);
 			/* Timing data, if requested */
 			if ((fpLogTiming = LogTimingInit( msr, "a" ))) {
 			    fprintf(fpLogTiming,"# RESTART (dTime = %g)\n# ",dTime);
@@ -380,7 +380,7 @@ int main(int argc,char **argv)
 			fprintf(fpLog,"# ");
 			for (i=0;i<argc;++i) fprintf(fpLog,"%s ",argv[i]);
 			fprintf(fpLog,"\n");
-			msrLogParams(msr,fpLog);
+			msrLogHeader(msr,fpLog);
 			/* Timing data, if requested */
 			fpLogTiming = LogTimingInit( msr, "w" );
 			}
@@ -406,8 +406,8 @@ int main(int argc,char **argv)
 			msrMassCheck(msr,dMass,"After msrCalcEandL");
 			dMultiEff = 1.0;
 			if (msrLogInterval(msr)) {
-				(void) fprintf(fpLog,"%e %e %.16e %e %e %e %.16e %.16e %.16e "
-							   "%i %e %e %e %e\n",dTime,
+				(void) fprintf(fpLog,"%.4e %.4e %.6e %.4e %.4e %.4e %.6e %.6e %.6e "
+							   "%i %.4e %.4e %.4e %.4e\n",dTime,
 							   1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
 							   E,T,U,Eth,L[0],L[1],L[2],iSec,dWMax,dIMax,dEMax,
 							   dMultiEff);
@@ -539,11 +539,11 @@ int main(int argc,char **argv)
 				if (msrLogInterval(msr) && iStep%msrLogInterval(msr) == 0) {
 				  msrCalcEandL(msr,MSR_STEP_E,dTime,&E,&T,&U,&Eth,L);
 				  msrMassCheck(msr,dMass,"After msrCalcEandL in KDK");
-				  (void) fprintf(fpLog,"%e %e %.16e %e %e %e %.16e %.16e "
-								 "%.16e %li %e %e %e %e\n",dTime,
-								 1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
-								 E,T,U,Eth,L[0],L[1],L[2],lSec,dWMax,dIMax,
-								 dEMax,dMultiEff);
+				(void) fprintf(fpLog,"%.4e %.4e %.6e %.4e %.4e %.4e %.6e %.6e %.6e "
+							   "%i %.4e %.4e %.4e %.4e\n",dTime,
+							   1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
+							   E,T,U,Eth,L[0],L[1],L[2],iSec,dWMax,dIMax,dEMax,
+							   dMultiEff);
 				}
 				LogTimingOutput( msr, fpLogTiming, dTime, 0 );
 			}
@@ -575,11 +575,11 @@ int main(int argc,char **argv)
 						}
 					msrCalcEandL(msr,MSR_STEP_E,dTime,&E,&T,&U,&Eth,L);
 					msrMassCheck(msr,dMass,"After msrCalcEandL in DKD-log");
-					(void) fprintf(fpLog,"%e %e %.16e %e %e %e %.16e %.16e "
-								   "%.16e %li %e %e %e %e\n",dTime,
-								   1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
-								   E,T,U,Eth,L[0],L[1],L[2],time(0)-lSec,dWMax,
-								   dIMax,dEMax,dMultiEff);
+                    (void) fprintf(fpLog,"%.4e %.4e %.6e %.4e %.4e %.4e %.6e %.6e %.6e "
+                                   "%i %.4e %.4e %.4e %.4e\n",dTime,
+                                   1.0/csmTime2Exp(msr->param.csm,dTime)-1.0,
+                                   E,T,U,Eth,L[0],L[1],L[2],iSec,dWMax,dIMax,dEMax,
+                                   dMultiEff);
 
 					}
 				LogTimingOutput( msr, fpLogTiming, dTime, 0 );

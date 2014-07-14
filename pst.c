@@ -1,4 +1,4 @@
-#include "define.h"
+
 #include <math.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -4765,7 +4765,6 @@ void pstAccelouturb(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 }
 #endif
-
 
 void pstKickRhopred(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {

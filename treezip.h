@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef TREEZIP_HINCLUDED
 #define TREEZIP_HINCLUDED
 

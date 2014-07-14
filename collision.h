@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef COLLISION_HINCLUDED
 #define COLLISION_HINCLUDED
 

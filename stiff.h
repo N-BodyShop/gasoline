@@ -1,4 +1,4 @@
-#include "define.h"
+
 /** @brief Context for stiff integration
  */
 typedef struct StiffContextStructure {

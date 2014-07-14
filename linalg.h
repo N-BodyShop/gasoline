@@ -1,4 +1,4 @@
-#include "define.h"
+
 /** linalg.h
  * 
  *  PKDGRAV Source Code

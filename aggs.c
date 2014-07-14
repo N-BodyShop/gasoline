@@ -1,4 +1,4 @@
-#include "define.h"
+
 /* aggs.c
  * 
  * PKDGRAV Source Code for Aggregate Handling

@@ -1,4 +1,4 @@
-#include "define.h"
+
 /*
  * Copyright (c) 1985 Regents of the University of California.
  * All rights reserved.  The Berkeley software License Agreement

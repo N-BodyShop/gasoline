@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef TIPSYDEFS_HINCLUDED
 #define TIPSYDEFS_HINCLUDED
 

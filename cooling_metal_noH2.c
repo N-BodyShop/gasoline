@@ -1,4 +1,4 @@
-#include "define.h"
+
 /*#define ASSERTENEG*/
 
 #ifdef GASOLINE
@@ -2213,17 +2213,28 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 
 	}
 	
-void CoolLogParams( COOLPARAM *CoolParam, FILE *fp ) {
-  fprintf(fp,"\n# Cooling: bIonNonEqm: %d",CoolParam->bIonNonEqm);
-  fprintf(fp," bUV: %d",CoolParam->bUV);
-  fprintf(fp," bUVTableUsesTime: %d",CoolParam->bUVTableUsesTime);
-  fprintf(fp," dMassFracHelium: %g",CoolParam->dMassFracHelium);
-  fprintf(fp," dCoolingTmin: %g",CoolParam->dCoolingTmin);
-  fprintf(fp," dCoolingTmax: %g",CoolParam->dCoolingTmax);
-  fprintf(fp," nCoolingTable: %d",CoolParam->nCoolingTable);
-  fprintf(fp," bDoIonOutput: %d",CoolParam->bDoIonOutput);
-  fprintf(fp," bLowTCool: %d",CoolParam->bLowTCool);
-  fprintf(fp," bMetal: %d",CoolParam->bMetal);
+void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr, FILE *fp ) {
+  char param[LOGCOL];
+  sprintf(param,"bIonNonEqm: %d",CoolParam->bIonNonEqm);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"bUV: %d",CoolParam->bUV);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"bUVTableUsesTime: %d",CoolParam->bUVTableUsesTime);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"dMassFracHelium: %g",CoolParam->dMassFracHelium);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"dCoolingTmin: %g",CoolParam->dCoolingTmin);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"dCoolingTmax: %g",CoolParam->dCoolingTmax);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"nCoolingTable: %d",CoolParam->nCoolingTable);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"bDoIonOutput: %d",CoolParam->bDoIonOutput);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"bLowTCool: %d",CoolParam->bLowTCool);
+    LogParams(lgr, "COOLING", param); 
+  sprintf(param,"bMetal: %d",CoolParam->bMetal);
+    LogParams(lgr, "COOLING", param); 
 
 }
 
