@@ -43,12 +43,12 @@ icc -g -I../mdl/null -I../pkdgravGIT -DNOCOMPTON -DCOOLING_METAL -DGASOLINE -DVE
 //Temperature range
 #define MINTEMP 20
 #define MAXTEMP 1e9
-#define NTEMPSTEPS 1e1
+#define NTEMPSTEPS 400
 
 //Density range
 #define MINRHO 2e-5
 #define MAXRHO 1e5
-#define NRHOSTEPS 1e1
+#define NRHOSTEPS 450
 
 
 //Metallicity
@@ -64,17 +64,9 @@ icc -g -I../mdl/null -I../pkdgravGIT -DNOCOMPTON -DCOOLING_METAL -DGASOLINE -DVE
 //Constants
 #define MH_G 1.66e-24
 
-//UNITS
-#define ERGPERGM_UNIT 2.98478e+16
-#define GMPERCC_UNIT 1.00182e-29
-#define SEC_UNIT 1.22333e+18
-#define KPC_UNIT 68493.2
 
 //Integration Time (seconds)
-#define DT 3e7 //~1yr
-/*#define DT 3e10 //~1 kyr*/
-/*#define DT 3e13 //~1 Myr*/
-/*#define DT 3e16 //~1 Gyr*/
+#define DT 3e16 //~1 Gyr
 
 int main() {
     int i;
@@ -113,8 +105,8 @@ int main() {
 #endif
 
     cl = CoolInit();
-    clInitConstants( cl, GMPERCC_UNIT, 1.0, ERGPERGM_UNIT, SEC_UNIT, KPC_UNIT, clParam);  /* init consiants */ 
     CoolInitRatesTable( cl, clParam );  /* reading UV and metal table */ 
+    clInitConstants(cl, 1,1,1,1,1,clParam); //Won't need these, but they need initializing
     CoolSetTime( cl, TIME, ZRED); 
     //Let the stiff integrator take smaller steps than usual
     STIFF *st = ((clDerivsData *) (cl->DerivsData))->IntegratorContext;
@@ -130,7 +122,7 @@ int main() {
         {
             printf("Calculating Equlibrium T for %5.4eK %5.4eH/cc\n", pow(10.0,tstep), pow(10.0,rhostep));
             //Calculate density in code units
-            dens = pow(10.0,rhostep)*GMPERCC_UNIT/MH_G;
+            dens = pow(10.0,rhostep)*MH_G;
             
             //Calculate ionization states
             // Explicit values: Fairly ionized initial guess
