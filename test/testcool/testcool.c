@@ -14,6 +14,7 @@ icc -g -I../mdl/null -I../pkdgravGIT -DNOCOMPTON -DCOOLING_METAL -DGASOLINE -DVE
 #include <fenv.h>
 #include <fpu_control.h>
 #include <signal.h>
+#include <omp.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -43,12 +44,12 @@ icc -g -I../mdl/null -I../pkdgravGIT -DNOCOMPTON -DCOOLING_METAL -DGASOLINE -DVE
 //Temperature range
 #define MINTEMP 20
 #define MAXTEMP 1e9
-#define NTEMPSTEPS 400
+#define NTEMPSTEPS 200
 
 //Density range
 #define MINRHO 2e-5
 #define MAXRHO 1e5
-#define NRHOSTEPS 450
+#define NRHOSTEPS 225
 
 
 //Metallicity
@@ -69,6 +70,7 @@ icc -g -I../mdl/null -I../pkdgravGIT -DNOCOMPTON -DCOOLING_METAL -DGASOLINE -DVE
 #define DT 3e16 //~1 Gyr
 
 int main() {
+    int thread;
     int i;
     FILE *fpout;
     double E,E_copy,newT,tstep,rhostep, dens, dt;
@@ -104,46 +106,55 @@ int main() {
     clParam.dzTimeClampUV =  -1;
 #endif
 
-    cl = CoolInit();
-    CoolInitRatesTable( cl, clParam );  /* reading UV and metal table */ 
-    clInitConstants(cl, 1,1,1,1,1,clParam); //Won't need these, but they need initializing
-    CoolSetTime( cl, TIME, ZRED); 
-    //Let the stiff integrator take smaller steps than usual
-    STIFF *st = ((clDerivsData *) (cl->DerivsData))->IntegratorContext;
-    st->dtmin = 1e-17;
     
     //Print header
     fpout=fopen("testcool.out","w");
     fprintf(fpout, "Temperature (K)\tDensity (H/cc)\tEquilibrium T\tWalltime (s)\n");
 
-    for(tstep=log10(MINTEMP);tstep<log10(MAXTEMP);tstep+=(log10(MAXTEMP)-log10(MINTEMP))/NTEMPSTEPS)
+#pragma omp parallel default(none) shared(fpout, clParam) private(thread, tstep, rhostep, dens, Y, E, t, newT, cl, cp)
     {
-        for(rhostep=log10(MINRHO);rhostep<log10(MAXRHO);rhostep+=(log10(MAXRHO)-log10(MINRHO))/NRHOSTEPS)
+        thread = omp_get_thread_num();
+#pragma omp for schedule(dynamic)
+        for(i=0;i<NTEMPSTEPS;i++)
         {
-            printf("Calculating Equlibrium T for %5.4eK %5.4eH/cc\n", pow(10.0,tstep), pow(10.0,rhostep));
-            //Calculate density in code units
-            dens = pow(10.0,rhostep)*MH_G;
-            
-            //Calculate ionization states
-            // Explicit values: Fairly ionized initial guess
-            Y.e = 1.0000000000000001e-17; 
-            Y.Total = 0.8299999999999973; 
-            Y.HI = 0.1;
-            Y.HII = 0.6;
-            Y.HeI = 0.058999999999999997; 
-            Y.HeII = 9.9999999999999998e-17; 
-            Y.HeIII = -9.9999999999999998e-17; 
+            tstep = log10(MINTEMP)+i*(log10(MAXTEMP)-log10(MINTEMP))/NTEMPSTEPS;
+            for(rhostep=log10(MINRHO);rhostep<log10(MAXRHO);rhostep+=(log10(MAXRHO)-log10(MINRHO))/NRHOSTEPS)
+            {
+                cl = CoolInit();
+                CoolInitRatesTable( cl, clParam );  /* reading UV and metal table */ 
+                clInitConstants(cl, 1,1,1,1,1,clParam); //Won't need these, but they need initializing
+                CoolSetTime( cl, TIME, ZRED); 
+                //Let the stiff integrator take smaller steps than usual
+                STIFF *st = ((clDerivsData *) (cl->DerivsData))->IntegratorContext;
+                st->dtmin = 1e-17;
+                printf("%d: Calculating Equlibrium T for %5.4eK %5.4eH/cc\n", thread, pow(10.0,tstep), pow(10.0,rhostep));
+                //Calculate density in code units
+                dens = pow(10.0,rhostep)*MH_G;
+                
+                //Calculate ionization states
+                // Explicit values: Fairly ionized initial guess
+                Y.e = 1.0000000000000001e-17; 
+                Y.Total = 0.8299999999999973; 
+                Y.HI = 0.1;
+                Y.HII = 0.6;
+                Y.HeI = 0.058999999999999997; 
+                Y.HeII = 9.9999999999999998e-17; 
+                Y.HeIII = -9.9999999999999998e-17; 
 
-            //Calculate new energy, temp
-            t=clock();
-            E = clThermalEnergy(Y.Total, pow(10.0,tstep));
-            clIntegrateEnergy(cl, &Y, &E, EXTHEAT, dens, METAL,0, DT);
-            CoolPERBARYONtoPARTICLE(cl, &Y, &cp, METAL);
-            newT = CoolEnergyToTemperature(cl, &cp, E,dens, METAL);
-            t = clock()-t;
-            
-            //Print results
-            fprintf(fpout, "%7.6e\t%7.6e\t%7.6e\t%4.3e\n", pow(10.0,tstep), pow(10.0,rhostep), newT, ((float)t)/CLOCKS_PER_SEC);
+                //Calculate new energy, temp
+                t=clock();
+                E = clThermalEnergy(Y.Total, pow(10.0,tstep));
+                clIntegrateEnergy(cl, &Y, &E, EXTHEAT, dens, METAL,0, DT);
+                CoolPERBARYONtoPARTICLE(cl, &Y, &cp, METAL);
+                newT = CoolEnergyToTemperature(cl, &cp, E,dens, METAL);
+                t = clock()-t;
+                
+                //Print results
+#pragma omp critical
+                {
+                    fprintf(fpout, "%7.6e\t%7.6e\t%7.6e\t%4.3e\n", pow(10.0,tstep), pow(10.0,rhostep), newT, ((float)t)/CLOCKS_PER_SEC);
+                }
+            }
         }
     }
     return 0;
