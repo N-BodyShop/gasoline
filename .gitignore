@@ -1,4 +1,4 @@
-Makefile
+./Makefile
 gasoline
 *.~
 *.pyc
@@ -9,3 +9,5 @@ buildlog.*
 *.tar
 *.tar.gz
 *.o
+test/testcool/testcool
+test/testcool/testcool.out
