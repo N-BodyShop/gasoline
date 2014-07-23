@@ -47,9 +47,9 @@ icc -g -I../mdl/null -I../pkdgravGIT -DNOCOMPTON -DCOOLING_METAL -DGASOLINE -DVE
 #define NTEMPSTEPS 200
 
 //Density range
-#define MINRHO 2e-5
-#define MAXRHO 1e5
-#define NRHOSTEPS 225
+#define MINRHO 1e-5
+#define MAXRHO 1e4
+#define NRHOSTEPS 200
 
 
 //Metallicity
@@ -76,6 +76,7 @@ int main() {
     double E,E_copy,newT,tstep,rhostep, dens, dt;
     clock_t t;//For timing
     //Cooling-specific variables
+    STIFF *st;
     COOL *cl, *cl_copy;
     PERBARYON Y, Y_copy;
     COOLPARTICLE cp;
@@ -91,7 +92,7 @@ int main() {
     clParam.bUVTableUsesTime = 0;
     clParam.bDoIonOutput = 1;
     clParam.dMassFracHelium = 0.236;
-    clParam.dCoolingTmin= 10;
+    clParam.dCoolingTmin= 20;
     clParam.dCoolingTmax = 1e9;
     clParam.nCoolingTable = 15001;
     clParam.bLowTCool = 0;
@@ -101,6 +102,7 @@ int main() {
     strcpy(clParam.CoolInFile, "../../cooltable_xdr");
 #endif
 #ifdef COOLING_METAL
+    clParam.dMetalCoolFactor=1;
     clParam.dPhotoelectricHeating=0;
     clParam.dPhotoelectricnMin=0.01;
     clParam.dzTimeClampUV =  -1;
@@ -109,25 +111,25 @@ int main() {
     
     //Print header
     fpout=fopen("testcool.out","w");
-    fprintf(fpout, "Temperature (K)\tDensity (H/cc)\tEquilibrium T\tWalltime (s)\n");
+    fprintf(fpout, "Temperature \tDensity \tEquilibrium\tWalltime\n");
 
-#pragma omp parallel default(none) shared(fpout, clParam) private(thread, tstep, rhostep, dens, Y, E, t, newT, cl, cp)
+#pragma omp parallel default(none) shared(fpout, clParam) private(cl, thread, tstep, rhostep, dens, Y, E, t, newT, cp, st)
     {
+        cl = CoolInit();
+        CoolInitRatesTable( cl, clParam );  /* reading UV and metal table */ 
+        clInitConstants(cl, 1,1,1,1,1,clParam); //Won't need these, but they need initializing
+        CoolSetTime( cl, TIME, ZRED); 
+        //Let the stiff integrator take smaller steps than usual
+        st = ((clDerivsData *) (cl->DerivsData))->IntegratorContext;
+        st->dtmin = 1e-17;
         thread = omp_get_thread_num();
 #pragma omp for schedule(dynamic)
         for(i=0;i<NTEMPSTEPS;i++)
         {
             tstep = log10(MINTEMP)+i*(log10(MAXTEMP)-log10(MINTEMP))/NTEMPSTEPS;
+            printf("%d: Calculating Equlibrium T for %5.4eK\n", thread, pow(10.0,tstep));
             for(rhostep=log10(MINRHO);rhostep<log10(MAXRHO);rhostep+=(log10(MAXRHO)-log10(MINRHO))/NRHOSTEPS)
             {
-                cl = CoolInit();
-                CoolInitRatesTable( cl, clParam );  /* reading UV and metal table */ 
-                clInitConstants(cl, 1,1,1,1,1,clParam); //Won't need these, but they need initializing
-                CoolSetTime( cl, TIME, ZRED); 
-                //Let the stiff integrator take smaller steps than usual
-                STIFF *st = ((clDerivsData *) (cl->DerivsData))->IntegratorContext;
-                st->dtmin = 1e-17;
-                printf("%d: Calculating Equlibrium T for %5.4eK %5.4eH/cc\n", thread, pow(10.0,tstep), pow(10.0,rhostep));
                 //Calculate density in code units
                 dens = pow(10.0,rhostep)*MH_G;
                 
@@ -156,6 +158,7 @@ int main() {
                 }
             }
         }
+        CoolFinalize(cl);
     }
     return 0;
 }
