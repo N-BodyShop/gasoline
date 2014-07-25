@@ -23,8 +23,10 @@ PNG_DEF =
 #PNG_DEF = $(PNG_INCL) -DUSE_PNG
 
 # if you use OUTURBDRIVER you need libgsl
-#GSL_LIB = 
-GSL_LIB = -lgsl -lgslcblas
+#TURB_OBJ = outurb.o
+#GSL_LIB = -lgsl -lgslcblas
+TURB_OBJ = 
+GSL_LIB = 
 
 BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
 
@@ -389,7 +391,7 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  smoothfcn.o collision.o qqsmooth.o $(COOLING_OBJ) cosmo.o romberg.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
 	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o \
-	  rotbar.o special.o ssio.o $(PNG_OBJ) outurb.o \
+	  rotbar.o special.o ssio.o $(PNG_OBJ) $(TURB_OBJ) \
 	  treezip.o log.o
 
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
