@@ -1,4 +1,3 @@
-#include "define.h"
 #ifdef GASOLINE
 #ifndef NOCOOLING
 
