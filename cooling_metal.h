@@ -59,8 +59,11 @@ typedef struct CoolingParametersStruct {
   double dCoolingTmin;     
   double dCoolingTmax;     
   double dPhotoelectricHeating;
+  double dPhotoelectricScaleLength;
+  double dPhotoelectricInnerRadius;
   double dPhotoelectricnMin;
   double dzTimeClampUV;
+  double dMetalCoolFactor;
 } COOLPARAM;
 
 typedef struct CoolingParticleStruct {
@@ -173,7 +176,11 @@ typedef struct CoolingPKDStruct {
   int        bUVTableLinear;
   int        bLowTCool;
   int        bSelfShield;
+  double     dPhotoelectricFactor;
+  double     dPhotoelectricScaleLength;
+  double     dPhotoelectricInnerRadius;
   double     dzTimeClampUV;
+  double     dMetalCoolFactor;
 
   double     dGmPerCcUnit;
   double     dComovingGmPerCcUnit;
@@ -290,8 +297,9 @@ double clCoolLineHeI( double T );
 double clCoolLineHeII( double T );
 double clCoolLowT( double T );
 double clEdotInstant ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal );
+void clSetPhotoelectricFactor(COOL *cl, double rkpc);
 void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E, 
-		       double ExternalHeating, double rho, double ZMetal, double dt );
+		       double ExternalHeating, double rho, double ZMetal, double rkpc, double dt );
 void clIntegrateEnergyDEBUG(COOL *cl, PERBARYON *Y, double *E, 
 		       double ExternalHeating, double rho, double ZMetal,  double dt );
 
@@ -362,7 +370,7 @@ double CodeDensityToComovingGmPerCc( COOL *Cool, double dCodeDensity );
 #define CodeDensityToComovingGmPerCc( Cool, dCodeDensity )  ((Cool)->dComovingGmPerCcUnit*(dCodeDensity))
 
 void CoolIntegrateEnergy(COOL *cl, COOLPARTICLE *cp, double *E, 
-			 double ExternalHeating, double rho, double ZMetal, double tStep );
+			 double ExternalHeating, double rho, double ZMetal, double *rp,  double tStep );
 
 void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *E, 
 			     double ExternalHeating, double rho, double ZMetal, double *r, double tStep );
@@ -372,7 +380,7 @@ void CoolDefaultParticleData( COOLPARTICLE *cp );
 void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp, double ZMetal);
 
 /* Deprecated */
-double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double E, double dDensity, double ZMetal);
+double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double E, double dDensity, double ZMetal, double rkpc);
 
 double CoolEdotInstantCode(COOL *cl, COOLPARTICLE *cp, double ECode, 
 			   double rhoCode, double ZMetal, double *posCode );
