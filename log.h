@@ -11,6 +11,7 @@
 
 typedef struct LogFormatter {
     int labelCnt;
+    int *lineMem;
     char **label;
     char **line;
 } LOGGER;

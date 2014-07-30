@@ -32,8 +32,10 @@ void LogParams(LOGGER * lgr, char *label, char *param)
         lgr->labelCnt++;
         lgr->label = memcpy(malloc(lgr->labelCnt*sizeof(char*)), lgr->label, curlabel*sizeof(char*));
         lgr->line = memcpy(malloc(lgr->labelCnt*sizeof(char*)), lgr->line, curlabel*sizeof(char*));
+        lgr->lineMem = memcpy(malloc(lgr->labelCnt*sizeof(int)), lgr->lineMem, curlabel*sizeof(int));
         lgr->label[curlabel] = malloc(LOGCOL+1);
         lgr->line[curlabel] = malloc(LOGCOL+1);
+        lgr->lineMem[curlabel] = LOGCOL;
         strcpy(lgr->label[curlabel], label);
         lgr->line[curlabel][0] = '\0';
     }
@@ -45,7 +47,7 @@ void LogParams(LOGGER * lgr, char *label, char *param)
         strcat(lgr->line[curlabel], ": ");
     }
     //Check to make sure the line will be under the column limit
-    if(((strlen(lgr->line[curlabel]) % LOGCOL) + strlen(param)) < LOGCOL-1)
+    if((strlen(lgr->line[curlabel]) + strlen(param)) < lgr->lineMem[curlabel])
     {
         strcat(lgr->line[curlabel], " ");
         strcat(lgr->line[curlabel], param);
@@ -54,7 +56,8 @@ void LogParams(LOGGER * lgr, char *label, char *param)
     //with the requested label.
     else
     {
-        lgr->line[curlabel] = strcpy(malloc(strlen(lgr->line[curlabel])+LOGCOL+1), lgr->line[curlabel]);
+        lgr->line[curlabel] = strcpy(malloc(lgr->lineMem[curlabel]+LOGCOL), lgr->line[curlabel]);
+        lgr->lineMem[curlabel] += LOGCOL;
         strcat(lgr->line[curlabel], "\n# ");
         strcat(lgr->line[curlabel], lgr->label[curlabel]);
         strcat(lgr->line[curlabel], ": ");
