@@ -2981,8 +2981,6 @@ void combSphPressureTerms(void *p1,void *p2)
 #endif	    
 		if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
 			((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
-		if (((PARTICLE *)p2)->dtNew < ((PARTICLE *)p1)->dtNew)
-			((PARTICLE *)p1)->dtNew = ((PARTICLE *)p2)->dtNew;
 		ACCEL(p1,0) += ACCEL(p2,0);
 		ACCEL(p1,1) += ACCEL(p2,1);
 		ACCEL(p1,2) += ACCEL(p2,2);
@@ -2997,6 +2995,8 @@ void combSphPressureTerms(void *p1,void *p2)
 #endif 
 #endif /* DIFFUSION */
 		}
+		if (((PARTICLE *)p2)->dtNew < ((PARTICLE *)p1)->dtNew)
+			((PARTICLE *)p1)->dtNew = ((PARTICLE *)p2)->dtNew;
 	}
 
 /* Gather only version -- never use */
