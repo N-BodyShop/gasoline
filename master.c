@@ -10183,7 +10183,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         inFB.dDelta = dDelta;
         inFB.fb  = *msr->param.fb;
 #ifdef FBPARTICLE
-        a = csmTime2Exp(msr->param.csm,dTime);
+        double a = csmTime2Exp(msr->param.csm,dTime);
         inFB.fb.a = a;
         inFB.fb.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); 
         inFB.fb.dtFacDiffusion = msr->param.dEtaDiffusion; 
