@@ -1453,7 +1453,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dESN", 2, &msr->param.sn->dESN,
 		    sizeof(double), "snESN",
 		    "<Energy of supernova in ergs> = 0.1e51");
-#if defined(UNONCOOL) || defined(TWOPHASE)
+#if !defined(UNONCOOL) && !defined(TWOPHASE)
 	if (msr->param.sn->dESN > 0.0) msr->param.bSmallSNSmooth = 1;
     else 
 #endif
