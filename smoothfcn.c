@@ -5368,7 +5368,6 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 void initPromoteToHotGas(void *p1)
     {
     TYPEReset(((PARTICLE *) p1),TYPE_PROMOTED);
-    if (((PARTICLE *) p1)->iOrder==9873) printf("Promoted reset: %d %d\n",((PARTICLE *) p1)->iOrder,((PARTICLE *) p1)->iActive);
     PROMOTE_SUMWEIGHT(p1) = 0; /* store weight total */
     PROMOTE_SUMUPREDWEIGHT(p1) = 0; /* store u x weight total */
     PROMOTE_UPREDINIT(p1) = ((PARTICLE *) p1)->uPred; /* store uPred */
