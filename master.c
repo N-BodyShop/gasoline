@@ -2661,6 +2661,12 @@ void msrLogDefines(FILE *fp)
 #ifdef DENSITYU
 	fprintf(fp," DENSITYU");
 #endif
+#ifdef DENSITYUNOTP
+	fprintf(fp," DENSITYUNOTP");
+#endif
+#ifdef VSIGVISC
+	fprintf(fp," VSIGVISC");
+#endif
 #ifdef RTDENSITY
 	fprintf(fp," RTDENSITY");
 #endif
@@ -2866,6 +2872,9 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef FBPARTICLE
 	fprintf(fp, " FBPARTICLE");
+#endif
+#ifdef PARTICLESPLIT
+	fprintf(fp, " PARTICLESPLIT");
 #endif
 #ifdef STARSINK
 	fprintf(fp, " STARSINK");
