@@ -1,4 +1,4 @@
-#include "define.h"
+
 void
 RungeKutta(void *CTX, 
 	   void (*deriv)(void *, double, double *, double*),

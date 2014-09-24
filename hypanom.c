@@ -1,4 +1,4 @@
-#include "define.h"
+
 /*
  ** Function to solve the equation M = e*sinh(F) - F for the value of F.
  ** This is used in solving the analogue of Kepler's equation for 

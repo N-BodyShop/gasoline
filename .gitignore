@@ -1,3 +1,5 @@
+./Makefile
+gasoline
 *.~
 *.pyc
 *.swp
@@ -7,3 +9,5 @@ buildlog.*
 *.tar
 *.tar.gz
 *.o
+test/testcool/testcool
+test/testcool/testcool.out

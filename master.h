@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef MASTER_HINCLUDED
 #define MASTER_HINCLUDED
 
@@ -7,6 +7,9 @@
 #include "mdl.h"
 #include "parameters.h"
 #include "floattype.h"
+#ifndef LOG_HINCLUDED
+#include "log.h"
+#endif
 
 #ifdef RUBBLE_ZML
 #include "rubble.h"
@@ -28,6 +31,7 @@
 #ifdef OLD_KEPLER /*DEBUG*/
 #define MSR_TREE_QQ			3
 #endif
+
 
 enum TimingType {
     TIMING_Total,
@@ -135,8 +139,10 @@ typedef struct msrContext {
         int iMaxRungGas;
 	} * MSR;
 
+
 void msrInitialize(MSR *,MDL,int,char **);
-void msrLogParams(MSR msr, FILE *fp);
+void msrLogDefines(FILE *fp);
+void msrLogHeader(MSR msr, FILE *fp);
 int msrGetLock(MSR msr);
 int msrCheckForStop(MSR msr);
 void msrFinish(MSR);

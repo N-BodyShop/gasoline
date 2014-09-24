@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef COOLING_HINCLUDED
 #define COOLING_HINCLUDED
 

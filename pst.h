@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef PST_HINCLUDED
 #define PST_HINCLUDED
 
@@ -7,7 +7,9 @@
 #include "smoothfcn.h"
 #include "floattype.h"
 #include "dumpframe.h"
+#ifdef OUTURBDRIVER
 #include "outurb.h"
+#endif
 
 #ifdef COLLISIONS
 #include "collision.h"

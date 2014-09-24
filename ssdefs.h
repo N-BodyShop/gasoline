@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef SSDEFS_HINCLUDED
 #define SSDEFS_HINCLUDED
 

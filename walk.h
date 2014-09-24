@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef WALK_HINCLUDED
 #define WALK_HINCLUDED
 

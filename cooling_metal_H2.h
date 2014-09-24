@@ -1,7 +1,11 @@
-#include "define.h"
+
 
 #ifndef COOLING_METAL_HINCLUDED
 #define COOLING_METAL_HINCLUDED
+
+#ifndef LOG_HINCLUDED
+#include "log.h"
+#endif
 
 /* Global consts */
 #if defined(COOLDEBUG)
@@ -362,7 +366,7 @@ void clDerivs(void *Data, double x, const double *y, double *yheat,
 	      double *ycool) ;
   
 void CoolAddParams( COOLPARAM *CoolParam, PRM );
-void CoolLogParams( COOLPARAM *CoolParam, FILE *fp );
+void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr);
 void CoolOutputArray( COOLPARAM *CoolParam, int, int *, char * );
 
 #define COOL_ARRAY0_EXT  "HI"

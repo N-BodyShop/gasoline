@@ -1,4 +1,4 @@
-#include "define.h"
+
 #include <math.h>
 #include <assert.h>
 #include "smoothfcn.h"
@@ -2981,8 +2981,6 @@ void combSphPressureTerms(void *p1,void *p2)
 #endif	    
 		if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
 			((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
-		if (((PARTICLE *)p2)->dtNew < ((PARTICLE *)p1)->dtNew)
-			((PARTICLE *)p1)->dtNew = ((PARTICLE *)p2)->dtNew;
 		ACCEL(p1,0) += ACCEL(p2,0);
 		ACCEL(p1,1) += ACCEL(p2,1);
 		ACCEL(p1,2) += ACCEL(p2,2);
@@ -2997,6 +2995,8 @@ void combSphPressureTerms(void *p1,void *p2)
 #endif 
 #endif /* DIFFUSION */
 		}
+		if (((PARTICLE *)p2)->dtNew < ((PARTICLE *)p1)->dtNew)
+			((PARTICLE *)p1)->dtNew = ((PARTICLE *)p2)->dtNew;
 	}
 
 /* Gather only version -- never use */
@@ -5368,7 +5368,6 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 void initPromoteToHotGas(void *p1)
     {
     TYPEReset(((PARTICLE *) p1),TYPE_PROMOTED);
-    if (((PARTICLE *) p1)->iOrder==9873) printf("Promoted reset: %d %d\n",((PARTICLE *) p1)->iOrder,((PARTICLE *) p1)->iActive);
     PROMOTE_SUMWEIGHT(p1) = 0; /* store weight total */
     PROMOTE_SUMUPREDWEIGHT(p1) = 0; /* store u x weight total */
     PROMOTE_UPREDINIT(p1) = ((PARTICLE *) p1)->uPred; /* store uPred */

@@ -1,7 +1,11 @@
-#include "define.h"
+
 
 #ifndef COOLING_METAL_NOH2_HINCLUDED
 #define COOLING_METAL_NOH2_HINCLUDED
+
+#ifndef LOG_HINCLUDED
+#include "log.h"
+#endif
 
 /* Global consts */
 #if defined(COOLDEBUG)
@@ -291,7 +295,7 @@ void clDerivs(void *Data, double x, double *y, double *dydx) ;
 void clJacobn(void *Data, double x, double y[], double dfdx[], double **dfdy) ;
   
 void CoolAddParams( COOLPARAM *CoolParam, PRM );
-void CoolLogParams( COOLPARAM *CoolParam, FILE *fp );
+void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr);
 void CoolOutputArray( COOLPARAM *CoolParam, int, int *, char * );
 
 #define COOL_ARRAY0_EXT  "HI"

@@ -1,4 +1,4 @@
-#include "define.h"
+
 /*
  ** Vector 1/sqrt for the KSR computer, using the approximation instruction
  ** instead of the chebychev approximation as the first step.

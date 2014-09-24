@@ -1,4 +1,4 @@
-#include "define.h"
+
 #include <stdio.h>
 #include <stdlib.h> /* includes malloc() macros */
 #include <unistd.h> /* for unlink() */
@@ -1453,7 +1453,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dESN", 2, &msr->param.sn->dESN,
 		    sizeof(double), "snESN",
 		    "<Energy of supernova in ergs> = 0.1e51");
-#if defined(UNONCOOL) || defined(TWOPHASE)
+#if !defined(UNONCOOL) && !defined(TWOPHASE)
 	if (msr->param.sn->dESN > 0.0) msr->param.bSmallSNSmooth = 1;
     else 
 #endif
@@ -2635,17 +2635,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 
 #include "version.h"
 
-void msrLogParams(MSR msr,FILE *fp)
-{
-	double z, testDelta;
-	int i;
 
-	fprintf(fp,"# PKDGRAV/GASOLINE %s\n", achVersionString);
-#ifdef __DATE__
-#ifdef __TIME__
-	fprintf(fp,"# Code compiled: %s %s\n",__DATE__,__TIME__);
-#endif
-#endif
+void msrLogDefines(FILE *fp)
+{
 	fprintf(fp,"# Preprocessor macros:");
 #ifdef GASOLINE
 	fprintf(fp," GASOLINE");
@@ -2668,6 +2660,12 @@ void msrLogParams(MSR msr,FILE *fp)
 #endif
 #ifdef DENSITYU
 	fprintf(fp," DENSITYU");
+#endif
+#ifdef DENSITYUNOTP
+	fprintf(fp," DENSITYUNOTP");
+#endif
+#ifdef VSIGVISC
+	fprintf(fp," VSIGVISC");
 #endif
 #ifdef RTDENSITY
 	fprintf(fp," RTDENSITY");
@@ -2875,6 +2873,9 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef FBPARTICLE
 	fprintf(fp, " FBPARTICLE");
 #endif
+#ifdef PARTICLESPLIT
+	fprintf(fp, " PARTICLESPLIT");
+#endif
 #ifdef STARSINK
 	fprintf(fp, " STARSINK");
 #endif
@@ -2884,11 +2885,24 @@ void msrLogParams(MSR msr,FILE *fp)
 #ifdef SINKINGAVERAGE
 	fprintf(fp, " SINKINGAVERAGE");
 #endif
+}
+void msrLogHeader(MSR msr,FILE *fp)
+{
+	double z, testDelta;
+	int i;
+
+	fprintf(fp,"# PKDGRAV/GASOLINE %s\n", achVersionString);
+#ifdef __DATE__
+#ifdef __TIME__
+	fprintf(fp,"# Code compiled: %s %s\n",__DATE__,__TIME__);
+#endif
+#endif
+    msrLogDefines(fp);
 	{
 	time_t timep;
 
 	(void) time(&timep);
-	fprintf(fp,"\n# Run started: %s",ctime(&timep));
+	fprintf(fp,"\n\n# Run started: %s",ctime(&timep));
 	}
 	{
 	char hostname[MAXPATHLEN];
@@ -2901,246 +2915,452 @@ void msrLogParams(MSR msr,FILE *fp)
 	fprintf(fp,"\n# N: %d",msr->N);
 	fprintf(fp," nThreads: %d",msr->mdl->nThreads);
 	fprintf(fp," bDiag: %d",msr->param.bDiag);
-	fprintf(fp," Verbosity flags: (%d,%d,%d,%d,%d)",msr->param.bVWarnings,
+	fprintf(fp," Verbosity flags: (%d,%d,%d,%d,%d)\n",msr->param.bVWarnings,
 			msr->param.bVStart,msr->param.bVStep,msr->param.bVRungStat,
 			msr->param.bVDetails);
-	fprintf(fp,"\n# bPeriodic: %d",msr->param.bPeriodic);
-	fprintf(fp," bRestart: %d",msr->param.bRestart);
-	fprintf(fp," bComove: %d",msr->param.csm->bComove);
+    char param[160];
+    LOGGER *lgr = initLog();
+	sprintf(param,"dMsolUnit: %g",msr->param.dMsolUnit);
+    LogParams(lgr, "UNITS", param);
+	sprintf(param,"dKpcUnit: %g",msr->param.dKpcUnit);
+    LogParams(lgr, "UNITS", param);
+	sprintf(param,"bPeriodic: %d",msr->param.bPeriodic);
+    LogParams(lgr, "BOX PARAMETERS", param);
+	sprintf(param,"bRestart: %d",msr->param.bRestart);
+    LogParams(lgr, "BOX PARAMETERS", param);
+	sprintf(param,"bComove: %d",msr->param.csm->bComove);
+    LogParams(lgr, "BOX PARAMETERS", param);
+	sprintf(param,"iStartStep: %d",msr->param.iStartStep);
+    LogParams(lgr, "RUN DURATION", param);
+	sprintf(param,"iStopStep: %d",msr->param.iStopStep);
+    LogParams(lgr, "RUN DURATION", param);
+	sprintf(param,"nSteps: %d",msr->param.nSteps);
+    LogParams(lgr, "RUN DURATION", param);
 #ifdef INFLOWOUTFLOW
-	fprintf(fp," bInflowOutflow: %d",msr->param.bInflowOutflow);
-	fprintf(fp," dxInflow: %g",msr->param.dxInflow);
-	fprintf(fp," dxOutflow: %g",msr->param.dxOutflow);
+	sprintf(param,"bInflowOutflow: %d",msr->param.bInflowOutflow);
+    LogParams(lgr, "INFLOW/OUTFLOW", param);
+	sprintf(param,"dxInflow: %g",msr->param.dxInflow);
+    LogParams(lgr, "INFLOW/OUTFLOW", param);
+	sprintf(param,"dxOutflow: %g",msr->param.dxOutflow);
+    LogParams(lgr, "INFLOW/OUTFLOW", param);
 #endif
-	fprintf(fp,"\n# bParaRead: %d",msr->param.bParaRead);
-	fprintf(fp," bParaWrite: %d",msr->param.bParaWrite);
-	fprintf(fp," iBinaryOutput: %d",msr->param.iBinaryOutput);
-	fprintf(fp," bNoReOrder: %d",msr->param.bNoReOrder);
-	fprintf(fp," bCannonical: %d",msr->param.bCannonical);
-	fprintf(fp," bStandard: %d",msr->param.bStandard);
-	fprintf(fp,"\n# bKDK: %d",msr->param.bKDK);
-	fprintf(fp," nBucket: %d",msr->param.nBucket);
-	fprintf(fp," iOutInterval(%d,%d): %d (%d)",msr->param.iBinaryOutput,msr->param.bPackedVector,msr->param.iOutInterval,msr->param.iOutMinorInterval);
-	fprintf(fp," dDumpFrameStep: %g",msr->param.dDumpFrameStep);
-	fprintf(fp," dDumpFrameTime: %g",msr->param.dDumpFrameTime);
-	fprintf(fp," iTreeZipStep: %d",msr->param.iTreeZipStep);
-	fprintf(fp," bTreeZipLocal: %d",msr->param.bTreeZipLocal);
-	fprintf(fp," iLogInterval: %d",msr->param.iLogInterval);
-	fprintf(fp," bLogTiming: %d (%d%d%d%d)",msr->param.bLogTiming,msr->param.bLogTimingSubStep,msr->param.bLogTimingStep,msr->param.bLogTimingSubStepTot,msr->param.bLogTimingStepTot);
-	fprintf(fp,"\n# iCheckInterval: %d",msr->param.iCheckInterval);
-	fprintf(fp," iOrder: %d",msr->param.iOrder);
-	fprintf(fp," iEwOrder: %d",msr->param.iEwOrder);
-	fprintf(fp," nReplicas: %d",msr->param.nReplicas);
-	fprintf(fp,"\n# dEwCut: %f",msr->param.dEwCut);
-	fprintf(fp," dEwhCut: %f",msr->param.dEwhCut);
-	fprintf(fp,"\n# iStartStep: %d",msr->param.iStartStep);
-	fprintf(fp," iStopStep: %d",msr->param.iStopStep);
-	fprintf(fp," nSteps: %d",msr->param.nSteps);
-	fprintf(fp," nSmooth: %d",msr->param.nSmooth);
-	fprintf(fp," dExtraStore: %f",msr->param.dExtraStore);
+	sprintf(param,"bParaRead: %d",msr->param.bParaRead);
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"bParaWrite: %d",msr->param.bParaWrite);
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"iBinaryOutput: %d",msr->param.iBinaryOutput);
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"bNoReOrder: %d",msr->param.bNoReOrder);
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"bCannonical: %d",msr->param.bCannonical);
+    LogParams(lgr, "INTEGRATION", param);
+	sprintf(param,"dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"dFracNoDomainDimChoice: %g",msr->param.dFracNoDomainDimChoice);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"bFastGas: %d",msr->param.bFastGas);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"dFracFastGas: %g",msr->param.dFracFastGas);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"bStandard: %d",msr->param.bStandard);
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"bKDK: %d",msr->param.bKDK);
+    LogParams(lgr, "INTEGRATION", param);
+	sprintf(param,"nBucket: %d",msr->param.nBucket);
+    LogParams(lgr, "TREEBUILD", param);
+	sprintf(param,"iOutInterval(%d,%d): %d (%d)",msr->param.iBinaryOutput,msr->param.bPackedVector,msr->param.iOutInterval,msr->param.iOutMinorInterval);
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"dDumpFrameStep: %g",msr->param.dDumpFrameStep);
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"dDumpFrameTime: %g",msr->param.dDumpFrameTime);
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"iTreeZipStep: %d",msr->param.iTreeZipStep);
+    LogParams(lgr, "TREEBUILD", param);
+	sprintf(param,"bTreeZipLocal: %d",msr->param.bTreeZipLocal);
+    LogParams(lgr, "TREEBUILD", param);
+	sprintf(param,"iLogInterval: %d",msr->param.iLogInterval);
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"bLogTiming: %d (%d%d%d%d)",msr->param.bLogTiming,msr->param.bLogTimingSubStep,msr->param.bLogTimingStep,msr->param.bLogTimingSubStepTot,msr->param.bLogTimingStepTot);
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"iCheckInterval: %d",msr->param.iCheckInterval);
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"iOrder: %d",msr->param.iOrder);
+    LogParams(lgr, "INTEGRATION", param);
+	sprintf(param,"iEwOrder: %d",msr->param.iEwOrder);
+    LogParams(lgr, "INTEGRATION", param);
+	sprintf(param,"nReplicas: %d",msr->param.nReplicas);
+    LogParams(lgr, "INTEGRATION", param);
+	sprintf(param,"dEwCut: %f",msr->param.dEwCut);
+    LogParams(lgr, "INTEGRATION", param);
+	sprintf(param,"dEwhCut: %f",msr->param.dEwhCut);
+    LogParams(lgr, "INTEGRATION", param);
+	sprintf(param,"dExtraStore: %f",msr->param.dExtraStore);
+    LogParams(lgr, "READ/WRITE", param);
 	if (prmSpecified(msr->prm,"dSoft"))
-		fprintf(fp," dSoft: %g",msr->param.dSoft);
+		sprintf(param,"dSoft: %g",msr->param.dSoft);
 	else
-		fprintf(fp," dSoft: input");
-	fprintf(fp,"\n# bPhysicalSoft: %d",msr->param.bPhysicalSoft);
-	fprintf(fp," bVariableSoft: %d (%d %d %d)",msr->param.bVariableSoft,msr->param.bVariableSoftStar,msr->param.bVariableSoftGas,msr->param.bVariableSoftDark);
-	fprintf(fp," nSoftNbr: %d",msr->param.nSoftNbr);
-	fprintf(fp," bSoftByType: %d",msr->param.bSoftByType);
-	fprintf(fp," bSoftMaxMul: %d",msr->param.bSoftMaxMul);
-	fprintf(fp," dSoftMax: %g",msr->param.dSoftMax);
-	fprintf(fp," bDoSoftOutput: %d",msr->param.bDoSoftOutput);
-	fprintf(fp,"\n# dDelta: %g",msr->param.dDelta);
-	fprintf(fp," dEta: %g",msr->param.dEta);
-	fprintf(fp," dEtaDeltaAccel: %g",msr->param.dEtaDeltaAccel);
-	fprintf(fp," dEtaCourant: %g (%g)",msr->param.dEtaCourant,msr->param.dEtaCourantLong);
-	fprintf(fp," iMaxRung: %d",msr->param.iMaxRung);
-	fprintf(fp,"\n# bGravStep: %d",msr->param.bGravStep);
-	fprintf(fp," bEpsAccStep: %d",msr->param.bEpsAccStep);
-	fprintf(fp," bSqrtPhiStep: %d",msr->param.bSqrtPhiStep);
-	fprintf(fp," bDensityStep: %d",msr->param.bDensityStep);
-	fprintf(fp," bDeltaAccelStep: %d",msr->param.bDeltaAccelStep);
-	fprintf(fp," (gt): %d",msr->param.bDeltaAccelStepGasTree);
-	fprintf(fp," bLongRangeStep: %d",msr->param.bLongRangeStep);
-	fprintf(fp," nTruncateRung: %d",msr->param.nTruncateRung);
-	fprintf(fp," bNonSymp: %d",msr->param.bNonSymp);
-	fprintf(fp,"\n# bDoGravity: %d",msr->param.bDoGravity);
-	fprintf(fp," bDoSelfGravity: %d",msr->param.bDoSelfGravity);
-	fprintf(fp," bFandG: %d",msr->param.bFandG);
-	fprintf(fp," bHeliocentric: %d",msr->param.bHeliocentric);
-	fprintf(fp," dCentMass: %g",msr->param.dCentMass);
-	fprintf(fp," dSunSoft: %g",msr->param.dSunSoft);
-	fprintf(fp,"\n# bLogHalo: %d",msr->param.bLogHalo );
+	sprintf(param,"dDelta: %g",msr->param.dDelta);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"dEta: %g",msr->param.dEta);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"dEtaDeltaAccel: %g",msr->param.dEtaDeltaAccel);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"dEtaCourant: %g (%g)",msr->param.dEtaCourant,msr->param.dEtaCourantLong);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"iMaxRung: %d",msr->param.iMaxRung);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"bGravStep: %d",msr->param.bGravStep);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"bEpsAccStep: %d",msr->param.bEpsAccStep);
+    LogParams(lgr, "TIMESTEPPING", param);
+    sprintf(param,"dSoft: input");
+	sprintf(param,"dHubble0: %g",msr->param.csm->dHubble0);
+    LogParams(lgr, "COSMOLOGY", param);
+	sprintf(param,"dOmega0: %g",msr->param.csm->dOmega0);
+    LogParams(lgr, "COSMOLOGY", param);
+	sprintf(param,"dLambda: %g",msr->param.csm->dLambda);
+    LogParams(lgr, "COSMOLOGY", param);
+	sprintf(param,"dOmegaRad: %g",msr->param.csm->dOmegaRad);
+    LogParams(lgr, "COSMOLOGY", param);
+	sprintf(param,"dOmegab: %g",msr->param.csm->dOmegab);
+    LogParams(lgr, "COSMOLOGY", param);
+	sprintf(param,"dQuintess: %g",msr->param.csm->dQuintess);
+    LogParams(lgr, "COSMOLOGY", param);
+    LogParams(lgr, "SOFTENING", param);
+	sprintf(param,"bPhysicalSoft: %d",msr->param.bPhysicalSoft);
+    LogParams(lgr, "SOFTENING", param);
+	sprintf(param,"bVariableSoft: %d (%d %d %d)",msr->param.bVariableSoft,msr->param.bVariableSoftStar,msr->param.bVariableSoftGas,msr->param.bVariableSoftDark);
+    LogParams(lgr, "SOFTENING", param);
+	sprintf(param,"nSoftNbr: %d",msr->param.nSoftNbr);
+    LogParams(lgr, "SOFTENING", param);
+	sprintf(param,"bSoftByType: %d",msr->param.bSoftByType);
+    LogParams(lgr, "SOFTENING", param);
+	sprintf(param,"bSoftMaxMul: %d",msr->param.bSoftMaxMul);
+    LogParams(lgr, "SOFTENING", param);
+	sprintf(param,"dSoftMax: %g",msr->param.dSoftMax);
+    LogParams(lgr, "SOFTENING", param);
+	sprintf(param,"bDoSoftOutput: %d",msr->param.bDoSoftOutput);
+    LogParams(lgr, "SOFTENING", param);
+	sprintf(param,"bSqrtPhiStep: %d",msr->param.bSqrtPhiStep);
+    LogParams(lgr, "GRAVITY", param);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"bDensityStep: %d",msr->param.bDensityStep);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"bDeltaAccelStep: %d",msr->param.bDeltaAccelStep);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"(gt): %d",msr->param.bDeltaAccelStepGasTree);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"bLongRangeStep: %d",msr->param.bLongRangeStep);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"nTruncateRung: %d",msr->param.nTruncateRung);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"bNonSymp: %d",msr->param.bNonSymp);
+    LogParams(lgr, "TIMESTEPPING", param);
+	sprintf(param,"bDoGravity: %d",msr->param.bDoGravity);
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"bDoSelfGravity: %d",msr->param.bDoSelfGravity);
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"bFandG: %d",msr->param.bFandG);
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"bHeliocentric: %d",msr->param.bHeliocentric);
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"dCentMass: %g",msr->param.dCentMass);
+    LogParams(lgr, "GRAVITY", param);
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"dSunSoft: %g",msr->param.dSunSoft);
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"bLogHalo: %d",msr->param.bLogHalo );
+    LogParams(lgr, "GRAVITY", param);
         if( msr->param.bLogHalo ){
-            fprintf(fp," dLogHaloVcirc: %g",msr->param.dLogHaloVcirc );
-            fprintf(fp," dLogHaloEps: %g",msr->param.dLogHaloEps );
-            fprintf(fp," dLogHaloFlat: %g",msr->param.dLogHaloFlat );
-            fprintf(fp," dLogHaloSoft: %g",msr->param.dLogHaloSoft );
+            sprintf(param,"dLogHaloVcirc: %g",msr->param.dLogHaloVcirc );
+    LogParams(lgr, "GRAVITY", param);
+            sprintf(param,"dLogHaloEps: %g",msr->param.dLogHaloEps );
+    LogParams(lgr, "GRAVITY", param);
+            sprintf(param,"dLogHaloFlat: %g",msr->param.dLogHaloFlat );
+    LogParams(lgr, "GRAVITY", param);
+            sprintf(param,"dLogHaloSoft: %g",msr->param.dLogHaloSoft );
+    LogParams(lgr, "GRAVITY", param);
 	    }
-	fprintf(fp," bHernquistSpheroid: %d",msr->param.bHernquistSpheroid );
-	fprintf(fp," bNFWSpheroid: %d",msr->param.bNFWSpheroid );
+	sprintf(param,"bHernquistSpheroid: %d",msr->param.bHernquistSpheroid );
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"bNFWSpheroid: %d",msr->param.bNFWSpheroid );
+    LogParams(lgr, "GRAVITY", param);
         if( msr->param.bNFWSpheroid ){
-            fprintf(fp," dNFWm200: %g",msr->param.dNFWm200 );
-            fprintf(fp," dNFWr200: %g",msr->param.dNFWr200 );
-            fprintf(fp," dNFWsoft: %g",msr->param.dNFWsoft );
-            fprintf(fp," dNFWconc: %g",msr->param.dNFWconc );
+            sprintf(param,"dNFWm200: %g",msr->param.dNFWm200 );
+    LogParams(lgr, "GRAVITY", param);
+            sprintf(param,"dNFWr200: %g",msr->param.dNFWr200 );
+    LogParams(lgr, "GRAVITY", param);
+            sprintf(param,"dNFWsoft: %g",msr->param.dNFWsoft );
+    LogParams(lgr, "GRAVITY", param);
+            sprintf(param,"dNFWconc: %g",msr->param.dNFWconc );
+    LogParams(lgr, "GRAVITY", param);
             }
-	fprintf(fp," bGalaxyDiskVerticalPotential: %d",msr->param.bGalaxyDiskVerticalPotential);
-	fprintf(fp," dGalaxyDiskVerticalPotentialVc: %g",msr->param.dGalaxyDiskVerticalPotentialVc);
-	fprintf(fp," dGalaxyDiskVerticalPotentialR: %g",msr->param.dGalaxyDiskVerticalPotentialR);
-	fprintf(fp," bHomogSpheroid: %d",msr->param.bHomogSpheroid );
-	fprintf(fp," bBodyForce: %d",msr->param.bBodyForce );
-	fprintf(fp," dBodyForceConst: %g",msr->param.dBodyForceConst );
-	fprintf(fp," bMiyamotoDisk: %d",msr->param.bMiyamotoDisk );
-	fprintf(fp," bTimeVarying: %d",msr->param.bTimeVarying );
-	fprintf(fp,"\n# bRotatingBar: %d",msr->param.bRotatingBar);
-	rotbarLogParams( msr->param.rotbar, fp );
+	sprintf(param,"bGalaxyDiskVerticalPotential: %d",msr->param.bGalaxyDiskVerticalPotential);
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"dGalaxyDiskVerticalPotentialVc: %g",msr->param.dGalaxyDiskVerticalPotentialVc);
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"dGalaxyDiskVerticalPotentialR: %g",msr->param.dGalaxyDiskVerticalPotentialR);
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"bHomogSpheroid: %d",msr->param.bHomogSpheroid );
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"bBodyForce: %d",msr->param.bBodyForce );
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"dBodyForceConst: %g",msr->param.dBodyForceConst );
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"bMiyamotoDisk: %d",msr->param.bMiyamotoDisk );
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"bTimeVarying: %d",msr->param.bTimeVarying );
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"bRotatingBar: %d",msr->param.bRotatingBar);
+    LogParams(lgr, "GRAVITY", param);
+	rotbarLogParams( msr->param.rotbar, lgr);
 
-	fprintf(fp,"\n# bRotFrame: %d",msr->param.bRotFrame);
-	fprintf(fp," dOmega: %g",msr->param.dOmega);
-	fprintf(fp," dOmegaDot: %g",msr->param.dOmegaDot);
-	fprintf(fp," bDoSinks: %d",msr->param.bDoSinks );
-	fprintf(fp," bBHSink: %d",msr->param.bBHSink );
-	fprintf(fp," dBHSinkEddEff: %g",msr->param.dBHSinkEddEff);
-	fprintf(fp," dBHSinkFeedbackEff: %g",msr->param.dBHSinkFeedbackEff);
-	fprintf(fp," dBHSinkAlpha: %g",msr->param.dBHSinkAlpha);
-	fprintf(fp," bDoBHKick: %d",msr->param.bDoBHKick);
-	fprintf(fp," bBHTurnOffCooling: %d",msr->param.bBHTurnOffCooling);
-	fprintf(fp," bSmallBHSmooth: %d",msr->param.bSmallBHSmooth);
-	fprintf(fp," bBHMindv: %d",msr->param.bBHMindv);
-        fprintf(fp," bBHAccreteAll: %d",msr->param.bBHAccreteAll);
-	fprintf(fp," bDoSinksAtStart: %d",msr->param.bDoSinksAtStart );
-	fprintf(fp," bSinksThermal: %d",msr->param.bSinkThermal );
-	fprintf(fp," dSinkRadius: %g",msr->param.dSinkRadius);
-	fprintf(fp," dSinkBoundOrbitRadius: %g",msr->param.dSinkBoundOrbitRadius);
-	fprintf(fp," dSinkMustAccreteRadius: %g",msr->param.dSinkMustAccreteRadius);
-	fprintf(fp," dSinkMassMin: %g",msr->param.dSinkMassMin);
-	fprintf(fp,"\n# bSinkForm: %d",msr->param.bSinkForm);
-	fprintf(fp," bSinkFormSimple: %d",msr->param.bSinkFormSimple);
-	fprintf(fp," bSinkFormJeans: %d",msr->param.bSinkFormJeans);
-	fprintf(fp," bSinkFormDivV: %d (%g)",msr->param.bSinkFormDivV,msr->param.dSinkFormDivVCoeff);
-	fprintf(fp," bSinkFormDivAcc: %d (%g)",msr->param.bSinkFormDivAcc,msr->param.dSinkFormDivAccCoeff);
-	fprintf(fp," bSinkFormDV: %d",msr->param.bSinkFormDV);
-	fprintf(fp," bSinkFormPotMin: %d",msr->param.bSinkFormPotMin);
-	fprintf(fp," nSinkFormMin: %d",msr->param.nSinkFormMin);
-	fprintf(fp," bSinkAngMomOutput: %d",msr->param.bSinkAngMomOutput);
-	fprintf(fp," bSinkMerge: %d",msr->param.bSinkMerge);
-	fprintf(fp," nJeans: %d",msr->param.nJeans);
-	fprintf(fp," dJeansConstant: %g",msr->param.dJeansConstant);
-	fprintf(fp," dSinkFormDensity: %g",msr->param.dSinkFormDensity);
-	fprintf(fp," dSinkTimeEligible: %g",msr->param.dSinkTimeEligible);
-	fprintf(fp,"\n# dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
-	fprintf(fp," dFracNoDomainDimChoice: %g",msr->param.dFracNoDomainDimChoice);
-	fprintf(fp," bFastGas: %d",msr->param.bFastGas);
-	fprintf(fp," dFracFastGas: %g",msr->param.dFracFastGas);
-	fprintf(fp," dhMinOverSoft: %g",msr->param.dhMinOverSoft);
-	fprintf(fp," dResolveJeans: %g",msr->param.dResolveJeans);
-	fprintf(fp," bSplitWork: %d",msr->param.bSplitWork);
-	fprintf(fp," bRungDD: %d",msr->param.bRungDD);
-	fprintf(fp," dRungDDWeight: %g ",msr->param.dRungDDWeight);
-	fprintf(fp,"\n# nTruncateRung: %d",msr->param.nTruncateRung);
-	fprintf(fp," bLowerSoundSpeed: %d",msr->param.bLowerSoundSpeed);
-	fprintf(fp," bVariableAlpha: %d",msr->param.bVariableAlpha);
-/*	fprintf(fp," bShockTracker: %d",msr->param.bShockTracker);
-	fprintf(fp," dShockTrackerA: %f",msr->param.dShockTrackerA);
-	fprintf(fp," dShockTrackerB: %f",msr->param.dShockTrackerB);*/
-	fprintf(fp,"\n# GROWMASS: nGrowMass: %d",msr->param.nGrowMass);
-	fprintf(fp," dGrowDeltaM: %g",msr->param.dGrowDeltaM);
-	fprintf(fp," dGrowStartT: %g",msr->param.dGrowStartT);
-	fprintf(fp," dGrowEndT: %g",msr->param.dGrowEndT);
+	sprintf(param,"bRotFrame: %d",msr->param.bRotFrame);
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"dOmega: %g",msr->param.dOmega);
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"dOmegaDot: %g",msr->param.dOmegaDot);
+    LogParams(lgr, "GRAVITY", param);
+	sprintf(param,"bPatch: %d",msr->param.bPatch);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+	sprintf(param,"bDoSinks: %d",msr->param.bDoSinks );
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bBHSink: %d",msr->param.bBHSink );
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"dBHSinkEddEff: %g",msr->param.dBHSinkEddEff);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"dBHSinkFeedbackEff: %g",msr->param.dBHSinkFeedbackEff);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"dBHSinkAlpha: %g",msr->param.dBHSinkAlpha);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bDoBHKick: %d",msr->param.bDoBHKick);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bBHTurnOffCooling: %d",msr->param.bBHTurnOffCooling);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bSmallBHSmooth: %d",msr->param.bSmallBHSmooth);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bBHMindv: %d",msr->param.bBHMindv);
+    LogParams(lgr, "SINKS", param);
+    sprintf(param,"bBHAccreteAll: %d",msr->param.bBHAccreteAll);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bDoSinksAtStart: %d",msr->param.bDoSinksAtStart );
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bSinksThermal: %d",msr->param.bSinkThermal );
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"dSinkRadius: %g",msr->param.dSinkRadius);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"dSinkBoundOrbitRadius: %g",msr->param.dSinkBoundOrbitRadius);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"dSinkMustAccreteRadius: %g",msr->param.dSinkMustAccreteRadius);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"dSinkMassMin: %g",msr->param.dSinkMassMin);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bSinkForm: %d",msr->param.bSinkForm);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bSinkFormSimple: %d",msr->param.bSinkFormSimple);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bSinkFormJeans: %d",msr->param.bSinkFormJeans);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bSinkFormDivV: %d (%g)",msr->param.bSinkFormDivV,msr->param.dSinkFormDivVCoeff);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bSinkFormDivAcc: %d (%g)",msr->param.bSinkFormDivAcc,msr->param.dSinkFormDivAccCoeff);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bSinkFormDV: %d",msr->param.bSinkFormDV);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bSinkFormPotMin: %d",msr->param.bSinkFormPotMin);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"nSinkFormMin: %d",msr->param.nSinkFormMin);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bSinkAngMomOutput: %d",msr->param.bSinkAngMomOutput);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"bSinkMerge: %d",msr->param.bSinkMerge);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"nJeans: %d",msr->param.nJeans);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"dJeansConstant: %g",msr->param.dJeansConstant);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"dSinkFormDensity: %g",msr->param.dSinkFormDensity);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"dSinkTimeEligible: %g",msr->param.dSinkTimeEligible);
+    LogParams(lgr, "SINKS", param);
+	sprintf(param,"nSmooth: %d",msr->param.nSmooth);
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"dhMinOverSoft: %g",msr->param.dhMinOverSoft);
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"dResolveJeans: %g",msr->param.dResolveJeans);
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"bSplitWork: %d",msr->param.bSplitWork);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"bRungDD: %d",msr->param.bRungDD);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"dRungDDWeight: %g ",msr->param.dRungDDWeight);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"nTruncateRung: %d",msr->param.nTruncateRung);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"bLowerSoundSpeed: %d",msr->param.bLowerSoundSpeed);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"bVariableAlpha: %d",msr->param.bVariableAlpha);
+    LogParams(lgr, "SPH", param);
+/*	sprintf(param,"bShockTracker: %d",msr->param.bShockTracker);
+	sprintf(param,"dShockTrackerA: %f",msr->param.dShockTrackerA);
+	sprintf(param,"dShockTrackerB: %f",msr->param.dShockTrackerB);*/
+	sprintf(param,"nGrowMass: %d",msr->param.nGrowMass);
+    LogParams(lgr, "GROWMASS", param);
+	sprintf(param,"dGrowDeltaM: %g",msr->param.dGrowDeltaM);
+    LogParams(lgr, "GROWMASS", param);
+	sprintf(param,"dGrowStartT: %g",msr->param.dGrowStartT);
+    LogParams(lgr, "GROWMASS", param);
+	sprintf(param,"dGrowEndT: %g",msr->param.dGrowEndT);
+    LogParams(lgr, "GROWMASS", param);
 #ifdef GASOLINE
-	fprintf(fp,"\n# SPH: bDoGas: %d",msr->param.bDoGas);	
-	fprintf(fp," bGeometric: %d",msr->param.bGeometric);
-	/* fprintf(fp," iGasModel: %d",msr->param.iGasModel); // Deprecated usage */
-	fprintf(fp," bGasAdiabatic: %d",msr->param.bGasAdiabatic);	
-	fprintf(fp," bGasIsothermal: %d",msr->param.bGasIsothermal);	
-	fprintf(fp," bGasCooling: %d",msr->param.bGasCooling);	
-	fprintf(fp," dConstAlpha: %g",msr->param.dConstAlpha);
-	fprintf(fp," dConstBeta: %g",msr->param.dConstBeta);
-	fprintf(fp,"\n# dConstGamma: %g",msr->param.dConstGamma);
-	fprintf(fp," dMeanMolWeight: %g",msr->param.dMeanMolWeight);
-	fprintf(fp," dGasConst: %g",msr->param.dGasConst);
-	fprintf(fp," dTuFac: %g",msr->param.dTuFac);
-	fprintf(fp," dKBoltzUnit: %g",msr->param.dKBoltzUnit);
-	fprintf(fp," dPext: %g",msr->param.dPext);
-	fprintf(fp," dMetalDiffusionCoeff: %g",msr->param.dMetalDiffusionCoeff);
-	fprintf(fp," dThermalDiffusionCoeff: %g",msr->param.dThermalDiffusionCoeff);
-	fprintf(fp," dEvapCoeff: %g",msr->param.dEvapCoeff);
-	fprintf(fp," dThermalCondCoeff: %g",msr->param.dThermalCondCoeff);
-	fprintf(fp," dThermalCondSatCoeff: %g",msr->param.dThermalCondSatCoeff);
-	fprintf(fp," dThermalCond2Coeff: %g",msr->param.dThermalCond2Coeff);
-	fprintf(fp," dThermalCond2SatCoeff: %g",msr->param.dThermalCond2SatCoeff);
-	fprintf(fp," dEtaDiffusion: %g",msr->param.dEtaDiffusion);
+	sprintf(param,"bDoGas: %d",msr->param.bDoGas);	
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"bGeometric: %d",msr->param.bGeometric);
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"bGasAdiabatic: %d",msr->param.bGasAdiabatic);	
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"bGasIsothermal: %d",msr->param.bGasIsothermal);	
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"bGasCooling: %d",msr->param.bGasCooling);	
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"dConstAlpha: %g",msr->param.dConstAlpha);
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"dConstBeta: %g",msr->param.dConstBeta);
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"dConstGamma: %g",msr->param.dConstGamma);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dMeanMolWeight: %g",msr->param.dMeanMolWeight);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dGasConst: %g",msr->param.dGasConst);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dTuFac: %g",msr->param.dTuFac);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dKBoltzUnit: %g",msr->param.dKBoltzUnit);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dPext: %g",msr->param.dPext);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dMetalDiffusionCoeff: %g",msr->param.dMetalDiffusionCoeff);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dThermalDiffusionCoeff: %g",msr->param.dThermalDiffusionCoeff);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dEvapCoeff: %g",msr->param.dEvapCoeff);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dThermalCondCoeff: %g",msr->param.dThermalCondCoeff);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dThermalCondSatCoeff: %g",msr->param.dThermalCondSatCoeff);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dThermalCond2Coeff: %g",msr->param.dThermalCond2Coeff);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dThermalCond2SatCoeff: %g",msr->param.dThermalCond2SatCoeff);
+    LogParams(lgr, "GAS PHYSICS", param);
+	sprintf(param,"dEtaDiffusion: %g",msr->param.dEtaDiffusion);
+    LogParams(lgr, "GAS PHYSICS", param);
 #ifdef DENSITYU
-	fprintf(fp," dvturb: %g",msr->param.dvturb);
+	sprintf(param,"dvturb: %g",msr->param.dvturb);
+    LogParams(lgr, "GAS PHYSICS", param);
 #endif
-	fprintf(fp,"\n#Units: dMsolUnit: %g",msr->param.dMsolUnit);
-	fprintf(fp," dKpcUnit: %g",msr->param.dKpcUnit);
 	if(prmSpecified(msr->prm, "dMsolUnit") &&
 	   prmSpecified(msr->prm, "dKpcUnit")) {
-	    fprintf(fp," dErgPerGmUnit: %g", msr->param.dErgPerGmUnit );
-	    fprintf(fp," dGmPerCcUnit (z=0): %g", msr->param.dGmPerCcUnit );
-	    fprintf(fp," dSecUnit: %g (%g Myr)", msr->param.dSecUnit, msr->param.dSecUnit/SECONDSPERYEAR/1e6);
-	    fprintf(fp," dKmPerSecUnit (z=0): %g", sqrt(GCGS*msr->param.dMsolUnit*MSOLG/(msr->param.dKpcUnit*KPCCM))/1e5 );
+	    sprintf(param,"dErgPerGmUnit: %g", msr->param.dErgPerGmUnit );
+        LogParams(lgr, "UNITS", param);
+	    sprintf(param,"dGmPerCcUnit (z=0): %g", msr->param.dGmPerCcUnit );
+        LogParams(lgr, "UNITS", param);
+	    sprintf(param,"dSecUnit: %g (%g Myr)", msr->param.dSecUnit, msr->param.dSecUnit/SECONDSPERYEAR/1e6);
+        LogParams(lgr, "UNITS", param);
+	    sprintf(param,"dKmPerSecUnit (z=0): %g", sqrt(GCGS*msr->param.dMsolUnit*MSOLG/(msr->param.dKpcUnit*KPCCM))/1e5 );
+        LogParams(lgr, "UNITS", param);
 	    }
 
-	fprintf(fp,"\n# iViscosityLimiter: %d",msr->param.iViscosityLimiter);
-	fprintf(fp," bBulkViscosity: %d",msr->param.bBulkViscosity);
-	fprintf(fp," bGasDomainDecomp: %d",msr->param.bGasDomainDecomp);
-	fprintf(fp," bSphStep: %d",msr->param.bSphStep);
-	fprintf(fp," bSphSingleStep: %d",msr->param.bSphSingleStep);
-	fprintf(fp," ddHonHLimit: %g",msr->param.ddHonHLimit);
-	fprintf(fp,"\n#bSN: %d",msr->param.bSN);
-	fprintf(fp," dSNRhoCut: %g",msr->param.dSNRhoCut);
- 	fprintf(fp," dSNTMin: %g",msr->param.dSNTMin);
-        fprintf(fp," dSNTMax: %g",msr->param.dSNTMax);
-	fprintf(fp," dSNMetalCut: %g",msr->param.dSNMetalCut);
-	fprintf(fp," dSNHeatFraction: %g",msr->param.dSNHeatFraction);
+	sprintf(param,"iViscosityLimiter: %d",msr->param.iViscosityLimiter);
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"bBulkViscosity: %d",msr->param.bBulkViscosity);
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"bGasDomainDecomp: %d",msr->param.bGasDomainDecomp);
+    LogParams(lgr, "DOMAIN DECOMPOSITION", param);
+	sprintf(param,"bSphStep: %d",msr->param.bSphStep);
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"bSphSingleStep: %d",msr->param.bSphSingleStep);
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"ddHonHLimit: %g",msr->param.ddHonHLimit);
+    LogParams(lgr, "SPH", param);
 #ifndef NOCOOLING
-	CoolLogParams( &msr->param.CoolParam, fp );
+	CoolLogParams( &msr->param.CoolParam, lgr );
 #endif
 #ifdef OUTURBDRIVER
 	outurbLogParams( &msr->param.outurbparam, fp );
 #endif
 #endif
 #ifdef STARFORM
-	fprintf(fp,"\n# Star Formation: bStarForm: %d",msr->param.bStarForm);
-	fprintf(fp," bFormOutputs: %d",msr->param.bFormOutputs);
-	fprintf(fp," bFeedBack: %d",msr->param.bFeedBack);	
-	fprintf(fp," dOverDenMin: %g",msr->param.stfm->dOverDenMin);
-	fprintf(fp," dPhysDenMin: %g",msr->param.stfm->dPhysDenMin);
-	fprintf(fp," dStarEff: %g",msr->param.stfm->dStarEff);
-	fprintf(fp," dCStar: %g",msr->param.stfm->dCStar);
-	fprintf(fp," dTempMax: %g",msr->param.stfm->dTempMax);
-	fprintf(fp," dSoftMin: %g",msr->param.stfm->dSoftMin);
-	fprintf(fp," dMinMassFrac: %g",msr->param.stfm->dMinMassFrac);
-	fprintf(fp," dMinGasMass: %g",msr->param.stfm->dMinGasMass);
-	fprintf(fp," dMaxGasMass: %g",msr->param.stfm->dMaxGasMass);
-	fprintf(fp," dMaxStarMass: %g",msr->param.stfm->dMaxStarMass);
-	fprintf(fp," dZAMSDelayTime: %g",msr->param.stfm->dZAMSDelayTime);
-	fprintf(fp," bESF: %d",msr->param.bESF);
-	fprintf(fp," dESFTime: %g",msr->param.dESFTime);
-	fprintf(fp," dESFEnergy: %g",msr->param.dESFEnergy);
-	fprintf(fp," dHotConvTime: %g",msr->param.dHotConvTime);
-	fprintf(fp," dHotConvTimeMin: %g",msr->param.dHotConvTimeMin);
-	fprintf(fp," dHotConvVelMin: %g",msr->param.dHotConvVelMin);
-	fprintf(fp," iNSNIIQuantum: %d",msr->param.sn->iNSNIIQuantum);
-	fprintf(fp," bSNTurnOffCooling: %i",msr->param.bSNTurnOffCooling);
-	fprintf(fp," bShortCoolShutoff: %i",msr->param.bShortCoolShutoff);
-	fprintf(fp," dExtraCoolShutoff: %g",msr->param.dExtraCoolShutoff);
-	fprintf(fp," bSmallSNSmooth: %i",msr->param.bSmallSNSmooth);
-	fprintf(fp," bBHForm: %i",msr->param.bBHForm);
-	fprintf(fp," dBHFormProb: %g",msr->param.dBHFormProb);
-	fprintf(fp," dInitBHMass: %g",msr->param.dInitBHMass);
+	sprintf(param,"Star Formation: bStarForm: %d",msr->param.bStarForm);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"bFormOutputs: %d",msr->param.bFormOutputs);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"bFeedBack: %d",msr->param.bFeedBack);	
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dOverDenMin: %g",msr->param.stfm->dOverDenMin);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dPhysDenMin: %g",msr->param.stfm->dPhysDenMin);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dStarEff: %g",msr->param.stfm->dStarEff);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dCStar: %g",msr->param.stfm->dCStar);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dTempMax: %g",msr->param.stfm->dTempMax);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dSoftMin: %g",msr->param.stfm->dSoftMin);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dMinMassFrac: %g",msr->param.stfm->dMinMassFrac);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dMinGasMass: %g",msr->param.stfm->dMinGasMass);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dMaxGasMass: %g",msr->param.stfm->dMaxGasMass);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dMaxStarMass: %g",msr->param.stfm->dMaxStarMass);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dZAMSDelayTime: %g",msr->param.stfm->dZAMSDelayTime);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"bESF: %d",msr->param.bESF);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dESFTime: %g",msr->param.dESFTime);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dESFEnergy: %g",msr->param.dESFEnergy);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dHotConvTime: %g",msr->param.dHotConvTime);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dHotConvTimeMin: %g",msr->param.dHotConvTimeMin);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dHotConvVelMin: %g",msr->param.dHotConvVelMin);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"iNSNIIQuantum: %d",msr->param.sn->iNSNIIQuantum);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"bSNTurnOffCooling: %i",msr->param.bSNTurnOffCooling);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"bShortCoolShutoff: %i",msr->param.bShortCoolShutoff);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dExtraCoolShutoff: %g",msr->param.dExtraCoolShutoff);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"bSmallSNSmooth: %i",msr->param.bSmallSNSmooth);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"bBHForm: %i",msr->param.bBHForm);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dBHFormProb: %g",msr->param.dBHFormProb);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dInitBHMass: %g",msr->param.dInitBHMass);
+    LogParams(lgr, "STAR FORMATION", param);
 #ifdef STARCLUSTERFORM
-	fprintf(fp," dStarClusterMass: %g",msr->param.stfm->dStarClusterMass);
-	fprintf(fp," dStarClusterRatio: %g",msr->param.stfm->dStarClusterRatio);
+	sprintf(param,"dStarClusterMass: %g",msr->param.stfm->dStarClusterMass);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"dStarClusterRatio: %g",msr->param.stfm->dStarClusterRatio);
+    LogParams(lgr, "STAR FORMATION", param);
 #endif
 #ifdef COOLING_MOLECULARH
-	fprintf(fp," dStarFormEfficiencyH2: %g",msr->param.stfm->dStarFormEfficiencyH2);
+	sprintf(param,"dStarFormEfficiencyH2: %g",msr->param.stfm->dStarFormEfficiencyH2);
+    LogParams(lgr, "STAR FORMATION", param);
 #endif
 	if (!prmSpecified(msr->prm,"nSmoothFeedback") ) 
 	    msr->param.nSmoothFeedback = msr->param.nSmooth;
-	fprintf(fp," nSmoothFeedback: %i",msr->param.nSmoothFeedback);
+	sprintf(param,"nSmoothFeedback: %i",msr->param.nSmoothFeedback);
+    LogParams(lgr, "STAR FORMATION", param);
 
         for ( testDelta = msr->param.dDelta; 
             testDelta >= msr->param.dDeltaStarForm && 
@@ -3149,20 +3369,21 @@ void msrLogParams(MSR msr,FILE *fp)
                         msr->param.iStarFormRung++;
                     }
         if ( testDelta <= msr->param.dDelta ){ 
-            fprintf(fp," dDeltaStarForm (set): %g, effectively: %g = %g yrs, iStarFormRung: %i",
+            sprintf(param,"dDeltaStarForm (set): %g, effectively: %g = %g yrs, iStarFormRung: %i",
                     msr->param.dDeltaStarForm, testDelta,
                     testDelta*msr->param.dSecUnit/SECONDSPERYEAR,
                     msr->param.iStarFormRung );
             msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm = testDelta;
             }
         else if ( msr->param.dDeltaStarForm == 0.0 ) {
-            fprintf(fp," dDeltaStarForm (set): %g, effectively: 0.0 = 0.0 yrs, iStarFormRung: maxRung",
+            sprintf(param,"dDeltaStarForm (set): %g, effectively: 0.0 = 0.0 yrs, iStarFormRung: maxRung",
                     msr->param.dDeltaStarForm );
             msr->param.iStarFormRung = msr->param.iMaxRung;
             }
         else {
-            fprintf(fp," dDeltaStarForm (set): %g, effectively:  NO STARS WILL FORM", msr->param.dDeltaStarForm);
+            sprintf(param,"dDeltaStarForm (set): %g, effectively:  NO STARS WILL FORM", msr->param.dDeltaStarForm);
             }
+        LogParams(lgr, "STAR FORMATION", param);
 	/* eq 3 from McCray + Kafatos (1987) is good both before SN start
 	 * exploding and after because Luminosity is essentially constant
 	 * Stellar winds:  dM/dt ~ 1e-6 M_sun / yr, v ~ 2000 km/s 
@@ -3222,103 +3443,164 @@ void msrLogParams(MSR msr,FILE *fp)
 		  testDelta = msr->param.dDelta;
 		  msr->param.iSinkRung = 0;
 		  }
-	      fprintf(fp," dDeltaSink (set): %g, effectively: %g = %g yrs, iSinkRung: %i",
+	      sprintf(param,"dDeltaSink (set): %g, effectively: %g = %g yrs, iSinkRung: %i",
 		      msr->param.dDeltaSink, testDelta,
 		      testDelta*msr->param.dSecUnit/SECONDSPERYEAR,
 		      msr->param.iSinkRung );
+          LogParams(lgr, "SINKS", param);
 	      msr->param.dDeltaSink = testDelta;
 	      }
 
 
 #ifdef SIMPLESF
-	fprintf(fp,"\n# SSF: bStarForm: %d",msr->param.bStarForm);
-	fprintf(fp," bFeedBack: %d",msr->param.bFeedBack);	
-	fprintf(fp," SSF_dEfficiency: %g",msr->param.SSF_dEfficiency);
-	fprintf(fp," SSF_dTMax: %g",msr->param.SSF_dTMax);
-	fprintf(fp," SSF_dPhysDenMin: %g",msr->param.SSF_dPhysDenMin);
-	fprintf(fp," SSF_dComovingDenMin: %g",msr->param.SSF_dComovingDenMin);
-	fprintf(fp," SSF_dESNPerStarMass: %g",msr->param.SSF_dESNPerStarMass);
-	fprintf(fp," SSF_dInitStarMass: %g",msr->param.SSF_dInitStarMass);
-	fprintf(fp," SSF_dtCoolingShutoff: %g",msr->param.SSF_dtCoolingShutoff);
-	fprintf(fp," SSF_bdivv: %d",msr->param.SSF_bdivv);
+	sprintf(param,"SSF: bStarForm: %d",msr->param.bStarForm);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"bFeedBack: %d",msr->param.bFeedBack);	
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"SSF_dEfficiency: %g",msr->param.SSF_dEfficiency);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"SSF_dTMax: %g",msr->param.SSF_dTMax);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"SSF_dPhysDenMin: %g",msr->param.SSF_dPhysDenMin);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"SSF_dComovingDenMin: %g",msr->param.SSF_dComovingDenMin);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"SSF_dESNPerStarMass: %g",msr->param.SSF_dESNPerStarMass);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"SSF_dInitStarMass: %g",msr->param.SSF_dInitStarMass);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"SSF_dtCoolingShutoff: %g",msr->param.SSF_dtCoolingShutoff);
+    LogParams(lgr, "STAR FORMATION", param);
+	sprintf(param,"SSF_bdivv: %d",msr->param.SSF_bdivv);
+    LogParams(lgr, "STAR FORMATION", param);
 #endif
-	fprintf(fp,"\n# bPatch: %d",msr->param.bPatch);
 	if (msr->param.bPatch) {
 	  PATCH_PARAMS *PP = &msr->param.PP;
-	  fprintf(fp," dOrbDist: %g",PP->dOrbDist);
-	  fprintf(fp," (dOrbFreq: %g)",PP->dOrbFreq);
-	  fprintf(fp," bExtPert: %d",PP->bExtPert);
+	  sprintf(param,"dOrbDist: %g",PP->dOrbDist);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+	  sprintf(param,"(dOrbFreq: %g)",PP->dOrbFreq);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+	  sprintf(param,"bExtPert: %d",PP->bExtPert);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
 	  if (PP->bExtPert) {
-		fprintf(fp,"\n# dPertOrbDist: %g",PP->dPertOrbDist);
-		fprintf(fp," dPertMass: %g",PP->dPertMass);
-		fprintf(fp," dPertMaxZ: %g",PP->dPertMaxZ);
-		fprintf(fp," dPertOrbFreqZ: %g",PP->dPertOrbFreqZ);
-		fprintf(fp,"\n# dPertPhase: %g",PP->dPertPhase);
-		fprintf(fp," dPertPhaseZ: %g",PP->dPertPhaseZ);
-		fprintf(fp," (dPertOrbFreq: %g)",PP->dPertOrbFreq);
+		sprintf(param,"dPertOrbDist: %g",PP->dPertOrbDist);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+		sprintf(param,"dPertMass: %g",PP->dPertMass);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+		sprintf(param,"dPertMaxZ: %g",PP->dPertMaxZ);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+		sprintf(param,"dPertOrbFreqZ: %g",PP->dPertOrbFreqZ);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+		sprintf(param,"dPertPhase: %g",PP->dPertPhase);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+		sprintf(param,"dPertPhaseZ: %g",PP->dPertPhaseZ);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+		sprintf(param,"(dPertOrbFreq: %g)",PP->dPertOrbFreq);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
 	  }
-	  fprintf(fp,"\n# bRandAzWrap: %d",PP->bRandAzWrap);
+	  sprintf(param,"bRandAzWrap: %d",PP->bRandAzWrap);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
 	  if (PP->bRandAzWrap) {
-		fprintf(fp," dStripInner: %g",PP->dStripInner/PP->dWidth);
-		fprintf(fp," dStripOuter: %g",PP->dStripOuter/PP->dWidth);
-		fprintf(fp," dVelDispX: %g",PP->dVelDispX);
-		fprintf(fp," dVelDispY: %g",PP->dVelDispY);
-		fprintf(fp," dAvgVertAmp: %g",PP->dAvgVertAmp);
-		fprintf(fp," dAvgMass: %g",PP->dAvgMass);
+		sprintf(param,"dStripInner: %g",PP->dStripInner/PP->dWidth);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+		sprintf(param,"dStripOuter: %g",PP->dStripOuter/PP->dWidth);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+		sprintf(param,"dVelDispX: %g",PP->dVelDispX);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+		sprintf(param,"dVelDispY: %g",PP->dVelDispY);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+		sprintf(param,"dAvgVertAmp: %g",PP->dAvgVertAmp);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
+		sprintf(param,"dAvgMass: %g",PP->dAvgMass);
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME", param);
 	  }
 	}
-	fprintf(fp,"\n# bSimpleGasDrag: %d",msr->param.bSimpleGasDrag);
-	fprintf(fp," bEpstein: %d",msr->param.bEpstein);
-	fprintf(fp," dGamma: %g",msr->param.dGamma);
+	sprintf(param,"bSimpleGasDrag: %d",msr->param.bSimpleGasDrag);
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"bEpstein: %d",msr->param.bEpstein);
+    LogParams(lgr, "SPH", param);
+	sprintf(param,"dGamma: %g",msr->param.dGamma);
+    LogParams(lgr, "SPH", param);
 #ifdef COLLISIONS
-	fprintf(fp,"\n# Collisions...");
-	fprintf(fp," bFindRejects: %d",msr->param.bFindRejects);
-	fprintf(fp," iCollLogOption: %d",msr->param.iCollLogOption);
-	fprintf(fp," dSmallStep: %g",msr->param.dSmallStep);
-	fprintf(fp," iMinCollRung: %d",msr->param.iMinCollRung);
-	fprintf(fp,"\n# dxUnifGrav: %g",msr->param.dxUnifGrav);
-	fprintf(fp," dyUnifGrav: %g",msr->param.dyUnifGrav);
-	fprintf(fp," dzUnifGrav: %g",msr->param.dzUnifGrav);
-    fprintf(fp,"\n# iOutcomes: %d",msr->param.CP.iOutcomes);
-	fprintf(fp," dDensity: %g",msr->param.CP.dDensity/DEN_CGS_SYS);
-	fprintf(fp," dBounceLimit: %g",msr->param.CP.dBounceLimit);
-	fprintf(fp," iBounceOption: %d",msr->param.CP.iBounceOption);
-    fprintf(fp," dEpsN: %g",msr->param.CP.dEpsN);
-    fprintf(fp," dEpsT: %g",msr->param.CP.dEpsT);
-    fprintf(fp,"\n# iMinBinaryRung: %d",msr->param.iMinBinaryRung);
-    fprintf(fp," dBallVelFact: %g",msr->param.dBallVelFact);
-    fprintf(fp," dMaxBinaryEcc: %g",msr->param.dMaxBinaryEcc);
-    fprintf(fp,"\n# iSlideOption: %d",msr->param.CP.iSlideOption);
-	fprintf(fp," dSlideLimit: %g",msr->param.CP.dSlideLimit);
-    fprintf(fp," dSlideEpsN: %g",msr->param.CP.dSlideEpsN);
-    fprintf(fp," dSlideEpsT: %g",msr->param.CP.dSlideEpsT);
-    fprintf(fp,"\n# dCollapseLimit: %g",msr->param.CP.dCollapseLimit);
-    fprintf(fp," dCollapseEpsN: %g",msr->param.CP.dCollapseEpsN);
-    fprintf(fp," dCollapseEpsT: %g",msr->param.CP.dCollapseEpsT);
-    fprintf(fp,"\n# dCrushLimit: %g",msr->param.CP.dCrushLimit);
-    fprintf(fp," dCrushEpsN: %g",msr->param.CP.dCrushEpsN);
-    fprintf(fp," dCrushEpsT: %g",msr->param.CP.dCrushEpsT);
-	fprintf(fp,"\n# bFixCollapse: %d",msr->param.CP.bFixCollapse);
+	sprintf(param,"bFindRejects: %d",msr->param.bFindRejects);
+    LogParams(lgr, "COLLISIONS", param);
+	sprintf(param,"iCollLogOption: %d",msr->param.iCollLogOption);
+    LogParams(lgr, "COLLISIONS", param);
+	sprintf(param,"dSmallStep: %g",msr->param.dSmallStep);
+    LogParams(lgr, "COLLISIONS", param);
+	sprintf(param,"iMinCollRung: %d",msr->param.iMinCollRung);
+    LogParams(lgr, "COLLISIONS", param);
+	sprintf(param,"dxUnifGrav: %g",msr->param.dxUnifGrav);
+    LogParams(lgr, "COLLISIONS", param);
+	sprintf(param,"dyUnifGrav: %g",msr->param.dyUnifGrav);
+    LogParams(lgr, "COLLISIONS", param);
+	sprintf(param,"dzUnifGrav: %g",msr->param.dzUnifGrav);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"iOutcomes: %d",msr->param.CP.iOutcomes);
+    LogParams(lgr, "COLLISIONS", param);
+	sprintf(param,"dDensity: %g",msr->param.CP.dDensity/DEN_CGS_SYS);
+    LogParams(lgr, "COLLISIONS", param);
+	sprintf(param,"dBounceLimit: %g",msr->param.CP.dBounceLimit);
+    LogParams(lgr, "COLLISIONS", param);
+	sprintf(param,"iBounceOption: %d",msr->param.CP.iBounceOption);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"dEpsN: %g",msr->param.CP.dEpsN);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"dEpsT: %g",msr->param.CP.dEpsT);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"iMinBinaryRung: %d",msr->param.iMinBinaryRung);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"dBallVelFact: %g",msr->param.dBallVelFact);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"dMaxBinaryEcc: %g",msr->param.dMaxBinaryEcc);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"iSlideOption: %d",msr->param.CP.iSlideOption);
+    LogParams(lgr, "COLLISIONS", param);
+	sprintf(param,"dSlideLimit: %g",msr->param.CP.dSlideLimit);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"dSlideEpsN: %g",msr->param.CP.dSlideEpsN);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"dSlideEpsT: %g",msr->param.CP.dSlideEpsT);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"dCollapseLimit: %g",msr->param.CP.dCollapseLimit);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"dCollapseEpsN: %g",msr->param.CP.dCollapseEpsN);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"dCollapseEpsT: %g",msr->param.CP.dCollapseEpsT);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"dCrushLimit: %g",msr->param.CP.dCrushLimit);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"dCrushEpsN: %g",msr->param.CP.dCrushEpsN);
+    LogParams(lgr, "COLLISIONS", param);
+    sprintf(param,"dCrushEpsT: %g",msr->param.CP.dCrushEpsT);
+    LogParams(lgr, "COLLISIONS", param);
+	sprintf(param,"bFixCollapse: %d",msr->param.CP.bFixCollapse);
+    LogParams(lgr, "COLLISIONS", param);
 #endif
 #ifdef SPECIAL_PARTICLES
 	{
 	SPECIAL_PARTICLE_DATA *s;
 	int i;
-	fprintf(fp,"\n# nSpecial: %i",msr->param.nSpecial);
+	sprintf(param,"nSpecial: %i",msr->param.nSpecial);
+    LogParams(lgr, "SPECIAL PARTICLES", param);
 	for (i=0;i<msr->param.nSpecial;i++) {
 		s = &msr->param.sSpecialData[i];
-		fprintf(fp,"\n# Special %i: org_idx: %i type: %i ",i,
+		sprintf(param,"Special %i: org_idx: %i type: %i ",i,
 				msr->param.iSpecialId[i],s->iType);
+        LogParams(lgr, "SPECIAL PARTICLES", param);
 		if (s->iType & SPECIAL_OBLATE)
-			fprintf(fp,"dRadEq: %g J2: %g J4: %g p[0]: %g p[1]: %g p[2]: %g",
+			sprintf(param,"dRadEq: %g J2: %g J4: %g p[0]: %g p[1]: %g p[2]: %g",
 					s->oblate.dRadEq,s->oblate.J2,s->oblate.J4,
 					s->oblate.p[0],s->oblate.p[1],s->oblate.p[2]);
+            LogParams(lgr, "SPECIAL PARTICLES", param);
 		if (s->iType & SPECIAL_GR)
-			fprintf(fp,"UNSUPPORTED");
+			sprintf(param,"UNSUPPORTED");
+            LogParams(lgr, "SPECIAL PARTICLES", param);
 		if (s->iType & SPECIAL_FORCE)
-			fprintf(fp,"dMag: %g",s->force.dMag);
+			sprintf(param,"dMag: %g",s->force.dMag);
 	        if (s->iType & SPECIAL_NOGHOSTPERT) 
-		        fprintf(fp,"Excluded from ghost cell gravity calculations");
+		        sprintf(param,"Excluded from ghost cell gravity calculations");
+                LogParams(lgr, "SPECIAL PARTICLES", param);
 		}
 	}
 #endif
@@ -3326,79 +3608,105 @@ void msrLogParams(MSR msr,FILE *fp)
 	{
 	WALLS *w = &msr->param.CP.walls;
 	int i;
-	fprintf(fp,"\n# nWalls: %i",w->nWalls);
+	sprintf(param,"nWalls: %i",w->nWalls);
+    LogParams(lgr, "SAND PILE", param);
 	for (i=0;i<w->nWalls;i++) {
 #ifdef TUMBLER
-		fprintf(fp,"\n# Wall %i: nx: %g ny: %g nz: %g",
+		sprintf(param,"Wall %i: nx: %g ny: %g nz: %g",
 			i,w->wall[i].n[0],w->wall[i].n[1],w->wall[i].n[2]);
-		fprintf(fp," ndotp: %g radius: %g omega:%g",
+        LogParams(lgr, "SAND PILE", param);
+		sprintf(param,"ndotp: %g radius: %g omega:%g",
 			w->wall[i].ndotp,w->wall[i].radius,w->wall[i].omega);
-		fprintf(fp," dEpsN: %g dEpsT: %g hotParam: %g type: %i",
+        LogParams(lgr, "SAND PILE", param);
+		sprintf(param,"dEpsN: %g dEpsT: %g hotParam: %g type: %i",
 			w->wall[i].dEpsN,w->wall[i].dEpsT,w->wall[i].hotParam,w->wall[i].type);
+        LogParams(lgr, "SAND PILE", param);
 #else
-		fprintf(fp,"\n# Wall %i: x1: %g z1: %g x2: %g z2: %g",
+		sprintf(param,"Wall %i: x1: %g z1: %g x2: %g z2: %g",
 				i,w->wall[i].x1,w->wall[i].z1,w->wall[i].x2,w->wall[i].z2);
-		fprintf(fp," dEpsN: %g dEpsT: %g",w->wall[i].dEpsN,w->wall[i].dEpsT);
+        LogParams(lgr, "SAND PILE", param);
+		sprintf(param,"dEpsN: %g dEpsT: %g",w->wall[i].dEpsN,w->wall[i].dEpsT);
+        LogParams(lgr, "SAND PILE", param);
 #endif
 		}
 	}
 #endif /* SAND_PILE */
 #ifdef RUBBLE_ZML
-	fprintf(fp,"\n# Rubble...");
-	fprintf(fp," bRubbleStep: %d",msr->param.bRubbleStep);
-	fprintf(fp," dRubbleMinFracMass: %g",msr->param.CP.dRubbleMinFracMass);
-	fprintf(fp," dRubMinMass: %g",msr->param.CP.DB.dRubMinMass);
-	fprintf(fp," iRubNumDynToBounce: %i",msr->param.CP.DB.iRubNumDynToBounce);
-	fprintf(fp," iRubNumDynToMerge: %i",msr->param.CP.DB.iRubNumDynToMerge);
-	fprintf(fp,"\n# nDustBins: %d",msr->param.CP.DB.nDustBins);
-	fprintf(fp," iDustBinsApplyInt: %d",msr->param.CP.DB.iDustBinsApplyInt);
-	fprintf(fp," dDustBinsInner: %g",msr->param.CP.DB.dDustBinsInner);
-	fprintf(fp," dDustBinsOuter: %g",msr->param.CP.DB.dDustBinsOuter);
-	fprintf(fp,"\n# dDustBinsScaleHeight: %g",msr->param.CP.DB.dDustBinsScaleHeight);
-	fprintf(fp," dDustBinsInitSigma: %g",msr->param.CP.DB.dDustBinsInitSigma);
-	fprintf(fp," dDustBinsInitAlpha: %g",msr->param.CP.DB.dDustBinsInitAlpha);
-	fprintf(fp," (dDustBinsWidth: %g)",msr->param.CP.DB.dDustBinsWidth);
+	sprintf(param,"bRubbleStep: %d",msr->param.bRubbleStep);
+    LogParams(lgr, "RUBBLE PILE", param);
+	sprintf(param,"dRubbleMinFracMass: %g",msr->param.CP.dRubbleMinFracMass);
+    LogParams(lgr, "RUBBLE PILE", param);
+	sprintf(param,"dRubMinMass: %g",msr->param.CP.DB.dRubMinMass);
+    LogParams(lgr, "RUBBLE PILE", param);
+	sprintf(param,"iRubNumDynToBounce: %i",msr->param.CP.DB.iRubNumDynToBounce);
+    LogParams(lgr, "RUBBLE PILE", param);
+	sprintf(param,"iRubNumDynToMerge: %i",msr->param.CP.DB.iRubNumDynToMerge);
+    LogParams(lgr, "RUBBLE PILE", param);
+	sprintf(param,"nDustBins: %d",msr->param.CP.DB.nDustBins);
+    LogParams(lgr, "RUBBLE PILE", param);
+	sprintf(param,"iDustBinsApplyInt: %d",msr->param.CP.DB.iDustBinsApplyInt);
+    LogParams(lgr, "RUBBLE PILE", param);
+	sprintf(param,"dDustBinsInner: %g",msr->param.CP.DB.dDustBinsInner);
+    LogParams(lgr, "RUBBLE PILE", param);
+	sprintf(param,"dDustBinsOuter: %g",msr->param.CP.DB.dDustBinsOuter);
+    LogParams(lgr, "RUBBLE PILE", param);
+	sprintf(param,"dDustBinsScaleHeight: %g",msr->param.CP.DB.dDustBinsScaleHeight);
+    LogParams(lgr, "RUBBLE PILE", param);
+	sprintf(param,"dDustBinsInitSigma: %g",msr->param.CP.DB.dDustBinsInitSigma);
+    LogParams(lgr, "RUBBLE PILE", param);
+	sprintf(param,"dDustBinsInitAlpha: %g",msr->param.CP.DB.dDustBinsInitAlpha);
+    LogParams(lgr, "RUBBLE PILE", param);
+	sprintf(param,"(dDustBinsWidth: %g)",msr->param.CP.DB.dDustBinsWidth);
+    LogParams(lgr, "RUBBLE PILE", param);
 #endif
 	switch (msr->iOpenType) {
 	case OPEN_JOSH:
-		fprintf(fp,"\n# iOpenType: JOSH");
+		sprintf(param,"iOpenType: JOSH");
 		break;
 	case OPEN_ABSPAR:
-		fprintf(fp,"\n# iOpenType: ABSPAR");
+		sprintf(param,"iOpenType: ABSPAR");
 		break;
 	case OPEN_RELPAR:
-		fprintf(fp,"\n# iOpenType: RELPAR");
+		sprintf(param,"iOpenType: RELPAR");
 		break;
 	case OPEN_ABSTOT:
-		fprintf(fp,"\n# iOpenType: ABSTOT");
+		sprintf(param,"iOpenType: ABSTOT");
 		break;
 	case OPEN_RELTOT:
-		fprintf(fp,"\n# iOpenType: RELTOT");
+		sprintf(param,"iOpenType: RELTOT");
 		break;
 	default:
-		fprintf(fp,"\n# iOpenType: NONE?");
+		sprintf(param,"iOpenType: NONE?");
 		}
-	fprintf(fp," dTheta: %f",msr->param.dTheta);
-	fprintf(fp,"\n# dAbsPartial: %g",msr->param.dAbsPartial);
-	fprintf(fp," dRealPartial: %g",msr->param.dRelPartial);
-	fprintf(fp," dAbsTotal: %g",msr->param.dAbsTotal);
-	fprintf(fp," dRelTotal: %g",msr->param.dRelTotal);
-	fprintf(fp,"\n# dPeriod: %g",msr->param.dPeriod);
-	fprintf(fp," dxPeriod: %g",
+    LogParams(lgr, "TREEBUILD", param);
+	sprintf(param,"dTheta: %f",msr->param.dTheta);
+    LogParams(lgr, "TREEBUILD", param);
+	sprintf(param,"dAbsPartial: %g",msr->param.dAbsPartial);
+    LogParams(lgr, "TREEBUILD", param);
+	sprintf(param,"dRealPartial: %g",msr->param.dRelPartial);
+    LogParams(lgr, "TREEBUILD", param);
+	sprintf(param,"dAbsTotal: %g",msr->param.dAbsTotal);
+    LogParams(lgr, "TREEBUILD", param);
+	sprintf(param,"dRelTotal: %g",msr->param.dRelTotal);
+    LogParams(lgr, "TREEBUILD", param);
+	sprintf(param,"dPeriod: %g",msr->param.dPeriod);
+    LogParams(lgr, "BOX PARAMETERS", param);
+	sprintf(param,"dxPeriod: %g",
 			msr->param.dxPeriod >= FLOAT_MAXVAL ? 0 : msr->param.dxPeriod);
-	fprintf(fp," dyPeriod: %g",
+    LogParams(lgr, "BOX PARAMETERS", param);
+	sprintf(param,"dyPeriod: %g",
 			msr->param.dyPeriod >= FLOAT_MAXVAL ? 0 : msr->param.dyPeriod);
-	fprintf(fp," dzPeriod: %g",
+    LogParams(lgr, "BOX PARAMETERS", param);
+	sprintf(param,"dzPeriod: %g",
 			msr->param.dzPeriod >= FLOAT_MAXVAL ? 0 : msr->param.dzPeriod);
-	fprintf(fp,"\n# dHubble0: %g",msr->param.csm->dHubble0);
-	fprintf(fp," dOmega0: %g",msr->param.csm->dOmega0);
-	fprintf(fp," dLambda: %g",msr->param.csm->dLambda);
-	fprintf(fp," dOmegaRad: %g",msr->param.csm->dOmegaRad);
-	fprintf(fp," dOmegab: %g",msr->param.csm->dOmegab);
-	fprintf(fp," dQuintess: %g",msr->param.csm->dQuintess);
-	fprintf(fp,"\n# achInFile: %s",msr->param.achInFile);
-	fprintf(fp,"\n# achOutName: %s",msr->param.achOutName); 
-	fprintf(fp,"\n# achDataSubPath: %s",msr->param.achDataSubPath);
+    LogParams(lgr, "BOX PARAMETERS", param);
+	sprintf(param,"achInFile: %s",msr->param.achInFile);
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"achOutName: %s",msr->param.achOutName); 
+    LogParams(lgr, "READ/WRITE", param);
+	sprintf(param,"achDataSubPath: %s",msr->param.achDataSubPath);
+    LogParams(lgr, "READ/WRITE", param);
+    LogFlush(lgr, fp);
 	if (msrComove(msr)) {
 		fprintf(fp,"\n# RedOut:");
 		if (msr->nOuts == 0) fprintf(fp," none");
@@ -3410,13 +3718,13 @@ void msrLogParams(MSR msr,FILE *fp)
 		fprintf(fp,"\n");
 		}
 	else {
-		fprintf(fp,"\n# TimeOut:");
+		fprintf(fp,"\n\n# TimeOut:");
 		if (msr->nOuts == 0) fprintf(fp," none");
 		for (i=0;i<msr->nOuts;i++) {
 			if (i%5 == 0) fprintf(fp,"\n#   ");
 			fprintf(fp," %f",msr->pdOutTime[i]);
 			}
-		fprintf(fp,"\n");
+		fprintf(fp,"\n\n");
 	    }
 	fprintf(fp, "# Log entries:\n# dTime z E T U Eth Lx Ly Lz WallTime dWMax dImax dEMax dMultiEff\n");
     }
@@ -9997,7 +10305,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
         inFB.dDelta = dDelta;
         inFB.fb  = *msr->param.fb;
 #ifdef FBPARTICLE
-        a = csmTime2Exp(msr->param.csm,dTime);
+        double a = csmTime2Exp(msr->param.csm,dTime);
         inFB.fb.a = a;
         inFB.fb.dtFacCourant = pkdDtFacCourant(msr->param.dEtaCourant,a); 
         inFB.fb.dtFacDiffusion = msr->param.dEtaDiffusion; 

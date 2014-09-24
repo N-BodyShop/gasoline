@@ -1,4 +1,4 @@
-#include "define.h"
+
 #ifndef DUMPFRAME_HINCLUDED
 #define DUMPFRAME_HINCLUDED
 
