@@ -98,6 +98,7 @@ enum pst_service {
       PST_OUTARRAY,
       PST_OUTVECTOR,
       PST_OUTNCVECTOR,
+      PST_INARRAY,
       PST_WRITETIPSY,
       PST_TREEZIP,
       PST_BUILDTREE,
@@ -430,6 +431,21 @@ struct inOutput {
 	double dvFac;
 	};
 void pstOutVector(PST,void *,int,void *,int *);
+
+/* PST_INARRAY */
+struct inInput {
+	char achInFile[PST_FILENAME_SIZE];
+	int nFileStart;
+	int nFileEnd;
+	int iDim;
+	int iType;
+	int iBinaryInput;
+	int N;
+	int bStandard;
+	double duTFac;
+	double dvFac;
+	};
+void pstInArray(PST,void *,int,void *,int *);
 
 /* PST_WRITETIPSY */
 struct inWriteTipsy {

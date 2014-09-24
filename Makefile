@@ -349,8 +349,35 @@ $(EXE): $(OBJ) $(XOBJ)
 
 $(OBJ) $(EXTRA_OBJ): Makefile
 
+CHECKEROBJ = checker.o master.o param.o outtype.o pkd.o pst.o grav.o \
+	  ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
+	  smoothfcn.o collision.o qqsmooth.o $(COOLING_OBJ) cosmo.o romberg.o \
+	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
+	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o \
+	  rotbar.o special.o ssio.o $(PNG_OBJ) outurb.o \
+	  treezip.o 
+
+check: $(CHECKEROBJ) $(XOBJ)
+	$(CC) $(CFLAGS) $(LD_FLAGS) -o $@ $(CHECKEROBJ) $(XOBJ) $(LIBMDL)
+
+checknull: 
+	cd $(NULL_MDL); make "CC=$(CC)" "CFLAGS=$(NULL_CFLAGS)"
+	make check  "CC=$(CC)" "CFLAGS=$(NULL_CFLAGS)" "LD_FLAGS=$(NULL_LD_FLAGS)"\
+		"MDL=$(NULL_MDL)" "XOBJ=$(NULL_XOBJ)" "LIBMDL=$(NULL_LIBMDL)"
+
+checkmpi: 
+	cd $(SPX_MDL); make CC=mpicc "CC_FLAGS=$(SPX_MDL_CFLAGS)"
+	make check CC=mpicc "CFLAGS=$(SPX_CFLAGS)" "LD_FLAGS=$(SPX_LD_FLAGS)"\
+		"MDL=$(SPX_MDL)" "XOBJ=$(SPX_XOBJ)" "LIBMDL=$(SPX_LIBMDL)"
+
+checkpthread:
+	cd $(PTHREAD_MDL); make "CC=$(CC)" "CFLAGS=$(PTHREAD_CFLAGS)"
+	make check "EXE=$(EXE)" "CFLAGS=$(PTHREAD_CFLAGS)" "LD_FLAGS=$(PTHREAD_LD_FLAGS)"\
+		"MDL=$(PTHREAD_MDL)" "XOBJ=$(PTHREAD_XOBJ)" "LIBMDL=$(PTHREAD_LIBMDL)"
+
 # DO NOT DELETE
 
+checker.o: master.h param.h pst.h pkd.h floattype.h cooling.h smoothfcn.h
 cosmo.o: runge.h cosmo.h
 ewald.o: ewald.h pkd.h floattype.h cooling.h meval.h qeval.h
 fdl.o: htable.h fdl.h

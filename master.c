@@ -5379,6 +5379,119 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 	}
 
 
+void msrOneNodeInArray(MSR msr, struct inInput *in)
+{
+    int i,id;
+    int nStart;
+    PST pst0;
+    LCL *plcl;
+    char achInFile[PST_FILENAME_SIZE];
+    int inswap;
+
+    pst0 = msr->pst;
+    while(pst0->nLeaves > 1)
+		pst0 = pst0->pstLower;
+    plcl = pst0->plcl;
+    /*
+     ** Add the local Data Path to the provided filename.
+     */
+    _msrMakePath(plcl->pszDataPath,in->achInFile,achInFile);
+
+    /* 
+     * First read our own particles.
+     */
+    assert(msr->pMap[0] == 0);
+    nStart = 0;
+#ifdef SIMPLESF
+        pkdInVector(plcl->pkd,in->achInFile, nStart, plcl->pkd->nLocal, 0, in->iType, ((in->iType==OUT_TCOOLAGAIN_ARRAY || in->iType==OUT_MSTAR_ARRAY) ? 1 : in->iBinaryInput), msr->N,in->bStandard);
+#else
+        pkdInVector(plcl->pkd,in->achInFile,nStart, plcl->pkd->nLocal, 0, in->iType,in->iBinaryInput, msr->N,in->bStandard); 
+#endif
+    nStart += plcl->pkd->nLocal;
+    for (i=1;i<msr->nThreads;++i) {
+	id = msr->pMap[i];
+        /* 
+         * Swap particles with the remote processor.
+         */
+        inswap = 0;
+        mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+        pkdSwapAll(plcl->pkd, id);
+        mdlGetReply(pst0->mdl,id,NULL,NULL);
+        /* 
+         * Read the swapped particles.
+         */
+#ifdef SIMPLESF
+        pkdInVector(plcl->pkd,in->achInFile, nStart, plcl->pkd->nLocal, 0, in->iType, ((in->iType==OUT_TCOOLAGAIN_ARRAY || in->iType==OUT_MSTAR_ARRAY) ? 1 : in->iBinaryInput), msr->N,in->bStandard);
+#else
+        pkdInVector(plcl->pkd,in->achInFile,nStart, plcl->pkd->nLocal, 0, in->iType,in->iBinaryInput, msr->N,in->bStandard); 
+#endif
+        nStart += plcl->pkd->nLocal;
+        /* 
+         * Swap them back again.
+         */
+        inswap = 0;
+        mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+        pkdSwapAll(plcl->pkd, id);
+        mdlGetReply(pst0->mdl,id,NULL,NULL);
+        }
+    assert(nStart == msr->N);
+    }
+
+void msrInArray(MSR msr,char *pszFile,int iType)
+{
+	FILE *fp;
+	struct inInput in;
+	char achInFile[PST_FILENAME_SIZE];
+	LCL *plcl = msr->pst->plcl;
+
+	if (pszFile == NULL) {
+	    pszFile = achInFile;
+	    strcpy(achInFile,msr->param.achInFile);
+            }
+        /*
+	** Add Data Subpath for local and non-local names.
+	*/
+	_msrMakePath(msr->param.achDataSubPath,pszFile,in.achInFile);
+	/*
+	** Add local Data Path.
+	*/
+	_msrMakePath(plcl->pszDataPath,in.achInFile,achInFile);
+	
+	strcat(achInFile,".");
+	VecFilename(achInFile,iType);
+
+	fp = fopen(achInFile,"r");
+	if (!fp) {
+	    printf("Could not open Array Input File:%s\n",achInFile);
+	    _msrExit(msr,1);
+	    }
+
+	if (msr->param.bVDetails) printf("Reading file: %s\n",achInFile);
+
+	/*
+	 ** Read the Header information and close the file again.
+	 */
+	in.iType = iType;
+	in.bStandard = msr->param.bStandard;
+	in.iBinaryInput = msr->param.iBinaryOutput;
+        in.iDim=0;
+        in.N = msr->N;
+	in.nFileStart = 0;
+	in.nFileEnd = msr->N - 1;
+	if (msr->param.iBinaryOutput) {
+	    if(msr->param.bParaRead)
+		pstInArray(msr->pst,&in,sizeof(in),NULL,NULL);
+	    else
+		msrOneNodeInArray(msr, &in);
+	    }
+	else {
+	    msrOneNodeInArray(msr, &in);
+	    }
+	}
+
+
+
+
 void msrOneNodeOutVector(MSR msr, struct inOutput *in)
 {
     int i,id, iDim;

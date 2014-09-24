@@ -20,21 +20,21 @@
 #endif /* COLLISIONS */
 
 FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
-{
+    {
 #ifdef GASOLINE
-  FLOAT vTemp;
+    FLOAT vTemp;
 #ifdef COOLING_MOLECULARH
-  /*Define the correlation length used for shielding in H2 calculation from the gas shear CC*/
-  double correL = 1.0;
+    /*Define the correlation length used for shielding in H2 calculation from the gas shear CC*/
+    double correL = 1.0;
 #ifdef NEWSHEAR
-  /* Calculated same way as for diffusion*/
-  if (p->diff != 0) correL = 0.25*p->fBall2*p->c/p->diff;
-  /*Minimum correlation length is the smoothing*/
-  if (correL > sqrt(0.25*p->fBall2) || p->diff == 0) correL = sqrt(0.25*p->fBall2);
+    /* Calculated same way as for diffusion*/
+    if (p->diff != 0) correL = 0.25*p->fBall2*p->c/p->diff;
+    /*Minimum correlation length is the smoothing*/
+    if (correL > sqrt(0.25*p->fBall2) || p->diff == 0) correL = sqrt(0.25*p->fBall2);
 #else /*NEWSHEAR*/
-  /* Shear from curl */
-  double shear = sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2]);
-  if (shear != 0) correL = p->c/shear;
+    /* Shear from curl */
+    double shear = sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2]);
+    if (shear != 0) correL = p->c/shear;
 #endif /*NEWSHEAR*/
 #endif  /*COOLING_MOLECULARH */
 #endif
@@ -43,7 +43,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_IORDER_ARRAY:
 	    return((FLOAT) p->iOrder);
 #ifdef GASOLINE
-        case OUT_GASDENSITY_ARRAY:
+    case OUT_GASDENSITY_ARRAY:
 	    return(p->fDensity);
 	case OUT_DENSITY_ARRAY:
 	    return(p->curlv[0]);
@@ -120,7 +120,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_COOL_ARRAY3:
 	    return(COOL_ARRAY3(pkd->Cool, &p->CoolParticle,p->fMetals)); /*H2*/
 	case OUT_CORREL_ARRAY:
-	        return correL;
+        return correL;
 #endif
 /*Gas shear in terms of mach number, used when calculating column density*/
 #ifdef COOLING_METAL_BROKEN
@@ -131,51 +131,51 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 
 #ifdef  RADIATIVEBOX
 	case OUT_COOL_LYMANWERNER_ARRAY:
-	  return(p->CoolParticle.dLymanWerner); /* Lyman Werner Radiation output array*/
+        return(p->CoolParticle.dLymanWerner); /* Lyman Werner Radiation output array*/
 #endif /*RADIATIVEBOX*/
 
 #ifdef DENSITYU
 #ifdef COOLING_MOLECULARH
 	case OUT_COOL_EDOT_ARRAY: /* Cooling array with H2*/
-	  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, correL) );
+        return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, correL) );
 	case OUT_COOL_COOLING_ARRAY:
-	  return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, correL) );
+        return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, correL) );
 	case OUT_COOL_HEATING_ARRAY:
-	  return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, correL) );
+        return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, correL) );
 #else
 	case OUT_COOL_EDOT_ARRAY:
-	  if(pkdIsGas(pkd, p)) {
-		  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
-	  }
-	  else {
-		  return 0;
-	  }
+        if(pkdIsGas(pkd, p)) {
+            return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+            }
+        else {
+            return 0;
+            }
 	case OUT_COOL_COOLING_ARRAY:
-	  if(pkdIsGas(pkd, p)) {
-		  return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
-	  }
-	  else {
-		  return 0;
-	  }
+        if(pkdIsGas(pkd, p)) {
+            return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+            }
+        else {
+            return 0;
+            }
 	case OUT_COOL_HEATING_ARRAY:
-	  if(pkdIsGas(pkd, p)) {
-	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
-	  }
-	  else {
-		  return 0;
-	  }
+        if(pkdIsGas(pkd, p)) {
+            return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
+            }
+        else {
+            return 0;
+            }
 #endif
 #else
 #ifdef COOLING_MOLECULARH
 	case OUT_COOL_EDOT_ARRAY:
-	  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r, correL) );
+        return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r, correL) );
 	case OUT_COOL_COOLING_ARRAY:
 	    return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals,p->r, correL) );
 	case OUT_COOL_HEATING_ARRAY:
 	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r, correL) );
 #else
 	case OUT_COOL_EDOT_ARRAY:
-	  return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
+        return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
 	case OUT_COOL_COOLING_ARRAY:
 	    return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
 	case OUT_COOL_HEATING_ARRAY:
@@ -327,8 +327,43 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 		}
 	}
 
+void VecInType(PKD pkd, PARTICLE *p,int iDim,int iType,FLOAT Data)
+    {
+#ifdef GASOLINE
+    FLOAT vTemp;
+#endif
+
+    switch (iType) {
+    case OUT_DENSITY_ARRAY:
+        p->fDensity = Data; return;
+#ifndef NOCOOLING
+    case OUT_COOL_ARRAY0:
+        COOL_IN_ARRAY0(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY1:
+        COOL_IN_ARRAY1(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY2:
+        COOL_IN_ARRAY2(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY3:
+        COOL_IN_ARRAY3(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return; /*H2*/
+#endif
+#ifdef STARFORM
+    case OUT_COOLTURNONTIME_ARRAY:
+        p->fTimeCoolIsOffUntil = Data; return;
+    case OUT_OXYGENMASSFRAC_ARRAY:
+        p->fMFracOxygen = Data; return;
+    case OUT_IRONMASSFRAC_ARRAY:
+        p->fMFracIron = Data; return;
+    case OUT_MASSFORM_ARRAY:
+        p->fMassForm = Data; return;
+#endif
+    default:
+        fprintf(stderr,"Bad Option to VecInType %d\n",iType);
+        assert(0);
+        }
+    }
+
 void VecFilename(char *achFile, int iType)
-{
+    {
 	switch (iType) {
 	case OUT_BIG_FILE:
 #ifdef COLLISIONS
@@ -339,54 +374,54 @@ void VecFilename(char *achFile, int iType)
 	    break;
 	case OUT_IORDER_ARRAY:
 	    strncat(achFile,"iord",256);
-            break;
-        case OUT_DENSITY_ARRAY:
+        break;
+    case OUT_DENSITY_ARRAY:
 		strncat(achFile,"den",256);
-            break;
-        case OUT_DENSITYRFC_ARRAY:
+        break;
+    case OUT_DENSITYRFC_ARRAY:
 		strncat(achFile,"denRFC",256);
-            break;
+        break;
 	case OUT_COLOR_ARRAY:
 #ifdef COLORCODE
 	    strncat(achFile,"col",256);
 #endif
 	case OUT_POT_ARRAY:
-            strncat(achFile,"pot",256);
-            break;
+        strncat(achFile,"pot",256);
+        break;
 	case OUT_AMAG_ARRAY:
-            strncat(achFile,"amag",256);
-            break;
+        strncat(achFile,"amag",256);
+        break;
 	case OUT_RUNG_ARRAY:
-            strncat(achFile,"rung",256);
-            break;
+        strncat(achFile,"rung",256);
+        break;
 
 	case OUT_MASS_ARRAY:
-            strncat(achFile,"mass",256);
-            break;
+        strncat(achFile,"mass",256);
+        break;
 	case OUT_DT_ARRAY:
 		strncat(achFile,"dt",256);
-            break;
+        break;
 	case OUT_SPHDT_ARRAY:
 		strncat(achFile,"SPHdt",256);
-            break;
+        break;
 	case OUT_SOFT_ARRAY:
-	        strncat(achFile,"soft",256);
-            break;
+        strncat(achFile,"soft",256);
+        break;
 #ifdef GASOLINE	
 #ifdef DENSITYU
-        case OUT_DENSITYU_ARRAY:
+    case OUT_DENSITYU_ARRAY:
 	    strncat(achFile,"denu",256);
 	    break;
 #endif
-        case OUT_PRES_ARRAY:
+    case OUT_PRES_ARRAY:
 	    strncat(achFile,"pres",256);
 	    break;
 	case OUT_TEMP_ARRAY:
 		strncat(achFile,"temperature",256);
-            break;
-        case OUT_GASDENSITY_ARRAY:
+        break;
+    case OUT_GASDENSITY_ARRAY:
 		strncat(achFile,"GasDensity",256);
-            break;
+        break;
 #ifndef NOCOOLING
 	case OUT_U_ARRAY:
 		strncat(achFile,"u",256);
@@ -405,17 +440,17 @@ void VecFilename(char *achFile, int iType)
 		break;
 	case OUT_COOL_ARRAY0:
 		strncat(achFile,COOL_ARRAY0_EXT,256);
-            break;
+        break;
 	case OUT_COOL_ARRAY1:
 		strncat(achFile,COOL_ARRAY1_EXT,256);
-            break;
+        break;
 	case OUT_COOL_ARRAY2:
 		strncat(achFile,COOL_ARRAY2_EXT,256);
-            break;
+        break;
 #ifdef COOLING_MOLECULARH
 	case OUT_COOL_ARRAY3: /*Fraction in Molecular Hydrogen*/
 		strncat(achFile,COOL_ARRAY3_EXT,256);
-            break;
+        break;
 	case OUT_CORREL_ARRAY: /*Correlation length determined from Gas Shear in terms of the Mach number -- used when calculating shielding*/
 		strncat(achFile,"correL",256);
 		break;
@@ -437,102 +472,102 @@ void VecFilename(char *achFile, int iType)
 #endif
 	case OUT_BALSARASWITCH_ARRAY:
 		strncat(achFile,"BSw",256);
-            break;
+        break;
 	case OUT_ALPHA_ARRAY:
 		strncat(achFile,"alpha",256);
-            break;
+        break;
 	case OUT_DIVV_ARRAY:
-            strncat(achFile,"divv",256);
-            break;
+        strncat(achFile,"divv",256);
+        break;
 	case OUT_DVDS_ARRAY:
-            strncat(achFile,"dvds",256);
-            break;
+        strncat(achFile,"dvds",256);
+        break;
 	case OUT_SURFACEAREA_ARRAY:
-            strncat(achFile,"area",256);
-            break;
+        strncat(achFile,"area",256);
+        break;
 #ifdef DRHODT
 	case OUT_DIVV_T_ARRAY:
-            strncat(achFile,"divvt",256);
-            break;
+        strncat(achFile,"divvt",256);
+        break;
 	case OUT_DIVV_CORRECTOR_ARRAY:
-            strncat(achFile,"divvcorr",256);
-            break;
+        strncat(achFile,"divvcorr",256);
+        break;
 #endif
 	case OUT_IACTIVE_ARRAY:
-            strncat(achFile,"ia",256);
-            break;
+        strncat(achFile,"ia",256);
+        break;
 	case OUT_CSOUND_ARRAY:
-            strncat(achFile,"c",256);
-            break;
+        strncat(achFile,"c",256);
+        break;
 	case OUT_MUMAX_ARRAY:
-            strncat(achFile,"mumax",256);
-            break;
+        strncat(achFile,"mumax",256);
+        break;
 	case OUT_DIVONCONH_ARRAY:
-            strncat(achFile,"dch",256);
-            break;
+        strncat(achFile,"dch",256);
+        break;
 	case OUT_DIVONCONX_ARRAY:
-            strncat(achFile,"dcx",256);
-            break;
+        strncat(achFile,"dcx",256);
+        break;
     case OUT_UDOTHYDRO_ARRAY:
-            strncat(achFile,"uDotHydro",256);
-            break;
+        strncat(achFile,"uDotHydro",256);
+        break;
     case OUT_PDVRFC_ARRAY:
-            strncat(achFile,"PdVRFC",256);
-            break;
+        strncat(achFile,"PdVRFC",256);
+        break;
 	case OUT_UDOTPDV_ARRAY:
-	        strncat(achFile,"uDotPdV",256);
-            break;
+        strncat(achFile,"uDotPdV",256);
+        break;
 	case OUT_UDOTAV_ARRAY:
-	        strncat(achFile,"uDotAV",256);
-            break;	
+        strncat(achFile,"uDotAV",256);
+        break;	
 	case OUT_UDOTDIFF_ARRAY:
-	        strncat(achFile,"uDotDiff",256);
-            break;
-case OUT_METALS_ARRAY:
+        strncat(achFile,"uDotDiff",256);
+        break;
+    case OUT_METALS_ARRAY:
 	    strncat(achFile,"Metals",256);
-            break;
+        break;
 #ifdef DIFFUSION
 	case OUT_METALSDOT_ARRAY:
 	    strncat(achFile,"Metalsdot",256);
-            break;
+        break;
 #endif
 #ifdef SHOCKTRACK
 	case OUT_SHOCKTRACKER_ARRAY:
-	        strncat(achFile,"ST",256);
-            break;
+        strncat(achFile,"ST",256);
+        break;
 	case OUT_DIVRHOV_ARRAY:
-	        strncat(achFile,"divrhov",256);
-            break;
+        strncat(achFile,"divrhov",256);
+        break;
 #endif
 	case OUT_SIGMA2_ARRAY:
 	    strncat(achFile,"sigma2",256);
-            break;
+        break;
 #ifdef STARFORM
 	case OUT_IGASORDER_ARRAY:
 	    strncat(achFile,"igasorder",256);
-            break;
+        break;
 	case OUT_TIMEFORM_ARRAY:
 	    strncat(achFile,"timeform",256);
-            break;
+        break;
 	case OUT_MASSFORM_ARRAY:
 	    strncat(achFile,"massform",256);
-            break;
+        break;
 	case OUT_COOLTURNONTIME_ARRAY:
 	    strncat(achFile,"coolontime",256);
-            break;
+        break;
 	case OUT_OXYGENMASSFRAC_ARRAY:
 	    strncat(achFile,"OxMassFrac",256);
-            break;
+        break;
 	case OUT_IRONMASSFRAC_ARRAY:
 	    strncat(achFile,"FeMassFrac",256);
-            break;
+        break;
 #ifdef DIFFUSION
 	case OUT_OXYGENMASSFRACDOT_ARRAY:
 	    strncat(achFile,"OxMassFracdot",256);
-            break;
+        break;
 	case OUT_IRONMASSFRACDOT_ARRAY:
 	    strncat(achFile,"FeMassFracdot",256);
-            break;
+        break;
 #endif
 	case OUT_UDOTFB_ARRAY:
 	    strncat(achFile,"uDotFB",256);
@@ -562,64 +597,64 @@ case OUT_METALS_ARRAY:
 #ifdef SIMPLESF
 	case OUT_TCOOLAGAIN_ARRAY:
 		strncat(achFile,"tCoolAgain",256);
-            break;
+        break;
 	case OUT_MSTAR_ARRAY:
 		strncat(achFile,"mStar",256);
-            break;
+        break;
 #endif
 	case OUT_SPHH_ARRAY:
 		strncat(achFile,"SPHH",256);
-            break;
+        break;
 #endif
 	case OUT_H_ARRAY:
 		strncat(achFile,"smoothlength",256);
-            break;
+        break;
 	case OUT_POS_VECTOR:
 	    strncat(achFile,"pos",256);
-            break;
+        break;
 	case OUT_VEL_VECTOR:
 	    strncat(achFile,"vel",256);
-            break;
+        break;
 	case OUT_ACCEL_VECTOR:
 	    strncat(achFile,"acc",256);
-            break;
+        break;
 	case OUT_ACCELG_VECTOR:
 	    strncat(achFile,"accg",256);
-            break;
+        break;
 	case OUT_ACCELRFC_VECTOR:
 	    strncat(achFile,"accRFC",256);
-            break;
+        break;
 	case OUT_CURLV_VECTOR:
 	    strncat(achFile,"curl",256);
-            break;
+        break;
 	case OUT_NORMAL_VECTOR:
 	    strncat(achFile,"norm",256);
-            break;
+        break;
 #ifdef NEED_VPRED
 	case OUT_VPRED_VECTOR:
 	    strncat(achFile,"vpred",256);
-            break;
+        break;
 #endif
 #if defined(GASOLINE)
 #if defined(SHOCKTRACK)
 	case OUT_GRADRHO_VECTOR:
 		strncat(achFile,"gradrho",256);
-            break;
+        break;
 	case OUT_ACCELPRES_VECTOR:
 	    strncat(achFile,"accp",256);
-            break;
+        break;
 #endif
 	case OUT_ANGMOM_VECTOR:
 	    strncat(achFile,"angmom",256);
-            break;
+        break;
 #endif
 	default:
-            assert(1);
+        assert(1);
 		}
 	}
 
 void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int nStarStart, int iVecType, int *pnOut, float minValue[3][3], float maxValue[3][3], double duTFac, double dvFac)
-{
+    {
     FILE *gasFp = NULL, *darkFp = NULL, *starFp = NULL;
     float fOut, min[3][3], max[3][3];
     int i, iDim, nDim, headerlength;
@@ -638,54 +673,54 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     nGas = pkd->nGas; nDark = pkd->nDark; nStar = pkd->nStar;
     switch (iVecType){
 	    /* Gas only floats */
-        case OUT_COOLTURNONTIME_ARRAY:
-        case OUT_DIVV_ARRAY:
-        case OUT_DVDS_ARRAY:
-        case OUT_TCOOLAGAIN_ARRAY:
-        case OUT_MSTAR_ARRAY:
-        case OUT_COOL_ARRAY0:
-        case OUT_COOL_ARRAY1:
-        case OUT_COOL_ARRAY2:
+    case OUT_COOLTURNONTIME_ARRAY:
+    case OUT_DIVV_ARRAY:
+    case OUT_DVDS_ARRAY:
+    case OUT_TCOOLAGAIN_ARRAY:
+    case OUT_MSTAR_ARRAY:
+    case OUT_COOL_ARRAY0:
+    case OUT_COOL_ARRAY1:
+    case OUT_COOL_ARRAY2:
 #ifdef COOLING_MOLECULARH
-        case OUT_COOL_ARRAY3:
-        case OUT_CORREL_ARRAY: 
+    case OUT_COOL_ARRAY3:
+    case OUT_CORREL_ARRAY: 
 #endif
 #ifdef RADIATIVEBOX
-        case OUT_COOL_LYMANWERNER_ARRAY:
+    case OUT_COOL_LYMANWERNER_ARRAY:
 #endif
-        case OUT_SPHH_ARRAY:
-        case OUT_TEMP_ARRAY:
-        case OUT_GASDENSITY_ARRAY:
-        case OUT_UDOTHYDRO_ARRAY:
-        case OUT_UDOTPDV_ARRAY:
-        case OUT_UDOTAV_ARRAY:
-        case OUT_UDOTDIFF_ARRAY:
-        case OUT_PRES_ARRAY:
-        case OUT_BALSARASWITCH_ARRAY:
-        case OUT_SPHDT_ARRAY:
-        case OUT_CSOUND_ARRAY:
-        case OUT_MUMAX_ARRAY:
-        case OUT_METALSDOT_ARRAY:
-        case OUT_OXYGENMASSFRACDOT_ARRAY:
-        case OUT_IRONMASSFRACDOT_ARRAY:
-        case OUT_COOL_EDOT_ARRAY:
-        case OUT_COOL_COOLING_ARRAY:
-        case OUT_COOL_HEATING_ARRAY:
-        case OUT_CURLV_VECTOR:
-            nDark=nStar=0;
-            break;
-        case OUT_IGASORDER_ARRAY:
-        case OUT_TIMEFORM_ARRAY:
-        case OUT_MASSFORM_ARRAY:
-        case OUT_ANGMOM_VECTOR:
-            nGas=nDark=0;
-            break;
-        case OUT_METALS_ARRAY:
-        case OUT_OXYGENMASSFRAC_ARRAY:
-        case OUT_IRONMASSFRAC_ARRAY:
-        case OUT_UDOTFB_ARRAY:
-            nDark=0;
-            break;
+    case OUT_SPHH_ARRAY:
+    case OUT_TEMP_ARRAY:
+    case OUT_GASDENSITY_ARRAY:
+    case OUT_UDOTHYDRO_ARRAY:
+    case OUT_UDOTPDV_ARRAY:
+    case OUT_UDOTAV_ARRAY:
+    case OUT_UDOTDIFF_ARRAY:
+    case OUT_PRES_ARRAY:
+    case OUT_BALSARASWITCH_ARRAY:
+    case OUT_SPHDT_ARRAY:
+    case OUT_CSOUND_ARRAY:
+    case OUT_MUMAX_ARRAY:
+    case OUT_METALSDOT_ARRAY:
+    case OUT_OXYGENMASSFRACDOT_ARRAY:
+    case OUT_IRONMASSFRACDOT_ARRAY:
+    case OUT_COOL_EDOT_ARRAY:
+    case OUT_COOL_COOLING_ARRAY:
+    case OUT_COOL_HEATING_ARRAY:
+    case OUT_CURLV_VECTOR:
+        nDark=nStar=0;
+        break;
+    case OUT_IGASORDER_ARRAY:
+    case OUT_TIMEFORM_ARRAY:
+    case OUT_MASSFORM_ARRAY:
+    case OUT_ANGMOM_VECTOR:
+        nGas=nDark=0;
+        break;
+    case OUT_METALS_ARRAY:
+    case OUT_OXYGENMASSFRAC_ARRAY:
+    case OUT_IRONMASSFRAC_ARRAY:
+    case OUT_UDOTFB_ARRAY:
+        nDark=0;
+        break;
         }
         
     /*
@@ -736,48 +771,48 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     switch (iVecType) {
 #ifdef STARFORM
 	case OUT_IGASORDER_ARRAY:
-	  if(nStar) {
-	    pkdGenericSeek(pkd,starFp, nStarStart, headerlength, 4);
+        if(nStar) {
+            pkdGenericSeek(pkd,starFp, nStarStart, headerlength, 4);
             for (i=0;i<pkd->nLocal;++i) {
                 if (pkdIsStar(pkd,&pkd->pStore[i])) {
                     xdr_int(&starXdrs,&(pkd->pStore[i].iGasOrder));
-		    nOut++;
+                    nOut++;
                     min[2][0] = (pkd->pStore[i].iOrder > min[2][0]) ? min[2][0]: pkd->pStore[i].iOrder;
                     max[2][0] = (pkd->pStore[i].iOrder < max[2][0]) ? max[2][0]: pkd->pStore[i].iOrder;
                     }
                 }
-	    }
+            }
 	    break;
 #endif
-        case OUT_IORDER_ARRAY:
-            if(nGas) pkdGenericSeek(pkd,gasFp, nGasStart,headerlength, 4);
-            if(nDark) pkdGenericSeek(pkd,darkFp, nDarkStart,headerlength, 4);
-            if(nStar) pkdGenericSeek(pkd,starFp, nStarStart,headerlength, 4);
-            for (i=0;i<pkd->nLocal;++i) {
-                if (nGas && pkdIsGas(pkd,&pkd->pStore[i])) {
-                    xdr_int(&gasXdrs,&(pkd->pStore[i].iOrder));
-		    nOut++;
-                    min[0][0] = (pkd->pStore[i].iOrder > min[0][0]) ? min[0][0]: pkd->pStore[i].iOrder;
-                    max[0][0] = (pkd->pStore[i].iOrder < max[0][0]) ? max[0][0]: pkd->pStore[i].iOrder;
-                    }
-                if (nDark && pkdIsDark(pkd,&pkd->pStore[i])) { 
-                    xdr_int(&darkXdrs,&(pkd->pStore[i].iOrder));
-		    nOut++;
-                    min[1][0] = (pkd->pStore[i].iOrder > min[1][0]) ? min[1][0]: pkd->pStore[i].iOrder;
-                    max[1][0] = (pkd->pStore[i].iOrder < max[1][0]) ? max[1][0]: pkd->pStore[i].iOrder;
-                    }
-                if (nStar && pkdIsStar(pkd,&pkd->pStore[i])) {
-                    xdr_int(&starXdrs,&(pkd->pStore[i].iOrder));
-		    nOut++;
-                    min[2][0] = (pkd->pStore[i].iOrder > min[2][0]) ? min[2][0]: pkd->pStore[i].iOrder;
-                    max[2][0] = (pkd->pStore[i].iOrder < max[2][0]) ? max[2][0]: pkd->pStore[i].iOrder;
-                    }
+    case OUT_IORDER_ARRAY:
+        if(nGas) pkdGenericSeek(pkd,gasFp, nGasStart,headerlength, 4);
+        if(nDark) pkdGenericSeek(pkd,darkFp, nDarkStart,headerlength, 4);
+        if(nStar) pkdGenericSeek(pkd,starFp, nStarStart,headerlength, 4);
+        for (i=0;i<pkd->nLocal;++i) {
+            if (nGas && pkdIsGas(pkd,&pkd->pStore[i])) {
+                xdr_int(&gasXdrs,&(pkd->pStore[i].iOrder));
+                nOut++;
+                min[0][0] = (pkd->pStore[i].iOrder > min[0][0]) ? min[0][0]: pkd->pStore[i].iOrder;
+                max[0][0] = (pkd->pStore[i].iOrder < max[0][0]) ? max[0][0]: pkd->pStore[i].iOrder;
                 }
-            break;
+            if (nDark && pkdIsDark(pkd,&pkd->pStore[i])) { 
+                xdr_int(&darkXdrs,&(pkd->pStore[i].iOrder));
+                nOut++;
+                min[1][0] = (pkd->pStore[i].iOrder > min[1][0]) ? min[1][0]: pkd->pStore[i].iOrder;
+                max[1][0] = (pkd->pStore[i].iOrder < max[1][0]) ? max[1][0]: pkd->pStore[i].iOrder;
+                }
+            if (nStar && pkdIsStar(pkd,&pkd->pStore[i])) {
+                xdr_int(&starXdrs,&(pkd->pStore[i].iOrder));
+                nOut++;
+                min[2][0] = (pkd->pStore[i].iOrder > min[2][0]) ? min[2][0]: pkd->pStore[i].iOrder;
+                max[2][0] = (pkd->pStore[i].iOrder < max[2][0]) ? max[2][0]: pkd->pStore[i].iOrder;
+                }
+            }
+        break;
 #ifdef GASOLINE				
-        case OUT_TEMP_ARRAY:
-        case OUT_GASDENSITY_ARRAY:
-	  if(nGas) {
+    case OUT_TEMP_ARRAY:
+    case OUT_GASDENSITY_ARRAY:
+        if(nGas) {
             pkdGenericSeek(pkd,gasFp, nGasStart,headerlength,sizeof(pkd->pStore[i].iOrder));
             for (i=0;i<pkd->nLocal;++i) {
                 if (pkdIsGas(pkd,&pkd->pStore[i])) {
@@ -785,42 +820,42 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
                     min[0][0] = (fOut > min[0][0]) ? min[0][0]: fOut;
                     max[0][0] = (fOut < max[0][0]) ? max[0][0]: fOut;
                     xdr_float(&gasXdrs,&fOut);
-		    nOut++;
+                    nOut++;
                     }
                 }
-	    }
-            break;
+            }
+        break;
 #endif
-        default:
-            if(nGas) pkdGenericSeek(pkd,gasFp, ((long)nGasStart)*nDim,
-                                headerlength,sizeof(fOut));
-            if(nDark) pkdGenericSeek(pkd,darkFp, ((long)nDarkStart)*nDim,
-                                headerlength,sizeof(fOut));
-            if(nStar) pkdGenericSeek(pkd,starFp, ((long)nStarStart)*nDim,
-                                headerlength,sizeof(fOut));
-            for (i=0;i<pkd->nLocal;++i) {
-                for (iDim = 0; iDim <nDim; iDim++) {
-                    fOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
-                    if (nGas && pkdIsGas(pkd,&pkd->pStore[i])) {
-                        xdr_float(&gasXdrs,&fOut);
-			nOut++;
-                        min[0][iDim] = (fOut > min[0][iDim]) ? min[0][iDim]: fOut;
-                        max[0][iDim] = (fOut < max[0][iDim]) ? max[0][iDim]: fOut;
-                        }
-                    if (nDark && pkdIsDark(pkd,&pkd->pStore[i])) {
-                        xdr_float(&darkXdrs,&fOut);
-			nOut++;
-                        min[1][iDim] = (fOut > min[1][iDim]) ? min[1][iDim]: fOut;
-                        max[1][iDim] = (fOut < max[1][iDim]) ? max[1][iDim]: fOut;
-                        }
-                    if (nStar && pkdIsStar(pkd,&pkd->pStore[i])) {
-                        xdr_float(&starXdrs,&fOut);
-			nOut++;
-                        min[2][iDim] = (fOut > min[2][iDim]) ? min[2][iDim]: fOut;
-                        max[2][iDim] = (fOut < max[2][iDim]) ? max[2][iDim]: fOut;
-                        }
+    default:
+        if(nGas) pkdGenericSeek(pkd,gasFp, ((long)nGasStart)*nDim,
+            headerlength,sizeof(fOut));
+        if(nDark) pkdGenericSeek(pkd,darkFp, ((long)nDarkStart)*nDim,
+            headerlength,sizeof(fOut));
+        if(nStar) pkdGenericSeek(pkd,starFp, ((long)nStarStart)*nDim,
+            headerlength,sizeof(fOut));
+        for (i=0;i<pkd->nLocal;++i) {
+            for (iDim = 0; iDim <nDim; iDim++) {
+                fOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
+                if (nGas && pkdIsGas(pkd,&pkd->pStore[i])) {
+                    xdr_float(&gasXdrs,&fOut);
+                    nOut++;
+                    min[0][iDim] = (fOut > min[0][iDim]) ? min[0][iDim]: fOut;
+                    max[0][iDim] = (fOut < max[0][iDim]) ? max[0][iDim]: fOut;
+                    }
+                if (nDark && pkdIsDark(pkd,&pkd->pStore[i])) {
+                    xdr_float(&darkXdrs,&fOut);
+                    nOut++;
+                    min[1][iDim] = (fOut > min[1][iDim]) ? min[1][iDim]: fOut;
+                    max[1][iDim] = (fOut < max[1][iDim]) ? max[1][iDim]: fOut;
+                    }
+                if (nStar && pkdIsStar(pkd,&pkd->pStore[i])) {
+                    xdr_float(&starXdrs,&fOut);
+                    nOut++;
+                    min[2][iDim] = (fOut > min[2][iDim]) ? min[2][iDim]: fOut;
+                    max[2][iDim] = (fOut < max[2][iDim]) ? max[2][iDim]: fOut;
                     }
                 }
+            }
         }
     if(nDark) xdr_destroy(&darkXdrs);
     if(nGas) xdr_destroy(&gasXdrs);
@@ -838,7 +873,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     }
 
 void xdr_FLOAT(XDR *xdrs, FLOAT *fIn) 
-{
+    {
 #ifdef SINGLE
     xdr_float(xdrs, fIn);
 #else
@@ -847,7 +882,7 @@ void xdr_FLOAT(XDR *xdrs, FLOAT *fIn)
     }
 
 void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,int iBinaryOutput, int N, int bStandard)
-{
+    {
     FILE *fp;
     FLOAT fOut;
     float FloatOut;
@@ -867,257 +902,257 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
         mdlassert(pkd->mdl,fp != NULL);
         }
     /*
-     ** Write Vector Elements!
-     */
+    ** Write Vector Elements!
+    */
     if( bStandard && iBinaryOutput ){
         XDR xdrs;
         xdrstdio_create(&xdrs,fp,XDR_ENCODE);
         switch (iBinaryOutput) {
-            case 1:
-                if (iDim < 0) {
-                    pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(FloatOut));
-                    for (i=0;i<pkd->nLocal;++i) {
-                        FloatOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
-                        xdr_float(&xdrs,&FloatOut);
-                        FloatOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
-                        xdr_float(&xdrs,&FloatOut);
-                        FloatOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
-                        xdr_float(&xdrs,&FloatOut);
-                        }
-                    } else {
-                    switch (iVecType) {
-#ifdef STARFORM
-                        case OUT_IGASORDER_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(IntOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                xdr_int(&xdrs,&(pkd->pStore[i].iGasOrder));
-                                }
-                            break;
-#endif
-                        case OUT_IORDER_ARRAY:
-                            pkdGenericSeek(pkd,fp,nStart, sizeof(int), sizeof(IntOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                xdr_int(&xdrs,&(pkd->pStore[i].iOrder));
-                                }
-                            break;
-                        default:
-                            pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(FloatOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                FloatOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
-                                xdr_float(&xdrs,&FloatOut);
-                                }
-                        }
+        case 1:
+            if (iDim < 0) {
+                pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(FloatOut));
+                for (i=0;i<pkd->nLocal;++i) {
+                    FloatOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
+                    xdr_float(&xdrs,&FloatOut);
+                    FloatOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
+                    xdr_float(&xdrs,&FloatOut);
+                    FloatOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
+                    xdr_float(&xdrs,&FloatOut);
                     }
+                } else {
+                switch (iVecType) {
+#ifdef STARFORM
+                case OUT_IGASORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(IntOut));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_int(&xdrs,&(pkd->pStore[i].iGasOrder));
+                        }
                     break;
-            case 2:
-                if (iDim < 0) {
-                    pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(DoubleOut));
-                    for (i=0;i<pkd->nLocal;++i) {
-                        DoubleOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
-                        xdr_double(&xdrs,&DoubleOut);
-                        DoubleOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
-                        xdr_double(&xdrs,&DoubleOut);
-                        DoubleOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
-                        xdr_double(&xdrs,&DoubleOut);
-                        }
-                        
-                    } else {
-                    switch (iVecType) {
-#ifdef STARFORM
-                        case OUT_IGASORDER_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                LongOut = pkd->pStore[i].iGasOrder;
-                                xdr_long(&xdrs,&LongOut);
-                                }
-                            break;
 #endif
-                        case OUT_IORDER_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                LongOut = pkd->pStore[i].iOrder;
-                                xdr_long(&xdrs,&LongOut);
-                                }
-                            break;
-                        default:
-                            pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(DoubleOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                DoubleOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
-                                xdr_double(&xdrs,&DoubleOut);
-                                }
+                case OUT_IORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp,nStart, sizeof(int), sizeof(IntOut));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_int(&xdrs,&(pkd->pStore[i].iOrder));
+                        }
+                    break;
+                default:
+                    pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(FloatOut));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        FloatOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
+                        xdr_float(&xdrs,&FloatOut);
                         }
                     }
-                break;
-            case 3:
-                if (iDim < 0) {
-                    pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(fOut));
-                    for (i=0;i<pkd->nLocal;++i) {
-                        fOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
-                        xdr_FLOAT(&xdrs,&fOut);
-                        fOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
-                        xdr_FLOAT(&xdrs,&fOut);
-                        fOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
-                        xdr_FLOAT(&xdrs,&fOut);
-                        }
-                    } else {
-                    switch (iVecType) {
-#ifdef STARFORM
-                        case OUT_IGASORDER_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart, sizeof(int), sizeof(pkd->pStore[i].iGasOrder));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                xdr_int(&xdrs,&(pkd->pStore[i].iGasOrder));
-                                }
-                            break;
-#endif
-                        case OUT_IORDER_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(pkd->pStore[i].iOrder));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                xdr_int(&xdrs,&(pkd->pStore[i].iOrder));
-                                }
-                            break;
-                        default:
-                                pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(fOut));
-                                for (i=0;i<pkd->nLocal;++i) {
-                                        fOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
-                                        xdr_FLOAT(&xdrs,&fOut);
-                                        }
-                        }
-                    }
-                break;
                 }
+            break;
+        case 2:
+            if (iDim < 0) {
+                pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(DoubleOut));
+                for (i=0;i<pkd->nLocal;++i) {
+                    DoubleOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
+                    xdr_double(&xdrs,&DoubleOut);
+                    DoubleOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
+                    xdr_double(&xdrs,&DoubleOut);
+                    DoubleOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
+                    xdr_double(&xdrs,&DoubleOut);
+                    }
+                        
+                } else {
+                switch (iVecType) {
+#ifdef STARFORM
+                case OUT_IGASORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        LongOut = pkd->pStore[i].iGasOrder;
+                        xdr_long(&xdrs,&LongOut);
+                        }
+                    break;
+#endif
+                case OUT_IORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        LongOut = pkd->pStore[i].iOrder;
+                        xdr_long(&xdrs,&LongOut);
+                        }
+                    break;
+                default:
+                    pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(DoubleOut));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        DoubleOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
+                        xdr_double(&xdrs,&DoubleOut);
+                        }
+                    }
+                }
+            break;
+        case 3:
+            if (iDim < 0) {
+                pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(fOut));
+                for (i=0;i<pkd->nLocal;++i) {
+                    fOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
+                    xdr_FLOAT(&xdrs,&fOut);
+                    fOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
+                    xdr_FLOAT(&xdrs,&fOut);
+                    fOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
+                    xdr_FLOAT(&xdrs,&fOut);
+                    }
+                } else {
+                switch (iVecType) {
+#ifdef STARFORM
+                case OUT_IGASORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart, sizeof(int), sizeof(pkd->pStore[i].iGasOrder));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_int(&xdrs,&(pkd->pStore[i].iGasOrder));
+                        }
+                    break;
+#endif
+                case OUT_IORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(pkd->pStore[i].iOrder));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_int(&xdrs,&(pkd->pStore[i].iOrder));
+                        }
+                    break;
+                default:
+                    pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(fOut));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
+                        xdr_FLOAT(&xdrs,&fOut);
+                        }
+                    }
+                }
+            break;
+            }
         }
     else {
         switch (iBinaryOutput) {
-            case 0:
-                if (iDim < 0) {
+        case 0:
+            if (iDim < 0) {
+                for (i=0;i<pkd->nLocal;++i) {
+                    fOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
+                    fprintf(fp,"%.14g\n",fOut);
+                    fOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
+                    fprintf(fp,"%.14g\n",fOut);
+                    fOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
+                    fprintf(fp,"%.14g\n",fOut);
+                    }
+                } else {
+                for (i=0;i<pkd->nLocal;++i) {
+                    fOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
+                    fprintf(fp,"%.14g\n",fOut);
+                    }
+                }
+            break;
+        case 1:
+            if (iDim < 0) {
+                pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(FloatOut));
+                for (i=0;i<pkd->nLocal;++i) {
+                    FloatOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
+                    fwrite(&FloatOut, sizeof(float), 1, fp );
+                    FloatOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
+                    fwrite(&FloatOut, sizeof(float), 1, fp );
+                    FloatOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
+                    fwrite(&FloatOut, sizeof(float), 1, fp );
+                    }
+                } else {
+                switch (iVecType) {
+#ifdef STARFORM
+                case OUT_IGASORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(IntOut));
                     for (i=0;i<pkd->nLocal;++i) {
-                        fOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
-                        fprintf(fp,"%.14g\n",fOut);
-                        fOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
-                        fprintf(fp,"%.14g\n",fOut);
-                        fOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
-                        fprintf(fp,"%.14g\n",fOut);
+                        fwrite(&(pkd->pStore[i].iGasOrder), sizeof(IntOut), 1, fp );
                         }
-                    } else {
+                    break;
+#endif
+                case OUT_IORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp,nStart, sizeof(int), sizeof(IntOut));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fwrite(&(pkd->pStore[i].iOrder), sizeof(IntOut), 1, fp );
+                        }
+                    break;
+                default:
+                    pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(FloatOut));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        FloatOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
+                        fwrite(&FloatOut, sizeof(float), 1, fp );
+                        }
+                    }
+                }
+            break;
+        case 2:
+            if (iDim < 0) {
+                pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(DoubleOut));
+                for (i=0;i<pkd->nLocal;++i) {
+                    DoubleOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
+                    fwrite(&DoubleOut, sizeof(double), 1, fp );
+                    DoubleOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
+                    fwrite(&DoubleOut, sizeof(double), 1, fp );
+                    DoubleOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
+                    fwrite(&DoubleOut, sizeof(double), 1, fp );
+                    }
+                        
+                } else {
+                switch (iVecType) {
+#ifdef STARFORM
+                case OUT_IGASORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        LongOut = pkd->pStore[i].iGasOrder;
+                        fwrite(&LongOut, sizeof(LongOut), 1, fp );
+                        }
+                    break;
+#endif
+                case OUT_IORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        LongOut = pkd->pStore[i].iOrder;
+                        fwrite(&LongOut, sizeof(LongOut), 1, fp );
+                        }
+                    break;
+                default:
+                    pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(DoubleOut));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        DoubleOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
+                        fwrite(&DoubleOut, sizeof(double), 1, fp );
+                        }
+                    }
+                }
+            break;
+        case 3:
+            if (iDim < 0) {
+                pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(fOut));
+                for (i=0;i<pkd->nLocal;++i) {
+                    fOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
+                    fwrite(&fOut, sizeof(FLOAT), 1, fp );
+                    fOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
+                    fwrite(&fOut, sizeof(FLOAT), 1, fp );
+                    fOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
+                    fwrite(&fOut, sizeof(FLOAT), 1, fp );
+                    }
+                } else {
+                switch (iVecType) {
+#ifdef STARFORM
+                case OUT_IGASORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart, sizeof(int), sizeof(pkd->pStore[i].iGasOrder));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fwrite(&(pkd->pStore[i].iGasOrder), sizeof(pkd->pStore[i].iGasOrder), 1, fp );
+                        }
+                    break;
+#endif
+                case OUT_IORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(pkd->pStore[i].iOrder));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fwrite(&(pkd->pStore[i].iOrder), sizeof(pkd->pStore[i].iOrder), 1, fp );
+                        }
+                    break;
+                default:
+                    pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(fOut));
                     for (i=0;i<pkd->nLocal;++i) {
                         fOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
-                        fprintf(fp,"%.14g\n",fOut);
-                        }
-                    }
-                    break;
-            case 1:
-                if (iDim < 0) {
-                    pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(FloatOut));
-                    for (i=0;i<pkd->nLocal;++i) {
-                        FloatOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
-                        fwrite(&FloatOut, sizeof(float), 1, fp );
-                        FloatOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
-                        fwrite(&FloatOut, sizeof(float), 1, fp );
-                        FloatOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
-                        fwrite(&FloatOut, sizeof(float), 1, fp );
-                        }
-                    } else {
-                    switch (iVecType) {
-    #ifdef STARFORM
-                        case OUT_IGASORDER_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(IntOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                fwrite(&(pkd->pStore[i].iGasOrder), sizeof(IntOut), 1, fp );
-                                }
-                            break;
-    #endif
-                        case OUT_IORDER_ARRAY:
-                            pkdGenericSeek(pkd,fp,nStart, sizeof(int), sizeof(IntOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                fwrite(&(pkd->pStore[i].iOrder), sizeof(IntOut), 1, fp );
-                                }
-                            break;
-                        default:
-                            pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(FloatOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                FloatOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
-                                fwrite(&FloatOut, sizeof(float), 1, fp );
-                                }
-                        }
-                    }
-                    break;
-            case 2:
-                if (iDim < 0) {
-                    pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(DoubleOut));
-                    for (i=0;i<pkd->nLocal;++i) {
-                        DoubleOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
-                        fwrite(&DoubleOut, sizeof(double), 1, fp );
-                        DoubleOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
-                        fwrite(&DoubleOut, sizeof(double), 1, fp );
-                        DoubleOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
-                        fwrite(&DoubleOut, sizeof(double), 1, fp );
-                        }
-                        
-                    } else {
-                    switch (iVecType) {
-    #ifdef STARFORM
-                        case OUT_IGASORDER_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                LongOut = pkd->pStore[i].iGasOrder;
-                                fwrite(&LongOut, sizeof(LongOut), 1, fp );
-                                }
-                            break;
-    #endif
-                        case OUT_IORDER_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                LongOut = pkd->pStore[i].iOrder;
-                                fwrite(&LongOut, sizeof(LongOut), 1, fp );
-                                }
-                            break;
-                        default:
-                            pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(DoubleOut));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                DoubleOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
-                                fwrite(&DoubleOut, sizeof(double), 1, fp );
-                                }
-                        }
-                    }
-                break;
-            case 3:
-                if (iDim < 0) {
-                    pkdGenericSeek(pkd,fp, ((long)nStart)*3,sizeof(int),sizeof(fOut));
-                    for (i=0;i<pkd->nLocal;++i) {
-                        fOut = VecType(pkd, &pkd->pStore[i],0,iVecType);
-                        fwrite(&fOut, sizeof(FLOAT), 1, fp );
-                        fOut = VecType(pkd, &pkd->pStore[i],1,iVecType);
-                        fwrite(&fOut, sizeof(FLOAT), 1, fp );
-                        fOut = VecType(pkd, &pkd->pStore[i],2,iVecType);
                         fwrite(&fOut, sizeof(FLOAT), 1, fp );
                         }
-                    } else {
-                    switch (iVecType) {
-    #ifdef STARFORM
-                        case OUT_IGASORDER_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart, sizeof(int), sizeof(pkd->pStore[i].iGasOrder));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                fwrite(&(pkd->pStore[i].iGasOrder), sizeof(pkd->pStore[i].iGasOrder), 1, fp );
-                                }
-                            break;
-    #endif
-                        case OUT_IORDER_ARRAY:
-                            pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(pkd->pStore[i].iOrder));
-                            for (i=0;i<pkd->nLocal;++i) {
-                                fwrite(&(pkd->pStore[i].iOrder), sizeof(pkd->pStore[i].iOrder), 1, fp );
-                                }
-                            break;
-                        default:
-                                pkdGenericSeek(pkd,fp, ((long)N)*iDim+nStart,sizeof(int),sizeof(fOut));
-                                for (i=0;i<pkd->nLocal;++i) {
-                                        fOut = VecType(pkd, &pkd->pStore[i],iDim,iVecType);
-                                        fwrite(&fOut, sizeof(FLOAT), 1, fp );
-                                        }
-                        }
                     }
-                break;
                 }
+            break;
             }
+        }
 
 	i = fclose(fp);
 	if (i != 0) {
@@ -1125,3 +1160,296 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
 		exit(1);
 		}
 	}
+
+void pkdInVector(PKD pkd,char *pszFileName,int nStart, int nLocal, int iDim,int iVecType,int iBinaryInput, int N, int bStandard)
+    {
+    FILE *fp;
+    FLOAT fIn;
+    float FloatIn;
+    double DoubleIn;
+    int IntIn;
+    long LongIn;
+    int i;
+    char vecFileName[256];
+#ifdef CHECKSANITY
+    int nProb=0;
+#endif
+
+    assert(pkd->nLocal == nLocal);
+ 
+    strcpy(vecFileName, pszFileName);
+    strcat(vecFileName, ".");
+    VecFilename(vecFileName,iVecType);
+//    printf("id %d opening %s\n",pkd->idSelf,vecFileName);
+    fp = fopen(vecFileName,"r");
+    mdlassert(pkd->mdl,fp != NULL);
+/*
+** Read Vector Elements!
+*/
+    if( bStandard && iBinaryInput ){
+        XDR xdrs;
+        xdrstdio_create(&xdrs,fp,XDR_DECODE);
+        switch (iBinaryInput) {
+        case 1:
+            if (iDim < 0) {
+                pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(FloatIn));
+                for (i=0;i<pkd->nLocal;++i) {
+                    xdr_float(&xdrs,&FloatIn);
+                    VecInType(pkd, &pkd->pStore[i],0,iVecType,FloatIn);
+                    xdr_float(&xdrs,&FloatIn);
+                    VecInType(pkd, &pkd->pStore[i],1,iVecType,FloatIn);
+                    xdr_float(&xdrs,&FloatIn);
+                    VecInType(pkd, &pkd->pStore[i],2,iVecType,FloatIn);
+                    }
+                } else {
+                switch (iVecType) {
+#ifdef STARFORM
+                case OUT_IGASORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(IntIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_int(&xdrs,&(pkd->pStore[i].iGasOrder));
+                        }
+                    break;
+#endif
+                case OUT_IORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp,nStart, sizeof(int), sizeof(IntIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_int(&xdrs,&(pkd->pStore[i].iOrder));
+/*			    if (i<10) fprintf(stderr,"Proc %d %d read %d,  iOrder %d\n",pkd->idSelf,nStart,i,pkd->pStore[i].iOrder); */
+                        }
+                    break;
+                default:
+                    pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(FloatIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_float(&xdrs,&FloatIn);
+                        CHECKSANEFIX( nProb, FloatIn, ISFINITE(FloatIn) );
+                        VecInType(pkd, &pkd->pStore[i],2,iVecType,FloatIn);
+                        }
+                    }
+                }
+            break;
+        case 2:
+            if (iDim < 0) {
+                pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(DoubleIn));
+                for (i=0;i<pkd->nLocal;++i) {
+                    xdr_double(&xdrs,&DoubleIn);
+                    VecInType(pkd, &pkd->pStore[i],0,iVecType,DoubleIn);
+                    xdr_double(&xdrs,&DoubleIn);
+                    VecInType(pkd, &pkd->pStore[i],1,iVecType,DoubleIn);
+                    xdr_double(&xdrs,&DoubleIn);
+                    VecInType(pkd, &pkd->pStore[i],2,iVecType,DoubleIn);
+                    }
+                        
+                } else {
+                switch (iVecType) {
+#ifdef STARFORM
+                case OUT_IGASORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_long(&xdrs,&LongIn);
+                        pkd->pStore[i].iGasOrder = LongIn;
+                        }
+                    break;
+#endif
+                case OUT_IORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_long(&xdrs,&LongIn);
+                        pkd->pStore[i].iOrder = LongIn;
+                        }
+                    break;
+                default:
+                    pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(DoubleIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_double(&xdrs,&DoubleIn);
+                        VecInType(pkd, &pkd->pStore[i],iDim,iVecType,DoubleIn);
+                        }
+                    }
+                }
+            break;
+        case 3:
+            if (iDim < 0) {
+                pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(fIn));
+                for (i=0;i<pkd->nLocal;++i) {
+                    xdr_FLOAT(&xdrs,&fIn);
+                    VecInType(pkd, &pkd->pStore[i],0,iVecType,fIn);
+                    xdr_FLOAT(&xdrs,&fIn);
+                    VecInType(pkd, &pkd->pStore[i],1,iVecType,fIn);
+                    xdr_FLOAT(&xdrs,&fIn);
+                    VecInType(pkd, &pkd->pStore[i],2,iVecType,fIn);
+                    }
+                } else {
+                switch (iVecType) {
+#ifdef STARFORM
+                case OUT_IGASORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart, sizeof(int), sizeof(pkd->pStore[i].iGasOrder));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_int(&xdrs,&(pkd->pStore[i].iGasOrder));
+                        }
+                    break;
+#endif
+                case OUT_IORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(pkd->pStore[i].iOrder));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_int(&xdrs,&(pkd->pStore[i].iOrder));
+                        }
+                    break;
+                default:
+                    pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(fIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        xdr_FLOAT(&xdrs,&fIn);
+                        VecInType(pkd, &pkd->pStore[i],iDim,iVecType,fIn);
+                        }
+                    }
+                }
+            break;
+            }
+        }
+    else {
+        switch (iBinaryInput) {
+        case 0:
+            if (iDim < 0) {
+                for (i=0;i<pkd->nLocal;++i) {
+                    fscanf(fp,"%lg\n",&fIn);
+                    VecInType(pkd, &pkd->pStore[i],0,iVecType,fIn);
+                    fscanf(fp,"%lg\n",&fIn);
+                    VecInType(pkd, &pkd->pStore[i],1,iVecType,fIn);
+                    fscanf(fp,"%lg\n",&fIn);
+                    VecInType(pkd, &pkd->pStore[i],2,iVecType,fIn);
+                    }
+                } else {
+                for (i=0;i<pkd->nLocal;++i) {
+                    fscanf(fp,"%lg\n",&fIn);
+                    VecInType(pkd, &pkd->pStore[i],iDim,iVecType,fIn);
+                    }
+                }
+            break;
+        case 1:
+            if (iDim < 0) {
+                pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(FloatIn));
+                for (i=0;i<pkd->nLocal;++i) { 
+                    fread(&FloatIn, sizeof(float), 1, fp );
+                    VecInType(pkd, &pkd->pStore[i],0,iVecType, FloatIn);
+                    fread(&FloatIn, sizeof(float), 1, fp );
+                    VecInType(pkd, &pkd->pStore[i],1, iVecType, FloatIn);
+                    fread(&FloatIn, sizeof(float), 1, fp );
+                    VecInType(pkd, &pkd->pStore[i],2, iVecType, FloatIn);
+                    }
+                } else {
+                switch (iVecType) {
+#ifdef STARFORM
+                case OUT_IGASORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(IntIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fread(&(pkd->pStore[i].iGasOrder), sizeof(IntIn), 1, fp );
+                        }
+                    break;
+#endif
+                case OUT_IORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp,nStart, sizeof(int), sizeof(IntIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fread(&(pkd->pStore[i].iOrder), sizeof(IntIn), 1, fp );
+                        }
+                    break;
+                default:
+                    pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(FloatIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fread(&FloatIn, sizeof(float), 1, fp );
+                        CHECKSANEFIX( nProb, FloatIn, ISFINITE(FloatIn) );
+                        VecInType(pkd, &pkd->pStore[i],iDim,iVecType,FloatIn);
+                        }
+                    }
+                }
+            break;
+        case 2:
+            if (iDim < 0) {
+                pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(DoubleIn));
+                for (i=0;i<pkd->nLocal;++i) {
+                    fread(&DoubleIn, sizeof(double), 1, fp );
+                    VecInType(pkd, &pkd->pStore[i],0,iVecType, DoubleIn);
+                    fread(&DoubleIn, sizeof(double), 1, fp );
+                    VecInType(pkd, &pkd->pStore[i],1,iVecType, DoubleIn);
+                    fread(&DoubleIn, sizeof(double), 1, fp );
+                    VecInType(pkd, &pkd->pStore[i],2,iVecType, DoubleIn);
+                    }
+                        
+                } else {
+                switch (iVecType) {
+#ifdef STARFORM
+                case OUT_IGASORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fread(&LongIn, sizeof(LongIn), 1, fp );
+                        pkd->pStore[i].iGasOrder = LongIn;
+                        }
+                    break;
+#endif
+                case OUT_IORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fread(&LongIn, sizeof(LongIn), 1, fp );
+                        pkd->pStore[i].iOrder = LongIn;
+                        }
+                    break;
+                default:
+                    pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(DoubleIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fread(&DoubleIn, sizeof(double), 1, fp );
+                        VecInType(pkd, &pkd->pStore[i],iDim,iVecType,DoubleIn);
+                        }
+                    }
+                }
+            break;
+        case 3:
+            if (iDim < 0) {
+                pkdGenericSeek(pkd,fp, nStart*3,sizeof(int),sizeof(fIn));
+                for (i=0;i<pkd->nLocal;++i) {
+                    fread(&fIn, sizeof(FLOAT), 1, fp );
+                    VecInType(pkd, &pkd->pStore[i],0,iVecType, fIn);
+                    fread(&fIn, sizeof(FLOAT), 1, fp );
+                    VecInType(pkd, &pkd->pStore[i],1,iVecType, fIn);
+                    fread(&fIn, sizeof(FLOAT), 1, fp );
+                    VecInType(pkd, &pkd->pStore[i],2,iVecType, fIn);
+                    }
+                } else {
+                switch (iVecType) {
+#ifdef STARFORM
+                case OUT_IGASORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart, sizeof(int), sizeof(pkd->pStore[i].iGasOrder));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fread(&(pkd->pStore[i].iGasOrder), sizeof(pkd->pStore[i].iGasOrder), 1, fp );
+                        }
+                    break;
+#endif
+                case OUT_IORDER_ARRAY:
+                    pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(pkd->pStore[i].iOrder));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fread(&(pkd->pStore[i].iOrder), sizeof(pkd->pStore[i].iOrder), 1, fp );
+                        }
+                    break;
+                default:
+                    pkdGenericSeek(pkd,fp, N*iDim+nStart,sizeof(int),sizeof(fIn));
+                    for (i=0;i<pkd->nLocal;++i) {
+                        fread(&fIn, sizeof(FLOAT), 1, fp );
+                        VecInType(pkd, &pkd->pStore[i],iDim,iVecType, fIn);
+                        }
+                    }
+                }
+            break;
+            }
+        }
+
+    i = fclose(fp);
+    if (i != 0) {
+        perror("pkdInVector: could not close file");
+        exit(1);
+        }
+
+#ifdef CHECKSANITY
+    if (nProb > 0) {
+        fprintf(stderr,"pkdInVector id %d: %d Inf/Nan Problem of %d Read\n",pkd->idSelf,nProb,pkd->nLocal);
+        }
+#endif
+
+    }
+

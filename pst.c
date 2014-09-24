@@ -80,6 +80,9 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_OUTVECTOR,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstOutVector,
 				  sizeof(struct inOutput),0);
+    mdlAddService(mdl,PST_INARRAY,pst,
+                  (void (*)(void *,void *,int,void *,int *)) pstInArray,
+                  sizeof(struct inInput),0);
 	mdlAddService(mdl,PST_WRITETIPSY,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstWriteTipsy,
 				  sizeof(struct inWriteTipsy),0);
@@ -2647,6 +2650,44 @@ void pstOutArray(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
+void pstInArray(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	LCL *plcl = pst->plcl;
+	struct inInput *in = vin;
+        int nFileStart,nFileEnd,nFileTotal,nFileSplit;
+	char achInFile[PST_FILENAME_SIZE];
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inInput));
+        nFileStart = in->nFileStart;
+        nFileEnd = in->nFileEnd;
+        nFileTotal = nFileEnd - nFileStart + 1;
+        if (pst->nLeaves > 1) {
+                nFileSplit = nFileStart + pst->nLower*(nFileTotal/pst->nLeaves);
+                in->nFileStart = nFileSplit;
+		mdlReqService(pst->mdl,pst->idUpper,PST_INARRAY,in,nIn);
+                in->nFileStart = nFileStart;
+                in->nFileEnd = nFileSplit - 1;
+		pstInArray(pst->pstLower,in,nIn,NULL,NULL);
+                in->nFileEnd = nFileEnd;
+                mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+                }
+        else {
+                /*
+                 ** Add the local Data Path to the provided filename.
+                 */
+                achInFile[0] = 0;
+                if (plcl->pszDataPath) {
+                        strcat(achInFile,plcl->pszDataPath);
+                        strcat(achInFile,"/");
+                        }
+                strcat(achInFile,in->achInFile);
+                /*
+                 ** Determine the size of the local particle store.
+                 */
+		pkdInVector(plcl->pkd,achInFile,nFileStart, nFileTotal, 0,in->iType, in->iBinaryInput, in->N,in->bStandard);
+		}
+	if (pnOut) *pnOut = 0;
+	}
 
 void pstOutNCVector(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {

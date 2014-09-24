@@ -225,17 +225,53 @@ FLOAT COOL_ARRAY0(COOL *cl, COOLPARTICLE *cp, double ZMetal) {
     return (cp->f_HI*Y_H);
 }
 
+void COOL_IN_ARRAY0(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data) {
+    double Y_H, Y_He, Y_eMax;
+    clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
+    cp->f_HI = Data/Y_H;
+    }
+
 FLOAT COOL_ARRAY1(COOL *cl, COOLPARTICLE *cp, double ZMetal) {
     double Y_H, Y_He, Y_eMax;
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
     return (cp->f_HeI*Y_He);
 }
 
+void COOL_IN_ARRAY1(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data) {
+    double Y_H, Y_He, Y_eMax;
+    clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
+    cp->f_HeI = Data/Y_He;
+    }
+
 FLOAT COOL_ARRAY2(COOL *cl, COOLPARTICLE *cp, double ZMetal) {
     double Y_H, Y_He, Y_eMax;
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
     return (cp->f_HeII*Y_He);
 }
+
+void COOL_IN_ARRAY2(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data) {
+    double Y_H, Y_He, Y_eMax;
+    clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
+    cp->f_HeII = Data/Y_He;
+    }
+
+FLOAT COOL_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal) {
+    double Y_H, Y_He, Y_eMax;
+    clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
+#ifdef MOLECULARH
+    return (cp->f_H2/2.0*Y_H);
+#else
+    return 0.0;
+#endif
+    }
+
+void COOL_IN_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data) {
+    double Y_H, Y_He, Y_eMax;
+#ifdef MOLECULARH
+    clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
+    cp->f_H2 = Data*2/Y_H;
+#endif
+    }
 
 void clReadMetalTable(COOL *cl, COOLPARAM clParam)
 {
