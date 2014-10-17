@@ -58,6 +58,7 @@ typedef struct CoolingParametersStruct {
   double dMassFracHelium;
   double dCoolingTmin;     
   double dCoolingTmax;     
+  double dCosmicRayHeating;
   double dPhotoelectricHeating;
   double dPhotoelectricScaleLength;
   double dPhotoelectricInnerRadius;
@@ -96,6 +97,7 @@ typedef struct {
   double   Heat_Phot_HeI;
   double   Heat_Phot_HeII;
 
+  double   Heat_CosmicRay;
   double   Heat_Photoelectric;
   double   nMin_Photoelectric;
 

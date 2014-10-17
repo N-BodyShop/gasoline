@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h> /* includes malloc() macros */
 #include <unistd.h> /* for unlink() */
@@ -1786,7 +1785,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 
 	msr->nThreads = mdlThreads(mdl);
 
-	if (msr->param.bDoSelfGravity && !msr->param.bDoGravity)
+    if (prmSpecified(msr->prm,"bDoSelfGravity") && msr->param.bDoSelfGravity && !msr->param.bDoGravity)
 		fprintf(stderr,"WARNING: May need bDoGravity on for bDoSelfGravity to work\n");
 
 	/*
@@ -2732,6 +2731,9 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef OUTURBDRIVER
  	fprintf(fp," OUTURBDRIVER");
+#endif
+#ifdef FUVSHIELD
+ 	fprintf(fp," FUVSHIELD");
 #endif
 #ifdef COLUMNLENGTH
  	fprintf(fp," COLUMNLENGTH"); /* Use smoothing length for correlation length*/
@@ -6554,38 +6556,41 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 			 ** time-step rung may be left vacant following a merger event.
 			 */
 #else
-			if (msr->param.bVWarnings)
+			if (msr->param.bVWarnings && msr->param.bDoSelfGravity)
 				printf("WARNING: no particles found!\n");
 #endif
 			}
-		iP = 1.0/msr->nThreads;
-		dWAvg = out.dWSum*iP;
-		dIAvg = out.dISum*iP;
-		dEAvg = out.dESum*iP;
-		dWMax = out.dWMax;
-		dIMax = out.dIMax;
-		dEMax = out.dEMax;
-		dWMin = out.dWMin;
-		dIMin = out.dIMin;
-		dEMin = out.dEMin;
-		printf("dPartAvg:%f dCellAvg:%f dSoftAvg:%f\n",
-			   dPartAvg,dCellAvg,dSoftAvg);
-		printf("Walk CPU     Avg:%10f Max:%10f Min:%10f\n",dWAvg,dWMax,dWMin);
-		printf("Interact CPU Avg:%10f Max:%10f Min:%10f\n",dIAvg,dIMax,dIMin);
-		if (msr->param.bEwald) printf("Ewald CPU    Avg:%10f Max:%10f Min:%10f\n",dEAvg,dEMax,dEMin);
-		if (msr->nThreads > 1) {
-			printf("Particle Cache Statistics (average per processor):\n");
-			printf("    Accesses:    %10g\n",out.dpASum*iP);
-			printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
-			printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
-			printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
-			printf("Cell Cache Statistics (average per processor):\n");
-			printf("    Accesses:    %10g\n",out.dcASum*iP);
-			printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
-			printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
-			printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
-			printf("\n");
-			}
+
+        if (msr->param.bDoSelfGravity) {
+            iP = 1.0/msr->nThreads;
+            dWAvg = out.dWSum*iP;
+            dIAvg = out.dISum*iP;
+            dEAvg = out.dESum*iP;
+            dWMax = out.dWMax;
+            dIMax = out.dIMax;
+            dEMax = out.dEMax;
+            dWMin = out.dWMin;
+            dIMin = out.dIMin;
+            dEMin = out.dEMin;
+            printf("dPartAvg:%f dCellAvg:%f dSoftAvg:%f\n",
+                dPartAvg,dCellAvg,dSoftAvg);
+            printf("Walk CPU     Avg:%10f Max:%10f Min:%10f\n",dWAvg,dWMax,dWMin);
+            printf("Interact CPU Avg:%10f Max:%10f Min:%10f\n",dIAvg,dIMax,dIMin);
+            if (msr->param.bEwald) printf("Ewald CPU    Avg:%10f Max:%10f Min:%10f\n",dEAvg,dEMax,dEMin);
+            if (msr->nThreads > 1) {
+                printf("Particle Cache Statistics (average per processor):\n");
+                printf("    Accesses:    %10g\n",out.dpASum*iP);
+                printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
+                printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
+                printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
+                printf("Cell Cache Statistics (average per processor):\n");
+                printf("    Accesses:    %10g\n",out.dcASum*iP);
+                printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
+                printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
+                printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
+                printf("\n");
+                }
+            }
 		}
 	}
 
@@ -9658,6 +9663,7 @@ void msrInitouturb(MSR msr, double dTime)
     in.BoxSize = msr->param.dxPeriod; //Careful!
     in.dTime = dTime;
     in.bDetails = msr->param.bVDetails;
+    in.bRestart = msr->param.bRestart;
     pstInitouturb(msr->pst,&in,sizeof(struct inInitouturb),NULL,NULL);
 
     dsec = msrTime() - sec;

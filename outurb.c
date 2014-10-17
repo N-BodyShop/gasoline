@@ -70,6 +70,10 @@ void outurb_AddParams( OUTURBPARAM *outurbparam, PRM prm ) {
     prmAddParam(prm,"StScaleHeight",2,&outurbparam->StScaleHeight,
                 sizeof(double),"StScaleHeight",
                 "<OU Turb driving Scale Height (Gaussian)> = 1e30");
+    outurbparam->StStartTime = 2e30;
+    prmAddParam(prm,"StStartTime",2,&outurbparam->StStartTime,
+        sizeof(double),"StStartTime",
+                "<OU Turb driving start time -- for setting correct sequence> = ic time");
 
     outurbparam->StSeed = 42;
     prmAddParam(prm,"StSeed",1,&outurbparam->StSeed,
@@ -90,12 +94,14 @@ void outurbLogParams( OUTURBPARAM *outurbparam, FILE *fp ) {
   fprintf(fp," StSolWeight: %g",outurbparam->StSolWeight);
   fprintf(fp," StAmplFac: %g",outurbparam->StAmplFac);
   fprintf(fp," StScaleHeight: %g",outurbparam->StScaleHeight);
+  fprintf(fp," StStartTime: %g",outurbparam->StStartTime);
   fprintf(fp," StSeed: %d",outurbparam->StSeed);
   fprintf(fp," StSpectForm: %d",outurbparam->StSpectForm);
 }
 
 
-void outurb_init(OUTURB *pouturb, OUTURBPARAM outurbparam, int idSelf, int bDetails, double BoxSize, double dTime)
+void outurb_init(OUTURB *pouturb, OUTURBPARAM outurbparam, int idSelf, int bDetails, int bRestart,
+    double BoxSize, double dTime)
     {
     int ikx, iky, ikz;
     double kx,ky,kz,k;
@@ -103,6 +109,14 @@ void outurb_init(OUTURB *pouturb, OUTURBPARAM outurbparam, int idSelf, int bDeta
     OUTURB outurb;
     int ikxmax,ikymax,ikzmax;
     double kc, amin;
+
+    if (outurbparam.StStartTime > 1e30) {
+        if (bRestart && idSelf == 0)
+            fprintf(stderr,"OUturb: ERROR: Restarting without StStartTime specified:  Random sequence inconsistent\n");
+        assert(!bRestart);
+        if (idSelf == 0)
+            fprintf(stderr,"OUturb: WARNING: StStartTime not specified:  Cannot restart this run.\n");
+        }
 
     *pouturb = outurb = (OUTURB) malloc(sizeof(struct OUturb));
     assert(outurb!=NULL);
@@ -122,7 +136,6 @@ void outurb_init(OUTURB *pouturb, OUTURBPARAM outurbparam, int idSelf, int bDeta
     outurb->StScaleHeight = outurbparam.StScaleHeight;
     outurb->StSeed = outurbparam.StSeed;
     outurb->StSpectForm = outurbparam.StSpectForm;
-
 
     ikxmax = BoxSize*outurb->StKmax/2./M_PI;
 #if NUMDIMS > 1
@@ -300,12 +313,11 @@ void outurb_init(OUTURB *pouturb, OUTURBPARAM outurbparam, int idSelf, int bDeta
     outurb_st_calc_phases(outurb);
 
 //    printf("OUturb %d: calling set_turb_ampl in init_turb\n",(outurb->idSelf%10000));
-    outurb_set_turb_ampl(outurb, dTime);
+//    outurb_set_turb_ampl(outurb, dTime);
     //gsl_rng_free(outurb->StRng);
 
-    outurb->dTimePrev = dTime;
-
-
+    outurb->dTimePrev = (outurbparam.StStartTime < 1e30 ? outurbparam.StStartTime : dTime);
+    outurb_set_turb_ampl(outurb, dTime);
     }
 
 void outurb_st_init_ouseq(OUTURB outurb)
@@ -383,11 +395,16 @@ void outurb_set_turb_ampl(OUTURB outurb, double dTime)
     if(delta >= outurb->StDtFreq*0.9999)
         {
 // outurb->StTPrev = outurb->StTPrev + outurb->StDtFreq/outurb->Timebase_interval;
-// JW: Potential bug fs this is not called often enough compared to StDtFreq, added this while
+// JW: Potential bug from original this is not called often enough compared to StDtFreq, added this while
+// This should allow continue from restarts by regenerating full sequence from the start time
         while (delta >= outurb->StDtFreq*0.9999) {
             outurb_st_update_ouseq(outurb);
             delta -= outurb->StDtFreq;
             outurb->dTimePrev += outurb->StDtFreq;
+            if ((outurb->idSelf%10000)==0)
+                printf("OUturb: %d Time %f, New phases:  %f %f %f %f %f %f\n",outurb->idSelf,outurb->dTimePrev,
+                outurb->StOUPhases[0],outurb->StOUPhases[1],outurb->StOUPhases[2],
+                outurb->StOUPhases[3],outurb->StOUPhases[4],outurb->StOUPhases[5]);
             }
 
         outurb_st_calc_phases(outurb);

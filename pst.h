@@ -1048,6 +1048,9 @@ struct inReSmooth {
 	};
 struct outReSmooth {
     int iSmoothFlags;  /* Warning Flags for need to smooth again, etc... */
+    int nSmoothed;
+    int nSmoothedInner;
+    int nSmoothedFixh;
 	/*
 	 ** Cache Statistics.
 	 */

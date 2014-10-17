@@ -155,13 +155,11 @@ int main(int argc,char **argv)
 		if (msr->param.iGasModel == GASMODEL_COOLING
 			|| msr->param.bStarForm) 
 		    msrInitCooling(msr);
-#ifdef OUTURBDRIVER
-        msrInitouturb(msr, dTime);
-#endif
 		if(msr->param.bStarForm)
 		    msrInitStarLog(msr);
 #endif
 #ifdef OUTURBDRIVER
+        printf("OUturb: init %d\n",dTime);
         msrInitouturb(msr, dTime);
 #endif
 		if(msr->param.bDoSinks && !msr->param.bBHSink)
@@ -237,6 +235,7 @@ int main(int argc,char **argv)
 				}
 			}
 #ifdef GASOLINE
+        printf("OUturb: sph init %d\n",dTime);
 		msrInitSph(msr,dTime);
 #endif
 #ifdef INFLOWOUTFLOW

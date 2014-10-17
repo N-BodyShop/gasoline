@@ -3058,10 +3058,10 @@ void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		smFinish(smx,&in->smf, &cs);
 		
 		if (out != NULL) {
-		    out->iSmoothFlags |= in->smf.iSmoothFlags;
-            out->nSmoothed += outUp.nSmoothed;
-            out->nSmoothedInner += outUp.nSmoothedInner;
-            out->nSmoothedFixh += outUp.nSmoothedFixh;
+		    out->iSmoothFlags = in->smf.iSmoothFlags;
+            out->nSmoothed = in->smf.nSmoothed;
+            out->nSmoothedInner = in->smf.nSmoothedInner;
+            out->nSmoothedFixh = in->smf.nSmoothedFixh;
 		/*
 		 ** Cache statistics
 		 */
@@ -3082,13 +3082,32 @@ void pstSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 void pstMarkSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	struct inMarkSmooth *in = vin;
+	struct outSmooth *out = vout;
+	struct outSmooth outUp;
 	CASTAT cs;
 
 	mdlassert(pst->mdl,nIn == sizeof(struct inMarkSmooth));
 	if (pst->nLeaves > 1) {
 		mdlReqService(pst->mdl,pst->idUpper,PST_MARKSMOOTH,in,nIn);
-		pstMarkSmooth(pst->pstLower,in,nIn,NULL,NULL);
-		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		pstMarkSmooth(pst->pstLower,in,nIn,out,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,&outUp,NULL);
+		if (out != NULL) {
+		    out->iSmoothFlags |= outUp.iSmoothFlags;
+            out->nSmoothed += outUp.nSmoothed;
+            out->nSmoothedInner += outUp.nSmoothedInner;
+            out->nSmoothedFixh += outUp.nSmoothedFixh;
+		/*
+		 ** Cache statistics sums.
+		 */
+			out->dpASum += outUp.dpASum;
+			out->dpMSum += outUp.dpMSum;
+			out->dpCSum += outUp.dpCSum;
+			out->dpTSum += outUp.dpTSum;
+			out->dcASum += outUp.dcASum;
+			out->dcMSum += outUp.dcMSum;
+			out->dcCSum += outUp.dcCSum;
+			out->dcTSum += outUp.dcTSum;
+			}
 		}
 	else {
 		LCL *plcl = pst->plcl;
@@ -3099,6 +3118,23 @@ void pstMarkSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 					 in->bSymmetric,in->iSmoothType,0,0.0);
 		smMarkSmooth(smx,&in->smf,in->iMarkType);
 		smFinish(smx,&in->smf, &cs);
+		if (out != NULL) {
+		    out->iSmoothFlags = in->smf.iSmoothFlags;
+            out->nSmoothed = in->smf.nSmoothed;
+            out->nSmoothedInner = in->smf.nSmoothedInner;
+            out->nSmoothedFixh = in->smf.nSmoothedFixh;
+		/*
+		 ** Cache statistics
+		 */
+			out->dpASum = cs.dpNumAccess;
+			out->dpMSum = cs.dpMissRatio;
+			out->dpCSum = cs.dpCollRatio;
+			out->dpTSum = cs.dpMinRatio;
+			out->dcASum = cs.dcNumAccess;
+			out->dcMSum = cs.dcMissRatio;
+			out->dcCSum = cs.dcCollRatio;
+			out->dcTSum = cs.dcMinRatio;
+			}
 		}
 	if (pnOut) *pnOut = 0;
 	}
@@ -3152,6 +3188,9 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 
 		if (out != NULL) {
 		    out->iSmoothFlags |= outUp.iSmoothFlags;
+            out->nSmoothed += outUp.nSmoothed;
+            out->nSmoothedInner += outUp.nSmoothedInner;
+            out->nSmoothedFixh += outUp.nSmoothedFixh;
 			/*
 			 ** Cache statistics sums.
 			 */
@@ -3176,7 +3215,10 @@ void pstReSmooth(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		smFinish(smx,&in->smf, &cs);
 
 		if (out != NULL) {
-		    out->iSmoothFlags |= in->smf.iSmoothFlags;
+		    out->iSmoothFlags = in->smf.iSmoothFlags;
+            out->nSmoothed = in->smf.nSmoothed;
+            out->nSmoothedInner = in->smf.nSmoothedInner;
+            out->nSmoothedFixh = in->smf.nSmoothedFixh;
 			/*
 			 ** Cache statistics
 			 */
@@ -4784,7 +4826,7 @@ void pstInitouturb(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-		outurb_init( (OUTURB *) &plcl->pkd->outurb, in->outurbparam, plcl->pkd->idSelf, in->bDetails, in->BoxSize, in->dTime);
+		outurb_init( (OUTURB *) &plcl->pkd->outurb, in->outurbparam, plcl->pkd->idSelf, in->bDetails, in->bRestart, in->BoxSize, in->dTime);
 		}
 	if (pnOut) *pnOut = 0;
 	}
