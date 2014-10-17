@@ -4312,7 +4312,12 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 		fDensity += rs*q->fMass;
 #if defined(DENSITYU) || defined(RTDENSITY) || defined(THERMALCOND)
+#ifdef TWOPHASE
+        double uMean = (q->fMassHot*q->uHotPred+(q->fMass-q->fMassHot)*q->uPred)/q->fMass;
+		fDensityU += rs*q->fMass*uMean;
+#else
 		fDensityU += rs*q->fMass*q->uPred;
+#endif
 #endif
 		DKERNEL(rs1,r2); /* rs1 is negative */
 		rs1 *= q->fMass;
@@ -4364,9 +4369,19 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef DENSITYU
 #ifdef DENSITYUNOTP
     KERNEL(rs,0.0);
+#ifdef TWOPHASE
+    double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
+    p->fDensityU = (fDensityU-rs*p->fMass*uMean*fNorm)/uMean*fDensity/(fDensity-rs*p->fMass*fNorm); 
+#else
     p->fDensityU = (fDensityU-rs*p->fMass*p->uPred*fNorm)/p->uPred*fDensity/(fDensity-rs*p->fMass*fNorm); 
+#endif
+#else
+#ifdef TWOPHASE
+    double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
+	p->fDensityU = fDensityU/uMean;
 #else
 	p->fDensityU = fDensityU/p->uPred; 
+#endif
 #endif
 #endif
 #ifdef RTDENSITY	
