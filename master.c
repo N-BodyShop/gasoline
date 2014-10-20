@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h> /* includes malloc() macros */
 #include <unistd.h> /* for unlink() */
@@ -1786,7 +1785,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 
 	msr->nThreads = mdlThreads(mdl);
 
-	if (msr->param.bDoSelfGravity && !msr->param.bDoGravity)
+    if (prmSpecified(msr->prm,"bDoSelfGravity") && msr->param.bDoSelfGravity && !msr->param.bDoGravity)
 		fprintf(stderr,"WARNING: May need bDoGravity on for bDoSelfGravity to work\n");
 
 	/*
@@ -2732,6 +2731,9 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef OUTURBDRIVER
  	fprintf(fp," OUTURBDRIVER");
+#endif
+#ifdef FUVSHIELD
+ 	fprintf(fp," FUVSHIELD");
 #endif
 #ifdef COLUMNLENGTH
  	fprintf(fp," COLUMNLENGTH"); /* Use smoothing length for correlation length*/
@@ -5379,6 +5381,119 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 	}
 
 
+void msrOneNodeInArray(MSR msr, struct inInput *in)
+{
+    int i,id;
+    int nStart;
+    PST pst0;
+    LCL *plcl;
+    char achInFile[PST_FILENAME_SIZE];
+    int inswap;
+
+    pst0 = msr->pst;
+    while(pst0->nLeaves > 1)
+		pst0 = pst0->pstLower;
+    plcl = pst0->plcl;
+    /*
+     ** Add the local Data Path to the provided filename.
+     */
+    _msrMakePath(plcl->pszDataPath,in->achInFile,achInFile);
+
+    /* 
+     * First read our own particles.
+     */
+    assert(msr->pMap[0] == 0);
+    nStart = 0;
+#ifdef SIMPLESF
+        pkdInVector(plcl->pkd,in->achInFile, nStart, plcl->pkd->nLocal, 0, in->iType, ((in->iType==OUT_TCOOLAGAIN_ARRAY || in->iType==OUT_MSTAR_ARRAY) ? 1 : in->iBinaryInput), msr->N,in->bStandard);
+#else
+        pkdInVector(plcl->pkd,in->achInFile,nStart, plcl->pkd->nLocal, 0, in->iType,in->iBinaryInput, msr->N,in->bStandard); 
+#endif
+    nStart += plcl->pkd->nLocal;
+    for (i=1;i<msr->nThreads;++i) {
+	id = msr->pMap[i];
+        /* 
+         * Swap particles with the remote processor.
+         */
+        inswap = 0;
+        mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+        pkdSwapAll(plcl->pkd, id);
+        mdlGetReply(pst0->mdl,id,NULL,NULL);
+        /* 
+         * Read the swapped particles.
+         */
+#ifdef SIMPLESF
+        pkdInVector(plcl->pkd,in->achInFile, nStart, plcl->pkd->nLocal, 0, in->iType, ((in->iType==OUT_TCOOLAGAIN_ARRAY || in->iType==OUT_MSTAR_ARRAY) ? 1 : in->iBinaryInput), msr->N,in->bStandard);
+#else
+        pkdInVector(plcl->pkd,in->achInFile,nStart, plcl->pkd->nLocal, 0, in->iType,in->iBinaryInput, msr->N,in->bStandard); 
+#endif
+        nStart += plcl->pkd->nLocal;
+        /* 
+         * Swap them back again.
+         */
+        inswap = 0;
+        mdlReqService(pst0->mdl,id,PST_SWAPALL,&inswap,sizeof(inswap));
+        pkdSwapAll(plcl->pkd, id);
+        mdlGetReply(pst0->mdl,id,NULL,NULL);
+        }
+    assert(nStart == msr->N);
+    }
+
+void msrInArray(MSR msr,char *pszFile,int iType)
+{
+	FILE *fp;
+	struct inInput in;
+	char achInFile[PST_FILENAME_SIZE];
+	LCL *plcl = msr->pst->plcl;
+
+	if (pszFile == NULL) {
+	    pszFile = achInFile;
+	    strcpy(achInFile,msr->param.achInFile);
+            }
+        /*
+	** Add Data Subpath for local and non-local names.
+	*/
+	_msrMakePath(msr->param.achDataSubPath,pszFile,in.achInFile);
+	/*
+	** Add local Data Path.
+	*/
+	_msrMakePath(plcl->pszDataPath,in.achInFile,achInFile);
+	
+	strcat(achInFile,".");
+	VecFilename(achInFile,iType);
+
+	fp = fopen(achInFile,"r");
+	if (!fp) {
+	    printf("Could not open Array Input File:%s\n",achInFile);
+	    _msrExit(msr,1);
+	    }
+
+	if (msr->param.bVDetails) printf("Reading file: %s\n",achInFile);
+
+	/*
+	 ** Read the Header information and close the file again.
+	 */
+	in.iType = iType;
+	in.bStandard = msr->param.bStandard;
+	in.iBinaryInput = msr->param.iBinaryOutput;
+        in.iDim=0;
+        in.N = msr->N;
+	in.nFileStart = 0;
+	in.nFileEnd = msr->N - 1;
+	if (msr->param.iBinaryOutput) {
+	    if(msr->param.bParaRead)
+		pstInArray(msr->pst,&in,sizeof(in),NULL,NULL);
+	    else
+		msrOneNodeInArray(msr, &in);
+	    }
+	else {
+	    msrOneNodeInArray(msr, &in);
+	    }
+	}
+
+
+
+
 void msrOneNodeOutVector(MSR msr, struct inOutput *in)
 {
     int i,id, iDim;
@@ -6133,38 +6248,41 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 			 ** time-step rung may be left vacant following a merger event.
 			 */
 #else
-			if (msr->param.bVWarnings)
+			if (msr->param.bVWarnings && msr->param.bDoSelfGravity)
 				printf("WARNING: no particles found!\n");
 #endif
 			}
-		iP = 1.0/msr->nThreads;
-		dWAvg = out.dWSum*iP;
-		dIAvg = out.dISum*iP;
-		dEAvg = out.dESum*iP;
-		dWMax = out.dWMax;
-		dIMax = out.dIMax;
-		dEMax = out.dEMax;
-		dWMin = out.dWMin;
-		dIMin = out.dIMin;
-		dEMin = out.dEMin;
-		printf("dPartAvg:%f dCellAvg:%f dSoftAvg:%f\n",
-			   dPartAvg,dCellAvg,dSoftAvg);
-		printf("Walk CPU     Avg:%10f Max:%10f Min:%10f\n",dWAvg,dWMax,dWMin);
-		printf("Interact CPU Avg:%10f Max:%10f Min:%10f\n",dIAvg,dIMax,dIMin);
-		if (msr->param.bEwald) printf("Ewald CPU    Avg:%10f Max:%10f Min:%10f\n",dEAvg,dEMax,dEMin);
-		if (msr->nThreads > 1) {
-			printf("Particle Cache Statistics (average per processor):\n");
-			printf("    Accesses:    %10g\n",out.dpASum*iP);
-			printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
-			printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
-			printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
-			printf("Cell Cache Statistics (average per processor):\n");
-			printf("    Accesses:    %10g\n",out.dcASum*iP);
-			printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
-			printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
-			printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
-			printf("\n");
-			}
+
+        if (msr->param.bDoSelfGravity) {
+            iP = 1.0/msr->nThreads;
+            dWAvg = out.dWSum*iP;
+            dIAvg = out.dISum*iP;
+            dEAvg = out.dESum*iP;
+            dWMax = out.dWMax;
+            dIMax = out.dIMax;
+            dEMax = out.dEMax;
+            dWMin = out.dWMin;
+            dIMin = out.dIMin;
+            dEMin = out.dEMin;
+            printf("dPartAvg:%f dCellAvg:%f dSoftAvg:%f\n",
+                dPartAvg,dCellAvg,dSoftAvg);
+            printf("Walk CPU     Avg:%10f Max:%10f Min:%10f\n",dWAvg,dWMax,dWMin);
+            printf("Interact CPU Avg:%10f Max:%10f Min:%10f\n",dIAvg,dIMax,dIMin);
+            if (msr->param.bEwald) printf("Ewald CPU    Avg:%10f Max:%10f Min:%10f\n",dEAvg,dEMax,dEMin);
+            if (msr->nThreads > 1) {
+                printf("Particle Cache Statistics (average per processor):\n");
+                printf("    Accesses:    %10g\n",out.dpASum*iP);
+                printf("    Miss Ratio:  %10g\n",out.dpMSum*iP);
+                printf("    Min Ratio:   %10g\n",out.dpTSum*iP);
+                printf("    Coll Ratio:  %10g\n",out.dpCSum*iP);
+                printf("Cell Cache Statistics (average per processor):\n");
+                printf("    Accesses:    %10g\n",out.dcASum*iP);
+                printf("    Miss Ratio:  %10g\n",out.dcMSum*iP);
+                printf("    Min Ratio:   %10g\n",out.dcTSum*iP);
+                printf("    Coll Ratio:  %10g\n",out.dcCSum*iP);
+                printf("\n");
+                }
+            }
 		}
 	}
 
@@ -9237,6 +9355,7 @@ void msrInitouturb(MSR msr, double dTime)
     in.BoxSize = msr->param.dxPeriod; //Careful!
     in.dTime = dTime;
     in.bDetails = msr->param.bVDetails;
+    in.bRestart = msr->param.bRestart;
     pstInitouturb(msr->pst,&in,sizeof(struct inInitouturb),NULL,NULL);
 
     dsec = msrTime() - sec;

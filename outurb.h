@@ -15,6 +15,7 @@ typedef struct OUturbparam {
     double StSolWeight;  // solenoidal weighting 0-1 (for projection of driver)
     double StAmplFac;    // target vel disp?
     double StScaleHeight; // Gaussian fall off for forcing
+    double StStartTime;  // starting time for OU sequence 
     int StSpectForm;
     int StSeed;
     } OUTURBPARAM;
@@ -65,6 +66,7 @@ struct inInitouturb {
     double BoxSize;
     double dTime;
     int bDetails;
+    int bRestart;
     };
 
 struct inAccelouturb {
@@ -74,7 +76,7 @@ struct inAccelouturb {
 void outurb_AddParams( OUTURBPARAM *outurbparam, PRM prm );
 void outurbLogParams( OUTURBPARAM *outurbparam, FILE *fp );
 
-void outurb_init(OUTURB *pouturb, OUTURBPARAM outurbparam, int idSelf, int bDetails, double BoxSize, double dTime);
+void outurb_init(OUTURB *pouturb, OUTURBPARAM outurbparam, int idSelf, int bDetails, int bRestart, double BoxSize, double dTime);
 void outurb_st_init_ouseq(OUTURB outurb);
 void outurb_st_update_ouseq(OUTURB outurb);
 double outurb_st_grn(OUTURB outurb);

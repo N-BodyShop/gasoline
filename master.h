@@ -176,6 +176,7 @@ void msrDomainColor(MSR);
 void msrReorder(MSR);
 void msrOutArray(MSR,char *,int);
 void msrOutVector(MSR,char *,int);
+void msrInArray(MSR,char *,int);
 void msrGetGasPressure(MSR, double);
 void msrGetDensityU(MSR);
 void msrLowerSoundSpeed(MSR);

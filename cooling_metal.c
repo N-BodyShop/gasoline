@@ -27,11 +27,11 @@
 #define ETAMINTIMESTEP 1e-4
 
 /* This min is to prevent Y_e = 0 which shuts off all collisional processes (cooling, recomb or ionization)
-   and prevents unphysical negative Y_e (resulting from roundoff)
+   and prevents unphysical negative Y_e (resulting from roundoff) 
    This is important for cases with no cosmic rays or UV 
    */
 #ifndef Y_EMIN
-#define Y_EMIN 1e-7
+#define Y_EMIN 1e-5
 #endif
 
 #define TESTRATE 1e-3
@@ -134,9 +134,12 @@ void clInitConstants( COOL *cl, double dGmPerCcUnit, double dComovingGmPerCcUnit
   cl->diErgPerGmUnit = 1./dErgPerGmUnit;
   cl->dKpcUnit = dKpcUnit;
   cl->dMassFracHelium = CoolParam.dMassFracHelium;
+  cl->R.Heat_CosmicRay = CoolParam.dCosmicRayHeating*CL_B_gm/0.733; /* normalize vs yHI=0.733 */
   cl->R.Heat_Photoelectric = CoolParam.dPhotoelectricHeating*CL_B_gm/0.733; /* normalize vs yHI=0.733 */
   cl->R.nMin_Photoelectric = CoolParam.dPhotoelectricnMin;
   cl->dPhotoelectricFactor = 1;
+  cl->dPhotoelectricScaleLength = CoolParam.dPhotoelectricScaleLength;
+  cl->dPhotoelectricInnerRadius = CoolParam.dPhotoelectricInnerRadius;
   cl->dzTimeClampUV = CoolParam.dzTimeClampUV;
   cl->dMetalCoolFactor = CoolParam.dMetalCoolFactor;
   cl->bUV = CoolParam.bUV;
@@ -224,17 +227,53 @@ FLOAT COOL_ARRAY0(COOL *cl, COOLPARTICLE *cp, double ZMetal) {
     return (cp->f_HI*Y_H);
 }
 
+void COOL_IN_ARRAY0(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data) {
+    double Y_H, Y_He, Y_eMax;
+    clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
+    cp->f_HI = Data/Y_H;
+    }
+
 FLOAT COOL_ARRAY1(COOL *cl, COOLPARTICLE *cp, double ZMetal) {
     double Y_H, Y_He, Y_eMax;
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
     return (cp->f_HeI*Y_He);
 }
 
+void COOL_IN_ARRAY1(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data) {
+    double Y_H, Y_He, Y_eMax;
+    clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
+    cp->f_HeI = Data/Y_He;
+    }
+
 FLOAT COOL_ARRAY2(COOL *cl, COOLPARTICLE *cp, double ZMetal) {
     double Y_H, Y_He, Y_eMax;
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
     return (cp->f_HeII*Y_He);
 }
+
+void COOL_IN_ARRAY2(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data) {
+    double Y_H, Y_He, Y_eMax;
+    clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
+    cp->f_HeII = Data/Y_He;
+    }
+
+FLOAT COOL_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal) {
+    double Y_H, Y_He, Y_eMax;
+    clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
+#ifdef MOLECULARH
+    return (cp->f_H2/2.0*Y_H);
+#else
+    return 0.0;
+#endif
+    }
+
+void COOL_IN_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data) {
+    double Y_H, Y_He, Y_eMax;
+#ifdef MOLECULARH
+    clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
+    cp->f_H2 = Data*2/Y_H;
+#endif
+    }
 
 void clReadMetalTable(COOL *cl, COOLPARAM clParam)
 {
@@ -583,7 +622,7 @@ void clRatesRedshift( COOL *cl, double zIn, double dTimeIn ) {
           else
               zTimeUV = zIn;
 		  for ( i=0; i < cl->nUV && zTimeUV <= UV->zTime ; i++,UV++ );/*printf("i: %d, cl->nUV: %d, zTime: %f, UV->zTime %f\n",i, cl->nUV,zTimeUV, UV->zTime);*/
-          printf("Redshift setting for UV %g %g %g %d\n",zIn,cl->dzTimeClampUV,zTimeUV,i);
+//          printf("Redshift setting for UV %g %g %g %d\n",zIn,cl->dzTimeClampUV,zTimeUV,i);
 		  }
 	  }
 
@@ -1827,7 +1866,15 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMe
     + 
       Rate->Heat_Metal  
     + 
-      cl->R.Heat_Photoelectric * cl->dMetalCoolFactor * Y->HI / (1+cl->R.nMin_Photoelectric/en_B) * ZMetal/ZSOLAR
+      cl->dPhotoelectricFactor / (1+cl->R.nMin_Photoelectric/en_B) * Y->HI * (
+          cl->R.Heat_CosmicRay +  /* sets a heating floor independent of optical depth */
+          cl->R.Heat_Photoelectric * ZMetal/ZSOLAR
+#ifdef FUVSHIELD
+#define PHOTOE_POW 2.0
+/* r0 = 10 pc, n0 = 100 Baryon/cc, alpha=1.7e-21 (Wolfire 2003) */
+      * (en_B < 0.3 ? 1 : exp(-3e21*1.7e-21*(1/(PHOTOE_POW-1.))*(pow(en_B/100,(PHOTOE_POW-1.)/PHOTOE_POW)-pow(0.3/100,(PHOTOE_POW-1.)/PHOTOE_POW)))) 
+#endif
+      )
     +
       Y->HI   * cl->R.Heat_Phot_HI * Rate->Phot_HI +
       Y->HeI  * cl->R.Heat_Phot_HeI  * Rate->Phot_HeI +
@@ -2307,6 +2354,12 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 	strcpy(CoolParam->CoolInFile,"cooltable_xdr\0");
 	prmAddParam(prm,"CoolInFile",3,&CoolParam->CoolInFile,256,"coolin",
 	"<cooling table file> (file in xdr binary format)"); 
+	CoolParam->dCosmicRayHeating = 0;
+	prmAddParam(prm,"dCosmicRayHeating",2,&CoolParam->dCosmicRayHeating,
+				sizeof(double),"crh",
+				"<CosmicRayHeating erg s^-1 per H (e.g. 2e-28)> = 0");
+/* Note 2e-28 is the effective rate erg per s per H from Wolfire in the solar nbrhood at higher densities, see e.g. Tielens fig 8.2 
+   X-ray is similar in impact but stronger by factor of ~10 so can consider this combined CR+XR */
 	CoolParam->dPhotoelectricHeating = 0;
 	prmAddParam(prm,"dPhotoelectricHeating",2,&CoolParam->dPhotoelectricHeating,
 				sizeof(double),"peh",
