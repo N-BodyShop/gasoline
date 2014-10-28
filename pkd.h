@@ -139,6 +139,7 @@ typedef struct particle {
 #endif
 #ifdef TWOPHASE
     FLOAT fMassHot;
+    COOLPARTICLE CoolParticleHot;  /* Abundances and any other cooling internal variables */
 #endif
 #ifdef UNONCOOL
     FLOAT uHot;
@@ -449,6 +450,7 @@ typedef struct chkParticle {
     FLOAT u;
 #ifdef TWOPHASE
     FLOAT fMassHot;
+    COOLPARTICLE CoolParticleHot;  /* Abundances and any other cooling internal variables */
 #endif
 #ifdef UNONCOOL
     FLOAT uHot;
