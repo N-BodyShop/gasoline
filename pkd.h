@@ -432,6 +432,41 @@ int TYPEClear( PARTICLE *a );
 #define TYPEClearACTIVE(a)       ((a)->iActive &= (TYPE_ALL|TYPE_SUPERCOOL))
 #define TYPEClear(a)             ((a)->iActive = 0)
 
+enum CheckSanityProblem {
+    PROBLEM_IORDER,
+    PROBLEM_MASS,
+    PROBLEM_SOFT,
+    PROBLEM_POSITION,
+    PROBLEM_VELOCITY,
+    PROBLEM_U,
+    PROBLEM_METALS,
+
+    PROBLEM_ENDLIST
+    }; 
+
+#ifdef CHECKSANITY
+/* Do detailed sanity check on contents of checkpoint */
+#define TESTFLAG(x,b) (x&(1<<b))
+#define SETFLAG(x,b) {x|=(1<<b);}
+#define ISFINITE(xx_) (!isnan(xx_) && !isinf(xx_))
+
+#define CHECKSANE(csd_,iFlag_,iVar_,iTest_) if (!(iTest_)) { \
+   SETFLAG(csd_.ipProblem,iFlag_); \
+   if (csd_.iProbCnt < csd_.nProbMax) \
+       fprintf(stderr,"%s  %d %g\n",#iFlag_,csd_.iProbCnt,(float) iVar_); }
+
+#define CHECKSANEFIX(nProb_,iVar_,iTest_) if (!(iTest_)) { \
+   nProb++; \
+   iVar_ = 0; }
+
+#define CHECKSANEALT(xxx_)
+#else
+/* Alternate if no detailed sanity check is done */
+#define CHECKSANEALT(xxx_) xxx_
+#define CHECKSANE(w_,x_,y_,z_)
+#define CHECKSANEFIX(nProb_,iVar_,iTest_)
+#endif
+
 #ifdef RUBBLE_ZML
 /* RUBBLE_ZML puts extra stuff in the checkpoint file, changes version to indicate this  ZML 01.08.04 */
 #define CHECKPOINT_VERSION 81
@@ -980,7 +1015,7 @@ void pkdNFWSpheroid(PKD pkd, double M_200, double r_200, double c, double dSoft)
 void pkdElliptical(PKD pkd, int bEllipticalDarkNFW);
 void pkdHomogSpheroid(PKD pkd);
 void pkdBodyForce(PKD pkd, double dConst);
-void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R);
+void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R, double StarSigma, double StarH, double GasSigma, double GasH);
 void pkdMiyamotoDisk(PKD pkd);
 void pkdTimeVarying(PKD pkd,double dTime);
 double pkdDtFacCourant( double dEtaCourant, double dCosmoFac );

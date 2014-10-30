@@ -5246,6 +5246,10 @@ void SplitGas(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
 }
 #endif
 
+int CompISORT(const void * a, const void * b) {
+    return ( (((ISORT *) a)->r2 < ((ISORT *) b)->r2) ? -1 : 1 );
+    }
+
 #ifdef STARFORM
 void initDistDeletedGas(void *p1)
 {
@@ -5696,10 +5700,6 @@ void combDistFBEnergy(void *p1,void *p2)
                 ((PARTICLE *)p2)->fTimeCoolIsOffUntil );
     ((PARTICLE *)p1)->fTimeForm = max( ((PARTICLE *)p1)->fTimeForm,
                 ((PARTICLE *)p2)->fTimeForm ); /* propagate FB time JMB 2/24/10 */
-    }
-
-int CompISORT(const void * a, const void * b) {
-    return ( (((ISORT *) a)->r2 < ((ISORT *) b)->r2) ? -1 : 1 );
     }
 
 #ifdef TOPHATFEEDBACK
