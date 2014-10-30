@@ -85,18 +85,17 @@ void outurb_AddParams( OUTURBPARAM *outurbparam, PRM prm ) {
                 "<OU Turb driving Spectral Form> = 2");
     }
 
-void outurbLogParams( OUTURBPARAM *outurbparam, FILE *fp ) {
-  fprintf(fp,"\n# OUturb: StDecay: %g",outurbparam->StDecay);
-  fprintf(fp," StEnergy: %g",outurbparam->StEnergy);
-  fprintf(fp," StDtFreq: %g",outurbparam->StDtFreq);
-  fprintf(fp," StKmin: %g",outurbparam->StKmin);
-  fprintf(fp," StKmax: %g",outurbparam->StKmax);
-  fprintf(fp," StSolWeight: %g",outurbparam->StSolWeight);
-  fprintf(fp," StAmplFac: %g",outurbparam->StAmplFac);
-  fprintf(fp," StScaleHeight: %g",outurbparam->StScaleHeight);
-  fprintf(fp," StStartTime: %g",outurbparam->StStartTime);
-  fprintf(fp," StSeed: %d",outurbparam->StSeed);
-  fprintf(fp," StSpectForm: %d",outurbparam->StSpectForm);
+void outurbLogParams( OUTURBPARAM *outurbparam, LOGGER *lgr ) {
+  LogParams(lgr,"TURBULENT DRIVER","\n# OUturb: StDecay: %g",outurbparam->StDecay);
+  LogParams(lgr,"TURBULENT DRIVER"," StEnergy: %g",outurbparam->StEnergy);
+  LogParams(lgr,"TURBULENT DRIVER"," StDtFreq: %g",outurbparam->StDtFreq);
+  LogParams(lgr,"TURBULENT DRIVER"," StKmin: %g",outurbparam->StKmin);
+  LogParams(lgr,"TURBULENT DRIVER"," StKmax: %g",outurbparam->StKmax);
+  LogParams(lgr,"TURBULENT DRIVER"," StSolWeight: %g",outurbparam->StSolWeight);
+  LogParams(lgr,"TURBULENT DRIVER"," StAmplFac: %g",outurbparam->StAmplFac);
+  LogParams(lgr,"TURBULENT DRIVER"," StScaleHeight: %g",outurbparam->StScaleHeight);
+  LogParams(lgr,"TURBULENT DRIVER"," StSeed: %d",outurbparam->StSeed);
+  LogParams(lgr,"TURBULENT DRIVER"," StSpectForm: %d",outurbparam->StSpectForm);
 }
 
 

@@ -6,16 +6,18 @@ LOGGER *initLog()
     lgr->labelCnt = 0;
     return lgr;
 }
-void LogParams(LOGGER * lgr, char *label, char *param)
+void LogParams(LOGGER * lgr, char *label, char *name,  ...)
 {
     assert(strlen(label) > 0);
-    assert(strlen(param) > 0);
-    assert(strlen(param) < LOGCOL);
-    assert(strlen(param) < LOGCOL);
-    int i;
+    assert(strlen(name) > 0);
+    assert(strlen(name) < LOGCOL);
+    assert(strlen(name) < LOGCOL);
+    va_list argp;
+    va_start(argp, name);
+    int i,found=0,curlabel=0;
     void *c;
-    int found=0;
-    int curlabel=0;
+    char param[160];
+    vsprintf(param,name,argp);
     //Find where the label is in our label array.
     for(i=0;i<lgr->labelCnt;i++)
     {

@@ -3,6 +3,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -16,6 +17,6 @@ typedef struct LogFormatter {
     char **line;
 } LOGGER;
 
-void LogParams(LOGGER *lgr, char *label, char *param);
+void LogParams(LOGGER *lgr, char *label, char *name, ...);
 void LogFlush(LOGGER *lgr, FILE *fp);
 LOGGER *initLog();

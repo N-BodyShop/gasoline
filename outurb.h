@@ -74,7 +74,7 @@ struct inAccelouturb {
     };
 
 void outurb_AddParams( OUTURBPARAM *outurbparam, PRM prm );
-void outurbLogParams( OUTURBPARAM *outurbparam, FILE *fp );
+void outurbLogParams( OUTURBPARAM *outurbparam, LOGGER *fp );
 
 void outurb_init(OUTURB *pouturb, OUTURBPARAM outurbparam, int idSelf, int bDetails, int bRestart, double BoxSize, double dTime);
 void outurb_st_init_ouseq(OUTURB outurb);
