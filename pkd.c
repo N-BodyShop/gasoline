@@ -6292,7 +6292,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
 
             double PoverRho,PoverRhoGas,PoverRhoHot,PoverRhoFloorJeans,cGas;
             double uDotFBThermal=0;
-            int bUpdateStd=1;
 
 #if defined(STARFORM)
 #ifdef UNONCOOL
@@ -6310,7 +6309,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
 			double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
             double uDotPdVNJ = p->uDotPdV*(PoverRhoHot+PoverRhoGas)/(PONRHOFLOOR + PoverRho); /* remove JeansFloor */
             
-            bUpdateStd = (p->fMassHot < 0.9*p->fMass);
 
             if (p->fMassHot > 0) {
                 assert(p->uHot >= 0);
@@ -6332,7 +6330,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
                     E = p->uHot;
                     CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse);
                     p->uHotDot = (E - p->uHot)/duDelta;
-                    p->CoolParticleHot = cp;
+                    if (bUpdateState ) p->CoolParticle = cp;
                     }
                 else 
                     p->uHotDot = uDotSansCooling;
@@ -6426,7 +6424,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
                 mdlassert(pkd->mdl,E > 0);
                 
                 if (dtUse > 0 || uDotSansCooling*duDelta + p->u < 0) p->uDot = (E - p->u)/duDelta;
-                if (bUpdateState && bUpdateStd) p->CoolParticle = cp;
+                if (bUpdateState ) p->CoolParticle = cp;
                 }
             else { 
                 p->uDot = uDotSansCooling;
