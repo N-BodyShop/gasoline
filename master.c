@@ -1015,6 +1015,18 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dGalaxyDiskVerticalPotentialR = 6.0;
 	prmAddParam(msr->prm,"dGalaxyDiskVerticalPotentialR",2,&msr->param.dGalaxyDiskVerticalPotentialR,
 			sizeof(double),"chrisdiskr","Disk Radius (kpc) = 6");
+	msr->param.dGalaxyDiskVerticalPotentialStarSigma = .0;
+	prmAddParam(msr->prm,"dGalaxyDiskVerticalPotentialStarSigma",2,&msr->param.dGalaxyDiskVerticalPotentialStarSigma,
+			sizeof(double),"chrisdiskr","Star Sigma (Msun/pc^2) = 0");
+	msr->param.dGalaxyDiskVerticalPotentialStarH = 0.400;
+	prmAddParam(msr->prm,"dGalaxyDiskVerticalPotentialStarH",2,&msr->param.dGalaxyDiskVerticalPotentialStarH,
+			sizeof(double),"chrisdiskr","Star H (kpc) = 0.4");
+	msr->param.dGalaxyDiskVerticalPotentialGasSigma = .0;
+	prmAddParam(msr->prm,"dGalaxyDiskVerticalPotentialGasSigma",2,&msr->param.dGalaxyDiskVerticalPotentialGasSigma,
+			sizeof(double),"chrisdiskr","Gas Sigma (Msun/pc^2) = 0");
+	msr->param.dGalaxyDiskVerticalPotentialGasH = 0.130;
+	prmAddParam(msr->prm,"dGalaxyDiskVerticalPotentialGasH",2,&msr->param.dGalaxyDiskVerticalPotentialGasH,
+			sizeof(double),"chrisdiskr","Gas H (kpc) = 0.13");
 	msr->param.bHomogSpheroid = 0;
 	prmAddParam(msr->prm,"bHomogSpheroid",0,&msr->param.bHomogSpheroid,
 				sizeof(int),"hspher","use/don't use galaxy Homog Spheroid = -homogspher");
@@ -3015,6 +3027,10 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "GRAVITY","bGalaxyDiskVerticalPotential: %d",msr->param.bGalaxyDiskVerticalPotential); 
     LogParams(lgr, "GRAVITY","dGalaxyDiskVerticalPotentialVc: %g",msr->param.dGalaxyDiskVerticalPotentialVc); 
     LogParams(lgr, "GRAVITY","dGalaxyDiskVerticalPotentialR: %g",msr->param.dGalaxyDiskVerticalPotentialR); 
+	LogParams(lgr, "GRAVITY","dGalaxyDiskVerticalPotentialStarSigma: %g",msr->param.dGalaxyDiskVerticalPotentialStarSigma); 
+	LogParams(lgr, "GRAVITY","dGalaxyDiskVerticalPotentialStarH: %g",msr->param.dGalaxyDiskVerticalPotentialStarH);
+	LogParams(lgr, "GRAVITY","dGalaxyDiskVerticalPotentialGasSigma: %g",msr->param.dGalaxyDiskVerticalPotentialGasSigma);
+	LogParams(lgr, "GRAVITY","dGalaxyDiskVerticalPotentialGasH: %g",msr->param.dGalaxyDiskVerticalPotentialGasH);
     LogParams(lgr, "GRAVITY","bHomogSpheroid: %d",msr->param.bHomogSpheroid ); 
     LogParams(lgr, "GRAVITY","bBodyForce: %d",msr->param.bBodyForce ); 
     LogParams(lgr, "GRAVITY","dBodyForceConst: %g",msr->param.dBodyForceConst ); 
@@ -6125,8 +6141,12 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bBodyForce = msr->param.bBodyForce;
 		inExt.dBodyForceConst = msr->param.dBodyForceConst;
 		inExt.bGalaxyDiskVerticalPotential = msr->param.bGalaxyDiskVerticalPotential;
-		inExt.dGalaxyDiskVerticalPotentialVc = 3.241e-17*msr->param.dGalaxyDiskVerticalPotentialVc/msr->param.dKpcUnit*msr->param.dSecUnit;
+		inExt.dGalaxyDiskVerticalPotentialVc = 3.241e-17*msr->param.dGalaxyDiskVerticalPotentialVc/msr->param.dKpcUnit*msr->param.dSecUnit; // km to kpc
 		inExt.dGalaxyDiskVerticalPotentialR = msr->param.dGalaxyDiskVerticalPotentialR/msr->param.dKpcUnit;
+		inExt.dGalaxyDiskVerticalPotentialStarSigma = msr->param.dGalaxyDiskVerticalPotentialStarSigma/msr->param.dMsolUnit*msr->param.dKpcUnit*msr->param.dKpcUnit*1e6;
+		inExt.dGalaxyDiskVerticalPotentialStarH = msr->param.dGalaxyDiskVerticalPotentialStarH/msr->param.dKpcUnit;
+		inExt.dGalaxyDiskVerticalPotentialGasSigma = msr->param.dGalaxyDiskVerticalPotentialGasSigma/msr->param.dMsolUnit*msr->param.dKpcUnit*msr->param.dKpcUnit*1e6;
+		inExt.dGalaxyDiskVerticalPotentialGasH = msr->param.dGalaxyDiskVerticalPotentialGasH/msr->param.dKpcUnit;
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		inExt.bTimeVarying = msr->param.bTimeVarying;
 		inExt.bRotatingBar = msr->param.bRotatingBar;

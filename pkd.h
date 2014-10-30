@@ -139,6 +139,7 @@ typedef struct particle {
 #endif
 #ifdef TWOPHASE
     FLOAT fMassHot;
+    COOLPARTICLE CoolParticleHot;  /* Abundances and any other cooling internal variables */
 #endif
 #ifdef UNONCOOL
     FLOAT uHot;
@@ -484,6 +485,7 @@ typedef struct chkParticle {
     FLOAT u;
 #ifdef TWOPHASE
     FLOAT fMassHot;
+    COOLPARTICLE CoolParticleHot;  /* Abundances and any other cooling internal variables */
 #endif
 #ifdef UNONCOOL
     FLOAT uHot;
@@ -1013,7 +1015,7 @@ void pkdNFWSpheroid(PKD pkd, double M_200, double r_200, double c, double dSoft)
 void pkdElliptical(PKD pkd, int bEllipticalDarkNFW);
 void pkdHomogSpheroid(PKD pkd);
 void pkdBodyForce(PKD pkd, double dConst);
-void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R);
+void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R, double StarSigma, double StarH, double GasSigma, double GasH);
 void pkdMiyamotoDisk(PKD pkd);
 void pkdTimeVarying(PKD pkd,double dTime);
 double pkdDtFacCourant( double dEtaCourant, double dCosmoFac );

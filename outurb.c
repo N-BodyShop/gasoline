@@ -85,7 +85,7 @@ void outurb_AddParams( OUTURBPARAM *outurbparam, PRM prm ) {
                 "<OU Turb driving Spectral Form> = 2");
     }
 
-void outurbLogParams( OUTURBPARAM *outurbparam, LOGGER *fp ) {
+void outurbLogParams( OUTURBPARAM *outurbparam, LOGGER *lgr ) {
   LogParams(lgr,"TURBULENT DRIVER","\n# OUturb: StDecay: %g",outurbparam->StDecay);
   LogParams(lgr,"TURBULENT DRIVER"," StEnergy: %g",outurbparam->StEnergy);
   LogParams(lgr,"TURBULENT DRIVER"," StDtFreq: %g",outurbparam->StDtFreq);
