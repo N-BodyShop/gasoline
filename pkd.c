@@ -4459,6 +4459,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->uHotPred = 0;
                            p->CoolParticle = p->CoolParticleHot;
                            p->CoolParticleHot.f_HI = -1;
+                           assert(p->CoolParticle.f_HI > 0);
                        }
                        else {
                            p->uHotPred = (p->uPred*fMassFlux + p->uHotPred*p->fMassHot)/(fMassFlux+p->fMassHot);
@@ -4483,8 +4484,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->uHotPred = 0;
                            p->CoolParticle = p->CoolParticleHot;
                            p->CoolParticleHot.f_HI = -1;
+                           assert(p->CoolParticle.f_HI > 0);
                    }
-                   if (&p->CoolParticleHot.f_HI < 0)
+                   if (p->CoolParticleHot.f_HI < 0)
                    {
                         TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uHotPred, fDensity, p->fMetals );
                    }
@@ -4504,6 +4506,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->uHotPred = 0;
                            p->CoolParticle = p->CoolParticleHot;
                            p->CoolParticleHot.f_HI = -1;
+                           assert(p->CoolParticle.f_HI > 0);
                     }
                     
 #endif
@@ -6327,10 +6330,13 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
                         double Tp = CoolCodeEnergyToTemperature(cl, &cp, E, fDensity, p->fMetals);
                         CoolInitEnergyAndParticleData(cl, &cp, &E, fDensity, Tp, p->fMetals);
                     }
+                    else {
+                        cp = p->CoolParticleHot;
+                    }
                     E = p->uHot;
                     CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse);
                     p->uHotDot = (E - p->uHot)/duDelta;
-                    if (bUpdateState ) p->CoolParticle = cp;
+                    if (bUpdateState ) p->CoolParticleHot = cp;
                     }
                 else 
                     p->uHotDot = uDotSansCooling;
