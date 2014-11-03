@@ -4430,6 +4430,11 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     if (p->uHot != 0)
                     {
                        fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uHot); /* Density of bubble part of particle */
+                       if (p->CoolParticleHot.f_HI < 0) {
+                           double E = p->uHot;
+                           double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, E, fDensity, p->fMetals);
+                           CoolInitEnergyAndParticleData(pkd->Cool, &p->CoolParticleHot, &E, fDensity, Tp, p->fMetals);
+                       }
                     }
                     else
                     {
@@ -4486,14 +4491,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->CoolParticleHot.f_HI = -1;
                            assert(p->CoolParticle.f_HI > 0);
                    }
-                   if (p->CoolParticleHot.f_HI < 0)
-                   {
-                        TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uHotPred, fDensity, p->fMetals );
-                   }
-                   else
-                   {
-                        TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticleHot, p->uHotPred, fDensity, p->fMetals );
-                   }
+                    TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uHotPred, fDensity, p->fMetals );
                     if(TpNC < uhc.dMultiPhaseMinTemp && uhc.bMultiPhaseTempThreshold && p->uHotPred > 0)//Check to make sure the hot phase is still actually hot
                     {
                            p->uPred = (p->uPred*(p->fMass-p->fMassHot) + p->uHotPred*p->fMassHot)/p->fMass;
@@ -6325,15 +6323,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
 #ifdef DENSITYU
                     if (p->fDensityU < p->fDensity) fDensity = p->fDensityU*PoverRhoGas/(uhc.gpc.gammam1*p->uHot); 
 #endif
-                    if (p->CoolParticleHot.f_HI < 0) {
-                        cp = p->CoolParticle;
-                        double Tp = CoolCodeEnergyToTemperature(cl, &cp, E, fDensity, p->fMetals);
-                        CoolInitEnergyAndParticleData(cl, &cp, &E, fDensity, Tp, p->fMetals);
-                    }
-                    else {
-                        cp = p->CoolParticleHot;
-                    }
-                    E = p->uHot;
+                    cp = p->CoolParticleHot;
                     CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse);
                     p->uHotDot = (E - p->uHot)/duDelta;
                     if (bUpdateState ) p->CoolParticleHot = cp;
