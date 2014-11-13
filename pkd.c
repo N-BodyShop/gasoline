@@ -3822,15 +3822,17 @@ void pkdHomogSpheroid(PKD pkd)
         }
     }
 
-void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R)
+void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R, double StarSigma, double StarH, double GasSigma, double GasH)
 {
           /*
               -  This is the external disk potential that is used together with Chris 
               -  Gatopolous' Enzo initial conditions for a disk slice.  The initial 
               -  values Chris used for Vc and R were 220 km/s and 6 kpc respectively.
               -  */
-         PARTICLE *p;
+        PARTICLE *p;
         int i,n;
+        double stargrav = 2*M_PI*StarSigma;
+        double gasgrav = 2*M_PI*GasSigma;
         p = pkd->pStore;
         n = pkdLocal(pkd);
         for (i=0;i<n;++i) 
@@ -3838,9 +3840,10 @@ void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R)
                 if (TYPEQueryACTIVE(&(p[i]))) 
                     {
                           double z = p[i].r[2];
-                          double g = Vc*Vc*z/(R*R+z*z);
+                          double g = Vc*Vc*z/(R*R+z*z)+stargrav*tanh(z/StarH)+gasgrav*tanh(z/GasH);
+//                          if ((i%1000)==0) printf("vgrav: %d z=%f  %g %g %g \n",i,z,Vc*Vc*z/(R*R+z*z),stargrav*tanh(z/StarH),gasgrav*tanh(z/GasH));
                           p[i].a[2] -= g;
-                          p[i].fPot += g*z;
+//                        p[i].fPot += g*z; // Not correct, all terms should be log
                     }
                 }
 }
