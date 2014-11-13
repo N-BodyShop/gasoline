@@ -7619,6 +7619,15 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 #ifdef UNONCOOL
               p->uHotPred = p->uHotPred + p->uHotDot*duDelta;
               if (p->uHotPred < 0) p->uHotPred = 0;
+            if (p->uHotPred != 0 && p->CoolParticleHot.f_HI < 0)
+            {
+                   FLOAT PoverRhoFloorJeans, PoverRhoHot, PoverRhoGas, cGas;
+                   pkdGasPressureParticle(pkd, &uhc.gpc, p, &PoverRhoFloorJeans, &PoverRhoHot, &PoverRhoGas, &cGas );
+                   FLOAT fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uHotPred); /* Density of bubble part of particle */
+                   double E = p->uHotPred;
+                   double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, E, fDensity, p->fMetals);
+                   CoolInitEnergyAndParticleData(pkd->Cool, &p->CoolParticleHot, &E, fDensity, Tp, p->fMetals);
+            }
 #endif /* UNONCOOL */
 #else /* NOCOOLING is defined: */
               p->uPred = p->uPred + UDOT_HYDRO(p)*duDelta;
