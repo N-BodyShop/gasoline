@@ -7894,6 +7894,45 @@ void pkdSinkLogFlush(PKD pkd, char *pszFileName)
     pkd->sinkLog.nLogOrdered = 0;
     pkd->sinkLog.nFormOrdered = 0;
     }
+#ifdef PARTICLESPLIT    
+void pkdSplitGas(PKD pkd, double dInitGasMass)
+{
+    int i;
+    PARTICLE *p;
+    int n = pkdLocal(pkd);
     
+    for(i = 0; i < n; ++i) {
+        p = &pkd->pStore[i];
+        if(p->fMass < 1.33*dInitGasMass)
+        continue; //Don't split particles that are too small FOOL
 
-
+        PARTICLE daughter;
+        FLOAT rmax,ih2, rand_x,rand_y,rand_z, r=2;
+        while (r < 1)
+        {
+            rand_x = (double) random()/RAND_MAX;
+            rand_y = (double) random()/RAND_MAX;
+            rand_z = (double) random()/RAND_MAX;
+            r = rand_x*rand_x+rand_y*rand_y+rand_z*rand_z;
+        }
+        float phi = atan2(rand_y,rand_x);
+        float theta = acos(rand_z/sqrt(r));
+        rmax = sqrt(p->fBall2/4.0);
+        p->fMass /= 2.0;
+#ifdef TWOPHASE
+        p->fMassHot /= 2.0;
+#endif
+        daughter = *p;
+        TYPESet(&daughter, TYPE_GAS);
+        daughter.r[0] += 0.5*rmax*sin(theta)*cos(phi);
+        daughter.r[1] += 0.5*rmax*sin(theta)*sin(phi);
+        daughter.r[2] += 0.5*rmax*cos(theta);
+        daughter.iGasOrder = p->iOrder;
+        daughter.iActive &= TYPE_MASK;
+        p->r[0] -= 0.5*rmax*sin(theta)*cos(phi);
+        p->r[1] -= 0.5*rmax*sin(theta)*sin(phi);
+        p->r[2] -= 0.5*rmax*cos(theta);
+        pkdNewParticle(pkd, daughter);
+        }
+}
+#endif

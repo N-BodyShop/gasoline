@@ -6294,6 +6294,24 @@ pstFormSinks(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	if (pnOut) *pnOut = sizeof(struct outFormSinks);
 	}
+#ifdef PARTICLESPLIT
+void pstSplitGas(PST pst,void *vin,int nIn,void *vout,int *pnOut)
+{
+	struct inSplitGas *in = vin;
+
+	mdlassert(pst->mdl,nIn == sizeof(struct inSplitGas));
+	if (pst->nLeaves > 1) {
+	    
+		mdlReqService(pst->mdl,pst->idUpper,PST_SPLITGAS,in,nIn);
+		pstSplitGas(pst->pstLower,in,nIn,NULL,NULL);
+		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
+		}
+	else {
+        pkdSplitGas(pst->plcl->pkd, in->dInitGasMass);
+		}
+	if (pnOut) *pnOut = 0;
+	}
+#endif 
 
 #ifdef STARFORM
 void

@@ -388,18 +388,6 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         smx->fcnPost = NULL;
         smx->bUseBallMax = 0;
         break;
-#ifdef PARTICLESPLIT
-    case SMX_SPLIT_GAS:
-        assert(bSymmetric == 0);
-        smx->fcnSmooth = SplitGas;
-        initParticle = NULL;
-        initTreeParticle = NULL;
-        init = NULL;
-        comb = NULL;
-        smx->fcnPost = NULL;
-        smx->bUseBallMax = 0;
-        break;
-#endif
     case SMX_DIST_DELETED_GAS:
         assert(bSymmetric != 0);
         smx->fcnSmooth = DistDeletedGas;

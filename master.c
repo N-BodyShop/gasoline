@@ -5702,9 +5702,6 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
 #ifdef GASOLINE
     psmf->dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333)*psmf->a; /* (dx/h) factor */
     psmf->dEvapMinTemp = msr->param.dEvapMinTemp;
-#ifdef PARTICLESPLIT
-    psmf->dInitGasMass = msr->param.dInitGasMass;
-#endif
 #ifdef TWOPHASE
     psmf->dFBInitialMassLoad = msr->param.dFBInitialMassLoad;
     psmf->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
@@ -10067,12 +10064,10 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		msrSmooth(msr, dTime, SMX_DIST_FB_ENERGY, 1);
 #endif
 #ifdef PARTICLESPLIT
+        struct inSplitGas inSplit;
+        inSplit.dInitGasMass = msr->param.dInitGasMass;
         if (msr->param.bVDetails) printf("Splitting Gas ...\n");
-        msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
-        msrBuildTree(msr,1,-1.0,1);
-		msrActiveType(msr, TYPE_GAS, TYPE_SMOOTHACTIVE);
-        msrSmooth(msr, dTime, SMX_SPLIT_GAS, 0);
-		msrResetType(msr, TYPE_GAS, TYPE_SMOOTHACTIVE);
+        pstSplitGas(msr->pst, &inSplit, sizeof(inSplit), NULL, NULL);
         msrAddDelParticles(msr);
 #endif
 		msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, &dTotFe, 
