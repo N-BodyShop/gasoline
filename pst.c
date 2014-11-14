@@ -256,6 +256,11 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_COOLUSINGPARTICLELIST,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstCoolUsingParticleList,
 				  sizeof(struct inoutParticleList),0);
+#ifdef PARTICLESPLIT
+	mdlAddService(mdl,PST_SPLITGAS,pst,
+				  (void (*)(void *,void *,int,void *,int *)) pstSplitGas,
+				  sizeof(struct inSplitGas),0);
+#endif
 	mdlAddService(mdl,PST_GROWMASS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGrowMass,
 				  sizeof(struct inGrowMass),0);
