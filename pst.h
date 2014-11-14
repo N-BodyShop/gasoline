@@ -251,6 +251,9 @@ enum pst_service {
       PST_FORMSTARS,
       PST_STARCLUSTERFORMPRECONDITION,
       PST_FEEDBACK,
+#ifdef PARTICLESPLIT
+      PST_SPLITGAS,
+#endif
       PST_GRAVINFLOW,
       PST_CREATEINFLOW,
       PST_SIMPLESTARFORM,
@@ -1860,6 +1863,12 @@ struct inRotBar
     };
 void pstInitRotBar(PST,void *,int,void *,int *);
 
+#ifdef PARTICLESPLIT
+struct inSplitGas {
+    double dInitGasMass;
+};
+void pstSplitGas(PST ,void *,int ,void *,int *);
+#endif
 /* PST_KICKVPRED */
 #ifdef NEED_VPRED
 struct inKickVpred {
