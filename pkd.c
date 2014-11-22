@@ -7906,6 +7906,7 @@ void pkdSplitGas(PKD pkd, double dInitGasMass)
     
     for(i = 0; i < n; ++i) {
         p = &pkd->pStore[i];
+        if(!TYPETest(p, TYPE_GAS)) continue; //Only split gas
         if(p->fMass < 1.33*dInitGasMass)
         continue; //Don't split particles that are too small FOOL
 
