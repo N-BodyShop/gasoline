@@ -1196,10 +1196,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
 #ifdef TWOPHASE
-	msr->param.dMultiPhaseMinTemp = 1e6;
+	msr->param.dMultiPhaseMinTemp = 1e5;
 	prmAddParam(msr->prm,"dMultiPhaseMinTemp",2,&msr->param.dMultiPhaseMinTemp,
 				sizeof(double),"multitmin",
-				"<Temperature threshold to use multiphase feedback> = 1e6");
+				"<Temperature threshold to use multiphase feedback> = 1e5");
 	msr->param.bMultiPhaseTempThreshold  = 1;
 	prmAddParam(msr->prm,"bMultiPhaseTempThreshold",0,&msr->param.bMultiPhaseTempThreshold ,
 				sizeof(int),"multitthresh",
