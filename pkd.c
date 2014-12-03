@@ -4495,7 +4495,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            assert(p->CoolParticle.f_HI > 0);
                    }
                     TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uHotPred, fDensity, p->fMetals );
-                    if(TpNC < uhc.dMultiPhaseMinTemp && uhc.bMultiPhaseTempThreshold && p->uHotPred > 0)//Check to make sure the hot phase is still actually hot
+                    if(TpNC < uhc.dMultiPhaseMinTemp && p->uHotPred > 0)//Check to make sure the hot phase is still actually hot
                     {
                            p->uPred = (p->uPred*(p->fMass-p->fMassHot) + p->uHotPred*p->fMassHot)/p->fMass;
                            p->u = (p->u*(p->fMass-p->fMassHot) + p->uHot*p->fMassHot)/p->fMass;

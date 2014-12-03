@@ -2215,6 +2215,7 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 	
 void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr, FILE *fp ) {
     LogParams(lgr, "COOLING", "bIonNonEqm: %d",CoolParam->bIonNonEqm); 
+    LogParams(lgr, "COOLING", "bMolecH: %d",CoolParam->bMolecH); 
     LogParams(lgr, "COOLING", "bUV: %d",CoolParam->bUV); 
     LogParams(lgr, "COOLING", "bUVTableUsesTime: %d",CoolParam->bUVTableUsesTime); 
     LogParams(lgr, "COOLING", "dMassFracHelium: %g",CoolParam->dMassFracHelium); 

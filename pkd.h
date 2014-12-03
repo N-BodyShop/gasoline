@@ -354,7 +354,6 @@ typedef struct uHotContext {
     struct GasPressureContext gpc;
 #ifdef TWOPHASE
     double dMultiPhaseMinTemp;
-    int bMultiPhaseTempThreshold;
 #endif
     } UHC;
 

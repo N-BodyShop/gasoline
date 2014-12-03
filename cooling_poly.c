@@ -268,7 +268,7 @@ void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr) {
     LogParams(lgr, "COOLING", "CoolBaseT: %g",CoolParam->BaseT); 
     LogParams(lgr, "COOLING", "CooldParam2: %g",CoolParam->dParam2); 
     LogParams(lgr, "COOLING", "CooldParam3: %g",CoolParam->dParam3); 
-    LogParams(lgr, "COOLING", "ColldParam4: %g",CoolParam->dParam4); 
+    LogParams(lgr, "COOLING", "CooldParam4: %g",CoolParam->dParam4); 
     LogParams(lgr, "COOLING", "Y_Total: %g",CoolParam->Y_Total); 
     LogParams(lgr, "COOLING", "dCoolingTmin: %g",CoolParam->dCoolingTmin); 
     LogParams(lgr, "COOLING", "dCoolingTmax: %g",CoolParam->dCoolingTmax); 

@@ -2388,6 +2388,7 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 	}
 	
 void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr) {
+    LogParams(lgr, "COOLING", "CoolInFile: %s",CoolParam->CoolInFile); 
     LogParams(lgr, "COOLING", "bIonNonEqm: %d",CoolParam->bIonNonEqm); 
     LogParams(lgr, "COOLING", "bUV: %d",CoolParam->bUV); 
     LogParams(lgr, "COOLING", "bUVTableUsesTime: %d",CoolParam->bUVTableUsesTime); 
@@ -2398,7 +2399,10 @@ void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr) {
     LogParams(lgr, "COOLING", "bDoIonOutput: %d",CoolParam->bDoIonOutput); 
     LogParams(lgr, "COOLING", "bLowTCool: %d",CoolParam->bLowTCool); 
     LogParams(lgr, "COOLING", "bMetal: %d",CoolParam->bMetal); 
+    LogParams(lgr, "COOLING", "dCosmicRayHeating: %g",CoolParam->dCosmicRayHeating); 
+    LogParams(lgr, "COOLING", "bSelfShield: %d",CoolParam->bSelfShield); 
     LogParams(lgr, "COOLING", "dPhotoelectricHeating: %g",CoolParam->dPhotoelectricHeating); 
+    LogParams(lgr, "COOLING", "dPhotoelectricnMin: %g",CoolParam->dPhotoelectricnMin); 
     LogParams(lgr, "COOLING", "dPhotoelectricScaleLength: %g",CoolParam->dPhotoelectricScaleLength); 
     LogParams(lgr, "COOLING", "dPhotoelectricInnerRadius: %g",CoolParam->dPhotoelectricInnerRadius); 
     LogParams(lgr, "COOLING", "dzTimeClampUV: %g",CoolParam->dzTimeClampUV); 
