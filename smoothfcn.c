@@ -5808,7 +5808,7 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	}
 #ifdef TWOPHASE
 	FLOAT Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
-	if(Tq < smf->dMultiPhaseMinTemp && weight > 0) {
+	if(Tq < smf->dMultiPhaseMinTemp && weight > 0 && p->fNSN > 0.0) {
 		double fMassHot = q->fMassHot + weight*p->fMSN;
 		double deltaMassLoad = weight*p->fMSN*smf->dFBInitialMassLoad;
 		if (fMassHot+deltaMassLoad >= q->fMass) {
