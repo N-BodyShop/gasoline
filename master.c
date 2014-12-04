@@ -1200,10 +1200,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dMultiPhaseMinTemp",2,&msr->param.dMultiPhaseMinTemp,
 				sizeof(double),"multitmin",
 				"<Temperature threshold to use multiphase feedback> = 1e5");
-	msr->param.bMultiPhaseTempThreshold  = 1;
-	prmAddParam(msr->prm,"bMultiPhaseTempThreshold",0,&msr->param.bMultiPhaseTempThreshold ,
-				sizeof(int),"multitthresh",
-				"<Multiphase particles convert when they fall below the above temperature>");
 #endif 
 	msr->param.dEvapMinTemp = 1e5;
 	prmAddParam(msr->prm,"dEvapMinTemp",2,&msr->param.dEvapMinTemp,
