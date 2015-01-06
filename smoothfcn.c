@@ -6009,6 +6009,12 @@ void postDistFBEnergy(PARTICLE *p1, SMF *smf)
 		else {
 			p1->uDotFB /= p1->fMass;
 		}
+        if (!TYPETest(p1,TYPE_TWOPHASE)) {
+            double E = 0;
+            CoolInitEnergyAndParticleData(smf->pkd->Cool, &p1->CoolParticleHot, &E, 
+                smf->dHotInitCodeDensity, smf->dHotInitTemp, p1->fMetals);
+            TYPESet(p1,TYPE_TWOPHASE);
+            }
 #else
         p1->uDotFB /= p1->fMass;
 #endif
