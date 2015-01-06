@@ -33,8 +33,6 @@
 #define PRES_PDV(a,b) sqrt(a*b)
 #define PRES_ACC(a,b) (sqrt(a*b)*2)
 #endif
-//There are a handful of TYPE bits we never want leaving a local thread or a smooth call.
-#define TYPE_MASK (~TYPE_RESMOOTHINNER & ~TYPE_MARK)
 /*
  Change the way the Balsara Switch is applied:
 */
@@ -5200,51 +5198,6 @@ void HKViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	}
 
-#ifdef PARTICLESPLIT
-
-void SplitGas(PARTICLE *p, int nSmooth, NN *nnList, SMF *smf)
-{
-    if(p->fMass < 1.33*smf->dInitGasMass)
-    return; //Don't split particles that are too small FOOL
-
-    PARTICLE *q;
-    PARTICLE daughter;
-    FLOAT theta,phi,r2,rs,rstot,rmax,ih2;
-    int i;
-    theta = M_PI*(double) random()/RAND_MAX;
-    phi = 2*M_PI*(double) random()/RAND_MAX;
-	ih2 = 4.0/BALL2(p);
-    rstot = 0;        
-    rmax = 0;        
-	for (i=0;i<nSmooth;++i) {
-        q = nnList[i].pPart;
-	    if(TYPETest(q, TYPE_DELETED)) continue;
-	    assert(TYPETest(q, TYPE_GAS));
-        r2 = nnList[i].fDist2*ih2;            
-        if(r2 > rmax)
-            rmax = r2;
-        KERNEL(rs,r2);
-        rstot += rs;
-        }
-    rmax = sqrt(rmax/ih2);
-    p->fMass /= 2.0;
-#ifdef TWOPHASE
-    p->fMassHot /= 2.0;
-#endif
-    daughter = *p;
-    TYPESet(&daughter, TYPE_GAS);
-    daughter.r[0] += 0.5*rmax*sin(theta)*cos(phi);
-    daughter.r[1] += 0.5*rmax*sin(theta)*sin(phi);
-    daughter.r[2] += 0.5*rmax*cos(theta);
-    daughter.iGasOrder = p->iOrder;
-    daughter.iActive &= TYPE_MASK;
-    p->r[0] -= 0.5*rmax*sin(theta)*cos(phi);
-    p->r[1] -= 0.5*rmax*sin(theta)*sin(phi);
-    p->r[2] -= 0.5*rmax*cos(theta);
-    pkdNewParticle(smf->pkd, daughter);
-
-}
-#endif
 
 int CompISORT(const void * a, const void * b) {
     return ( (((ISORT *) a)->r2 < ((ISORT *) b)->r2) ? -1 : 1 );
@@ -5855,7 +5808,7 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	}
 #ifdef TWOPHASE
 	FLOAT Tq = CoolCodeEnergyToTemperature( smf->pkd->Cool, &q->CoolParticle, q->uPred, q->fDensity, q->fMetals );
-	if(Tq < smf->dMultiPhaseMinTemp && weight > 0) {
+	if(Tq < smf->dMultiPhaseMinTemp && weight > 0 && p->fNSN > 0.0) {
 		double fMassHot = q->fMassHot + weight*p->fMSN;
 		double deltaMassLoad = weight*p->fMSN*smf->dFBInitialMassLoad;
 		if (fMassHot+deltaMassLoad >= q->fMass) {

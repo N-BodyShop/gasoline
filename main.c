@@ -235,7 +235,9 @@ int main(int argc,char **argv)
 				}
 			}
 #ifdef GASOLINE
+#ifdef OUTURBDRIVER
         printf("OUturb: sph init %d\n",dTime);
+#endif
 		msrInitSph(msr,dTime);
 #endif
 #ifdef INFLOWOUTFLOW

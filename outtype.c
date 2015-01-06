@@ -23,6 +23,9 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
     {
 #ifdef GASOLINE
     FLOAT vTemp;
+#ifdef TWOPHASE
+    double frac = p->fMassHot/p->fMass;
+#endif
 #ifdef COOLING_MOLECULARH
     /*Define the correlation length used for shielding in H2 calculation from the gas shear CC*/
     double correL = 1.0;
@@ -100,7 +103,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #endif
 #endif
 #ifdef TWOPHASE
-        double frac = p->fMassHot/p->fMass;
 	    vTemp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u*(1-frac)+p->uHot*frac, p->fDensity, p->fMetals );
 #endif
 	    return(vTemp);

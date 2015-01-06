@@ -33,6 +33,9 @@
 #define NEED_VPRED
 #endif
 
+//There are a handful of TYPE bits we never want leaving a local thread or a smooth call.
+#define TYPE_MASK (~TYPE_RESMOOTHINNER & ~TYPE_MARK)
+
 /* SPH variable ALPHA */
 #ifndef ALPHAMIN
 #define ALPHAMIN 0.01
@@ -139,6 +142,7 @@ typedef struct particle {
 #endif
 #ifdef TWOPHASE
     FLOAT fMassHot;
+    COOLPARTICLE CoolParticleHot;  /* Abundances and any other cooling internal variables */
 #endif
 #ifdef UNONCOOL
     FLOAT uHot;
@@ -350,7 +354,6 @@ typedef struct uHotContext {
     struct GasPressureContext gpc;
 #ifdef TWOPHASE
     double dMultiPhaseMinTemp;
-    int bMultiPhaseTempThreshold;
 #endif
     } UHC;
 
@@ -484,6 +487,7 @@ typedef struct chkParticle {
     FLOAT u;
 #ifdef TWOPHASE
     FLOAT fMassHot;
+    COOLPARTICLE CoolParticleHot;  /* Abundances and any other cooling internal variables */
 #endif
 #ifdef UNONCOOL
     FLOAT uHot;
@@ -1109,4 +1113,7 @@ void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDe
 
 void pkdSinkLogInit(PKD pkd);
 void pkdSinkLogFlush(PKD pkd, char *pszFileName);
+#ifdef PARTICLESPLIT
+void pkdSplitGas(PKD pkd, double dInitGasMass);
+#endif
 #endif /* PKD_HINCLUDED */

@@ -1199,11 +1199,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dMultiPhaseMinTemp = 1e5;
 	prmAddParam(msr->prm,"dMultiPhaseMinTemp",2,&msr->param.dMultiPhaseMinTemp,
 				sizeof(double),"multitmin",
-				"<Temperature threshold to use multiphase feedback> = 1e6");
-	msr->param.bMultiPhaseTempThreshold  = 1;
-	prmAddParam(msr->prm,"bMultiPhaseTempThreshold",0,&msr->param.bMultiPhaseTempThreshold ,
-				sizeof(int),"multitthresh",
-				"<Multiphase particles convert when they fall below the above temperature>");
+				"<Temperature threshold to use multiphase feedback> = 1e5");
 #endif 
 	msr->param.dEvapMinTemp = 1e5;
 	prmAddParam(msr->prm,"dEvapMinTemp",2,&msr->param.dEvapMinTemp,
@@ -2941,13 +2937,18 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "RUN DURATION","iStartStep: %d",msr->param.iStartStep); 
     LogParams(lgr, "RUN DURATION","iStopStep: %d",msr->param.iStopStep); 
     LogParams(lgr, "RUN DURATION","nSteps: %d",msr->param.nSteps); 
+    LogParams(lgr, "RUN DURATION","iWallRunTime: %d",msr->param.iWallRunTime); 
+    LogParams(lgr, "RUN DURATION","dRedTo: %g",msr->param.dRedTo); 
 #ifdef INFLOWOUTFLOW
     LogParams(lgr, "INFLOW/OUTFLOW","bInflowOutflow: %d",msr->param.bInflowOutflow); 
     LogParams(lgr, "INFLOW/OUTFLOW","dxInflow: %g",msr->param.dxInflow); 
+    LogParams(lgr, "INFLOW/OUTFLOW","dxLastInflow: %g",msr->param.dxLastInflow); 
+    LogParams(lgr, "INFLOW/OUTFLOW","drLastInflow: %g",msr->param.drLastInflow); 
     LogParams(lgr, "INFLOW/OUTFLOW","dxOutflow: %g",msr->param.dxOutflow); 
 #endif
     LogParams(lgr, "READ/WRITE","bParaRead: %d",msr->param.bParaRead); 
     LogParams(lgr, "READ/WRITE","bParaWrite: %d",msr->param.bParaWrite); 
+    LogParams(lgr, "READ/WRITE","bOverwrite: %d",msr->param.bOverwrite); 
     LogParams(lgr, "READ/WRITE","iBinaryOutput: %d",msr->param.iBinaryOutput); 
     LogParams(lgr, "READ/WRITE","bNoReOrder: %d",msr->param.bNoReOrder); 
     LogParams(lgr, "INTEGRATION","bCannonical: %d",msr->param.bCannonical); 
@@ -2977,7 +2978,9 @@ void msrLogHeader(MSR msr,FILE *fp)
     else
         LogParams(lgr,"SOFTENING","dSoft: input");
     LogParams(lgr, "TIMESTEPPING","dDelta: %g",msr->param.dDelta); 
+    LogParams(lgr, "TIMESTEPPING","dDeltaSph: %g",msr->param.dDeltaSph); 
     LogParams(lgr, "TIMESTEPPING","dEta: %g",msr->param.dEta); 
+    LogParams(lgr, "TIMESTEPPING","dEtauDot: %g",msr->param.dEtauDot); 
     LogParams(lgr, "TIMESTEPPING","dEtaDeltaAccel: %g",msr->param.dEtaDeltaAccel); 
     LogParams(lgr, "TIMESTEPPING","dEtaCourant: %g (%g)",msr->param.dEtaCourant,msr->param.dEtaCourantLong); 
     LogParams(lgr, "TIMESTEPPING","iMaxRung: %d",msr->param.iMaxRung); 
@@ -2996,6 +2999,7 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "SOFTENING","bSoftMaxMul: %d",msr->param.bSoftMaxMul); 
     LogParams(lgr, "SOFTENING","dSoftMax: %g",msr->param.dSoftMax); 
     LogParams(lgr, "SOFTENING","bDoSoftOutput: %d",msr->param.bDoSoftOutput); 
+    LogParams(lgr, "GRAVITY","bEwald: %d",msr->param.bEwald); 
     LogParams(lgr, "GRAVITY","bSqrtPhiStep: %d",msr->param.bSqrtPhiStep); 
     LogParams(lgr, "TIMESTEPPING","bDensityStep: %d",msr->param.bDensityStep); 
     LogParams(lgr, "TIMESTEPPING","bDeltaAccelStep: %d",msr->param.bDeltaAccelStep); 
@@ -3009,6 +3013,8 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "GRAVITY","bHeliocentric: %d",msr->param.bHeliocentric); 
     LogParams(lgr, "GRAVITY","dCentMass: %g",msr->param.dCentMass); 
     LogParams(lgr, "GRAVITY","dSunSoft: %g",msr->param.dSunSoft); 
+    LogParams(lgr, "GRAVITY","bElliptical: %d",msr->param.bElliptical); 
+    LogParams(lgr, "GRAVITY","bEllipticalDarkNFW: %d",msr->param.bEllipticalDarkNFW); 
     LogParams(lgr, "GRAVITY","bLogHalo: %d",msr->param.bLogHalo ); 
     if( msr->param.bLogHalo ){
         LogParams(lgr, "GRAVITY","dLogHaloVcirc: %g",msr->param.dLogHaloVcirc ); 
@@ -3042,6 +3048,7 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "GRAVITY","dOmega: %g",msr->param.dOmega); 
     LogParams(lgr, "GRAVITY","dOmegaDot: %g",msr->param.dOmegaDot); 
     LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","bPatch: %d",msr->param.bPatch); 
+    LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","iStripOption: %d",msr->param.PP.iStripOption); 
     LogParams(lgr, "SINKS","bDoSinks: %d",msr->param.bDoSinks ); 
     LogParams(lgr, "SINKS","bBHSink: %d",msr->param.bBHSink ); 
     LogParams(lgr, "SINKS","dBHSinkEddEff: %g",msr->param.dBHSinkEddEff); 
@@ -3053,7 +3060,7 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "SINKS","bBHMindv: %d",msr->param.bBHMindv); 
     LogParams(lgr, "SINKS","bBHAccreteAll: %d",msr->param.bBHAccreteAll); 
     LogParams(lgr, "SINKS","bDoSinksAtStart: %d",msr->param.bDoSinksAtStart ); 
-    LogParams(lgr, "SINKS","bSinksThermal: %d",msr->param.bSinkThermal ); 
+    LogParams(lgr, "SINKS","bSinkThermal: %d",msr->param.bSinkThermal ); 
     LogParams(lgr, "SINKS","dSinkRadius: %g",msr->param.dSinkRadius); 
     LogParams(lgr, "SINKS","dSinkBoundOrbitRadius: %g",msr->param.dSinkBoundOrbitRadius); 
     LogParams(lgr, "SINKS","dSinkMustAccreteRadius: %g",msr->param.dSinkMustAccreteRadius); 
@@ -3075,6 +3082,9 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "SPH","nSmooth: %d",msr->param.nSmooth); 
     LogParams(lgr, "SPH","dhMinOverSoft: %g",msr->param.dhMinOverSoft); 
     LogParams(lgr, "SPH","dResolveJeans: %g",msr->param.dResolveJeans); 
+#ifdef PARTICLESPLIT
+    LogParams(lgr, "SPH","dInitGasMass: %g",msr->param.dInitGasMass); 
+#endif
     LogParams(lgr, "DOMAIN DECOMPOSITION","bSplitWork: %d",msr->param.bSplitWork); 
     LogParams(lgr, "DOMAIN DECOMPOSITION","bRungDD: %d",msr->param.bRungDD); 
     LogParams(lgr, "DOMAIN DECOMPOSITION","dRungDDWeight: %g ",msr->param.dRungDDWeight); 
@@ -3082,15 +3092,32 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "DOMAIN DECOMPOSITION","bLowerSoundSpeed: %d",msr->param.bLowerSoundSpeed); 
     LogParams(lgr, "SPH","bVariableAlpha: %d",msr->param.bVariableAlpha); 
     LogParams(lgr, "GROWMASS","nGrowMass: %d",msr->param.nGrowMass); 
+    LogParams(lgr, "GROWMASS","bGrowDark: %d",msr->param.bGrowDark); 
+    LogParams(lgr, "GROWMASS","bGrowGas: %d",msr->param.bGrowGas); 
+    LogParams(lgr, "GROWMASS","bGrowStar: %d",msr->param.bGrowStar); 
     LogParams(lgr, "GROWMASS","dGrowDeltaM: %g",msr->param.dGrowDeltaM); 
     LogParams(lgr, "GROWMASS","dGrowStartT: %g",msr->param.dGrowStartT); 
     LogParams(lgr, "GROWMASS","dGrowEndT: %g",msr->param.dGrowEndT); 
+    LogParams(lgr, "GROWMASS","dGrowMaxM: %g",msr->param.dGrowMaxM); 
+    LogParams(lgr, "GROWMASS","dGrowMinM: %g",msr->param.dGrowMinM); 
+#ifdef GLASS
+    LogParams(lgr, "GLASS","dGlassDamper: %g",msr->param.dGlassDamper); 
+    LogParams(lgr, "GLASS","dGlassPoverRhoL: %g",msr->param.dGlassPoverRhoL); 
+    LogParams(lgr, "GLASS","dGlassPoverRhoR: %g",msr->param.dGlassPoverRhoR); 
+    LogParams(lgr, "GLASS","dGlassVL: %g",msr->param.dGlassVL); 
+    LogParams(lgr, "GLASS","dGlassVR: %g",msr->param.dGlassVR); 
+    LogParams(lgr, "GLASS","dGlassXL: %g",msr->param.dGlassXL); 
+    LogParams(lgr, "GLASS","dGlassXR: %g",msr->param.dGlassXR); 
+#endif
 #ifdef GASOLINE
     LogParams(lgr, "SPH","bDoGas: %d",msr->param.bDoGas);	 
     LogParams(lgr, "SPH","bGeometric: %d",msr->param.bGeometric); 
     LogParams(lgr, "SPH","bGasAdiabatic: %d",msr->param.bGasAdiabatic);	 
     LogParams(lgr, "SPH","bGasIsothermal: %d",msr->param.bGasIsothermal);	 
     LogParams(lgr, "SPH","bGasCooling: %d",msr->param.bGasCooling);	 
+    LogParams(lgr, "SPH","bShockTracker: %d",msr->param.bShockTracker);	 
+    LogParams(lgr, "SPH","dShockTrackerA: %g",msr->param.dShockTrackerA);	 
+    LogParams(lgr, "SPH","dShockTrackerB: %g",msr->param.dShockTrackerB);	 
     LogParams(lgr, "SPH","dConstAlpha: %g",msr->param.dConstAlpha); 
     LogParams(lgr, "SPH","dConstBeta: %g",msr->param.dConstBeta); 
     LogParams(lgr, "GAS PHYSICS","dConstGamma: %g",msr->param.dConstGamma); 
@@ -3099,9 +3126,16 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "GAS PHYSICS","dTuFac: %g",msr->param.dTuFac); 
     LogParams(lgr, "GAS PHYSICS","dKBoltzUnit: %g",msr->param.dKBoltzUnit); 
     LogParams(lgr, "GAS PHYSICS","dPext: %g",msr->param.dPext); 
+    LogParams(lgr, "GAS PHYSICS","nSuperCool: %d",msr->param.nSuperCool); 
+    LogParams(lgr, "GAS PHYSICS","bSymCool: %d",msr->param.bSymCool); 
+    LogParams(lgr, "GAS PHYSICS","dCoolDens: %g",msr->param.dCoolDens); 
+    LogParams(lgr, "GAS PHYSICS","dCoolFac: %g",msr->param.dCoolFac); 
+    LogParams(lgr, "GAS PHYSICS","dCoolMaxDens: %g",msr->param.dCoolMaxDens); 
+    LogParams(lgr, "GAS PHYSICS","bConstantDiffusion: %d",msr->param.bConstantDiffusion); 
     LogParams(lgr, "GAS PHYSICS","dMetalDiffusionCoeff: %g",msr->param.dMetalDiffusionCoeff); 
     LogParams(lgr, "GAS PHYSICS","dThermalDiffusionCoeff: %g",msr->param.dThermalDiffusionCoeff); 
     LogParams(lgr, "GAS PHYSICS","dEvapCoeff: %g",msr->param.dEvapCoeff); 
+    LogParams(lgr, "GAS PHYSICS","dEvapMinTemp: %g",msr->param.dEvapMinTemp); 
     LogParams(lgr, "GAS PHYSICS","dThermalCondCoeff: %g",msr->param.dThermalCondCoeff); 
     LogParams(lgr, "GAS PHYSICS","dThermalCondSatCoeff: %g",msr->param.dThermalCondSatCoeff); 
     LogParams(lgr, "GAS PHYSICS","dThermalCond2Coeff: %g",msr->param.dThermalCond2Coeff); 
@@ -3118,7 +3152,9 @@ void msrLogHeader(MSR msr,FILE *fp)
         LogParams(lgr, "UNITS","dKmPerSecUnit (z=0): %g", sqrt(GCGS*msr->param.dMsolUnit*MSOLG/(msr->param.dKpcUnit*KPCCM))/1e5 ); 
     }
 
+    LogParams(lgr, "SPH","bViscosityLimiter: %d",msr->param.bViscosityLimiter); 
     LogParams(lgr, "SPH","iViscosityLimiter: %d",msr->param.iViscosityLimiter); 
+    LogParams(lgr, "SPH","bViscosityLimitdt: %d",msr->param.bViscosityLimitdt); 
     LogParams(lgr, "SPH","bBulkViscosity: %d",msr->param.bBulkViscosity); 
     LogParams(lgr, "DOMAIN DECOMPOSITION","bGasDomainDecomp: %d",msr->param.bGasDomainDecomp); 
     LogParams(lgr, "SPH","bSphStep: %d",msr->param.bSphStep); 
@@ -3135,10 +3171,18 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "STAR FORMATION","Star Formation: bStarForm: %d",msr->param.bStarForm); 
     LogParams(lgr, "STAR FORMATION","bFormOutputs: %d",msr->param.bFormOutputs); 
     LogParams(lgr, "STAR FORMATION","bFeedBack: %d",msr->param.bFeedBack);	 
+    LogParams(lgr, "STAR FORMATION","iRandomSeed: %d",msr->param.iRandomSeed);	 
+    LogParams(lgr, "STAR FORMATION","bIonize: %d",msr->param.bIonize);	 
+    LogParams(lgr, "STAR FORMATION","dIonizeMultiple: %g",msr->param.dIonizeMultiple);	 
+    LogParams(lgr, "STAR FORMATION","dIonizeT: %g",msr->param.dIonizeT);	 
+    LogParams(lgr, "STAR FORMATION","dIonizeTMin: %g",msr->param.dIonizeTMin);	 
+    LogParams(lgr, "STAR FORMATION","dIonizeTime: %g",msr->param.dIonizeTime);	 
     LogParams(lgr, "STAR FORMATION","dOverDenMin: %g",msr->param.stfm->dOverDenMin); 
     LogParams(lgr, "STAR FORMATION","dPhysDenMin: %g",msr->param.stfm->dPhysDenMin); 
+    LogParams(lgr, "STAR FORMATION","bFeedBack: %d",msr->param.bFeedBack);	 
     LogParams(lgr, "STAR FORMATION","dStarEff: %g",msr->param.stfm->dStarEff); 
     LogParams(lgr, "STAR FORMATION","dCStar: %g",msr->param.stfm->dCStar); 
+    LogParams(lgr, "STAR FORMATION","dInitStarMass: %g",msr->param.stfm->dInitStarMass); 
     LogParams(lgr, "STAR FORMATION","dTempMax: %g",msr->param.stfm->dTempMax); 
     LogParams(lgr, "STAR FORMATION","dSoftMin: %g",msr->param.stfm->dSoftMin); 
     LogParams(lgr, "STAR FORMATION","dMinMassFrac: %g",msr->param.stfm->dMinMassFrac); 
@@ -3148,6 +3192,10 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "STAR FORMATION","dZAMSDelayTime: %g",msr->param.stfm->dZAMSDelayTime); 
     LogParams(lgr, "STAR FORMATION","bESF: %d",msr->param.bESF); 
     LogParams(lgr, "STAR FORMATION","dESFTime: %g",msr->param.dESFTime); 
+#ifdef FBPARTICLE
+    LogParams(lgr, "STAR FORMATION","dFBMassRatio: %g",msr->param.dFBMassRatio);
+#endif
+    LogParams(lgr, "STAR FORMATION","dESN: %g",msr->param.sn->dESN); 
     LogParams(lgr, "STAR FORMATION","dESFEnergy: %g",msr->param.dESFEnergy); 
     LogParams(lgr, "STAR FORMATION","dHotConvTime: %g",msr->param.dHotConvTime); 
     LogParams(lgr, "STAR FORMATION","dHotConvTimeMin: %g",msr->param.dHotConvTimeMin); 
@@ -3160,6 +3208,14 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "STAR FORMATION","bBHForm: %i",msr->param.bBHForm); 
     LogParams(lgr, "STAR FORMATION","dBHFormProb: %g",msr->param.dBHFormProb); 
     LogParams(lgr, "STAR FORMATION","dInitBHMass: %g",msr->param.dInitBHMass); 
+#ifdef TWOPHASE
+    LogParams(lgr, "STAR FORMATION","dMultiPhaseMinTemp: %g",msr->param.dMultiPhaseMinTemp); 
+    LogParams(lgr, "STAR FORMATION","bTempInclHot: %d",msr->param.stfm->bTempInclHot); 
+    LogParams(lgr, "STAR FORMATION","dFBInitialMassLoad: %g",msr->param.dFBInitialMassLoad); 
+#endif
+#if defined(UNONCOOL) && !defined(TWOPHASE)
+    LogParams(lgr, "STAR FORMATION","dHotConvTimeMul: %g",msr->param.dHotConvTimeMul); 
+#endif
 #ifdef STARCLUSTERFORM
     LogParams(lgr, "STAR FORMATION","dStarClusterMass: %g",msr->param.stfm->dStarClusterMass); 
     LogParams(lgr, "STAR FORMATION","dStarClusterRatio: %g",msr->param.stfm->dStarClusterRatio); 
@@ -3261,7 +3317,6 @@ void msrLogHeader(MSR msr,FILE *fp)
 
 #ifdef SIMPLESF
     LogParams(lgr, "STAR FORMATION","SSF: bStarForm: %d",msr->param.bStarForm); 
-    LogParams(lgr, "STAR FORMATION","bFeedBack: %d",msr->param.bFeedBack);	 
     LogParams(lgr, "STAR FORMATION","SSF_dEfficiency: %g",msr->param.SSF_dEfficiency); 
     LogParams(lgr, "STAR FORMATION","SSF_dTMax: %g",msr->param.SSF_dTMax); 
     LogParams(lgr, "STAR FORMATION","SSF_dPhysDenMin: %g",msr->param.SSF_dPhysDenMin); 
@@ -3274,7 +3329,7 @@ void msrLogHeader(MSR msr,FILE *fp)
     if (msr->param.bPatch) {
         PATCH_PARAMS *PP = &msr->param.PP;
         LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","dOrbDist: %g",PP->dOrbDist); 
-        LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","(dOrbFreq: %g)",PP->dOrbFreq); 
+        LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","dOrbFreq: %g",PP->dOrbFreq); 
         LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","bExtPert: %d",PP->bExtPert); 
         if (PP->bExtPert) {
             LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","dPertOrbDist: %g",PP->dPertOrbDist); 
@@ -3283,7 +3338,7 @@ void msrLogHeader(MSR msr,FILE *fp)
             LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","dPertOrbFreqZ: %g",PP->dPertOrbFreqZ); 
             LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","dPertPhase: %g",PP->dPertPhase); 
             LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","dPertPhaseZ: %g",PP->dPertPhaseZ); 
-            LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","(dPertOrbFreq: %g)",PP->dPertOrbFreq); 
+            LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","dPertOrbFreq: %g",PP->dPertOrbFreq); 
         }
         LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","bRandAzWrap: %d",PP->bRandAzWrap); 
         if (PP->bRandAzWrap) {
@@ -3294,11 +3349,17 @@ void msrLogHeader(MSR msr,FILE *fp)
             LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","dAvgVertAmp: %g",PP->dAvgVertAmp); 
             LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","dAvgMass: %g",PP->dAvgMass); 
         }
+#ifdef SLIDING_PATCH
+        LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","dLargeMass: %g",msr->param.dLargeMass); 
+        LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","dRandBall: %g",msr->param.dRandBall); 
+        LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","iRandStep: %d",msr->param.iRandStep); 
+#endif
     }
     LogParams(lgr, "SPH","bSimpleGasDrag: %d",msr->param.bSimpleGasDrag); 
     LogParams(lgr, "SPH","bEpstein: %d",msr->param.bEpstein); 
     LogParams(lgr, "SPH","dGamma: %g",msr->param.dGamma); 
 #ifdef COLLISIONS
+    LogParams(lgr, "COLLISIONS","achWallFile: %s",msr->param.achWallFile); 
     LogParams(lgr, "COLLISIONS","bFindRejects: %d",msr->param.bFindRejects); 
     LogParams(lgr, "COLLISIONS","iCollLogOption: %d",msr->param.iCollLogOption); 
     LogParams(lgr, "COLLISIONS","dSmallStep: %g",msr->param.dSmallStep); 
@@ -3329,6 +3390,7 @@ void msrLogHeader(MSR msr,FILE *fp)
 #endif
 #ifdef SPECIAL_PARTICLES
     {
+        LogParams(lgr, "SPECIAL PARTICLES","achSpecialFile: %s",msr->param.achSpecialFile); 
         SPECIAL_PARTICLE_DATA *s;
         int i;
         LogParams(lgr, "SPECIAL PARTICLES","nSpecial: %i",msr->param.nSpecial); 
@@ -3405,6 +3467,8 @@ void msrLogHeader(MSR msr,FILE *fp)
             LogParams(lgr, "TREEBUILD","iOpenType: NONE?");
     }
     LogParams(lgr, "TREEBUILD","dTheta: %f",msr->param.dTheta); 
+    LogParams(lgr, "TREEBUILD","daSwitchTheta: %f",msr->param.daSwitchTheta); 
+    LogParams(lgr, "TREEBUILD","dTheta2: %f",msr->param.dTheta2); 
     LogParams(lgr, "TREEBUILD","dAbsPartial: %g",msr->param.dAbsPartial); 
     LogParams(lgr, "TREEBUILD","dRealPartial: %g",msr->param.dRelPartial); 
     LogParams(lgr, "TREEBUILD","dAbsTotal: %g",msr->param.dAbsTotal); 
@@ -5702,9 +5766,6 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
 #ifdef GASOLINE
     psmf->dEvapCoeffCode = msr->param.dEvapCoeffCode*pow(32./msr->param.nSmooth,.3333333333)*psmf->a; /* (dx/h) factor */
     psmf->dEvapMinTemp = msr->param.dEvapMinTemp;
-#ifdef PARTICLESPLIT
-    psmf->dInitGasMass = msr->param.dInitGasMass;
-#endif
 #ifdef TWOPHASE
     psmf->dFBInitialMassLoad = msr->param.dFBInitialMassLoad;
     psmf->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
@@ -6397,7 +6458,6 @@ void msrSetuHotContext( MSR msr, UHC *puhc, double a ) {
 #endif
 #ifdef TWOPHASE
     puhc->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
-    puhc->bMultiPhaseTempThreshold = msr->param.bMultiPhaseTempThreshold;
 #endif
 #endif
     }
@@ -10067,12 +10127,10 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
 		msrSmooth(msr, dTime, SMX_DIST_FB_ENERGY, 1);
 #endif
 #ifdef PARTICLESPLIT
+        struct inSplitGas inSplit;
+        inSplit.dInitGasMass = msr->param.dInitGasMass;
         if (msr->param.bVDetails) printf("Splitting Gas ...\n");
-        msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
-        msrBuildTree(msr,1,-1.0,1);
-		msrActiveType(msr, TYPE_GAS, TYPE_SMOOTHACTIVE);
-        msrSmooth(msr, dTime, SMX_SPLIT_GAS, 0);
-		msrResetType(msr, TYPE_GAS, TYPE_SMOOTHACTIVE);
+        pstSplitGas(msr->pst, &inSplit, sizeof(inSplit), NULL, NULL);
         msrAddDelParticles(msr);
 #endif
 		msrMassMetalsEnergyCheck(msr, &dTotMass, &dTotMetals, &dTotFe, 

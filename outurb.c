@@ -88,6 +88,7 @@ void outurb_AddParams( OUTURBPARAM *outurbparam, PRM prm ) {
 void outurbLogParams( OUTURBPARAM *outurbparam, LOGGER *lgr ) {
   LogParams(lgr,"TURBULENT DRIVER","\n# OUturb: StDecay: %g",outurbparam->StDecay);
   LogParams(lgr,"TURBULENT DRIVER"," StEnergy: %g",outurbparam->StEnergy);
+  LogParams(lgr,"TURBULENT DRIVER"," StStartTime: %g",outurbparam->StStartTime);
   LogParams(lgr,"TURBULENT DRIVER"," StDtFreq: %g",outurbparam->StDtFreq);
   LogParams(lgr,"TURBULENT DRIVER"," StKmin: %g",outurbparam->StKmin);
   LogParams(lgr,"TURBULENT DRIVER"," StKmax: %g",outurbparam->StKmax);

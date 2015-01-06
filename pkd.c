@@ -333,6 +333,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->uPred = 0.0;
 #ifdef TWOPHASE
         p->fMassHot = 0;
+        p->CoolParticleHot.f_HI = -1;
 #endif
 #ifdef UNONCOOL
         p->uHot = 0.;
@@ -4432,12 +4433,17 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     if (p->uHot != 0)
                     {
                        fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uHot); /* Density of bubble part of particle */
+                       if (p->CoolParticleHot.f_HI < 0) {
+                           double E = p->uHot;
+                           double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, E, fDensity, p->fMetals);
+                           CoolInitEnergyAndParticleData(pkd->Cool, &p->CoolParticleHot, &E, fDensity, Tp, p->fMetals);
+                       }
                     }
                     else
                     {
                         fDensity = 0;
                     }
-                    FLOAT upnc52, up52, fMassFlux;
+                    FLOAT TpNC, upnc52, up52, fMassFlux;
                    upnc52 = pow(p->uHotPred, 2.5);
                    up52 = pow(p->uPred, 2.5);
                    FLOAT fFactor = duPredDelta*uhc.gpc.dEvapCoeffCode*ph*3.1415;
@@ -4459,6 +4465,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->uHot = 0;
                            p->uHotDot = 0;
                            p->uHotPred = 0;
+                           p->CoolParticle = p->CoolParticleHot;
+                           p->CoolParticleHot.f_HI = -1;
+                           assert(p->CoolParticle.f_HI > 0);
                        }
                        else {
                            p->uHotPred = (p->uPred*fMassFlux + p->uHotPred*p->fMassHot)/(fMassFlux+p->fMassHot);
@@ -4481,9 +4490,12 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->uHot = 0;
                            p->uHotDot = 0;
                            p->uHotPred = 0;
+                           p->CoolParticle = p->CoolParticleHot;
+                           p->CoolParticleHot.f_HI = -1;
+                           assert(p->CoolParticle.f_HI > 0);
                    }
-                    FLOAT TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uHotPred, fDensity, p->fMetals );
-                    if(TpNC < uhc.dMultiPhaseMinTemp && uhc.bMultiPhaseTempThreshold && p->uHotPred > 0)//Check to make sure the hot phase is still actually hot
+                    TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uHotPred, fDensity, p->fMetals );
+                    if(TpNC < uhc.dMultiPhaseMinTemp && p->uHotPred > 0)//Check to make sure the hot phase is still actually hot
                     {
                            p->uPred = (p->uPred*(p->fMass-p->fMassHot) + p->uHotPred*p->fMassHot)/p->fMass;
                            p->u = (p->u*(p->fMass-p->fMassHot) + p->uHot*p->fMassHot)/p->fMass;
@@ -4493,6 +4505,9 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->uHot = 0;
                            p->uHotDot = 0;
                            p->uHotPred = 0;
+                           p->CoolParticle = p->CoolParticleHot;
+                           p->CoolParticleHot.f_HI = -1;
+                           assert(p->CoolParticle.f_HI > 0);
                     }
                     
 #endif
@@ -4823,6 +4838,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
         p->uPred = cp.u;
 #ifdef TWOPHASE
         p->fMassHot = cp.fMassHot;
+        p->CoolParticleHot = cp.CoolParticleHot;
 #endif
 #ifdef UNONCOOL
 #ifdef UNONCOOLMERGE
@@ -4959,6 +4975,7 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
         cp.u = p->u;
 #ifdef TWOPHASE
         cp.fMassHot = p->fMassHot;
+        cp.CoolParticleHot = p->CoolParticleHot;
 #endif
 #ifdef UNONCOOL
         cp.uHot = p->uHot;
@@ -5653,16 +5670,16 @@ pkdNewOrder(PKD pkd,int nStartGas, int nStartDark, int nStartStar)
         if(p->iOrder == -1) {
         if (pkdIsStar(pkd, p)) {
             while (pSE->iOrdSink != -1) { /* Find next sink creation accretion in log */
-                printf("%d New order Non-sink form accrete -- skipped %d %d %d\n",pkd->idSelf,iLog,pSE->iOrdSink,pSE->iOrdVictim);
-                pSE++;
-                iLog++;
-                assert(iLog < pkd->sinkLog.nLog);
-                }
+            printf("%d New order Non-sink form accrete -- skipped %d %d %d\n",pkd->idSelf,iLog,pSE->iOrdSink,pSE->iOrdVictim);
+            pSE++;
+            iLog++;
+            assert(iLog < pkd->sinkLog.nLog);
+            }
             while (pSE->iOrdSink == -1) { /* Count through sink creation accretions in log */
-                printf("%d New order Sink form accrete -- skipped %d %d %d %d\n",pkd->idSelf,iLog,pSE->iOrdSink,pSE->iOrdVictim,pkd->sinkLog.nAccrete);
-                pSE++;
-                iLog++;
-                }
+            printf("%d New order Sink form accrete -- skipped %d %d %d %d\n",pkd->idSelf,iLog,pSE->iOrdSink,pSE->iOrdVictim,pkd->sinkLog.nAccrete);
+            pSE++;
+            iLog++;
+            }
             printf("%d New order Sink form -- %d %d %d %d %d\n",pkd->idSelf,iLog,pSE->iOrdSink,pSE->iOrdVictim,iForm,pkd->sinkLog.nForm);
             /* Must be followed by sink creation event in log */
             assert(iLog < pkd->sinkLog.nLog);
@@ -5672,7 +5689,7 @@ pkdNewOrder(PKD pkd,int nStartGas, int nStartDark, int nStartStar)
             pSE++;
             iForm++; iLog++;
             pkd->sinkLog.nLogOrdered = iLog;
-            
+
             iOrdSink++; /* Just counted here -- set below */
             pkd->sinkLog.nFormOrdered++;
             }
@@ -6279,7 +6296,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
 
             double PoverRho,PoverRhoGas,PoverRhoHot,PoverRhoFloorJeans,cGas;
             double uDotFBThermal=0;
-            int bUpdateStd=1;
 
 #if defined(STARFORM)
 #ifdef UNONCOOL
@@ -6297,7 +6313,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
             double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
             double uDotPdVNJ = p->uDotPdV*(PoverRhoHot+PoverRhoGas)/(PONRHOFLOOR + PoverRho); /* remove JeansFloor */
             
-            bUpdateStd = (p->fMassHot < 0.9*p->fMass);
 
             if (p->fMassHot > 0) {
                 assert(p->uHot >= 0);
@@ -6305,19 +6320,16 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
                 uDotSansCooling = (uDotPdVNJ+p->uDotAV)*p->uHotPred/uMean// Fraction of PdV related to uHot 
                     + p->uHotDotDiff + uHotDotFB;
                 if ( bCool && p->uHot > 0) {
-                    cp = p->CoolParticle;
                     E = p->uHot;
                     dtUse = dt;
                     fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uHot); /* Density of bubble part of particle */
 #ifdef DENSITYU
                     if (p->fDensityU < p->fDensity) fDensity = p->fDensityU*PoverRhoGas/(uhc.gpc.gammam1*p->uHot); 
 #endif
-                    double Tp = CoolCodeEnergyToTemperature(cl, &cp, E, fDensity, p->fMetals);
-                    CoolInitEnergyAndParticleData(cl, &cp, &E, fDensity, Tp, p->fMetals);
-                    E = p->uHot;
+                    cp = p->CoolParticleHot;
                     CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse);
                     p->uHotDot = (E - p->uHot)/duDelta;
-                    if (bUpdateState && !bUpdateStd) p->CoolParticle = cp;
+                    if (bUpdateState ) p->CoolParticleHot = cp;
                     }
                 else 
                     p->uHotDot = uDotSansCooling;
@@ -6411,7 +6423,7 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
                 mdlassert(pkd->mdl,E > 0);
                 
                 if (dtUse > 0 || uDotSansCooling*duDelta + p->u < 0) p->uDot = (E - p->u)/duDelta;
-                if (bUpdateState && bUpdateStd) p->CoolParticle = cp;
+                if (bUpdateState ) p->CoolParticle = cp;
                 }
             else { 
                 p->uDot = uDotSansCooling;
@@ -7610,6 +7622,15 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 #ifdef UNONCOOL
               p->uHotPred = p->uHotPred + p->uHotDot*duDelta;
               if (p->uHotPred < 0) p->uHotPred = 0;
+            if (p->uHotPred != 0 && p->CoolParticleHot.f_HI < 0)
+            {
+                   FLOAT PoverRhoFloorJeans, PoverRhoHot, PoverRhoGas, cGas;
+                   pkdGasPressureParticle(pkd, &uhc.gpc, p, &PoverRhoFloorJeans, &PoverRhoHot, &PoverRhoGas, &cGas );
+                   FLOAT fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uHotPred); /* Density of bubble part of particle */
+                   double E = p->uHotPred;
+                   double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, E, fDensity, p->fMetals);
+                   CoolInitEnergyAndParticleData(pkd->Cool, &p->CoolParticleHot, &E, fDensity, Tp, p->fMetals);
+            }
 #endif /* UNONCOOL */
 #else /* NOCOOLING is defined: */
               p->uPred = p->uPred + UDOT_HYDRO(p)*duDelta;
@@ -7876,6 +7897,46 @@ void pkdSinkLogFlush(PKD pkd, char *pszFileName)
     pkd->sinkLog.nLogOrdered = 0;
     pkd->sinkLog.nFormOrdered = 0;
     }
+#ifdef PARTICLESPLIT    
+void pkdSplitGas(PKD pkd, double dInitGasMass)
+{
+    int i;
+    PARTICLE *p;
+    int n = pkdLocal(pkd);
     
+    for(i = 0; i < n; ++i) {
+        p = &pkd->pStore[i];
+        if(!TYPETest(p, TYPE_GAS)) continue; //Only split gas
+        if(p->fMass < 1.33*dInitGasMass)
+        continue; //Don't split particles that are too small FOOL
 
-
+        PARTICLE daughter;
+        FLOAT rmax,ih2, rand_x,rand_y,rand_z, r=2;
+        while (r < 1)
+        {
+            rand_x = (double) random()/RAND_MAX;
+            rand_y = (double) random()/RAND_MAX;
+            rand_z = (double) random()/RAND_MAX;
+            r = rand_x*rand_x+rand_y*rand_y+rand_z*rand_z;
+        }
+        float phi = atan2(rand_y,rand_x);
+        float theta = acos(rand_z/sqrt(r));
+        rmax = sqrt(p->fBall2/4.0);
+        p->fMass /= 2.0;
+#ifdef TWOPHASE
+        p->fMassHot /= 2.0;
+#endif
+        daughter = *p;
+        TYPESet(&daughter, TYPE_GAS);
+        daughter.r[0] += 0.5*rmax*sin(theta)*cos(phi);
+        daughter.r[1] += 0.5*rmax*sin(theta)*sin(phi);
+        daughter.r[2] += 0.5*rmax*cos(theta);
+        daughter.iGasOrder = p->iOrder;
+        daughter.iActive &= TYPE_MASK;
+        p->r[0] -= 0.5*rmax*sin(theta)*cos(phi);
+        p->r[1] -= 0.5*rmax*sin(theta)*sin(phi);
+        p->r[2] -= 0.5*rmax*cos(theta);
+        pkdNewParticle(pkd, daughter);
+        }
+}
+#endif
