@@ -405,6 +405,7 @@ typedef struct uHotContext {
 #define TYPE_STARFORM          (1<<22)
 #define TYPE_MARK              (1<<23)
 #define TYPE_RESMOOTHINNER     (1<<24)
+#define TYPE_TWOPHASE          (1<<25)
 
 /* Combination Masks */
 #define TYPE_ALLACTIVE                  (TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE)

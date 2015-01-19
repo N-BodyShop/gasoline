@@ -82,6 +82,8 @@ typedef struct smfParameters {
 #ifdef TWOPHASE
     double dFBInitialMassLoad;
     double dMultiPhaseMinTemp;
+    double dHotInitTemp;
+    double dHotInitCodeDensity;
 #endif
 #ifdef STARFORM
     double dMinMassFrac;

@@ -5769,6 +5769,12 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
 #ifdef TWOPHASE
     psmf->dFBInitialMassLoad = msr->param.dFBInitialMassLoad;
     psmf->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
+    /* Hot phase inputs to set initial ionization state */
+        {
+        double dComovingGmPerCcUnit = msr->param.dGmPerCcUnit/(psmf->a*psmf->a*psmf->a);
+        psmf->dHotInitTemp = 1e7;
+        psmf->dHotInitCodeDensity = 1.67e-24/1e3/dComovingGmPerCcUnit;
+        }
 #endif
 #ifdef DIFFUSION
     psmf->dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;

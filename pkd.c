@@ -333,7 +333,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->uPred = 0.0;
 #ifdef TWOPHASE
         p->fMassHot = 0;
-        p->CoolParticleHot.f_HI = -1;
 #endif
 #ifdef UNONCOOL
         p->uHot = 0.;
@@ -503,8 +502,11 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 iSetMask = TYPE_GAS; /* saves identity based on Tipsy file in case iOrder changed */
                 xdr_float(&xdrs,&fTmp);
                 p->fMass = fTmp;
+#ifdef TWOPHASE
 #ifdef TWOPHASEINIT
                 p->fMassHot = 0.5*fTmp;
+#endif
+                if (p->fMassHot > 0) TYPESet(p,TYPE_TWOPHASE);
 #endif
                 assert(p->fMass > 0.0);
 #ifdef SINKING
@@ -4461,12 +4463,12 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->u = (p->u*(p->fMass-p->fMassHot) + p->uHot*p->fMassHot)/p->fMass;
                            p->uDot = (p->uDot*(p->fMass-p->fMassHot) + p->uHotDot*p->fMassHot)/p->fMass;
                            p->uDotFB *= p->fMassHot/p->fMass; //Damn these scaled uDots, we should use a different name!
+                           p->CoolParticle = p->CoolParticleHot;
                            p->fMassHot = 0;
+                           TYPEReset(p,TYPE_TWOPHASE);
                            p->uHot = 0;
                            p->uHotDot = 0;
                            p->uHotPred = 0;
-                           p->CoolParticle = p->CoolParticleHot;
-                           p->CoolParticleHot.f_HI = -1;
                            assert(p->CoolParticle.f_HI > 0);
                        }
                        else {
@@ -4481,7 +4483,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            assert(p->uHot >= 0);
                        }
                    }
-                   else if (p->uPred > p->uHotPred && p->uHotPred > 0) { // No sense in keeping the noncooling mass around if it is much colder than the regular mass
+                   else if (p->uPred > p->uHotPred && p->uHotPred > 0) { // No sense in keeping the Hot mass around if it is colder than the regular mass
                            p->uPred = (p->uPred*(p->fMass-p->fMassHot) + p->uHotPred*p->fMassHot)/p->fMass;
                            p->u = (p->u*(p->fMass-p->fMassHot) + p->uHot*p->fMassHot)/p->fMass;
                            p->uDot = (p->uDot*(p->fMass-p->fMassHot) + p->uHotDot*p->fMassHot)/p->fMass;
@@ -4501,13 +4503,12 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->u = (p->u*(p->fMass-p->fMassHot) + p->uHot*p->fMassHot)/p->fMass;
                            p->uDot = (p->uDot*(p->fMass-p->fMassHot) + p->uHotDot*p->fMassHot)/p->fMass;
                            p->uDotFB *= p->fMassHot/p->fMass;//Damn these scaled uDots, we should use a different name!
+                           p->CoolParticle = p->CoolParticleHot;
                            p->fMassHot = 0;
+                           TYPEReset(p,TYPE_TWOPHASE);
                            p->uHot = 0;
                            p->uHotDot = 0;
                            p->uHotPred = 0;
-                           p->CoolParticle = p->CoolParticleHot;
-                           p->CoolParticleHot.f_HI = -1;
-                           assert(p->CoolParticle.f_HI > 0);
                     }
                     
 #endif
@@ -4838,6 +4839,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
         p->uPred = cp.u;
 #ifdef TWOPHASE
         p->fMassHot = cp.fMassHot;
+        if (p->fMassHot > 0) TYPESet(p,TYPE_TWOPHASE);
         p->CoolParticleHot = cp.CoolParticleHot;
 #endif
 #ifdef UNONCOOL
@@ -6335,9 +6337,10 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
                     p->uHotDot = uDotSansCooling;
                 }
             else {
+                TYPEReset(p,TYPE_TWOPHASE);
                 p->uHotDot = 0;
                 uDotFBThermal = p->uDotFB;
-            }
+                }
 
             assert(p->uPred >= 0);
             fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uPred); /* Density of non-bubble part of particle */
@@ -7622,15 +7625,18 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 #ifdef UNONCOOL
               p->uHotPred = p->uHotPred + p->uHotDot*duDelta;
               if (p->uHotPred < 0) p->uHotPred = 0;
-            if (p->uHotPred != 0 && p->CoolParticleHot.f_HI < 0)
-            {
-                   FLOAT PoverRhoFloorJeans, PoverRhoHot, PoverRhoGas, cGas;
-                   pkdGasPressureParticle(pkd, &uhc.gpc, p, &PoverRhoFloorJeans, &PoverRhoHot, &PoverRhoGas, &cGas );
-                   FLOAT fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uHotPred); /* Density of bubble part of particle */
-                   double E = p->uHotPred;
-                   double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, E, fDensity, p->fMetals);
-                   CoolInitEnergyAndParticleData(pkd->Cool, &p->CoolParticleHot, &E, fDensity, Tp, p->fMetals);
-            }
+#ifdef TWOPHASE
+//            if (p->uHotPred != 0 && p->CoolParticleHot.f_HI < 0)
+              if (p->fMassHot > 0 && !TYPETest(p,TYPE_TWOPHASE)) {
+                  FLOAT PoverRhoFloorJeans, PoverRhoHot, PoverRhoGas, cGas;
+                  pkdGasPressureParticle(pkd, &uhc.gpc, p, &PoverRhoFloorJeans, &PoverRhoHot, &PoverRhoGas, &cGas );
+                  FLOAT fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uHotPred); /* Density of bubble part of particle */
+                  double E = p->uHotPred;
+                  double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, E, fDensity, p->fMetals);
+                  CoolInitEnergyAndParticleData(pkd->Cool, &p->CoolParticleHot, &E, fDensity, Tp, p->fMetals);
+                  TYPESet(p,TYPE_TWOPHASE);
+                  }
+#endif /* TWOPHASE */
 #endif /* UNONCOOL */
 #else /* NOCOOLING is defined: */
               p->uPred = p->uPred + UDOT_HYDRO(p)*duDelta;

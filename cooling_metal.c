@@ -2390,6 +2390,7 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr) {
     LogParams(lgr, "COOLING", "CoolInFile: %s",CoolParam->CoolInFile); 
     LogParams(lgr, "COOLING", "bIonNonEqm: %d",CoolParam->bIonNonEqm); 
+    LogParams(lgr, "COOLING", "bSelfShield: %d",CoolParam->bSelfShield);
     LogParams(lgr, "COOLING", "bUV: %d",CoolParam->bUV); 
     LogParams(lgr, "COOLING", "bUVTableUsesTime: %d",CoolParam->bUVTableUsesTime); 
     LogParams(lgr, "COOLING", "dMassFracHelium: %g",CoolParam->dMassFracHelium); 
