@@ -4430,22 +4430,13 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     if (p->uHot < 0) p->uHot = 0;
 #ifdef TWOPHASE
                     double ph = sqrt(p->fBall2*0.25);
-                    double fDensity,PoverRhoGas,PoverRhoHot,PoverRhoFloorJeans,cGas;
+                    double fDensity=0,PoverRhoGas,PoverRhoHot,PoverRhoFloorJeans,cGas;
                     pkdGasPressureParticle(pkd, &uhc.gpc, p, &PoverRhoFloorJeans, &PoverRhoHot, &PoverRhoGas, &cGas );
                     if (p->uHot != 0)
                     {
                        fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uHot); /* Density of bubble part of particle */
-                       if (p->CoolParticleHot.f_HI < 0) {
-                           double E = p->uHot;
-                           double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, E, fDensity, p->fMetals);
-                           CoolInitEnergyAndParticleData(pkd->Cool, &p->CoolParticleHot, &E, fDensity, Tp, p->fMetals);
-                       }
                     }
-                    else
-                    {
-                        fDensity = 0;
-                    }
-                    FLOAT TpNC, upnc52, up52, fMassFlux;
+                   FLOAT TpNC, upnc52, up52, fMassFlux;
                    upnc52 = pow(p->uHotPred, 2.5);
                    up52 = pow(p->uPred, 2.5);
                    FLOAT fFactor = duPredDelta*uhc.gpc.dEvapCoeffCode*ph*3.1415;
@@ -4469,7 +4460,6 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->uHot = 0;
                            p->uHotDot = 0;
                            p->uHotPred = 0;
-                           assert(p->CoolParticle.f_HI > 0);
                        }
                        else {
                            p->uHotPred = (p->uPred*fMassFlux + p->uHotPred*p->fMassHot)/(fMassFlux+p->fMassHot);
@@ -4492,9 +4482,8 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->uHot = 0;
                            p->uHotDot = 0;
                            p->uHotPred = 0;
+                           TYPEReset(p,TYPE_TWOPHASE);
                            p->CoolParticle = p->CoolParticleHot;
-                           p->CoolParticleHot.f_HI = -1;
-                           assert(p->CoolParticle.f_HI > 0);
                    }
                     TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uHotPred, fDensity, p->fMetals );
                     if(TpNC < uhc.dMultiPhaseMinTemp && p->uHotPred > 0)//Check to make sure the hot phase is still actually hot
@@ -7625,18 +7614,6 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 #ifdef UNONCOOL
               p->uHotPred = p->uHotPred + p->uHotDot*duDelta;
               if (p->uHotPred < 0) p->uHotPred = 0;
-#ifdef TWOPHASE
-//            if (p->uHotPred != 0 && p->CoolParticleHot.f_HI < 0)
-              if (p->fMassHot > 0 && !TYPETest(p,TYPE_TWOPHASE)) {
-                  FLOAT PoverRhoFloorJeans, PoverRhoHot, PoverRhoGas, cGas;
-                  pkdGasPressureParticle(pkd, &uhc.gpc, p, &PoverRhoFloorJeans, &PoverRhoHot, &PoverRhoGas, &cGas );
-                  FLOAT fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uHotPred); /* Density of bubble part of particle */
-                  double E = p->uHotPred;
-                  double Tp = CoolCodeEnergyToTemperature(pkd->Cool, &p->CoolParticle, E, fDensity, p->fMetals);
-                  CoolInitEnergyAndParticleData(pkd->Cool, &p->CoolParticleHot, &E, fDensity, Tp, p->fMetals);
-                  TYPESet(p,TYPE_TWOPHASE);
-                  }
-#endif /* TWOPHASE */
 #endif /* UNONCOOL */
 #else /* NOCOOLING is defined: */
               p->uPred = p->uPred + UDOT_HYDRO(p)*duDelta;
