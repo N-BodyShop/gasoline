@@ -4543,6 +4543,13 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTDIFF_ARRAY;
+#ifdef UNONCOOLDEBUG
+        OutputList[(*nOutputList)++]=OUT_UHOTDOT_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UHOTDOTDIFF_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UHOTDOTPDV_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UHOTDOTCONV_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UHOTDOTFB_ARRAY;
+#endif
         }
 #ifndef NOCOOLING				
     {
@@ -4707,6 +4714,13 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
         OutputList[(*nOutputList)++]=OUT_UDOTPDV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTAV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_UDOTDIFF_ARRAY;
+#ifdef UNONCOOLDEBUG
+        OutputList[(*nOutputList)++]=OUT_UHOTDOT_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UHOTDOTDIFF_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UHOTDOTPDV_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UHOTDOTCONV_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_UHOTDOTFB_ARRAY;
+#endif
         }
     if (msr->param.bShockTracker) {
         OutputList[(*nOutputList)++]=OUT_SHOCKTRACKER_ARRAY;
@@ -5002,6 +5016,13 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
         case OUT_UDOTPDV_ARRAY:
         case OUT_UDOTAV_ARRAY:
         case OUT_UDOTDIFF_ARRAY:
+#ifdef UNONCOOLDEBUG
+        case OUT_UHOTDOT_ARRAY:
+        case OUT_UHOTDOTDIFF_ARRAY:
+        case OUT_UHOTDOTPDV_ARRAY:
+        case OUT_UHOTDOTCONV_ARRAY:
+        case OUT_UHOTDOTFB_ARRAY:
+#endif
         case OUT_PRES_ARRAY:
         case OUT_DIVV_ARRAY:
         case OUT_BALSARASWITCH_ARRAY:

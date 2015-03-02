@@ -6365,6 +6365,11 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
                 pkduHotConvRate(pkd,uhc,p->fBall2,uHotPredTmp,p->u+p->uDot*duDelta*0.5); 
             p->uHotDot = p->uDotPdV*PoverRhoHot/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to uHot 
                 - uHotDotConv + uHotDotFB + p->uHotDotDiff;
+#ifdef UNONCOOLDEBUG
+            p->uHotDotPdV = p->uDotPdV*PoverRhoHot/(PONRHOFLOOR + PoverRho);
+            p->uHotDotConv = -uHotDotConv;
+            p->uHotDotFB =  uHotDotFB;
+#endif
 #else
             double uHotDotConv=0;
 #endif
