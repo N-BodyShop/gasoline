@@ -5319,6 +5319,10 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                  */
 		q->u = f1*q->u+f2*p->u;
 		q->uPred = f1*q->uPred+f2*p->uPred;
+#ifdef UNONCOOL
+		q->uHot = f1*q->uHot+f2*p->uHot;
+		q->uHotPred = f1*q->uHotPred+f2*p->uHotPred;
+#endif 
 #ifdef COOLDEBUG
 		assert(q->u >= 0.0);
 #endif
