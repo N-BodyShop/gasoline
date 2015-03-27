@@ -3164,7 +3164,7 @@ void msrLogHeader(MSR msr,FILE *fp)
     CoolLogParams( &msr->param.CoolParam, lgr );
 #endif
 #ifdef OUTURBDRIVER
-    outurbLogParams( &msr->param.outurbparam, fp );
+    outurbLogParams( &msr->param.outurbparam, lgr);
 #endif
 #endif
 #ifdef STARFORM
