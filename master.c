@@ -1388,7 +1388,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dCStar", 2, &msr->param.stfm->dCStar,
 		    sizeof(double), "stCStar",
 		    "<Star formation coefficient> = 0.1");
-	msr->param.stfm->bTempInclHot = 0;
+	msr->param.stfm->bTempInclHot = 1;
 	prmAddParam(msr->prm,"bTempInclHot", 0, &msr->param.stfm->bTempInclHot,
 		    sizeof(int), "bTempInclHot",
 		    "<Include uHot in temp estimate for Temp>");
