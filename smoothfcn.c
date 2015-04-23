@@ -5250,6 +5250,13 @@ void combDistDeletedGas(void *vp1,void *vp2)
 #ifdef COOLDEBUG
 			assert(p1->u >= 0.0);
 #endif
+#ifdef TWOPHASE
+		    FLOAT mHot_new = p1->fMassHot + p2->fMassHot;
+            FLOAT f1_hot = p1->fMassHot/mHot_new;
+            FLOAT f2_hot = p2->fMassHot/mHot_new;
+			p1->uHot = f1_hot*p1->u + f2_hot*p2->u;
+			p1->uHotPred = f1_hot*p1->uPred + f2_hot*p2->uPred;
+#endif
 			p1->v[0] = f1*p1->v[0] + f2*p2->v[0];            
 			p1->v[1] = f1*p1->v[1] + f2*p2->v[1];            
 			p1->v[2] = f1*p1->v[2] + f2*p2->v[2];            
@@ -5291,6 +5298,56 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	assert(rstot > 0.0);
 	fNorm = 1./rstot;
 	assert(p->fMass >= 0.0);
+#ifdef TWOPHASE
+    if (q->fMassHot > 0)
+    {
+        ISORT *isort;
+        isort = (ISORT *) malloc(sizeof(ISORT)*nSmooth);
+        for (i=0;i<nSmooth;++i) {
+            isort[i].pNN = &(nnList[i]);
+            isort[i].r2=-1.*nnList[i].pPart->fMassHot;
+            }
+        qsort( isort, nSmooth, sizeof(ISORT), CompISORT );
+        for (i=0;i<nSmooth;++i) {
+            q = isort[i].pNN->pPart;
+            m_new = q->fMass + p->fMass;
+            double mHot_new = q->fMass + p->fMass;
+            /* Cached copies can have zero mass: skip them */
+            if (m_new == 0) continue;
+            f1 = q->fMass/m_new;
+            f2 = p->fMass/m_new;
+            double f1_hot = q->fMassHot/mHot_new;
+            double f2_hot = p->fMassHot/mHot_new;
+            q->fMass = m_new;
+            q->fMassHot += mHot_new;
+            if(q->uDot < 0.0) /* margin of 1% to avoid roundoff error */
+            fTCool = 1.01*q->uPred/q->uDot; 
+        
+                /* Only distribute the properties
+                 * to the other particles on the "home" machine.
+                 * u, v, and fMetals will be distributed to particles
+                 * that come through the cache in the comb function.
+                 */
+            q->u = f1*q->u+f2*p->u;
+            q->uPred = f1*q->uPred+f2*p->uPred;
+            q->uHot = f1_hot*q->uHot+f2_hot*p->uHot;
+            q->uHotPred = f1_hot*q->uHotPred+f2_hot*p->uHotPred;
+
+#ifdef COOLDEBUG
+            assert(q->u >= 0.0);
+#endif
+            q->v[0] = f1*q->v[0]+f2*p->v[0];            
+            q->v[1] = f1*q->v[1]+f2*p->v[1];            
+            q->v[2] = f1*q->v[2]+f2*p->v[2];            
+            q->fMetals = f1*q->fMetals + f2*p->fMetals;
+            q->fMFracOxygen = f1*q->fMFracOxygen + f2*p->fMFracOxygen;
+            q->fMFracIron = f1*q->fMFracIron + f2*p->fMFracIron;
+            if(q->uDot < 0.0) /* make sure we don't shorten cooling time */
+                q->uDot = q->uPred/fTCool;
+            return;
+        }
+    }
+#endif
 	for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
 		if(TYPETest(q, TYPE_DELETED)) continue;
@@ -5319,10 +5376,11 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                  */
 		q->u = f1*q->u+f2*p->u;
 		q->uPred = f1*q->uPred+f2*p->uPred;
-#ifdef UNONCOOL
+#if defined(UNONCOOL) && !defined(TWOPHASE)
 		q->uHot = f1*q->uHot+f2*p->uHot;
 		q->uHotPred = f1*q->uHotPred+f2*p->uHotPred;
 #endif 
+
 #ifdef COOLDEBUG
 		assert(q->u >= 0.0);
 #endif
