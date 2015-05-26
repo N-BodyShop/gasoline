@@ -140,9 +140,9 @@ void StiffStep(STIFF *s, double y[], double dydx[], double *xx, double htry,
       simpr(s,ysav,dydx,s->dfdx,s->dfdy,*xx,h,s->nseq[k],yseq);
       if (s->iAbort) {
 //	  printf("simpr blow-up (singular matrix?): retry with smaller stepsize\n");
-	  h=h*0.9;
-	  s->iAbort=0;
-	  break;
+          h=h*0.9;
+          s->iAbort=0;
+          break;
 	  }
       xest=h*h/(s->nseq[k]*s->nseq[k]);
       assert(xest != 0.0 );

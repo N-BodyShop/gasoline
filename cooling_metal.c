@@ -62,7 +62,8 @@
 
 
 #include "stiff.h"
-#if defined(COOLDEBUG) || defined(STARFORM) || defined(SIMPLESF)
+#if defined(COOLDEBUG) 
+//|| defined(STARFORM) || defined(SIMPLESF)
 #include "pkd.h"
 #else
 #include "cooling.h"
@@ -260,7 +261,7 @@ void COOL_IN_ARRAY2(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data) {
 FLOAT COOL_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal) {
     double Y_H, Y_He, Y_eMax;
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
-#ifdef MOLECULARH
+#ifdef COOLING_MOLECULARH
     return (cp->f_H2/2.0*Y_H);
 #else
     return 0.0;
@@ -269,7 +270,7 @@ FLOAT COOL_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal) {
 
 void COOL_IN_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data) {
     double Y_H, Y_He, Y_eMax;
-#ifdef MOLECULARH
+#ifdef COOLING_MOLECULARH
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
     cp->f_H2 = Data*2/Y_H;
 #endif

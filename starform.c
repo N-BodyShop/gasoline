@@ -92,6 +92,10 @@ void pkdStarLogFlush(PKD pkd, char *pszFileName)
 	xdr_double(&xdrs, &(pSfEv->massForm));
 	xdr_double(&xdrs, &(pSfEv->rhoForm));
 	xdr_double(&xdrs, &(pSfEv->TForm));
+#ifdef SFEVENTCRIT
+	xdr_double(&xdrs, &(pSfEv->tcool));
+	xdr_double(&xdrs, &(pSfEv->tdyn));
+#endif
 #ifdef COOLING_MOLECULARH
 	xdr_double(&xdrs, &(pSfEv->H2fracForm));
 #endif
@@ -170,6 +174,9 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
     else
 #endif
         T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
+#ifdef SFEVENTCRIT
+    stfm->Tgas = T;
+#endif
 
 #ifdef  COOLING_MOLECULARH
 #ifdef NEWSHEAR
@@ -277,6 +284,11 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
         tform = tdyn;
     else
         tform = tcool;
+
+#ifdef SFEVENTCRIT
+    stfm->tcool = tcool;
+    stfm->tdyn = tdyn;
+#endif
 
 #ifdef SFBOUND
     if (p->fDensity < (p->fSigma2+1.8*p->c*p->c)/(p->fBall2*0.25) ) return 0;
@@ -398,6 +410,10 @@ void stfmFormStarParticle(STFM stfm, PKD pkd, PARTICLE *p,
 	pSfEv->massForm = starp.fMassForm;
 	pSfEv->rhoForm = starp.fDensity/stfm->dCosmoFac;
     pSfEv->TForm = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
+#ifdef SFEVENTCRIT
+    pSfEv->tcool = stfm->tcool;
+    pSfEv->tdyn = stfm->tdyn;
+#endif
 #ifdef COOLING_MOLECULARH /* Output the H2 fractional abundance in the gas particle*/
 	pSfEv->H2fracForm = 2.0*p->CoolParticle.f_H2/yH;
 #endif
@@ -426,8 +442,8 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 		   double *dMassFormed,	/* mass of stars formed */
 		   int *nDeleted) /* gas particles deleted */
 {
-double dDeltaM,dMProb;
-    
+    double dDeltaM,dMProb;
+
 #ifdef STARCLUSTERFORM
     if (TYPETest(p, TYPE_STARFORM)) {
         dMProb = stfmFormStarProb(stfm, pkd, p, dTime);
@@ -441,10 +457,14 @@ double dDeltaM,dMProb;
 #else
     /* probability of converting all gas to star in this step */
     dMProb = stfmFormStarProb(stfm, pkd, p, dTime);
+#ifdef SFEVENTCRIT
+    fprintf(stfm->fpout,"%d: %g %g %g %g %g %g %g\n",p->iOrder,stfm->tcool,stfm->tdyn,stfm->Tgas,p->fDensity,p->divv,p->fMass,dMProb);
+#endif
     if (dMProb > 0) {
         /* mass of star particle. */
         if (stfm->dInitStarMass > 0) 
             dDeltaM = stfm->dInitStarMass;
+
         else 
             dDeltaM = p->fMass*stfm->dStarEff;
         /* No negative or very tiny masses please! */
@@ -452,9 +472,13 @@ double dDeltaM,dMProb;
         /* Reduce probability for just dDeltaM/p->fMass becoming star */
         if(dMProb*p->fMass < dDeltaM*(rand()/((double) RAND_MAX))) return; /* no star */
 
+#ifdef SFEVENTCRIT
+        fprintf(stfm->fpout,"STARMADE %d: %g\n",p->iOrder,dDeltaM);
+#endif
         stfmFormStarParticle(stfm, pkd, p, dDeltaM, dTime, nFormed,dMassFormed,nDeleted);
     }
 #endif
+
 }
 
 void pkdFormStars(PKD pkd, STFM stfm, double dTime, int *nFormed,
@@ -463,6 +487,14 @@ void pkdFormStars(PKD pkd, STFM stfm, double dTime, int *nFormed,
     int i;
     PARTICLE *p;
     int n = pkdLocal(pkd);
+    
+#ifdef SFEVENTCRIT
+    char fileout[50];
+    sprintf(fileout,"sfcrit.%5.5d",pkd->idSelf);
+    stfm->fpout = fopen( fileout, "a" );
+    assert(stfm->fpout!=NULL);
+    fprintf(stfm->fpout,"SFSTART t=%g dt=%g\n",dTime,stfm->dDeltaT);
+#endif
     
     *nFormed = 0;
     *nDeleted = 0;
@@ -476,6 +508,11 @@ void pkdFormStars(PKD pkd, STFM stfm, double dTime, int *nFormed,
         assert(p->uPred >= 0);
         assert(p->fMass >= 0);
         }
+
+#ifdef SFEVENTCRIT
+    fprintf(stfm->fpout,"SFEND %d %g %d\n",*nFormed,*dMassFormed,*nDeleted);
+    fclose(stfm->fpout);
+#endif
     }
 
 void pkdStarClusterFormPrecondition(PKD pkd, struct inStarClusterFormPrecondition in) {

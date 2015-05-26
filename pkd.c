@@ -319,6 +319,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->iRung = 0;
         p->fWeight = 1.0;
         p->fDensity = 0.0;
+#ifdef DENSITYU
+        p->fDensityU = 0.0;
+#endif
 #ifdef DRHODT
         p->fDensity_t = 0.0;
         p->fDensity_PdV = 0.0;
@@ -527,6 +530,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef GASOLINE
                 xdr_float(&xdrs,&fTmp);
                 p->fDensity = fTmp;
+#ifdef DENSITYU
+                p->fDensityU = fTmp;
+#endif
                 /*
                 ** Convert Temperature to Thermal energy.
                 */
@@ -746,6 +752,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->fPot = gp.phi;
 #ifdef GASOLINE
                 p->fDensity = gp.rho;
+#ifdef DENSITYU
+                p->fDensityU = gp.rho;
+#endif
                 p->u = dTuFac*gp.temp;
                 p->uPred = dTuFac*gp.temp;
 #ifdef COOLDEBUG

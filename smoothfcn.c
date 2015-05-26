@@ -4366,22 +4366,27 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 #ifdef DENSITYU
 #ifdef DENSITYUNOTP
-    KERNEL(rs,0.0);
+        if (fDensityU > 0) {
+            KERNEL(rs,0.0);
 #ifdef TWOPHASE
-    double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
-    p->fDensityU = (fDensityU-rs*p->fMass*uMean*fNorm)/uMean*fDensity/(fDensity-rs*p->fMass*fNorm); 
+            double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
+            p->fDensityU = (fDensityU-rs*p->fMass*uMean*fNorm)/uMean*fDensity/(fDensity-rs*p->fMass*fNorm);
 #else
-    p->fDensityU = (fDensityU-rs*p->fMass*p->uPred*fNorm)/p->uPred*fDensity/(fDensity-rs*p->fMass*fNorm); 
+            p->fDensityU = (fDensityU-rs*p->fMass*p->uPred*fNorm)/p->uPred*fDensity/(fDensity-rs*p->fMass*fNorm);
 #endif
+        }
 #else
+            {
 #ifdef TWOPHASE
-    double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
-	p->fDensityU = fDensityU/uMean;
+            double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
+            p->fDensityU = fDensityU/uMean;
 #else
-	p->fDensityU = fDensityU/p->uPred; 
+            p->fDensityU = fDensityU/p->uPred;
+#endif
+            }
 #endif
 #endif
-#endif
+
 #ifdef RTDENSITY	
 	p->fDensity = fDensityU/p->uPred; 
 #else
@@ -5215,10 +5220,16 @@ void initDistDeletedGas(void *p1)
 		((PARTICLE *)p1)->v[1] = 0;
 		((PARTICLE *)p1)->v[2] = 0;
 		((PARTICLE *)p1)->u = 0;
+		((PARTICLE *)p1)->uPred = 0;
 		((PARTICLE *)p1)->uDot = 0.0;
 		((PARTICLE *)p1)->fMetals = 0.0;
 		((PARTICLE *)p1)->fMFracOxygen = 0.0;
 		((PARTICLE *)p1)->fMFracIron = 0.0;
+#ifdef TWOPHASE
+		((PARTICLE *)p1)->fMassHot = 0;
+		((PARTICLE *)p1)->uHot = 0;
+		((PARTICLE *)p1)->uHotPred = 0;
+#endif
 		}
     }
 
@@ -5237,35 +5248,51 @@ void combDistDeletedGas(void *vp1,void *vp2)
 		FLOAT fTCool; /* time to cool to zero */
 		
 		m_new = p1->fMass + delta_m;
-		if (m_new > 0) {
+		if (delta_m > 0) {
 			f1 = p1->fMass /m_new;
 			f2 = delta_m  /m_new;
 			if(p1->uDot < 0.0) /* margin of 1% to avoid roundoff
 					    * problems */
 				fTCool = 1.01*p1->uPred/p1->uDot; 
-			
-			p1->fMass = m_new;
-			p1->u = f1*p1->u + f2*p2->u;
-			p1->uPred = f1*p1->uPred + f2*p2->uPred;
-#ifdef COOLDEBUG
-			assert(p1->u >= 0.0);
-#endif
-#ifdef TWOPHASE
-		    FLOAT mHot_new = p1->fMassHot + p2->fMassHot;
-            FLOAT f1_hot = p1->fMassHot/mHot_new;
-            FLOAT f2_hot = p2->fMassHot/mHot_new;
-			p1->uHot = f1_hot*p1->u + f2_hot*p2->u;
-			p1->uHotPred = f1_hot*p1->uPred + f2_hot*p2->uPred;
-#endif
 			p1->v[0] = f1*p1->v[0] + f2*p2->v[0];            
 			p1->v[1] = f1*p1->v[1] + f2*p2->v[1];            
 			p1->v[2] = f1*p1->v[2] + f2*p2->v[2];            
 			p1->fMetals = f1*p1->fMetals + f2*p2->fMetals;
 			p1->fMFracOxygen = f1*p1->fMFracOxygen + f2*p2->fMFracOxygen;
 			p1->fMFracIron = f1*p1->fMFracIron + f2*p2->fMFracIron;
+#ifdef COOLDEBUG
+			assert(p1->u >= 0.0);
+#endif
 			if(p1->uDot < 0.0)
 				p1->uDot = p1->uPred/fTCool;
-			}
+			
+#ifdef TWOPHASE
+		    FLOAT mHot_new = p1->fMassHot + p2->fMassHot;
+            if (mHot_new > 0) {
+                FLOAT f1_hot = p1->fMassHot/mHot_new;
+                FLOAT f2_hot = p2->fMassHot/mHot_new;
+                FLOAT mCold_new = m_new-mHot_new;
+                assert(mCold_new > 0);
+                FLOAT f1_cold = (p1->fMass-p1->fMassHot)/mCold_new;
+                FLOAT f2_cold = (delta_m-p2->fMassHot)/mCold_new;
+                p1->uHot =     f1_hot*p1->uHot     + f2_hot*p2->uHot;
+                p1->uHotPred = f1_hot*p1->uHotPred + f2_hot*p2->uHotPred;
+                p1->u =        f1_cold*p1->u       + f2_cold*p2->u;
+                p1->uPred =    f1_cold*p1->uPred   + f2_cold*p2->uPred;
+
+                p1->fMassHot = mHot_new;
+                }
+            else 
+#endif
+                {
+                p1->u = f1*p1->u + f2*p2->u;
+                p1->uPred = f1*p1->uPred + f2*p2->uPred;
+                }
+            assert(p1->u > 0);
+            assert(p1->uPred > 0);
+			
+			p1->fMass = m_new;
+            }
 		}
     }
 
@@ -5277,6 +5304,9 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	int i;
 
 	assert(TYPETest(p, TYPE_GAS));
+
+    if (p->fMass == 0.0) return;   /* the particle to be deleted has NOTHING */
+
 	ih2 = 4.0/BALL2(p);
         rstot = 0;        
 	for (i=0;i<nSmooth;++i) {
@@ -5288,8 +5318,6 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             rstot += rs;
         }
 	if(rstot <= 0.0) {
-	    if(p->fMass == 0.0) /* the particle to be deleted has NOTHING */
-		return;
 	    /* we have a particle to delete and nowhere to put its mass
 	     * => we will keep it around */
 	    pkdUnDeleteParticle(smf->pkd, p);
@@ -5312,12 +5340,14 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             q = isort[i].pNN->pPart;
             m_new = q->fMass + p->fMass;
             double mHot_new = q->fMass + p->fMass;
-            /* Cached copies can have zero mass: skip them */
+            /* Cached copies can have zero mass:skip them */
             if (m_new == 0) continue;
             f1 = q->fMass/m_new;
             f2 = p->fMass/m_new;
-            double f1_hot = q->fMassHot/mHot_new;
-            double f2_hot = p->fMassHot/mHot_new;
+            double mCold_new = m_new-mHot_new;
+            assert(mCold_new > 0);
+            double f1_cold = (q->fMass-q->fMassHot)/mCold_new;
+            double f2_cold = (p->fMass-p->fMassHot)/mCold_new;
             q->fMass = m_new;
             q->fMassHot += mHot_new;
             if(q->uDot < 0.0) /* margin of 1% to avoid roundoff error */
@@ -5328,10 +5358,14 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                  * u, v, and fMetals will be distributed to particles
                  * that come through the cache in the comb function.
                  */
-            q->u = f1*q->u+f2*p->u;
-            q->uPred = f1*q->uPred+f2*p->uPred;
-            q->uHot = f1_hot*q->uHot+f2_hot*p->uHot;
-            q->uHotPred = f1_hot*q->uHotPred+f2_hot*p->uHotPred;
+            q->u = f1_cold*q->u+f2_cold*p->u;
+            q->uPred = f1_cold*q->uPred+f2_cold*p->uPred;
+            if (mHot_new > 0) {
+                double f1_hot = q->fMassHot/mHot_new;
+                double f2_hot = p->fMassHot/mHot_new;
+                q->uHot = f1_hot*q->uHot+f2_hot*p->uHot;
+                q->uHotPred = f1_hot*q->uHotPred+f2_hot*p->uHotPred;
+                }
 
 #ifdef COOLDEBUG
             assert(q->u >= 0.0);
@@ -5380,10 +5414,8 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q->uHot = f1*q->uHot+f2*p->uHot;
 		q->uHotPred = f1*q->uHotPred+f2*p->uHotPred;
 #endif 
-
-#ifdef COOLDEBUG
-		assert(q->u >= 0.0);
-#endif
+		assert(q->u > 0.0);
+		assert(q->uPred > 0.0);
 		q->v[0] = f1*q->v[0]+f2*p->v[0];            
 		q->v[1] = f1*q->v[1]+f2*p->v[1];            
 		q->v[2] = f1*q->v[2]+f2*p->v[2];            

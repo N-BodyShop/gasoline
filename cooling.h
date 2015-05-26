@@ -33,6 +33,10 @@
 #include "cooling_poly.h"
 #else
 
+#ifdef COOLING_GRACKLE
+#include "cooling_grackle.h"
+#else
+
 #error "No valid cooling function specified"
 
 #endif
@@ -45,6 +49,7 @@
 #endif
 #endif
 
+#endif
 #endif
 #endif
 

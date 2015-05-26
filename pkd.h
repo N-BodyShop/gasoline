@@ -640,6 +640,10 @@ typedef struct sfEvent 		/* Holds statistics of the star
     double massForm;
     double rhoForm;
     double TForm;
+#ifdef SFEVENTCRIT
+    double tcool;
+    double tdyn;
+#endif
 #ifdef COOLING_MOLECULARH
     double H2fracForm;
 #endif

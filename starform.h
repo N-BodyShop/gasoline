@@ -38,6 +38,12 @@ typedef struct stfmContext
     double dInitBHMass;         /* Initial BH mass */
     double dStarClusterMass;   /* Target Star Cluster Mass */
     double dStarClusterRatio;   /* Target Star Cluster Mass: default 0.5*3/5 */
+#ifdef SFEVENTCRIT
+    double tcool;
+    double tdyn;
+    double Tgas;
+    FILE *fpout;
+#endif
 #ifdef COOLING_MOLECULARH
   double dStarFormEfficiencyH2; /* Star formation efficiency, CStar, is multiplied by dStarFormEfficiencyH2 times the fraction of hydrogen in molecular form  */
 #endif

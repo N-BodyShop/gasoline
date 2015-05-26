@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -122,9 +121,33 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return(COOL_ARRAY1(pkd->Cool, &p->CoolParticle,p->fMetals));
 	case OUT_COOL_ARRAY2:
 	    return(COOL_ARRAY2(pkd->Cool, &p->CoolParticle,p->fMetals));
-#ifdef COOLING_MOLECULARH
 	case OUT_COOL_ARRAY3:
-	    return(COOL_ARRAY3(pkd->Cool, &p->CoolParticle,p->fMetals)); /*H2*/
+	    return(COOL_ARRAY3(pkd->Cool, &p->CoolParticle,p->fMetals)); 
+	case OUT_COOL_ARRAY4:
+	    return(COOL_ARRAY4(pkd->Cool, &p->CoolParticle,p->fMetals));
+	case OUT_COOL_ARRAY5:
+	    return(COOL_ARRAY5(pkd->Cool, &p->CoolParticle,p->fMetals));
+	case OUT_COOL_ARRAY6:
+	    return(COOL_ARRAY6(pkd->Cool, &p->CoolParticle,p->fMetals));
+	case OUT_COOL_ARRAY7:
+	    return(COOL_ARRAY7(pkd->Cool, &p->CoolParticle,p->fMetals)); 
+	case OUT_COOL_ARRAY8:
+	    return(COOL_ARRAY8(pkd->Cool, &p->CoolParticle,p->fMetals));
+	case OUT_COOL_ARRAY9:
+	    return(COOL_ARRAY9(pkd->Cool, &p->CoolParticle,p->fMetals));
+	case OUT_COOL_ARRAY10:
+	    return(COOL_ARRAY10(pkd->Cool, &p->CoolParticle,p->fMetals));
+	case OUT_COOL_ARRAY11:
+	    return(COOL_ARRAY11(pkd->Cool, &p->CoolParticle,p->fMetals)); 
+	case OUT_COOL_ARRAY12:
+	    return(COOL_ARRAY12(pkd->Cool, &p->CoolParticle,p->fMetals));
+	case OUT_COOL_ARRAY13:
+	    return(COOL_ARRAY13(pkd->Cool, &p->CoolParticle,p->fMetals));
+	case OUT_COOL_ARRAY14:
+	    return(COOL_ARRAY14(pkd->Cool, &p->CoolParticle,p->fMetals));
+	case OUT_COOL_ARRAY15:
+	    return(COOL_ARRAY15(pkd->Cool, &p->CoolParticle,p->fMetals));
+#ifdef COOLING_MOLECULARH
 	case OUT_CORREL_ARRAY:
         return correL;
 #endif
@@ -363,6 +386,30 @@ void VecInType(PKD pkd, PARTICLE *p,int iDim,int iType,FLOAT Data)
         COOL_IN_ARRAY2(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
     case OUT_COOL_ARRAY3:
         COOL_IN_ARRAY3(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return; /*H2*/
+    case OUT_COOL_ARRAY4:
+        COOL_IN_ARRAY4(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY5:
+        COOL_IN_ARRAY5(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY6:
+        COOL_IN_ARRAY6(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY7:
+        COOL_IN_ARRAY7(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY8:
+        COOL_IN_ARRAY8(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY9:
+        COOL_IN_ARRAY9(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY10:
+        COOL_IN_ARRAY10(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY11:
+        COOL_IN_ARRAY11(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY12:
+        COOL_IN_ARRAY12(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY13:
+        COOL_IN_ARRAY13(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY14:
+        COOL_IN_ARRAY14(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
+    case OUT_COOL_ARRAY15:
+        COOL_IN_ARRAY15(pkd->Cool, &p->CoolParticle,p->fMetals, Data); return;
 #endif
 #ifdef STARFORM
     case OUT_COOLTURNONTIME_ARRAY:
@@ -465,10 +512,46 @@ void VecFilename(char *achFile, int iType)
 	case OUT_COOL_ARRAY2:
 		strncat(achFile,COOL_ARRAY2_EXT,256);
         break;
-#ifdef COOLING_MOLECULARH
-	case OUT_COOL_ARRAY3: /*Fraction in Molecular Hydrogen*/
+	case OUT_COOL_ARRAY3:
 		strncat(achFile,COOL_ARRAY3_EXT,256);
         break;
+	case OUT_COOL_ARRAY4:
+		strncat(achFile,COOL_ARRAY4_EXT,256);
+        break;
+	case OUT_COOL_ARRAY5:
+		strncat(achFile,COOL_ARRAY5_EXT,256);
+        break;
+	case OUT_COOL_ARRAY6:
+		strncat(achFile,COOL_ARRAY6_EXT,256);
+        break;
+	case OUT_COOL_ARRAY7:
+		strncat(achFile,COOL_ARRAY7_EXT,256);
+        break;
+	case OUT_COOL_ARRAY8:
+		strncat(achFile,COOL_ARRAY8_EXT,256);
+        break;
+	case OUT_COOL_ARRAY9:
+		strncat(achFile,COOL_ARRAY9_EXT,256);
+        break;
+	case OUT_COOL_ARRAY10:
+		strncat(achFile,COOL_ARRAY10_EXT,256);
+        break;
+	case OUT_COOL_ARRAY11:
+		strncat(achFile,COOL_ARRAY11_EXT,256);
+        break;
+	case OUT_COOL_ARRAY12:
+		strncat(achFile,COOL_ARRAY12_EXT,256);
+        break;
+	case OUT_COOL_ARRAY13:
+		strncat(achFile,COOL_ARRAY13_EXT,256);
+        break;
+	case OUT_COOL_ARRAY14:
+		strncat(achFile,COOL_ARRAY14_EXT,256);
+        break;
+	case OUT_COOL_ARRAY15:
+		strncat(achFile,COOL_ARRAY15_EXT,256);
+        break;
+#ifdef COOLING_MOLECULARH
 	case OUT_CORREL_ARRAY: /*Correlation length determined from Gas Shear in terms of the Mach number -- used when calculating shielding*/
 		strncat(achFile,"correL",256);
 		break;
@@ -716,8 +799,20 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     case OUT_COOL_ARRAY0:
     case OUT_COOL_ARRAY1:
     case OUT_COOL_ARRAY2:
-#ifdef COOLING_MOLECULARH
     case OUT_COOL_ARRAY3:
+    case OUT_COOL_ARRAY4:
+    case OUT_COOL_ARRAY5:
+    case OUT_COOL_ARRAY6:
+    case OUT_COOL_ARRAY7:
+    case OUT_COOL_ARRAY8:
+    case OUT_COOL_ARRAY9:
+    case OUT_COOL_ARRAY10:
+    case OUT_COOL_ARRAY11:
+    case OUT_COOL_ARRAY12:
+    case OUT_COOL_ARRAY13:
+    case OUT_COOL_ARRAY14:
+    case OUT_COOL_ARRAY15:
+#ifdef COOLING_MOLECULARH
     case OUT_CORREL_ARRAY: 
 #endif
 #ifdef RADIATIVEBOX

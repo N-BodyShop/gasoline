@@ -2121,7 +2121,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #endif
 #if !defined(DIFFUSION) || defined(NODIFFUSIONTHERMAL)
 	if (prmSpecified(msr->prm,"dThermalDiffusionCoeff")) {
-	    fprintf(stderr,"ERROR: Thermal Diffusion Rate specified but not compiled for\nSUsed -DDIFFUSION and NOT -DNODIFFUSIONTHERMAL during compilation\n");
+	    fprintf(stderr,"ERROR: Thermal Diffusion Rate specified but not compiled for\nUsed -DDIFFUSION and NOT -DNODIFFUSIONTHERMAL during compilation\n");
 	    assert(0);
 	    }
 #endif
@@ -2670,6 +2670,9 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef DENSITYUNOTP
 	fprintf(fp," DENSITYUNOTP");
+#endif
+#ifdef DENSITYFIXED
+	fprintf(fp," DENSITYFIXED");
 #endif
 #ifdef VSIGVISC
 	fprintf(fp," VSIGVISC");
@@ -9338,7 +9341,7 @@ void msrInitSph(MSR msr,double dTime)
 	struct inInitEnergy in;
 	double a;
 #endif
-
+#ifndef DENSITYFIXED
 	msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
 	msrBuildTree(msr,1,-1.0,1);
 	printf("InitSph: Now doing Dendvdx\n");
@@ -9347,6 +9350,7 @@ void msrInitSph(MSR msr,double dTime)
 	msrReSmooth(msr,dTime,SMX_DENDVDX,1); // needed for PdV corrector
 //#endif
 	printf("InitSph: Done Dendvdx\n");
+#endif
 
 #ifndef NOCOOLING
 	switch (msr->param.iGasModel) {
