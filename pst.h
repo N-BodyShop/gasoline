@@ -611,6 +611,9 @@ struct inGravExternal {
 	double dGalaxyDiskVerticalPotentialStarH;
 	double dGalaxyDiskVerticalPotentialGasSigma;
 	double dGalaxyDiskVerticalPotentialGasH;
+    double dGalaxyDiskVerticalPotentialGasX;
+    double dGalaxyDiskVerticalPotentialGasY;
+    double dGalaxyDiskVerticalPotentialGasZ;
 	int bMiyamotoDisk;
 	int bTimeVarying;
 	int bRotatingBar;

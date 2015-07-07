@@ -3433,7 +3433,7 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 			pkdBodyForce(plcl->pkd, in->dBodyForceConst);
 			}
 		if (in->bGalaxyDiskVerticalPotential) {
-			pkdGalaxyDiskVerticalPotentialForce(plcl->pkd, in->dGalaxyDiskVerticalPotentialVc, in->dGalaxyDiskVerticalPotentialR, in->dGalaxyDiskVerticalPotentialStarSigma, in->dGalaxyDiskVerticalPotentialStarH, in->dGalaxyDiskVerticalPotentialGasSigma, in->dGalaxyDiskVerticalPotentialGasH);
+			pkdGalaxyDiskVerticalPotentialForce(plcl->pkd, in->dGalaxyDiskVerticalPotentialVc, in->dGalaxyDiskVerticalPotentialR, in->dGalaxyDiskVerticalPotentialStarSigma, in->dGalaxyDiskVerticalPotentialStarH, in->dGalaxyDiskVerticalPotentialGasSigma, in->dGalaxyDiskVerticalPotentialGasH,in->dGalaxyDiskVerticalPotentialGasX,in->dGalaxyDiskVerticalPotentialGasY,in->dGalaxyDiskVerticalPotentialGasZ );
 			}
 		if (in->bMiyamotoDisk) {
 			pkdMiyamotoDisk(plcl->pkd);

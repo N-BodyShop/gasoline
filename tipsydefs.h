@@ -12,7 +12,7 @@ struct gas_particle {
     Real vel[MAXDIM];
     Real rho;
     Real temp;
-    Real hsmooth;
+    Real eps;
     Real metals ;
     Real phi ;
 } ;

@@ -28,8 +28,6 @@ PNG_DEF =
 TURB_OBJ = 
 GSL_LIB = 
 
-BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
-
 # The following pairs of lines define which cooling method to use.  Uncomment 
 # only one pair
 #COOLING_OBJ = cooling_cosmo.o
@@ -40,6 +38,10 @@ BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
 
 COOLING_OBJ = cooling_metal.o
 COOLING_DEF = -DCOOLING_METAL
+
+#COOLING_OBJ = cooling_grackle.o
+#COOLING_DEF = -DCOOLING_GRACKLE
+#COOLING_LIB = libgrackle.so -lhdf5
 
 #COOLING_OBJ = cooling_metal_H2.o
 #COOLING_DEF = -DCOOLING_MOLECULARH
@@ -56,6 +58,8 @@ COOLING_DEF = -DCOOLING_METAL
 #COOLING_OBJ = 
 #COOLING_DEF = -DNOCOOLING
 
+BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
+BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB) $(COOLING_LIB)
 
 # Which C compiler should I use?
 CC = icc
@@ -544,4 +548,5 @@ writepng.o: writepng.c writepng.h
 walk.o: walk.h pkd.h floattype.h cooling.h
 rotbar.o: master.h rotbar.h
 cooling_metal.o: cooling_metal.h cooling_metal.c
+cooling_grackle.o: cooling_grackle.h cooling_grackle.c
 log.o: log.h 

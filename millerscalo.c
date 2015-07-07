@@ -19,8 +19,8 @@ void MSInitialize(MSPARAM *pms)
 #ifdef CHABRIER
     struct MillerScaloContext initms = 
     /* Parameters from Table 1 of Chabrier, 2003. */
-         {       0.158, .69, .079,
-		 4.43e-2, -1.3, 1.0,
+         {   0.158, .69, .079,
+		     4.43e-2, -1.3, 1.0,
 	         100.0} ;
     
 #else

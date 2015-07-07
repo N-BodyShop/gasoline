@@ -450,6 +450,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #endif
 	prmAddParam(msr->prm,"bDoDensity",0,&msr->param.bDoDensity,sizeof(int),
 				"den","enable/disable density outputs = +den");
+	msr->param.bInitGasDensity = 1;
+	prmAddParam(msr->prm,"bInitGasDensity",0,&msr->param.bInitGasDensity,sizeof(int),
+				"initgasden","enable/disable gas density init = +initgasden");
 	msr->param.iOrbitOutInterval = 1;
 	prmAddParam(msr->prm,"iOrbitOutInterval",1,
 		    &msr->param.iOrbitOutInterval,sizeof(int), "ooi",
@@ -553,7 +556,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"bVariableSoftDark",0,&msr->param.bVariableSoftDark,sizeof(int),"VarSoft",
 				"<Variable gravitational softening length dark> -VarSoftDark");
 	msr->param.nSoftNbr = 32;
-	prmAddParam(msr->prm,"nSoftNbr",1,&msr->param.nSoftNbr,sizeof(int),"VarSoft",
+	prmAddParam(msr->prm,"nSoftNbr",1,&msr->param.nSoftNbr,sizeof(int),"VarSoftNbr",
 				"<Neighbours for Variable gravitational softening length> 32");
 	msr->param.bSoftByType = 1;
 	prmAddParam(msr->prm,"bSoftByType",0,&msr->param.bSoftByType,sizeof(int),"SBT",
@@ -1017,16 +1020,16 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			sizeof(double),"chrisdiskr","Disk Radius (kpc) = 6");
 	msr->param.dGalaxyDiskVerticalPotentialStarSigma = .0;
 	prmAddParam(msr->prm,"dGalaxyDiskVerticalPotentialStarSigma",2,&msr->param.dGalaxyDiskVerticalPotentialStarSigma,
-			sizeof(double),"chrisdiskr","Star Sigma (Msun/pc^2) = 0");
+			sizeof(double),"chrisdiskstarsig","Star Sigma (Msun/pc^2) = 0");
 	msr->param.dGalaxyDiskVerticalPotentialStarH = 0.400;
 	prmAddParam(msr->prm,"dGalaxyDiskVerticalPotentialStarH",2,&msr->param.dGalaxyDiskVerticalPotentialStarH,
-			sizeof(double),"chrisdiskr","Star H (kpc) = 0.4");
+			sizeof(double),"chrisdiskstarh","Star H (kpc) = 0.4");
 	msr->param.dGalaxyDiskVerticalPotentialGasSigma = .0;
 	prmAddParam(msr->prm,"dGalaxyDiskVerticalPotentialGasSigma",2,&msr->param.dGalaxyDiskVerticalPotentialGasSigma,
-			sizeof(double),"chrisdiskr","Gas Sigma (Msun/pc^2) = 0");
+			sizeof(double),"chrisdiskgassig","Gas Sigma (Msun/pc^2) = 0");
 	msr->param.dGalaxyDiskVerticalPotentialGasH = 0.130;
 	prmAddParam(msr->prm,"dGalaxyDiskVerticalPotentialGasH",2,&msr->param.dGalaxyDiskVerticalPotentialGasH,
-			sizeof(double),"chrisdiskr","Gas H (kpc) = 0.13");
+			sizeof(double),"chrisdiskgash","Gas H (kpc) = 0.13");
 	msr->param.bHomogSpheroid = 0;
 	prmAddParam(msr->prm,"bHomogSpheroid",0,&msr->param.bHomogSpheroid,
 				sizeof(int),"hspher","use/don't use galaxy Homog Spheroid = -homogspher");
@@ -1871,6 +1874,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
   
 
 #ifdef GASOLINE
+    if (!msr->param.bInitGasDensity && msr->param.bDoGas) {
+        fprintf(stderr,"SPH hydro requires gas density initialization\n");
+        assert(0);
+        }
 #ifndef INFLOWOUTFLOW
 	assert(msr->param.bInflowOutflow == 0);
 #endif
@@ -2671,9 +2678,6 @@ void msrLogDefines(FILE *fp)
 #ifdef DENSITYUNOTP
 	fprintf(fp," DENSITYUNOTP");
 #endif
-#ifdef DENSITYFIXED
-	fprintf(fp," DENSITYFIXED");
-#endif
 #ifdef VSIGVISC
 	fprintf(fp," VSIGVISC");
 #endif
@@ -2975,6 +2979,7 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "INTEGRATION","nReplicas: %d",msr->param.nReplicas); 
     LogParams(lgr, "INTEGRATION","dEwCut: %f",msr->param.dEwCut); 
     LogParams(lgr, "INTEGRATION","dEwhCut: %f",msr->param.dEwhCut); 
+    LogParams(lgr, "READ/WRITE","bDoDensity: %d",msr->param.bDoDensity);	 
     LogParams(lgr, "READ/WRITE","dExtraStore: %f",msr->param.dExtraStore); 
     if (prmSpecified(msr->prm,"dSoft"))
         LogParams(lgr,"SOFTENING","dSoft: %g", msr->param.dSoft);
@@ -3114,6 +3119,7 @@ void msrLogHeader(MSR msr,FILE *fp)
 #endif
 #ifdef GASOLINE
     LogParams(lgr, "SPH","bDoGas: %d",msr->param.bDoGas);	 
+    LogParams(lgr, "SPH","bInitGasDensity: %d",msr->param.bInitGasDensity);	 
     LogParams(lgr, "SPH","bGeometric: %d",msr->param.bGeometric); 
     LogParams(lgr, "SPH","bGasAdiabatic: %d",msr->param.bGasAdiabatic);	 
     LogParams(lgr, "SPH","bGasIsothermal: %d",msr->param.bGasIsothermal);	 
@@ -6236,8 +6242,25 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.dGalaxyDiskVerticalPotentialR = msr->param.dGalaxyDiskVerticalPotentialR/msr->param.dKpcUnit;
 		inExt.dGalaxyDiskVerticalPotentialStarSigma = msr->param.dGalaxyDiskVerticalPotentialStarSigma/msr->param.dMsolUnit*msr->param.dKpcUnit*msr->param.dKpcUnit*1e6;
 		inExt.dGalaxyDiskVerticalPotentialStarH = msr->param.dGalaxyDiskVerticalPotentialStarH/msr->param.dKpcUnit;
-		inExt.dGalaxyDiskVerticalPotentialGasSigma = msr->param.dGalaxyDiskVerticalPotentialGasSigma/msr->param.dMsolUnit*msr->param.dKpcUnit*msr->param.dKpcUnit*1e6;
-		inExt.dGalaxyDiskVerticalPotentialGasH = msr->param.dGalaxyDiskVerticalPotentialGasH/msr->param.dKpcUnit;
+        if (msr->param.bDoSelfGravity && msr->param.dGalaxyDiskVerticalPotentialGasSigma > 0) {
+            double _sigma = msr->param.dGalaxyDiskVerticalPotentialGasSigma/msr->param.dMsolUnit*msr->param.dKpcUnit*msr->param.dKpcUnit*1e6;
+            double _a = (msr->param.nReplicas*2+1)*0.5*msr->param.dxPeriod;
+            double _b = (msr->param.nReplicas*2+1)*0.5*msr->param.dyPeriod;
+            double _c = 1./sqrt(1/(_a*_a)+1/(_b*_b));
+            inExt.dGalaxyDiskVerticalPotentialGasSigma = 0.;
+            inExt.dGalaxyDiskVerticalPotentialGasH = 1.;
+            inExt.dGalaxyDiskVerticalPotentialGasX = 4*_sigma*_c/(_a*_a);
+            inExt.dGalaxyDiskVerticalPotentialGasY = 4*_sigma*_c/(_b*_b);
+            inExt.dGalaxyDiskVerticalPotentialGasZ = -4*_sigma/_c;
+            }
+        else {
+            inExt.dGalaxyDiskVerticalPotentialGasSigma = msr->param.dGalaxyDiskVerticalPotentialGasSigma/msr->param.dMsolUnit*msr->param.dKpcUnit*msr->param.dKpcUnit*1e6;
+            inExt.dGalaxyDiskVerticalPotentialGasH = msr->param.dGalaxyDiskVerticalPotentialGasH/msr->param.dKpcUnit;
+            inExt.dGalaxyDiskVerticalPotentialGasX = 0;
+            inExt.dGalaxyDiskVerticalPotentialGasY = 0;
+            inExt.dGalaxyDiskVerticalPotentialGasZ = 0;
+            }
+
 		inExt.bMiyamotoDisk = msr->param.bMiyamotoDisk;
 		inExt.bTimeVarying = msr->param.bTimeVarying;
 		inExt.bRotatingBar = msr->param.bRotatingBar;
@@ -9341,16 +9364,16 @@ void msrInitSph(MSR msr,double dTime)
 	struct inInitEnergy in;
 	double a;
 #endif
-#ifndef DENSITYFIXED
-	msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-	msrBuildTree(msr,1,-1.0,1);
-	printf("InitSph: Now doing Dendvdx\n");
-	msrSmooth(msr,dTime,SMX_DENDVDX,1);
+    if (msr->param.bInitGasDensity) {
+        msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
+        msrBuildTree(msr,1,-1.0,1);
+        printf("InitSph: Now doing Dendvdx\n");
+        msrSmooth(msr,dTime,SMX_DENDVDX,1);
 //#ifdef DRHODT
-	msrReSmooth(msr,dTime,SMX_DENDVDX,1); // needed for PdV corrector
+        msrReSmooth(msr,dTime,SMX_DENDVDX,1); // needed for PdV corrector
 //#endif
-	printf("InitSph: Done Dendvdx\n");
-#endif
+        printf("InitSph: Done Dendvdx\n");
+        }
 
 #ifndef NOCOOLING
 	switch (msr->param.iGasModel) {

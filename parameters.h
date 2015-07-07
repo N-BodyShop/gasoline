@@ -54,6 +54,7 @@ struct parameters {
     int bNoReOrder;
     int bPackedVector;
 	int bDoDensity;
+    int bInitGasDensity;
  	int iReadIOrder;
  	int bDoIOrderOutput;
  	int bDohOutput;

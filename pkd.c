@@ -745,9 +745,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef SINKING
                 p->fTrueMass = gp.mass;
 #endif
-                p->fSoft = gp.hsmooth;
+                p->fSoft = gp.eps;
 #ifdef CHANGESOFT
-                p->fSoft0 = gp.hsmooth;
+                p->fSoft0 = gp.eps;
 #endif
                 p->fPot = gp.phi;
 #ifdef GASOLINE
@@ -2008,9 +2008,9 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 #endif
         gp.mass = p->fMass;
 #ifdef CHANGESOFT
-    gp.hsmooth = p->fSoft0;
+    gp.eps = p->fSoft0;
 #else
-    gp.hsmooth = p->fSoft;
+    gp.eps = p->fSoft;
 #endif
     gp.phi = p->fPot;
     gp.rho = p->fDensity;
@@ -3833,12 +3833,15 @@ void pkdHomogSpheroid(PKD pkd)
         }
     }
 
-void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R, double StarSigma, double StarH, double GasSigma, double GasH)
+void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R, double StarSigma, double StarH, double GasSigma, double GasH, double GasX, double GasY, double GasZ)
 {
           /*
               -  This is the external disk potential that is used together with Chris 
               -  Gatopolous' Enzo initial conditions for a disk slice.  The initial 
               -  values Chris used for Vc and R were 220 km/s and 6 kpc respectively.
+
+              If Gasc is set, it will attempt to correct for far-field gas outside the
+              replicas using the method of Fung & Quinn 2012
               -  */
         PARTICLE *p;
         int i,n;
@@ -3854,6 +3857,9 @@ void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R, double St
                           double g = Vc*Vc*z/(R*R+z*z)+stargrav*tanh(z/StarH)+gasgrav*tanh(z/GasH);
 //                          if ((i%1000)==0) printf("vgrav: %d z=%f  %g %g %g \n",i,z,Vc*Vc*z/(R*R+z*z),stargrav*tanh(z/StarH),gasgrav*tanh(z/GasH));
                           p[i].a[2] -= g;
+                          p[i].a[0] += GasX*p[i].r[0];
+                          p[i].a[1] += GasY*p[i].r[1];
+                          p[i].a[2] += GasZ*p[i].r[2];
 //                        p[i].fPot += g*z; // Not correct, all terms should be log
                     }
                 }
