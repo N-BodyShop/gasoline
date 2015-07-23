@@ -5339,7 +5339,7 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         for (i=0;i<nSmooth;++i) {
             q = isort[i].pNN->pPart;
             m_new = q->fMass + p->fMass;
-            double mHot_new = q->fMass + p->fMass;
+            double mHot_new = q->fMassHot + p->fMassHot;
             /* Cached copies can have zero mass:skip them */
             if (m_new == 0) continue;
             f1 = q->fMass/m_new;
