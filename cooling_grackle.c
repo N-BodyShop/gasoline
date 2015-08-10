@@ -315,7 +315,7 @@ void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *E,
 
     metal_density = ZMetal*density;
 
-    *E += 0.5*ExternalHeat*dt;  /* Gnedin suggestion */
+    energy += 0.5*ExternalHeat*dt;  /* Gnedin suggestion */
 
     if (cl->pgrackle_data->primordial_chemistry==0) {
 /*
