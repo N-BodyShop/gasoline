@@ -2015,7 +2015,20 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
     gp.phi = p->fPot;
     gp.rho = p->fDensity;
 #ifdef GASOLINE
-    gp.temp = duTFac*p->u;
+    /*
+    ** Convert thermal energy to tempertature.
+    */
+    switch (iGasModel) {
+    case GASMODEL_COOLING:
+#ifndef NOCOOLING
+        gp.temp = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
+#else
+        mdlassert(pkd->mdl,0);
+#endif
+        break;
+    default:
+        gp.temp = duTFac*p->u;
+        }
 #ifdef SINKING
     if (TYPETest( p, TYPE_SINK)) 
         gp.metals = p->fMass;
