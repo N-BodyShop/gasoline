@@ -46,6 +46,12 @@
 #define RTFORCE
 #endif
 
+#ifdef SUPERBUBBLE
+#define PROMOTE
+#define THERMALCOND
+#define TWOPHASE
+#endif
+
 #if defined(TWOPHASE)  && !defined(UNONCOOL)
 #define UNONCOOL
 #endif
