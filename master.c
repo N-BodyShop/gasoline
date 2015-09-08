@@ -2863,6 +2863,9 @@ void msrLogDefines(FILE *fp)
 #ifdef NODIFFUSIONTHERMAL
 	fprintf(fp, " NODIFFUSIONTHERMAL");
 #endif
+#ifdef PROMOTE
+	fprintf(fp, " PROMOTE");
+#endif
 #ifdef THERMALCOND
 	fprintf(fp, " THERMALCOND");
 #endif
