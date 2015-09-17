@@ -3236,7 +3236,11 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "STAR FORMATION","dStarFormEfficiencyH2: %g",msr->param.stfm->dStarFormEfficiencyH2); 
 #endif
     if (!prmSpecified(msr->prm,"nSmoothFeedback") ) 
+#if defined(TWOPHASE)
+        msr->param.nSmoothFeedback = 1;
+#else
         msr->param.nSmoothFeedback = msr->param.nSmooth;
+#endif
     LogParams(lgr, "STAR FORMATION","nSmoothFeedback: %i",msr->param.nSmoothFeedback); 
 
     for ( testDelta = msr->param.dDelta; 

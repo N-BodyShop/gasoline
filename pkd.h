@@ -50,6 +50,7 @@
 #define PROMOTE
 #define THERMALCOND
 #define TWOPHASE
+#define TOPHATFEEDBACK
 #endif
 
 #if defined(TWOPHASE)  && !defined(UNONCOOL)
