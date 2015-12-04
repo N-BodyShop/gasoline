@@ -6865,7 +6865,7 @@ double pkdDtFacCourant( double dEtaCourant, double dCosmoFac ) {
 #endif
 
 void
-pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, double dDiffCoeff, double dEtaDiffusion, double dResolveJeans, int bViscosityLimitdt, double *pdtMinGas)
+pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, double duMinDt, double dDiffCoeff, double dEtaDiffusion, double dResolveJeans, int bViscosityLimitdt, double *pdtMinGas)
     {
     int i;
     PARTICLE *p;    
@@ -6954,6 +6954,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     uEff += p->uHot;
 #endif
 #endif
+                    if (uEff < duMinDt) uEff = duMinDt;
                     dTu = dEtauDot*uEff/fabs(p->uDotPdV);
                     DTSAVE(dTu,"PDV");
                     if (dTu < dT) dT = dTu;

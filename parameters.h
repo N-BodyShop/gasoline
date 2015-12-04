@@ -252,6 +252,8 @@ struct parameters {
 	double dEtaCourant;
 	double dEtauDot;
 	double dEtaCourantLong;
+    double dTMinDt;
+    double duMinDt;
 	double duDotLimit;
 	double dShockTrackerA;
 	double dShockTrackerB;

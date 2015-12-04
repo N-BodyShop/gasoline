@@ -1666,6 +1666,7 @@ struct inSphStep {
     double dCosmoFac;
     double dEtaCourant;
     double dEtauDot;
+    double duMinDt;
     double dDiffCoeff;
     double dEtaDiffusion;
     double dResolveJeans;

@@ -585,6 +585,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dEtauDot = 0.25;
 	prmAddParam(msr->prm,"dEtauDot",2,&msr->param.dEtauDot,sizeof(double),"etau",
 				"<uDot criterion> = 0.25");
+	msr->param.dTMinDt = 0;
+	prmAddParam(msr->prm,"dTMinDt",2,&msr->param.dTMinDt,sizeof(double),"tmindt",
+				"<Tmin for udot step (replaces uMinDt if set)> = 0");
+	msr->param.duMinDt = 0;
+	prmAddParam(msr->prm,"dEtauDot",2,&msr->param.dEtauDot,sizeof(double),"umindt",
+				"<uMin for udot step> = 0");
 	msr->param.duDotLimit = -0.2;
 	prmAddParam(msr->prm,"duDotLimit",2,&msr->param.duDotLimit,sizeof(double),"uDL",
 				"<uDotLimit:  Treat udot/u < duDotLimit specially> = -0.2 < 0");
@@ -2992,6 +2998,8 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "TIMESTEPPING","dDeltaSph: %g",msr->param.dDeltaSph); 
     LogParams(lgr, "TIMESTEPPING","dEta: %g",msr->param.dEta); 
     LogParams(lgr, "TIMESTEPPING","dEtauDot: %g",msr->param.dEtauDot); 
+    LogParams(lgr, "TIMESTEPPING","dTMinDt: %g",msr->param.dTMinDt); 
+    LogParams(lgr, "TIMESTEPPING","duMinDt: %g",msr->param.duMinDt); 
     LogParams(lgr, "TIMESTEPPING","dEtaDeltaAccel: %g",msr->param.dEtaDeltaAccel); 
     LogParams(lgr, "TIMESTEPPING","dEtaCourant: %g (%g)",msr->param.dEtaCourant,msr->param.dEtaCourantLong); 
     LogParams(lgr, "TIMESTEPPING","iMaxRung: %d",msr->param.iMaxRung); 
@@ -9482,6 +9490,20 @@ void msrInitCooling(MSR msr)
       pstCoolTableRead(msr->pst,dTableData,sizeof(double)*nTableRows*nTableColumns,NULL,NULL);
     }
   }
+
+    if (msr->param.dTMinDt > 0) {
+#ifndef NOCOOLING
+        double E,fDensity,fMetals;
+        COOLPARTICLE CoolParticle;  
+        fDensity = 1.67e-24/msr->param.dGmPerCcUnit;
+        fMetals = 0.01;
+        CoolInitEnergyAndParticleData( msr->pst->plcl->pkd->Cool, &CoolParticle, &E, fDensity, msr->param.dTMinDt, fMetals );
+        msr->param.duMinDt = E;
+        printf(" Minimum u set for PdV timestep: %g (T=%g)\n",E*msr->param.dErgPerGmUnit,msr->param.dTMinDt);
+#else
+        msr->param.duMinDt = msr->param.TMinDt/ msr->param.dTuFac;
+#endif
+    }
 }
 #endif
 
@@ -9538,6 +9560,7 @@ void msrSphStep(MSR msr, double dTime, int iKickRung)
     in.dCosmoFac = csmTime2Exp(msr->param.csm,dTime);
     in.dEtaCourant = msrEtaCourant(msr);
     in.dEtauDot = msr->param.dEtauDot;
+    in.duMinDt = msr->param.duMinDt;
     in.dDiffCoeff = (msr->param.dMetalDiffusionCoeff > msr->param.dThermalDiffusionCoeff ? 
         msr->param.dMetalDiffusionCoeff : msr->param.dThermalDiffusionCoeff);
     in.dEtaDiffusion = msr->param.dEtaDiffusion;

@@ -4909,7 +4909,7 @@ void pstSphStep(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		if (dtMinGas < *pdtMinGas) *pdtMinGas = dtMinGas;
 		}
 	else {
-		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot,in->dDiffCoeff,in->dEtaDiffusion,in->dResolveJeans,in->bViscosityLimitdt,pdtMinGas);
+		pkdSphStep(plcl->pkd,in->dCosmoFac,in->dEtaCourant,in->dEtauDot,in->duMinDt,in->dDiffCoeff,in->dEtaDiffusion,in->dResolveJeans,in->bViscosityLimitdt,pdtMinGas);
 		}
 	if (pnOut) *pnOut = sizeof(double);
 	}
