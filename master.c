@@ -589,7 +589,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dTMinDt",2,&msr->param.dTMinDt,sizeof(double),"tmindt",
 				"<Tmin for udot step (replaces uMinDt if set)> = 0");
 	msr->param.duMinDt = 0;
-	prmAddParam(msr->prm,"dEtauDot",2,&msr->param.dEtauDot,sizeof(double),"umindt",
+	prmAddParam(msr->prm,"duMinDt",2,&msr->param.duMinDt,sizeof(double),"umindt",
 				"<uMin for udot step> = 0");
 	msr->param.duDotLimit = -0.2;
 	prmAddParam(msr->prm,"duDotLimit",2,&msr->param.duDotLimit,sizeof(double),"uDL",
