@@ -4514,6 +4514,19 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->CoolParticle = p->CoolParticleHot;
                    }
                     TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uHotPred, fDensity, p->fMetals );
+                    if(p->fMassHot/p->fMass > uhc.dMultiPhaseMaxFrac)//Check to make sure the hot phase is below the maximum fraction.
+                    {
+                           p->uPred = (p->uPred*(p->fMass-p->fMassHot) + p->uHotPred*p->fMassHot)/p->fMass;
+                           p->u = (p->u*(p->fMass-p->fMassHot) + p->uHot*p->fMassHot)/p->fMass;
+                           p->uDot = (p->uDot*(p->fMass-p->fMassHot) + p->uHotDot*p->fMassHot)/p->fMass;
+                           p->uDotFB *= p->fMassHot/p->fMass;//Damn these scaled uDots, we should use a different name!
+                           p->CoolParticle = p->CoolParticleHot;
+                           p->fMassHot = 0;
+                           TYPEReset(p,TYPE_TWOPHASE);
+                           p->uHot = 0;
+                           p->uHotDot = 0;
+                           p->uHotPred = 0;
+                    }
                     if(TpNC < uhc.dMultiPhaseMinTemp && p->uHotPred > 0)//Check to make sure the hot phase is still actually hot
                     {
                            p->uPred = (p->uPred*(p->fMass-p->fMassHot) + p->uHotPred*p->fMassHot)/p->fMass;

@@ -1205,6 +1205,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
 #ifdef TWOPHASE
+	msr->param.dMultiPhaseMaxFrac = 1.0;
+	prmAddParam(msr->prm,"dMultiPhaseMaxFrac",2,&msr->param.dMultiPhaseMaxFrac,
+				sizeof(double),"multifmax",
+				"<Maximum mass fraction to stay multiphase> = 1.0");
 	msr->param.dMultiPhaseMinTemp = 1e5;
 	prmAddParam(msr->prm,"dMultiPhaseMinTemp",2,&msr->param.dMultiPhaseMinTemp,
 				sizeof(double),"multitmin",
@@ -6526,6 +6530,7 @@ void msrSetuHotContext( MSR msr, UHC *puhc, double a ) {
 #endif
 #ifdef TWOPHASE
     puhc->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
+    puhc->dMultiPhaseMaxFrac = msr->param.dMultiPhaseMaxFrac;
 #endif
 #endif
     }
