@@ -5272,6 +5272,7 @@ void combDistDeletedGas(void *vp1,void *vp2)
                 FLOAT f1_hot = p1->fMassHot/mHot_new;
                 FLOAT f2_hot = p2->fMassHot/mHot_new;
                 FLOAT mCold_new = m_new-mHot_new;
+                if(!(mCold_new > 0)) printf("mCold_new: %e m1: %e m2: %e m1_hot: %e m2_hot: %e\n", mCold_new, p1->fMass, p2->fMass, p1->fMassHot, p2->fMassHot);
                 assert(mCold_new > 0);
                 FLOAT f1_cold = (p1->fMass-p1->fMassHot)/mCold_new;
                 FLOAT f2_cold = (delta_m-p2->fMassHot)/mCold_new;
@@ -5345,6 +5346,7 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             f1 = q->fMass/m_new;
             f2 = p->fMass/m_new;
             double mCold_new = m_new-mHot_new;
+            if(!(mCold_new > 0)) printf("mCold_new: %e m1: %e m2: %e m1_hot: %e m2_hot: %e\n", mCold_new, p->fMass, q->fMass, p->fMassHot, q->fMassHot);
             assert(mCold_new > 0);
             double f1_cold = (q->fMass-q->fMassHot)/mCold_new;
             double f2_cold = (p->fMass-p->fMassHot)/mCold_new;

@@ -367,6 +367,7 @@ typedef struct uHotContext {
 #ifdef TWOPHASE
     double dMultiPhaseMinTemp;
     double dMultiPhaseMaxFrac;
+    double dMultiPhaseMaxTime;
 #endif
     } UHC;
 
