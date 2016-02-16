@@ -3238,6 +3238,8 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "STAR FORMATION","dInitBHMass: %g",msr->param.dInitBHMass); 
 #ifdef TWOPHASE
     LogParams(lgr, "STAR FORMATION","dMultiPhaseMinTemp: %g",msr->param.dMultiPhaseMinTemp); 
+    LogParams(lgr, "STAR FORMATION","dMultiPhaseMaxFrac: %g",msr->param.dMultiPhaseMaxFrac); 
+    LogParams(lgr, "STAR FORMATION","dMultiPhaseMaxTime: %g",msr->param.dMultiPhaseMaxTime); 
     LogParams(lgr, "STAR FORMATION","bTempInclHot: %d",msr->param.stfm->bTempInclHot); 
     LogParams(lgr, "STAR FORMATION","dFBInitialMassLoad: %g",msr->param.dFBInitialMassLoad); 
 #endif
