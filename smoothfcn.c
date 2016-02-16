@@ -5349,7 +5349,7 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             double f1_cold = (q->fMass-q->fMassHot)/mCold_new;
             double f2_cold = (p->fMass-p->fMassHot)/mCold_new;
             q->fMass = m_new;
-            q->fMassHot += mHot_new;
+            q->fMassHot = mHot_new;
             if(q->uDot < 0.0) /* margin of 1% to avoid roundoff error */
             fTCool = 1.01*q->uPred/q->uDot; 
         
