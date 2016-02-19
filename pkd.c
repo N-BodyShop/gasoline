@@ -4475,12 +4475,12 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                    fMassFlux = fFactor*(upnc52-up52);
                    //printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e %e\n",   p->iOrder, duDelta, duPredDelta, fMassFlux, fMassFluxSat, ph, p->fMass-p->fMassHot, p->fMassHot, p->uPred, p->uHotPred);
                    fMassFlux = (fMassFlux < fMassFluxSat ? fMassFlux : fMassFluxSat);
-                   if (uhc.dMultiPhaseMaxTime > 0) {
-                       FLOAT fMassFluxMin = p->fMass/uhc.dMultiPhaseMaxTime;
-                       printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e %e %e\n",   p->iOrder, duDelta, duPredDelta, fMassFlux, fMassFluxSat, fMassFluxMin, ph, p->fMass-p->fMassHot, p->fMassHot, p->uPred, p->uHotPred);
-                       fMassFlux = (fMassFlux > fMassFluxMin ? fMassFlux : fMassFluxMin);
-                   }
                    if(fMassFlux > 0) { // Make sure that the flow is in the right direction
+                       if (uhc.dMultiPhaseMaxTime > 0) {
+                           FLOAT fMassFluxMin = duPredDelta*p->fMass/uhc.dMultiPhaseMaxTime;
+                           /*printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e %e %e\n",   p->iOrder, duDelta, duPredDelta, fMassFlux, fMassFluxSat, fMassFluxMin, ph, p->fMass-p->fMassHot, p->fMassHot, p->uPred, p->uHotPred);*/
+                           fMassFlux = (fMassFlux > fMassFluxMin ? fMassFlux : fMassFluxMin);
+                       }
                        // If all the mass becomes hot, switch to being single-phase
                        if(fMassFlux > (p->fMass-p->fMassHot)) {
                            p->uPred = (p->uPred*(p->fMass-p->fMassHot) + p->uHotPred*p->fMassHot)/p->fMass;
@@ -4545,6 +4545,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->uHotDot = 0;
                            p->uHotPred = 0;
                     }
+                    assert(p->fMassHot < p->fMass);
                     
 #endif
 #endif
@@ -4874,6 +4875,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
         p->uPred = cp.u;
 #ifdef TWOPHASE
         p->fMassHot = cp.fMassHot;
+        assert(p->fMassHot < p->fMass);
         if (p->fMassHot > 0) TYPESet(p,TYPE_TWOPHASE);
         p->CoolParticleHot = cp.CoolParticleHot;
 #endif
@@ -7960,6 +7962,7 @@ void pkdSplitGas(PKD pkd, double dInitGasMass)
         p->fMass /= 2.0;
 #ifdef TWOPHASE
         p->fMassHot /= 2.0;
+        assert(p->fMassHot < p->fMass);
 #endif
         daughter = *p;
         TYPESet(&daughter, TYPE_GAS);

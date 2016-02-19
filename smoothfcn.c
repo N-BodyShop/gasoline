@@ -5293,6 +5293,7 @@ void combDistDeletedGas(void *vp1,void *vp2)
             assert(p1->uPred > 0);
 			
 			p1->fMass = m_new;
+            assert(p1->fMassHot < p1->fMass);
             }
 		}
     }
@@ -5351,7 +5352,8 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             double f1_cold = (q->fMass-q->fMassHot)/mCold_new;
             double f2_cold = (p->fMass-p->fMassHot)/mCold_new;
             q->fMass = m_new;
-            q->fMassHot += mHot_new;
+            q->fMassHot = mHot_new;
+            assert(p->fMassHot < p->fMass);
             if(q->uDot < 0.0) /* margin of 1% to avoid roundoff error */
             fTCool = 1.01*q->uPred/q->uDot; 
         
@@ -5740,6 +5742,7 @@ void combDistFBEnergy(void *p1,void *p2)
 #endif
     
     ((PARTICLE *)p1)->fMass += fAddedMass;
+    assert(((PARTICLE *)p1)->fMassHot < ((PARTICLE *)p1)->fMass);
     ((PARTICLE *)p1)->uDotFB += ((PARTICLE *)p2)->uDotFB;
     ((PARTICLE *)p1)->uDotESF += ((PARTICLE *)p2)->uDotESF;
     ((PARTICLE *)p1)->fMetals += ((PARTICLE *)p2)->fMetals;
@@ -5915,6 +5918,7 @@ void DistFBMME(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			fMassHot += deltaMassLoad;
 		}
 		q->fMassHot = fMassHot;
+		assert(q->fMassHot < q->fMass);
 		assert(q->fMassHot >= 0);
 	}
 #endif /* TWOPHASE */
