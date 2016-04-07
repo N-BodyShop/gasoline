@@ -4668,31 +4668,31 @@ void msrCreateOutputListFromString(MSR msr,int (*pnOutputList), int OutputList[]
 void msrSelectOutputList(MSR msr, int (*nOutputList), int OutputList[], int iStep, int bOutTime, int *pbDensitySmooth) 
     {  
     int i;
-    if (bOutTime) {
-	if (msr->param.bVDetails) printf("Redshift output %i %i\n",msr->nOutputListRed,msr->param.iBinaryOutput);
-	assert(msr->OutputListRed != NULL);
-	for (i=0;i<msr->nOutputListRed;i++) OutputList[i] = msr->OutputListRed[i];
-	(*nOutputList) = msr->nOutputListRed;
-	*pbDensitySmooth |= msr->bDensitySmoothRed;
-	return;
-	}
+    if (bOutTime || (msr->OutputListInterval == NULL)) {
+        if (msr->param.bVDetails) printf("Redshift output %i %i\n",msr->nOutputListRed,msr->param.iBinaryOutput);
+        assert(msr->OutputListRed != NULL);
+        for (i=0;i<msr->nOutputListRed;i++) OutputList[i] = msr->OutputListRed[i];
+        (*nOutputList) = msr->nOutputListRed;
+        *pbDensitySmooth |= msr->bDensitySmoothRed;
+        return;
+        }
     if ((msrOutInterval(msr) == 0 || !(iStep%msrOutInterval(msr) == 0)) && msr->param.iOutMinorInterval && (iStep%msr->param.iOutMinorInterval == 0)) {
-	if (msr->param.bVDetails) printf("Minor Interval output %i %i\n",msr->nOutputListMinorInterval,msr->param.iBinaryOutput);
-	assert(msr->OutputListMinorInterval != NULL);
-	for (i=0;i<msr->nOutputListMinorInterval;i++) OutputList[i] = msr->OutputListMinorInterval[i];
-	(*nOutputList) = msr->nOutputListMinorInterval;
-	*pbDensitySmooth |= msr->bDensitySmoothMinorInterval;
-	return;
+        if (msr->param.bVDetails) printf("Minor Interval output %i %i\n",msr->nOutputListMinorInterval,msr->param.iBinaryOutput);
+        assert(msr->OutputListMinorInterval != NULL);
+        for (i=0;i<msr->nOutputListMinorInterval;i++) OutputList[i] = msr->OutputListMinorInterval[i];
+        (*nOutputList) = msr->nOutputListMinorInterval;
+        *pbDensitySmooth |= msr->bDensitySmoothMinorInterval;
+        return;
 	}
 /* Default, e.g. at stop step */
-//    if (msrOutInterval(msr) > 0 && (iStep%msrOutInterval(msr) == 0)) {
-	if (msr->param.bVDetails) printf("Interval output %i %i\n",msr->nOutputListInterval,msr->param.iBinaryOutput);
-	assert(msr->OutputListInterval != NULL);
-	for (i=0;i<msr->nOutputListInterval;i++) OutputList[i] = msr->OutputListInterval[i];
-	(*nOutputList) = msr->nOutputListInterval;
-	*pbDensitySmooth |= msr->bDensitySmoothInterval;
-	return;
-//	}
+    if (msr->OutputListInterval != NULL) {
+        if (msr->param.bVDetails) printf("Interval output %i %i\n",msr->nOutputListInterval,msr->param.iBinaryOutput);
+        assert(msr->OutputListInterval != NULL);
+        for (i=0;i<msr->nOutputListInterval;i++) OutputList[i] = msr->OutputListInterval[i];
+        (*nOutputList) = msr->nOutputListInterval;
+        *pbDensitySmooth |= msr->bDensitySmoothInterval;
+        return;
+        }
     }
 
 void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])

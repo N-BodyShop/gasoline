@@ -611,7 +611,7 @@ int main(int argc,char **argv)
 				msrGetDensityU(msr);
 #endif
 				bDensitySmooth = msrDoDensity(msr) || msr->param.bDohOutput;
-                                msrSelectOutputList(msr, &nOutputList, OutputList, iStep, bOutTime, &bDensitySmooth);
+                msrSelectOutputList(msr, &nOutputList, OutputList, iStep, bOutTime, &bDensitySmooth);
 
 				if (bDensitySmooth) {
 				    msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
