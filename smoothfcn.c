@@ -5329,7 +5329,7 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	fNorm = 1./rstot;
 	assert(p->fMass >= 0.0);
 #ifdef TWOPHASE
-    if (q->fMassHot > 0)
+    if (p->fMassHot > 0)
     {
         ISORT *isort;
         isort = (ISORT *) malloc(sizeof(ISORT)*nSmooth);
