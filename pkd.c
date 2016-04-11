@@ -4476,7 +4476,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                    //printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e %e\n",   p->iOrder, duDelta, duPredDelta, fMassFlux, fMassFluxSat, ph, p->fMass-p->fMassHot, p->fMassHot, p->uPred, p->uHotPred);
                    fMassFlux = (fMassFlux < fMassFluxSat ? fMassFlux : fMassFluxSat);
                    if(fMassFlux > 0) { // Make sure that the flow is in the right direction
-                       if (uhc.dMultiPhaseMaxTime > 0) {
+                       if (uhc.dMultiPhaseMaxTime > 0 && p->fMassHot<(0.5*p->fMass)) {
                            FLOAT fMassFluxMin = duPredDelta*p->fMass/uhc.dMultiPhaseMaxTime;
                            /*printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e %e %e\n",   p->iOrder, duDelta, duPredDelta, fMassFlux, fMassFluxSat, fMassFluxMin, ph, p->fMass-p->fMassHot, p->fMassHot, p->uPred, p->uHotPred);*/
                            fMassFlux = (fMassFlux > fMassFluxMin ? fMassFlux : fMassFluxMin);
