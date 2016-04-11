@@ -904,7 +904,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 		   int bDoSplitDimFind, int bSplitWork)
 {
 #ifdef STARFORM
-	int NUM_SAFETY = 4096; 	/* Larger margin for extra particles */
+	int NUM_SAFETY = 512; 	/* Larger margin for extra particles */
 #else
 	int NUM_SAFETY = 4; 	/* minimum margin space per processor when
 				   filling up memory */
