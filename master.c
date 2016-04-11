@@ -1205,6 +1205,14 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
 #ifdef TWOPHASE
+	msr->param.dMultiPhaseMaxTime = 0;
+	prmAddParam(msr->prm,"dMultiPhaseMaxTime",2,&msr->param.dMultiPhaseMaxTime,
+				sizeof(double),"multimaxt",
+				"<Maximum time for multiphase conversion to take = 0>");
+	msr->param.dMultiPhaseMaxFrac = 1.0;
+	prmAddParam(msr->prm,"dMultiPhaseMaxFrac",2,&msr->param.dMultiPhaseMaxFrac,
+				sizeof(double),"multifmaxf",
+				"<Maximum mass fraction to stay multiphase> = 1.0");
 	msr->param.dMultiPhaseMinTemp = 1e5;
 	prmAddParam(msr->prm,"dMultiPhaseMinTemp",2,&msr->param.dMultiPhaseMinTemp,
 				sizeof(double),"multitmin",
@@ -3230,6 +3238,8 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "STAR FORMATION","dInitBHMass: %g",msr->param.dInitBHMass); 
 #ifdef TWOPHASE
     LogParams(lgr, "STAR FORMATION","dMultiPhaseMinTemp: %g",msr->param.dMultiPhaseMinTemp); 
+    LogParams(lgr, "STAR FORMATION","dMultiPhaseMaxFrac: %g",msr->param.dMultiPhaseMaxFrac); 
+    LogParams(lgr, "STAR FORMATION","dMultiPhaseMaxTime: %g",msr->param.dMultiPhaseMaxTime); 
     LogParams(lgr, "STAR FORMATION","bTempInclHot: %d",msr->param.stfm->bTempInclHot); 
     LogParams(lgr, "STAR FORMATION","dFBInitialMassLoad: %g",msr->param.dFBInitialMassLoad); 
 #endif
@@ -6526,6 +6536,8 @@ void msrSetuHotContext( MSR msr, UHC *puhc, double a ) {
 #endif
 #ifdef TWOPHASE
     puhc->dMultiPhaseMinTemp = msr->param.dMultiPhaseMinTemp;
+    puhc->dMultiPhaseMaxTime = msr->param.dMultiPhaseMaxTime*SECONDSPERYEAR/msr->param.dSecUnit;
+    puhc->dMultiPhaseMaxFrac = msr->param.dMultiPhaseMaxFrac;
 #endif
 #endif
     }

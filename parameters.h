@@ -333,6 +333,8 @@ struct parameters {
 #ifdef TWOPHASE
     double dFBInitialMassLoad;
     double dMultiPhaseMinTemp;
+    double dMultiPhaseMaxFrac;
+    double dMultiPhaseMaxTime;
 #endif
 #ifdef STARFORM
 	STFM   stfm;
