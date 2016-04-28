@@ -5293,7 +5293,9 @@ void combDistDeletedGas(void *vp1,void *vp2)
             assert(p1->uPred > 0);
 			
 			p1->fMass = m_new;
+#ifdef TWOPHASE
             assert(p1->fMassHot < p1->fMass);
+#endif
             }
 		}
     }
@@ -5742,7 +5744,9 @@ void combDistFBEnergy(void *p1,void *p2)
 #endif
     
     ((PARTICLE *)p1)->fMass += fAddedMass;
+#ifdef TWOPHASE
     assert(((PARTICLE *)p1)->fMassHot < ((PARTICLE *)p1)->fMass);
+#endif
     ((PARTICLE *)p1)->uDotFB += ((PARTICLE *)p2)->uDotFB;
     ((PARTICLE *)p1)->uDotESF += ((PARTICLE *)p2)->uDotESF;
     ((PARTICLE *)p1)->fMetals += ((PARTICLE *)p2)->fMetals;
