@@ -1205,10 +1205,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
 #ifdef TWOPHASE
-	msr->param.dMultiPhaseMaxTime = 0;
+	msr->param.dMultiPhaseMaxTime = 1e8;
 	prmAddParam(msr->prm,"dMultiPhaseMaxTime",2,&msr->param.dMultiPhaseMaxTime,
 				sizeof(double),"multimaxt",
-				"<Maximum time for multiphase conversion to take = 0>");
+				"<Maximum time for multiphase conversion to take, in years = 0>");
 	msr->param.dMultiPhaseMaxFrac = 1.0;
 	prmAddParam(msr->prm,"dMultiPhaseMaxFrac",2,&msr->param.dMultiPhaseMaxFrac,
 				sizeof(double),"multifmaxf",
