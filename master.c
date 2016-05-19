@@ -3133,8 +3133,8 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "GLASS","dGlassPoverRhoR: %g",msr->param.dGlassPoverRhoR); 
     LogParams(lgr, "GLASS","dGlassVL: %g",msr->param.dGlassVL); 
     LogParams(lgr, "GLASS","dGlassVR: %g",msr->param.dGlassVR); 
-    LogParams(lgr, "GLASS","dGlassXL: %g",msr->param.dGlassXL); 
-    LogParams(lgr, "GLASS","dGlassXR: %g",msr->param.dGlassXR); 
+    LogParams(lgr, "GLASS","dGlassxL: %g",msr->param.dGlassxL); 
+    LogParams(lgr, "GLASS","dGlassxR: %g",msr->param.dGlassxR); 
 #endif
 #ifdef GASOLINE
     LogParams(lgr, "SPH","bDoGas: %d",msr->param.bDoGas);	 
