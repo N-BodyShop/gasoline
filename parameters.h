@@ -61,9 +61,13 @@ struct parameters {
  	int bDoSphhOutput;
 	int bDoPressureOutput;
     int bDoHydroOutput;
+	int bDoBalsaraOutput;
+	int bDoDivvOutput;
+	int bDoCurlvOutput;
+	int bDoCSoundOutput;
 	int bDodtOutput;
 	int bDoIonOutput;
-#ifdef COOLING_MOLECULARH 
+#ifdef COOLING_MOLECULARH
     int bDoCorreL; /* Output the correlation length used for calculating H2 shielding*/
 #endif
     int bDoCSound;
@@ -107,7 +111,7 @@ struct parameters {
 	int bTimeVarying;
 	int bRotatingBar;
     ROTBAR  rotbar;
-    
+
 	int bRotFrame;
 	double dOmega;
 	double dOmegaDot;
@@ -137,7 +141,7 @@ struct parameters {
     int bGrowStar;
     int bGrowDark;
 	int iWallRunTime;
-	int bPhysicalSoft;  
+	int bPhysicalSoft;
 	int bSoftMaxMul;
 	int bVariableSoft;
 	int nSoftNbr;
