@@ -7,13 +7,13 @@
 # You will get a pair of new files: gasoline.NNNNNNNN and buildlog.NNNNNNNN,
 # where NNNNNNNN is an 8 character hash.
 # The first is the actual gasoline executable, and the second one contains all
-# defines that were used to build gasoline.  You should copy that file into 
+# defines that were used to build gasoline.  You should copy that file into
 # the directory of any simulation you run so you know exactly which options were
 # used.
 PNG_INCL =
-PNG_LIB = 
+PNG_LIB =
 PNG_OBJ =
-PNG_DEF = 
+PNG_DEF =
 
 # If you do dump frame stuff with png you need these libs ( -DUSE_PNG )
 #PNG_INCL = -I/usr/include
@@ -25,10 +25,10 @@ PNG_DEF =
 # if you use OUTURBDRIVER you need libgsl
 #TURB_OBJ = outurb.o
 #GSL_LIB = -lgsl -lgslcblas
-TURB_OBJ = 
-GSL_LIB = 
+TURB_OBJ =
+GSL_LIB =
 
-# The following pairs of lines define which cooling method to use.  Uncomment 
+# The following pairs of lines define which cooling method to use.  Uncomment
 # only one pair
 #COOLING_OBJ = cooling_cosmo.o
 #COOLING_DEF = -DCOOLING_COSMO
@@ -55,7 +55,7 @@ COOLING_DEF = -DCOOLING_METAL
 #COOLING_OBJ = cooling_disk.o
 #COOLING_DEF = -DCOOLING_DISK
 
-#COOLING_OBJ = 
+#COOLING_OBJ =
 #COOLING_DEF = -DNOCOOLING
 
 BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
@@ -65,7 +65,7 @@ BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB) $(COOLING_LIB)
 CC = icc
 CC = gcc
 
-CODE_DEF = 
+CODE_DEF =
 # Gasoline uses a number of defines to enable/disable code features,
 # debug sections of the code, and switch out different physics.
 # Below is a complete list of the available user defines for gasoline.
@@ -106,6 +106,7 @@ CODE_DEF+= -DDENSITYUNOTP          #More aggressive version of the energy-weight
 #CODE_DEF+= -DDENSSOFT              #Use the SPH density for gravity softening
 #CODE_DEF+= -DDEPTHCHECK            #Debug how deep the tree goes during treebuilds
 CODE_DEF+= -DDIFFUSION              #Enable Diffusion (of metals and energy)
+CODE_DEF+= -DDIFFUSIONSHOCKCOND		#Enable Conduction to prevent wall heating in shocks
 #CODE_DEF+= -DDIFFUSIONHARMONIC     #Use the harmonic sum for calculating thermal diffusion
 #CODE_DEF+= -DDIFFUSIONPRICE        #Daniel Price's Thermal Diffusion
 #CODE_DEF+= -DDIFFUSIONTHERMAL      #Enable Thermal Diffusion (DEPRECATED - automatically included with -DDIFFUSION)
@@ -113,18 +114,18 @@ CODE_DEF+= -DDIFFUSION              #Enable Diffusion (of metals and energy)
 #CODE_DEF+= -DDIVVCORRBAD           #Better corrector on average but pathological with very uneven particle distributions
 #CODE_DEF+= -DDKDENSITY             #Calculate the density using the derivative of the kernel in the DVDX calculation of density
 CODE_DEF+= -DDODVDS                 #Different estimate of Balsara switch instead of divv
-#CODE_DEF+= -DDRHODT                #Use the change in density over time (dRho/dt) 
+#CODE_DEF+= -DDRHODT                #Use the change in density over time (dRho/dt)
 #CODE_DEF+= -DDRHODTDIVOUT          #Output Divv variables used in DRHODT
 #CODE_DEF+= -DDRHODTTEST            #Output a large list of properties important for the DRHODT parts of the code for debugging
 CODE_DEF+= -DDTADJUST               #Readjust timesteps if near short timestep particles -- required for good energy conservation
 #CODE_DEF+= -DDTTEST=?              #Print debug info for particles with dt values below this
 CODE_DEF+= -DEPSACCH                #Use sph H not softening to calculate acceleration timestep, even if softening smaller
 #CODE_DEF+= -DFEEDBACKDIFFLIMIT     #Disable thermal diffusion for particles that have their cooling shut off
-#CODE_DEF+= -DFITDVDX               #Use a fitted version of the DenDVDX 
+#CODE_DEF+= -DFITDVDX               #Use a fitted version of the DenDVDX
 #CODE_DEF+= -DFBPARTICLE            #Use particle creation for feedback (for testing only)
 CODE_DEF+= -DPARTICLESPLIT         #Particles will now divide if they get too heavy
 #CODE_DEF+= -DPROMOTE               #Make particles hot based on conduction in feedback
-CODE_DEF+= -DGASOLINE               #Do hydro 
+CODE_DEF+= -DGASOLINE               #Do hydro
 #CODE_DEF+= -DGLASS                 #Use this to damp for glass initial conditions
 #CODE_DEF+= -DGLASSZ                #Use this to damp for glass IC in z direction
 #CODE_DEF+= -DGR_DRAG               #Enable Frame dragging
@@ -159,13 +160,13 @@ CODE_DEF+= -DNSMOOTHINNER          #Ensure at least 18 neighbours inside 1.41 h
 #CODE_DEF+= -DOLDINITSPHCODE        #Use the older multi-resmooth msrInitSph (deprecated?)
 #CODE_DEF+= -DOLD_COMET_FORCE       #Enable the do_force for special rubble pile particles (ie comets).
 #CODE_DEF+= -DOLD_COMET_STUFF       #Initialize special particles (this is a huge kludge)
-#CODE_DEF+= -DOLD_KEPLER            #An ugly part of the collision code to stop hard scatterings 
+#CODE_DEF+= -DOLD_KEPLER            #An ugly part of the collision code to stop hard scatterings
 #CODE_DEF+= -DOLD_VERSION           #Change the way the comet force from OLD_COMET_FORCE is calculated
 #CODE_DEF+= -DOUTURBDRIVER           #Drive turbulence as in Price & Federrath 2010 with OU variables
-#CODE_DEF+= -DPARTSHEAR             #Use particle shear for the correlation length in H2 cooling 
+#CODE_DEF+= -DPARTSHEAR             #Use particle shear for the correlation length in H2 cooling
 #CODE_DEF+= -DPCONST=?              #Use a constant pressure specified for all gas
 #CODE_DEF+= -DPEAKEDKERNEL          #Use a modified Peaked M4 kernel as per Thomas and Couchman 92 (Bibcode:1992MNRAS.257...11T)
-#CODE_DEF+= -DPEXT                  #Allow non-zero external pressure 
+#CODE_DEF+= -DPEXT                  #Allow non-zero external pressure
 #CODE_DEF+= -DPREDRHO               #Generate predicted rho values (if bPredRho == 2)
 #CODE_DEF+= -DPRES_HK               #Use the Euclidean mean of the both pOverRho values to calculate PdV work
 #CODE_DEF+= -DPRES_MONAGHAN         #Use Monaghan's PdV work calculation (the average of both pOverRho values)
@@ -177,7 +178,7 @@ CODE_DEF+= -DNSMOOTHINNER          #Ensure at least 18 neighbours inside 1.41 h
 #CODE_DEF+= -DRHOSF                 #Form stars linearly with density above 100 H cc^-3
 #CODE_DEF+= -DROT_FRAME             #Use a rotating reference frame with rotation rate given by dOmega
 #CODE_DEF+= -DRTDENSITY             #Use an Ritchie & Thomas densities (DOI:10.1046/j.1365-8711.2001.04268.x)
-#CODE_DEF+= -DRTF                   #-DRTDENSITY and -DRTFORCE 
+#CODE_DEF+= -DRTF                   #-DRTDENSITY and -DRTFORCE
 CODE_DEF+= -DRTFORCE                #Use an Ritchie & Thomas forces (DOI:10.1046/j.1365-8711.2001.04268.x)
 #CODE_DEF+= -DRUBBLE_ZML            #Use "Rubble Pile" collision model (Requires -DCOLLISION)
 #CODE_DEF+= -DSAND_PILE             #Use the "Sand Pile" collision model (Requires -DCOLLISION)
@@ -219,7 +220,7 @@ CODE_DEF+= -DTOPHATFEEDBACK        #Use a tophat kernel to smooth feedback over
 #CODE_DEF+= -DUSEHMIN               #Use a floor to keep the integrator for stiff equations from blowing up
 #CODE_DEF+= -DUSE_PNG               #Use PNG encoding for dumpframes
 #CODE_DEF+= -DUSETABLE              #Grab the cooling rates from a table
-#CODE_DEF+= -DVARALPHA              #Allow a varying alpha artificial viscosity 
+#CODE_DEF+= -DVARALPHA              #Allow a varying alpha artificial viscosity
 #CODE_DEF+= -DVOLUMEFEEDBACK        #Smooth FB energy over a volume rather than mass
 #CODE_DEF+= -DVOXEL                 #Dump voxels for volume imaging.
 CODE_DEF+= -DVSIGVISC               #Alternate Artificial Viscous force calculation (due to Monaghan)
@@ -237,8 +238,8 @@ EXE = gasoline
 #       NULL defines
 #
 NULL_MDL		= ../mdl/null
-#NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF) 
-NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(BASE_DEF) 
+#NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF)
+NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(BASE_DEF)
 NULL_LD_FLAGS	= $(BASE_LD_FLAGS) #-L/usr/lib -L/lib
 NULL_XOBJ		= erf.o v_sqrt1.o
 NULL_LIBMDL		= $(NULL_MDL)/mdl.o -lm
@@ -247,7 +248,7 @@ NULL_LIBMDL		= $(NULL_MDL)/mdl.o -lm
 #       DBG defines
 #
 DBG_MDL		= ../mdl/null
-DBG_CFLAGS		= -g -I$(DBG_MDL) $(BASE_DEF) 
+DBG_CFLAGS		= -g -I$(DBG_MDL) $(BASE_DEF)
 DBG_LD_FLAGS	= $(BASE_LD_FLAGS) -L/usr/lib -L/lib
 DBG_XOBJ		= erf.o v_sqrt1.o
 DBG_LIBMDL		= $(NULL_MDL)/mdl.o -lm
@@ -268,7 +269,7 @@ SGI_MDL_CFLAGS	= -g2 -O2 -mips4 -64 -r10000
 CHARM=../charm/net-linux/bin/charmc
 CHARMLINK=
 AMPI_MDL			= ../mdl/ampi
-AMPI_CFLAGS		= -O3 -malign-double -mpentiumpro -I$(AMPI_MDL) $(BASE_DEF) 
+AMPI_CFLAGS		= -O3 -malign-double -mpentiumpro -I$(AMPI_MDL) $(BASE_DEF)
 AMPI_LD_FLAGS		=  $(BASE_LD_FLAGS)
 AMPI_XOBJ                = erf.o v_sqrt1.o
 AMPI_LIBMDL              = $(AMPI_MDL)/mdl.o -language ampi $(CHARMLINK) -lm
@@ -289,9 +290,9 @@ LAM_MDL_CFLAGS  = -fast -I$(LAM_MDL) $(BASE_DEF)
 QMPI_MDL                        = ../mdl/mpi
 QMPI_CFLAGS             = -O3 -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX -DCCC
 QMPI_LD_FLAGS           =  $(BASE_LD_FLAGS)
-QMPI_XOBJ                = erf.o 
+QMPI_XOBJ                = erf.o
 QMPI_LIBMDL              = $(QMPI_MDL)/mdl.o -lmpi -lm
-QMPI_MDL_CFLAGS  = -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX 
+QMPI_MDL_CFLAGS  = -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX
 
 
 #       SP1/2 defines
@@ -331,7 +332,7 @@ PTHREAD_LIBMDL 		= $(PTHREAD_MDL)/mdl.o -lm -lpthread
 PTHREAD_SGI_MDL			= ../mdl/pthread
 PTHREAD_SGI_CFLAGS		= -O2 -D_REENTRANT -I$(PTHREAD_SGI_MDL) $(BASE_DEF) -mips4 -64 -r10000
 PTHREAD_SGI_LD_FLAGS 	= -mips4 -64 -r10000 $(BASE_LD_FLAGS)
-PTHREAD_SGI_XOBJ		= 
+PTHREAD_SGI_XOBJ		=
 PTHREAD_SGI_LIBMDL 		= $(PTHREAD_SGI_MDL)/mdl.o -lm -lpthread
 PTHREAD_SGI_MDL_CFLAGS	= -O2 -mips4 -64 -r10000
 
@@ -376,7 +377,7 @@ T3DMPI_LD_FLAGS	= $(BASE_LD_FLAGS)
 CHARM=../charm/net-linux/bin/charmc
 CHARMLINK=
 CHARM_MDL			= ../mdl/charm
-CHARM_CFLAGS		= -verbose -g -I$(CHARM_MDL) $(BASE_DEF) 
+CHARM_CFLAGS		= -verbose -g -I$(CHARM_MDL) $(BASE_DEF)
 CHARM_MDL_CFLAGS	= -verbose -g -Wall
 CHARM_LD_FLAGS		=  $(BASE_LD_FLAGS) -language charm++ -memory os
 CHARM_XOBJ                = erf.o v_sqrt1.o
@@ -402,7 +403,7 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
 
 
-default:	
+default:
 	@echo "Please tell me what architecture to make."
 	@echo "Choices are null, sgi, pvm, pthread, pthread_dec, pthread_sgi, ampi, lam_mpi, qmpi, mpi, spx, t3d, t3dmpi, t3empi, ksr, charm"
 
@@ -439,7 +440,7 @@ sgi:
 		"MDL=$(SGI_MDL)" "XOBJ=$(SGI_XOBJ)" "LIBMDL=$(SGI_LIBMDL)"
 
 pvm:
-	cd $(PVM_MDL); aimk	
+	cd $(PVM_MDL); aimk
 	make $(EXE) "CFLAGS=$(PVM_CFLAGS)" "LD_FLAGS=$(PVM_LD_FLAGS)"\
 		"MDL=$(PVM_MDL)" "XOBJ=$(PVM_XOBJ)" "LIBMDL=$(PVM_LIBMDL)"
 	mv -f $(EXE) $(XDIR)
@@ -550,4 +551,4 @@ walk.o: walk.h pkd.h floattype.h cooling.h
 rotbar.o: master.h rotbar.h
 cooling_metal.o: cooling_metal.h cooling_metal.c
 cooling_grackle.o: cooling_grackle.h cooling_grackle.c
-log.o: log.h 
+log.o: log.h
