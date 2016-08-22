@@ -3819,14 +3819,14 @@ double msrReadTipsy(MSR msr)
 	    fpiord = fopen(atmp,"r");
 	    assert(fpiord != NULL);
 	    if (msr->param.bStandard) {
-		XDR xdrsiord;
-		xdrstdio_create(&xdrsiord,fp,XDR_DECODE);
-		xdr_int(&xdrsiord,&nIords);
-		xdr_destroy(&xdrsiord);
-		}
+            XDR xdrsiord;
+            xdrstdio_create(&xdrsiord,fpiord,XDR_DECODE);
+            xdr_int(&xdrsiord,&nIords);
+            xdr_destroy(&xdrsiord);
+            }
 	    else {
-		fread(&nIords,sizeof(int),1,fpiord);
-		}
+            fread(&nIords,sizeof(int),1,fpiord);
+            }
 	    fclose(fpiord);
 	    if (nIords != h.nbodies) fprintf(stderr,"Iorder file incompatible with input file: n %d %d\n",nIords,h.nbodies);
 	    }

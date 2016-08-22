@@ -301,6 +301,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #if defined(SIMPLESF) || defined(STARFORM)
     FILE *fpmStar = NULL, *fptCoolAgain = NULL;
 #endif
+#ifdef TWOPHASE 
+    FILE *fpmhot = NULL, *fpuhot = NULL, *fpigasorder = NULL;
+#endif
     int i,j, iSetMask;
     PARTICLE *p;
     struct dark_particle dp;
@@ -431,7 +434,27 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
             mdlassert(pkd->mdl,0);
             }
         }
-  
+
+#ifdef TWOPHASE
+        {
+        char atmp[512];
+        sprintf(atmp,"%s.MassHot",pszFileName);
+        fpmhot = fopen(atmp,"r");
+        if (fpmhot!=NULL) pkdGenericSeek(pkd,fpmhot,nStart,sizeof(int),sizeof(float));
+        else if(pkd->idSelf == 0) fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+
+        sprintf(atmp,"%s.uHot",pszFileName);
+        fpuhot = fopen(atmp,"r");
+        if (fpuhot!=NULL) pkdGenericSeek(pkd,fpuhot,nStart,sizeof(int),sizeof(float));
+        else if(pkd->idSelf == 0) fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+
+        sprintf(atmp,"%s.igasorder",pszFileName);
+        fpigasorder = fopen(atmp,"r");
+        if (fpigasorder!=NULL) pkdGenericSeek(pkd,fpigasorder,nStart,sizeof(int),4);
+        else if(pkd->idSelf == 0) fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
+        }
+#endif  
+
 #ifdef STARFORM
         {
         char atmp[512];
@@ -489,9 +512,15 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         int IntTmp;
         XDR xdrs,xdrsiord;
         xdrstdio_create(&xdrs,fp,XDR_DECODE);
+#ifdef TWOPHASE
+        XDR xdrsmhot,xdrsuhot,xdrsigasorder;
+        if (fpmhot) xdrstdio_create(&xdrsmhot,fpmhot,XDR_DECODE);
+        if (fpuhot) xdrstdio_create(&xdrsuhot,fpuhot,XDR_DECODE);
+        if (fpigasorder) xdrstdio_create(&xdrsigasorder,fpigasorder,XDR_DECODE);
+#endif
 #ifdef STARFORM
         XDR xdrstoc;
-        xdrstdio_create(&xdrstoc,fptCoolAgain,XDR_DECODE);
+        if (fptCoolAgain) xdrstdio_create(&xdrstoc,fptCoolAgain,XDR_DECODE);
 #endif
         if (iReadIOrder) xdrstdio_create(&xdrsiord,fpiord,XDR_DECODE);
         
@@ -509,6 +538,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef TWOPHASEINIT
                 p->fMassHot = 0.5*fTmp;
 #endif
+                if (fpmhot) { xdr_float(&xdrsmhot,&fTmp); p->fMassHot = fTmp; } 
+                if (fpuhot) { xdr_float(&xdrsuhot,&fTmp); p->uHot = p->uHotPred = fTmp; } 
+                if (fpigasorder) { xdr_int(&xdrsigasorder,&IntTmp); p->iGasOrder = IntTmp; } 
                 if (p->fMassHot > 0) TYPESet(p,TYPE_TWOPHASE);
 #endif
                 assert(p->fMass > 0.0);
@@ -832,6 +864,14 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
             
             /* tipsy particle read done */
         
+#ifdef TWOPHASE
+            if (fpmhot!=NULL) { fread(&fTmp,sizeof(float),1,fpmhot);
+                if (pkdIsGasByOrder(pkd,p)) p->fMassHot = fTmp; }
+            if (fpuhot!=NULL) { fread(&fTmp,sizeof(float),1,fpuhot);
+                if (pkdIsGasByOrder(pkd,p)) p->uHot = p->uHotPred = fTmp; }
+            if (fpigasorder!=NULL) { fread(&IntTmp,sizeof(int),1,fpigasorder);
+                p->iGasOrder = IntTmp; }
+#endif
 #if defined(SIMPLESF) || defined(STARFORM)
             if (fptCoolAgain!=NULL) {
                 fread(&fTmp,sizeof(float),1,fptCoolAgain);
