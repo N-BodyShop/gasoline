@@ -4478,6 +4478,11 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                    //printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e %e\n",   p->iOrder, duDelta, duPredDelta, fMassFlux, fMassFluxSat, ph, p->fMass-p->fMassHot, p->fMassHot, p->uPred, p->uHotPred);
                    fMassFlux = (fMassFlux < fMassFluxSat ? fMassFlux : fMassFluxSat);
                    if(fMassFlux > 0) { // Make sure that the flow is in the right direction
+                       if (uhc.dMultiPhaseMaxTime > 0 && p->fMassHot<(0.5*p->fMass)) {
+                           FLOAT fMassFluxMin = duPredDelta*p->fMass/uhc.dMultiPhaseMaxTime;
+                           /*printf("EVAPINTERNAL: %d %e %e %e %e %e %e %e %e %e %e\n",   p->iOrder, duDelta, duPredDelta, fMassFlux, fMassFluxSat, fMassFluxMin, ph, p->fMass-p->fMassHot, p->fMassHot, p->uPred, p->uHotPred);*/
+                           fMassFlux = (fMassFlux > fMassFluxMin ? fMassFlux : fMassFluxMin);
+                       }
                        // If all the mass becomes hot, switch to being single-phase
                        if(fMassFlux > (p->fMass-p->fMassHot)) {
                            p->uPred = (p->uPred*(p->fMass-p->fMassHot) + p->uHotPred*p->fMassHot)/p->fMass;
@@ -4516,6 +4521,19 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->CoolParticle = p->CoolParticleHot;
                    }
                     TpNC = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uHotPred, fDensity, p->fMetals );
+                    if(p->fMassHot/p->fMass > uhc.dMultiPhaseMaxFrac)//Check to make sure the hot phase is below the maximum fraction.
+                    {
+                           p->uPred = (p->uPred*(p->fMass-p->fMassHot) + p->uHotPred*p->fMassHot)/p->fMass;
+                           p->u = (p->u*(p->fMass-p->fMassHot) + p->uHot*p->fMassHot)/p->fMass;
+                           p->uDot = (p->uDot*(p->fMass-p->fMassHot) + p->uHotDot*p->fMassHot)/p->fMass;
+                           p->uDotFB *= p->fMassHot/p->fMass;//Damn these scaled uDots, we should use a different name!
+                           p->CoolParticle = p->CoolParticleHot;
+                           p->fMassHot = 0;
+                           TYPEReset(p,TYPE_TWOPHASE);
+                           p->uHot = 0;
+                           p->uHotDot = 0;
+                           p->uHotPred = 0;
+                    }
                     if(TpNC < uhc.dMultiPhaseMinTemp && p->uHotPred > 0)//Check to make sure the hot phase is still actually hot
                     {
                            p->uPred = (p->uPred*(p->fMass-p->fMassHot) + p->uHotPred*p->fMassHot)/p->fMass;
@@ -4529,6 +4547,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                            p->uHotDot = 0;
                            p->uHotPred = 0;
                     }
+                    assert(p->fMassHot < p->fMass);
                     
 #endif
 #endif
@@ -4858,6 +4877,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
         p->uPred = cp.u;
 #ifdef TWOPHASE
         p->fMassHot = cp.fMassHot;
+        assert(p->fMassHot < p->fMass);
         if (p->fMassHot > 0) TYPESet(p,TYPE_TWOPHASE);
         p->CoolParticleHot = cp.CoolParticleHot;
 #endif
@@ -7945,6 +7965,7 @@ void pkdSplitGas(PKD pkd, double dInitGasMass)
         p->fMass /= 2.0;
 #ifdef TWOPHASE
         p->fMassHot /= 2.0;
+        assert(p->fMassHot < p->fMass);
 #endif
         daughter = *p;
         TYPESet(&daughter, TYPE_GAS);

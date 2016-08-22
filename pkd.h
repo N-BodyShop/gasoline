@@ -367,6 +367,8 @@ typedef struct uHotContext {
     struct GasPressureContext gpc;
 #ifdef TWOPHASE
     double dMultiPhaseMinTemp;
+    double dMultiPhaseMaxFrac;
+    double dMultiPhaseMaxTime;
 #endif
     } UHC;
 
