@@ -4417,8 +4417,10 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #endif
                     p->alphaPred = p->alpha + dalphadt*duPredDelta;
                     if (p->alphaPred < ALPHAMIN) p->alphaPred = ALPHAMIN;
+                    if (p->alphaPred > ALPHAMAX) p->alphaPred = ALPHAMAX;
                     p->alpha = p->alpha + dalphadt*duDelta;
                     if (p->alpha < ALPHAMIN) p->alpha = ALPHAMIN;
+                    if (p->alpha > ALPHAMAX) p->alpha = ALPHAMAX;
                     }
 #endif
 #ifdef SINKING
@@ -7607,6 +7609,7 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 #endif
                 p->alphaPred = p->alpha + dalphadt*duDelta;
                 if (p->alphaPred < ALPHAMIN) p->alphaPred = ALPHAMIN;
+                if (p->alphaPred > ALPHAMAX) p->alphaPred = ALPHAMAX;
                 }
 #endif
 #ifdef SINKING

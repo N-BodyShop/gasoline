@@ -4349,9 +4349,10 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 //		divvbad += (dx*dx+dy*dy+dz*dz)*rs1/p->fDensity;
 #endif
 //#endif
-		grx += (-p->uPred + q->uPred)*dx*rs1; /* Grad P estimate ( use divvnorm now? ) -- is it actually rho grad u ? */
-		gry += (-p->uPred + q->uPred)*dy*rs1;
-		grz += (-p->uPred + q->uPred)*dz*rs1;
+		/* grx += (-p->uPred + q->uPred)*dx*rs1;  Bad Grad P estimate ( use divvnorm now? ) -- actually rho grad u */
+		grx += (q->uPred)*dx*rs1; /* Grad P estimate */
+		gry += (q->uPred)*dy*rs1;
+		grz += (q->uPred)*dz*rs1;
 		}
 	if (qiActive & TYPE_ACTIVE) TYPESet(p,TYPE_NbrOfACTIVE);
 
@@ -4447,27 +4448,27 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    break;
 	case VISCOSITYLIMITER_BALSARA:
 	    if (p->divv!=0.0) {         	 
-		p->BalsaraSwitch = fabs(p->divv)/
-		    (fabs(p->divv)+sqrt(p->curlv[0]*p->curlv[0]+
+            p->BalsaraSwitch = fabs(p->divv)/
+                (fabs(p->divv)+sqrt(p->curlv[0]*p->curlv[0]+
 					p->curlv[1]*p->curlv[1]+
 					p->curlv[2]*p->curlv[2]));
-		}
+            }
 	    else { 
-		p->BalsaraSwitch = 0;
-		}
+            p->BalsaraSwitch = 0;
+            }
 	    break;
 	case VISCOSITYLIMITER_JW:
 	    c = sqrt(smf->gamma*p->uPred*(smf->gamma-1));
 	    if (dvdr < 0 && dvds < 0 ) {         	 
-		p->BalsaraSwitch = -dvds/
-		    (-dvds+sqrt(p->curlv[0]*p->curlv[0]+
-				p->curlv[1]*p->curlv[1]+
-				p->curlv[2]*p->curlv[2])+ALPHACMUL*c*ih)+ALPHAMIN;
-		if (p->BalsaraSwitch > 1) p->BalsaraSwitch = 1;
-		}
+            p->BalsaraSwitch = -dvds/
+                (-dvds+sqrt(p->curlv[0]*p->curlv[0]+
+                    p->curlv[1]*p->curlv[1]+
+                    p->curlv[2]*p->curlv[2])+ALPHACMUL*c*ih)+ALPHAMIN;
+            if (p->BalsaraSwitch > 1) p->BalsaraSwitch = 1;
+            }
 	    else { 
-		p->BalsaraSwitch = ALPHAMIN;
-		}
+            p->BalsaraSwitch = ALPHAMIN;
+            }
 	    break;
 	    }
 #ifdef DIFFUSION
@@ -4779,9 +4780,6 @@ void SmoothBSw(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	    break;
 	case VISCOSITYLIMITER_JW:
-#ifndef ALPHAMIN
-#define ALPHAMIN 0.01
-#endif
 /* Prior: ALPHAMUL 10 on top -- make pre-factor for c instead then switch is limited to 1 or less */
 #ifndef ALPHACMUL 
 #define ALPHACMUL 0.1

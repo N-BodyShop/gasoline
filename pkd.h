@@ -39,6 +39,7 @@
 /* SPH variable ALPHA */
 #ifndef ALPHAMIN
 #define ALPHAMIN 0.01
+#define ALPHAMAX 1
 #endif
 
 #ifdef RTF
