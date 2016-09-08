@@ -448,7 +448,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         if (fpuhot!=NULL) pkdGenericSeek(pkd,fpuhot,nStart,sizeof(int),sizeof(float));
         else if(pkd->idSelf == 0) fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
 
-        sprintf(atmp,"%s.igasorder",pszFileName);
+        sprintf(atmp,"%s.igasOrder",pszFileName);
         fpigasorder = fopen(atmp,"r");
         if (fpigasorder!=NULL) pkdGenericSeek(pkd,fpigasorder,nStart,sizeof(int),4);
         else if(pkd->idSelf == 0) fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
@@ -747,9 +747,9 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
             }
         xdr_destroy(&xdrs);
 #ifdef STARFORM
-        xdr_destroy(&xdrstoc);
+//        xdr_destroy(&xdrstoc);
 #endif
-        if (iReadIOrder) xdr_destroy(&xdrsiord);
+//        if (iReadIOrder) xdr_destroy(&xdrsiord);
         } /* standard read done */
     
     /* native format read */

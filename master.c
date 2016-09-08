@@ -2986,6 +2986,7 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "READ/WRITE","bParaWrite: %d",msr->param.bParaWrite);
     LogParams(lgr, "READ/WRITE","bOverwrite: %d",msr->param.bOverwrite);
     LogParams(lgr, "READ/WRITE","iBinaryOutput: %d",msr->param.iBinaryOutput);
+    LogParams(lgr, "READ/WRITE","iReadIOrder: %d",msr->param.iReadIOrder);
     LogParams(lgr, "READ/WRITE","bNoReOrder: %d",msr->param.bNoReOrder);
     LogParams(lgr, "INTEGRATION","bCannonical: %d",msr->param.bCannonical);
     LogParams(lgr, "DOMAIN DECOMPOSITION","dFracNoDomainDecomp: %g",msr->param.dFracNoDomainDecomp);
@@ -3989,7 +3990,8 @@ double msrReadTipsy(MSR msr)
 		struct outGetNParts outget;
 		struct inSetNParts inset;
 
-        assert(NIORDERGASBUFFER == 0); /* Not compatible with IORDERGASBUFFER */
+        // assert(NIORDERGASBUFFER == 0); /* Not compatible with NIORDERGASBUFFER */
+        // Careful -- pkdIsGasByOrder works differently once these values are set
 
 		pstGetNParts(msr->pst,NULL,0,&outget,NULL);
         if (outget.iMaxOrderGas == -1) outget.iMaxOrderGas = 0;
