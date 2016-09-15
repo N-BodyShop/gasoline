@@ -1100,7 +1100,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                     pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
                     for (i=0;i<pkd->nLocal;++i) {
                         LongOut = pkd->pStore[i].iGasOrder;
-                        xdr_long(&xdrs,&LongOut);
+                        xdr_longlong_t(&xdrs,(quad_t *) &LongOut);
                         }
                     break;
 #endif
@@ -1108,7 +1108,7 @@ void pkdOutVector(PKD pkd,char *pszFileName,int nStart, int iDim,int iVecType,in
                     pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongOut));
                     for (i=0;i<pkd->nLocal;++i) {
                         LongOut = pkd->pStore[i].iOrder;
-                        xdr_long(&xdrs,&LongOut);
+                        xdr_longlong_t(&xdrs,(quad_t *) &LongOut);
                         }
                     break;
                 default:
@@ -1383,7 +1383,7 @@ void pkdInVector(PKD pkd,char *pszFileName,int nStart, int nLocal, int iDim,int 
                 case OUT_IGASORDER_ARRAY:
                     pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongIn));
                     for (i=0;i<pkd->nLocal;++i) {
-                        xdr_long(&xdrs,&LongIn);
+                        xdr_longlong_t(&xdrs,(quad_t*) &LongIn);
                         pkd->pStore[i].iGasOrder = LongIn;
                         }
                     break;
@@ -1391,7 +1391,7 @@ void pkdInVector(PKD pkd,char *pszFileName,int nStart, int nLocal, int iDim,int 
                 case OUT_IORDER_ARRAY:
                     pkdGenericSeek(pkd,fp, nStart,sizeof(int),sizeof(LongIn));
                     for (i=0;i<pkd->nLocal;++i) {
-                        xdr_long(&xdrs,&LongIn);
+                        xdr_longlong_t(&xdrs,(quad_t*) &LongIn);
                         pkd->pStore[i].iOrder = LongIn;
                         }
                     break;
