@@ -734,7 +734,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->iOrder = IntTmp;
                 break;
             case 2:
-                xdr_long(&xdrsiord,&LongTmp);
+                xdr_longlong_t(&xdrsiord,(quad_t *) &LongTmp);
 //              fread(&LongTmp,sizeof(LongTmp),1,fpiord);
                 p->iOrder = LongTmp;
                 break;
