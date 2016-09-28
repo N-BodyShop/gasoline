@@ -6694,7 +6694,7 @@ void pkdGasPressure(PKD pkd, struct GasPressureContext *pgpc)
 #ifdef DTADJUST
                 {
                 double uTotDot, dt;
-                uTotDot = p->uDot;
+                uTotDot = UDOT_HYDRO(p);
 #ifdef UNONCOOL
                 uTotDot += p->uHotDot;
 #endif
@@ -6813,13 +6813,17 @@ void pkdGlassGasPressure(PKD pkd, void *vin)
     struct GlassData *in = vin;
 
     for(i=0;i<pkdLocal(pkd);++i) {
-                p = &pkd->pStore[i];
-                if (TYPEQueryTREEACTIVE(p)) {
-#define NEWGLASS
-#ifdef NEWGLASS
+        p = &pkd->pStore[i];
+        if (TYPEQueryTREEACTIVE(p)) {
+#define GLASS_3
+#ifdef GLASS_3
+            PoverRho = pow(p->fDensity,0.2389721);
+#endif
+#ifdef GLASS_2
             PoverRho = in->dGlassPoverRhoL*(p->r[0]*p->r[0]+p->r[1]*p->r[1]+p->r[2]*p->r[2])+1/p->fDensity;
-#else
-                    if (p->r[0] < -nsp*in->dGlassxL) {
+#endif
+#ifdef GLASS_1
+            if (p->r[0] < -nsp*in->dGlassxL) {
               if (p->r[0] > in->dxBoundL + nsp*in->dGlassxL)
                    PoverRho=in->dGlassPoverRhoL;  
               else {
@@ -6987,7 +6991,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     double x = p->fMassHot/p->fMass;
                     uTotDot = p->uHotDot*x+p->uDot*(1-x);
 #else
-                    uTotDot = p->uDot;
+                    uTotDot = UDOT_HYDRO(p);
 #ifdef UNONCOOL
                     uTotDot += p->uHotDot;
 #endif

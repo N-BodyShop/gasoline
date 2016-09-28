@@ -2886,6 +2886,9 @@ void msrLogDefines(FILE *fp)
 #ifdef DIFFUSION
 	fprintf(fp, " DIFFUSION");
 #endif
+#ifdef DIFFUSIONSHOCKCOND
+	fprintf(fp, " DIFFUSIONSHOCKCOND");
+#endif
 #ifdef NODIFFUSIONTHERMAL
 	fprintf(fp, " NODIFFUSIONTHERMAL");
 #endif
