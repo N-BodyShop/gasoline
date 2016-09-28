@@ -5467,6 +5467,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	assert(TYPETest(p, TYPE_GAS));
 	assert(TYPETest(p, TYPE_FEEDBACK));
 	assert(!TYPETest(p, TYPE_PROMOTED));
+	assert(!TYPETest(p, TYPE_DELETED));
     ph = sqrt(BALL2(p)*0.25);
     ih2 = 1/(ph*ph);
     /* Exclude cool particles */
