@@ -350,6 +350,8 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->bDumpFrame = 0;
 	msr->df[0] = NULL;
 
+    msr->bStepZero = 0;
+
 	msr->mdl = mdl;
 	msr->pst = NULL;
 	msr->lcl.pkd = NULL;
@@ -1915,8 +1917,13 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			msr->param.dConstBeta=0.5;
 		}
 	if (!prmSpecified(msr->prm,"iViscosityLimiter")) {
-	        if (!msr->param.bViscosityLimiter) msr->param.iViscosityLimiter=0;
+        if (!msr->param.bViscosityLimiter) msr->param.iViscosityLimiter=0;
 		}
+#ifdef CULLENDEHNEN
+    else {
+        fprintf(stderr,"iViscosityLimiter: Can't use explicit viscosity limiting with Cullen & Denhen viscosity\n");
+    }
+#endif
 #ifndef SHOCKTRACK
 	if (msr->param.bShockTracker != 0) {
 	        fprintf(stderr,"Compile with -DSHOCKTRACK for Shock Tracking.\n");
@@ -5810,6 +5817,7 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 
 void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     {
+    psmf->bStepZero = msr->bStepZero;
     if (msrComove(msr)) {
 	psmf->H = csmTime2Hub(msr->param.csm,dTime);
 	psmf->a = csmTime2Exp(msr->param.csm,dTime);
@@ -9418,6 +9426,7 @@ void msrInitSph(MSR msr,double dTime)
 	struct inInitEnergy in;
 	double a;
 #endif
+    msr->bStepZero = 1;
     if (msr->param.bInitGasDensity) {
         msrActiveType(msr,TYPE_GAS,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
         msrBuildTree(msr,1,-1.0,1);
@@ -9481,6 +9490,7 @@ void msrInitSph(MSR msr,double dTime)
 		   step size irrelevant for adiabatic gas */
    	        msrUpdateuDot(msr,dTime,0.5e-7*msr->param.dDelta,0);
 		}
+    msr->bStepZero = 0;
 
 	}
 
@@ -9658,6 +9668,8 @@ void msrSphStep(MSR msr, double dTime, int iKickRung)
 void msrSphViscosityLimiter(MSR msr, double dTime)
 {
     struct inSphViscosityLimiter in;
+
+    assert(0);  // Clashes with newer code in smoothfnc.c DenDVDX
 
     in.bOn = msr->param.iViscosityLimiter;
     in.bShockTracker = msr->param.bShockTracker;

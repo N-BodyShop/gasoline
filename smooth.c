@@ -291,7 +291,7 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         initTreeParticle = NULL;
         init = initDenDVDX;
         comb = combDenDVDX;
-        smx->fcnPost = NULL;
+        smx->fcnPost = postDenDVDX;
         break;
     case SMX_SURFACENORMAL:
         printf("Surface Normal\n");

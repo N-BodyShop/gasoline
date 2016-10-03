@@ -74,6 +74,13 @@
 
 #endif
 
+#ifdef CULLENDEHNEN
+#undef SWITCHCOMBINE
+#define SWITCHCOMBINE(a,b) (1.0)
+#define SWITCHCOMBINEA(a,b) SWITCHCOMBINE(a,b)
+#define SWITCHCOMBINEB(a,b) SWITCHCOMBINE(a,b)
+#endif
+
 /* KERNEL is the kernel normalized so that only a division by pi is necessary 
    DKERNEL is the kernel derivative divided by (r/h) and normalized so that only a division by pi is necessary */
 
@@ -4259,6 +4266,12 @@ void combDenDVDX(void *p1,void *p2)
     ((PARTICLE *)p1)->iActive |= (((PARTICLE *)p2)->iActive & TYPE_MASK);
 	}
 
+void postDenDVDX(PARTICLE *p, SMF *smf) {
+#ifdef CULLENDEHNEN
+    p->divv_old = p->divv;
+#endif
+    }  
+
 #ifndef FITDVDX
 /* Gather only version */
 void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
@@ -4266,7 +4279,9 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT ih2,ih,r2,rs,rs1,fDensity,fNorm,fNorm1,vFac;
 	FLOAT dvxdx , dvxdy , dvxdz, dvydx , dvydy , dvydz, dvzdx , dvzdy , dvzdz; /* comoving shear tensor */
 	FLOAT dvx,dvy,dvz,dx,dy,dz,trace;
+    FLOAT rgux,rguy,rguz;
 	FLOAT grx,gry,grz,gnorm,dvds,dvdr,c;
+    FLOAT R_CD,OneMinusR_CD,pdivv_old,vSigMax; // Cullen & Dehnen 2010
 #if defined (DENSITYU) || defined(RTDENSITY) || defined(THERMALCOND)
 	FLOAT fDensityU = 0;
 #endif
@@ -4294,7 +4309,9 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	dvydx = 0; dvydy = 0; dvydz= 0;
 	dvzdx = 0; dvzdy = 0; dvzdz= 0;
 
+    R_CD = 0;
 	grx = 0; gry = 0; grz = 0;
+	rgux = 0; rguy = 0; rguz = 0;
 
 	qiActive = 0;
 	for (i=0;i<nSmooth;++i) {
@@ -4325,6 +4342,20 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dvx = (-p->vPred[0] + q->vPred[0])*vFac; 
 		dvy = (-p->vPred[1] + q->vPred[1])*vFac;
 		dvz = (-p->vPred[2] + q->vPred[2])*vFac;
+        
+#ifdef CULLENDEHNEN
+            {
+        double dvdotdr = (dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H; // vFac already in there
+        double vSig;
+        double cavg = (p->c + q->c)*0.5;
+        if (dvdotdr < 0) vSig = cavg - dvdotdr/sqrt(nnList[i].fDist2);
+        else vSig = cavg;
+        if (vSig > vSigMax) vSigMax = vSig;
+
+        R_CD += (q->divv_old < 0 ? -1 : 1)*rs*q->fMass;
+        }
+#endif
+
 #ifdef SFBOUND
         /* Note: No correction for expansion (e.g. Hubble or vfac) */
 	    fSigma2 += (dvx*dvx+dvy*dvy+dvz*dvz)*rs*q->fMass;
@@ -4353,39 +4384,48 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		grx += (q->uPred)*dx*rs1; /* Grad P estimate */
 		gry += (q->uPred)*dy*rs1;
 		grz += (q->uPred)*dz*rs1;
+#ifdef THERMALCOND
+		rgux += (-p->uPred +q->uPred)*dx*rs1; /* rho Grad u  estimate */
+		rguy += (-p->uPred +q->uPred)*dy*rs1;
+		rguz += (-p->uPred +q->uPred)*dz*rs1;
+#endif
 		}
 	if (qiActive & TYPE_ACTIVE) TYPESet(p,TYPE_NbrOfACTIVE);
+
 
 #ifdef SFBOUND
     p->fSigma2 = fSigma2/fDensity;
 #endif
-
+#ifdef CULLENDEHNEN
+    OneMinusR_CD = 1 - (R_CD/fDensity);
+#endif
+    // Anything using unnormalized density must go before here
 /*	printf("TEST %d  %g %g  %g %g %g\n",p->iOrder,p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]);*/
 	fDensity*=fNorm;
 #if defined(DENSITYU) || defined(RTDENSITY) || defined(THERMALCOND)
 	fDensityU*=fNorm;
 #endif
 #ifdef DENSITYU
-#ifdef DENSITYUNOTP
+  #ifdef DENSITYUNOTP
         if (fDensityU > 0) {
             KERNEL(rs,0.0);
-#ifdef TWOPHASE
+    #ifdef TWOPHASE
             double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
             p->fDensityU = (fDensityU-rs*p->fMass*uMean*fNorm)/uMean*fDensity/(fDensity-rs*p->fMass*fNorm);
-#else
+    #else
             p->fDensityU = (fDensityU-rs*p->fMass*p->uPred*fNorm)/p->uPred*fDensity/(fDensity-rs*p->fMass*fNorm);
-#endif
+    #endif
         }
-#else
+  #else
             {
-#ifdef TWOPHASE
+    #ifdef TWOPHASE
             double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
             p->fDensityU = fDensityU/uMean;
-#else
+    #else
             p->fDensityU = fDensityU/p->uPred;
-#endif
+    #endif
             }
-#endif
+  #endif
 #endif
 
 #ifdef RTDENSITY	
@@ -4395,7 +4435,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 #ifdef THERMALCOND
     {
-    double rhogradu=sqrt(grx*grx+gry*gry+grz*grz)*fNorm1;
+    double rhogradu=sqrt(rgux*rgux+rguy*rguy+rguz*rguz)*fNorm1;
     p->fThermalLength = (rhogradu != 0 ? fDensityU/rhogradu : FLT_MAX);
     if (p->fThermalLength*ih < 1) p->fThermalLength = 1/ih;
     }
@@ -4415,6 +4455,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	if (p->fDensity_PdVcorr <= 0) p->fDensity_PdVcorr = p->fDensity;
 #endif
 
+    pdivv_old = p->divv;
 	p->divv =  fNorm1*trace + 3*smf->H; /* include H, physical */
 	p->curlv[0] = fNorm1*(dvzdy - dvydz); /* same in all coordinates */
 	p->curlv[1] = fNorm1*(dvxdz - dvzdx);
@@ -4459,6 +4500,8 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    break;
 	case VISCOSITYLIMITER_JW:
 	    c = sqrt(smf->gamma*p->uPred*(smf->gamma-1));
+#if (0)
+        // Old code Pre-Oct 2016 -- suppressed more than regular BS -- bad post-shock ringing
 	    if (dvdr < 0 && dvds < 0 ) {         	 
             p->BalsaraSwitch = -dvds/
                 (-dvds+sqrt(p->curlv[0]*p->curlv[0]+
@@ -4466,12 +4509,20 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                     p->curlv[2]*p->curlv[2])+ALPHACMUL*c*ih)+ALPHAMIN;
             if (p->BalsaraSwitch > 1) p->BalsaraSwitch = 1;
             }
+#else
+	    if (dvds != 0) {
+            p->BalsaraSwitch = fabs(dvds)*1.5/
+                (fabs(dvds)*1.5+sqrt(p->curlv[0]*p->curlv[0]+
+                    p->curlv[1]*p->curlv[1]+
+                    p->curlv[2]*p->curlv[2]));
+            }
+#endif
 	    else { 
             p->BalsaraSwitch = ALPHAMIN;
             }
 	    break;
 	    }
-#ifdef DIFFUSION
+#if defined(DIFFUSION) || defined(CULLENDEHNEN)
         {
         double onethirdtrace = (1./3.)*trace;
         /* Build Traceless Strain Tensor (not yet normalized) */
@@ -4481,9 +4532,54 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         double sxy = 0.5*(dvxdy + dvydx); /* pure rotation doesn't diffuse */
         double sxz = 0.5*(dvxdz + dvzdx);
         double syz = 0.5*(dvydz + dvzdy);
+        double S2 = fNorm1*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz));
+        // S2 Frobenius Norm^2 = trace(S ST) = Simpler as just sum_ij Sij^2 (used here)  Note: Sxy = Syx
+#ifdef CULLENDENHEN
+        double alphaLoc, dAlphaMax=2;
+        double l_CD = 0.2; // 2*0.1 
+        // time interval = current time - last time divv was calculated
+        double dDeltaTime = smf->dTime - p->dTime_divv;
+        p->dTime_divv = smf->dTime;
+
+        if (dDeltaTime > 0) {
+            double divvDot = (p->divv() - pdivv_old)/dDeltaTime;
+            if (divvDot < 0) {
+                double divvTerm = 2.0*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*p->divv;
+                divvTerm = divvTerm*divvTerm;
+                double xi = divvTerm/(divvTerm + S2);
+                double ATerm = 0.25*p->fBall2*fabs(divvDot);
+                alphaLoc = dAlphaMax * ATerm/(vSigMax*vSigMax+ATerm);
+                    }
+                else alphaLoc = 0;
+            // decay
+            double tau = (2*l_CD*vSigMax*ih);
+
+            if (alphaLoc > p->alpha) p->alpha = alphaLoc;
+            else p->alpha = alphaLoc - (alphaLoc - p->alpha)*exp(-dDeltaTime/tau);
+                }
+            }
+        else {
+            // If we are initializing the simulation, the current time step is zero and we can't compute the time
+            // derivative of the velocity divergence in the Cullen & Dehnin formulation
+            // we set alphaloc using the M&M prescription if possible -- see C&D eqn 11
+            // C&D assume dAlphaMin = 0  
+            // switch c->vsig for better consistency
+            // Should NEVER be here except on start from IC
+            assert(smf->bStepZero);
+            if ((p->divv < 0) && (p->c > 0)){
+                double tau = 1/(l_CD*vSigMax*ih);
+                alphaLoc = dAlphaMax*fabs(p->divv)*tau / (1.0 + fabs(p->divv)*tau);
+                }
+            else alphaLoc = 0;
+
+            p->alpha = alphaLoc;
+            }
+#endif
+#ifdef DIFFUSION
         /* diff coeff., nu ~ C L^2 S (add C via dMetalDiffusionConstant, assume L ~ h) */
         if (smf->bConstantDiffusion) p->diff = 1;
-        else p->diff = fNorm1*0.25*BALL2(p)*sqrt(2*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz)));
+        else p->diff = fNorm1*0.25*BALL2(p)*sqrt(2*S2);
+#endif
 /*	printf(" %g %g   %g %g %g  %g\n",p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2],fNorm1*sqrt(2*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz))) );*/
         }    
 #endif
@@ -4496,7 +4592,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #else /* FITDVDX */
 
 #include "stiff.h"
-/* Gather only version */
+/* Gather only version -- don't use */
 void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 	FLOAT ih2,ih,r2,rs,rs1,fDensity,fNorm,fNorm1,vFac,S;

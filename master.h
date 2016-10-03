@@ -115,6 +115,7 @@ typedef struct msrContext {
 	 ** Tracking for frame dumping function
 	 */
 	int bDumpFrame;
+    int bStepZero; // Are we in initialization?
 	struct DumpFrameContext *df[10];
 	/*
 	 ** An integer marking the type of tree currently in use.

@@ -35,6 +35,7 @@ typedef struct smfParameters {
     int bBHMindv;
     int bBHAccreteAll;
     int bDoBHKick;
+    int bStepZero;
     double dSinkCurrentDelta;
     double dDeltaStarForm;
 #ifdef GASOLINE
@@ -318,6 +319,7 @@ void SphPressureTermsSym(PARTICLE *,int,NN *,SMF *);
 void initDenDVDX(void *);
 void combDenDVDX(void *,void *);
 void DenDVDX(PARTICLE *,int,NN *,SMF *);
+void postDenDVDX(PARTICLE *, SMF *);
 
 /* SMX_SURFACENORMAL */
 void initSurfaceNormal(void *);

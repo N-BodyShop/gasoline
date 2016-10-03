@@ -186,7 +186,7 @@
     #define DIFFUSIONMetalsIron()
 #endif
 
-#ifdef VARALPHA
+#if defined(VARALPHA) || defined(CULLENDEHNEN)
     #define ALPHA (smf->alpha*0.5*(p->alpha+q->alpha))
     #define BETA  (smf->beta*0.5*(p->alpha+q->alpha))
 #else
