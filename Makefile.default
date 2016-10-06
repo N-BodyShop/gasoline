@@ -221,6 +221,7 @@ CODE_DEF+= -DSUPERBUBBLE			#Use the Keller+ 2014 Superbubble feedback (equivalen
 #CODE_DEF+= -DUSE_PNG               #Use PNG encoding for dumpframes
 #CODE_DEF+= -DUSETABLE              #Grab the cooling rates from a table
 #CODE_DEF+= -DVARALPHA              #Allow a varying alpha artificial viscosity
+#CODE_DEF+= -DCULLENDEHNEN          #Cullen Dehnene varying alpha 
 #CODE_DEF+= -DVOLUMEFEEDBACK        #Smooth FB energy over a volume rather than mass
 #CODE_DEF+= -DVOXEL                 #Dump voxels for volume imaging.
 CODE_DEF+= -DVSIGVISC               #Alternate Artificial Viscous force calculation (due to Monaghan)
