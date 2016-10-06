@@ -214,9 +214,21 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #endif
 	case OUT_BALSARASWITCH_ARRAY:
 	    return(p->BalsaraSwitch);
-#ifdef VARALPHA
+#if defined(VARALPHA) || defined(CULLENDEHNEN)
 	case OUT_ALPHA_ARRAY:
 	    return(p->alpha);
+#endif
+#ifdef CDDEBUG
+    case OUT_VSIGMAX_ARRAY:
+        return(p->vSigMax);
+    case OUT_R_CD_ARRAY:
+        return(p->R_CD);
+    case OUT_SNORM_ARRAY:
+        return(p->SNorm);
+    case OUT_ALPHALOC_ARRAY:
+        return(p->alphaLoc);
+	case OUT_DIVV_DENS_ARRAY:
+	    return(p->divv_dens);
 #endif
 	case OUT_DIVV_ARRAY:
 	    return(p->divv);
@@ -580,8 +592,23 @@ void VecFilename(char *achFile, int iType)
 	case OUT_DIVV_ARRAY:
         strncat(achFile,"divv",256);
         break;
+	case OUT_DIVV_DENS_ARRAY:
+        strncat(achFile,"divv_dens",256);
+        break;
 	case OUT_DVDS_ARRAY:
         strncat(achFile,"dvds",256);
+        break;
+	case OUT_VSIGMAX_ARRAY:
+        strncat(achFile,"vsigmax",256);
+        break;
+	case OUT_R_CD_ARRAY:
+        strncat(achFile,"rcd",256);
+        break;
+	case OUT_SNORM_ARRAY:
+        strncat(achFile,"snorm",256);
+        break;
+	case OUT_ALPHALOC_ARRAY:
+        strncat(achFile,"alphaloc",256);
         break;
 	case OUT_SURFACEAREA_ARRAY:
         strncat(achFile,"area",256);
@@ -793,7 +820,12 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
 	    /* Gas only floats */
     case OUT_COOLTURNONTIME_ARRAY:
     case OUT_DIVV_ARRAY:
+    case OUT_DIVV_DENS_ARRAY:
     case OUT_DVDS_ARRAY:
+    case OUT_VSIGMAX_ARRAY:
+    case OUT_R_CD_ARRAY:
+    case OUT_SNORM_ARRAY:
+    case OUT_ALPHALOC_ARRAY:
     case OUT_TCOOLAGAIN_ARRAY:
     case OUT_MSTAR_ARRAY:
     case OUT_COOL_ARRAY0:

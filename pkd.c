@@ -368,16 +368,17 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->ShockTracker = 0.0;
 #endif
 #ifdef VARALPHA
-/*
-  p->alpha = 1.0;
-  p->alphaPred = 1.0;
-*/
         p->alpha = ALPHAMIN;
         p->alphaPred = ALPHAMIN;
         p->divv = 0;
 #ifdef DODVDS
         p->dvds = 0;
 #endif
+#endif
+#ifdef CULLENDEHNEN
+        p->alpha = 0;
+        p->dTime_divv = FLT_MAX;
+        p->divv_old = 0;
 #endif
 #ifndef NOCOOLING       
         /* Place holders -- later fixed in pkdInitEnergy */
@@ -4857,6 +4858,11 @@ void pkdCreateInflow(PKD pkd, int Ny, int iGasModel, double dTuFac, double pmass
 #ifdef DODVDS
         p.dvds = 0;
 #endif
+#ifdef CULLENDEHNEN
+        p->alpha = 0;
+        p->dTime_divv = FLT_MAX;
+        p->divv_old = 0;
+#endif
 #endif
         p.c = 0.0;
         p.fTimeForm = 0.0;
@@ -4942,6 +4948,12 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef VARALPHA
         p->alpha = cp.alpha;
         p->alphaPred = cp.alpha;
+#endif
+#ifdef CULLENDEHNEN
+        assert(0); // checkpoint read
+        p->alpha = 0;
+        p->dTime_divv = FLT_MAX;
+        p->divv_old = 0;
 #endif
 #ifdef COOLDEBUG
         if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
@@ -5068,6 +5080,9 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 #endif
 #ifdef VARALPHA
         cp.alpha = p->alpha;
+#endif
+#ifdef CULLENDEHNEN
+        // chekpoint write
 #endif
         cp.fMetals = p->fMetals;
 #ifndef NOCOOLING       

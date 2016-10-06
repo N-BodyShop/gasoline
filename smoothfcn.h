@@ -39,6 +39,7 @@ typedef struct smfParameters {
     double dSinkCurrentDelta;
     double dDeltaStarForm;
 #ifdef GASOLINE
+    double dTauAlpha;
     double alpha;
     double beta;
     double gamma;

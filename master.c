@@ -1151,6 +1151,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dShockTrackerB",2,&msr->param.dShockTrackerB,
 				sizeof(double),"STB",
 				"<Shock Tracker B constant> = 0.4");
+	msr->param.dTauAlpha = 0.1;
+	prmAddParam(msr->prm,"dTauAlpha",2,&msr->param.dTauAlpha,
+				sizeof(double),"taualpha",
+				"<Tau_alpha constant in viscosity> = 0.1 C&D2010");
 	msr->param.dConstAlpha = 1.0; 	/* Default changed to 0.5 later if bBulkViscosity */
 	prmAddParam(msr->prm,"dConstAlpha",2,&msr->param.dConstAlpha,
 				sizeof(double),"alpha",
@@ -2747,6 +2751,9 @@ void msrLogDefines(FILE *fp)
 #ifdef VARALPHA
 	fprintf(fp," VARALPHA");
 #endif
+#ifdef CULLENDEHNEN
+	fprintf(fp," CULLENDEHNEN");
+#endif
 #ifdef PEAKEDKERNEL
 	fprintf(fp," PEAKEDKERNEL");
 #endif
@@ -2919,6 +2926,9 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef VARALPHA
         fprintf(fp, " VARALPHA");
+#endif
+#ifdef CULLENDEHNEN
+        fprintf(fp," CULLENDEHNEN");
 #endif
 #ifdef DODVDS
         fprintf(fp, " DODVDS");
@@ -3169,6 +3179,7 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "SPH","bShockTracker: %d",msr->param.bShockTracker);
     LogParams(lgr, "SPH","dShockTrackerA: %g",msr->param.dShockTrackerA);
     LogParams(lgr, "SPH","dShockTrackerB: %g",msr->param.dShockTrackerB);
+    LogParams(lgr, "SPH","dTauAlpha: %g",msr->param.dTauAlpha);
     LogParams(lgr, "SPH","dConstAlpha: %g",msr->param.dConstAlpha);
     LogParams(lgr, "SPH","dConstBeta: %g",msr->param.dConstBeta);
     LogParams(lgr, "GAS PHYSICS","dConstGamma: %g",msr->param.dConstGamma);
@@ -4558,7 +4569,10 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
 #ifdef DENSITYU
     OutputList[(*nOutputList)++]=OUT_DENSITYU_ARRAY;
 #endif
-    if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
+#ifndef CULLENDEHNEN
+    if (msr->param.bVariableAlpha) 
+#endif
+        OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
     if (msr->param.bSphStep) OutputList[(*nOutputList)++]=OUT_SPHDT_ARRAY;
 #ifdef TWOPHASE
     OutputList[(*nOutputList)++]=OUT_TWOPHASE_ARRAY;
@@ -4753,10 +4767,25 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     OutputList[(*nOutputList)++]=OUT_DENSITYU_ARRAY;
 #endif
     if (msr->param.bDoPressureOutput) OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
-    if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
+#ifndef CULLENDEHNEN
+    if (msr->param.bVariableAlpha) 
+#endif
+        OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
 
 	if (msr->param.bDoBalsaraOutput) OutputList[(*nOutputList)++]=OUT_BALSARASWITCH_ARRAY;
-	if (msr->param.bDoDivvOutput) OutputList[(*nOutputList)++]=OUT_DIVV_ARRAY;
+	if (msr->param.bDoDivvOutput) { 
+        OutputList[(*nOutputList)++]=OUT_DIVV_ARRAY;
+#ifdef DODVDS
+        OutputList[(*nOutputList)++]=OUT_DVDS_ARRAY;
+#endif
+#ifdef CULLENDEHNEN
+        OutputList[(*nOutputList)++]=OUT_ALPHALOC_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_VSIGMAX_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_R_CD_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_SNORM_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_DIVV_DENS_ARRAY;
+#endif
+        }
 	if (msr->param.bDoCurlvOutput) OutputList[(*nOutputList)++]=OUT_CURLV_VECTOR;
 	if (msr->param.bDoCSoundOutput) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
 	
@@ -5819,13 +5848,13 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     {
     psmf->bStepZero = msr->bStepZero;
     if (msrComove(msr)) {
-	psmf->H = csmTime2Hub(msr->param.csm,dTime);
-	psmf->a = csmTime2Exp(msr->param.csm,dTime);
-    }
+        psmf->H = csmTime2Hub(msr->param.csm,dTime);
+        psmf->a = csmTime2Exp(msr->param.csm,dTime);
+        }
     else {
-	psmf->H = 0.0;
-	psmf->a = 1.0;
-    }
+        psmf->H = 0.0;
+        psmf->a = 1.0;
+        }
 	{
 	double dAccFac = 1.0/(psmf->a*psmf->a*psmf->a);
 	psmf->dDeltaAccelFac = msr->param.dEtaDeltaAccel/sqrt(dAccFac);
@@ -5871,6 +5900,7 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
     psmf->bConstantDiffusion = msr->param.bConstantDiffusion;
 #endif
+    psmf->dTauAlpha = msr->param.dTauAlpha;
     psmf->alpha = msr->param.dConstAlpha;
     psmf->beta = msr->param.dConstBeta;
     psmf->iViscosityLimiter = msr->param.iViscosityLimiter;

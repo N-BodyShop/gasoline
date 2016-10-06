@@ -261,6 +261,7 @@ struct parameters {
 	double duDotLimit;
 	double dShockTrackerA;
 	double dShockTrackerB;
+    double dTauAlpha;
 	double dConstAlpha;
 	double dConstBeta;
 	double dConstGamma;

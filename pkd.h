@@ -175,6 +175,14 @@ typedef struct particle {
     FLOAT alpha;
     FLOAT dTime_divv;
     FLOAT divv_old; // stored old value for checking that nbrs also all compressing
+#define CDDEBUG
+#ifdef CDDEBUG
+    FLOAT alphaLoc; 
+    FLOAT vSigMax;  
+    FLOAT divv_dens; 
+    FLOAT R_CD;
+    FLOAT SNorm;
+#endif
 #endif
     FLOAT curlv[3];         /* Note this is used as workspace and value is not preserved */
     FLOAT BalsaraSwitch;    /* Balsara viscosity reduction */
