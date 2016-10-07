@@ -218,7 +218,7 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_ALPHA_ARRAY:
 	    return(p->alpha);
 #endif
-#ifdef CDDEBUG
+#ifdef CD_DEBUG
     case OUT_VSIGMAX_ARRAY:
         return(p->vSigMax);
     case OUT_R_CD_ARRAY:

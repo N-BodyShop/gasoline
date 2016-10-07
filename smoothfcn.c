@@ -4281,7 +4281,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT dvx,dvy,dvz,dx,dy,dz,trace;
     FLOAT rgux,rguy,rguz;
 	FLOAT grx,gry,grz,gnorm,dvds,dvdr,c;
-    FLOAT R_CD=0,OneMinusR_CD,pdivv_old,vSigMax=0; // Cullen & Dehnen 2010
+    FLOAT R_CD=0,OneMinusR_CD,pdivv_old,pdvds_old,vSigMax=0; // Cullen & Dehnen 2010
     FLOAT fDensity_old;
 #if defined (DENSITYU) || defined(RTDENSITY) || defined(THERMALCOND)
 	FLOAT fDensityU = 0;
@@ -4348,7 +4348,11 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         // Convention here dvdx = vxq-vxp, dx = xp-xq so dvdotdr = -dvx*dx ...
         double dvdotdr = -(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H; // vFac already in there
         double cavg = (p->c + q->c)*0.5;
+#ifdef CDCNOTVSIG
+        double vSig = cavg;
+#else
         double vSig = cavg - (dvdotdr < 0 ? dvdotdr/sqrt(nnList[i].fDist2) : 0);
+#endif
         if (vSig > vSigMax) vSigMax = vSig;
 
         R_CD += (q->divv_old < 0 ? -1 : 1)*rs*q->fMass;
@@ -4477,10 +4481,11 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    dvdr = (((dvxdx+Hcorr)*grx+dvxdy*gry+dvxdz*grz)*grx 
 		+  (dvydx*grx+(dvydy+Hcorr)*gry+dvydz*grz)*gry 
 		+  (dvzdx*grx+dvzdy*gry+(dvzdz+Hcorr)*grz)*grz)*fNorm1;
+        pdvds_old = p->dvds;
 #ifdef DODVDS
 	    p->dvds = 
 #endif
-	    dvds = dvdr-(1./3.)*p->divv; 
+            dvds = (p->divv < 0 ? 1.5*(dvdr -(1./3.)*p->divv) : dvdr );
 	    }
 
 	switch(smf->iViscosityLimiter) {
@@ -4511,8 +4516,8 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             }
 #else
 	    if (dvds != 0) {
-            p->BalsaraSwitch = fabs(dvds)*1.5/
-                (fabs(dvds)*1.5+sqrt(p->curlv[0]*p->curlv[0]+
+            p->BalsaraSwitch = fabs(dvds)/
+                (fabs(dvds)+sqrt(p->curlv[0]*p->curlv[0]+
                     p->curlv[1]*p->curlv[1]+
                     p->curlv[2]*p->curlv[2]));
             }
@@ -4539,15 +4544,19 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         // time interval = current time - last time divv was calculated
         double dDeltaTime = smf->dTime - p->dTime_divv;
         p->dTime_divv = smf->dTime;
-#ifdef CDDEBUG
+#ifdef CD_DEBUG
         p->R_CD = 1-OneMinusR_CD;
         p->vSigMax = vSigMax;
 #endif
 
         if (dDeltaTime > 0) {
             assert(!smf->bStepZero);
+#ifdef CD_DVDS
+            double divvDot = (p->dvds - pdvds_old)/dDeltaTime;
+#else
             double divvDot = (p->divv - pdivv_old)/dDeltaTime;
-#ifdef CDDEBUG
+#endif
+#ifdef CD_DEBUG
             p->divv_dens = -(p->fDensity-fDensity_old)/dDeltaTime/sqrt(p->fDensity*fDensity_old);
 #endif
             if (divvDot < 0) {
@@ -4580,7 +4589,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
             p->alpha = alphaLoc;
             }
-#ifdef CDDEBUG
+#ifdef CD_DEBUG
         p->alphaLoc = alphaLoc;
         p->SNorm = sqrt(S2);
 #endif
@@ -4782,7 +4791,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef DODVDS
 	    p->dvds = 
 #endif
-	    dvds = dvdr-(1./3.)*p->divv; 
+            dvds = (p->divv < 0 ? 1.5*(dvdr -(1./3.)*p->divv) : dvdr );
 	    }
 
 	switch(smf->iViscosityLimiter) {

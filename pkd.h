@@ -175,8 +175,8 @@ typedef struct particle {
     FLOAT alpha;
     FLOAT dTime_divv;
     FLOAT divv_old; // stored old value for checking that nbrs also all compressing
-#define CDDEBUG
-#ifdef CDDEBUG
+#define CD_DEBUG
+#ifdef CD_DEBUG
     FLOAT alphaLoc; 
     FLOAT vSigMax;  
     FLOAT divv_dens; 
