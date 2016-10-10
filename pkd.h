@@ -180,6 +180,7 @@ typedef struct particle {
     FLOAT alphaLoc; 
     FLOAT vSigMax;  
     FLOAT divv_dens; 
+    FLOAT divvDot;
     FLOAT R_CD;
     FLOAT SNorm;
 #endif

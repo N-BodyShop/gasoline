@@ -2754,6 +2754,24 @@ void msrLogDefines(FILE *fp)
 #ifdef CULLENDEHNEN
 	fprintf(fp," CULLENDEHNEN");
 #endif
+#ifdef CD_DEBUG
+	fprintf(fp," CD_DEBUG");
+#endif
+#ifdef CD_CNOTVSIG
+	fprintf(fp," CD_CNOTVSIG");
+#endif
+#ifdef CD_DVDS
+	fprintf(fp," CD_DVDS");
+#endif
+#ifdef CD_RALT
+	fprintf(fp," CD_RALT");
+#endif
+#ifdef CD_XIDVDS
+	fprintf(fp," CD_XIDVDS");
+#endif
+#ifdef CD_XIDVDS
+	fprintf(fp," CD_RDVDS");
+#endif
 #ifdef PEAKEDKERNEL
 	fprintf(fp," PEAKEDKERNEL");
 #endif
@@ -4784,6 +4802,7 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
         OutputList[(*nOutputList)++]=OUT_R_CD_ARRAY;
         OutputList[(*nOutputList)++]=OUT_SNORM_ARRAY;
         OutputList[(*nOutputList)++]=OUT_DIVV_DENS_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_DIVVDOT_ARRAY;
 #endif
         }
 	if (msr->param.bDoCurlvOutput) OutputList[(*nOutputList)++]=OUT_CURLV_VECTOR;

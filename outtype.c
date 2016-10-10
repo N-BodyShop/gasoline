@@ -229,6 +229,8 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
         return(p->alphaLoc);
 	case OUT_DIVV_DENS_ARRAY:
 	    return(p->divv_dens);
+	case OUT_DIVVDOT_ARRAY:
+	    return(p->divvDot);
 #endif
 	case OUT_DIVV_ARRAY:
 	    return(p->divv);
@@ -595,6 +597,9 @@ void VecFilename(char *achFile, int iType)
 	case OUT_DIVV_DENS_ARRAY:
         strncat(achFile,"divv_dens",256);
         break;
+	case OUT_DIVVDOT_ARRAY:
+        strncat(achFile,"divvdot",256);
+        break;
 	case OUT_DVDS_ARRAY:
         strncat(achFile,"dvds",256);
         break;
@@ -821,6 +826,7 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     case OUT_COOLTURNONTIME_ARRAY:
     case OUT_DIVV_ARRAY:
     case OUT_DIVV_DENS_ARRAY:
+    case OUT_DIVVDOT_ARRAY:
     case OUT_DVDS_ARRAY:
     case OUT_VSIGMAX_ARRAY:
     case OUT_R_CD_ARRAY:

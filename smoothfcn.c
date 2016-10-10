@@ -4268,7 +4268,11 @@ void combDenDVDX(void *p1,void *p2)
 
 void postDenDVDX(PARTICLE *p, SMF *smf) {
 #ifdef CULLENDEHNEN
+#ifdef CD_RDVDS
+    p->divv_old = p->dvds;
+#else
     p->divv_old = p->divv;
+#endif
 #endif
     }  
 
@@ -4281,7 +4285,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT dvx,dvy,dvz,dx,dy,dz,trace;
     FLOAT rgux,rguy,rguz;
 	FLOAT grx,gry,grz,gnorm,dvds,dvdr,c;
-    FLOAT R_CD=0,OneMinusR_CD,pdivv_old,pdvds_old,vSigMax=0; // Cullen & Dehnen 2010
+    FLOAT R_CD=0,R_CDN=0,OneMinusR_CD,pdivv_old,pdvds_old,vSigMax=0; // Cullen & Dehnen 2010
     FLOAT fDensity_old;
 #if defined (DENSITYU) || defined(RTDENSITY) || defined(THERMALCOND)
 	FLOAT fDensityU = 0;
@@ -4355,7 +4359,19 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
         if (vSig > vSigMax) vSigMax = vSig;
 
+#ifdef CD_RALT
+#if (0)
+        R_CD += q->divv_old*rs*q->fMass;
+        R_CDN += fabs(q->divv_old*rs*q->fMass);
+#else
+            { double R_wt = (1-r2*r2*0.0625)*q->fMass;
+            R_CD += (q->divv_old < 0 ? -1 : 1)*R_wt;
+            R_CDN += R_wt;
+            }
+#endif
+#else
         R_CD += (q->divv_old < 0 ? -1 : 1)*rs*q->fMass;
+#endif
         }
 #endif
 
@@ -4400,7 +4416,11 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     p->fSigma2 = fSigma2/fDensity;
 #endif
 #ifdef CULLENDEHNEN
+#ifdef CD_RALT
+    OneMinusR_CD = (R_CDN > 0 ? 1-(R_CD/R_CDN) : 0);  
+#else
     OneMinusR_CD = 1 - (R_CD/fDensity);  //pre-normalized density
+#endif
 #endif
     // Anything using unnormalized density must go before here
 /*	printf("TEST %d  %g %g  %g %g %g\n",p->iOrder,p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]);*/
@@ -4558,17 +4578,22 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 #ifdef CD_DEBUG
             p->divv_dens = -(p->fDensity-fDensity_old)/dDeltaTime/sqrt(p->fDensity*fDensity_old);
+            p->divvDot = divvDot;
 #endif
             if (divvDot < 0) {
+#ifdef CD_XIDVDS
+                double divvTerm = 2.0*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*p->dvds;
+#else
                 double divvTerm = 2.0*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*p->divv;
+#endif
                 divvTerm = divvTerm*divvTerm;
                 double xi = divvTerm/(divvTerm + S2);
-                double ATerm = xi*0.25*p->fBall2*fabs(divvDot);
+                double ATerm = xi*p->fBall2*fabs(divvDot);
                 alphaLoc = dAlphaMax * ATerm/(vSigMax*vSigMax+ATerm);
                 }
             else alphaLoc = 0;
             // decay
-            double tau = 1/(2*smf->dTauAlpha*vSigMax*ih);
+            double tau = 1/(smf->dTauAlpha*vSigMax*ih);
 
             if (alphaLoc > p->alpha) p->alpha = alphaLoc;
             else p->alpha = alphaLoc - (alphaLoc - p->alpha)*exp(-dDeltaTime/tau);
@@ -4582,7 +4607,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             // Should NEVER be here except on start from IC
             assert(smf->bStepZero);
             if ((p->divv < 0) && (p->c > 0)){
-                double tau = 1/(2*smf->dTauAlpha*vSigMax*ih);
+                double tau = 1/(smf->dTauAlpha*vSigMax*ih);
                 alphaLoc = dAlphaMax*fabs(p->divv)*tau / (1.0 + fabs(p->divv)*tau);
                 }
             else alphaLoc = 0;
