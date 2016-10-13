@@ -1049,7 +1049,7 @@ void pkdLogHalo(PKD, double, double, double, double);
 void pkdHernquistSpheroid(PKD pkd);
 void pkdNFWSpheroid(PKD pkd, double M_200, double r_200, double c, double dSoft);
 void pkdElliptical(PKD pkd, int bEllipticalDarkNFW);
-void pkdHomogSpheroid(PKD pkd);
+void pkdHomogSpheroid(PKD pkd, double M_s, double R_s);
 void pkdBodyForce(PKD pkd, double dConst);
 void pkdGalaxyDiskVerticalPotentialForce(PKD pkd, double Vc, double R, double StarSigma, double StarH, double GasSigma, double GasH, double Gasa, double Gasb, double Gasc);
 void pkdMiyamotoDisk(PKD pkd);

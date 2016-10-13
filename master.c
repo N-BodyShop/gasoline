@@ -1053,6 +1053,12 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bHomogSpheroid = 0;
 	prmAddParam(msr->prm,"bHomogSpheroid",0,&msr->param.bHomogSpheroid,
 				sizeof(int),"hspher","use/don't use galaxy Homog Spheroid = -homogspher");
+	msr->param.dHomogSpheroidM = 0;
+	prmAddParam(msr->prm,"dHomogSpheroidM",2,&msr->param.dHomogSpheroidM,
+				sizeof(double),"hspherM","Mass for the Homog Spheroid = 5");
+	msr->param.dHomogSpheroidR = 0;
+	prmAddParam(msr->prm,"dHomogSpheroidR",2,&msr->param.dHomogSpheroidR,
+				sizeof(double),"hspherR","Radius for the Homog Spheroid = 10");
 	msr->param.bBodyForce = 0;
 	prmAddParam(msr->prm,"bBodyForce",0,&msr->param.bBodyForce,
 				sizeof(int),"bodyforce","use/don't use body force = -bf");
@@ -3116,6 +3122,8 @@ void msrLogHeader(MSR msr,FILE *fp)
 	LogParams(lgr, "GRAVITY","dGalaxyDiskVerticalPotentialGasSigma: %g",msr->param.dGalaxyDiskVerticalPotentialGasSigma);
 	LogParams(lgr, "GRAVITY","dGalaxyDiskVerticalPotentialGasH: %g",msr->param.dGalaxyDiskVerticalPotentialGasH);
     LogParams(lgr, "GRAVITY","bHomogSpheroid: %d",msr->param.bHomogSpheroid );
+    LogParams(lgr, "GRAVITY","dHomogSpheroidM: %d",msr->param.dHomogSpheroidM );
+    LogParams(lgr, "GRAVITY","dHomogSpheroidR: %d",msr->param.dHomogSpheroidR );
     LogParams(lgr, "GRAVITY","bBodyForce: %d",msr->param.bBodyForce );
     LogParams(lgr, "GRAVITY","dBodyForceConst: %g",msr->param.dBodyForceConst );
     LogParams(lgr, "GRAVITY","bMiyamotoDisk: %d",msr->param.bMiyamotoDisk );
@@ -6344,6 +6352,8 @@ void msrGravity(MSR msr,double dStep,int bDoSun,
 		inExt.bElliptical = msr->param.bElliptical;
 		inExt.bEllipticalDarkNFW = msr->param.bEllipticalDarkNFW;
 		inExt.bHomogSpheroid = msr->param.bHomogSpheroid;
+		inExt.dHomogSpheroidM = msr->param.dHomogSpheroidM;
+		inExt.dHomogSpheroidR = msr->param.dHomogSpheroidR;
 		inExt.bBodyForce = msr->param.bBodyForce;
 		inExt.dBodyForceConst = msr->param.dBodyForceConst;
 		inExt.bGalaxyDiskVerticalPotential = msr->param.bGalaxyDiskVerticalPotential;

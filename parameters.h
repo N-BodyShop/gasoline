@@ -98,6 +98,8 @@ struct parameters {
     int bElliptical;
     int bEllipticalDarkNFW;
     int bHomogSpheroid;
+    double dHomogSpheroidM;
+    double dHomogSpheroidR;
     int bBodyForce;
 	double dBodyForceConst;
 	int bGalaxyDiskVerticalPotential;
