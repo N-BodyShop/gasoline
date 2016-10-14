@@ -3427,7 +3427,7 @@ void pstGravExternal(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		    pkdElliptical(plcl->pkd,in->bEllipticalDarkNFW);
 		    }
 		if (in->bHomogSpheroid) {
-			pkdHomogSpheroid(plcl->pkd);
+			pkdHomogSpheroid(plcl->pkd, in->dHomogSpheroidM, in->dHomogSpheroidR);
 			}
 		if (in->bBodyForce) {
 			pkdBodyForce(plcl->pkd, in->dBodyForceConst);

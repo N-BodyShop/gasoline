@@ -3851,18 +3851,11 @@ void pkdElliptical(PKD pkd, int bEllipticalDarkNFW)
 }
 
 
-void pkdHomogSpheroid(PKD pkd)
+void pkdHomogSpheroid(PKD pkd, double M_s, double r_s)
 {
     PARTICLE *p;
     int i,n;
 
-#ifdef SINKING
-    const double M_s = 1;   
-    const double r_s = 1;
-#else
-    const double M_s = 5;   
-    const double r_s = 10;
-#endif
     p = pkd->pStore;
     n = pkdLocal(pkd);
     for (i=0;i<n;++i) {
