@@ -40,6 +40,10 @@ typedef struct smfParameters {
     double dDeltaStarForm;
 #ifdef GASOLINE
     double dTauAlpha;
+    double dAlphaMax;
+    double dAlphaMin;
+    double dNAlphaNoise;
+    double dAFac;
     double alpha;
     double beta;
     double gamma;

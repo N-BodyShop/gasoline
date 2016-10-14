@@ -178,11 +178,14 @@ typedef struct particle {
 #define CD_DEBUG
 #ifdef CD_DEBUG
     FLOAT alphaLoc; 
+    FLOAT alphaNoise;
     FLOAT vSigMax;  
     FLOAT divv_dens; 
     FLOAT divvDot;
     FLOAT R_CD;
     FLOAT SNorm;
+    FLOAT SFull;
+    FLOAT dvdsonSFull;
 #endif
 #endif
     FLOAT curlv[3];         /* Note this is used as workspace and value is not preserved */

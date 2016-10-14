@@ -225,8 +225,14 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
         return(p->R_CD);
     case OUT_SNORM_ARRAY:
         return(p->SNorm);
+    case OUT_SFULL_ARRAY:
+        return(p->SFull);
+    case OUT_DVDSONSFULL_ARRAY:
+        return(p->dvdsonSFull);
     case OUT_ALPHALOC_ARRAY:
         return(p->alphaLoc);
+    case OUT_ALPHANOISE_ARRAY:
+        return(p->alphaNoise);
 	case OUT_DIVV_DENS_ARRAY:
 	    return(p->divv_dens);
 	case OUT_DIVVDOT_ARRAY:
@@ -612,8 +618,17 @@ void VecFilename(char *achFile, int iType)
 	case OUT_SNORM_ARRAY:
         strncat(achFile,"snorm",256);
         break;
+	case OUT_SFULL_ARRAY:
+        strncat(achFile,"sfull",256);
+        break;
+	case OUT_DVDSONSFULL_ARRAY:
+        strncat(achFile,"dvdsonsfull",256);
+        break;
 	case OUT_ALPHALOC_ARRAY:
         strncat(achFile,"alphaloc",256);
+        break;
+	case OUT_ALPHANOISE_ARRAY:
+        strncat(achFile,"alphanoise",256);
         break;
 	case OUT_SURFACEAREA_ARRAY:
         strncat(achFile,"area",256);
@@ -831,7 +846,10 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     case OUT_VSIGMAX_ARRAY:
     case OUT_R_CD_ARRAY:
     case OUT_SNORM_ARRAY:
+    case OUT_SFULL_ARRAY:
+    case OUT_DVDSONSFULL_ARRAY:
     case OUT_ALPHALOC_ARRAY:
+    case OUT_ALPHANOISE_ARRAY:
     case OUT_TCOOLAGAIN_ARRAY:
     case OUT_MSTAR_ARRAY:
     case OUT_COOL_ARRAY0:

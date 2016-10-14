@@ -1154,7 +1154,23 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.dTauAlpha = 0.1;
 	prmAddParam(msr->prm,"dTauAlpha",2,&msr->param.dTauAlpha,
 				sizeof(double),"taualpha",
-				"<Tau_alpha constant in viscosity> = 0.1 C&D2010");
+				"<Tau_alpha constant in viscosity> = 0.1");
+	msr->param.dAlphaMax = 4;
+	prmAddParam(msr->prm,"dAlphaMax",2,&msr->param.dAlphaMax,
+				sizeof(double),"alphamax",
+				"<Alpha_max constant in viscosity> = 4");
+	msr->param.dAlphaMin = 0;
+	prmAddParam(msr->prm,"dAlphaMin",2,&msr->param.dAlphaMin,
+				sizeof(double),"alphamin",
+				"<Alpha_min constant in viscosity> = 0");
+	msr->param.dNAlphaNoise = 50;
+	prmAddParam(msr->prm,"dNAlphaNoise",2,&msr->param.dNAlphaNoise,
+				sizeof(double),"nalphanoise",
+				"<N_noise constant in viscosity> = 50");
+	msr->param.dAFac = 2.0;
+	prmAddParam(msr->prm,"dAFac",2,&msr->param.dAFac,
+				sizeof(double),"afac",
+				"<Multiplier for ATerm CD viscosity> = 2 2xC&D2010");
 	msr->param.dConstAlpha = 1.0; 	/* Default changed to 0.5 later if bBulkViscosity */
 	prmAddParam(msr->prm,"dConstAlpha",2,&msr->param.dConstAlpha,
 				sizeof(double),"alpha",
@@ -2769,8 +2785,17 @@ void msrLogDefines(FILE *fp)
 #ifdef CD_XIDVDS
 	fprintf(fp," CD_XIDVDS");
 #endif
-#ifdef CD_XIDVDS
+#ifdef CD_RDVDS
 	fprintf(fp," CD_RDVDS");
+#endif
+#ifdef CD_RDVDSONSFULL
+	fprintf(fp," CD_RDVDSONSFULL");
+#endif
+#ifdef CD_NODOT
+	fprintf(fp," CD_NODOT");
+#endif
+#ifdef CD_FULLS
+	fprintf(fp," CD_FULLS");
 #endif
 #ifdef PEAKEDKERNEL
 	fprintf(fp," PEAKEDKERNEL");
@@ -3198,6 +3223,10 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "SPH","dShockTrackerA: %g",msr->param.dShockTrackerA);
     LogParams(lgr, "SPH","dShockTrackerB: %g",msr->param.dShockTrackerB);
     LogParams(lgr, "SPH","dTauAlpha: %g",msr->param.dTauAlpha);
+    LogParams(lgr, "SPH","dAlphaMax: %g",msr->param.dAlphaMax);
+    LogParams(lgr, "SPH","dAlphaMin: %g",msr->param.dAlphaMin);
+    LogParams(lgr, "SPH","dNAlphaNoise: %g",msr->param.dNAlphaNoise);
+    LogParams(lgr, "SPH","dAFac: %g",msr->param.dAFac);
     LogParams(lgr, "SPH","dConstAlpha: %g",msr->param.dConstAlpha);
     LogParams(lgr, "SPH","dConstBeta: %g",msr->param.dConstBeta);
     LogParams(lgr, "GAS PHYSICS","dConstGamma: %g",msr->param.dConstGamma);
@@ -4798,9 +4827,12 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
 #endif
 #ifdef CULLENDEHNEN
         OutputList[(*nOutputList)++]=OUT_ALPHALOC_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_ALPHANOISE_ARRAY;
         OutputList[(*nOutputList)++]=OUT_VSIGMAX_ARRAY;
         OutputList[(*nOutputList)++]=OUT_R_CD_ARRAY;
         OutputList[(*nOutputList)++]=OUT_SNORM_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_SFULL_ARRAY;
+        OutputList[(*nOutputList)++]=OUT_DVDSONSFULL_ARRAY;
         OutputList[(*nOutputList)++]=OUT_DIVV_DENS_ARRAY;
         OutputList[(*nOutputList)++]=OUT_DIVVDOT_ARRAY;
 #endif
@@ -5920,6 +5952,10 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
     psmf->bConstantDiffusion = msr->param.bConstantDiffusion;
 #endif
     psmf->dTauAlpha = msr->param.dTauAlpha;
+    psmf->dAlphaMax = msr->param.dAlphaMax;
+    psmf->dAlphaMin = msr->param.dAlphaMin;
+    psmf->dNAlphaNoise = msr->param.dNAlphaNoise;
+    psmf->dAFac = msr->param.dAFac;
     psmf->alpha = msr->param.dConstAlpha;
     psmf->beta = msr->param.dConstBeta;
     psmf->iViscosityLimiter = msr->param.iViscosityLimiter;

@@ -262,6 +262,10 @@ struct parameters {
 	double dShockTrackerA;
 	double dShockTrackerB;
     double dTauAlpha;
+    double dAlphaMax;
+    double dAlphaMin;
+    double dNAlphaNoise;
+    double dAFac;
 	double dConstAlpha;
 	double dConstBeta;
 	double dConstGamma;
