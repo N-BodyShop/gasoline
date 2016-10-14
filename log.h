@@ -8,7 +8,7 @@
 #include <string.h>
 
 // How many characters wide should our logs be?
-#define LOGCOL 160
+#define LOGCOL 80
 
 typedef struct LogFormatter {
     int labelCnt;
