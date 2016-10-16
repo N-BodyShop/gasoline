@@ -4289,7 +4289,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT dvx,dvy,dvz,dx,dy,dz,trace;
     FLOAT rgux,rguy,rguz;
 	FLOAT grx,gry,grz,gnorm,dvds,dvdr,c;
-    FLOAT R_CD=0,R_CDA=0,R_CDN=0,OneMinusR_CD,pdivv_old,pdvds_old,vSigMax=0; // Cullen & Dehnen 2010
+    FLOAT R_CD=0,R_CDA=0,R_CDN=0,OneMinusR_CD,pdivv_old,pdvds_old,vSigMax=0,vmx=0,vmy=0,vmz=0,alphaNoise=0; // Cullen & Dehnen 2010
     FLOAT fDensity_old;
 #if defined (DENSITYU) || defined(RTDENSITY) || defined(THERMALCOND)
 	FLOAT fDensityU = 0;
@@ -4362,9 +4362,13 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         double vSig = cavg - (dvdotdr < 0 ? dvdotdr/sqrt(nnList[i].fDist2) : 0);
 #endif
         if (vSig > vSigMax) vSigMax = vSig;
-
+        // noise estimator
+        vmx += dvx*rs*q->fMass;
+        vmy += dvy*rs*q->fMass;
+        vmz += dvz*rs*q->fMass;
 #ifdef CD_RDVDSONSFULL
             { double R_wt = (1-r2*r2*0.0625)*q->fMass;
+              
         R_CD += q->divv_old*R_wt;
         R_CDA += fabs(q->divv_old)*R_wt;
         R_CDN += R_wt;
@@ -4378,7 +4382,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             }
 #else
         R_CD += (q->divv_old < 0 ? -1 : 1)*rs*q->fMass;
-        R_CDA += R_wt;
+        R_CDA += rs*q->fMass;
 #endif
 #endif
         }
@@ -4425,6 +4429,8 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     p->fSigma2 = fSigma2/fDensity;
 #endif
 #ifdef CULLENDEHNEN
+    alphaNoise = (vmx*vmx+vmy*vmy+vmz*vmz)/(fDensity*fDensity)*100;
+    alphaNoise = alphaNoise/(alphaNoise+p->c*p->c);
 #if defined(CD_RALT) || defined(CD_RDVDSONSFULL)
     OneMinusR_CD = (R_CDN > 0 ? 1-(R_CD/R_CDN) : 0);  
 #else
@@ -4569,7 +4575,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         double S2 = fNorm1*fNorm1*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz));
         // S2 Frobenius Norm^2 = trace(S ST) = Simpler as just sum_ij Sij^2 (used here)  Note: Sxy = Syx
 #ifdef CULLENDEHNEN
-        double alphaLoc, alphaNoise=0;
+        double alphaLoc;
         // time interval = current time - last time divv was calculated
         double dDeltaTime = smf->dTime - p->dTime_divv;
         p->dTime_divv = smf->dTime;
@@ -4590,13 +4596,15 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             p->divv_dens = -(p->fDensity-fDensity_old)/dDeltaTime/sqrt(p->fDensity*fDensity_old);
             p->divvDot = divvDot;
 #endif
-            if (dvdx < 0 
-#ifndef CD_NODOT
-                && divvDot < 0
+            if (
+#ifdef CD_NODOT
+                dvdx < 0 
+#else
+                divvDot < 0
 #endif 
                 ) {
 
-#ifdef CD_RDVDSONSFULL
+#ifdef CD_XIRDVDSONSFULL
 #if (1)
                 double xi = (OneMinusR_CD < -1 ? 0 : 
                     (OneMinusR_CD > 2 ? 1 : 0.0625*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD));
@@ -4616,7 +4624,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                 double sxxf = dvxdx+Hcorr, syyf = dvydy+Hcorr, szzf = dvzdz+Hcorr;
                 double SFull2 = fNorm1*fNorm1*(sxxf*sxxf+syyf*syyf+szzf*szzf 
                         + 2*(sxy*sxy + sxz*sxz + syz*syz));
-                double xi = 0.125*0.125*divvTerm/(0.125*0.125*divvTerm+SFull2);
+                double xi = divvTerm/(divvTerm+SFull2);
 #else
                 double xi = divvTerm/(divvTerm + S2);
 #endif
@@ -4630,13 +4638,15 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                 }
             else alphaLoc = 0;
             if (alphaLoc < smf->dAlphaMin) alphaLoc=smf->dAlphaMin;
-#ifdef CD_ALPHANOISE  
-// needs CD_RDVDSONSFULL
+#if (0)
+// needs CD_RDVDSONSFULL -- alternate noise estimator based on R~dvds/S
                 {
                     double RNoise = fabs(fabs(R_CD/R_CDA)-1);
                 alphaNoise = RNoise/(RNoise+smf->dNAlphaNoise);
+                    }
+#endif
+#ifdef CD_ALPHANOISE  
                 if (alphaLoc < alphaNoise) alphaLoc=alphaNoise;
-                }
 #endif
             // decay
 
