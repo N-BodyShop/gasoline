@@ -1169,10 +1169,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dAlphaMin",2,&msr->param.dAlphaMin,
 				sizeof(double),"alphamin",
 				"<Alpha_min constant in viscosity> = 0");
-	msr->param.dNAlphaNoise = 50;
+	msr->param.dNAlphaNoise = 100;
 	prmAddParam(msr->prm,"dNAlphaNoise",2,&msr->param.dNAlphaNoise,
 				sizeof(double),"nalphanoise",
-				"<N_noise constant in viscosity> = 50");
+				"<N_noise constant in viscosity> = 100");
 	msr->param.dAFac = 2.0;
 	prmAddParam(msr->prm,"dAFac",2,&msr->param.dAFac,
 				sizeof(double),"afac",
@@ -2791,6 +2791,12 @@ void msrLogDefines(FILE *fp)
 #ifdef CD_XIDVDS
 	fprintf(fp," CD_XIDVDS");
 #endif
+#ifdef CD_XIRDVDSONSFULL
+	fprintf(fp," CD_XIRDVDSONSFULL");
+#endif
+#ifdef CD_DVDXLIMIT
+    fprintf(fp," CD_DVDXLIMIT");
+#endif
 #ifdef CD_RDVDS
 	fprintf(fp," CD_RDVDS");
 #endif
@@ -2802,6 +2808,9 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef CD_FULLS
 	fprintf(fp," CD_FULLS");
+#endif
+#ifdef CD_ALPHANOISE
+	fprintf(fp," CD_ALPHANOISE");
 #endif
 #ifdef PEAKEDKERNEL
 	fprintf(fp," PEAKEDKERNEL");

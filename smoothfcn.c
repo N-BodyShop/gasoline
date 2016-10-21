@@ -4429,7 +4429,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     p->fSigma2 = fSigma2/fDensity;
 #endif
 #ifdef CULLENDEHNEN
-    alphaNoise = (vmx*vmx+vmy*vmy+vmz*vmz)/(fDensity*fDensity)*100;
+    alphaNoise = (vmx*vmx+vmy*vmy+vmz*vmz)/(fDensity*fDensity)*smf->dNAlphaNoise;
     alphaNoise = alphaNoise/(alphaNoise+p->c*p->c);
 #if defined(CD_RALT) || defined(CD_RDVDSONSFULL)
     OneMinusR_CD = (R_CDN > 0 ? 1-(R_CD/R_CDN) : 0);  
@@ -4599,35 +4599,38 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             if (
 #ifdef CD_NODOT
                 dvdx < 0 
-#else
+#else 
+#ifdef CD_DVDXLIMIT
+                dvdx < 0  && 
+#endif
                 divvDot < 0
 #endif 
                 ) {
 
 #ifdef CD_XIRDVDSONSFULL
-#if (1)
+ #if (1)
                 double xi = (OneMinusR_CD < -1 ? 0 : 
                     (OneMinusR_CD > 2 ? 1 : 0.0625*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD));
-#else
+ #else
                 double xi = (OneMinusR_CD < -1 ? 0 : 
                     (OneMinusR_CD > 2 ? 1 : 0.25*OneMinusR_CD*OneMinusR_CD));
-#endif
+ #endif
 #else
-#ifdef CD_XIDVDS
+ #ifdef CD_XIDVDS
                 double divvTerm = 2.0*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*p->dvds;
-#else
+ #else
                 double divvTerm = 2.0*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*p->divv;
-#endif
+ #endif
                 divvTerm = divvTerm*divvTerm;
-#ifdef CD_FULLS
+ #ifdef CD_FULLS
                 double Hcorr = (fNorm1 != 0 ? smf->H/fNorm1 : 0);
                 double sxxf = dvxdx+Hcorr, syyf = dvydy+Hcorr, szzf = dvzdz+Hcorr;
                 double SFull2 = fNorm1*fNorm1*(sxxf*sxxf+syyf*syyf+szzf*szzf 
                         + 2*(sxy*sxy + sxz*sxz + syz*syz));
                 double xi = divvTerm/(divvTerm+SFull2);
-#else
+ #else
                 double xi = divvTerm/(divvTerm + S2);
-#endif
+ #endif
 #endif
 #ifdef CD_NODOT
                 double ATerm = xi*p->fBall2*dvdx*dvdx*2*smf->dAFac;
