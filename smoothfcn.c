@@ -5561,6 +5561,8 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             double f2_cold = (p->fMass-p->fMassHot)/mCold_new;
             q->fMass = m_new;
             q->fMassHot = mHot_new;
+            if (!(p->fMassHot < p->fMass)) printf("DELETEDBG: iOrd %d %d mass: %e %e massHot %e %e u %e %e uHot %e %e uDot %e %e nSmooth %d\n", p->iOrder, q->iOrder,
+                    p->fMass, q->fMass, p->fMassHot, q->fMassHot, p->u, q->u, p->uHot, q->uHot, p->uDot, q->uDot, nSmooth);
             assert(p->fMassHot < p->fMass);
             if(q->uDot < 0.0) /* margin of 1% to avoid roundoff error */
             fTCool = 1.01*q->uPred/q->uDot; 
