@@ -171,9 +171,12 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
     if (p->fMassHot > 0) {
         return 0;
     }
-    else
+    else {
+        printf("DELETEDBG4: iOrd %d mass %e massHot %e u %e uHot %e uDot %e", p->iOrder, p->fMass, p->fMassHot,
+                p->u, p->uHot, p->uDot);
+    }
 #endif
-        T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
+    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 #ifdef SFEVENTCRIT
     stfm->Tgas = T;
 #endif
