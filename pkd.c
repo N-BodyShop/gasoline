@@ -4070,7 +4070,7 @@ void pkdCalcEandL(PKD pkd,double *T,double *U,double *Eth,double L[])
         if (pkdIsGas(pkd,&p[i]))
             *Eth += p[i].fMass*p[i].u
 #ifdef TWOPHASE
-                + p[i].fMassHot*(p[i].uHot-p[i].u)
+                + p[i].fMassHot*p[i].uHot
 #else
 #ifdef UNONCOOL
                 + p[i].fMass*p[i].uHot
@@ -5647,7 +5647,7 @@ pkdDeleteParticle(PKD pkd, PARTICLE *p)
     TYPEClearACTIVE(p); 
     TYPESet(p, TYPE_DELETED); 
     if (p->fMassHot > 0) {
-        printf("DELETEDBG2: iOrd %d mass %e massHot %e u %e uHot %e uDot %e",
+        printf("DELETEDBG2: iOrd %d mass %e massHot %e u %e uHot %e uDot %e\n",
                 p->iOrder, p->fMass, p->fMassHot, p->u, p->uHot, p->uDot);
     }
     }
