@@ -543,6 +543,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 if (fpuhot) { xdr_float(&xdrsuhot,&fTmp); p->uHot = p->uHotPred = fTmp; } 
                 if (fpigasorder) { xdr_int(&xdrsigasorder,&IntTmp); p->iGasOrder = IntTmp; } 
                 if (p->fMassHot > 0) TYPESet(p,TYPE_TWOPHASE);
+                assert(p->fMassHot < p->fMass);
 #endif
                 assert(p->fMass > 0.0);
 #ifdef SINKING
@@ -872,6 +873,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 if (pkdIsGasByOrder(pkd,p)) p->uHot = p->uHotPred = fTmp; }
             if (fpigasorder!=NULL) { fread(&IntTmp,sizeof(int),1,fpigasorder);
                 p->iGasOrder = IntTmp; }
+            assert(p->fMassHot < p->fMass);
 #endif
 #if defined(SIMPLESF) || defined(STARFORM)
             if (fptCoolAgain!=NULL) {
