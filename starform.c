@@ -167,6 +167,7 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
         T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u+p->uHot, p->fDensity, p->fMetals );
     else
 #endif
+    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 #ifdef TWOPHASE
     if (p->fMassHot > 0) {
         printf("DELETEDBG4: iOrd %d mass %e massHot %e u %e uHot %e uDot %e", p->iOrder, p->fMass, p->fMassHot,
@@ -178,7 +179,6 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
                 p->u, p->uHot, p->uDot);
     }
 #endif
-    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 #ifdef SFEVENTCRIT
     stfm->Tgas = T;
 #endif
