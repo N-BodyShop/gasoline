@@ -438,9 +438,6 @@ void stfmFormStarParticle(STFM stfm, PKD pkd, PARTICLE *p,
     (*nFormed)++;
     *dMassFormed += dDeltaM;
     
-#ifdef TWOPHASE
-    assert(p->fMassHot <= 0);
-#endif
     pkdNewParticle(pkd, starp);    
 }
 
