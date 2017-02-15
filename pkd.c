@@ -5648,10 +5648,6 @@ pkdDeleteParticle(PKD pkd, PARTICLE *p)
     p->iOrder = -2 - p->iOrder; 
     TYPEClearACTIVE(p); 
     TYPESet(p, TYPE_DELETED); 
-    if (p->fMassHot > 0) {
-        printf("DELETEDBG2: iOrd %d mass %e massHot %e u %e uHot %e uDot %e\n",
-                p->iOrder, p->fMass, p->fMassHot, p->u, p->uHot, p->uDot);
-    }
     }
 
 void

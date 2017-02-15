@@ -5475,9 +5475,6 @@ void combDistDeletedGas(void *vp1,void *vp2)
 #ifdef TWOPHASE
 		    FLOAT mHot_new = p1->fMassHot + p2->fMassHot;
             if (mHot_new > 0) {
-            printf("DELETEDBG3: iOrd %d %d mass: %e %e massHot %e %e u %e %e uHot %e %e uDot %e %e \n", p1->iOrder, p2->iOrder, p1->fMass, p2->fMass,
-                    p1->fMassHot, p2->fMassHot, p1->u, p2->u, p1->uHot, p2->uHot,
-                    p1->uDot, p2->uDot);
                 FLOAT f1_hot = p1->fMassHot/mHot_new;
                 FLOAT f2_hot = p2->fMassHot/mHot_new;
                 FLOAT mCold_new = m_new-mHot_new;
@@ -5564,9 +5561,6 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             double f2_cold = (p->fMass-p->fMassHot)/mCold_new;
             q->fMass = m_new;
             q->fMassHot = mHot_new;
-            if (!(p->fMassHot < p->fMass)) printf("DELETEDBG: iOrd %d %d mass: %e %e massHot %e %e u %e %e uHot %e %e uDot %e %e nSmooth %d\n", p->iOrder, q->iOrder, p->fMass, q->fMass,
-                    p->fMassHot, q->fMassHot, p->u, q->u, p->uHot, q->uHot,
-                    p->uDot, q->uDot, nSmooth);
             assert(p->fMassHot < p->fMass);
             if(q->uDot < 0.0) /* margin of 1% to avoid roundoff error */
             fTCool = 1.01*q->uPred/q->uDot; 
