@@ -167,12 +167,12 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
         T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u+p->uHot, p->fDensity, p->fMetals );
     else
 #endif
+    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 #ifdef TWOPHASE
     if (p->fMassHot > 0) {
         return 0;
     }
 #endif
-    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 #ifdef SFEVENTCRIT
     stfm->Tgas = T;
 #endif
