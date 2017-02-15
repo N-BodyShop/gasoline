@@ -5380,6 +5380,7 @@ void msrWriteOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList, 
     inOut.iBinaryOutput = msr->param.iBinaryOutput;
     inOut.N = msr->N;
     inOut.nIOProcessor = msr->param.nIOProcessor;
+	inOut.bStandard = msr->param.bStandard;
     if (msr->param.iBinaryOutput) {
         if(msr->param.bParaWrite) {
             for (i=0; i<nOutputList;i++){
@@ -5629,6 +5630,7 @@ void msrOutArray(MSR msr,char *pszFile,int iType)
 	 */
 	in.iType = iType;
 	in.iBinaryOutput = msr->param.iBinaryOutput;
+	in.bStandard = msr->param.bStandard;
         in.iDim=1;
         in.N = msr->N;
 	if (msr->param.iBinaryOutput) {
@@ -5890,6 +5892,7 @@ void msrOutVector(MSR msr,char *pszFile,int iType)
 	in.iType = iType;
 	in.iBinaryOutput = msr->param.iBinaryOutput;
 	in.nIOProcessor = msr->param.nIOProcessor;
+	in.bStandard = msr->param.bStandard;
 	if (msr->param.iBinaryOutput) {
             fwrite(&msr->N,sizeof(int),1,fp);
             fclose(fp);
