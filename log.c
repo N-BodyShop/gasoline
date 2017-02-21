@@ -18,6 +18,7 @@ void LogParams(LOGGER * lgr, char *label, char *name,  ...)
     void *c;
     char param[160];
     vsprintf(param,name,argp);
+    assert(strlen(param) < LOGCOL);
     //Find where the label is in our label array.
     for(i=0;i<lgr->labelCnt;i++)
     {
@@ -59,7 +60,7 @@ void LogParams(LOGGER * lgr, char *label, char *name,  ...)
         strcat(lgr->line[curlabel], ": ");
     }
     //Check to make sure the line will be under the column limit
-    if((strlen(lgr->line[curlabel]) + strlen(param)) < lgr->lineMem[curlabel])
+    if((strlen(lgr->line[curlabel]) + strlen(param)) < lgr->lineMem[curlabel]-1)
     {
         strcat(lgr->line[curlabel], " ");
         strcat(lgr->line[curlabel], param);
@@ -75,6 +76,7 @@ void LogParams(LOGGER * lgr, char *label, char *name,  ...)
         strcat(lgr->line[curlabel], ": ");
         strcat(lgr->line[curlabel], param);
     }
+    va_end(argp);
 }
 
 void LogFlush(LOGGER * lgr, FILE *fp)

@@ -3366,15 +3366,17 @@ void msrLogHeader(MSR msr,FILE *fp)
             msr->param.iStarFormRung++;
     }
     if ( testDelta <= msr->param.dDelta ){
-        LogParams(lgr,"STAR FORMATION","dDeltaStarForm (set): %g, effectively: %g = %g yrs, iStarFormRung: %i",
+        LogParams(lgr,"STAR FORMATION","dDeltaStarForm (set): %g, effectively: %g = %g yrs",
                 msr->param.dDeltaStarForm, testDelta,
-                testDelta*msr->param.dSecUnit/SECONDSPERYEAR,
+                testDelta*msr->param.dSecUnit/SECONDSPERYEAR);
+        LogParams(lgr,"STAR FORMATION","iStarFormRung: %i",
                 msr->param.iStarFormRung );
         msr->param.stfm->dDeltaT = msr->param.dDeltaStarForm = testDelta;
     }
     else if ( msr->param.dDeltaStarForm == 0.0 ) {
-        LogParams(lgr, "STAR FORMATION","dDeltaStarForm (set): %g, effectively: 0.0 = 0.0 yrs, iStarFormRung: maxRung",
+        LogParams(lgr, "STAR FORMATION","dDeltaStarForm (set): %g, effectively: 0.0 = 0.0 yrs",
                 msr->param.dDeltaStarForm );
+        LogParams(lgr, "STAR FORMATION","iStarFormRung: maxRung");
         msr->param.iStarFormRung = msr->param.iMaxRung;
     }
     else {
