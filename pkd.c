@@ -5559,7 +5559,15 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
 #ifndef NOCOOLING
                         h2 = p->uDot;
 #endif
-                        fprintf(stderr,"p %d exceeds maxrung: %g %g %g  T %g %g udot %g %g h %g %g dt %g %g %g %g %g %g %g\n",p->iOrder,p->fDensity,p->c,sqrt(p->v[0]*p->v[0]+p->v[1]*p->v[1]+p->v[2]*p->v[2]),pTemp,pTempTot,h1,h2,ph,p->fSoft,p->dt,0.4*(ph/(p->c + 0.6*(p->c))),0.4*(ph/(p->c + 0.6*(p->c + 2*p->mumax))),0.2*sqrt(ph/sqrt(p->a[0]*p->a[0]+p->a[1]*p->a[1]+p->a[2]*p->a[2])),0.25*p->u/UDOT_HYDRO(p),1/2.8*ph*ph/(DIFFRATE(p)),p->dtOld);
+                        double dt_sound = 0.4*(ph/(p->c + 0.6*(p->c)));
+                        double dt_mumax = 0.4*(ph/(p->c + 0.6*(p->c + 2*p->mumax)));
+                        double dt_accel = 0.2*sqrt(ph/sqrt(p->a[0]*p->a[0]+p->a[1]*p->a[1]+p->a[2]*p->a[2])); 
+                        double dt_hydro = 0.25*p->u/UDOT_HYDRO(p); 
+                        double dt_diff = 1/2.8*ph*ph/(DIFFRATE(p)); 
+                        fprintf(stderr,"p %d exceeds maxrung: %g %g %g  T %g %g udot %g %g h %g %g dt %g %g %g %g %g %g %g\n",p->iOrder, p->fDensity, p->c, sqrt(p->v[0]*p->v[0]+p->v[1]*p->v[1]+p->v[2]*p->v[2]),
+                                pTemp, pTempTot, h1, h2, 
+                                ph, p->fSoft, 
+                                p->dt, dt_sound, dt_mumax, dt_accel, dt_hydro, dt_diff, p->dtOld);
                         }
                     }
 #endif
