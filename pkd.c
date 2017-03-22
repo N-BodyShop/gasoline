@@ -8013,17 +8013,18 @@ void pkdSplitGas(PKD pkd, double dInitGasMass)
         continue; //Don't split particles that are too small FOOL
 
         PARTICLE daughter;
-        FLOAT rmax,ih2, rand_x,rand_y,rand_z, r=2;
-        while (r < 1)
-        {
-            rand_x = (double) random()/RAND_MAX;
-            rand_y = (double) random()/RAND_MAX;
-            rand_z = (double) random()/RAND_MAX;
-            r = rand_x*rand_x+rand_y*rand_y+rand_z*rand_z;
+        FLOAT norm, vvar, uvar;
+        norm = 666; // \m/
+        while (norm>1.0){ //unit sphere point picking (Marsaglia 1972)
+            uvar=2.0*(rand()/(double)RAND_MAX)-1.0;  //#random number on [-1,1]
+            vvar=2.0*(rand()/(double)RAND_MAX)-1.0;
+            norm=(uvar*uvar+vvar*vvar);
         }
-        float phi = atan2(rand_y,rand_x);
-        float theta = acos(rand_z/sqrt(r));
-        rmax = sqrt(p->fBall2/4.0);
+        norm = sqrt(1.0-norm); //only do one sqrt
+        ux=2.0*uvar*norm;
+        uy=2.0*vvar*norm;
+        uz=1.0-2.0*(uvar*uvar+vvar*vvar);
+        norm = sqrt(p->fBall2/4.0);
         p->fMass /= 2.0;
 #ifdef TWOPHASE
         p->fMassHot /= 2.0;
@@ -8031,14 +8032,14 @@ void pkdSplitGas(PKD pkd, double dInitGasMass)
 #endif
         daughter = *p;
         TYPESet(&daughter, TYPE_GAS);
-        daughter.r[0] += 0.5*rmax*sin(theta)*cos(phi);
-        daughter.r[1] += 0.5*rmax*sin(theta)*sin(phi);
-        daughter.r[2] += 0.5*rmax*cos(theta);
+        daughter.r[0] += 0.5*norm*ux;
+        daughter.r[1] += 0.5*norm*uy;
+        daughter.r[2] += 0.5*norm*uz;
         daughter.iGasOrder = p->iOrder;
         daughter.iActive &= TYPE_MASK;
-        p->r[0] -= 0.5*rmax*sin(theta)*cos(phi);
-        p->r[1] -= 0.5*rmax*sin(theta)*sin(phi);
-        p->r[2] -= 0.5*rmax*cos(theta);
+        p->r[0] -= 0.5*norm*ux;
+        p->r[1] -= 0.5*norm*uy;
+        p->r[2] -= 0.5*norm*uz;
         pkdNewParticle(pkd, daughter);
         }
 }
