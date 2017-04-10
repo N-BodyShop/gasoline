@@ -135,13 +135,8 @@ void pkdFeedback(PKD pkd, FB fb, SN sn, double dTime, double dDelta,
                         if (dt_diff < dt) dt = dt_diff;   
                         }
 #endif
-#if (1)
                     pNew.dt = dt; 
                     pNew.iRung = pkdOneParticleDtToRung( 0,dDelta,pNew.dt );
-#else
-                    pNew.dt = 1.5625e-9; /* horrible hack! -- should be gas min dt maybe? */
-                    pNew.iRung = 6; /* horrible hack! */
-#endif
                     }
                     pNew.u *= 0.001;
                     pNew.uPred = pNew.u;

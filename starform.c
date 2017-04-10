@@ -198,20 +198,6 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
 #endif/*NEWSHEAR*/
 #endif/* COOLING_MOLECULARH */
 
-#if (0)
-    double E = CoolCodeEnergyToErgPerGm( cl, p->u );
-#ifdef  COOLING_MOLECULARH
-    tcool = E/(-CoolHeatingRate( cl, &p->CoolParticle, T, 
-            CodeDensityToComovingGmPerCc(cl,p->fDensity ), p->fMetals, correL )
-        -CoolCodeWorkToErgPerGmPerSec( cl, UDOT_HYDRO(p) ), correL);
-#else
-    tcool = E/(-CoolHeatingRate( cl, &p->CoolParticle, T, 
-		 CodeDensityToComovingGmPerCc(cl,p->fDensity ), p->fMetals )
-        -CoolCodeWorkToErgPerGmPerSec( cl, UDOT_HYDRO(p) ));
-#endif
-    tcool = CoolSecondsToCodeTime( cl, tcool ); 
-    printf("tcool %i: %g %g %g\n",p->iOrder,T,p->fDensity,tcool);
-#endif
 
     tcool = p->u/(
 #ifdef DENSITYU
@@ -250,23 +236,12 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
      * softening
      */
     l_jeans2 = M_PI*p->c*p->c/p->fDensity*dCosmoFac;
-#if (0)
-/* Old code: problem -- compares physics L_J to comoving softening */
-    if (l_jeans2 < p->fSoft*p->fSoft*stfm->dSoftMin*stfm->dSoftMin) 
-        small_jeans = 1;
-#ifdef CHECKSF
-    p->small_jeans = small_jeans;
-#endif /*CHECKSF*/
-    if (!small_jeans && tsound <= tdyn) return 0;
-
-#else /* old code (0) */
 /* New code: physical L_J vs. physics smoothing length (with multiplier) */
     if (l_jeans2 >= 0.25*p->fBall2*stfm->dExp*stfm->dExp*stfm->dSoftMin*stfm->dSoftMin) return 0;
 
 #ifdef CHECKSF
     p->small_jeans = 1;
 #endif
-#endif /* old code (0) */
 
 #else /* CHECKSF */
     if(T > stfm->dTempMax) return 0;

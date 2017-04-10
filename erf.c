@@ -9,11 +9,6 @@
 #pragma _CRI inline (erf,erfc,erfc_inner)
 #endif
 
-#if 0
-#ifndef lint
-static char sccsid[] = "@(#)erf.c	5.2 (Berkeley) 4/29/88";
-#endif /* not lint */
-#endif
 
 /*
 	C program for floating point error function

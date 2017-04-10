@@ -3154,13 +3154,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
    The postSphPressure function combines p->a and p->aPres
 */
 
-#if (0)
-#define DEBUGFORCE( xxx )  if (p->iOrder == 0 || q->iOrder == 0) { \
-        if (p->iOrder == 0) printf("%s  %d-%d %g %g\n",xxx,p->iOrder,q->iOrder,rq,pa[0]+p->a[0]); \
-        else printf("%s  %d-%d %g %g\n",xxx,p->iOrder,q->iOrder,rp,q->a[0]); }  
-#else
 #define DEBUGFORCE( xxx )  
-#endif
 
 void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
@@ -3940,15 +3934,9 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #else
 #define QISACTIVE(q) (TYPEQueryACTIVE(q))
 #endif    
-#if (1)
 #define DXFUNC(d) (d)
 #define DYFUNC(d) (d)
 #define DZFUNC(d) (d)
-#else
-#define DXFUNC(d) fabs(d)
-#define DYFUNC(d) fabs(d)
-#define DZFUNC(d) fabs(d)
-#endif
 #ifdef GRADW
 #define DENSMULP(p,q) (1/q->fDensity)
 #define DENSMULQ(p,q) (1/p->fDensity)
@@ -4540,23 +4528,12 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    break;
 	case VISCOSITYLIMITER_JW:
 	    c = sqrt(smf->gamma*p->uPred*(smf->gamma-1));
-#if (0)
-        // Old code Pre-Oct 2016 -- suppressed more than regular BS -- bad post-shock ringing
-	    if (dvdr < 0 && dvds < 0 ) {         	 
-            p->BalsaraSwitch = -dvds/
-                (-dvds+sqrt(p->curlv[0]*p->curlv[0]+
-                    p->curlv[1]*p->curlv[1]+
-                    p->curlv[2]*p->curlv[2])+ALPHACMUL*c*ih)+ALPHAMIN;
-            if (p->BalsaraSwitch > 1) p->BalsaraSwitch = 1;
-            }
-#else
 	    if (dvds != 0) {
             p->BalsaraSwitch = fabs(dvds)/
                 (fabs(dvds)+sqrt(p->curlv[0]*p->curlv[0]+
                     p->curlv[1]*p->curlv[1]+
                     p->curlv[2]*p->curlv[2]));
             }
-#endif
 	    else { 
             p->BalsaraSwitch = ALPHAMIN;
             }
@@ -4608,13 +4585,8 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                 ) {
 
 #ifdef CD_XIRDVDSONSFULL
- #if (1)
                 double xi = (OneMinusR_CD < -1 ? 0 : 
                     (OneMinusR_CD > 2 ? 1 : 0.0625*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD));
- #else
-                double xi = (OneMinusR_CD < -1 ? 0 : 
-                    (OneMinusR_CD > 2 ? 1 : 0.25*OneMinusR_CD*OneMinusR_CD));
- #endif
 #else
  #ifdef CD_XIDVDS
                 double divvTerm = 2.0*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*p->dvds;
@@ -4641,13 +4613,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                 }
             else alphaLoc = 0;
             if (alphaLoc < smf->dAlphaMin) alphaLoc=smf->dAlphaMin;
-#if (0)
-// needs CD_RDVDSONSFULL -- alternate noise estimator based on R~dvds/S
-                {
-                    double RNoise = fabs(fabs(R_CD/R_CDA)-1);
-                alphaNoise = RNoise/(RNoise+smf->dNAlphaNoise);
-                    }
-#endif
 #ifdef CD_ALPHANOISE  
                 if (alphaLoc < alphaNoise) alphaLoc=alphaNoise;
 #endif

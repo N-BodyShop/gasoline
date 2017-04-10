@@ -1003,7 +1003,6 @@ double clfTemp( void *Data, double T )
   return d->E-clThermalEnergy( d->Y.Total, T );
 }
 
-#if (1)
 void clTempIteration( clDerivsData *d )
 {
  double T,TA,TB;
@@ -1022,37 +1021,6 @@ void clTempIteration( clDerivsData *d )
  clRates( d->cl, &d->Rate, T );
  clAbunds( d->cl, &d->Y, &d->Rate, d->rho );
 }
-#else
-void clTempIteration( clDerivsData *d )
-{
- double T,TNew,TA,TB,dT;
- d->its = 2;
-
- TA = clTemperature( d->Y_Total0, d->E );
- clRates( d->cl, &d->Rate, TA );
- clAbunds( d->cl, &d->Y, &d->Rate, d->rho );
- TA = clTemperature( d->Y.Total, d->E ); 
-
- TB = clTemperature( d->Y_Total1, d->E );
- clRates( d->cl, &d->Rate, TB );
- clAbunds( d->cl, &d->Y, &d->Rate, d->rho );
- TB = clTemperature( d->Y.Total, d->E ); 
-
- dT = fabs(EPS*TA);
- if (fabs(TA-TB) > dT) {
-   if (TA>TB) { T=TB; TB=TA; TA=T; }
-   for ( ; ; ) {
-     T = 0.5*(TA+TB);
-     clRates( d->cl, &d->Rate, T );
-     clAbunds( d->cl, &d->Y, &d->Rate, d->rho );
-     TNew = clTemperature( d->Y.Total, d->E ); 
-     if (fabs(TNew-T) < dT) break;
-     if (TNew > T) TA = T; else TB = T;
-     d->its++;
-   }
- }
-}
-#endif
 
 void clDerivs(void *Data, double x, double *y, double *dydx) {
   clDerivsData *d = Data;
@@ -1452,48 +1420,6 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
     }
   }
 
-#if (0) 
-  if (i>MAXBRACKET) {
-    /* Try going the other direction */
-    dE = a.F;
-    b.Y = Yin;
-    
-    for ( i = 1; i <= MAXBRACKET; i++) {
-      b.E = Ein + dE;
-      b.T = clTemperature( b.Y.Total, b.E );
-      if (b.T > cl->TMin) {
-	clRates( cl, &Rate, b.T );
-	clAbunds( cl, &b.Y, &Rate, rho );
-	b.T = clTemperature( b.Y.Total, b.E ); 
-      }
-      if (b.T <= cl->TMin) {
-	b.T = cl->TMin;
-	clRates( cl, &Rate, b.T );
-	clAbunds( cl, &b.Y, &Rate, rho );
-	b.E = clThermalEnergy( b.Y.Total, b.T );
-	b.F = b.E - Ein - dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt );
-	if ( b.F * a.F < 0 ) break;
-	/* Stick to the minimum Temperature */
-	/*
-	printf("Floored it after %i brackets\n",i);
-	*/
-	*Y = b.Y;
-	*E = b.E;
-	return;
-      }
-      clRates( cl, &Rate, b.T ); 
-      clAbunds( cl, &b.Y, &Rate, rho );
-      
-      b.F = b.E - Ein - dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt );
-      if ( b.F * a.F < 0 ) break;
-      if (i<5) dE *= 2;
-      else {
-	if (dE < 0) dE -= Ein*0.2;
-	else dE = dE*2 + Ein*0.2;
-      }
-    }
-  }
-#endif
   /*
   if (i>MAXBRACKET) {
     sprintf(ach,"COOL: %d %d MaxBracket Y %g %g %g E %g PdV %g rho %g dt %g\n", part->iOrder,part->iRung,Y->HI,Y->HeI,Y->HeII, *E, PdV, rho, dt);

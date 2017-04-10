@@ -255,24 +255,6 @@ void tzWriteNode( TZX *tz, tznode *c, int l ) {
 		}
 	else {
 /* testing label compression */
-#if (0)
-		LABELTYPE labelmin,labelmax;
-		unsigned int j,k;
-
-		labelmax = labelmin = c->p[0].label;
-		for (i=1;i<c->n;i++) {
-			if (labelmin > c->p[i].label) labelmin = c->p[i].label;
-			else if (labelmax < c->p[i].label) labelmax = c->p[i].label;
-			}
-		j = labelmax-labelmin;
-		k = 0;
-		while (j) { k++; j>>=1; }
-		if (k<17) tz->nLabelbits += 17+5+c->n*k; 
-		else tz->nLabelbits += 5+c->n*k;
-/*
-		fprintf(stderr,"label: %i-%i, range %i, %i\n",labelmin,labelmax,labelmax-labelmin,k);
-*/
-#endif
 		bits = 0;
 #ifdef DEBUG2
 		printf("bits %i\n",bits );

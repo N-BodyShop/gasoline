@@ -8776,15 +8776,6 @@ void msrTopStepKDK(MSR msr,
 			msrRubbleStep(msr);
 			}
 #endif
-#if (0)
-		if (dTime > 0.0) {
-		    msr->param.iMaxRung = 25;
-		    }
-		else {
-		    msr->param.iMaxRung = 0;
-		    fprintf(stderr,"WARNING DT TEST IN OPERATION: iMaxRung set to zero!\n");
-		    }
-#endif
 		msrDtToRung(msr,iRung,dDelta,1);
 #if !defined(DRHODT) && !defined(DTADJUST) && !defined(UNONCOOL)
 		if (iRung == 0)
@@ -10420,12 +10411,6 @@ void _msrGetInflowData(MSR msr, double dTime, double *aflow, double *vflow, doub
     *rhoflow = exp((*aflow)*(*rflow-1.0)/cs2);
 
     /* HACK!!!!!! need to set dTuFac to 1e-10 (zero pressure) */
-#if (0)
-    *vflow = -0.1;
-    *rflow = 1.0+vflow*dTime;
-    cs2 = (*Tflow)*msr->param.dTuFac*1e10*(msr->param.dConstGamma-1);
-    *rhoflow = exp(10*(*aflow*)(*rflow-1.0)/cs2);
-#endif
     }
 
 void msrGravInflow(MSR msr,double dTime) {

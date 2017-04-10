@@ -236,21 +236,6 @@ main(int argc, char **argv)
     MSInitialize (&MSparam);
 
     sum = 0;
-#if 0
-    dMassT1 = 3;
-    dMassT2 = 8;
-    imax = 101;
-    for (i = 0; i < imax; i++) {
-        dMass = dMassT1 + i*(dMassT2-dMassT1)/(float) imax;
-        part = dMSIMFSec (MSparam, dMass);
-        printf ("%g %g\n", dMass, part);
-        sum += part*0.05;
-    }
-    printf ("sum = %g\n", sum);
-
-    printf ("number SN Ia = %g\n", dNSNIa (MSparam, dMassT1, dMassT2));
-    printf ("mass in SN Ia %g\n", dMSNIa (MSparam, dMassT1, dMassT2));
-#endif
 
     assert(argc == 2);
     

@@ -471,43 +471,6 @@ void clInitRatesTable( COOL *cl, double TMin, double TMax, int nTable ) {
 #endif
   }    
 
-#if (0)
-#ifdef CUBICTABLEINTERP
-  for ( j=0; j<nTable; j++ ) {
-    double xTln,wTln0,wTln1,wTln0d,wTln1d;
-    RATES_T *RT0,*RT1,*RT0d,*RT1d;
-    int iTln;
-    
-    Tln = cl->TlnMin + DeltaTln*j;
-    T=exp(Tln);
-
-    i = j*TABLEFACTOR+1;
-
-    xTln = (Tln+0.5/cl->rDeltaTln-cl->TlnMin)*cl->rDeltaTln; /* midpoint */
-    iTln = xTln;
-    RT0 = (cl->RT+iTln*TABLEFACTOR);
-    RT1 = RT0+TABLEFACTOR; 
-    xTln = xTln-iTln;
-    RT0d = RT0+1;
-    RT1d = RT1+1;
-	{
-	double x2 = xTln*xTln;
-	wTln1 = x2*(3-2*xTln);
-	wTln0 = 1-wTln1;
-	wTln0d = xTln*(1+xTln*(xTln-2));
-	wTln1d = x2*(xTln-1);
-/*	wTln1 = xTln;
-	wTln0 = 1-xTln;
-	wTln0d = 0;
-	wTln1d = 0;*/
-	}
-
-    if ((j%50)==20) {
-	printf("%f  %e %e  %e _%e_ %e\n",T,((cl->RT+i-1)->Rate_Radr_HII-(cl->RT+i-3)->Rate_Radr_HII)/(T),(cl->RT+i-2)->Rate_Radr_HII, (cl->RT+i-1)->Rate_Radr_HII, TABLEINTERP( Rate_Radr_HII ), (cl->RT+i+1)->Rate_Radr_HII );
-	}
-      }
-#endif
-#endif
 
 }
 
@@ -2080,7 +2043,6 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 
 
   dtnext = tStep;
-#if (1)   
   clSetyscale( cl, d->Y_H, d->Y_He, y, yscale);
   clDerivs( d, t, y-1, dydt-1 );
   if (fabs(dydt[0]) > 1e-150) {
@@ -2099,7 +2061,6 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
       dtEst = 0.5*fabs(yscale[3]/dydt[3]);
       if (dtnext > dtEst) dtnext = dtEst; 
       }
-#endif
 
 
  {
@@ -2275,21 +2236,6 @@ void CoolTableReadInfo( COOLPARAM *CoolParam, int cntTable, int *nTableColumns, 
 
 
    *nTableColumns = 0;
-#if (0)
-   if (CoolParam->bMetal) { 
-       /* Use self-consistent UV from metal data file for metal cooling */
-       return; 
-       }
-   /* Overwrite UV in the metal data file */
-   if (!CoolParam->bMetal && CoolParam->bUV) {
-	   if (localcntTable == cntTable) {
-		   *nTableColumns = 7;
-		   sprintf(suffix,"UV");
-		   return;
-		   }
-	   localcntTable++;
-	   }
-#endif
    }
 
 void CoolTableRead( COOL *Cool, int nData, void *vData)

@@ -1322,11 +1322,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 
 	
 	pstMassCheck(pst,NULL,0,&outMass,NULL);
-#if 0
-	if (dMass != outMass.dMass) 
-#else
 	if (fabs(dMass - outMass.dMass) > MASS_EPS*dMass) 
-#endif
 	        {
 		mdlprintf(pst->mdl,"ERROR id:%d lvl:%d:in _pstRootSplit after ColRejects\n",
 			   pst->idSelf,pst->iLvl);
@@ -1346,11 +1342,7 @@ void _pstRootSplit(PST pst,int iSplitDim,double dMass, int bDoRootFind,
 		mdlassert(pst->mdl,nOut/sizeof(OREJ) == pst->nUpper);
 
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
-#if 0
-		if (dMass != outMass.dMass) 
-#else
 		if (fabs(dMass - outMass.dMass) > MASS_EPS*dMass) 
-#endif
 		        {
 			printf("ERROR id:%d lvl:%d iter:%d in _pstRootSplit after Swap\n",
 				   pst->idSelf,pst->iLvl,ittr);
@@ -1851,11 +1843,7 @@ void _pstRootSplit_Active_Inactive(PST pst,int iSplitDim,double dMass, int bDoRo
 
 	
 	pstMassCheck(pst,NULL,0,&outMass,NULL);
-#if 0
-	if (dMass != outMass.dMass) {
-#else
 	if (fabs(dMass - outMass.dMass) > MASS_EPS*dMass) {
-#endif
 		printf("ERROR id:%d lvl:%d:in _pstRootSplit after ColRejects\n",
 			   pst->idSelf,pst->iLvl);
 		}
@@ -1874,11 +1862,7 @@ void _pstRootSplit_Active_Inactive(PST pst,int iSplitDim,double dMass, int bDoRo
 		mdlassert(pst->mdl,nOut/sizeof(OREJ) == pst->nUpper);
 
 		pstMassCheck(pst,NULL,0,&outMass,NULL);
-#if 0
-		if (dMass != outMass.dMass) {
-#else
 		if (fabs(dMass - outMass.dMass) > MASS_EPS*dMass) {
-#endif
 			printf("ERROR id:%d lvl:%d iter:%d in _pstRootSplit after Swap\n",
 				   pst->idSelf,pst->iLvl,ittr);
 			}

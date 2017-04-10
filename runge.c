@@ -80,37 +80,4 @@ RungeKutta(void *CTX,
 	}
     }
 
-#if 0
-/*
- * Harmonic oscillator test
- */
-
-void csmGrowthFacDeriv(void* csm, double dlnExp, double *dlnDelta, double
-		       *dlnDeltadot)
-{
-    dlnDeltadot[0] = dlnDelta[1];
-    dlnDeltadot[1] = -dlnDelta[0];
-    }
-
-main()
-{
-    const int nSteps = 25;
-    double dDStart[2];
-    double dDEnd[2];
-    double dDelta = .8;
-    int i;
-    void *csm;
-    
-    dDStart[0] = 0.0;
-    dDStart[1] = 1.0;
-    for(i = 0; i < nSteps; i++){
-	double dlnExp = (i+1)*dDelta;
-	
-	RungeKutta(csm, (void (*)(void *, double, double *, double*))
-	       csmGrowthFacDeriv, 2, 0.0, dDStart, dlnExp, dDEnd,
-	       nSteps);
-	printf("%g %g %g\n", dlnExp, dDEnd[0], dDEnd[1]);
-	}
-    }
-#endif
 

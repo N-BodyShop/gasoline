@@ -4187,12 +4187,6 @@ void fg(MDL mdl,double mu,FLOAT *x,FLOAT *v,double dt) {
     ec = 1-r/a;
     es = u/(en*a*a);
     e = sqrt(ec*ec + es*es);
-#if (0)
-    /*
-     ** Only for GR!
-     */
-    dt *= 1 - 1.5*mu/(csq*a);
-#endif
     nf = en/(2*M_PI);
     j = (int)(nf*dt);
     dt -= j/nf;                 /* reduce to single orbit */
@@ -4375,13 +4369,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 #ifdef INFLOWOUTFLOW
             if (bInflowOutflow) {
                 if (p->r[0] > pkd->dxInflow && TYPETest(p,TYPE_INFLOW)) {  
-#if (0)
-                                /* duplicate -- assumes constant inflow properties: rho, v, T, etc... */ 
-                PARTICLE pInflow;
-                pInflow = *p;
-                pInflow.r[0] -= (pkd->dxInflow+pkd->fPeriod[0]*.5); /* create new Inflow particle */
-                pkdNewParticle(pkd, pInflow);
-#endif
                 TYPEReset(p, TYPE_INFLOW); /* Original particle joins regular particles now */
                 }
                 if (p->r[0] < pkd->dxOutflow && TYPETest(p,TYPE_OUTFLOW)) { /* delete */ 
@@ -6558,19 +6545,6 @@ void pkdUpdateShockTracker(PKD pkd, double dDelta, double dShockTrackerA, double
             ap2 = ((p->aPres[0]*p->aPres[0])+(p->aPres[1]*p->aPres[1])+(p->aPres[2]*p->aPres[2]));
             adotap = ((p->a[0]*p->aPres[0])+(p->a[1]*p->aPres[1])+(p->a[2]*p->aPres[2]));
 
-#if 0
-            if (!(i%2000)) {
-              /*
-printf("aP %d: %g %g %g %g %g %g\n",i,p->a[0],p->a[1],p->a[2],p->aPres[0],p->aPres[1],p->aPres[2]);
-              */
-printf("r %g PdV %g a %g %g %g SW %g %g %g\n",sqrt(p->r[0]*p->r[0]+p->r[1]*p->r[1]+p->r[2]*p->r[2]),
-       UDOT_HYDRO(p),((p->a[0]*p->aPres[0])+(p->a[1]*p->aPres[1])+(p->a[2]*p->aPres[2])),sqrt(a2),sqrt(ap2),
-       sqrt(a2*0.25*p->fBall2)/(p->c*p->c),
-       (p->a[0]*p->gradrho[0]+p->a[1]*p->gradrho[1]+p->a[2]*p->gradrho[2])/
-       (p->gradrho[0]*p->gradrho[0]+p->gradrho[1]*p->gradrho[1]+p->gradrho[2]*p->gradrho[2]+
-    0.4/p->fBall2)/(p->c*p->c),p->BalsaraSwitch );
-            }
-#endif
 
             /* Rarefaction or Gravity dominated compression */
             if ( UDOT_HYDRO(p) < 0 || adotap < 0.5*a2) p->ShockTracker = 0;
@@ -6877,12 +6851,6 @@ void pkdGlassGasPressure(PKD pkd, void *vin)
             p->PoverRho2 = PoverRho/p->fDensity;
             p->c = sqrt(in->dGamma*PoverRho);
                 }
-#if (0)
-        if (pkdIsGas(pkd,p) && (p->iOrder % 1000)==0) 
-                printf("Glass P %i: %i %i %f %f %f  %f %f %f %f %f\n",
-                   p->iOrder,TYPEQueryACTIVE(p),TYPEQueryTREEACTIVE(p),
-                   p->r[0],p->r[1],p->r[2],sqrt(0.25*p->fBall2),p->fDensity,p->uPred,p->PoverRho2*p->fDensity*p->fDensity,p->c);
-#endif
                 }
     }
 
@@ -7158,61 +7126,6 @@ pkdSphViscosityLimiter(PKD pkd, int bOn, int bShockTracker)
     }
 
 void pkdDensCheck(PKD pkd, int iRung, int bGreater, int iMeasure, void *data) {
-#if (0)
-    int i;
-    struct {     
-        double dMaxDensError;
-        double dAvgDensError;
-        int nError;
-        int nTotal;
-    } *tmp=data;
-    double error;
-
-    char ach[256];
-
-    tmp->dMaxDensError=0;
-    tmp->dAvgDensError=0;
-    tmp->nError=0;
-    tmp->nTotal=0;
-
-    if (!iMeasure) {
-        for(i = 0; i < pkdLocal(pkd); ++i) {
-            if(TYPETest(&(pkd->pStore[i]),TYPE_GAS) &&
-               (pkd->pStore[i].iRung == iRung ||
-                (bGreater && pkd->pStore[i].iRung > iRung))) {
-                if (pkd->pStore[i].fDensity == 0) {
-                    sprintf(ach, "dens zero i: %d dens %g iAct %d\n",
-                            pkd->pStore[i].iOrder,pkd->pStore[i].fDensity,
-                            pkd->pStore[i].iActive);
-                    mdlDiag(pkd->mdl, ach);
-                    }
-                pkd->pStore[i].fDensSave = pkd->pStore[i].fDensity;
-                }
-            }
-        return;
-        }
-
-    for(i=0;i<pkdLocal(pkd);++i) {
-        if(TYPETest(&(pkd->pStore[i]),TYPE_GAS) &&
-           (pkd->pStore[i].iRung == iRung ||
-            (bGreater && pkd->pStore[i].iRung > iRung))) {
-            error = abs((pkd->pStore[i].fDensSave - pkd->pStore[i].fDensity)/pkd->pStore[i].fDensity);
-            tmp->dAvgDensError += error;
-            tmp->nTotal++;
-            if (error>tmp->dMaxDensError) tmp->dMaxDensError=error;
-            if (error>1e-5) {
-                tmp->nError++;
-                sprintf(ach, "dens error i: %d save %g dens %g  iAct %d\n",
-                        pkd->pStore[i].iOrder,pkd->pStore[i].fDensSave,
-                        pkd->pStore[i].fDensity,pkd->pStore[i].iActive);
-                mdlDiag(pkd->mdl, ach);
-                }
-            }
-        }
-
-    tmp->dAvgDensError/=tmp->nTotal; 
-    return;
-#endif
     }
 
 #endif /* GASOLINE */
@@ -7695,26 +7608,6 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
                 }
 #endif
 #ifdef SINKING
-#if (0)
-/* Vpred routines can be done in drift so I will do them there -- more efficient 
-   Perhaps pkdkickvpred should be removed completely */
-            if (TYPETest( p, TYPE_SINKING)) {
-                FLOAT r0 = p->rSinking0Mag;
-                /* For kick std dTime is midpoint of kick period, put dTime to end for this exact calc */
-                FLOAT r2 = r0 + p->vSinkingr0*(dTimeEnd-p->fSinkingTime);
-                FLOAT thfac, sqr02, th2, costh2, sinth2;
-                if (r2 < 0.1*r0) r2 = 0.1*r0; /* HACK */
-                thfac = p->vSinkingTang0Mag*2/(p->vSinkingr0);
-                sqr02 = sqrt(r0/r2);
-                th2 = thfac*(1-sqr02);
-                costh2 = cos(th2);
-                sinth2 = sin(th2);
-                /* v does not include motion around sink -- add it back */
-                for (j=0;j<3;j++) {
-                p->vPred[j] += p->vSinkingTang0Mag*sqr02*(-sinth2*p->rSinking0Unit[j]+costh2*p->vSinkingTang0Unit[j])+p->vSinkingr0*(costh2*p->rSinking0Unit[j]+sinth2*p->vSinkingTang0Unit[j]);
-                }
-                }
-#endif /* (0) */
 #endif
             if (iGasModel != GASMODEL_ISOTHERMAL && iGasModel != GASMODEL_GLASS) {
 #ifndef NOCOOLING
@@ -7886,11 +7779,7 @@ int pkdSetSink(PKD pkd, double dSinkMassMin)
 #ifdef STARSINK
                 if ((TYPETest(p,TYPE_STAR))) {
 #else
-#if (0)
-        if ((TYPETest(p,TYPE_STAR) && p->fMass >= dSinkMassMin) || p->fMetals < 0) {
-#else 
         if ((TYPETest(p,TYPE_STAR) && p->fTimeForm < 0)) {
-#endif
 #endif
             TYPESet(p,TYPE_SINK);
             nSink++;

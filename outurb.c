@@ -509,34 +509,6 @@ void outurb_driving_step_first_half(OUTURB outurb, double dTime, double dDelta, 
         outurb_add_turb_accel(outurb, dTime, p, nParticle);
 
         assert(0);
-#if (0)
-        for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) // Gadget uses RLE , we don't
-            {
-            ti_step = P[i].TimeBin ? (((int) 1) << P[i].TimeBin) : 0;
-
-            tstart = P[i].Ti_begstep;   /* beginning of step */
-            tend = P[i].Ti_begstep + ti_step / 2;   /* midpoint of step */
-
-            if(outurb->ComovingIntegrationOn)
-                dt_gravkick = get_gravkick_factor(tstart, tend);
-            else
-                dt_gravkick = (tend - tstart) * outurb->Timebase_interval;
-
-            if(P[i].Type == 0)
-                {
-
-
-                for(j = 0; j < 3; j++)
-                    {
-                    dvel[j] = SphP[i].TurbAccel[j] * dt_gravkick;
-                    P[i].Vel[j] += dvel[j];
-                    //P[i].dp[j] += P[i].Mass * dvel[j];
-                    }
-
-
-                }
-            }
-#endif
 
 //    CPU_outurb->Step[CPU_DRIFT] += measure_time();
         }
@@ -550,41 +522,6 @@ void outurb_driving_step_second_half(OUTURB outurb, double dTime, double dDelta,
         double dvel[3], dt_gravkick, atime;
 
         assert(0);
-#if (0)
-        if(outurb->ComovingIntegrationOn)
-            atime = outurb->Time;
-        else
-            atime = 1.0;
-
-
-        for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-            {
-            ti_step = P[i].TimeBin ? (((int) 1) << P[i].TimeBin) : 0;
-
-            tstart = P[i].Ti_begstep + ti_step / 2; /* midpoint of step */
-            tend = P[i].Ti_begstep + ti_step;   /* end of step */
-
-            if(outurb->ComovingIntegrationOn)
-                dt_gravkick = get_gravkick_factor(tstart, tend);
-            else
-                dt_gravkick = (tend - tstart) * outurb->Timebase_interval;
-
-            if(P[i].Type == 0)
-                {
-
-                for(j = 0; j < 3; j++)
-                    {
-                    dvel[j] = SphP[i].TurbAccel[j] * dt_gravkick;
-                    P[i].Vel[j] += dvel[j];
-                    //P[i].dp[j] += P[i].Mass * dvel[j];
-
-                    SphP[i].VelPred[j] = P[i].Vel[j];
-                    }
-
-
-                }
-            }
-#endif
 
 //  CPU_outurb->Step[CPU_DRIFT] += measure_time();
         }
