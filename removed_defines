@@ -14,3 +14,7 @@ CHECKSOFT             #Checks on gravitational softening (debug)
 COOLDEBUG             #Output debugging information from the gas cooling (debug)
 COOLING_METAL_BROKEN  #Debug lines for outputting some extra data for debugging cooling_metal
 DEPTHCHECK            #Debug how deep the tree goes during treebuilds
+DEBUGTRACK            #Extra debugging checks for dumpframe
+DRHODTTEST            #Output a large list of properties important for the DRHODT parts of the code for debugging
+NOEXTHEAT             #Turn off all external heating effects (UV, Feedback, etc.) (debug)
+NOMOLECULARHCOOLING   #Turns COOLING_MOLECULARH into COOLING_METAL

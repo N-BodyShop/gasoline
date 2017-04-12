@@ -8,11 +8,6 @@
 
 /* #define DEBUGTRACK 10  */
 
-#ifdef DEBUGTRACK
-int trackp = 0;
-int trackcnt = 0;
-int ntrack = 0, ntrack2 = 0;
-#endif
 
 /* Using pkd.h deprecated for greater portability */
 #include "pkd.h"
@@ -1137,15 +1132,6 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage,
 	int j;
 	int xp,yp;
 
-#ifdef DEBUGTRACK
-				if (fAge > 3) {
-				    ntrack++;
-				    trackp++;
-				    if ((trackp<DEBUGTRACK)) {
-					printf("p%d %f %f %f  %f %f\n",trackp,r[0],r[1],r[2],fMass,fSoft);
-					}
-				    }
-#endif
 
 	br0=1;
 	if ((iActive & in->iTypeGas)) {
@@ -1216,14 +1202,6 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage,
 					Image[ xp + yp*in->nxPix ].r += br0*col.r;
 					Image[ xp + yp*in->nxPix ].g += br0*col.g;
 					Image[ xp + yp*in->nxPix ].b += br0*col.b;
-#ifdef DEBUGTRACK
-	if (fAge > 3) {
-					trackcnt++;
-					if ((trackcnt<DEBUGTRACK)) {
-						printf("%i %i %f %f %f %f %f*\n",xp,yp,col.r,col.g,col.b,br0, fAge );
-						}
-	    }
-#endif
 					}
 				else {
 					int xpmin,xpmax,ypmin,ypmax,ix,iy;
@@ -1243,14 +1221,6 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage,
 							Imagey[ ix ].r += br*col.r;
 							Imagey[ ix ].g += br*col.g;
 							Imagey[ ix ].b += br*col.b;
-#ifdef DEBUGTRACK
-	if (fAge > 3) {
-							trackcnt++;
-							if ((trackcnt<DEBUGTRACK)) {
-								printf("%i %i %f %f %f\n",ix,iy,br*col.r,br*col.g,br*col.b );
-								}
-	    }
-#endif
 							}
 						}
 					}
@@ -1584,12 +1554,6 @@ void dfRenderImageOld( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 				dr[j] = p[i].r[j]-in->r[j];
 				}
 
-#ifdef DEBUGTRACK
-	trackp++;
-	if ((trackp<DEBUGTRACK)) {
-		printf("p %f %f %f  %f %f\n",p[i].r[0],p[i].r[1],p[i].r[2],p[i].fMass,p[i].fSoft);
-		}
-#endif
 
 			z = dr[0]*in->z[0] + dr[1]*in->z[1] + dr[2]*in->z[2] + in->zEye;
 			if (z >= in->zClipNear && z <= in->zClipFar) {
@@ -1610,12 +1574,6 @@ void dfRenderImageOld( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 							Image[ xp + yp*in->nxPix ].r += col.r;
 							Image[ xp + yp*in->nxPix ].g += col.g;
 							Image[ xp + yp*in->nxPix ].b += col.b;
-#ifdef DEBUGTRACK
-					trackcnt++;
-					if ((trackcnt<DEBUGTRACK)) {
-						printf("%i %f %f %f*\n",xp,col.r,col.g,col.b );
-						}
-#endif
 							}
 						else {
 							int xpmin,xpmax,ypmin,ypmax,ix,iy;
@@ -1635,12 +1593,6 @@ void dfRenderImageOld( PKD pkd, struct inDumpFrame *in, void *vImage ) {
 									Imagey[ ix ].r += br*col.r;
 									Imagey[ ix ].g += br*col.g;
 									Imagey[ ix ].b += br*col.b;
-#ifdef DEBUGTRACK
-									trackcnt++;
-									if ((trackcnt<DEBUGTRACK)) {
-										printf("%i %f %f %f\n",ix,br*col.r,br*col.g,br*col.b );
-										}
-#endif
 									}
 								}
 							}
@@ -1806,9 +1758,6 @@ void dfFinishFrame( struct DumpFrameContext *df, double dTime, double dStep, str
 	unsigned char *gray,*g;
 	/*char number[40]; -- not used: DCR 12/19/02*/
 
-#ifdef DEBUGTRACK
-        printf("ntracked %d\n",ntrack);
-#endif
 
 	switch( df->iNumbering ) {
 	case DF_NUMBERING_FRAME:

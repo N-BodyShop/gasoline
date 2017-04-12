@@ -2859,9 +2859,6 @@ void msrLogDefines(FILE *fp)
 #ifdef RADIATIVEBOX
  	fprintf(fp," RADIATIVEBOX");/* Estimate local LW radiation from the tree*/
 #endif
-#ifdef NOEXTHEAT
- 	fprintf(fp," NOEXTHEAT");
-#endif
 #ifdef COOLING_PLANET
  	fprintf(fp," COOLING_PLANET");
 #endif
@@ -9760,24 +9757,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
 #endif
     msrBuildTree(msr,1,-1.0,1);
 
-#ifdef DRHODTTEST
-    if (dTime > 1e-5) {  //0.000488*0.0306601 = 1.49621e-05
-	char achFile[256];
-	int nOutputList, OutputList[NUMOUTPUTS];
-	sprintf(achFile,"%s",msrOutName(msr));
-	nOutputList = 0;
-	OutputList[(nOutputList)++]=OUT_GASDENSITY_ARRAY;
-	OutputList[(nOutputList)++]=OUT_DIVV_T_ARRAY;
-	OutputList[(nOutputList)++]=OUT_DIVV_CORRECTOR_ARRAY;
-	OutputList[(nOutputList)++]=OUT_BALSARASWITCH_ARRAY;
-	OutputList[(nOutputList)++]=OUT_DT_ARRAY;
-	OutputList[(nOutputList)++]=OUT_SPHH_ARRAY;
-	OutputList[(nOutputList)++]=OUT_IACTIVE_ARRAY;
-	msrReorder(msr);
-	msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
-	exit(0);
-	}
-#endif
 /*
 ** Get Density, Switch data (div/curl) and Neighbours of Active Particles
 */
@@ -9862,24 +9841,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
 //	msrReSmooth(msr,dTime,SMX_DENDVDX,1);
 #endif
 	}
-#ifdef DRHODTTEST
-    if (dTime > 1e-5) {  //0.000488*0.0306601 = 1.49621e-05
-	char achFile[256];
-	int nOutputList, OutputList[NUMOUTPUTS];
-	sprintf(achFile,"%s",msrOutName(msr));
-	nOutputList = 0;
-	OutputList[(nOutputList)++]=OUT_GASDENSITY_ARRAY;
-	OutputList[(nOutputList)++]=OUT_DIVV_T_ARRAY;
-	OutputList[(nOutputList)++]=OUT_DIVV_CORRECTOR_ARRAY;
-	OutputList[(nOutputList)++]=OUT_BALSARASWITCH_ARRAY;
-	OutputList[(nOutputList)++]=OUT_DT_ARRAY;
-	OutputList[(nOutputList)++]=OUT_SPHH_ARRAY;
-	OutputList[(nOutputList)++]=OUT_IACTIVE_ARRAY;
-	msrReorder(msr);
-	msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
-	exit(0);
-	}
-#endif
 /*
 ** Finalize switches (if necessary)
 */

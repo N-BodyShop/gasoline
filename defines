@@ -42,7 +42,6 @@ CUBICTABLEINTERP      #Use a cubic order interpolation for the cooling table (ra
 CULLENDEHNEN          #Use the time-variable CD viscosity limit switch
 DEBUG2                #Extra outputs to check treezip is working
 DEBUG                 #Generic debug mode (debug)
-DEBUGTRACK            #Extra debugging checks for dumpframe
 DELTAACCELACTIVE      #Check that only active particles are used for updating a particles timestep
 DELTACCELCAP          #Make sure that a particles neighbours have a say in it's timestep.
 DENSITYU              Calculate modified energy-weighted density (used for cooling) (good for large density gradients)
@@ -57,7 +56,6 @@ DIVVOFF               #Remove the convergent flow requirement for starformation
 DKDENSITY             #Calculate the density using the derivative of the kernel in the DVDX calculation of density
 DODVDS                #Different estimate of Balsara switch instead of divv
 DRHODTDIVOUT          #Output Divv variables used in DRHODT
-DRHODTTEST            #Output a large list of properties important for the DRHODT parts of the code for debugging
 DRHODT                #Use the change in density over time (dRho/dt) 
 DTADJUST              #Readjust timesteps if near short timestep particles -- required for good energy conservation
 EPSACCH               #Use sph H not softening to calculate acceleration timestep, even if softening smaller
@@ -101,10 +99,8 @@ NEWTIME
 NIORDERGASBUFFER
 NOCOOLING             #What it says on the package, no radiative cooling 
 NODIFFUSIONTHERMAL    #Disable thermal diffusion
-NOEXTHEAT             #Turn off all external heating effects (UV, Feedback, etc.) (debug)
 NOFIT                 #Don't use any fitting for the cooling rates without H2 in cooling_metal_noH2.c
 NOMETALCOOLING        #Just use H2, not metal lines (Requires -DCOOLING_MOLECULARH)
-NOMOLECULARHCOOLING   #Turns COOLING_MOLECULARH into COOLING_METAL
 NORMAL                #Calculate and output surface normals for particles (Needs -DSURFACEAREA)
 NSMOOTHINNER          #Ensure at least 18 neighbours inside 1.41 h
 NUMDIMS 

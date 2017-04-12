@@ -22,11 +22,6 @@
 
 /* #define DEBUGTRACK 10  */
 
-#ifdef DEBUGTRACK
-int trackp = 0;
-int trackcnt = 0;
-int ntrack = 0, ntrack2 = 0;
-#endif
 
 /* Using pkd.h deprecated for greater portability */
 #include "pkd.h"
@@ -1280,15 +1275,6 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage, PKD pkd,
     double fAge=(in->dTime-p->fTimeForm)*in->dYearUnit;
     FLOAT fVar;
 
-#ifdef DEBUGTRACK
-    if (fAge > 3) {
-	ntrack++;
-	trackp++;
-	if ((trackp<DEBUGTRACK)) {
-	    printf("p%d %f %f %f  %f %f\n",trackp,r[0],r[1],r[2],fMass,fSoft);
-	    }
-	}
-#endif
 
     if (pkdIsGas(pkd,p)) {
 	if (fMass < in->dMassGasMin || fMass > in->dMassGasMax) return;
@@ -1369,14 +1355,6 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage, PKD pkd,
 		    Image[ xp + yp*in->nxPix ].r += br0*col.r;
 		    Image[ xp + yp*in->nxPix ].g += br0*col.g;
 		    Image[ xp + yp*in->nxPix ].b += br0*col.b;
-#ifdef DEBUGTRACK
-		    if (fAge > 3) {
-			trackcnt++;
-			if ((trackcnt<DEBUGTRACK)) {
-			    printf("%i %i %f %f %f %f %f*\n",xp,yp,col.r,col.g,col.b,br0, fAge );
-			    }
-			}
-#endif
 		    }
 		else {
 		    int xpmin,xpmax,ypmin,ypmax,ix,iy;
@@ -1396,14 +1374,6 @@ void dfRenderParticleTSC( struct inDumpFrame *in, void *vImage, PKD pkd,
 			    Imagey[ ix ].r += br*col.r;
 			    Imagey[ ix ].g += br*col.g;
 			    Imagey[ ix ].b += br*col.b;
-#ifdef DEBUGTRACK
-			    if (fAge > 3) {
-				trackcnt++;
-				if ((trackcnt<DEBUGTRACK)) {
-				    printf("%i %i %f %f %f\n",ix,iy,br*col.r,br*col.g,br*col.b );
-				    }
-				}
-#endif
 			    }
 			}
 		    }
@@ -1595,9 +1565,6 @@ void dfFinishFrame( struct DumpFrameContext *df, double dTime, double dStep, str
     unsigned char *gray,*g;
     /*char number[40]; -- not used: DCR 12/19/02*/
 
-#ifdef DEBUGTRACK
-    printf("ntracked %d\n",ntrack);
-#endif
 
     switch( df->iNumbering ) {
     case DF_NUMBERING_FRAME:

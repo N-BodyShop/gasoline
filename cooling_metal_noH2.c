@@ -2307,9 +2307,6 @@ void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *ECode,
 	double E;
 	E = CoolCodeEnergyToErgPerGm( cl, *ECode );
 	CoolPARTICLEtoPERBARYON(cl, &Y, cp, ZMetal);
-#ifdef NOEXTHEAT
-	ExternalHeatingCode = 0;
-#endif
 	clIntegrateEnergy(cl, &Y, &E, CoolCodeWorkToErgPerGmPerSec( cl, ExternalHeatingCode ), 
 			  CodeDensityToComovingGmPerCc(cl, rhoCode), ZMetal, tStep);
 	CoolPERBARYONtoPARTICLE(cl, &Y, cp, ZMetal);

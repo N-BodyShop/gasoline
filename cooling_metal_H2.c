@@ -448,11 +448,7 @@ void clInitRatesTable( COOL *cl, double TMin, double TMax, int nTable ) {
     cl->R.Cool_Coll_HeI = CL_eHeI*CL_B_gm;
     cl->R.Cool_Coll_HeII = CL_eHeII*CL_B_gm;
     cl->R.Cool_Diel_HeII = (CL_E2HeII+CL_eHeI)*CL_B_gm;
-#ifdef NOMOLECULARHCOOLING
-    cl->R.Cool_Coll_H2 = 0;
-#else
     cl->R.Cool_Coll_H2 = CL_eH2*CL_B_gm;
-#endif
 
     cl->nTable = nTable;
     cl->TMin = TMin;
@@ -1145,9 +1141,7 @@ double clHeatTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMet
         Y->HI   * cl->R.Heat_Phot_HI * Rate_Phot_HI +
         Y->HeI  * cl->R.Heat_Phot_HeI * Rate->Phot_HeI +
         Y->HeII * cl->R.Heat_Phot_HeII * Rate->Phot_HeII
-#ifndef NOMOLECULARHCOOLING
         + Y->H2   * cl->R.Heat_Phot_H2 * Rate->Phot_H2*s_dust*s_self
-#endif
 #ifndef NOMETALCOOLING
         + Rate->Heat_Metal
 #endif
@@ -1187,15 +1181,12 @@ double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMet
             cl->R.Cool_Coll_HeI * Y->HeI * Rate->Coll_HeI +
             cl->R.Cool_Coll_HeII * Y->HeII * Rate->Coll_HeII +
             cl->R.Cool_Diel_HeII * Y->HeII * Rate->Diel_HeII +
-#ifndef NOMOLECULARHCOOLING
             clCoolLineH2_e(Rate->T) * Y->H2 * CL_B_gm /*Re-added CL_B_gm CC 9/16/10 */  +
             cl->R.Cool_Coll_H2 * Y->H2 * Rate->Coll_e_H2  + /*remove shielding of collisions CC 11/18/10*/
-#endif
             clCoolLineHI(Rate->T) * Y->HI +
             clCoolLineHeI(Rate->T) * Y->HeI +
             clCoolLineHeII(Rate->T) * Y->HeII ) ) +
 
-#ifndef NOMOLECULARHCOOLING
         clCoolLineH2_HI(Rate->T) * en_B * Y->H2 * Y->HI * CL_B_gm /*Re-added CL_B_gm CC 9/16/10:
                                                                     clCoolLineH2_HI(Rate->T) [erg cm^3 s^-1 H2atom^-1 HIatom^-1] * en_B [atom/cm^3] * Y->H2 [H2atom atom^-1] * Y->HI [HIatom atom^-1] CL_B_gm [atom g^-1] => [ergs s^-1 g^-1]*/ +
         clCoolLineH2_H2(Rate->T) * en_B * Y->H2 * Y->H2 * CL_B_gm  +
@@ -1204,7 +1195,6 @@ double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMet
         en_B * Y->HI * cl->R.Cool_Coll_H2 * Y->H2 * Rate->Coll_HI_H2  + /*remove shielding of collisions CC 11/18/10*/
         en_B * Y->H2 * cl->R.Cool_Coll_H2 * Y->H2 * Rate->Coll_H2_H2  + /*remove shielding of collisions CC 11/18/10*/
         en_B * Y->HII * cl->R.Cool_Coll_H2 * Y->H2 * Rate->Coll_HII_H2 + /*remove shielding of collisions CC 11/18/10*/
-#endif
 #ifndef NOMETALCOOLING
         Rate->Cool_Metal +
 #endif
@@ -2508,14 +2498,11 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
 	  clCoolLineHeI(Rate->T) * Y->HeI +
 	  clCoolLineHeII(Rate->T) * Y->HeII +
 	  
-#ifndef NOMOLECULARHCOOLING /* Compile flag to take out molecular cooling for debugging purposes*/
             clCoolLineH2_e(Rate->T) * Y->H2 * CL_B_gm + /*Re-added CL_B_gm 9/16/10 */
             cl->R.Cool_Coll_H2 * Y->H2 * Rate->Coll_e_H2 +
-#endif
             cl->R.Cool_Coll_HI * Y->HI * Rate->Coll_HI +
             cl->R.Cool_Coll_HeI * Y->HeI * Rate->Coll_HeI + 
             cl->R.Cool_Coll_HeII * Y->HeII * Rate->Coll_HeII )
-#ifndef NOMOLECULARHCOOLING /* Compile flag to take out molecular cooling for debugging purposes*/
     +
     clCoolLineH2_HI(Rate->T) * en_B * Y->H2 * Y->HI * CL_B_gm /*Re-added CL_B_gm 9/16/10:
     clCoolLineH2_HI(Rate->T) [erg cm^3 s^-1 H2atom^-1 HIatom^-1] * en_B [atom/cm^3] * Y->H2 [H2atom atom^-1] * Y->HI [HIatom atom^-1] CL_B_gm [atom g^-1] => [ergs s^-1 g^-1]*/
@@ -2531,7 +2518,6 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
     cl->R.Cool_Coll_H2 * Y->H2 * Rate->Coll_H2_H2 * Y->H2 * en_B 
     +
     cl->R.Cool_Coll_H2 * Y->H2 * Rate->Coll_HII_H2 * Y->HII * en_B   
-#endif
     +
       LowTCool
 #ifndef NOMETALCOOLING
@@ -2545,9 +2531,7 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
       Rate->Heat_Metal
     +
 #endif
-#ifndef NOMOLECULARHCOOLING
         + Y->H2   * cl->R.Heat_Phot_H2 * Rate->Phot_H2*s_dust*s_self 
-#endif
         + Y->HI   * cl->R.Heat_Phot_HI * Rate_Phot_HI /* This produces very large amounts of HI shielding but is consistent with everything else CC*/
         + Y->HeI  * cl->R.Heat_Phot_HeI  * Rate->Phot_HeI
         + Y->HeII * cl->R.Heat_Phot_HeII * Rate->Phot_HeII;
@@ -3108,9 +3092,6 @@ void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *ECode,
 	rho = CodeDensityToComovingGmPerCc(cl,rhoCode );
 	T = CoolEnergyToTemperature( cl, cp, E, rho, ZMetal);
 	CoolPARTICLEtoPERBARYON(cl, &Y, cp, ZMetal);
-#ifdef NOEXTHEAT
-	ExternalHeatingCode = 0;
-#endif
 	clIntegrateEnergy(cl, &Y, &E, CoolCodeWorkToErgPerGmPerSec( cl, ExternalHeatingCode ), 
         CodeDensityToComovingGmPerCc(cl, rhoCode), ZMetal, tStep, correL,dLymanWerner );
 	CoolPERBARYONtoPARTICLE(cl, &Y, cp, ZMetal);
