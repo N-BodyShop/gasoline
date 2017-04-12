@@ -6,9 +6,6 @@
 #endif
 
 /* Global consts */
-#if defined(COOLDEBUG)
-#include "mdl.h"
-#endif
 #include "floattype.h"
 #include "param.h"
 #include <sys/param.h> /* for MAXPATHLEN */
@@ -77,10 +74,6 @@ typedef struct CoolingPKDStruct {
     char grackle_data_file[MAXPATHLEN]; // "../../input/CloudyData_UVB=HM2012.h5"; // data file
     chemistry_data *pgrackle_data;  // defined in chemistry_data.h, points at global grackle_data
     code_units my_units;     // defined in code_units.h
-#if defined(COOLDEBUG)
-    MDL        mdl; /* For diag/debug outputs */
-    struct particle *p; /* particle pointer NEVER TO BE USED EXCEPT FOR DEBUG */
-#endif 
 } COOL;
 
 COOL *CoolInit( );

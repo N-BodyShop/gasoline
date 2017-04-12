@@ -2275,12 +2275,6 @@ void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, doubl
 	CoolPERBARYONtoPARTICLE(cl, &Y,cp, ZMetal);
 	*E = clThermalEnergy(Y.Total,dTemp)*cl->diErgPerGmUnit;
 
-#ifdef COOLDEBUG
-	FILE *fpdebug;
-	fpdebug = fopen("cooldebug.txt","w");
-	fprintf(fpdebug,"\n");
-	fclose(fpdebug);
-#endif
 }
 
 void CoolInitRatesTable( COOL *cl, COOLPARAM CoolParam ) {

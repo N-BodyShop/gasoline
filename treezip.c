@@ -44,9 +44,6 @@ TZX *tzInit( double dmin[3], double dmax[3], int nBits_nPerBucket, int nBits_Pos
 	tz->nParticle = 0;
 	tz->nNode = 1;
 	tz->nBucket = 1;
-#ifdef DEPTHCHECK
-	tz->maxdepth = 0;
-#endif
 
 	tz->nBits_PerDirection = TZNBITS_PER_DIRECTION;
 	tz->iBigInt = (((TZ_UINT64) 1)<<tz->nBits_PerDirection);
@@ -154,9 +151,6 @@ void tzEmptyTree( TZX *tz ) {
 	tz->nParticle = 0;
 	tz->nNode = 1;
 	tz->nBucket = 1;
-#ifdef DEPTHCHECK
-	tz->maxdepth = 0;
-#endif
 
 	tz->cnodeblock = NULL;
 	tz->cnode = NULL;
@@ -351,9 +345,6 @@ void tzAddPos( TZX *tz, double *r, LABELTYPE label ) {
 	int i;
 	tzparticle p;
 	tznode *c ;
-#ifdef DEPTHCHECK
-	int depth;
-#endif
 
 	assert( r[0] >= tz->dmin[0] );
 	assert( r[1] >= tz->dmin[1] );
@@ -380,9 +371,6 @@ void tzAddPos( TZX *tz, double *r, LABELTYPE label ) {
 
 	tz->nParticle++;
 
-#ifdef DEPTHCHECK
-	depth = 0;
-#endif
 	c = &tz->root;
 	for (;;) {
 		if (c->p != NULL) {
@@ -398,9 +386,6 @@ void tzAddPos( TZX *tz, double *r, LABELTYPE label ) {
 #endif
 				c->p[c->n] = p;
 				c->n++;
-#ifdef DEPTHCHECK
-				if (depth > tz->maxdepth) tz->maxdepth = depth;
-#endif
 				break;
 				}
 			else {
@@ -409,22 +394,6 @@ void tzAddPos( TZX *tz, double *r, LABELTYPE label ) {
 				   then continue as for interior node below...
 				   */
 				tzparticle *p0, *p1, *pend;
-#ifdef DEPTHCHECK
-/* This is not a problem as long as nBitsMaxPrecision is less than TZBITS_IN_KEY -- added an assert earlier */
-/*
-				if (depth > TZNBITS_IN_KEY) {
-					int j;
-					fprintf(stderr,"Hit max depth %i %i\n",depth,TZNBITS_IN_KEY);
-					fprintf(stderr,"New particle: %15.12f %15.12f %15.12f\n",r[0],r[1],r[2]);
-#ifdef DEBUG
-					for (j=0;j<c->n;j++) {
-						fprintf(stderr,"Bucket %3i: %15.12f %15.12f %15.12f\n",j,c->p[j].pos[0],c->p[j].pos[1],c->p[j].pos[2]);
-						}
-#endif
-					assert(0);
-					}
-*/
-#endif
 
 				assert(c->child == NULL);
 				c->child = tzNodeAllocation( tz, 2);
@@ -443,32 +412,6 @@ void tzAddPos( TZX *tz, double *r, LABELTYPE label ) {
 				p0 = c->child[0].p;
 				p1 = c->child[1].p;
 
-#ifdef DEPTHCHECK
-				if (depth > tz->nBitsMaxPrecision) {
-					/* Probably a cluster of near identical positions 
-					   -- can't separate so sort equally into sub-bins 
-					   */
-					while (p0 <= pend) {
-#ifdef DEBUG
-						fprintf(stderr,"%i: depth %i, sort: %i\n",tz->nParticle,depth,(pend-p0)&1);
-#endif
-						if ((pend-p0)&1) {
-							TZKEY_RSHIFT1(p0->k);
-							*p1 = *p0;
-							p1++;
-							c->child[1].n++;
-							*p0 = *pend;
-							pend--;
-							}
-						else {
-							TZKEY_RSHIFT1(p0->k);
-							p0++;
-							c->child[0].n++;
-							}
-						}
-					}
-				else 
-#endif
 					{
 					while (p0 <= pend) {
 						if (TZKEY_RET_AND1(p0->k)) {
@@ -497,9 +440,6 @@ void tzAddPos( TZX *tz, double *r, LABELTYPE label ) {
 		/* Go down one level of the tree */
 		c = &c->child[ TZKEY_RET_AND1(k) ];
 		TZKEY_RSHIFT1(k);
-#ifdef DEPTHCHECK
-		depth++;
-#endif
 
 		}
 		

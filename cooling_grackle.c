@@ -7,12 +7,7 @@
 #include <string.h>
 //#include <unistd.h>
 
-#if defined(COOLDEBUG) 
-// || defined(STARFORM) || defined(SIMPLESF)
-#include "pkd.h"
-#else
 #include "cooling.h"
-#endif
 #include "outtype.h"
 
 #define mh     1.67262171e-24   

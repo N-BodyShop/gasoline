@@ -4770,9 +4770,6 @@ void pstInitCooling(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		mdlGetReply(pst->mdl,pst->idUpper,NULL,NULL);
 		}
 	else {
-#if defined(COOLDEBUG)
-		(plcl->pkd->Cool)->mdl = plcl->pkd->mdl;
-#endif
 #ifdef COOLING_MOLECULARH /* Initialize Constants.  Include the InitialStarMass for calculating LW radiation when doing H2 */
 		clInitConstants((plcl->pkd->Cool),in->dGmPerCcUnit,in->dComovingGmPerCcUnit,
 				in->dErgPerGmUnit,in->dSecUnit,in->dKpcUnit,in->dMsolUnit,in->dInitStarMass,in->CoolParam);

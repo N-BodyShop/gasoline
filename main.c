@@ -719,23 +719,9 @@ int main(int argc,char **argv)
 		OutputList[(nOutputList)++]=OUT_OXYGENMASSFRACDOT_ARRAY;
 		OutputList[(nOutputList)++]=OUT_IRONMASSFRACDOT_ARRAY;
 #endif
-#ifdef CHECKSF
-		if(msr->param.bStarForm){
-		    msrFormStars(msr, dTime, 1e-6); /* dDelta = 1e-6 not 1e37 */
-		    OutputList[(nOutputList)++]=OUT_TOFF_YR_ARRAY;
-		    OutputList[(nOutputList)++]=OUT_TCOOL_YR_ARRAY;
-		    OutputList[(nOutputList)++]=OUT_TDYN_YR_ARRAY;
-		    OutputList[(nOutputList)++]=OUT_RATIOSOUNDDYN_ARRAY;
-		    OutputList[(nOutputList)++]=OUT_L_JEANS_ARRAY;
-		    OutputList[(nOutputList)++]=OUT_ISMALL_JEANS_ARRAY;
-		    }
-#endif		
 #endif
 #ifndef NOCOOLING
 
-#ifdef  COOLING_METAL_BROKEN
-		if (msr->param.bDoShear) OutputList[nOutputList++]=OUT_COOL_SHEAR_ARRAY;
-#endif
 		if (msr->param.bGasCooling) {
 		    OutputList[nOutputList++]=OUT_COOL_EDOT_ARRAY;
 		    OutputList[nOutputList++]=OUT_COOL_COOLING_ARRAY;

@@ -152,10 +152,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
         return correL;
 #endif
 /*Gas shear in terms of mach number, used when calculating column density*/
-#ifdef COOLING_METAL_BROKEN
-	case OUT_COOL_SHEAR_ARRAY:
-	    return(COOL_SHEAR_ARRAY(p->c, p->curlv[0], p->curlv[1], p->curlv[2], p->iOrder)); 
-#endif
 
 
 #ifdef  RADIATIVEBOX
@@ -310,20 +306,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #endif
 	case OUT_UDOTFB_ARRAY:
 	    return((FLOAT) p->uDotFB);
-#ifdef CHECKSF
-	case OUT_TOFF_YR_ARRAY:
-	    return((FLOAT) p->tOff );
-	case OUT_TCOOL_YR_ARRAY:
-	    return((FLOAT) p->tcool );
-	case OUT_TDYN_YR_ARRAY:
-	    return((FLOAT) p->tdyn );
-	case OUT_RATIOSOUNDDYN_ARRAY:
-	    return((FLOAT) p->ratiosounddyn );
-	case OUT_L_JEANS_ARRAY:
-	    return((FLOAT) p->l_jeans );
-	case OUT_ISMALL_JEANS_ARRAY:
-	    return((FLOAT) p->small_jeans );
-#endif
 #endif
 
 #ifdef SIMPLESF
@@ -737,26 +719,6 @@ void VecFilename(char *achFile, int iType)
 	case OUT_UDOTFB_ARRAY:
 	    strncat(achFile,"uDotFB",256);
 	    break;
-#ifdef CHECKSF
-	case OUT_TOFF_YR_ARRAY:
-	    strncat(achFile,"tcooloff",256);
-	    break;
-	case OUT_TCOOL_YR_ARRAY:
-	    strncat(achFile,"tcoolyr",256);
-	    break;
-	case OUT_TDYN_YR_ARRAY:
-	    strncat(achFile,"tdynyr",256);
-	    break;
-	case OUT_RATIOSOUNDDYN_ARRAY:
-	    strncat(achFile,"rsnddyn",256);
-	    break;
-	case OUT_L_JEANS_ARRAY:
-	    strncat(achFile,"ljeans",256);
-	    break;
-	case OUT_ISMALL_JEANS_ARRAY:
-	    strncat(achFile,"ijeans",256);
-	    break;
-#endif
 #endif
 
 #ifdef SIMPLESF

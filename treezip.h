@@ -77,9 +77,6 @@ typedef struct TreeZipContext {
 	int nParticle;
 	int nNode;
 	int nBucket;
-#ifdef DEPTHCHECK
-	int maxdepth;
-#endif
 
 	/* Tree */
 	tznode root;

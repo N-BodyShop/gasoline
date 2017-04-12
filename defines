@@ -21,8 +21,6 @@ CD_XIRDVDSONSFULL
 CHABRIER              #Use the Chabrier 2003 IMF for starformation (See DOI:10.1086/376392)
 CHANGESOFT            #Allow gravitational softening lengths to vary with time
 CHECKSANITY           #Check the sanity of a newly read-in checkpoint
-CHECKSF               #Outputs to check on star formation (debug)
-CHECKSOFT             #Checks on gravitational softening (debug)
 CLOUDY                #Use CLOUDY version of line cooling
 COLLISIONS            #Use solid-body collisions (not compatible with -DGASOLINE)
 COLORCODE             #Color the particles and keep track of them (movie making?)
@@ -31,14 +29,12 @@ COMPLETE_LOCAL        #Use complete (rather than partial) multipole expansion
 CONFIG_BFLOAT_4
 CONFIG_BFLOAT_8
 CONTROLYHII           #Make sure error in YHII and YHeIII is controlled
-COOLDEBUG             #Output debugging information from the gas cooling (debug)
 COOLING_BATE
 COOLING_BOLEY
 COOLING_COSMO
 COOLING_DISK
 COOLING_GRACKLE
 COOLING_METAL
-COOLING_METAL_BROKEN  #Debug lines for outputting some extra data for debugging cooling_metal
 COOLING_MOLECULARH
 COOLING_PLANET
 COOLING_POLY
@@ -52,7 +48,6 @@ DELTACCELCAP          #Make sure that a particles neighbours have a say in it's 
 DENSITYU              Calculate modified energy-weighted density (used for cooling) (good for large density gradients)
 DENSITYUNOTP          More aggressive version of the energy-weighted density that ignores contribution from center
 DENSSOFT              #Use the SPH density for gravity softening
-DEPTHCHECK            #Debug how deep the tree goes during treebuilds
 DIFFUSION             #Enable Diffusion (of metals and energy)
 DIFFUSIONHARMONIC     #Use the harmonic sum for calculating thermal diffusion
 DIFFUSIONPRICE        #Daniel Price's Thermal Diffusion

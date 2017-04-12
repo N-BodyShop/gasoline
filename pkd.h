@@ -268,14 +268,6 @@ typedef struct particle {
     FLOAT fTimeCoolIsOffUntil;
     FLOAT fMassForm;        /* record original mass of star */
     int iGasOrder;          /* gas from which star formed */
-#ifdef CHECKSF
-    FLOAT tOff;
-    FLOAT tcool;
-    FLOAT tdyn;
-    FLOAT ratiosounddyn;
-    FLOAT l_jeans;
-    int   small_jeans;
-#endif
 #endif
 #endif  /* GASOLINE */
 #ifdef COLLISIONS

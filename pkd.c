@@ -587,10 +587,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->u *= 0.5;
                 p->uPred *= 0.5;
 #endif
-#ifdef COOLDEBUG
-                assert(p->u >= 0.0);
-                assert(p->uPred >= 0.0);
-#endif
                 xdr_float(&xdrs,&fTmp);
                 p->fSoft = fTmp;
 #ifdef CHANGESOFT
@@ -785,10 +781,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #endif
                 p->u = dTuFac*gp.temp;
                 p->uPred = dTuFac*gp.temp;
-#ifdef COOLDEBUG
-                assert(p->u >= 0.0);
-                assert(p->uPred >= 0.0);
-#endif
                 p->fMetals = gp.metals;
 #ifdef DIFFUSION
                 p->fMetalsPred = gp.metals;
@@ -2243,9 +2235,6 @@ void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSo
             }
     else {
             for (i=0;i<n;++i) {
-#ifdef CHECKSOFT              
-              if (p[i].iOrder == CHECKSOFT) fprintf(stderr,"Particle %i: %g %g %g %i %g\n",p[i].iOrder,p[i].fDensity,sqrt(p[i].fBall2*.25),p[i].fSoft,p[i].iActive,dSoftMax);
-#endif
               if (TYPETest(&(p[i]),iVariableSoftType) && TYPEQueryACTIVE(&(p[i]))) {
 #ifdef DENSSOFT
                   p[i].fSoft = pow((p[i].fMass*1.90986/p[i].fDensity),.3333333333);
@@ -2255,9 +2244,6 @@ void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSo
                   p[i].fSoft = (dTmp <= dSoftMax ? dTmp : dSoftMax);
 #endif
                       }
-#ifdef CHECKSOFT              
-              if (p[i].iOrder == CHECKSOFT) fprintf(stderr,"Particle %iA: %g %g %g %i %g\n",p[i].iOrder,p[i].fDensity,sqrt(p[i].fBall2*.25),p[i].fSoft,p[i].iActive,dSoftMax);
-#endif
                 }
             }
     }
@@ -4713,9 +4699,6 @@ void pkdCreateInflow(PKD pkd, int Ny, int iGasModel, double dTuFac, double pmass
 #ifdef GASOLINE
 #ifndef NOCOOLING
         if (iGasModel == GASMODEL_COOLING) { 
-#ifdef COOLDEBUG
-            pkd->Cool->p = &p; /* Send in particle pointer only for temporary debug */
-#endif
         CoolInitEnergyAndParticleData( pkd->Cool, &p.CoolParticle, &p.u, density, temp, p.fMetals );
         p.uPred = p.u;
         }
@@ -4856,9 +4839,6 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
         p->alpha = 0;
         p->dTime_divv = FLT_MAX;
         p->divv_old = 0;
-#endif
-#ifdef COOLDEBUG
-        if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
 #endif
 #ifdef STARFORM 
         p->uDotFB = 0.0;
@@ -5825,11 +5805,6 @@ int pkdSetType(PKD pkd, unsigned int iTestMask, unsigned int iSetMask)
 
     for(i=0;i<pkdLocal(pkd);++i) {
         p = &pkd->pStore[i];
-#ifdef COOLDEBUG
-        if (p->iOrder == 842079) fprintf(stderr,"Particle %i in pStore[%i]\n",p->iOrder,(int) (p-pkd->pStore));
-        assert(p->u >= 0.0);
-        assert(p->uPred >= 0.0);
-#endif
         /* DEBUG: Paranoia check */
         mdlassert(pkd->mdl,TYPETest(p,TYPE_ALL));
         if (TYPETest(p,iTestMask)) {
@@ -6375,9 +6350,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
             if ( bCool ) {
                 cp = p->CoolParticle;
                 E = p->u;
-#ifdef COOLDEBUG
-                cl->p = p; /* Send in particle pointer only for temporary debug */
-#endif
                 dtUse = dt;
 #ifdef STARFORM
                 if ( dTime < p->fTimeCoolIsOffUntil) {
@@ -6681,9 +6653,6 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime )
         if (TYPEQueryTREEACTIVE(p) && pkdIsGas(pkd,p)) {
 #ifndef NOCOOLING
             T = p->u / dTuFac;
-#ifdef COOLDEBUG
-            cl->p = p; /* Send in particle pointer only for temporary debug */
-#endif
             CoolInitEnergyAndParticleData( cl, &p->CoolParticle, &E, p->fDensity, T, p->fMetals );
             p->u = E;
 #endif
@@ -7477,10 +7446,6 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
 #endif
             if (iGasModel != GASMODEL_ISOTHERMAL && iGasModel != GASMODEL_GLASS) {
 #ifndef NOCOOLING
-#ifdef COOLDEBUG
-                if (p->uPred+p->uDot*duDelta < 0) 
-                    fprintf(stderr,"upred error %i: %g %g %g -> %g %i\n",p->iOrder,p->uPred,p->uDot,duDelta,p->uPred + p->uDot*duDelta,p->iRung);
-#endif
               p->uPred = p->uPred + p->uDot*duDelta;
               if (p->uPred < 0) {
                   FLOAT uold = p->uPred - p->uDot*duDelta;

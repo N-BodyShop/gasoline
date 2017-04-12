@@ -214,15 +214,6 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
 #endif
 #endif
           -UDOT_HYDRO(p) );
-#ifdef CHECKSF
-    int small_jeans = 0;
-    p->tOff = CoolCodeTimeToSeconds( cl, p->fTimeCoolIsOffUntil - dTime)/3.1557e7;  /* years - never used */
-    p->tcool = CoolCodeTimeToSeconds( cl, tcool)/3.1557e7;
-    p->tdyn = CoolCodeTimeToSeconds( cl, tdyn)/3.1557e7;
-    p->ratiosounddyn = sqrt(0.25*p->fBall2)/p->c/tdyn;
-    p->l_jeans = sqrt(M_PI*p->c*p->c/p->fDensity*dCosmoFac);
-    p->small_jeans = small_jeans;
-#endif
 #ifdef SFCONDITIONS
     double tsound;
     if(tcool < 0.0 && T > stfm->dTempMax) return 0;
@@ -239,9 +230,6 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
 /* New code: physical L_J vs. physics smoothing length (with multiplier) */
     if (l_jeans2 >= 0.25*p->fBall2*stfm->dExp*stfm->dExp*stfm->dSoftMin*stfm->dSoftMin) return 0;
 
-#ifdef CHECKSF
-    p->small_jeans = 1;
-#endif
 
 #else /* CHECKSF */
     if(T > stfm->dTempMax) return 0;

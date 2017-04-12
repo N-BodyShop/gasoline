@@ -2859,9 +2859,6 @@ void msrLogDefines(FILE *fp)
 #ifdef RADIATIVEBOX
  	fprintf(fp," RADIATIVEBOX");/* Estimate local LW radiation from the tree*/
 #endif
-#ifdef COOLDEBUG
- 	fprintf(fp," COOLDEBUG");
-#endif
 #ifdef NOEXTHEAT
  	fprintf(fp," NOEXTHEAT");
 #endif
@@ -8666,33 +8663,7 @@ void msrTopStepDKD(MSR msr, double dStep, double dTime, double dDelta,
 	}
 
 
-#ifdef CHECKSOFT
-#define CHECKSOFT_DIAGNOSTICOUTPUT() \
-	   { \
-	   char achFile[256];  \
-  	   fprintf(stderr,"Outputing .soft .dt .den tipsy\n"); \
-	   msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE|TYPE_DensZeroed); \
-	   msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1); \
-	   msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE); \
-	   msrBuildTree(msr,1,-1.0,1); \
-	   msrActiveType(msr,TYPE_ACTIVE,TYPE_DensACTIVE ); \
-	   msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1); \
-	   /*	   msrSmooth(msr,dTime,SMX_DENSITY,1);*/ \
-	   msrReorder(msr); \
-	   sprintf(achFile,"step%015.10f.soft",dTime); \
-	   msrOutArray(msr,achFile,OUT_SOFT_ARRAY); \
-	   sprintf(achFile,"step%015.10f.dt",dTime); \
-	   msrOutArray(msr,achFile,OUT_DT_ARRAY); \
-	   sprintf(achFile,"step%015.10f.pot",dTime); \
-	   msrOutArray(msr,achFile,OUT_POT_ARRAY); \
-	   sprintf(achFile,"step%015.10f.den",dTime); \
-	   msrOutArray(msr,achFile,OUT_DENSITY_ARRAY); \
-	   sprintf(achFile,"step%015.10f",dTime); \
-	   msrWriteTipsy(msr,achFile,dTime); \
-	   }
-#else
 #define CHECKSOFT_DIAGNOSTICOUTPUT()
-#endif
 
 
 void msrTopStepKDK(MSR msr,

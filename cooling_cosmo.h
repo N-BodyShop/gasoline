@@ -7,9 +7,6 @@
 #endif
 
 /* Global consts */
-#if defined(COOLDEBUG)
-#include "mdl.h"
-#endif
 #include "floattype.h"
 #include "param.h"
 
@@ -152,10 +149,6 @@ typedef struct CoolingPKDStruct {
    void       *DerivsData;
 /* Diagnostic */
    int        its;
-#if defined(COOLDEBUG) 
-   MDL        mdl; /* For diag/debug outputs */
-   struct particle *p; /* particle pointer NEVER TO BE USED EXCEPT FOR DEBUG */
-#endif
    
 } COOL;
 

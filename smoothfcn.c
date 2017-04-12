@@ -5329,9 +5329,6 @@ void combDistDeletedGas(void *vp1,void *vp2)
 			p1->fMetals = f1*p1->fMetals + f2*p2->fMetals;
 			p1->fMFracOxygen = f1*p1->fMFracOxygen + f2*p2->fMFracOxygen;
 			p1->fMFracIron = f1*p1->fMFracIron + f2*p2->fMFracIron;
-#ifdef COOLDEBUG
-			assert(p1->u >= 0.0);
-#endif
 			if(p1->uDot < 0.0)
 				p1->uDot = p1->uPred/fTCool;
 			
@@ -5442,9 +5439,6 @@ void DistDeletedGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
                 q->uHotPred = f1_hot*q->uHotPred+f2_hot*p->uHotPred;
                 }
 
-#ifdef COOLDEBUG
-            assert(q->u >= 0.0);
-#endif
             q->v[0] = f1*q->v[0]+f2*p->v[0];            
             q->v[1] = f1*q->v[1]+f2*p->v[1];            
             q->v[2] = f1*q->v[2]+f2*p->v[2];            
@@ -5733,9 +5727,6 @@ void DeleteGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	assert(TYPETest(p, TYPE_GAS));
 	fMasstot = 0;
-#ifdef COOLDEBUG
-	assert(p->fMass >= 0.0);
-#endif
 
 	for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;

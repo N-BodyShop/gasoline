@@ -1645,31 +1645,6 @@ void clAbunds( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal) {
     Y->HeII = yHeII;
     Y->HeIII = yHeIII;
     Y->Total = Y->e + yH + yHe + ZMetal/MU_METAL - Y->H2;/*Don't want to double count hydrogen atoms in molecules when finding the total number of particles */
-#ifdef COOLDEBUG
-    if (0) {
-        FILE *fpdebug;
-        fpdebug = fopen("lte.txt","a");
-        fprintf(fpdebug,"%#2f, %#2e, %g, %g, %g, %g, %g, %g, %g, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e, %#2e\n",
-            en_B, ye, Y->H2, Y->HI, Y->HII, Y->HeI, Y->HeII, Y->HeIII, ZMetal, Rate->CorreLength, s_dust, s_self,
-            Rate->Coll_HI,
-            Rate->Coll_HeI,
-            Rate->Coll_HeII,
-            Rate->Coll_e_H2,
-            Rate->Coll_HI_H2,
-            Rate->Coll_H2_H2,
-            Rate->Coll_HII_H2,
-            Rate->Radr_HII,
-            Rate->Totr_HeII,
-            Rate->Radr_HeII,
-            Rate->Radr_HeIII,
-            Rate->DustForm_H2,
-            Rate->Phot_HI,
-            Rate->Phot_HeI,
-            Rate->Phot_HeII,
-            Rate->Phot_H2);
-        fclose(fpdebug);
-        }
-#endif
     }
 
 #define CL_Rgascode         8.2494e7
@@ -2577,48 +2552,6 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
         + Y->HeI  * cl->R.Heat_Phot_HeI  * Rate->Phot_HeI
         + Y->HeII * cl->R.Heat_Phot_HeII * Rate->Phot_HeII;
 
-#ifdef COOLDEBUG
-  /*Debugging information on cooling and heating */
-  if (cl->p->iOrder == PARTICLEIORD) { 
-    if (0) { 
-      printf("\nEdot-> Total: %#2e, T: %#2f; rho: %#2f; Shield: %#2e\n",*dEdotHeat - *dEdotCool,Rate->T,en_B,s_dust*s_self);
-      printf("Edot-> HI: %#2e; H2: %#2e; HeI: %#2e, HeII: %#2e\n",Y->HI,Y->H2,Y->HeI,Y->HeII);
-      printf("Edot-> Line: %#2e, Coll %#2e, %#2e, Phot: %#2e, %#2e\n",
-	     ne*clCoolLineH2_e(Rate->T) * Y->H2 * CL_B_gm /*Re-added CL_B_gm 9/16/10, CC */ + 
-	     clCoolLineH2_HI(Rate->T) * en_B * Y->H2 * Y->HI * CL_B_gm  /*Re-added CL_B_gm 9/16/10, CC:
- clCoolLineH2_H(Rate->T) [erg cm^3 s^-1 H2atom^-1 HIatom^-1] * en_B [atom/cm^3] * Y->H2 [H2atom atom^-1] * Y->HI [HIatom atom^-1] CL_B_gm [atom g^-1] => [ergs s^-1 g^-1]*/ + 
-	     clCoolLineH2_H2(Rate->T) * en_B * Y->H2 * Y->H2 * CL_B_gm + 
-	     clCoolLineH2_He(Rate->T) * en_B * Y->H2 * Y->HeI * CL_B_gm + 
-	     clCoolLineH2_HII(Rate->T) * en_B * Y->H2 * Y->HII * CL_B_gm ,
-	     cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_e_H2*ne + cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_HI_H2*Y->HI*en_B + cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_H2_H2*Y->H2*en_B + cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_HII_H2*Y->HII*en_B,
-	     (cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_e_H2*ne + cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_HI_H2*Y->HI*en_B + cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_H2_H2*Y->H2*en_B + cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_HII_H2*Y->HII*en_B), /* *s_dust*s_self,removing shielding of collisions 9/22/10, CC*/
-	     Y->H2*cl->R.Heat_Phot_H2*Rate->Phot_H2,
-	     Y->H2*cl->R.Heat_Phot_H2*Rate->Phot_H2*s_self*s_dust);
-      printf("Edot-> Comp: %#2e, Brems: %#2e, Diel: %#2e, Radr: %#2e, Line: %#2e, Coll: %#2e\n",
-	     Y->e * cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb),
-	     ne*(clCoolBrem1(Rate->T) * ( Y->HII + Y->HeII ) + clCoolBrem2(Rate->T) * Y->HeIII),
-	     ne*(cl->R.Cool_Diel_HeII * Y->HeII * Rate->Diel_HeII),
-	     ne*(clCoolRadrHII(Rate->T) * Y->HII * Rate->Radr_HII + clCoolRadrHeII(Rate->T) * Y->HeII * Rate->Radr_HeII + clCoolRadrHeIII(Rate->T) * Y->HeIII * Rate->Radr_HeIII),
-	     ne*(clCoolLineHI(Rate->T) * Y->HI + clCoolLineHeI(Rate->T) * Y->HeI + clCoolLineHeII(Rate->T) * Y->HeII),
-	     ne*(cl->R.Cool_Coll_HI * Y->HI * Rate->Coll_HI +cl->R.Cool_Coll_HeI * Y->HeI * Rate->Coll_HeI + cl->R.Cool_Coll_HeII * Y->HeII * Rate->Coll_HeII)
-	     );
-      printf("Edot-> LowTCool: %#2e, MetalCool: %#2e, Sum: %#2e\n",
-	     LowTCool,
-	     Rate->Cool_Metal,
-	     Y->e * cl->R.Cool_Comp*(Rate->T-cl->R.Tcmb) + 
-	     ne*(clCoolBrem1(Rate->T)*(Y->HII + Y->HeII)+clCoolBrem2(Rate->T)*Y->HeIII) +  
-	     ne*(cl->R.Cool_Diel_HeII * Y->HeII * Rate->Diel_HeII) + 
-	     ne*(clCoolRadrHII(Rate->T) * Y->HII * Rate->Radr_HII + clCoolRadrHeII(Rate->T) * Y->HeII * Rate->Radr_HeII + clCoolRadrHeIII(Rate->T) * Y->HeIII * Rate->Radr_HeIII) + 
-	     ne*(clCoolLineHI(Rate->T)*Y->HI+clCoolLineHeI(Rate->T)*Y->HeI+clCoolLineHeII(Rate->T)*Y->HeII) +
-	     ne*(cl->R.Cool_Coll_HI*Y->HI*Rate->Coll_HI+cl->R.Cool_Coll_HeI*Y->HeI*Rate->Coll_HeI+cl->R.Cool_Coll_HeII*Y->HeII*Rate->Coll_HeII) + 
-	     LowTCool + Rate->Cool_Metal
-	     );
-      printf("Edot-> Phot: %#2e, Metal_Heat: %#2e",
-	     Y->HI*cl->R.Heat_Phot_HI*Rate->Phot_HI  + Y->HeI*cl->R.Heat_Phot_HeI*Rate->Phot_HeI + Y->HeII*cl->R.Heat_Phot_HeII*Rate->Phot_HeII + Y->H2*cl->R.Heat_Phot_H2*Rate->Phot_H2*s_dust*s_self,Rate->Heat_Metal);
-      printf("\n");
-    }
-  }
-#endif
 
 
   return *dEdotHeat - *dEdotCool;
@@ -2727,26 +2660,6 @@ void clDerivs(void *Data, double x, const double *y, double *dGain,
   nHII = en_B*d->Y.HII;
   nHminus = d->Rate.HI_e* d->Y.HI*d->Y.e/(d->Rate.HI_Hm*d->Y.HI + d->Rate.Coll_Hm_HII*d->Y.HI + d->Rate.Coll_Hm_e*d->Y.e);
 
-#ifdef COOLDEBUG
-  if (0) {
-  if (d->cl->p->iOrder == PARTICLEIORD) printf("%d, x: %e, en_B: %e, T: %e, HI: %e, H2: ,%e\n",d->cl->p->iOrder,x,en_B,T,d->Y.HI,d->Y.H2);
-    if (d->cl->p->iOrder == PARTICLEIORD) printf("GasForm: %e,  PhotH2: %e = %e * %e,  Coll_e: %e, Coll_H2: %e, Coll_HI: %e, Coll_HII: %e, Shield: %e, Shielded: %e, Dust: %e \n",	      
-	   d->Y.HI*nHminus*en_B*d->Rate.HI_Hm,
-          -1.0*d->Y.H2*d->Rate.Phot_H2,d->Y.H2,d->Rate.Phot_H2,
-          -1.0*d->Y.H2*d->Rate.Coll_e_H2*ne,
-          -1.0*d->Y.H2*d->Rate.Coll_H2_H2*nH2,
-          -1.0*d->Y.H2*d->Rate.Coll_HI_H2*nHI,
-          -1.0*d->Y.H2*d->Rate.Coll_HII_H2*nHI,
-               s_dust*s_self,
-       (d->Y.HI*nHminus*en_B*d->Rate.HI_Hm - /*gas phase formation, adel 97 */
-	     d->Y.H2*d->Rate.Phot_H2*s_dust*s_self -
-	     d->Y.H2*d->Rate.Coll_e_H2*ne - 
-	     d->Y.H2*d->Rate.Coll_H2_H2*nH2 -
-	     d->Y.H2*d->Rate.Coll_HI_H2*nHI -
-             d->Y.H2*d->Rate.Coll_HII_H2*nHII),
-       (d->Y.HI + 2.0*d->Y.H2)*d->Rate.DustForm_H2*nHI);
-  }
-#endif 
   dGain[4] = d->Y.HI*nHminus*en_B*d->Rate.HI_Hm + /*gas phase formation of H2, adel 97 */
             (d->Y.HI + 2.0*d->Y.H2)*d->Rate.DustForm_H2*nHI;
   dLoss[4] = d->Y.H2*d->Rate.Phot_H2*s_dust*s_self +
@@ -2872,56 +2785,6 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 
     EMin = clThermalEnergy( YTotal, cl->TMin );
 
-#ifdef COOLDEBUG
-  if (cl->p->iOrder == PARTICLEIORD) { 
-    printf("\ny[0]: %e, y[1]: %e, y[2]: %e, y[3]: %e, y[4] %e\n",y[0],y[1],y[2],y[3],y[4]);
-    /*    clDerivs( d, t, yin, &dHeat, &dCool ); *//*, sqrt(cl->p->fBall2/2.0) );*/
-    printf("tStep %g \n", tStep);
-    printf("%d: rho %g \n", cl->p->iOrder,rho*CL_B_gm); 
-    T = clTemperature( Y->Total, *E );
-    printf("Temperature %g \n", T);
-    printf("Y e:%g Total:%g H2:%g HI:%g HII:%g HeI:%g HeII:%g HeIII:%g\n",Y->e, YTotal, Y->H2, Y->HI, Y->HII, Y->HeI, Y->HeII, Y->HeIII);
-    /*   printf("dHeat[0]: %e, dHeat[1]: %e, dHeat[2]: %e, dHeat[3]: %e, dHeat[4] %e\n",dHeat[0],dHeat[1],dHeat[2],dHeat[3],dHeat[4]);
-	 printf("dCool[0]: %e, dCool[1]: %e, dCool[2]: %e, dCool[3]: %e, dCool[4] %e\n",dCool[0],dCool[1],dCool[2],dCool[3],dCool[4]);*/
-/*  printf("Cooling p %i: %f %f %g %g %g %g %f %f %g %g %g %g \n",cl->p->iOrder,cl->z,d->Rate.T,rho,cl->p->fMass,cl->p->fBall2,*E,ExternalHeating, ZMetal, d->Rate.Cool_Metal, d->Rate.Heat_Metal, clCoolTotal(cl, Y, &d->Rate, rho, ZMetal), clHeatTotal(cl, Y, &d->Rate, rho) ); 
-    printf("Cooling p %i \n", cl->p->iOrder); 
-    printf("temperature %g \n", d->Rate.T);
-    printf("redshift %g rho %g \n",cl->z, rho*CL_B_gm);
-    printf("PdV %e \n",ExternalHeating); 
-    printf("Y_H %g, Y_He %g \n", d->Y_H, d->Y_He); 
-    clPrintCool(cl, Y, &d->Rate, rho);  
-    printf("delt %e \n", tStep);  
-    printf("Ein %e \n", *E);
-    printf("dydt %e \n", (dydt-1)[1]); 
-    printf("totalcool %g \n",clCoolTotal(cl, Y, &d->Rate, rho, ZMetal)); 
-    printf("totalheat %g \n",clHeatTotal(cl, Y, &d->Rate, rho));
-    printf("metalcool %g \n", d->Rate.Cool_Metal); 
-    printf("metalheat %g \n", d->Rate.Heat_Metal); */
-    printf("Internal %e \n",CLEDOTINSTANT( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal, &dHeat, &dCool ));
-    printf("PdV %e \n",ExternalHeating); 
-    /*    printf("Edot %g, %g \n", dHeat[0], dCool[0]);*/
-    printf("dbCool %d \n",d->bCool);
-    printf("E %g \n", *E); 
-
-    
-    FILE *fpdebug;
-    fpdebug = fopen("cooldebug.txt","a");
-    fprintf(fpdebug, "\ntStep %g \n", tStep); 
-    fprintf(fpdebug, "Y e:%g Total:%g H2:%g HI:%g HII:%g HeI:%g HeII:%g HeIII:%g\n",Y->e, Y->Total, Y->H2, Y->HI, Y->HII, Y->HeI, Y->HeII, Y->HeIII); 
-    clPrintCoolFile(cl, Y, &d->Rate, rho,d->ZMetal, fpdebug);       
-    fprintf(fpdebug, "Metalicity %g \n", d->ZMetal);
-    fprintf(fpdebug, "redshift %g \n", cl->z);
-    fprintf(fpdebug, "rho %g \n", rho*CL_B_gm); 
-    fprintf(fpdebug, "temperature %g \n", T);
-    fprintf(fpdebug, "Y %g %g %g %g %g %g %g %g\n",Y->e, Y->Total, Y->H2, Y->HI, Y->HII, Y->HeI, Y->HeII, Y->HeIII); 
-    fprintf(fpdebug, "Internal %e \n",CLEDOTINSTANT( d->cl, &d->Y, &d->Rate, d->rho, d->ZMetal, &dHeat, &dCool ));
-    fprintf(fpdebug, "PdV %e \n",ExternalHeating);
-    /*    fprintf(fpdebug, "Edot %e, %e \n", dHeat[0], dCool[0] );  */
-    fprintf(fpdebug, "E %g \n", *E); 
-    /*fprintf(fpdebug, "units %e %e %e %e %e \n", cl->dGmPerCcUnit, cl->dComovingGmPerCcUnit, cl->dErgPerGmUnit, cl->dSecUnit, cl->dKpcUnit );*/
-    fclose(fpdebug);
-  }
- #endif
 
  {
      double ymin[array_length];
@@ -2999,27 +2862,6 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
    cl->its = 1;
    }
 
-#ifdef COOLDEBUG
-      if(cl->p->iOrder == PARTICLEIORD){
-	printf("%e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n",
-	       t,
-	       d->Rate.T, 
-	       d->rho*CL_B_gm, 
-	       d->ZMetal, 
-	       d->correL, 
-	       d->dLymanWerner,
-	       Y->H2,
-	       y[4],
-	       0, /*dydt[4],*/
-          -1.0*d->Y.H2*d->Rate.Phot_H2,
-          -1.0*d->Y.H2*d->Rate.Coll_e_H2*rho*CL_B_gm*Y->e,
-          -1.0*d->Y.H2*d->Rate.Coll_H2_H2*rho*CL_B_gm*Y->H2,
-          -1.0*d->Y.H2*d->Rate.Coll_HI_H2*rho*CL_B_gm*Y->HI,
-          -1.0*d->Y.H2*d->Rate.Coll_HII_H2*rho*CL_B_gm*Y->HII,
-               s_dust*s_self,
-               (d->Y.HI + 2.0*d->Y.H2)*d->Rate.DustForm_H2*rho*CL_B_gm*Y->HI);
-      }
-#endif
 
    *E = y[0];
    d->E = y[0];
@@ -3032,71 +2874,6 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
    Y->e = Y->HII + Y->HeII + 2*Y->HeIII;
    Y->Total =  Y->e + d->Y_H + d->Y_He + d->ZMetal/MU_METAL - Y->H2; /*as two hydrogen atoms make one molecular hydrogen particle, subtract off number of molecules to avoid double counting particles CC */
 
-#ifdef COOLDEBUG
-   /* Table of cooling and heating terms that can be read into an idl function to create a nice cooling curve*/
-   if (cl->p->iOrder == PARTICLEIORD) {
-     FILE *cooldebug;
-     cooldebug = fopen("cooldebug_table.txt","a");
-     double en_B = d->rho*CL_B_gm, Edot, LowTCool;
-     double ne = en_B*Y->e;
-     RATE *Rate = &d->Rate;
-
-     T = clTemperature( Y->Total, *E );
-     CLRATES( d->cl, &d->Rate, T, d->rho, d->ZMetal, d->correL, d->dLymanWerner);
-     s_dust = clDustShield(Y->HI*en_B, Y->H2*en_B, d->ZMetal, Rate->CorreLength);
-     s_self = clSelfShield(Y->H2*en_B, Rate->CorreLength);
-#define DTFRACLOWTCOOL 0.25
-     if (Rate->T > cl->R.Tcmb*(1+DTFRACLOWTCOOL))
-       LowTCool = clCoolLowT(Rate->T)*cl->R.Cool_LowTFactor*en_B*ZMetal;
-     else if (Rate->T < cl->R.Tcmb*(1-DTFRACLOWTCOOL))
-       LowTCool = -clCoolLowT(Rate->T)*cl->R.Cool_LowTFactor*en_B*ZMetal;
-     else {
-       double x = (Rate->T/cl->R.Tcmb-1)*(1./DTFRACLOWTCOOL);
-       LowTCool = -clCoolLowT(Rate->T)*cl->R.Cool_LowTFactor*en_B*ZMetal
-	 *x*(3-3*fabs(x)+x*x);
-      }
-
-     Edot = clEdotInstant( cl, &d->Y, &d->Rate, d->rho, d->ZMetal, &dHeat, &dCool );
-     /*T [K]  Density  e  H2  HI  HII  HeI  HeII  HeIII  shield  Edot  Cool_Comp  Brem  Diel  Radr  LineHI  LineHeI  LineHeII  LineH2_H  LineH2_H2  LineH2_He  LineH2_e  LineH2_HII  Coll  CollH2  LowT  MCool  Cool  Phot  PhotH2  MHeat     */
-     fprintf(cooldebug,"%15f, %15e, %15f, %15e, %15g, %15g, %15g, %15g, %15g, %15g, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e, %15e\n",
-             T, y[0], en_B, ne, Y->H2, Y->HI, Y->HII, Y->HeI, Y->HeII, Y->HeIII, s_dust*s_self, Edot,
-	     -1.0*Y->e*cl->R.Cool_Comp*(T - cl->R.Tcmb),
-	     -1.0*ne*(clCoolBrem1(T) * ( Y->HII + Y->HeII ) + clCoolBrem2(T) * Y->HeIII),
-	     -1.0*ne*(cl->R.Cool_Diel_HeII * Y->HeII * Rate->Diel_HeII),
-	     -1.0*ne*(clCoolRadrHII(T)*Y->HII*Rate->Radr_HII + 
-                      clCoolRadrHeII(T)*Y->HeII*Rate->Radr_HeII + 
-                      clCoolRadrHeIII(T)*Y->HeIII*Rate->Radr_HeIII),
-	     -1.0*ne*(clCoolLineHI(T)*Y->HI),
-	     -1.0*ne*(clCoolLineHeI(T)*Y->HeI),
-	     -1.0*ne*(clCoolLineHeII(T)*Y->HeII),
-	     -1.0*clCoolLineH2_HI(Rate->T)*en_B*  Y->HI*Y->H2* CL_B_gm, 
-	     -1.0*clCoolLineH2_H2(Rate->T)*en_B* Y->H2*Y->H2* CL_B_gm, 
-	     -1.0*clCoolLineH2_He(Rate->T)*en_B* Y->HeI*Y->H2*CL_B_gm,
-	     -1.0*clCoolLineH2_e(Rate->T)*ne*          Y->H2* CL_B_gm,
-	     -1.0*clCoolLineH2_HII(Rate->T)*en_B*Y->HII*Y->H2*CL_B_gm,
-	     -1.0*ne*(cl->R.Cool_Coll_HI*Y->HI*Rate->Coll_HI + cl->R.Cool_Coll_HeI*Y->HeI*Rate->Coll_HeI + cl->R.Cool_Coll_HeII*Y->HeII*Rate->Coll_HeII),
-	     -1.0*cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_e_H2 *        ne, /**s_dust*s_self, removing shielding of collisions 9/22/10, CC*/
-	     -1.0*cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_HI_H2 *Y->HI*en_B, /**s_dust*s_self, removing shielding of collisions 9/22/10, CC*/
-	     -1.0*cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_H2_H2*Y->H2*en_B, /**s_dust*s_self, removing shielding of collisions 9/22/10 CC*/
-	     LowTCool,
-	     -1.0*Rate->Cool_Metal,
-	     -1.0*(   Y->e*cl->R.Cool_Comp*(T-cl->R.Tcmb) + 
-	              ne*(clCoolBrem1(T)*(Y->HII + Y->HeII) + clCoolBrem2(T)*Y->HeIII) +  
-	              ne*(cl->R.Cool_Diel_HeII*Y->HeII*Rate->Diel_HeII) + 
-	              ne*(clCoolRadrHII(T)*Y->HII*Rate->Radr_HII + clCoolRadrHeII(T)*Y->HeII*Rate->Radr_HeII + clCoolRadrHeIII(T)*Y->HeIII*Rate->Radr_HeIII) + 
-	              ne*(clCoolLineHI(T)*Y->HI + clCoolLineHeI(T)*Y->HeI + clCoolLineHeII(T)*Y->HeII) +
-	              ne*(cl->R.Cool_Coll_HI*Y->HI*Rate->Coll_HI + cl->R.Cool_Coll_HeI*Y->HeI*Rate->Coll_HeI + cl->R.Cool_Coll_HeII*Y->HeII*Rate->Coll_HeII) + 
-		      CL_B_gm*(ne*clCoolLineH2_e(Rate->T)*Y->H2 + clCoolLineH2_HI(Rate->T)*en_B*Y->H2*Y->HI + clCoolLineH2_H2(Rate->T)*en_B*Y->H2*Y->H2 + clCoolLineH2_He(Rate->T)*en_B*Y->H2*Y->HeI + clCoolLineH2_HII(Rate->T)*en_B*Y->H2*Y->HII) + 
-		      cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_e_H2 + cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_HI_H2*Y->HI*en_B + cl->R.Cool_Coll_H2*Y->H2*Rate->Coll_H2_H2*Y->H2*en_B +/*removing shielding of collisions 9/22/10 CC*/
-		      LowTCool + Rate->Cool_Metal),
-	     Y->HI*cl->R.Heat_Phot_HI*Rate->Phot_HI + 
-                       Y->HeI*cl->R.Heat_Phot_HeI*Rate->Phot_HeI + 
-                       Y->HeII*cl->R.Heat_Phot_HeII*Rate->Phot_HeII,
-	     Y->H2*cl->R.Heat_Phot_H2*Rate->Phot_H2*s_dust*s_self,
-	     Rate->Heat_Metal);
-    fclose(cooldebug);
-  }
-#endif
  }
 
 /* Module Interface routines */
@@ -3287,24 +3064,6 @@ void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, doubl
 	CoolPERBARYONtoPARTICLE(cl, &Y,cp, ZMetal);
 	*E = clThermalEnergy(Y.Total,dTemp)*cl->diErgPerGmUnit;
 
-#ifdef COOLDEBUG
-    if (cl->p->iOrder == 1) {
-        FILE *cooldebug;
-        /* Output heading for table of coooling of the gas particle*/
-        cooldebug = fopen("cooldebug_table.txt","w");
-        /*	fprintf(cooldebug,"%15s",T [K]     energy        Density   e            H2  HI           HII     HeI    HeII         HeIII    shield        Edot            Cool_Comp      Brem           Diel          Radr           LineHI   LineHeI   LineHeII  LineH2_H       LineH2_H2       LineH2_He     LineH2_e       LineH2_HII    Coll          CollH2         LowT            MCool         Cool           Phot           PhotH2       MHeat);*/
-        fprintf(cooldebug,"%15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s\n",
-            "T [K]","Energy","Density","e","H2","HI","HII","HeI","HeII","HeIII","shield","Edot","Cool_Comp","Brem","Diel","Radr","LineHI","LineHeI","LineHeII","LineH2_H","LineH2_H2","LineH2_He","LineH2_e","LineH2_HII","Coll","CollH2_e","CollH2_H","CollH2_H2","LowT","MCool","Cool","Phot","PhotH2","MHeat");
-        fclose(cooldebug);
-        }
-
-    if (cl->p->iOrder == 1) {
-        FILE *fpdebug;
-        fpdebug = fopen("cooldebug.txt","w");
-        fprintf(fpdebug,"\n");
-        fclose(fpdebug);
-        }
-#endif
     }
 
 void CoolInitRatesTable( COOL *cl, COOLPARAM CoolParam ) {
