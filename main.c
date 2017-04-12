@@ -607,9 +607,6 @@ int main(int argc,char **argv)
 					msrBuildTree(msr,1,-1.0,1);
 					msrSmooth(msr,dTime,SMX_DENSITY,1);
 					}
-#ifdef DENSITYUOLD
-				msrGetDensityU(msr);
-#endif
 				bDensitySmooth = msrDoDensity(msr) || msr->param.bDohOutput;
                 msrSelectOutputList(msr, &nOutputList, OutputList, iStep, bOutTime, &bDensitySmooth);
 

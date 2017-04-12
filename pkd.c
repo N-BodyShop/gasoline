@@ -5427,9 +5427,6 @@ pkdAccelStep(PKD pkd,double dEta,double dVelFac,double dAccFac,int bDoGravity,
                 }
             if (dT < pkd->pStore[i].dt)
                 pkd->pStore[i].dt = dT;
-#ifdef DTTEST
-            pkd->pStore[i].dt_accel = dT;
-#endif
             }
         }
     }
@@ -5498,12 +5495,6 @@ pkdDtToRung(PKD pkd,int iRung,double dDelta,int iMaxRung,
     iMaxRungIdeal = 0;
     nMaxRung = 0;
     for(i=0;i<pkdLocal(pkd);++i) {
-#ifdef DTTEST
-        PARTICLE *p = &pkd->pStore[i];
-        if(p->dt < DTTEST) {
-            fprintf(stderr, "p %d dt %e too small. accel: %e gaspressure: %e uex: %e pdv: %e diff: %e Sph_diff: %e Sph_cond: %e Sph_dvdotdr: %e Sph_av: %e\n", p->iOrder, p->dt, p->dt_accel, p->dt_gaspressure, p->dt_uex, p->dt_pdv, p->dt_diff, p->dt_Sph_diff, p->dt_Sph_cond, p->dt_Sph_dvdotdr, p->dt_Sph_av);
-        }
-#endif
         if(pkd->pStore[i].iRung >= iRung) {
             mdlassert(pkd->mdl,TYPEQueryACTIVE(&(pkd->pStore[i])));
             if(bAll) {          /* Assign all rungs at iRung and above */
@@ -6697,9 +6688,6 @@ void pkdGasPressure(PKD pkd, struct GasPressureContext *pgpc)
                 if (uTotDot > 0) dt = pgpc->dtFacCourant*sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
                 else dt = pgpc->dtFacCourant*sqrt(p->fBall2*0.25)/(2*(p->c));
                 if (dt < p->dt) p->dt = dt; // Update to scare the neighbours
-#ifdef DTTEST
-                p->dt_gaspressure = dt;
-#endif
                 }
 #endif
             }
@@ -6904,17 +6892,7 @@ double pkdDtFacCourant( double dEtaCourant, double dCosmoFac ) {
     }
 
 /* DTTEST should be defined to the dt value that going under will trigger the print */
-#ifdef DTTEST
-#define DTSAVE(_val,_label)  { \
-    if ((_label)[0]=='0') dTnSave=0; \
-    dTSave[dTnSave]=_val; \
-    strncpy(&dTLabel[dTnSave][0], _label, 3); \
-    dTLabel[dTnSave][3]='\0'; \
-    dTnSave++; \
-    }
-#else
 #define DTSAVE(_val,_label)
-#endif
 
 void
 pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, double duMinDt, double dDiffCoeff, double dEtaDiffusion, double dResolveJeans, int bViscosityLimitdt, double *pdtMinGas)
@@ -6922,11 +6900,6 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
     int i;
     PARTICLE *p;    
     double dT,dTu;
-#ifdef DTTEST
-    double dTSave[12],dtCut=DTTEST;
-    char dTLabel[12][4];
-    int dTnSave=0,nFail=0;
-#endif
 
     *pdtMinGas = DBL_MAX;
     for(i=0;i<pkdLocal(pkd);++i) {
@@ -6987,9 +6960,6 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                             *sqrt(p->fBall2*0.25/(4*(p->c*p->c+GAMMA_NONCOOL*uTotDot*p->dt)));
                         DTSAVE(dtExtrap,"UEX");
                         if (dtExtrap < dT) dT = dtExtrap; 
-#ifdef DTTEST
-                        p->dt_uex = dtExtrap;
-#endif
                         }
                     }
 #endif
@@ -7010,9 +6980,6 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                     dTu = dEtauDot*uEff/fabs(p->uDotPdV);
                     DTSAVE(dTu,"PDV");
                     if (dTu < dT) dT = dTu;
-#ifdef DTTEST
-                    p->dt_pdv = dTu;
-#endif
                     }
 #ifdef DIFFUSION
 #ifdef THERMALCOND
@@ -7032,26 +6999,8 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                         /(dDiffCoeff*p->diff);  
                     DTSAVE(dTD,"DIF");
                     if (dTD < dT) dT = dTD;
-#ifdef DTTEST
-                    p->dt_diff = dTD;
-#endif
                     }
 #endif
-#endif
-#ifdef DTTEST                
-                if ((dT < dtCut && nFail < 10)) {
-                    int j;
-                    double T;
-                    nFail++;
-                    dtCut=dT; /* Try to print extreme low dt's */
-                    fprintf(stderr,"dt problem %d: dt %g < %g",p->iOrder,dT,DTTEST);
-                    for (j=0;j<dTnSave;j++) fprintf(stderr,", %3s %g",&dTLabel[j][0],dTSave[j]);
-                    fprintf(stderr,"\n");
-#ifndef NOCOOLING
-                    T = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->uPred, p->fDensity, p->fMetals );
-#endif
-                    /*fprintf(stderr,"u %g T %g %g c %g h %g divv %g rho %g Z %g dtdiff %g %g\n",p->uPred,p->uPred/4802.57,T,p->c,sqrt(0.25*p->fBall2),p->divv,p->fDensity,p->fMetals,p->uPred/(fabs(p->uDotDiff)+1e-20),p->fThermalCond);*/
-                    }
 #endif
                 if(dT < p->dt) p->dt = dT;
                 }

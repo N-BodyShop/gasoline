@@ -255,25 +255,16 @@ void NullSmooth(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf) {
 void initDensity(void *p)
 {
 	((PARTICLE *)p)->fDensity = 0.0;
-#ifdef DENSITYUOLD
-	((PARTICLE *)p)->fDensityU = 0.0;
-#endif
 	}
 
 void combDensity(void *p1,void *p2)
 {
 	((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
-#ifdef DENSITYUOLD
-	((PARTICLE *)p1)->fDensityU += ((PARTICLE *)p2)->fDensityU;
-#endif
 	}
 
 void Density(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     {
     FLOAT ih2,r2,rs,fDensity,fNorm;
-#ifdef DENSITYUOLD
-	FLOAT fDensityU = 0;
-#endif
 	int i;
 
 	ih2 = 4.0/BALL2(p);
@@ -285,9 +276,6 @@ void Density(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 		KERNEL(rs,r2);
 		fDensity += rs*nnList[i].pPart->fMass;
-#ifdef DENSITYUOLD
-		p->fDensityU += rs*nnList[i].pPart->fMass*(nnList[i].pPart->uPred+smf->uMin);
-#endif
 		}
 #ifdef SPH1D
     fNorm = (2/3.)*sqrt(ih2);
@@ -295,9 +283,6 @@ void Density(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     fNorm = M_1_PI*sqrt(ih2)*ih2;
 #endif
 	p->fDensity = fNorm*fDensity; 
-#ifdef DENSITYUOLD
-	p->fDensityU = fNorm*fDensityU;
-#endif
 	}
 
 void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
@@ -319,10 +304,6 @@ void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q = nnList[i].pPart;
 		p->fDensity += rs*q->fMass;
 		q->fDensity += rs*p->fMass;
-#ifdef DENSITYUOLD
-		p->fDensityU += rs*q->fMass*(q->uPred+smf->uMin);
-		q->fDensityU += rs*p->fMass*(p->uPred+smf->uMin);
-#endif
 		}
 	}
 
@@ -436,33 +417,21 @@ void DensityTmpSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 void initParticleMarkDensity(void *p)
 {
 	((PARTICLE *)p)->fDensity = 0.0;
-#ifdef DENSITYUOLD
-	((PARTICLE *)p)->fDensityU = 0.0;
-#endif
 	TYPESet((PARTICLE *) p,TYPE_DensZeroed);
 	}
 
 void initMarkDensity(void *p)
 {
 	((PARTICLE *)p)->fDensity = 0.0;
-#ifdef DENSITYUOLD
-	((PARTICLE *)p)->fDensityU = 0.0;
-#endif
 	}
 
 void combMarkDensity(void *p1,void *p2)
 {
         if (TYPETest((PARTICLE *) p1,TYPE_DensZeroed)) {
 		((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
-#ifdef DENSITYUOLD
-		((PARTICLE *)p1)->fDensityU += ((PARTICLE *)p2)->fDensityU;
-#endif
         }
 	else if (TYPETest((PARTICLE *) p2,TYPE_DensZeroed)) {
 		((PARTICLE *)p1)->fDensity = ((PARTICLE *)p2)->fDensity;
-#ifdef DENSITYUOLD
-		((PARTICLE *)p1)->fDensityU = ((PARTICLE *)p2)->fDensityU;
-#endif
 		}
     ((PARTICLE *)p1)->iActive |= (((PARTICLE *)p2)->iActive & TYPE_MASK);
 	}
@@ -495,20 +464,11 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			q = nnList[i].pPart;
 			assert(TYPETest(q,TYPE_GAS));
 			p->fDensity += rs*q->fMass;
-#ifdef DENSITYUOLD
-			p->fDensityU += rs*q->fMass*(q->uPred+smf->uMin);
-#endif
 			if (TYPETest(q,TYPE_DensZeroed)) {
 				q->fDensity += rs*p->fMass;
-#ifdef DENSITYUOLD
-				q->fDensityU += rs*p->fMass*(p->uPred+smf->uMin);
-#endif
 			    }
 			else {
 				q->fDensity = rs*p->fMass;
-#ifdef DENSITYUOLD
-				q->fDensityU = rs*p->fMass*(p->uPred+smf->uMin);
-#endif
 				TYPESet(q, TYPE_DensZeroed);
 				}
 			TYPESet(q,TYPE_NbrOfACTIVE);
@@ -524,28 +484,16 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			assert(TYPETest(q,TYPE_GAS));
 			if (TYPETest(p,TYPE_DensZeroed)) {
 				p->fDensity += rs*q->fMass;
-#ifdef DENSITYUOLD
-				p->fDensityU += rs*q->fMass*(q->uPred+smf->uMin);
-#endif
 			    }
 			else {
 				p->fDensity = rs*q->fMass;
-#ifdef DENSITYUOLD
-				p->fDensityU = rs*q->fMass*(q->uPred+smf->uMin);
-#endif
 				TYPESet(p,TYPE_DensZeroed);
 				}
 			if (TYPETest(q,TYPE_DensZeroed)) {
 				q->fDensity += rs*p->fMass;
-#ifdef DENSITYUOLD
-				q->fDensityU += rs*p->fMass*(p->uPred+smf->uMin);
-#endif
 			    }
 			else {
 				q->fDensity = rs*p->fMass;
-#ifdef DENSITYUOLD
-				q->fDensityU = rs*p->fMass*(p->uPred+smf->uMin);
-#endif
 				TYPESet(q, TYPE_DensZeroed);
 				}
 			qiActive |= q->iActive;
@@ -559,9 +507,6 @@ void initParticleMarkIIDensity(void *p)
 	if (TYPEFilter((PARTICLE *) p,TYPE_DensACTIVE|TYPE_DensZeroed,
 				   TYPE_DensACTIVE)) {
 		((PARTICLE *)p)->fDensity = 0.0;
-#ifdef DENSITYUOLD
-		((PARTICLE *)p)->fDensityU = 0.0;
-#endif
 		TYPESet((PARTICLE *)p,TYPE_DensZeroed);
 /*		if (((PARTICLE *)p)->iOrder == CHECKSOFT) fprintf(stderr,"Init Zero Particle 3031A: %g \n",((PARTICLE *) p)->fDensity);*/
 		}
@@ -570,9 +515,6 @@ void initParticleMarkIIDensity(void *p)
 void initMarkIIDensity(void *p)
     {
     ((PARTICLE *) p)->fDensity = 0.0;
-#ifdef DENSITYUOLD
-    ((PARTICLE *)p)->fDensityU = 0.0;
-#endif
 /*    if (((PARTICLE *)p)->iOrder == CHECKSOFT) fprintf(stderr,"Init Cache Zero Particle 3031A: %g \n",((PARTICLE *) p)->fDensity);*/
     }
 
@@ -581,15 +523,9 @@ void combMarkIIDensity(void *p1,void *p2)
     if (TYPETest((PARTICLE *) p1,TYPE_DensACTIVE)) {
 	if (TYPETest((PARTICLE *) p1,TYPE_DensZeroed)) {
 	    ((PARTICLE *)p1)->fDensity += ((PARTICLE *)p2)->fDensity;
-#ifdef DENSITYUOLD
-	    ((PARTICLE *)p1)->fDensityU += ((PARTICLE *)p2)->fDensityU;
-#endif
 	    }
 	else if (TYPETest((PARTICLE *) p2,TYPE_DensZeroed)) {
 	    ((PARTICLE *)p1)->fDensity = ((PARTICLE *)p2)->fDensity;
-#ifdef DENSITYUOLD
-	    ((PARTICLE *)p1)->fDensityU = ((PARTICLE *)p2)->fDensityU;
-#endif
 	    TYPESet((PARTICLE *)p1,TYPE_DensZeroed);
 	    }
 	}
@@ -623,23 +559,14 @@ void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    KERNEL(rs,r2);
 	    rs *= fNorm;
 	    p->fDensity += rs*q->fMass;
-#ifdef DENSITYUOLD
-	    p->fDensityU += rs*q->fMass*(q->uPred+smf->uMin);
-#endif
 /*	    if (p->iOrder == CHECKSOFT) fprintf(stderr,"DensActive Particle %iA: %g %i  %g\n",p->iOrder,p->fDensity,q->iOrder,q->fMass);*/
 	    if (TYPETest(q,TYPE_DensACTIVE)) {
 		if (TYPETest(q,TYPE_DensZeroed)) {
 		    q->fDensity += rs*p->fMass;
-#ifdef DENSITYUOLD
-		    q->fDensityU += rs*p->fMass*(p->uPred+smf->uMin);
-#endif
 /*		    if (q->iOrder == CHECKSOFT) fprintf(stderr,"qDensActive Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		    }
 		else {
 		    q->fDensity = rs*p->fMass;
-#ifdef DENSITYUOLD
-		    q->fDensityU = rs*p->fMass*(p->uPred+smf->uMin);
-#endif
 		    TYPESet(q,TYPE_DensZeroed);
 /*		    if (q->iOrder == CHECKSOFT) fprintf(stderr,"zero qDensActive Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		    }
@@ -659,16 +586,10 @@ void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    rs *= fNorm;
 	    if (TYPETest(q,TYPE_DensZeroed)) {
 		q->fDensity += rs*p->fMass;
-#ifdef DENSITYUOLD
-		q->fDensityU += rs*p->fMass*(p->uPred+smf->uMin);
-#endif
 /*		if (q->iOrder == CHECKSOFT) fprintf(stderr,"qActive Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		}
 	    else {
 		q->fDensity = rs*p->fMass;
-#ifdef DENSITYUOLD
-		q->fDensityU = rs*p->fMass*(p->uPred+smf->uMin);
-#endif
 		TYPESet(q,TYPE_DensZeroed);
 /*		if (q->iOrder == CHECKSOFT) fprintf(stderr,"zero qActive Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		}
@@ -685,16 +606,10 @@ void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    rs *= fNorm;
 	    if (TYPETest(q,TYPE_DensZeroed)) {
 		q->fDensity += rs*p->fMass;
-#ifdef DENSITYUOLD
-		q->fDensityU += rs*p->fMass*(p->uPred+smf->uMin);
-#endif
 /*		if (q->iOrder == CHECKSOFT) fprintf(stderr,"qOther Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		}
 	    else {
 		q->fDensity = rs*p->fMass;
-#ifdef DENSITYUOLD
-		q->fDensityU = rs*p->fMass*(p->uPred+smf->uMin);
-#endif
 		TYPESet(q,TYPE_DensZeroed);
 /*		if (q->iOrder == CHECKSOFT) fprintf(stderr,"zero qOther Particle %iA: %g %i \n",q->iOrder,q->fDensity,p->iOrder);*/
 		}
@@ -3073,17 +2988,9 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef RTFORCE
 /* The DIVVCORRBAD corrector is better on average but is pathological with very
    uneven particle distributions (very large density gradients) */
-#ifdef DIVVCORRBAD
-    p->fDivv_Corrector = (divvbad != 0 ? -(3/2.)/(divvbad*fNorm1) : 1); /* fNorm1 normalization includes 0.5 */
-#else
     p->fDivv_Corrector = (divvj != 0 ? divvi/divvj : 1); /* RTFORCE CORR */
-#endif
-#else
-#ifdef DIVVCORRBAD
-    p->fDivv_Corrector = (divvi != 0 ? -(3/2.)/(divvi*fNorm1) : 1); /* fNorm1 normalization includes 0.5 */
 #else
     p->fDivv_Corrector = 1;
-#endif
 #endif
 //#endif
 

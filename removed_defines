@@ -1,0 +1,5 @@
+DENSITYUOLD           #DEPRECATED
+DIVVCORRBAD           #Better corrector on average but pathological with very uneven particle distributions
+DTTEST                #Print debug info for particles with dt values below this
+FBPARTICLEMIMIC       #Inject the same mass/energy as FBPARTICLE
+FBPARTICLE            #Use particle creation for feedback (for testing only)

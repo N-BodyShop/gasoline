@@ -53,7 +53,6 @@ DELTAACCELACTIVE      #Check that only active particles are used for updating a 
 DELTACCELCAP          #Make sure that a particles neighbours have a say in it's timestep.
 DENSITYU              Calculate modified energy-weighted density (used for cooling) (good for large density gradients)
 DENSITYUNOTP          More aggressive version of the energy-weighted density that ignores contribution from center
-DENSITYUOLD           #DEPRECATED
 DENSSOFT              #Use the SPH density for gravity softening
 DEPTHCHECK            #Debug how deep the tree goes during treebuilds
 DIFFUSION             #Enable Diffusion (of metals and energy)
@@ -61,7 +60,6 @@ DIFFUSIONHARMONIC     #Use the harmonic sum for calculating thermal diffusion
 DIFFUSIONPRICE        #Daniel Price's Thermal Diffusion
 DIFFUSIONSHOCKCOND    #Enable conduction to prevent wall heating in shocks
 DIFFUSIONTHERMAL      #Enable Thermal Diffusion (DEPRECATED - automatically included with -DDIFFUSION)
-DIVVCORRBAD           #Better corrector on average but pathological with very uneven particle distributions
 DIVVOFF               #Remove the convergent flow requirement for starformation
 DKDENSITY             #Calculate the density using the derivative of the kernel in the DVDX calculation of density
 DODVDS                #Different estimate of Balsara switch instead of divv
@@ -69,10 +67,9 @@ DRHODTDIVOUT          #Output Divv variables used in DRHODT
 DRHODTTEST            #Output a large list of properties important for the DRHODT parts of the code for debugging
 DRHODT                #Use the change in density over time (dRho/dt) 
 DTADJUST              #Readjust timesteps if near short timestep particles -- required for good energy conservation
-DTTEST                #Print debug info for particles with dt values below this
 EPSACCH               #Use sph H not softening to calculate acceleration timestep, even if softening smaller
 EXTRASINKDATA
-FBPARTICLEMIMIC
+FBPARTICLEMIMIC       #Inject the same mass/energy as FBPARTICLE
 FBPARTICLE            #Use particle creation for feedback (for testing only)
 FEEDBACKDIFFLIMIT     #Disable thermal diffusion for particles that have their cooling shut off
 FITDVDX               #Use a fitted version of the DenDVDX 

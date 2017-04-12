@@ -2949,9 +2949,6 @@ void msrLogDefines(FILE *fp)
     fprintf(stderr,"TTEST is not a valid macro\n");
     assert(0);
 #endif
-#ifdef DTTEST
-	fprintf(fp, " DTTEST=%g",DTTEST);
-#endif
 #ifdef EPSACCH
         fprintf(fp, " ESPACCH");
 #endif
@@ -9937,9 +9934,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     msrReSmooth(msr,dTime,SMX_SMOOTHBSW,1);
 #endif
 
-#if defined(DENSITYU) && defined(DENSITYUOLD)
-    msrGetDensityU(msr);
-#endif
 /*
 ** Calculate Pressure
 */
