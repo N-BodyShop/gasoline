@@ -46,33 +46,11 @@
         #define DIFFUSIONBase() double diffSum = (p->diff+q->diff); \
                                 double diffBase = (DIFFUSIONLimitTest() ? 0 : diffSum);
     #endif
-    #ifdef MASSDIFF
-        #define MASSDIFFFAC(pother_) ((pother_)->fMass)
-        #define DIFFUSIONMetalsBase() double diffMetalsBase = 4*smf->dMetalDiffusionCoeff*diffBase   \
-             /((p->fDensity+q->fDensity)*(p->fMass+q->fMass));
-        #define DIFFUSIONMass() \
-            { double diff = diffMetalsBase*(p->fMass - q->fMass); \
-              PACTIVE( p->fMassDot += diff*p->fMass*rq ); \
-              QACTIVE( q->fMassDot -= diff*q->fMass*rp ); \
-            }
-        #define DIFFUSIONVelocity() \
-            { double diff0 = diffMetalsBase*(p->v[0] - q->v[0]); \
-              double diff1 = diffMetalsBase*(p->v[1] - q->v[1]); \
-              double diff2 = diffMetalsBase*(p->v[2] - q->v[2]); \
-              PACTIVE( ACCEL(p,0) += diff0*rq*MASSDIFFFAC(q) ); \
-              QACTIVE( ACCEL(q,0) -= diff0*rp*MASSDIFFFAC(p) ); \
-              PACTIVE( ACCEL(p,1) += diff1*rq*MASSDIFFFAC(q) ); \
-              QACTIVE( ACCEL(q,1) -= diff1*rp*MASSDIFFFAC(p) ); \
-              PACTIVE( ACCEL(p,2) += diff2*rq*MASSDIFFFAC(q) ); \
-              QACTIVE( ACCEL(q,2) -= diff2*rp*MASSDIFFFAC(p) ); \
-            }
-    #else
         #define MASSDIFFFAC(pother_) 1
         #define DIFFUSIONMetalsBase() double diffMetalsBase = 2*smf->dMetalDiffusionCoeff*diffBase \
              /(p->fDensity+q->fDensity);
         #define DIFFUSIONMass()
         #define DIFFUSIONVelocity()
-    #endif
 #else
     #define DIFFUSIONBase()
     #define DIFFUSIONMetalsBase()

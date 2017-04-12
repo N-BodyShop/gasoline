@@ -2847,9 +2847,6 @@ void initSphPressureTermsParticle(void *p)
 		((PARTICLE *)p)->fMFracOxygenDot = 0.0;
 		((PARTICLE *)p)->fMFracIronDot = 0.0;
 #endif /* STARFORM */
-#ifdef MASSDIFF
-		((PARTICLE *)p)->fMassDot = 0.0;
-#endif 
 #endif /* DIFFUSION */
 		}
 	}
@@ -2879,9 +2876,6 @@ void initSphPressureTerms(void *p)
 		((PARTICLE *)p)->fMFracOxygenDot = 0.0;
 		((PARTICLE *)p)->fMFracIronDot = 0.0;
 #endif /* STARFORM */
-#ifdef MASSDIFF
-		((PARTICLE *)p)->fMassDot = 0.0;
-#endif 
 #endif /* DIFFUSION */
 		}
 	}
@@ -2910,9 +2904,6 @@ void combSphPressureTerms(void *p1,void *p2)
 		((PARTICLE *)p1)->fMFracOxygenDot += ((PARTICLE *)p2)->fMFracOxygenDot;
 		((PARTICLE *)p1)->fMFracIronDot += ((PARTICLE *)p2)->fMFracIronDot;
 #endif /* STARFORM */
-#ifdef MASSDIFF
-		((PARTICLE *)p1)->fMassDot += ((PARTICLE *)p2)->fMassDot;
-#endif 
 #endif /* DIFFUSION */
 		}
 		if (((PARTICLE *)p2)->dtNew < ((PARTICLE *)p1)->dtNew)

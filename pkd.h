@@ -198,10 +198,6 @@ typedef struct particle {
     FLOAT diff;
     FLOAT fMetalsDot;
     FLOAT fMetalsPred;
-#ifdef MASSDIFF
-    FLOAT fMassDot;
-    FLOAT fMass0;
-#endif
 #endif
 #ifdef DENSITYU
     FLOAT fDensityU;

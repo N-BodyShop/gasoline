@@ -2164,12 +2164,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    assert(0);
 	    }
 #endif
-#ifndef LONGRANGESTEP
 	if (msr->param.bLongRangeStep) {
 	    fprintf(stderr,"ERROR: bLongRangeStep requires -DLONGRANGESTEP.\n");
 	    assert(0);
 	    }
-#endif
 #ifndef DIFFUSION
 	if (prmSpecified(msr->prm,"dMetalDiffusionCoeff")) {
 	    fprintf(stderr,"ERROR: Metal Diffusion Rate specified but not compiled for\nUse -DDIFFUSION during compilation\n");
@@ -2975,9 +2973,6 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef DIFFUSIONPRICE
 	fprintf(fp, " DIFFUSIONPRICE");
-#endif
-#ifdef MASSDIFF
-	fprintf(fp, " MASSDIFF");
 #endif
 #ifdef VARALPHA
         fprintf(fp, " VARALPHA");

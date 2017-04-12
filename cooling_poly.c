@@ -207,14 +207,10 @@ void clIntegrateEnergy(COOL *cl, double *E,
       if (dtnext >= tStep-t) dtnext = tStep-t;
       StiffStep( sbs, (E-1), (&dEdt)-1,  &t, dtnext, (&Ein)-1, &dtused, &dtnext );
       Eold = *E;
-#ifdef ASSERTENEG      
-      assert(*E > 0);
-#else
       if (*E < EMin) {
 	*E = EMin;
 	break;
       }
-#endif    
     }
   }
   /* 

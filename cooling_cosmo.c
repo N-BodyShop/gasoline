@@ -469,9 +469,7 @@ double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMet
 
   /* PUT INTO erg/gm/sec */
   return Y->e * ( 
-#ifndef NOCOMPTON
     cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb ) + 
-#endif
     en_B * (
     (wTln0*RT0->Cool_Brem_1+wTln1*RT1->Cool_Brem_1) * ( Y->HII + Y->HeII ) +
     (wTln0*RT0->Cool_Brem_2+wTln1*RT1->Cool_Brem_2) * Y->HeIII +
@@ -1007,9 +1005,7 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
       }
 
   *dEdotCool = 
-#ifndef NOCOMPTON
       Y->e * cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb ) 
-#endif
     + 
     ne * ((wTln0*RT0->Cool_Brem_1+wTln1*RT1->Cool_Brem_1) * ( Y->HII + Y->HeII ) +
 	  (wTln0*RT0->Cool_Brem_2+wTln1*RT1->Cool_Brem_2) * Y->HeIII +
@@ -1132,13 +1128,9 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 
   {
     StiffStep( sbs, E, t, tStep);
-#ifdef ASSERTENEG      
-      assert(*E > 0.0);
-#else
       if (*E < EMin) {
 	*E = EMin;
       }
-#endif    
       cl->its = 1;
   }
   /* 

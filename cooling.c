@@ -815,10 +815,8 @@ double clEdotInstant( CL *cl, PERBARYON *Y, RATE *Rate, double rho )
   wTln0 = (1-wTln1);
 
   Edot = 
-#ifndef NOCOMPTON
     - 
     Y->e * cl->R.Cool_Comp * ( Rate->T-CL_Tcmb0 ) * ( 1 + cl->z ) 
-#endif
     - 
     ne * ((wTln0*RT0->Cool_Brem_1+wTln1*RT1->Cool_Brem_1) * ( Y->HII + Y->HeII ) +
 	  (wTln0*RT0->Cool_Brem_2+wTln1*RT1->Cool_Brem_2) * Y->HeIII +
@@ -1097,14 +1095,10 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
       if (dtnext >= tStep-t) dtnext = tStep-t;
       StiffStep( sbs, (E-1), (&dEdt)-1,  &t, dtnext, (&Ein)-1, &dtused, &dtnext );
       Eold = *E;
-#ifdef ASSERTENEG      
-      assert(*E > 0.0);
-#else
       if (*E < EMin) {
 	*E = EMin;
 	break;
       }
-#endif    
     }
   }
   /* 

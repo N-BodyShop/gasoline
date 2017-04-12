@@ -163,13 +163,9 @@ void clIntegrateEnergy(COOL *cl, double *E,
   {
     int its = 0;
     StiffStep( sbs, E, t, tStep);
-#ifdef ASSERTENEG      
-      assert(*E > 0.0);
-#else
       if (*E < EMin) {
 	*E = EMin;
       }
-#endif    
     }
   /* 
      Note Stored abundances are not necessary with

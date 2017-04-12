@@ -600,9 +600,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->fMetals = fTmp;
 #ifdef DIFFUSION
                 p->fMetalsPred = fTmp;
-#ifdef MASSDIFF
-                p->fMass0 = p->fMass;
-#endif
 #endif              
 #ifdef STARFORM
                 /* O and Fe ratio based on Asplund et al 2009 */
@@ -675,9 +672,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->fMetals = fTmp;
 #ifdef DIFFUSION
                 p->fMetalsPred = fTmp;
-#ifdef MASSDIFF
-                p->fMass0 = p->fMass;
-#endif
 #endif              
 #ifdef STARFORM
                 /* O and Fe ratio based on Asplund et al 2009 */
@@ -798,9 +792,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->fMetals = gp.metals;
 #ifdef DIFFUSION
                 p->fMetalsPred = gp.metals;
-#ifdef MASSDIFF
-                p->fMass0 = p->fMass;
-#endif
 #endif              
 #ifdef STARFORM
                 /* O and Fe ratio based on Asplund et al 2009 */
@@ -970,29 +961,6 @@ void pkdCalcBound(PKD pkd,BND *pbnd,BND *pbndActive,BND *pbndTreeActive, BND *pb
         pbndTreeActive->fMax[j] = pbndActive->fMax[j];
         }
 
-#ifdef LONGRANGESTEP
-    if (pbndDt != NULL) {
-        DIAGDIST2(pbndDt->drMax2,pbnd->fMin,pbnd->fMax);
-        pbndDt->cMax = -FLOAT_MAXVAL;
-        for (j=0;j<3;++j) {
-        pbndDt->vMin[j] = FLOAT_MAXVAL;
-        pbndDt->vMax[j] = -FLOAT_MAXVAL;
-        }
-        for (i=0;i<pkd->nLocal;++i) {
-        double v2;
-        if (TYPETest(&(pkd->pStore[i]),TYPE_GAS)) {
-            if (pkd->pStore[i].c > pbndDt->cMax)
-            pbndDt->cMax = pkd->pStore[i].c;
-            for (j=0;j<3;++j) {
-            if (pkd->pStore[i].vPred[j] < pbndDt->vMin[j]) 
-                pbndDt->vMin[j] = pkd->pStore[i].vPred[j];
-            if (pkd->pStore[i].vPred[j] > pbndDt->vMax[j])
-                pbndDt->vMax[j] = pkd->pStore[i].vPred[j];
-            }
-            }
-        }
-        }
-#endif
     }
 
 
@@ -2321,25 +2289,8 @@ void pkdCombine(KDN *p1,KDN *p2,KDN *pOut)
         else
             pOut->bndBall.fMax[j] = p1->bndBall.fMax[j];
 
-#ifdef LONGRANGESTEP
-        if (p2->bndDt.vMin[j] < p1->bndDt.vMin[j])
-            pOut->bndDt.vMin[j] = p2->bndDt.vMin[j];
-        else
-            pOut->bndDt.vMin[j] = p1->bndDt.vMin[j];
-        if (p2->bndDt.vMax[j] > p1->bndDt.vMax[j])
-            pOut->bndDt.vMax[j] = p2->bndDt.vMax[j];
-        else
-            pOut->bndDt.vMax[j] = p1->bndDt.vMax[j];
-#endif
         }
 
-#ifdef LONGRANGESTEP
-    DIAGDIST2(pOut->bndDt.drMax2,pOut->bnd.fMin,pOut->bnd.fMax);
-    if (p2->bndDt.cMax > p1->bndDt.cMax)
-        pOut->bndDt.cMax = p2->bndDt.cMax;
-    else
-        pOut->bndDt.cMax = p1->bndDt.cMax;
-#endif
     /*
      ** Find the center of mass and mass weighted softening.
      */
@@ -2689,20 +2640,9 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
             c[iCell].bnd.fMax[j] = -FLOAT_MAXVAL;
             c[iCell].bndBall.fMin[j] = FLOAT_MAXVAL;
             c[iCell].bndBall.fMax[j] = -FLOAT_MAXVAL;
-#ifdef LONGRANGESTEP
-            c[iCell].bndDt.vMin[j] = FLOAT_MAXVAL;
-            c[iCell].bndDt.vMax[j] = -FLOAT_MAXVAL;
-#endif
             c[iCell].r[j] = 0.0;
             }
-#ifdef LONGRANGESTEP
-        c[iCell].bndDt.cMax = -FLOAT_MAXVAL;
-#endif
         for (pj=l;pj<=u;++pj) {
-#ifdef LONGRANGESTEP
-                if (p[pj].c > c[iCell].bndDt.cMax)
-                    c[iCell].bndDt.cMax = p[pj].c;
-#endif
             for (j=0;j<3;++j) {
                 if (p[pj].r[j] < c[iCell].bnd.fMin[j])
                     c[iCell].bnd.fMin[j] = p[pj].r[j];
@@ -2713,12 +2653,6 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
                     c[iCell].bndBall.fMin[j] = p[pj].r[j]-p[pj].fBallMax;
                 if (p[pj].r[j]+p[pj].fBallMax > c[iCell].bndBall.fMax[j])
                     c[iCell].bndBall.fMax[j] = p[pj].r[j]+p[pj].fBallMax;
-#ifdef LONGRANGESTEP
-                if (p[pj].vPred[j] < c[iCell].bndDt.vMin[j])
-                    c[iCell].bndDt.vMin[j] = p[pj].vPred[j];
-                if (p[pj].vPred[j] > c[iCell].bndDt.vMax[j])
-                    c[iCell].bndDt.vMax[j] = p[pj].vPred[j];
-#endif
 
                 }
             /*
@@ -2730,10 +2664,6 @@ void pkdUpPass(PKD pkd,int iCell,int iOpenType,double dCrit,
                 c[iCell].r[j] += p[pj].fMass*p[pj].r[j];
                 }
                 }
-#ifdef LONGRANGESTEP
-        assert( !isnan(c[iCell].bndDt.cMax) );
-        DIAGDIST2(c[iCell].bndDt.drMax2,c[iCell].bnd.fMin,c[iCell].bnd.fMax);
-#endif
         if (c[iCell].fMass > 0) {
             for (j=0;j<3;++j) {
                 c[iCell].r[j] /= c[iCell].fMass;
@@ -3113,9 +3043,6 @@ void pkdBuildBinary(PKD pkd,int nBucket,int iOpenType,double dCrit,
         pkdn->bndBall.fMin[j] = FLOAT_MAXVAL;
         pkdn->bndBall.fMax[j] = -FLOAT_MAXVAL;
             }
-#ifdef LONGRANGESTEP
-        pkdn->bndDt.cMax = -FLOAT_MAXVAL;
-#endif
         pkdn->iDim = -1; /* it is a bucket! */
         pkdn->fSplit = 0.0;
         pkdn->iLower = -1;
@@ -4422,9 +4349,6 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #ifdef GLASSZ
                 p->a[0]=0; p->a[1]=0;
 #endif
-#ifdef ACCZERO
-                p->a[0]=0; p->a[1]=0; p->a[2]=0;
-#endif
                 for (j=0;j<3;++j) {
                     p->vPred[j] = p->v[j]*dvPredFacOne + p->a[j]*dvPredFacTwo;
                     p->v[j] = p->v[j]*dvFacOne + p->a[j]*dvFacTwo;
@@ -4586,10 +4510,6 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
 #ifdef DIFFUSION
                 p->fMetalsPred = p->fMetals + p->fMetalsDot*duPredDelta;
                 p->fMetals = p->fMetals + p->fMetalsDot*duDelta;
-#ifdef MASSDIFF
-                p->fMass = p->fMass0 + p->fMassDot*duPredDelta;
-                p->fMass0 = p->fMass0 + p->fMassDot*duDelta;
-#endif
 #ifdef STARFORM
                 p->fMFracOxygenPred = p->fMFracOxygen + p->fMFracOxygenDot*duPredDelta;
                 p->fMFracOxygen = p->fMFracOxygen + p->fMFracOxygenDot*duDelta;
@@ -4970,9 +4890,6 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifdef DIFFUSION
         p->fMetalsPred = cp.fMetals;
 
-#ifdef MASSDIFF
-        p->fMass0 = cp.fMass;
-#endif
 #endif
 #ifndef NOCOOLING       
         p->CoolParticle = cp.CoolParticle;
@@ -7586,9 +7503,6 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
               }
 #ifdef DIFFUSION
             p->fMetalsPred = p->fMetalsPred + p->fMetalsDot*duDelta;
-#ifdef MASSDIFF
-            p->fMass = p->fMass + p->fMassDot*duDelta;
-#endif
 #ifdef STARFORM
             p->fMFracOxygenPred = p->fMFracOxygenPred + p->fMFracOxygenDot*duDelta;
             p->fMFracIronPred = p->fMFracIronPred + p->fMFracIronDot*duDelta;

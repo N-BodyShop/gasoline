@@ -1174,9 +1174,7 @@ double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMet
 
     /* PUT INTO erg/gm/sec */
     return Y->e * ( 
-#ifndef NOCOMPTON
         cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb ) + 
-#endif
         en_B * (
             clCoolBrem1(Rate->T) * ( Y->HII + Y->HeII ) +
             clCoolBrem2(Rate->T) * Y->HeIII +
@@ -2438,9 +2436,7 @@ double clEdotInstant_Table( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
       }
 
   *dEdotCool = 
-#ifndef NOCOMPTON
       Y->e * cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb ) 
-#endif
     + 
     ne * (TABLEINTERP( Cool_Brem_1 ) * ( Y->HII + Y->HeII ) +
 	  TABLEINTERP( Cool_Brem_2 ) * Y->HeIII +
@@ -2522,9 +2518,7 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
 	  *x*(3-3*fabs(x)+x*x);
       }
   *dEdotCool = 
-#ifndef NOCOMPTON
      Y->e * cl->R.Cool_Comp * ( Rate->T - cl->R.Tcmb ) 
-#endif
     +
     ne * (clCoolBrem1(Rate->T) * ( Y->HII + Y->HeII ) +
 	  clCoolBrem2(Rate->T) * Y->HeIII +
@@ -2993,9 +2987,6 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 	2.0*(d->Y_He - y[2] - y[3]) + d->ZMetal/MU_METAL;
       EMin = clThermalEnergy( YTotal, cl->TMin );
 
-#ifdef ASSERTENEG      
-            assert(*y > 0.0);
-#else
       if (y[0] < EMin) {
 	y[0] = EMin;
 /*	y[1] = YHMIN;
@@ -3005,7 +2996,6 @@ void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E,
 	printf("Emin: %e\n", EMin);
 	break;*/
       }
-#endif   
    cl->its = 1;
    }
 
