@@ -263,18 +263,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return(p->uDotAV);
 	case OUT_UDOTDIFF_ARRAY:
 	    return(p->uDotDiff);
-#ifdef UNONCOOLDEBUG
-	case OUT_UHOTDOT_ARRAY:
-	    return(p->uHotDot);
-	case OUT_UHOTDOTDIFF_ARRAY:
-	    return(p->uHotDotDiff);
-	case OUT_UHOTDOTPDV_ARRAY:
-	    return(p->uHotDotPdV);
-	case OUT_UHOTDOTCONV_ARRAY:
-	    return(p->uHotDotConv);
-	case OUT_UHOTDOTFB_ARRAY:
-	    return(p->uHotDotFB);
-#endif
 #ifdef SHOCKTRACK
 	case OUT_SHOCKTRACKER_ARRAY:
 	    return(p->ShockTracker);
@@ -653,23 +641,6 @@ void VecFilename(char *achFile, int iType)
 	case OUT_UDOTDIFF_ARRAY:
         strncat(achFile,"uDotDiff",256);
         break;
-#ifdef UNONCOOLDEBUG
-	case OUT_UHOTDOT_ARRAY:
-        strncat(achFile,"uHotDot",256);
-        break;
-	case OUT_UHOTDOTDIFF_ARRAY:
-        strncat(achFile,"uHotDotDiff",256);
-        break;
-	case OUT_UHOTDOTPDV_ARRAY:
-        strncat(achFile,"uHotDotPdV",256);
-        break;
-	case OUT_UHOTDOTCONV_ARRAY:
-        strncat(achFile,"uHotDotConv",256);
-        break;
-	case OUT_UHOTDOTFB_ARRAY:
-        strncat(achFile,"uHotDotFB",256);
-        break;
-#endif
     case OUT_METALS_ARRAY:
 	    strncat(achFile,"Metals",256);
         break;
@@ -843,13 +814,6 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     case OUT_UDOTPDV_ARRAY:
     case OUT_UDOTAV_ARRAY:
     case OUT_UDOTDIFF_ARRAY:
-#ifdef UNONCOOLDEBUG
-    case OUT_UHOTDOT_ARRAY:
-    case OUT_UHOTDOTDIFF_ARRAY:
-    case OUT_UHOTDOTPDV_ARRAY:
-    case OUT_UHOTDOTCONV_ARRAY:
-    case OUT_UHOTDOTFB_ARRAY:
-#endif
     case OUT_PRES_ARRAY:
     case OUT_BALSARASWITCH_ARRAY:
     case OUT_SPHDT_ARRAY:

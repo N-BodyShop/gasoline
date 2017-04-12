@@ -157,11 +157,6 @@ typedef struct particle {
     FLOAT uHotPred;
     FLOAT uHotDot;
     FLOAT uHotDotDiff;  /* Hot Energy diffusion */
-#ifdef UNONCOOLDEBUG
-    FLOAT uHotDotPdV;
-    FLOAT uHotDotFB;
-    FLOAT uHotDotConv;
-#endif
 #endif
     FLOAT divv;             
 #ifdef DODVDS

@@ -387,21 +387,11 @@ void LogTimingSetN( MSR msr, int n );
 void LogTimingSetRung ( MSR msr, int iRung );
 
 void LOGTIMINGUPDATE( double, int );
-#ifdef TIMINGDEBUG
-#define LOGTIMINGUPDATE( __dsec, __timingtype) \
-     if (msr->param.bLogTiming) { \
-       char *TimingTypeName[]={ "Total", "DD", "SPHTree", "GravTree", "Gravity",  "Smooth", "ReSmooth", "MarkSmooth",   "Drift", "Kick",  "Cool", "Sink", "StarForm", "Feedback", "DumpFrame",   "N" }; \
-      msr->RungStat[msr->iRungStat].nCall[__timingtype]++; \
-      msr->RungStat[msr->iRungStat].t[__timingtype]+=__dsec; \
-      printf("Timing: rung %d: type %s: ncall %lld dsec %f\n",msr->iRungStat,TimingTypeName[__timingtype],msr->RungStat[msr->iRungStat].nCall[__timingtype],msr->RungStat[msr->iRungStat].t[__timingtype]); }
-
-#else
 #define LOGTIMINGUPDATE( __dsec, __timingtype) \
      if (msr->param.bLogTiming) { \
       msr->RungStat[msr->iRungStat].nCall[__timingtype]++; \
       msr->RungStat[msr->iRungStat].t[__timingtype]+=__dsec; }
 
-#endif
      
 #define LOGTIME( __func, __message, __timingtype ) \
    if (msr->param.bVDetails || msr->param.bLogTiming) { \

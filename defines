@@ -122,7 +122,6 @@ PRES_MONAGHAN         #Use Monaghan's PdV work calculation (the average of both 
 PROMOTE               #Make particles hot based on conduction in feedback
 QUINTIC               #Use a quintic spline kernel from Dehnen & Aly 2012 (Bibcode:2012MNRAS.425.1068D)
 RADIATIVEBOX          #Estimate Local Lyman-Werner radiation from the tree
-RANOLD                #Use an older random number generator for debugging the rubble code
 REDUCED_EWALD         #Used reduced Ewald Summation for faster multipole moment expansions
 RHOSF                 #Form stars linearly with density above 100 H cc^-3
 ROT_FRAME             #Use a rotating reference frame with rotation rate given by dOmega
@@ -158,18 +157,14 @@ SUPERBUBBLE			  #Use the Keller+ 2014 Superbubble feedback (equivalent to -DPROM
 SUPERCOOL             #Enable "Supercool" type particles (just gas particles with mean velocities?)
 SURFACEAREA           #Calculate and output the surface area of all the particles.
 THERMALCOND           #Enable Thermal conduction using the Spitzer Solution
-TIMINGDEBUG           #Used to debug the timing (walltime I believe). Probably also handy for benchmarking.
 TINY_PTHREAD_STACK    #Only used on a weird old SGI architecture. Probably can be removed.
 TOPHATFEEDBACK        #Use a tophat kernel to smooth feedback over
 TUMBLER               #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
-TWOPHASEINIT          #Put half the initial particle mass into noncooling mass. Useful for debugging.
 TWOPHASE              #Use multiphase particles for feedback  (automatically adds -DUNONCOOL)
 TWOSMOOTH             #Smooth twice rather than 3 times. This is defined by default in master.c
 TZKEY64               #Use 64 (instead of 128) bit keys for the tree. Faster, but allows less depth.
-UNONCOOLDEBUG         #Output information for debugging twophase particles as auxiliary arrays
 UNONCOOL              #Enable noncooling energy for feedback
 UNONCOOLINIT          #Initialize the uHot to have equal energy to u (useful for hacking some tests)
-UNONCOOLMERGE         #Put the uHot energy from a checkpoint into u (for debugging)
 UNROLLED_VSQRT        #Unroll the v_sqrt function for speed
 USEHMIN               #Use a floor to keep the integrator for stiff equations from blowing up
 USE_PNG               #Use PNG encoding for dumpframes

@@ -536,9 +536,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 xdr_float(&xdrs,&fTmp);
                 p->fMass = fTmp;
 #ifdef TWOPHASE
-#ifdef TWOPHASEINIT
-                p->fMassHot = 0.5*fTmp;
-#endif
                 if (fpmhot) { xdr_float(&xdrsmhot,&fTmp); p->fMassHot = fTmp; } 
                 if (fpuhot) { xdr_float(&xdrsuhot,&fTmp); p->uHot = p->uHotPred = fTmp; } 
                 if (fpigasorder) { xdr_int(&xdrsigasorder,&IntTmp); p->iGasOrder = IntTmp; } 
@@ -575,12 +572,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->u = dTuFac*vTemp;
                 p->uPred = dTuFac*vTemp;
 // Special purpose hack for testing noncooling
-#ifdef TWOPHASEINIT
-                p->uHot = 1e4*p->u; //Make it 1e4 times hotter than the cold component
-                p->uHotPred = 1e4*p->u;
-                p->u = p->u;
-                p->uPred = p->u;
-#endif
 #ifdef UNONCOOLINIT
                 p->uHot = 0.5*p->u;
                 p->uHotPred = 0.5*p->u;
@@ -4813,13 +4804,7 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
         p->CoolParticleHot = cp.CoolParticleHot;
 #endif
 #ifdef UNONCOOL
-#ifdef UNONCOOLMERGE
-        p->u += cp.uHot;
-        p->uPred += cp.uHot;
-        p->uHot = 0;
-#else
         p->uHot = cp.uHot;
-#endif
         p->uHotPred = p->uHot;
         assert(p->uHot >= 0);
         p->uHotDot = 0;
@@ -6332,11 +6317,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
                 pkduHotConvRate(pkd,uhc,p->fBall2,uHotPredTmp,p->u+p->uDot*duDelta*0.5); 
             p->uHotDot = p->uDotPdV*PoverRhoHot/(PONRHOFLOOR + PoverRho) // Fraction of PdV related to uHot 
                 - uHotDotConv + uHotDotFB + p->uHotDotDiff;
-#ifdef UNONCOOLDEBUG
-            p->uHotDotPdV = p->uDotPdV*PoverRhoHot/(PONRHOFLOOR + PoverRho);
-            p->uHotDotConv = -uHotDotConv;
-            p->uHotDotFB =  uHotDotFB;
-#endif
 #else
             double uHotDotConv=0;
 #endif

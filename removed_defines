@@ -18,3 +18,8 @@ DEBUGTRACK            #Extra debugging checks for dumpframe
 DRHODTTEST            #Output a large list of properties important for the DRHODT parts of the code for debugging
 NOEXTHEAT             #Turn off all external heating effects (UV, Feedback, etc.) (debug)
 NOMOLECULARHCOOLING   #Turns COOLING_MOLECULARH into COOLING_METAL
+RANOLD                #Use an older random number generator for debugging the rubble code
+TIMINGDEBUG           #Used to debug the timing (walltime I believe). Probably also handy for benchmarking.
+TWOPHASEINIT          #Put half the initial particle mass into noncooling mass. Useful for debugging.
+UNONCOOLDEBUG         #Output information for debugging twophase particles as auxiliary arrays
+UNONCOOLMERGE         #Put the uHot energy from a checkpoint into u (for debugging)
