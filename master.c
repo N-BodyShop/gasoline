@@ -2180,9 +2180,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    assert(0);
 	    }
 #endif
-#ifdef DIFFUSIONTHERMAL
-    fprintf(stderr," INFO: -DDIFFUSIONTHERMAL is not required -- thermal diffusion is on by default if -DDIFFUSION is on\n");
-#endif
 #if !defined(DIFFUSION) || defined(NODIFFUSIONTHERMAL)
 	if (prmSpecified(msr->prm,"dThermalDiffusionCoeff")) {
 	    fprintf(stderr,"ERROR: Thermal Diffusion Rate specified but not compiled for\nUsed -DDIFFUSION and NOT -DNODIFFUSIONTHERMAL during compilation\n");
@@ -2749,9 +2746,6 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef UNONCOOL
     fprintf(fp," UNONCOOL");
-#endif
-#ifdef UNONCOOLINIT
-    fprintf(fp," UNONCOOLINIT");
 #endif
 #ifdef TOPHATFEEDBACK
     fprintf(fp," TOPHATFEEDBACK");
@@ -9500,31 +9494,6 @@ void msrInitSph(MSR msr,double dTime)
 		printf("Initializing SPH forces\n");
 	        msrSph(msr, dTime, 0); /* rungs should all be zero initially, pass iKickRung=0 */
 
-#ifdef OLDINITSPHCODE
-   	    msrBallMax(msr, 0, 1); /* set ball max - done in msrSph */
-	    if (msr->param.iViscosityLimiter || msr->param.bBulkViscosity
-		    || msr->param.bStarForm) {
-		        msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-			}
-		msrSphViscosityLimiter(msr, dTime);
-
-		msrGetGasPressure(msr, dTime);
-
-		if (msr->param.bShockTracker) {
-			msrReSmooth(msr,dTime,SMX_SPHPRESSURE,1);
-			msrUpdateShockTracker(msr, 0.0);
-			if (msr->param.bBulkViscosity)
-			        msrReSmooth(msr,dTime,SMX_HKVISCOSITY,1);
-			else
-			        msrReSmooth(msr,dTime,SMX_SPHVISCOSITY,1);
-		        }
-		else {
-			if (msr->param.bBulkViscosity)
-				msrReSmooth(msr,dTime,SMX_HKPRESSURETERMS,1);
-			else
-				msrReSmooth(msr,dTime,SMX_SPHPRESSURETERMS,1);
-		        }
-#endif
 		/* First guess at uDot with quite small step size
 		   step size irrelevant for adiabatic gas */
    	        msrUpdateuDot(msr,dTime,0.5e-7*msr->param.dDelta,0);

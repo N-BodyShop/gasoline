@@ -705,9 +705,6 @@ int main(int argc,char **argv)
             if (msr->nGas > 0) {
 		msrInitSph(msr,dTime);
         msrCreateGasStepZeroOutputList(msr, &nOutputList,OutputList);
-#ifdef GRADW
-        msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-#endif
 #ifdef DENSITYU
 		OutputList[(nOutputList)++]=OUT_DENSITYU_ARRAY;
 #endif

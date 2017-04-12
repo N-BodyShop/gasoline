@@ -23,3 +23,8 @@ TIMINGDEBUG           #Used to debug the timing (walltime I believe). Probably a
 TWOPHASEINIT          #Put half the initial particle mass into noncooling mass. Useful for debugging.
 UNONCOOLDEBUG         #Output information for debugging twophase particles as auxiliary arrays
 UNONCOOLMERGE         #Put the uHot energy from a checkpoint into u (for debugging)
+DIFFUSIONTHERMAL      #Enable Thermal Diffusion (DEPRECATED - automatically included with -DDIFFUSION)
+OLDINITSPHCODE        #Use the older multi-resmooth msrInitSph (deprecated?)
+UNONCOOLINIT          #Initialize the uHot to have equal energy to u (useful for hacking some tests)
+SNIA_TST              #Print out SN Ia feedback properties
+GRADW                 #Testing code to see how well Grad 1 = 0 output in .curl

@@ -51,7 +51,6 @@ DIFFUSION             #Enable Diffusion (of metals and energy)
 DIFFUSIONHARMONIC     #Use the harmonic sum for calculating thermal diffusion
 DIFFUSIONPRICE        #Daniel Price's Thermal Diffusion
 DIFFUSIONSHOCKCOND    #Enable conduction to prevent wall heating in shocks
-DIFFUSIONTHERMAL      #Enable Thermal Diffusion (DEPRECATED - automatically included with -DDIFFUSION)
 DIVVOFF               #Remove the convergent flow requirement for starformation
 DKDENSITY             #Calculate the density using the derivative of the kernel in the DVDX calculation of density
 DODVDS                #Different estimate of Balsara switch instead of divv
@@ -71,7 +70,6 @@ GLASS                 #Use this to damp for glass initial conditions
 GLASSZ                #Use this to damp for glass IC in z direction
 GRACKLE_PRIMORDIAL_CHEMISTRY_MAX
 GRADWONESIDED         #Only use the primary particle for calculating the kernel gradient (one-sided)
-GRADW                 #Testing code to see how well Grad 1 = 0 output in .curl
 GR_DRAG               #Enable Frame dragging
 GROWMASS              #Allow collisional particles to grow
 GSS_DUMPFRAME         #Dumpframe that allows coloring by particle property
@@ -106,7 +104,6 @@ NSMOOTHINNER          #Ensure at least 18 neighbours inside 1.41 h
 NUMDIMS 
 OLD_COMET_FORCE       #Enable the do_force for special rubble pile particles (ie comets).
 OLD_COMET_STUFF       #Initialize special particles (this is a huge kludge)
-OLDINITSPHCODE        #Use the older multi-resmooth msrInitSph (deprecated?)
 OLD_KEPLER            #An ugly part of the collision code to stop hard scatterings 
 OLD_VERSION           #Change the way the comet force from OLD_COMET_FORCE is calculated
 OUTURBDRIVER          #Drive turbulence as in Price & Federrath 2010 with OU variables
@@ -146,7 +143,6 @@ SINKING               #Include support for sink particles
 SINKINGOUTVPRED       #Write out the vpred values to the outputted tipsy file for sink particles.
 SLIDING_PATCH         #Alternative collision scheme (I don't really know what this does) (Requires -DCOLLISIONS)
 SMOOTHBSW             #Use a smoothed Balsara switch
-SNIA_TST              #Print out SN Ia feedback properties
 SPECIAL_PARTICLES     #Include support for weird special particles (not star, gas, or DM)
 SPH1D                 #Only allow forces in the x-direction
 SPINUP                #Use alternative rotating frame, just apply accelerations.
@@ -164,7 +160,6 @@ TWOPHASE              #Use multiphase particles for feedback  (automatically add
 TWOSMOOTH             #Smooth twice rather than 3 times. This is defined by default in master.c
 TZKEY64               #Use 64 (instead of 128) bit keys for the tree. Faster, but allows less depth.
 UNONCOOL              #Enable noncooling energy for feedback
-UNONCOOLINIT          #Initialize the uHot to have equal energy to u (useful for hacking some tests)
 UNROLLED_VSQRT        #Unroll the v_sqrt function for speed
 USEHMIN               #Use a floor to keep the integrator for stiff equations from blowing up
 USE_PNG               #Use PNG encoding for dumpframes

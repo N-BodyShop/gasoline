@@ -572,12 +572,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->u = dTuFac*vTemp;
                 p->uPred = dTuFac*vTemp;
 // Special purpose hack for testing noncooling
-#ifdef UNONCOOLINIT
-                p->uHot = 0.5*p->u;
-                p->uHotPred = 0.5*p->u;
-                p->u *= 0.5;
-                p->uPred *= 0.5;
-#endif
                 xdr_float(&xdrs,&fTmp);
                 p->fSoft = fTmp;
 #ifdef CHANGESOFT

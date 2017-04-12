@@ -3835,22 +3835,11 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #define DXFUNC(d) (d)
 #define DYFUNC(d) (d)
 #define DZFUNC(d) (d)
-#ifdef GRADW
-#define DENSMULP(p,q) (1/q->fDensity)
-#define DENSMULQ(p,q) (1/p->fDensity)
-/* This gives grad 1_i = rhoi sum 0.5*(dWij+dWji)*m_j/(rhoi*rhoj) 
-                       =      sum 0.5*(dWij+dWji)*m_j/rhoj 
-   Same form as pressure acceleration (eqv to constant P case)
-   Volume weighting should be really good for grad 1
-   Ok for div v = div v - v . grad 1  */
-    if (TYPETest(p,TYPE_FEEDBACK)) printf("GRADW %d: nS %d\n",p->iOrder,nSmooth);
-#else
 #define DENSMULP(p,q) (1/p->fDensity)
 #define DENSMULQ(p,q) (1/q->fDensity)
 /* This gives grad 1_i = 1/rhoi sum 0.5*(dWij+dWji)*m_j 
    The volume weighting is really bad on this for grad 1 
    Correct for div v = 1/rho div (rho v) - v . grad rho  (less noisy divv) */
-#endif
 
 	if (TYPEQueryACTIVE( p )) {
 		/* p active */
@@ -3876,25 +3865,13 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				rp = rs1 * pMass*DENSMULQ(p,q);
 				p->divv -= rq*dvdotdr;
 				q->divv -= rp*dvdotdr;
-#ifdef GRADW
-				dv=DXFUNC(dx);
-#else
 				dv=vFac*(dvz*dy - dvy*dz);
-#endif
 				p->curlv[0] += rq*dv;
 				q->curlv[0] += rp*dv;
-#ifdef GRADW
-				dv=DYFUNC(dy);
-#else
 				dv=vFac*(dvx*dz - dvz*dx);
-#endif
 				p->curlv[1] += rq*dv;
 				q->curlv[1] += rp*dv;
-#ifdef GRADW
-				dv=DZFUNC(dz);
-#else
 				dv=vFac*(dvy*dx - dvx*dy);
-#endif
 				p->curlv[2] += rq*dv;
 				q->curlv[2] += rp*dv;
 
@@ -3912,23 +3889,11 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			else {
 		        /* q inactive */
 				p->divv -= rq*dvdotdr;
-#ifdef GRADW
-				dv=DXFUNC(dx);
-#else
 				dv=vFac*(dvz*dy - dvy*dz);
-#endif
 				p->curlv[0] += rq*dv;
-#ifdef GRADW
-				dv=DYFUNC(dy);
-#else
 				dv=vFac*(dvx*dz - dvz*dx);
-#endif
 				p->curlv[1] += rq*dv;
-#ifdef GRADW
-				dv=DZFUNC(dz);
-#else
 				dv=vFac*(dvy*dx - dvx*dy);
-#endif
 				p->curlv[2] += rq*dv;
 
 #ifdef SHOCKTRACK
@@ -3962,23 +3927,11 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				+ nnList[i].fDist2*smf->H;
 			/* q active */
 			q->divv -= rp*dvdotdr;
-#ifdef GRADW
-            dv=DXFUNC(dx);
-#else
             dv=vFac*(dvz*dy - dvy*dz);
-#endif
             q->curlv[0] += rp*dv;
-#ifdef GRADW
-            dv=DYFUNC(dy);
-#else
             dv=vFac*(dvx*dz - dvz*dx);
-#endif
             q->curlv[1] += rp*dv;
-#ifdef GRADW
-            dv=DZFUNC(dz);
-#else
             dv=vFac*(dvy*dx - dvx*dy);
-#endif
             q->curlv[2] += rp*dv;
 
 #ifdef SHOCKTRACK
