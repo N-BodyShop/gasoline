@@ -361,12 +361,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->fMFracIron = 0.0;
         p->fTimeCoolIsOffUntil = 0.0;
 #endif
-#ifdef SIMPLESF
-        p->fMassStar = 0;
-#endif
-#ifdef SHOCKTRACK
-        p->ShockTracker = 0.0;
-#endif
 #ifdef VARALPHA
         p->alpha = ALPHAMIN;
         p->alphaPred = ALPHAMIN;
@@ -474,34 +468,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         }
 #endif
 
-#ifdef SIMPLESF
-        {
-        char atmp[512];
-        sprintf(atmp,"%s.tCoolAgain",pszFileName);
-        fptCoolAgain = fopen(atmp,"r");
-        if (fptCoolAgain!=NULL) {
-            /*
-            ** Seek to right place in file
-            */
-            pkdGenericSeek(pkd,fptCoolAgain,nStart,sizeof(int),sizeof(float));
-        }
-        else {
-            fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
-        }
-        
-        sprintf(atmp,"%s.mStar",pszFileName);
-        fpmStar = fopen(atmp,"r");
-        if (fpmStar!=NULL) {
-            /*
-            ** Seek to right place in file
-            */
-            pkdGenericSeek(pkd,fpmStar,nStart,sizeof(int),sizeof(float));
-        }
-        else {
-            fprintf(stderr, "Could not open %s,  skipped.\n",atmp);
-        }
-        }
-#endif
 
     /*
      ** Read Stuff!
@@ -686,16 +652,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 }
 #endif
             
-#ifdef SIMPLESF
-            if (fptCoolAgain!=NULL) {
-                fread(&fTmp,sizeof(float),1,fptCoolAgain);
-                if (pkdIsGasByOrder(pkd,p)) p->fTimeForm = fTmp;
-                }
-            if (fpmStar!=NULL) {
-                fread(&fTmp,sizeof(float),1,fpmStar);
-                if (pkdIsGasByOrder(pkd,p)) p->fMassStar = fTmp;
-                }
-#endif
 #ifdef INFLOWOUTFLOW
             if (p->r[0] < pkd->dxInflow) { TYPESet(p,TYPE_INFLOW); assert(p->v[0] > 0); }
             if (p->r[0] > pkd->dxOutflow) { TYPESet(p,TYPE_OUTFLOW); assert(p->v[0] > 0); }
@@ -4199,7 +4155,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
                 costh2 = cos(th2);
                 sinth2 = sin(th2);
 /*#define SINKFREEZE*/
-#ifndef SINKFREEZE
                 for (j=0;j<3;j++) {
                 p->r[j] += (r2*costh2-r1*costh1)*p->rSinking0Unit[j]+(r2*sinth2-r1*sinth1)*p->vSinkingTang0Unit[j];
 /* Do vpred adjustment here -- no need to do it in kickvpred */
@@ -4209,7 +4164,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
                     +p->vSinkingr0*((costh2-costh1)*p->rSinking0Unit[j]
                             +(sinth2-sinth1)*p->vSinkingTang0Unit[j]);
                 }
-#endif
                 }
             
 #endif
@@ -4715,12 +4669,6 @@ void pkdCreateInflow(PKD pkd, int Ny, int iGasModel, double dTuFac, double pmass
         p.fMFracIron = 0.0;
         p.fTimeCoolIsOffUntil = 0.0;
 #endif
-#ifdef SIMPLESF
-        p.fMassStar = 0;
-#endif
-#ifdef SHOCKTRACK
-        p.ShockTracker = 0.0;
-#endif
 #ifdef VARALPHA
         p.alpha = ALPHAMIN;
         p.alphaPred = ALPHAMIN;
@@ -4835,16 +4783,6 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
         p->fMFracIronPred = cp.fMFracIron;
 #endif
 #endif
-#ifdef SIMPLESF
-        p->fMassStar = cp.fMassStar;
-        p->fTimeForm = cp.fTimeForm;
-        for (j=0;j<3;++j) {
-            p->rForm[j] = cp.rForm[j];
-            p->vForm[j] = cp.vForm[j];
-            }
-        p->fDensity = cp.fDenForm;
-        p->iGasOrder = cp.iGasOrder;
-#endif
         p->fMetals = cp.fMetals;
 #ifdef DIFFUSION
         p->fMetalsPred = cp.fMetals;
@@ -4953,16 +4891,6 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
         cp.fTimeCoolIsOffUntil = p->fTimeCoolIsOffUntil;
         cp.fMFracOxygen = p->fMFracOxygen;
         cp.fMFracIron = p->fMFracIron;
-#endif
-#ifdef SIMPLESF
-        cp.fMassStar = p->fMassStar;
-        cp.fTimeForm = p->fTimeForm;
-        for (j=0;j<3;++j) {
-            cp.rForm[j] = p->rForm[j];
-            cp.vForm[j] = p->vForm[j];
-            }
-        cp.fDenForm = p->fDensity;
-        cp.iGasOrder = p->iGasOrder;
 #endif
 #ifdef SINKING
         cp.rSinking0Unit[0] = p->rSinking0Unit[0];
@@ -6136,9 +6064,6 @@ void pkdInitAccel(PKD pkd)
                 pkd->pStore[i].fPot = 0;
             for (j=0;j<3;++j) {
                 pkd->pStore[i].a[j] = 0;
-#if defined(GASOLINE) && defined(SHOCKTRACK)
-                pkd->pStore[i].aPres[j] = 0;
-#endif
                 pkd->pStore[i].dtGrav = 0;
                 }
             }
@@ -6331,12 +6256,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
                     p->uDot = uDotSansCooling;
                     }
 #endif
-#ifdef SIMPLESF 
-                if (dTime < p->fTimeForm) {
-                    dtUse = -dt;
-                    if (p->uDot < UDOTHYDRO(p)) p->uDot = UDOTHYDRO(p);
-                    }
-#endif
                 
 #ifdef COOLING_MOLECULARH
 #ifdef NEWSHEAR
@@ -6382,54 +6301,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
 
 void pkdUpdateShockTracker(PKD pkd, double dDelta, double dShockTrackerA, double dShockTrackerB )
 {
-#ifdef SHOCKTRACK
-    PARTICLE *p;
-    int i,n;
-    double conh,factor;
-    double dv2,a2,ap2,adotap=1;
-
-        if (dShockTrackerB == 0) printf("Doing cheap shock tracking\n");
-    p = pkd->pStore;
-    n = pkdLocal(pkd);
-    for (i=0;i<n;++i,++p) {
-        if(TYPEFilter(p,TYPE_GAS|TYPE_ACTIVE,TYPE_GAS|TYPE_ACTIVE)) {
-                p->ShockTracker = 0;
-
-            a2 = ((p->a[0]*p->a[0])+(p->a[1]*p->a[1])+(p->a[2]*p->a[2]));
-            ap2 = ((p->aPres[0]*p->aPres[0])+(p->aPres[1]*p->aPres[1])+(p->aPres[2]*p->aPres[2]));
-            adotap = ((p->a[0]*p->aPres[0])+(p->a[1]*p->aPres[1])+(p->a[2]*p->aPres[2]));
-
-
-            /* Rarefaction or Gravity dominated compression */
-            if ( UDOT_HYDRO(p) < 0 || adotap < 0.5*a2) p->ShockTracker = 0;
-            else {
-             if (dShockTrackerB == 0) {
-              if (a2 < ap2) 
-                dv2 = sqrt(a2*0.25*p->fBall2);
-              else
-                dv2 = sqrt(ap2*0.25*p->fBall2);
-             }
-             else {
-              if (a2 < ap2) 
-                dv2 = -p->fDensity*(p->a[0]*p->gradrho[0]+p->a[1]*p->gradrho[1]+p->a[2]*p->gradrho[2])/
-                  (p->gradrho[0]*p->gradrho[0]+p->gradrho[1]*p->gradrho[1]+p->gradrho[2]*p->gradrho[2]+
-                   p->fDensity*p->fDensity*dShockTrackerB/p->fBall2);
-              else
-                dv2 = -p->fDensity*(p->aPres[0]*p->gradrho[0]+p->aPres[1]*p->gradrho[1]+p->aPres[2]*p->gradrho[2])/
-                  (p->gradrho[0]*p->gradrho[0]+p->gradrho[1]*p->gradrho[1]+p->gradrho[2]*p->gradrho[2]+
-                   p->fDensity*p->fDensity*dShockTrackerB/p->fBall2);
-
-              }
-             /*
-              if (dv2 < dShockTrackerA*p->c*p->c) p->ShockTracker = 0;
-             */
-             p->ShockTracker = dv2/(dShockTrackerA*p->c*p->c);
-             if (p->ShockTracker > 1) p->ShockTracker = 1;
-             }
-            }
-        }
-
-#endif
         }
 
 double pkdPoverRhoFloorJeansParticle(PKD pkd, double dResolveJeans, PARTICLE *p) 

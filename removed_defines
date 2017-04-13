@@ -28,3 +28,8 @@ OLDINITSPHCODE        #Use the older multi-resmooth msrInitSph (deprecated?)
 UNONCOOLINIT          #Initialize the uHot to have equal energy to u (useful for hacking some tests)
 SNIA_TST              #Print out SN Ia feedback properties
 GRADW                 #Testing code to see how well Grad 1 = 0 output in .curl
+SIMPLESF              #Use an older, simpler starformation recipe (this involves flipping particles from gas -> star)
+SHOCKTRACK            #Output additional data in order to more easily track shocks (grad rho, div rho*v)
+SINKFREEZE            #Don't update the positions of sink particles during Drifts.
+NOMETALCOOLING        #Just use H2, not metal lines (Requires -DCOOLING_MOLECULARH)
+AGGSCLEANUP           #Comments suggest this define includes incomplete code.

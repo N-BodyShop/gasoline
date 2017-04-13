@@ -87,12 +87,5 @@ void pkdStarClusterFormPrecondition(PKD pkd, struct inStarClusterFormPreconditio
 #endif
 #endif
 
-#ifdef SIMPLESF
-void pkdSimpleStarForm(PKD pkd, double dRateCoeff, double dTMax, double dDenMin, double dDelta, double dTime,
-					   double dInitStarMass, double dESNPerStarMass, double dtCoolingShutoff, int bdivv,
-                                           int *nFormed, /* number of stars formed */
-                                           double *dMassFormed, /* mass of stars formed */
-                                           int *nDeleted); /* gas particles deleted */
-#endif
 
 

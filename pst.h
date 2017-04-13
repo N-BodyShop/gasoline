@@ -1750,31 +1750,6 @@ void pstFlushStarLog(PST,void *,int,void *,int *);
 
 #endif
 
-#ifdef SIMPLESF
-struct inSimpleStarForm
-{
-    double dRateCoeff;
-    double dTMax;
-    double dDenMin;
-    double dDelta;
-
-	double dTime;
-	double dInitStarMass;
-	double dESNPerStarMass;
-	double dtCoolingShutoff;
-    int bdivv;
-    };
-
-struct outSimpleStarForm 
-{
-    int nFormed;
-    int nDeleted;
-    double dMassFormed;
-    };
-
-void pstSimpleStarForm(PST,void *,int,void *,int *);
-
-#endif
 
 #endif
 

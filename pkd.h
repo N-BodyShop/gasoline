@@ -222,20 +222,9 @@ typedef struct particle {
     FLOAT normal[3];
 #endif
 #endif
-#ifdef SHOCKTRACK
-    FLOAT aPres[3];
-    FLOAT ShockTracker;     /* Shock tracker */
-    FLOAT divrhov;          /* debug */
-    FLOAT gradrho[3];       /* debug */
-#endif
 /*      FLOAT fDensSave;*/      /* Used by diagnostic DensCheck funcs */
     FLOAT fMetals;  /* mass fraction in metals, a.k.a, Z */
     FLOAT fTimeForm;
-#ifdef SIMPLESF
-    FLOAT fMassStar;
-    FLOAT fESN;
-    int iGasOrder;          /* gas from which star formed */
-#endif
 #if defined(SIMPLESF) || defined(EXTRASINKDATA)
     FLOAT rForm[3];         /* record pos and vel of star formation */
     FLOAT vForm[3];
@@ -514,13 +503,6 @@ typedef struct chkParticle {
     FLOAT fNSN;
     FLOAT fMFracOxygen;
     FLOAT fMFracIron;
-    int iGasOrder;
-#endif
-#ifdef SIMPLESF
-    FLOAT fMassStar;
-    FLOAT rForm[3];         /* record pos and vel of star formation */
-    FLOAT vForm[3];
-    FLOAT fDenForm;
     int iGasOrder;
 #endif
 #ifdef SINKING

@@ -50,17 +50,6 @@
 #define ACCEL(p,j) (((PARTICLE *)(p))->a[j])
 #define KPCCM 3.085678e21
 
-#ifdef SHOCKTRACK
-/* Shock Tracking on: p->ShockTracker and p->aPres are defined */
-
-#define SWITCHCOMBINE(a,b) (0.5*(a->BalsaraSwitch+b->BalsaraSwitch))
-#define SWITCHCOMBINEA(a,b) ((a->BalsaraSwitch*b->BalsaraSwitch)*a->ShockTracker*b->ShockTracker)
-#define SWITCHCOMBINEB(a,b) (a->BalsaraSwitch*b->BalsaraSwitch)
-
-#define ACCEL_PRES(p,j) (((PARTICLE *)(p))->aPres[j])
-#define ACCEL_COMB_PRES(p,j) ((((PARTICLE *)(p))->a[j])+=(((PARTICLE *)(p))->aPres[j]))
-
-#else
 
 #define SWITCHCOMBINE(a,b) (0.5*(a->BalsaraSwitch+b->BalsaraSwitch))
 /* New idea -- upwind combine
@@ -72,7 +61,6 @@
 #define ACCEL_PRES(p,j) (((PARTICLE *)(p))->a[j])
 #define ACCEL_COMB_PRES(p,j) 
 
-#endif
 
 #ifdef CULLENDEHNEN
 #undef SWITCHCOMBINE
@@ -3727,12 +3715,6 @@ void initDivVort(void *p)
 		((PARTICLE *)p)->curlv[0] = 0.0;
 		((PARTICLE *)p)->curlv[1] = 0.0;
 		((PARTICLE *)p)->curlv[2] = 0.0;
-#ifdef SHOCKTRACK
-		((PARTICLE *)p)->divrhov = 0.0;
-		((PARTICLE *)p)->gradrho[0] = 0.0;
-		((PARTICLE *)p)->gradrho[1] = 0.0;
-		((PARTICLE *)p)->gradrho[2] = 0.0;
-#endif
 		}
 	}
 
@@ -3743,12 +3725,6 @@ void combDivVort(void *p1,void *p2)
 		((PARTICLE *)p1)->curlv[0] += ((PARTICLE *)p2)->curlv[0];
 		((PARTICLE *)p1)->curlv[1] += ((PARTICLE *)p2)->curlv[1];
 		((PARTICLE *)p1)->curlv[2] += ((PARTICLE *)p2)->curlv[2];
-#ifdef SHOCKTRACK
-		((PARTICLE *)p1)->divrhov += ((PARTICLE *)p2)->divrhov;
-		((PARTICLE *)p1)->gradrho[0] += ((PARTICLE *)p2)->gradrho[0];
-		((PARTICLE *)p1)->gradrho[1] += ((PARTICLE *)p2)->gradrho[1];
-		((PARTICLE *)p1)->gradrho[2] += ((PARTICLE *)p2)->gradrho[2];
-#endif
 		}
 	}
 
@@ -3875,16 +3851,6 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				p->curlv[2] += rq*dv;
 				q->curlv[2] += rp*dv;
 
-#ifdef SHOCKTRACK
-				p->divrhov -= rs1*dvdotdr*q->fMass;
-				q->divrhov -= rs1*dvdotdr*pMass;
-				p->gradrho[0] += rs1*q->fMass*dx;
-				q->gradrho[0] -= rs1*pMass*dx;
-				p->gradrho[1] += rs1*q->fMass*dy;
-				q->gradrho[1] -= rs1*pMass*dy;
-				p->gradrho[2] += rs1*q->fMass*dz;
-				q->gradrho[2] -= rs1*pMass*dz;
-#endif
 		        }
 			else {
 		        /* q inactive */
@@ -3896,12 +3862,6 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 				dv=vFac*(dvy*dx - dvx*dy);
 				p->curlv[2] += rq*dv;
 
-#ifdef SHOCKTRACK
-				p->divrhov -= rs1*dvdotdr*q->fMass;
-				p->gradrho[0] += rs1*q->fMass*dx;
-				p->gradrho[1] += rs1*q->fMass*dy;
-				p->gradrho[2] += rs1*q->fMass*dz;
-#endif
 		        }
 	        }
 		} 
@@ -3934,12 +3894,6 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             dv=vFac*(dvy*dx - dvx*dy);
             q->curlv[2] += rp*dv;
 
-#ifdef SHOCKTRACK
-			q->divrhov -= rs1*dvdotdr*pMass;
-			q->gradrho[0] -= rs1*pMass*dx;
-			q->gradrho[1] -= rs1*pMass*dy;
-			q->gradrho[2] -= rs1*pMass*dz;
-#endif
 	        }
 		} 
 	}
@@ -4829,21 +4783,10 @@ void SmoothBSw(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 void initShockTrack(void *p)
 {
-#ifdef SHOCKTRACK
-	if (TYPEQueryACTIVE((PARTICLE *) p )) {
-		((PARTICLE *)p)->divrhov = 0.0;
-		}
-#endif
 	}
 
 void combShockTrack(void *p1,void *p2)
 {
-#ifdef SHOCKTRACK
-	if (TYPEQueryACTIVE((PARTICLE *) p1 )) {
-	        if (((PARTICLE *)p2)->divrhov > ((PARTICLE *)p2)->divrhov) 
-		  ((PARTICLE *)p1)->divrhov = ((PARTICLE *)p2)->divrhov;
-		}
-#endif
 	}
 
 /* Gather only version -- untested */
@@ -4855,48 +4798,6 @@ void ShockTrack(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 /* Output is physical divv and curlv -- thus a*h_co*divv is physical */
 void ShockTrackSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
-#ifdef SHOCKTRACK
-	PARTICLE *q;
-	double Mach,dv;
-	int i,j;
-
-	if (TYPEQueryACTIVE( p )) {
-		/* p active */
-		for (i=0;i<nSmooth;++i) {
-	                q = nnList[i].pPart;
-			Mach = 0;
-			for (j=0;j<3;j++) {
-			  dv = p->vPred[j] - q->gradrho[j];
-			  Mach += dv*dv;
-			}
-			Mach = sqrt(Mach)/p->c;
-			if (Mach > p->divrhov) p->divrhov = Mach;
-			if (TYPEQueryACTIVE(q)) {
-			  Mach = 0;
-			  for (j=0;j<3;j++) {
-			    dv = q->vPred[j] - p->gradrho[j];
-			    Mach += dv*dv;
-			  }
-			  Mach = sqrt(Mach)/q->c;
-			  if (Mach > q->divrhov) q->divrhov = Mach;
-		        }
-	        }
-		} 
-	else {
-		/* p not active */
-		for (i=0;i<nSmooth;++i) {
- 	                q = nnList[i].pPart;
-			if (!TYPEQueryACTIVE(q)) continue; /* neither active */
-			Mach = 0;
-			for (j=0;j<3;j++) {
-			  dv = q->vPred[j] - p->gradrho[j];
-			  Mach += dv*dv;
-			}
-			Mach = sqrt(Mach)/q->c;
-			if (Mach > q->divrhov) q->divrhov = Mach;
-	        }
-		} 
-#endif
 	}
 
 /* Original Particle */
@@ -6208,58 +6109,6 @@ void StarClusterForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 #endif /* STARFORM */
 
-#ifdef SIMPLESF
-void initSimpleSF_Feedback(void *p1)
-{
-    /*
-     * Zero out accumulated quantities.
-     */
-    ((PARTICLE *)p1)->u = 0.0;
-    ((PARTICLE *)p1)->fMetals = 0.0;
-    ((PARTICLE *)p1)->fTimeForm= 0.0;
-    }
-
-void combSimpleSF_Feedback(void *p1,void *p2)
-{
-    ((PARTICLE *)p1)->u += ((PARTICLE *)p2)->u;
-    ((PARTICLE *)p1)->fMetals += ((PARTICLE *)p2)->fMetals;
-    ((PARTICLE *)p1)->fTimeForm += ((PARTICLE *)p2)->fTimeForm;
-    }
-
-void SimpleSF_Feedback(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
-{
-	PARTICLE *q;
-	FLOAT fNorm,ih2,r2,rs,rstot,fNorm_u,fNorm_t;
-	int i;
-
-	assert(TYPETest(p, TYPE_STAR));
-	ih2 = 4.0/BALL2(p);
-	rstot = 0;        
-	for (i=0;i<nSmooth;++i) {
-		r2 = nnList[i].fDist2*ih2;            
-		KERNEL(rs,r2);
-		rstot += rs;
-        }
-	
-	fNorm = 1./rstot;
-	fNorm_u = fNorm*p->fMass*p->fESN;
-	assert(fNorm_u > 0.0);
-
-	fNorm_t = fNorm*p->uDotPdV; /* p->PdV store the cooling delay dtCoolingShutoff */
-	assert(fNorm_t > 0.0);
-
-	for (i=0;i<nSmooth;++i) {
-		q = nnList[i].pPart;
-	    assert(TYPETest(q, TYPE_GAS));
-		r2 = nnList[i].fDist2*ih2;            
-		KERNEL(rs,r2);
-		q->u += rs*fNorm_u/q->fMass;
-		q->fMetals += rs*fNorm;
-		q->fTimeForm += rs*fNorm_t;
-        }
-	}
-
-#endif /* SIMPLESF */
 
 #endif /* GASOLINE */
 

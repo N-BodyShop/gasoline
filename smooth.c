@@ -429,18 +429,6 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         smx->bUseBallMax = 0;
         break;
 #endif
-#ifdef SIMPLESF
-    case SMX_SIMPLESF_FEEDBACK:
-        assert(bSymmetric != 0);
-        smx->fcnSmooth = SimpleSF_Feedback;
-        initParticle = NULL;
-        initTreeParticle = NULL;
-        init = initSimpleSF_Feedback;
-        comb = combSimpleSF_Feedback;
-        smx->fcnPost = NULL;
-        smx->bUseBallMax = 0;
-        break;
-#endif
 
 #endif         
 #ifdef COLLISIONS

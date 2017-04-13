@@ -188,9 +188,6 @@ enum smx_smoothtype {
   SMX_DELETE_GAS,
   SMX_DIST_FB_ENERGY,
 #endif
-#ifdef SIMPLESF
-  SMX_SIMPLESF_FEEDBACK,
-#endif
 #endif
 #ifdef COLLISIONS
   SMX_REJECTS,
@@ -421,13 +418,6 @@ void postDistFBEnergy(PARTICLE *p1, SMF *smf);
 
 #endif
 
-#ifdef SIMPLESF
-/* SMX_SIMPLESF_FEEDBACK */
-void initSimpleSF_Feedback(void *p1);
-void combSimpleSF_Feedback(void *p1,void *p2);
-void SimpleSF_Feedback(PARTICLE *, int, NN *, SMF *);
-
-#endif
 
 #endif
 

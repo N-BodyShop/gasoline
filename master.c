@@ -1367,40 +1367,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bFormOutputs = 1;
 	prmAddParam(msr->prm,"bFormOutputs",0,&msr->param.bFormOutputs,sizeof(int),
 				"formout","<Write *form files?> = 0");
-#ifdef SIMPLESF
-	msr->param.SSF_dComovingDenMin = 200.0;
-	prmAddParam(msr->prm,"SSF_dComovingDenMin", 2, &msr->param.SSF_dComovingDenMin,
-		    sizeof(double), "stODmin",
-		    "<Minimum overdensity for forming stars> = 2");
-	msr->param.SSF_dPhysDenMin =  7e-26;
-	prmAddParam(msr->prm,"SSF_dPhysDenMin", 2, &msr->param.SSF_dPhysDenMin,
-		    sizeof(double), "stPDmin",
-		    "<Minimum physical density for forming stars (gm/cc)> =  7e-26");
-    msr->param.SSF_dInitStarMass = 0;
-    prmAddParam(msr->prm,"SSF_dInitStarMass", 2, &msr->param.SSF_dInitStarMass,
-				sizeof(double), "stm0",
-				"<Initial star mass> = 0");
-	msr->param.SSF_dESNPerStarMass = 1.25e16;
-	prmAddParam(msr->prm,"SSF_dESNPerStarMass", 2, &msr->param.SSF_dESNPerStarMass,
-		    sizeof(double), "ESNPerStarMass",
-		    "<ESN per star mass, erg per g of stars> = 1.25e16");
-	msr->param.SSF_dTMax = 3e4;
-	prmAddParam(msr->prm,"SSF_dTMax", 2, &msr->param.SSF_dTMax,
-		    sizeof(double), "SSF_dTMax",
-		    "<Maximum temperature for forming stars, K> = 3e4");
-	msr->param.SSF_dEfficiency = 0.1;
-	prmAddParam(msr->prm,"SSF_dEfficiency", 2, &msr->param.SSF_dEfficiency,
-		    sizeof(double), "SSF_dEfficiency",
-		    "<SF Efficiency> = 0.1");
-	msr->param.SSF_dtCoolingShutoff = 30e6;
-	prmAddParam(msr->prm,"SSF_dtCoolingShutoff", 2, &msr->param.SSF_dtCoolingShutoff,
-		    sizeof(double), "SSF_dtCoolingShutoff",
-		    "<SF Cooling Shutoff duration> = 30e6");
-	msr->param.SSF_bdivv = 1;
-	prmAddParam(msr->prm,"SSF_bdivv", 0, &msr->param.SSF_bdivv,
-		    sizeof(int), "SSF_bdivv",
-		    "<SF Use div v for star formation> = 1");
-#endif /* SIMPLESF */
 #ifdef STARFORM
 	stfmInitialize(&msr->param.stfm);
 	msr->param.stfm->dOverDenMin = 2.0;
@@ -1950,12 +1916,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
         fprintf(stderr,"iViscosityLimiter: Can't use explicit viscosity limiting with Cullen & Denhen viscosity\n");
     }
 #endif
-#ifndef SHOCKTRACK
 	if (msr->param.bShockTracker != 0) {
 	        fprintf(stderr,"Compile with -DSHOCKTRACK for Shock Tracking.\n");
 			assert(0);
 	        }
-#endif
 #endif
 	/*
 	 ** Determine opening type.
@@ -2283,9 +2247,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
         msr->param.fb->dThermalCond2SatCoeff = msr->param.dThermalCond2SatCoeff;
 #endif
 #endif /* STARFORM */
-#ifdef SIMPLESF
-	    assert(msr->param.SSF_dInitStarMass > 0.0);
-#endif
 	    }
 
 
@@ -2753,14 +2714,8 @@ void msrLogDefines(FILE *fp)
 #ifdef VOLUMEFEEDBACK
 	fprintf(fp," VOLUMEFEEDBACK");
 #endif
-#ifdef SIMPLESF
-	fprintf(fp," SIMPLESF");
-#endif
 #ifdef LARGEFBALL
 	fprintf(fp," LARGEFBALL");
-#endif
-#ifdef SHOCKTRACK
-	fprintf(fp," SHOCKTRACK");
 #endif
 #ifdef VARALPHA
 	fprintf(fp," VARALPHA");
@@ -3429,17 +3384,6 @@ void msrLogHeader(MSR msr,FILE *fp)
     }
 
 
-#ifdef SIMPLESF
-    LogParams(lgr, "STAR FORMATION","SSF: bStarForm: %d",msr->param.bStarForm);
-    LogParams(lgr, "STAR FORMATION","SSF_dEfficiency: %g",msr->param.SSF_dEfficiency);
-    LogParams(lgr, "STAR FORMATION","SSF_dTMax: %g",msr->param.SSF_dTMax);
-    LogParams(lgr, "STAR FORMATION","SSF_dPhysDenMin: %g",msr->param.SSF_dPhysDenMin);
-    LogParams(lgr, "STAR FORMATION","SSF_dComovingDenMin: %g",msr->param.SSF_dComovingDenMin);
-    LogParams(lgr, "STAR FORMATION","SSF_dESNPerStarMass: %g",msr->param.SSF_dESNPerStarMass);
-    LogParams(lgr, "STAR FORMATION","SSF_dInitStarMass: %g",msr->param.SSF_dInitStarMass);
-    LogParams(lgr, "STAR FORMATION","SSF_dtCoolingShutoff: %g",msr->param.SSF_dtCoolingShutoff);
-    LogParams(lgr, "STAR FORMATION","SSF_bdivv: %d",msr->param.SSF_bdivv);
-#endif
     if (msr->param.bPatch) {
         PATCH_PARAMS *PP = &msr->param.PP;
         LogParams(lgr, "NON-INERTIAL REFERENCE FRAME","dOrbDist: %g",PP->dOrbDist);
@@ -4889,11 +4833,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
             OutputList[(*nOutputList)++]=OUT_TIMEFORM_ARRAY;
             OutputList[(*nOutputList)++]=OUT_MASSFORM_ARRAY;
             }
-#ifdef SIMPLESF
-        OutputList[(*nOutputList)++]=OUT_DIVV_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_TCOOLAGAIN_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_MSTAR_ARRAY;
-#endif
         }
 #endif
 #endif
@@ -5001,11 +4940,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
             OutputList[(*nOutputList)++]=OUT_TIMEFORM_ARRAY;
             OutputList[(*nOutputList)++]=OUT_MASSFORM_ARRAY;
             }
-#ifdef SIMPLESF
-        OutputList[(*nOutputList)++]=OUT_DIVV_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_TCOOLAGAIN_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_MSTAR_ARRAY;
-#endif
         }
 #endif
 #endif
@@ -5469,19 +5403,10 @@ void msrOneNodeWriteOutputs(MSR msr, int OutputList[], int nOutputList,
 	  } else {
 	    nDim=(OutputList[iOut] > OUT_1D3DSPLIT) ? 3 : 1;
 	    for (iDim=0; iDim<nDim; iDim++) {
-#ifdef SIMPLESF
-	      /* The SF variables are written in binary no
-		 matter what */
-	      pkdOutVector(plcl->pkd,achOutFileVec,
-			   nStart, iDim, OutputList[iOut],
-			   ((OutputList[iOut]==OUT_TCOOLAGAIN_ARRAY || OutputList[iOut]==OUT_MSTAR_ARRAY) ? 1 : msr->param.iBinaryOutput),
-			   msr->N,msr->param.bStandard);
-#else
 	      pkdOutVector(plcl->pkd,achOutFileVec, nStart,
 			   iDim, OutputList[iOut],
 			   msr->param.iBinaryOutput, msr->N,
 			   msr->param.bStandard);
-#endif
 	    }
 	  }
 	}
@@ -5535,11 +5460,7 @@ void msrOneNodeOutArray(MSR msr, struct inOutput *in)
         /*
          * Write the swapped particles.
          */
-#ifdef SIMPLESF
-        pkdOutVector(plcl->pkd,in->achOutFile, nStart, 0, in->iType, ((in->iType==OUT_TCOOLAGAIN_ARRAY || in->iType==OUT_MSTAR_ARRAY) ? 1 : in->iBinaryOutput), msr->N,in->bStandard);
-#else
         pkdOutVector(plcl->pkd,in->achOutFile,nStart, 0, in->iType,in->iBinaryOutput, msr->N,in->bStandard);
-#endif
         nStart += plcl->pkd->nLocal;
         /*
          * Swap them back again.
@@ -5633,11 +5554,7 @@ void msrOneNodeInArray(MSR msr, struct inInput *in)
      */
     assert(msr->pMap[0] == 0);
     nStart = 0;
-#ifdef SIMPLESF
-        pkdInVector(plcl->pkd,in->achInFile, nStart, plcl->pkd->nLocal, 0, in->iType, ((in->iType==OUT_TCOOLAGAIN_ARRAY || in->iType==OUT_MSTAR_ARRAY) ? 1 : in->iBinaryInput), msr->N,in->bStandard);
-#else
         pkdInVector(plcl->pkd,in->achInFile,nStart, plcl->pkd->nLocal, 0, in->iType,in->iBinaryInput, msr->N,in->bStandard);
-#endif
     nStart += plcl->pkd->nLocal;
     for (i=1;i<msr->nThreads;++i) {
 	id = msr->pMap[i];
@@ -5651,11 +5568,7 @@ void msrOneNodeInArray(MSR msr, struct inInput *in)
         /*
          * Read the swapped particles.
          */
-#ifdef SIMPLESF
-        pkdInVector(plcl->pkd,in->achInFile, nStart, plcl->pkd->nLocal, 0, in->iType, ((in->iType==OUT_TCOOLAGAIN_ARRAY || in->iType==OUT_MSTAR_ARRAY) ? 1 : in->iBinaryInput), msr->N,in->bStandard);
-#else
         pkdInVector(plcl->pkd,in->achInFile,nStart, plcl->pkd->nLocal, 0, in->iType,in->iBinaryInput, msr->N,in->bStandard);
-#endif
         nStart += plcl->pkd->nLocal;
         /*
          * Swap them back again.
@@ -8789,9 +8702,6 @@ void msrTopStepKDK(MSR msr,
 		dTime += dDelta;
 		dStep += 1.0/(1 << iRung);
 #endif /* GASOLINE */
-#ifdef SIMPLESF
-		msrSimpleStarForm(msr, dTime, dDelta);
-#endif
 #ifdef STARFORM
         /* only form stars at user defined intervals */
         if ( iKickRung <= msr->param.iStarFormRung ) {
@@ -10365,69 +10275,6 @@ void msrCreateInflow(MSR msr, double dTime, double dDelta)
 void msrSimpleStarForm(MSR msr, double dTime, double dDelta)
 {
 /* Note: Must be called with an SPH tree built and available */
-#ifdef SIMPLESF
-    struct inSimpleStarForm in;
-    struct outSimpleStarForm out;
-	double a,d1,d2;
-
-    double dMass = -1.0;
-	double sec,sec1,dsec;
-
-    if(msr->param.bStarForm == 0) return;
-
-	sec = msrTime();
-
-    a = csmTime2Exp(msr->param.csm,dTime);
-
-	/* Convert input parameters to code units */
-    in.dRateCoeff = msr->param.SSF_dEfficiency*sqrt(4.*M_PI/pow(a,3)); /* G=1 */
-	in.dTMax = msr->param.SSF_dTMax;
-	d1 = msr->param.SSF_dComovingDenMin;
-	d2 = msr->param.SSF_dPhysDenMin/msr->param.dGmPerCcUnit*pow(a,3);
-	in.dDenMin = (d1>d2 ? d1 : d2);
-	in.dDelta = dDelta;
-
-	in.dTime = dTime;
-	in.dInitStarMass = msr->param.SSF_dInitStarMass;
-	in.dESNPerStarMass = msr->param.SSF_dESNPerStarMass/msr->param.dErgPerGmUnit;
-#define SECONDSPERYEAR   31557600.
-	in.dtCoolingShutoff = msr->param.SSF_dtCoolingShutoff*SECONDSPERYEAR/msr->param.dSecUnit;
-	in.bdivv = msr->param.SSF_bdivv;
-
-    if (msr->param.bVDetails) printf("Simple Star Form ... ");
-
-    dMass = msrMassCheck(msr, -1.0, "Form Stars");
-	msrActiveType(msr,0,TYPE_SMOOTHACTIVE|TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE);
-	/* New stars will be set to TYPE_SMOOTHACTIVE when created */
-
-    pstSimpleStarForm(msr->pst, &in, sizeof(in), &out, NULL);
-    if (msr->param.bVDetails)
-		printf("%d Stars formed with mass %g, %d gas deleted\n",
-			   out.nFormed, out.dMassFormed, out.nDeleted);
-
-    /*
-     * adjust particle numbers
-     */
-    msrAddDelParticles(msr);
-    msrMassCheck(msr, dMass, "Form stars: after particle adjustment");
-
-	sec1 = msrTime();
-	dsec = sec1 - sec;
-	printf("Star Formation Calculated, Wallclock: %f secs\n\n",dsec)
-	LOGTIMINGUPDATE( dsec, TIMING_StarForm );
-
-	if (msr->param.bFeedBack && out.nFormed) {
-		/* Build a tree to distribute energy from SN, if nFormed > 0  */
-
-		/* Any new stars have been set to SMOOTHACTIVE */
-		msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_ACTIVE);
-		msrBuildTree(msr,1,dMass,1);
-		msrSmooth(msr, dTime, SMX_SIMPLESF_FEEDBACK, 1);
-		dsec = msrTime() - sec1;
-		printf("Feedback Calculated, Wallclock: %f secs\n\n",dsec);
-		LOGTIMINGUPDATE( dsec, TIMING_Feedback );
-		}
-#endif
     }
 
 #ifdef GLASS
@@ -12040,55 +11887,6 @@ void msrAggsGetNewIdx(MSR msr)
 		msr->pAggs[i].bAssigned = 0;
 	}
 
-#ifdef AGGSCLEANUP /*DEBUG not implemented yet*/
-/*DEBUG reconcile with AggsFind()?*/
-/*DEBUG do we really want to rearrange indices?*/
-#define AGGS_EFF_RATIO (1.0/3.0)
-
-void msrAggsCleanup(MSR msr)
-{
-	Aggregate *agg,*new_buf;
-	int i,j,nAggs;
-
-	for (nAggs=i=0;i<msr->nAggs;i++) {
-		agg = &msr->pAggs[i];
-		if (agg->bAssigned)
-			++nAggs;
-		}
-
-	assert(nAggs >= 0);
-
-	if (nAggs < msr->nAggs*AGGS_EFF_RATIO) {
-		struct inAggsCleanup in;
-
-		if (msr->param.bVDetails)
-			(void) printf("Cleaning up unused aggregate space...\n");
-		/* allocate sufficient space in powers of 2 */
-		nAggs = 1 << (int) (log((nAggs + 1) << 1)/M_LN2);
-		new_buf = (Aggregate *) malloc(nAggs*sizeof(Aggregate));
-		for (i=j=0;i<msr->nAggs;i++) {
-			agg = &msr->pAggs[i];
-			if (agg->bAssigned) {
-				assert(j < nAggs);
-				new_buf[j++] = *agg; /* struct copy */
-				in.iOldIdx = i;
-				in.iNewIdx = j;
-				pstAggsCleanup(msr->pst,&in,sizeof(in),NULL,NULL);
-				}
-			}
-		for (j<nAggs;j++)
-			new_buf[j].bAssigned = 0;
-		msr->nAggs = nAggs;
-		free((void *) msr->pAggs);
-		msr->pAggs = new_buf;
-		if (msr->param.bVDetails)
-			(void) printf("Space for %i aggregates reallocated.\n",nAggs);
-		msrAggsGetNewIdx(msr);
-		}
-	}
-
-#undef AGGS_EFF_RATIO
-#endif
 
 void msrAggsFind(MSR msr)
 {

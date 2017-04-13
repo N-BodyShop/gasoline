@@ -1142,9 +1142,7 @@ double clHeatTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMet
         Y->HeI  * cl->R.Heat_Phot_HeI * Rate->Phot_HeI +
         Y->HeII * cl->R.Heat_Phot_HeII * Rate->Phot_HeII
         + Y->H2   * cl->R.Heat_Phot_H2 * Rate->Phot_H2*s_dust*s_self
-#ifndef NOMETALCOOLING
         + Rate->Heat_Metal
-#endif
         ;
 
     return heating; 
@@ -1195,9 +1193,7 @@ double clCoolTotal ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMet
         en_B * Y->HI * cl->R.Cool_Coll_H2 * Y->H2 * Rate->Coll_HI_H2  + /*remove shielding of collisions CC 11/18/10*/
         en_B * Y->H2 * cl->R.Cool_Coll_H2 * Y->H2 * Rate->Coll_H2_H2  + /*remove shielding of collisions CC 11/18/10*/
         en_B * Y->HII * cl->R.Cool_Coll_H2 * Y->H2 * Rate->Coll_HII_H2 + /*remove shielding of collisions CC 11/18/10*/
-#ifndef NOMETALCOOLING
         Rate->Cool_Metal +
-#endif
         LowTCool;  
  
     }
@@ -2438,17 +2434,13 @@ double clEdotInstant_Table( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
     cl->R.Cool_Coll_H2 * Y->H2 * Rate->Coll_HII_H2 * Y->HII *en_B 
     + 
       LowTCool
-#ifndef NOMETALCOOLING
     +
     Rate->Cool_Metal
-#endif
     ;
 
   *dEdotHeat =
-#ifndef NOMETALCOOLING
       Rate->Heat_Metal
     +
-#endif
     Y->H2 * cl->R.Heat_Phot_H2 * Rate->Phot_H2*s_dust*s_self + /*photon heating and dissociation CC*/
     Y->HI   * cl->R.Heat_Phot_HI * Rate_Phot_HI +
     Y->HeI  * cl->R.Heat_Phot_HeI * Rate->Phot_HeI +
@@ -2520,17 +2512,13 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
     cl->R.Cool_Coll_H2 * Y->H2 * Rate->Coll_HII_H2 * Y->HII * en_B   
     +
       LowTCool
-#ifndef NOMETALCOOLING
     + 
     Rate->Cool_Metal
-#endif
     ;
 
   *dEdotHeat =
-#ifndef NOMETALCOOLING
       Rate->Heat_Metal
     +
-#endif
         + Y->H2   * cl->R.Heat_Phot_H2 * Rate->Phot_H2*s_dust*s_self 
         + Y->HI   * cl->R.Heat_Phot_HI * Rate_Phot_HI /* This produces very large amounts of HI shielding but is consistent with everything else CC*/
         + Y->HeI  * cl->R.Heat_Phot_HeI  * Rate->Phot_HeI

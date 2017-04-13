@@ -263,12 +263,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return(p->uDotAV);
 	case OUT_UDOTDIFF_ARRAY:
 	    return(p->uDotDiff);
-#ifdef SHOCKTRACK
-	case OUT_SHOCKTRACKER_ARRAY:
-	    return(p->ShockTracker);
-	case OUT_DIVRHOV_ARRAY:
-	    return(p->divrhov);
-#endif
 #ifdef SFBOUND
 	case OUT_SIGMA2_ARRAY:
 	    return(p->fSigma2);
@@ -296,12 +290,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return((FLOAT) p->uDotFB);
 #endif
 
-#ifdef SIMPLESF
-	case OUT_TCOOLAGAIN_ARRAY:
-	    return(p->fTimeForm);
-	case OUT_MSTAR_ARRAY:
-	    return(p->fMassStar);
-#endif
 	case OUT_SPHH_ARRAY:
 #endif
 	case OUT_H_ARRAY:
@@ -343,12 +331,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #ifdef NORMAL
 	case OUT_NORMAL_VECTOR:
 	    return(p->normal[iDim]);
-#endif
-#if defined(SHOCKTRACK)
-	case OUT_GRADRHO_VECTOR:
-	    return(p->gradrho[iDim]);
-	case OUT_ACCELPRES_VECTOR:
-	    return(p->aPres[iDim]);
 #endif
 	case OUT_ANGMOM_VECTOR:
 	    return(((FLOAT *) (&(SINK_Lx(p))))[iDim]);
@@ -649,14 +631,6 @@ void VecFilename(char *achFile, int iType)
 	    strncat(achFile,"Metalsdot",256);
         break;
 #endif
-#ifdef SHOCKTRACK
-	case OUT_SHOCKTRACKER_ARRAY:
-        strncat(achFile,"ST",256);
-        break;
-	case OUT_DIVRHOV_ARRAY:
-        strncat(achFile,"divrhov",256);
-        break;
-#endif
 	case OUT_SIGMA2_ARRAY:
 	    strncat(achFile,"sigma2",256);
         break;
@@ -692,14 +666,6 @@ void VecFilename(char *achFile, int iType)
 	    break;
 #endif
 
-#ifdef SIMPLESF
-	case OUT_TCOOLAGAIN_ARRAY:
-		strncat(achFile,"tCoolAgain",256);
-        break;
-	case OUT_MSTAR_ARRAY:
-		strncat(achFile,"mStar",256);
-        break;
-#endif
 	case OUT_SPHH_ARRAY:
 		strncat(achFile,"SPHH",256);
         break;
@@ -734,14 +700,6 @@ void VecFilename(char *achFile, int iType)
         break;
 #endif
 #if defined(GASOLINE)
-#if defined(SHOCKTRACK)
-	case OUT_GRADRHO_VECTOR:
-		strncat(achFile,"gradrho",256);
-        break;
-	case OUT_ACCELPRES_VECTOR:
-	    strncat(achFile,"accp",256);
-        break;
-#endif
 	case OUT_ANGMOM_VECTOR:
 	    strncat(achFile,"angmom",256);
         break;

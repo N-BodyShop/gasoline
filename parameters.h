@@ -331,16 +331,6 @@ struct parameters {
     double dIonizeMultiple;
     double dIonizeTMin;
     double dIonizeT;
-#ifdef SIMPLESF
-	double SSF_dEfficiency;
-    double SSF_dTMax;
-    double SSF_dPhysDenMin;
-    double SSF_dComovingDenMin;
-    double SSF_dESNPerStarMass;
-    double SSF_dInitStarMass;
-	double SSF_dtCoolingShutoff;
-    int SSF_bdivv;
-#endif
 #ifdef TWOPHASE
     double dFBInitialMassLoad;
     double dMultiPhaseMinTemp;
