@@ -3,7 +3,6 @@ BATEPOLY              #Use the default cooling polynomial COOLING_POLY
 CD_ALPHANOISE  
 CDCNOTVSIG
 CD_CNOTVSIG
-CD_DEBUG
 CD_DVDS
 CD_DVDXLIMIT
 CD_FULLS
@@ -41,14 +40,9 @@ DODVDS                #Different estimate of Balsara switch instead of divv
 DRHODT                #Use the change in density over time (dRho/dt) 
 DTADJUST              #Readjust timesteps if near short timestep particles -- required for good energy conservation
 EPSACCH               #Use sph H not softening to calculate acceleration timestep, even if softening smaller
-EXTRASINKDATA
 FEEDBACKDIFFLIMIT     #Disable thermal diffusion for particles that have their cooling shut off
-FITDVDX               #Use a fitted version of the DenDVDX 
 FUVSHIELD
 GASOLINE              #Do hydro 
-GLASS_1
-GLASS_2
-GLASS_3
 GLASS                 #Use this to damp for glass initial conditions
 GLASSZ                #Use this to damp for glass IC in z direction
 GRACKLE_PRIMORDIAL_CHEMISTRY_MAX

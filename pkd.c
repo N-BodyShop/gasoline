@@ -6483,44 +6483,7 @@ void pkdGlassGasPressure(PKD pkd, void *vin)
     for(i=0;i<pkdLocal(pkd);++i) {
         p = &pkd->pStore[i];
         if (TYPEQueryTREEACTIVE(p)) {
-#define GLASS_3
-#ifdef GLASS_3
             PoverRho = pow(p->fDensity,0.2389721);
-#endif
-#ifdef GLASS_2
-            PoverRho = in->dGlassPoverRhoL*(p->r[0]*p->r[0]+p->r[1]*p->r[1]+p->r[2]*p->r[2])+1/p->fDensity;
-#endif
-#ifdef GLASS_1
-            if (p->r[0] < -nsp*in->dGlassxL) {
-              if (p->r[0] > in->dxBoundL + nsp*in->dGlassxL)
-                   PoverRho=in->dGlassPoverRhoL;  
-              else {
-                   xx = ( p->r[0] - in->dxBoundL + nsp*in->dGlassxR )
-                 / ( nsp*in->dGlassxL+nsp*in->dGlassxR );
-                   xx = xx*xx* ( -2*xx + 3 );
-                       PoverRho = in->dGlassPoverRhoR + xx
-                 *(in->dGlassPoverRhoL - in->dGlassPoverRhoR);
-                           }
-              }
-                        else if (p->r[0] > nsp*in->dGlassxR) {
-              if (p->r[0] < in->dxBoundR - nsp*in->dGlassxR)
-                   PoverRho=in->dGlassPoverRhoR;  
-              else {
-                   xx = ( p->r[0] - in->dxBoundR + nsp*in->dGlassxR )
-                 / ( nsp*in->dGlassxL+nsp*in->dGlassxR );
-                   xx = xx*xx* ( -2*xx + 3 );
-                       PoverRho = in->dGlassPoverRhoR + xx
-                 *(in->dGlassPoverRhoL - in->dGlassPoverRhoR);
-                   }
-              }
-            else {
-                   xx = ( p->r[0] + nsp*in->dGlassxL )
-                 / ( nsp*in->dGlassxL+nsp*in->dGlassxR );
-                   xx = xx*xx* ( -2*xx + 3 );
-                       PoverRho = in->dGlassPoverRhoL + xx
-                 *(in->dGlassPoverRhoR - in->dGlassPoverRhoL);
-                   }
-#endif
 
             p->u = PoverRho;
             p->uPred = PoverRho;

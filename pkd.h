@@ -166,17 +166,6 @@ typedef struct particle {
     FLOAT dTime_divv;
     FLOAT divv_old; // stored old value for checking that nbrs also all compressing
 #define CD_DEBUG
-#ifdef CD_DEBUG
-    FLOAT alphaLoc; 
-    FLOAT alphaNoise;
-    FLOAT vSigMax;  
-    FLOAT divv_dens; 
-    FLOAT divvDot;
-    FLOAT R_CD;
-    FLOAT SNorm;
-    FLOAT SFull;
-    FLOAT dvdsonSFull;
-#endif
 #endif
     FLOAT curlv[3];         /* Note this is used as workspace and value is not preserved */
     FLOAT BalsaraSwitch;    /* Balsara viscosity reduction */
@@ -220,10 +209,6 @@ typedef struct particle {
 /*      FLOAT fDensSave;*/      /* Used by diagnostic DensCheck funcs */
     FLOAT fMetals;  /* mass fraction in metals, a.k.a, Z */
     FLOAT fTimeForm;
-#if defined(SIMPLESF) || defined(EXTRASINKDATA)
-    FLOAT rForm[3];         /* record pos and vel of star formation */
-    FLOAT vForm[3];
-#endif
 #ifdef SFBOUND
     FLOAT fSigma2;
 #endif

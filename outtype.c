@@ -211,26 +211,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_ALPHA_ARRAY:
 	    return(p->alpha);
 #endif
-#ifdef CD_DEBUG
-    case OUT_VSIGMAX_ARRAY:
-        return(p->vSigMax);
-    case OUT_R_CD_ARRAY:
-        return(p->R_CD);
-    case OUT_SNORM_ARRAY:
-        return(p->SNorm);
-    case OUT_SFULL_ARRAY:
-        return(p->SFull);
-    case OUT_DVDSONSFULL_ARRAY:
-        return(p->dvdsonSFull);
-    case OUT_ALPHALOC_ARRAY:
-        return(p->alphaLoc);
-    case OUT_ALPHANOISE_ARRAY:
-        return(p->alphaNoise);
-	case OUT_DIVV_DENS_ARRAY:
-	    return(p->divv_dens);
-	case OUT_DIVVDOT_ARRAY:
-	    return(p->divvDot);
-#endif
 	case OUT_DIVV_ARRAY:
 	    return(p->divv);
 #ifdef DODVDS

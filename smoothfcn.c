@@ -4059,7 +4059,6 @@ void postDenDVDX(PARTICLE *p, SMF *smf) {
 #endif
     }  
 
-#ifndef FITDVDX
 /* Gather only version */
 void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
@@ -4340,10 +4339,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         // time interval = current time - last time divv was calculated
         double dDeltaTime = smf->dTime - p->dTime_divv;
         p->dTime_divv = smf->dTime;
-#ifdef CD_DEBUG
-        p->R_CD = 1-OneMinusR_CD;
-        p->vSigMax = vSigMax;
-#endif
 
         if (dDeltaTime > 0) {
             assert(!smf->bStepZero);
@@ -4352,10 +4347,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             double divvDot = (p->dvds - pdvds_old)/dDeltaTime, dvdx = p->dvds;
 #else
             double divvDot = (p->divv - pdivv_old)/dDeltaTime, dvdx = p->divv;
-#endif
-#ifdef CD_DEBUG
-            p->divv_dens = -(p->fDensity-fDensity_old)/dDeltaTime/sqrt(p->fDensity*fDensity_old);
-            p->divvDot = divvDot;
 #endif
             if (
 #ifdef CD_NODOT
@@ -4422,19 +4413,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
             p->alpha = alphaLoc;
             }
-#ifdef CD_DEBUG
-        p->alphaLoc = alphaLoc;
-        p->alphaNoise = alphaNoise;
-        p->SNorm = sqrt(S2);
-        double Hcorr = (fNorm1 != 0 ? smf->H/fNorm1 : 0);
-        double sxxf = dvxdx+Hcorr, syyf = dvydy+Hcorr, szzf = dvzdz+Hcorr;
-        double SFull2 = fNorm1*fNorm1*(sxxf*sxxf+syyf*syyf+szzf*szzf 
-            + 2*(sxy*sxy + sxz*sxz + syz*syz));
-        p->SFull = sqrt(SFull2);
-
-// note can exceed +/- 1 due to noise in divv -- pure 1d case capped at +/- 1
-        p->dvdsonSFull = (p->SFull > 0 ? dvds/p->SFull : 0); 
-#endif
 #endif
 #ifdef DIFFUSION
         /* diff coeff., nu ~ C L^2 S (add C via dMetalDiffusionConstant, assume L ~ h) */
@@ -4450,238 +4428,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 	}
 
-#else /* FITDVDX */
-
-#include "stiff.h"
-/* Gather only version -- don't use */
-void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
-{
-	FLOAT ih2,ih,r2,rs,rs1,fDensity,fNorm,fNorm1,vFac,S;
-	FLOAT dvxdx , dvxdy , dvxdz, dvydx , dvydy , dvydz, dvzdx , dvzdy , dvzdz;
-	FLOAT Wdvxdx , Wdvxdy , Wdvxdz, Wdvydx , Wdvydy , Wdvydz, Wdvzdx , Wdvzdy , Wdvzdz;
-	FLOAT Wdxdx, Wdxdy, Wdydy, Wdydz, Wdzdz, Wdxdz;
-	FLOAT Wdvx,Wdvy,Wdvz,Wdx,Wdy,Wdz,W;
-	FLOAT dvx,dvy,dvz,dx,dy,dz,trace;
-	FLOAT grx,gry,grz,gnorm,dvds,dvdr,c;
-	double **a, *x, d;
-	int *indx;
-
-	PARTICLE *q;
-	int i,j;
-	unsigned int qiActive;
-
-	ih2 = 4.0/BALL2(p);
-	ih = sqrt(ih2);
-	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
-#ifdef SPH1D
-	fNorm = (2./3.)*ih;
-#else
-	fNorm = M_1_PI*ih2*ih;
-#endif
-	fNorm1 = fNorm*ih2;	
-	fDensity = 0.0;
-	Wdvxdx = 0; Wdvxdy = 0; Wdvxdz= 0;
-	Wdvydx = 0; Wdvydy = 0; Wdvydz= 0;
-	Wdvzdx = 0; Wdvzdy = 0; Wdvzdz= 0;
-	Wdxdx = 0; Wdxdy = 0; Wdxdz= 0;
-	Wdydy = 0; Wdydz= 0;  Wdzdz= 0;
-	Wdvx = 0; Wdvy = 0; Wdvz = 0;
-	Wdx = 0; Wdy = 0; Wdz = 0;
-	W = 0;
-
-	grx = 0;
-	gry = 0;
-	grz = 0;
-
-	qiActive = 0;
-	for (i=0;i<nSmooth;++i) {
-		r2 = nnList[i].fDist2*ih2;
-		q = nnList[i].pPart;
-		if (TYPETest(p,TYPE_ACTIVE)) TYPESet(q,TYPE_NbrOfACTIVE); /* important for SPH */
-		qiActive |= q->iActive;
-		KERNEL(rs,r2);
-		fDensity += rs*q->fMass;
-		DKERNEL(rs1,r2);
-		rs1 *= q->fMass;
-		dx = nnList[i].dx;
-		dy = nnList[i].dy;
-		dz = nnList[i].dz;
-		dvx = (-p->vPred[0] + q->vPred[0])*vFac - dx*smf->H; /* NB: dx = px - qx */
-		dvy = (-p->vPred[1] + q->vPred[1])*vFac - dy*smf->H;
-		dvz = (-p->vPred[2] + q->vPred[2])*vFac - dz*smf->H;
-
-		grx += (q->uPred-p->uPred)*dx*rs1; /* Grad P estimate */
-		gry += (q->uPred-p->uPred)*dy*rs1;
-		grz += (q->uPred-p->uPred)*dz*rs1;
-
-		rs = 1;
-		Wdvxdx += dvx*dx*rs;
-		Wdvxdy += dvx*dy*rs;
-		Wdvxdz += dvx*dz*rs;
-		Wdvydx += dvy*dx*rs;
-		Wdvydy += dvy*dy*rs;
-		Wdvydz += dvy*dz*rs;
-		Wdvzdx += dvz*dx*rs;
-		Wdvzdy += dvz*dy*rs;
-		Wdvzdz += dvz*dz*rs;
-		Wdxdx += dx*dx*rs;
-		Wdxdy += dx*dy*rs;
-		Wdxdz += dx*dz*rs;
-		Wdydy += dy*dy*rs;
-		Wdydz += dy*dz*rs;
-		Wdzdz += dz*dz*rs;
-		Wdvx += dvx*rs;
-		Wdvy += dvy*rs;
-		Wdvz += dvz*rs;
-		Wdx += dx*rs;
-		Wdy += dy*rs;
-		Wdz += dz*rs;
-		W += rs;
-		}
-	if (qiActive & TYPE_ACTIVE) TYPESet(p,TYPE_NbrOfACTIVE);
-
-/*	printf("TEST %d  %g %g  %g %g %g",p->iOrder,p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]);*/
-	p->fDensity = fNorm*fDensity; 
-	fNorm1 /= p->fDensity;
-
-/* new stuff */
-	a = matrix(1,4,1,4);
-
-	for (i=1;i<=4;i++) for (j=1;j<=4;j++) a[i][j] = 0;
-	a[1][1] = W;
-	a[1][2] = Wdx;
-	a[1][3] = Wdy;
-	a[1][4] = Wdy;
-	a[2][1] = Wdx;
-	a[2][2] = Wdxdx;
-	a[2][3] = Wdxdy;
-	a[2][4] = Wdxdz;
-	a[3][1] = Wdy;
-	a[3][2] = Wdxdy;
-	a[3][3] = Wdydy;
-	a[3][4] = Wdydz;
-	a[4][1] = Wdz;
-	a[4][2] = Wdxdz;
-	a[4][3] = Wdydz;
-	a[4][4] = Wdzdz;
-	
-	indx = ivector(1,4);
-	ludcmp(a,4,indx,&d);
-
-	x = vector(1,4);
-	x[1] = Wdvx;
-	x[2] = Wdvxdx;
-	x[3] = Wdvxdy;
-	x[4] = Wdvxdz;
-	lubksb(a,4,indx,x);
-	dvxdx =  -x[2];
-	dvxdy =  -x[3];
-	dvxdz =  -x[4];
-	x[1] = Wdvy;
-	x[2] = Wdvydx;
-	x[3] = Wdvydy;
-	x[4] = Wdvydz;
-	lubksb(a,4,indx,x);
-	dvydx =  -x[2];
-	dvydy =  -x[3];
-	dvydz =  -x[4];
-	x[1] = Wdvz;
-	x[2] = Wdvzdx;
-	x[3] = Wdvzdy;
-	x[4] = Wdvzdz;
-	lubksb(a,4,indx,x);
-	dvzdx =  -x[2];
-	dvzdy =  -x[3];
-	dvzdz =  -x[4];
-
-/*
-	if ((p->iOrder%400)==0) {
-	    printf("%8d %7.3f %7.3f %7.3f  %f %f %f   %f %f %f   %f %f %f\n",p->iOrder,p->r[0],p->r[1],p->r[2],dvxdx,dvxdy,dvxdz,dvydz,dvydy,dvydz,dvzdx,dvzdy,dvzdz);
-	    printf("%8d                          %f %f %f   %f %f %f   %f %f %f\n",p->iOrder,-2*3.14156*sin(2*3.14156*p->r[0]),0.,0.,0.,2*3.14156*cos(2*3.14156*p->r[1]),0., -2*3.14156*sin(2*3.14156*p->r[0]), 0., 0. );
-	    }
-*/
-	
-	free_ivector(indx,1,4);
-	free_vector(x,1,4);
-	free_matrix(a,1,4,1,4);
-
-/* divv will be used to update density estimates in future */
-	trace = dvxdx+dvydy+dvzdz;
-	p->divv =  trace; /* physical */
-/* Technically we could now dispense with curlv but it is used in several places as
-   a work variable so we will retain it */
-	p->curlv[0] = (dvzdy - dvydz); 
-	p->curlv[1] = (dvxdz - dvzdx);
-	p->curlv[2] = (dvydx - dvxdy);
-
-/* Prior: ALPHAMUL 10 on top -- make pre-factor for c instead then switch is limited to 1 or less */
-#define ALPHACMUL 0.1
-#ifndef DODVDS
-	if (smf->iViscosityLimiter==2) 
-#endif
-	    {
-	    gnorm = (grx*grx+gry*gry+grz*grz);
-	    if (gnorm > 0) gnorm=1/sqrt(gnorm);
-	    grx *= gnorm;
-	    gry *= gnorm;
-	    grz *= gnorm;
-	    dvdr = ((dvxdx*grx+dvxdy*gry+dvxdz*grz)*grx 
-		    +  (dvydx*grx+dvydy*gry+dvydz*grz)*gry 
-		    +  (dvzdx*grx+dvzdy*gry+dvzdz*grz)*grz);
-#ifdef DODVDS
-	    p->dvds = 
-#endif
-            dvds = (p->divv < 0 ? 1.5*(dvdr -(1./3.)*p->divv) : dvdr );
-	    }
-
-	switch(smf->iViscosityLimiter) {
-	case VISCOSITYLIMITER_NONE:
-	    p->BalsaraSwitch=1;
-	    break;
-	case VISCOSITYLIMITER_BALSARA:
-	    if (p->divv!=0.0) {         	 
-		p->BalsaraSwitch = fabs(p->divv)/
-		    (fabs(p->divv)+sqrt(p->curlv[0]*p->curlv[0]+
-					p->curlv[1]*p->curlv[1]+
-					p->curlv[2]*p->curlv[2]));
-		}
-	    else { 
-		p->BalsaraSwitch = 0;
-		}
-	    break;
-	case VISCOSITYLIMITER_JW:
-	    c = sqrt(smf->gamma*p->uPred*(smf->gamma-1));
-	    if (dvdr < 0 && dvds < 0 ) {         	 
-		p->BalsaraSwitch = -dvds/
-		    (-dvds+sqrt(p->curlv[0]*p->curlv[0]+
-				p->curlv[1]*p->curlv[1]+
-				p->curlv[2]*p->curlv[2])+ALPHACMUL*c*ih)+ALPHAMIN;
-		if (p->BalsaraSwitch > 1) p->BalsaraSwitch = 1;
-		}
-	    else { 
-		p->BalsaraSwitch = 0.01;
-		}
-	    break;
-	    }
-#ifdef DIFFUSION
-        {
-	double onethirdtrace = (1./3.)*trace;
-	/* Build Traceless Strain Tensor (not yet normalized) */
-	double sxx = dvxdx - onethirdtrace; /* pure compression/expansion doesn't diffuse */
-	double syy = dvydy - onethirdtrace;
-	double szz = dvzdz - onethirdtrace;
-	double sxy = 0.5*(dvxdy + dvydx); /* pure rotation doesn't diffuse */
-	double sxz = 0.5*(dvxdz + dvzdx);
-	double syz = 0.5*(dvydz + dvzdy);
-	/* diff coeff., nu ~ C L^2 S (add C via dMetalDiffusionConstant, assume L ~ h) */
-	if (smf->bConstantDiffusion) p->diff = 1;
-	else p->diff = fNorm1*0.25*BALL2(p)*sqrt(2*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz)));
-/*	printf(" %g %g   %g %g %g  %g\n",p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2],fNorm1*sqrt(2*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz))) );*/
-	}
-#endif
-	
-	}
-#endif /* FITDVDX */
 
 void initSmoothBSw(void *p)
 {

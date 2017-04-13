@@ -48,3 +48,8 @@ DIFFUSIONHARMONIC     #Use the harmonic sum for calculating thermal diffusion
 DIFFUSIONSHOCKCOND    #Enable conduction to prevent wall heating in shocks
 DKDENSITY             #Calculate the density using the derivative of the kernel in the DVDX calculation of density
 DRHODTDIVOUT          #Output Divv variables used in DRHODT
+CD_DEBUG              #Debugging flag for CD viscosity limiter
+EXTRASINKDATA         #Store position and velocity of formed sink.  Appears to never be used.
+FITDVDX               #Use a fitted version of the DenDVDX 
+GLASS_1               #Set the pressure in two different regions to be different
+GLASS_2               #Set the pressure based on the xy-radius

@@ -2713,9 +2713,6 @@ void msrLogDefines(FILE *fp)
 #ifdef CULLENDEHNEN
 	fprintf(fp," CULLENDEHNEN");
 #endif
-#ifdef CD_DEBUG
-	fprintf(fp," CD_DEBUG");
-#endif
 #ifdef CD_CNOTVSIG
 	fprintf(fp," CD_CNOTVSIG");
 #endif
