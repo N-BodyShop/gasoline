@@ -43,3 +43,8 @@ CUBICTABLEINTERP      #Use a cubic order interpolation for the cooling table (ra
 DEBUG2                #Extra outputs to check treezip is working
 DEBUG                 #Generic debug mode (debug)
 DELTAACCELACTIVE      #Check that only active particles are used for updating a particles timestep
+DELTACCELCAP          #Make sure that a particles neighbours have a say in it's timestep.
+DIFFUSIONHARMONIC     #Use the harmonic sum for calculating thermal diffusion
+DIFFUSIONSHOCKCOND    #Enable conduction to prevent wall heating in shocks
+DKDENSITY             #Calculate the density using the derivative of the kernel in the DVDX calculation of density
+DRHODTDIVOUT          #Output Divv variables used in DRHODT

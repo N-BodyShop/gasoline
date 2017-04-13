@@ -31,18 +31,13 @@ COOLING_MOLECULARH
 COOLING_PLANET
 COOLING_POLY
 CULLENDEHNEN          #Use the time-variable CD viscosity limit switch
-DELTACCELCAP          #Make sure that a particles neighbours have a say in it's timestep.
 DENSITYU              Calculate modified energy-weighted density (used for cooling) (good for large density gradients)
 DENSITYUNOTP          More aggressive version of the energy-weighted density that ignores contribution from center
 DENSSOFT              #Use the SPH density for gravity softening
 DIFFUSION             #Enable Diffusion (of metals and energy)
-DIFFUSIONHARMONIC     #Use the harmonic sum for calculating thermal diffusion
 DIFFUSIONPRICE        #Daniel Price's Thermal Diffusion
-DIFFUSIONSHOCKCOND    #Enable conduction to prevent wall heating in shocks
 DIVVOFF               #Remove the convergent flow requirement for starformation
-DKDENSITY             #Calculate the density using the derivative of the kernel in the DVDX calculation of density
 DODVDS                #Different estimate of Balsara switch instead of divv
-DRHODTDIVOUT          #Output Divv variables used in DRHODT
 DRHODT                #Use the change in density over time (dRho/dt) 
 DTADJUST              #Readjust timesteps if near short timestep particles -- required for good energy conservation
 EPSACCH               #Use sph H not softening to calculate acceleration timestep, even if softening smaller

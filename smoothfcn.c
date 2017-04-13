@@ -633,10 +633,6 @@ void DeltaAccel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     FLOAT dax,da2,r2,dt;
 	PARTICLE *q;
 
-#ifdef DELTACCELCAP
-	FLOAT pSoft2,qSoft2;
-	pSoft2 = p->fSoft*p->fSoft;
-#endif
 	/*	assert(TYPEQueryACTIVE((PARTICLE *) p)); */
 
 	for (i=0;i<nSmooth;++i) {
@@ -650,11 +646,6 @@ void DeltaAccel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		  dax = p->a[2]-q->a[2];
 		  da2 += dax*dax;
 		  if (da2 > 0) {
-#ifdef DELTACCELCAP
-			if (r2 < pSoft2) r2 = pSoft2;
-			qSoft2 = q->fSoft*q->fSoft;
-			if (r2 < qSoft2) r2 = qSoft2;
-#endif
 
    		    dt = smf->dDeltaAccelFac*sqrt(sqrt(r2/da2));  /* Timestep dt = Eta sqrt(deltar/deltaa) */
 		    if (dt < p->dt) p->dt = dt;
@@ -4115,12 +4106,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		q = nnList[i].pPart;
 		if (TYPETest(p,TYPE_ACTIVE)) TYPESet(q,TYPE_NbrOfACTIVE); /* important for SPH */
 		qiActive |= q->iActive;
-#ifdef DKDENSITY
-		DKERNEL(rs,r2);
-		rs = -(1./3.)*r2*rs;
-#else
 		KERNEL(rs,r2);
-#endif
 		fDensity += rs*q->fMass;
 #if defined(DENSITYU) || defined(RTDENSITY) || defined(THERMALCOND)
 #ifdef TWOPHASE

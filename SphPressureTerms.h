@@ -39,13 +39,8 @@
     #endif
 
 
-    #ifdef DIFFUSIONHARMONIC
-        #define DIFFUSIONBase() double diffSum = (p->diff+q->diff); \
-                                double diffBase = (DIFFUSIONLimitTest() ? 0 : 4*p->diff*q->diff/diffSum);
-    #else
         #define DIFFUSIONBase() double diffSum = (p->diff+q->diff); \
                                 double diffBase = (DIFFUSIONLimitTest() ? 0 : diffSum);
-    #endif
         #define MASSDIFFFAC(pother_) 1
         #define DIFFUSIONMetalsBase() double diffMetalsBase = 2*smf->dMetalDiffusionCoeff*diffBase \
              /(p->fDensity+q->fDensity);
@@ -89,16 +84,8 @@
             #else
                 #define DIFFUSIONThermalCondBase(dt_) double dThermalCond=0;
             #endif
-            #ifdef DIFFUSIONSHOCKCOND
-                #define DIFFUSIONShockCondBase() double dShockCond = 0;
-                #define DIFFUSIONShockCond() double havrg=0.5*(ph+sqrt(0.25*BALL2(q))); \
-                        absmu = abs(havrg*dvdotdr*smf->a/(nnList[i].fDist2+0.01*havrg*havrg)); \
-                        double constg = 1.0; \
-                        dShockCond = SWITCHCOMBINE(p,q)*havrg*constg*(8*absmu)/(p->fDensity+q->fDensity);
-            #else
                 #define DIFFUSIONShockCondBase() double dShockCond = 0;
                 #define DIFFUSIONShockCond() double dShockCond = 0;
-            #endif
 
                 #define DIFFUSIONThermal(dt_) \
                     { double diffTh = (2*smf->dThermalDiffusionCoeff*diffBase/(p->fDensity+q->fDensity)); \

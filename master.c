@@ -2883,9 +2883,6 @@ void msrLogDefines(FILE *fp)
 #ifdef DIFFUSION
 	fprintf(fp, " DIFFUSION");
 #endif
-#ifdef DIFFUSIONSHOCKCOND
-	fprintf(fp, " DIFFUSIONSHOCKCOND");
-#endif
 #ifdef NODIFFUSIONTHERMAL
 	fprintf(fp, " NODIFFUSIONTHERMAL");
 #endif
@@ -2894,9 +2891,6 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef THERMALCOND
 	fprintf(fp, " THERMALCOND");
-#endif
-#ifdef DIFFUSIONHARMONIC
-	fprintf(fp, " DIFFUSIONHARMONIC");
 #endif
 #ifdef FEEDBACKDIFFLIMIT
 	fprintf(fp, " FEEDBACKDIFFLIMIT");
