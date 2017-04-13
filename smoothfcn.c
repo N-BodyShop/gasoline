@@ -643,9 +643,6 @@ void DeltaAccel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		r2 = nnList[i].fDist2;
 		if (r2 > 0) {
 		  q = nnList[i].pPart;
-#ifdef DELTAACCELACTIVE
-		  if (!TYPEQueryACTIVE((PARTICLE *) q)) continue;
-#endif
 		  dax = p->a[0]-q->a[0];
 		  da2 = dax*dax;
 		  dax = p->a[1]-q->a[1];
@@ -662,9 +659,7 @@ void DeltaAccel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
    		    dt = smf->dDeltaAccelFac*sqrt(sqrt(r2/da2));  /* Timestep dt = Eta sqrt(deltar/deltaa) */
 		    if (dt < p->dt) p->dt = dt;
 		    if (
-#ifndef DELTAACCELACTIVE
 				TYPEQueryACTIVE((PARTICLE *) q) && 
-#endif
 				(dt < q->dt)) q->dt = dt;
 		    }
 		  }
@@ -4801,10 +4796,6 @@ void initHKPressureTermsParticle(void *p)
 		((PARTICLE *)p)->mumax = 0.0;
 		((PARTICLE *)p)->uDotPdV = 0.0;
 		((PARTICLE *)p)->uDotAV = 0.0;
-#ifdef DEBUG
-		((PARTICLE *)p)->PdVvisc = 0.0;
-		((PARTICLE *)p)->PdVpres = 0.0;
-#endif
 		}
 	}
 
@@ -4815,10 +4806,6 @@ void initHKPressureTerms(void *p)
 		((PARTICLE *)p)->mumax = 0.0;
 		((PARTICLE *)p)->uDotPdV = 0.0;
 		((PARTICLE *)p)->uDotAV = 0.0;
-#ifdef DEBUG
-		((PARTICLE *)p)->PdVvisc = 0.0;
-		((PARTICLE *)p)->PdVpres = 0.0;
-#endif
 		ACCEL(p,0) = 0.0;
 		ACCEL(p,1) = 0.0;
 		ACCEL(p,2) = 0.0;

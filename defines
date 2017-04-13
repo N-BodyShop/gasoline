@@ -18,7 +18,6 @@ CHANGESOFT            #Allow gravitational softening lengths to vary with time
 CLOUDY                #Use CLOUDY version of line cooling
 COLLISIONS            #Use solid-body collisions (not compatible with -DGASOLINE)
 COLUMNLENGTH          #Use the smoothing length for the correlation length in Charlotte Christensen's H2 code
-COMPLETE_LOCAL        #Use complete (rather than partial) multipole expansion
 CONFIG_BFLOAT_4
 CONFIG_BFLOAT_8
 CONTROLYHII           #Make sure error in YHII and YHeIII is controlled
@@ -31,11 +30,7 @@ COOLING_METAL
 COOLING_MOLECULARH
 COOLING_PLANET
 COOLING_POLY
-CUBICTABLEINTERP      #Use a cubic order interpolation for the cooling table (rather than linear)
 CULLENDEHNEN          #Use the time-variable CD viscosity limit switch
-DEBUG2                #Extra outputs to check treezip is working
-DEBUG                 #Generic debug mode (debug)
-DELTAACCELACTIVE      #Check that only active particles are used for updating a particles timestep
 DELTACCELCAP          #Make sure that a particles neighbours have a say in it's timestep.
 DENSITYU              Calculate modified energy-weighted density (used for cooling) (good for large density gradients)
 DENSITYUNOTP          More aggressive version of the energy-weighted density that ignores contribution from center

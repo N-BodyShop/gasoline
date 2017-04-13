@@ -47,17 +47,9 @@
 
 #endif
 
-#ifdef CUBICTABLEINTERP
-#define TABLEFACTOR 2
-#else 
 #define TABLEFACTOR 1
-#endif
 
-#ifdef CUBICTABLEINTERP
-#define TABLEINTERP( _rname ) (wTln0*RT0->_rname+wTln1*RT1->_rname+wTln0d*RT0d->_rname+wTln1d*RT1d->_rname)
-#else
 #define TABLEINTERP( _rname ) (wTln0*RT0->_rname+wTln1*RT1->_rname)
-#endif
 
 
 #include "stiff.h"
@@ -509,60 +501,6 @@ void clInitRatesTable( COOL *cl, double TMin, double TMax, int nTable ) {
         (cl->RT+i)->Cool_Line_HeII = clCoolLineHeII( T );
         (cl->RT+i)->Cool_LowT = clCoolLowT( T );
 
-#ifdef CUBICTABLEINTERP
-            {
-            double Tup = exp(Tln+0.01*DeltaTln);
-            double Tdn = exp(Tln-0.01*DeltaTln);
-            double Tfac = 1./(0.02*DeltaTln)*DeltaTln; /* Table contains dy/dlnT * DeltaTln */
-    
-            i++;
-            (cl->RT+i)->Rate_Coll_HI = (clRateCollHI( Tup )-clRateCollHI( Tdn ))*Tfac;
-            if ( (cl->RT+i-1)->Rate_Coll_HI < CL_RT_MIN ) (cl->RT+i)->Rate_Coll_HI = 0;
-            (cl->RT+i)->Rate_Coll_HeI = (clRateCollHeI( Tup )-clRateCollHeI( Tdn ))*Tfac;
-            if ( (cl->RT+i-1)->Rate_Coll_HeI < CL_RT_MIN ) (cl->RT+i)->Rate_Coll_HeI = 0;
-            (cl->RT+i)->Rate_Coll_HeII = (clRateCollHeII( Tup )-clRateCollHeII( Tdn ))*Tfac;
-            if ( (cl->RT+i-1)->Rate_Coll_HeII < CL_RT_MIN ) (cl->RT+i)->Rate_Coll_HeII = 0;
-            (cl->RT+i)->Rate_Coll_e_H2 = (clRateColl_e_H2( Tup )-clRateColl_e_H2( Tdn ))*Tfac;
-            if ( (cl->RT+i-1)->Rate_Coll_e_H2 < CL_RT_MIN ) (cl->RT+i)->Rate_Coll_e_H2 = 0; 
-            (cl->RT+i)->Rate_Coll_HI_H2 = (clRateColl_HI_H2( Tup )-clRateColl_HI_H2( Tdn ))*Tfac;
-            if ( (cl->RT+i-1)->Rate_Coll_HI_H2 < CL_RT_MIN ) (cl->RT+i)->Rate_Coll_HI_H2 = 0; 
-            (cl->RT+i)->Rate_Coll_H2_H2 = (clRateColl_H2_H2( Tup )-clRateColl_H2_H2( Tdn ))*Tfac;
-            if ( (cl->RT+i-1)->Rate_Coll_H2_H2 < CL_RT_MIN ) (cl->RT+i)->Rate_Coll_H2_H2 = 0; 
-            (cl->RT+i)->Rate_Coll_Hm_e = (clRateColl_Hm_e( Tup )-clRateColl_Hm_e( Tdn ))*Tfac;/*gas phase form of H2 */
-            if ( (cl->RT+i)->Rate_Coll_Hm_e < CL_RT_MIN ) (cl->RT+i)->Rate_Coll_Hm_e = 0;
-            (cl->RT+i)->Rate_Coll_Hm_HII = (clRateColl_Hm_HII( Tup )-clRateColl_Hm_HII( Tdn ))*Tfac;/*gas phase form of H2 */
-            if ( (cl->RT+i)->Rate_Coll_Hm_HII < CL_RT_MIN ) (cl->RT+i)->Rate_Coll_Hm_HII = 0;
-            (cl->RT+i)->Rate_Coll_HII_H2 = (clRateColl_HII_H2( Tup )-clRateColl_HII_H2( Tdn ))*Tfac;/*gas phase form of H2 */
-            if ( (cl->RT+i)->Rate_Coll_HII_H2 < CL_RT_MIN ) (cl->RT+i)->Rate_Coll_HII_H2 = 0;
-            (cl->RT+i)->Rate_HI_e = (clRate_HI_e( Tup )-clRate_HI_e( Tdn ))*Tfac;/*gas phase form of H2 */
-            if ( (cl->RT+i)->Rate_HI_e < CL_RT_MIN ) (cl->RT+i)->Rate_HI_e = 0;
-            (cl->RT+i)->Rate_HI_Hm = (clRate_HI_Hm( Tup )-clRate_HI_Hm( Tdn ))*Tfac;/*gas phase form of H2 */
-            if ( (cl->RT+i)->Rate_HI_Hm < CL_RT_MIN ) (cl->RT+i)->Rate_HI_Hm = 0;
-
-            (cl->RT+i)->Rate_Radr_HII = ( clRateRadrHII( Tup )-clRateRadrHII( Tdn ))*Tfac;
-            (cl->RT+i)->Rate_Radr_HeII = ( clRateRadrHeII( Tup )-clRateRadrHeII( Tdn ))*Tfac;
-            (cl->RT+i)->Rate_Radr_HeIII = ( clRateRadrHeIII( Tup )-clRateRadrHeIII( Tdn ))*Tfac;
-            (cl->RT+i)->Rate_Diel_HeII = ( clRateDielHeII( Tup )-clRateDielHeII( Tdn ))*Tfac;
-            (cl->RT+i)->Rate_Chtr_HeII = ( clRateChtrHeII( Tup )-clRateChtrHeII( Tdn ))*Tfac;
-    
-            (cl->RT+i)->Cool_Brem_1 = ( clCoolBrem1( Tup )-clCoolBrem1( Tdn ))*Tfac;
-            (cl->RT+i)->Cool_Brem_2 = ( clCoolBrem2( Tup )-clCoolBrem2( Tdn ))*Tfac;
-            (cl->RT+i)->Cool_Radr_HII = ( clCoolRadrHII( Tup )-clCoolRadrHII( Tdn ))*Tfac;
-            (cl->RT+i)->Cool_Radr_HeII = ( clCoolRadrHeII( Tup )-clCoolRadrHeII( Tdn ))*Tfac;
-            (cl->RT+i)->Cool_Radr_HeIII = ( clCoolRadrHeIII( Tup )-clCoolRadrHeIII( Tdn ))*Tfac;
-            (cl->RT+i)->Cool_Line_HI = ( clCoolLineHI( Tup )-clCoolLineHI( Tdn ))*Tfac;
-            (cl->RT+i)->Cool_Line_HeI = ( clCoolLineHeI( Tup )-clCoolLineHeI( Tdn ))*Tfac; 
-            (cl->RT+i)->Cool_Line_HeII = ( clCoolLineHeII( Tup )-clCoolLineHeII( Tdn ))*Tfac;
-            /* (cl->RT+i)->Cool_Line_H2 =  ( clCoolLineH2_table( Tup )-clCoolLineH2_table( Tdn ))*Tfac;*/ /*H2 Rot-Vib transitions CC */
-            (cl->RT+i)->Cool_Line_H2_H = ( clCoolLineH2_HI( Tup ) - clCoolLineH2_HI( Tdn ))*Tfac; /*H2 Rot-Vib transitions out of collisionally-induced excited states. H2-H collisions*/
-            (cl->RT+i)->Cool_Line_H2_H2 = ( clCoolLineH2_H2( Tup ) - clCoolLineH2_H2( Tdn ))*Tfac; /*H2 Rot-Vib transitions out of collisionally-induced excited states. H2-H2 collisions*/
-            (cl->RT+i)->Cool_Line_H2_He = ( clCoolLineH2_He( Tup ) - clCoolLineH2_He( Tdn ))*Tfac; /*H2 Rot-Vib transitions out of collisionally-induced excited states. H2-He collisions*/
-            (cl->RT+i)->Cool_Line_H2_e = ( clCoolLineH2_e( Tup ) - clCoolLineH2_e( Tdn ))*Tfac; /*H2 Rot-Vib transitions out of collisionally-induced excited states. H2-e collisions*/
-            (cl->RT+i)->Cool_Line_H2_HII = ( clCoolLineH2_HII( Tup ) - clCoolLineH2_HII( Tdn ))*Tfac; /*H2 Rot-Vib transitions out of collisionally-induced excited states. H2-p collisions*/
-
-            (cl->RT+i)->Cool_LowT = ( clCoolLowT( Tup )-clCoolLowT( Tdn ))*Tfac;
-            }
-#endif
         }    
 
 
@@ -925,24 +863,8 @@ void clRates_Table( COOL *cl, RATE *Rate, double T, double rho, double ZMetal, d
     RT0 = (cl->RT+iTln*TABLEFACTOR);
     RT1 = RT0+TABLEFACTOR; 
     xTln = xTln-iTln;
-#ifdef CUBICTABLEINTERP
-    RT0d = RT0+1;
-    RT1d = RT1+1;
-        {
-        double x2 = xTln*xTln;
-        wTln1 = x2*(3-2*xTln);
-        wTln0 = 1-wTln1;
-        wTln0d = xTln*(1+xTln*(xTln-2));
-        wTln1d = x2*(xTln-1);
-/*  wTln1 = xTln;
-    wTln0 = 1-xTln;
-    wTln0d = 0;
-    wTln1d = 0;*/
-        }
-#else  
     wTln1 = xTln;
     wTln0 = 1-xTln;
-#endif
     Rate->Coll_HI = TABLEINTERP( Rate_Coll_HI );
     Rate->Coll_HeI = TABLEINTERP( Rate_Coll_HeI );
     Rate->Coll_HeII = TABLEINTERP( Rate_Coll_HeII );
@@ -1001,9 +923,6 @@ void clRates_Table( COOL *cl, RATE *Rate, double T, double rho, double ZMetal, d
             RATEVAR(Radr_HII) || RATEVAR(Radr_HeII) || RATEVAR(Diel_HeII) || RATEVAR(Totr_HeII) || RATEVAR(Radr_HeIII) || 
             RATEVAR(Phot_HI) || RATEVAR(Phot_HeI) || RATEVAR(Phot_HeII) || RATEVAR(Phot_H2) )) { 
         printf("Bad interpolated rates at T=%e rho=%e\n",T,rho);
-#ifdef CUBICTABLEINTERP
-        printf("%e %e %e %e\n %e %e %e %e\n", RT0->Rate_Coll_HI, RT1->Rate_Coll_HI, RT0d->Rate_Coll_HI, RT1d->Rate_Coll_HI,wTln0, wTln1, wTln0d, wTln1d );
-#endif
         printf("%12f %12e %12e %12e %12e %12e %12e %12e %12e %12e %12e %12e %12e %e12 %e12 %e12\n", 
             T,  test.Coll_HI,  test.Coll_e_H2,  test.Coll_HI_H2,   test.Coll_H2_H2,  test.Coll_HeI,   test.Coll_HeII,   test.Radr_HII,   test.Radr_HeII,   test.Diel_HeII,  test.Totr_HeII,  test.Radr_HeIII,  test.Phot_HI,      test.Phot_H2,    test.Phot_HeI,  test.Phot_HeII);
         printf("%12f %12e %12e %12e %12e %12e %12e %12e %12e %12e %12e %12e %12e %12e %12e %12e %12e \n", 
@@ -2366,24 +2285,8 @@ double clEdotInstant_Table( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
   RT0 = (cl->RT+iTln*TABLEFACTOR);
   RT1 = RT0+TABLEFACTOR; 
   xTln = xTln-iTln;
-#ifdef CUBICTABLEINTERP
-    RT0d = RT0+1;
-    RT1d = RT1+1;
-        {
-        double x2 = xTln*xTln;
-        wTln1 = x2*(3-2*xTln);
-        wTln0 = 1-wTln1;
-        wTln0d = xTln*(1+xTln*(xTln-2));
-        wTln1d = x2*(xTln-1);
-/*  wTln1 = xTln;
-    wTln0 = 1-xTln;
-    wTln0d = 0;
-    wTln1d = 0;*/
-        }
-#else  
     wTln1 = xTln;
     wTln0 = 1-xTln;
-#endif
 
 #define DTFRACLOWTCOOL 0.25
   if (Rate->T > cl->R.Tcmb*(1+DTFRACLOWTCOOL))

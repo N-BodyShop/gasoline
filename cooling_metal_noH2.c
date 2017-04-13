@@ -44,17 +44,9 @@
 
 #endif
 
-#ifdef CUBICTABLEINTERP
-#define TABLEFACTOR 2
-#else 
 #define TABLEFACTOR 1
-#endif
 
-#ifdef CUBICTABLEINTERP
-#define TABLEINTERP( _rname ) (wTln0*RT0->_rname+wTln1*RT1->_rname+wTln0d*RT0d->_rname+wTln1d*RT1d->_rname)
-#else
 #define TABLEINTERP( _rname ) (wTln0*RT0->_rname+wTln1*RT1->_rname)
-#endif
 
 
 #include "stiff.h"
@@ -436,39 +428,6 @@ void clInitRatesTable( COOL *cl, double TMin, double TMax, int nTable ) {
     (cl->RT+i)->Cool_Line_HeII = clCoolLineHeII( T );
     (cl->RT+i)->Cool_LowT = clCoolLowT( T );
 
-#ifdef CUBICTABLEINTERP
-    {
-    double Tup = exp(Tln+0.01*DeltaTln);
-    double Tdn = exp(Tln-0.01*DeltaTln);
-    double Tfac = 1./(0.02*DeltaTln)*DeltaTln; /* Table contains dy/dlnT * DeltaTln */
-    
-    i++;
-    (cl->RT+i)->Rate_Coll_HI = (clRateCollHI( Tup )-clRateCollHI( Tdn ))*Tfac;
-    if ( (cl->RT+i-1)->Rate_Coll_HI < CL_RT_MIN ) (cl->RT+i)->Rate_Coll_HI = 0;
-    (cl->RT+i)->Rate_Coll_HeI = (clRateCollHeI( Tup )-clRateCollHeI( Tdn ))*Tfac;
-    if ( (cl->RT+i-1)->Rate_Coll_HeI < CL_RT_MIN ) (cl->RT+i)->Rate_Coll_HeI = 0;
-    (cl->RT+i)->Rate_Coll_HeII = (clRateCollHeII( Tup )-clRateCollHeII( Tdn ))*Tfac;
-    if ( (cl->RT+i-1)->Rate_Coll_HeII < CL_RT_MIN ) (cl->RT+i)->Rate_Coll_HeII = 0;
-
-
-    (cl->RT+i)->Rate_Radr_HII = ( clRateRadrHII( Tup )-clRateRadrHII( Tdn ))*Tfac;
-    (cl->RT+i)->Rate_Radr_HeII = ( clRateRadrHeII( Tup )-clRateRadrHeII( Tdn ))*Tfac;
-    (cl->RT+i)->Rate_Radr_HeIII = ( clRateRadrHeIII( Tup )-clRateRadrHeIII( Tdn ))*Tfac;
-    (cl->RT+i)->Rate_Diel_HeII = ( clRateDielHeII( Tup )-clRateDielHeII( Tdn ))*Tfac;
-    (cl->RT+i)->Rate_Chtr_HeII = ( clRateChtrHeII( Tup )-clRateChtrHeII( Tdn ))*Tfac;
-    
-    (cl->RT+i)->Cool_Brem_1 = ( clCoolBrem1( Tup )-clCoolBrem1( Tdn ))*Tfac;
-    (cl->RT+i)->Cool_Brem_2 = ( clCoolBrem2( Tup )-clCoolBrem2( Tdn ))*Tfac;
-    (cl->RT+i)->Cool_Radr_HII = ( clCoolRadrHII( Tup )-clCoolRadrHII( Tdn ))*Tfac;
-    (cl->RT+i)->Cool_Radr_HeII = ( clCoolRadrHeII( Tup )-clCoolRadrHeII( Tdn ))*Tfac;
-    (cl->RT+i)->Cool_Radr_HeIII = ( clCoolRadrHeIII( Tup )-clCoolRadrHeIII( Tdn ))*Tfac;
-    (cl->RT+i)->Cool_Line_HI = ( clCoolLineHI( Tup )-clCoolLineHI( Tdn ))*Tfac;
-    (cl->RT+i)->Cool_Line_HeI = ( clCoolLineHeI( Tup )-clCoolLineHeI( Tdn ))*Tfac; 
-    (cl->RT+i)->Cool_Line_HeII = ( clCoolLineHeII( Tup )-clCoolLineHeII( Tdn ))*Tfac;
-
-    (cl->RT+i)->Cool_LowT = ( clCoolLowT( Tup )-clCoolLowT( Tdn ))*Tfac;
-    }
-#endif
   }    
 
 
@@ -764,24 +723,8 @@ void clRates_Table( COOL *cl, RATE *Rate, double T, double rho, double ZMetal, d
   RT0 = (cl->RT+iTln*TABLEFACTOR);
   RT1 = RT0+TABLEFACTOR; 
   xTln = xTln-iTln;
-#ifdef CUBICTABLEINTERP
-  RT0d = RT0+1;
-  RT1d = RT1+1;
-  {
-  double x2 = xTln*xTln;
-  wTln1 = x2*(3-2*xTln);
-  wTln0 = 1-wTln1;
-  wTln0d = xTln*(1+xTln*(xTln-2));
-  wTln1d = x2*(xTln-1);
-/*  wTln1 = xTln;
-  wTln0 = 1-xTln;
-  wTln0d = 0;
-  wTln1d = 0;*/
-  }
-#else  
   wTln1 = xTln;
   wTln0 = 1-xTln;
-#endif
   Rate->Coll_HI = TABLEINTERP( Rate_Coll_HI );
   Rate->Coll_HeI = TABLEINTERP( Rate_Coll_HeI );
   Rate->Coll_HeII = TABLEINTERP( Rate_Coll_HeII );
@@ -1679,24 +1622,8 @@ double clEdotInstant_Table( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, doub
   RT0 = (cl->RT+iTln*TABLEFACTOR);
   RT1 = RT0+TABLEFACTOR; 
   xTln = xTln-iTln;
-#ifdef CUBICTABLEINTERP
-  RT0d = RT0+1;
-  RT1d = RT1+1;
-  {
-  double x2 = xTln*xTln;
-  wTln1 = x2*(3-2*xTln);
-  wTln0 = 1-wTln1;
-  wTln0d = xTln*(1+xTln*(xTln-2));
-  wTln1d = x2*(xTln-1);
-/*  wTln1 = xTln;
-  wTln0 = 1-xTln;
-  wTln0d = 0;
-  wTln1d = 0;*/
-  }
-#else  
   wTln1 = xTln;
   wTln0 = 1-xTln;
-#endif
 
 #define DTFRACLOWTCOOL 0.25
   if (Rate->T > cl->R.Tcmb*(1+DTFRACLOWTCOOL))

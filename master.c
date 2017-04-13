@@ -2816,9 +2816,6 @@ void msrLogDefines(FILE *fp)
 #ifdef HSHRINK
 	fprintf(fp," HSHRINK");
 #endif
-#ifdef DEBUG
-	fprintf(fp," DEBUG");
-#endif
 #ifdef SUPERCOOL
 	fprintf(fp," SUPERCOOL");
 #endif
@@ -8586,14 +8583,8 @@ void msrTopStepKDK(MSR msr,
 		  /* Ensure we have a Density tree ready to use */
 			if (!msr->param.bDeltaAccelStepGasTree ||
 				msr->iTreeType != MSR_TREE_DENSITY) {
-#ifdef DELTAACCELACTIVE
-			    msrActiveRung(msr,iRung,1);
-			    msrActiveType(msr,TYPE_ACTIVE,TYPE_TREEACTIVE);
-		        msrBuildTree(msr,1,-1.0,1);   /* bTreeActive */
-#else
 			    msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE);
 			    msrBuildTree(msr,1,-1.0,1);   /* bTreeActive */
-#endif
 			    }
 		    msrActiveRung(msr,iRung,1);
 			msrActiveType(msr,TYPE_ACTIVE,TYPE_SMOOTHACTIVE);

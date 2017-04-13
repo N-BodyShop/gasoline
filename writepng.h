@@ -40,11 +40,7 @@
 #  define MIN(a,b)  ((a) < (b)? (a) : (b))
 #endif
 
-#ifdef DEBUG
-#  define Trace(x)  {fprintf x ; fflush(stderr); fflush(stdout);}
-#else
 #  define Trace(x)  ;
-#endif
 
 #define TEXT_TITLE    0x01
 #define TEXT_AUTHOR   0x02

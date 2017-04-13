@@ -2312,9 +2312,6 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
         cc.B4 += m*d2*d2;
         cc.B5 += m*d2*d2*d1;
         cc.B6 += m*d2*d2*d2;
-#ifdef COMPLETE_LOCAL
-        d2 = 0.0;
-#endif
 #ifdef  RADIATIVEBOX
         if (TYPETest(&(pkd->pStore[pj]),TYPE_GAS)) { /*find the moment of the gas -- this will be used to determine average distance of the gas from the average source of radiation for the purposes of combining boxes*/
           mg = pkd->pStore[pj].fMass;
@@ -6409,14 +6406,6 @@ void pkdGasPressure(PKD pkd, struct GasPressureContext *pgpc)
                 }
 #endif
             }
-#ifdef DEBUG
-        if (pkdIsGas(pkd,p) && (p->iOrder % 1000)==0) {
-            printf("Pressure %i: %i %i %f %f %f  %f %f %f %f %f\n",
-                   p->iOrder,TYPEQueryACTIVE(p),TYPEQueryTREEACTIVE(p),
-                   p->r[0],p->r[1],p->r[2],sqrt(0.25*p->fBall2),p->fDensity,p->uPred,
-                   p->PoverRho2*p->fDensity*p->fDensity,p->c);
-            }
-#endif            
         }
     }
 
@@ -6451,15 +6440,6 @@ void pkdLowerSoundSpeed(PKD pkd, double dhMinOverSoft)
               ratio = p->fBall2/dfBall2Min;
               p->PoverRho2 *= ratio;
               p->c *= sqrt(ratio);
-#ifdef DEBUG
-        if ((p->iOrder % 100)==0) {
-            printf("Pressure %i: %g %g, %g %g, %g %g\n",
-                   p->iOrder,
-                   sqrt(p->fBall2),sqrt(dfBall2Min),
-                   p->PoverRho2,p->PoverRho2/ratio,
-                   p->c,p->c/sqrt(ratio));
-            }
-#endif            
               }
             }
         }
@@ -6486,13 +6466,6 @@ void pkdInitEnergy(PKD pkd, double dTuFac, double z, double dTime )
             p->u = E;
 #endif
             p->uPred = p->u;
-#ifdef DEBUG
-            if ((p->iOrder % 1000)==0) {
-                printf("InitEnergy %i: %f %g   %f %f %f %g\n",
-                    p->iOrder,T,p->u * cl->dErgPerGmUnit,
-                    p->CoolParticle.HI,p->CoolParticle.HeI,p->CoolParticle.HeII,p->fDensity*cl->dComovingGmPerCcUnit);
-                } 
-#endif            
             }
         }
     }
@@ -6564,21 +6537,9 @@ void pkdKickRhopred(PKD pkd, double dHubbFac, double dDelta)
     PARTICLE *p;
     int i,n;
 
-#ifdef DEBUG
-    printf("pkdKickRhopred: %g %g\n",dHubbFac,dDelta);
-#endif
     p = pkd->pStore;
     n = pkdLocal(pkd);
     for (i=0;i<n;++i) {
-#ifdef DEBUG
-        if (pkdIsGas(pkd,(p+i)) && ((p+i)->iOrder % 3000)==0) {
-            printf("Rhopreding %i: %i %i %f %f %f %f   %f %f %f %f\n",
-                (p+i)->iOrder,TYPEQueryACTIVE(p+i),
-                TYPEQueryTREEACTIVE(p+i),
-                sqrt(0.25*(p+i)->fBall2),(p+i)->fDensity,(p+i)->u,(p+i)->uPred,
-                (p+i)->a[0],(p+i)->a[1],(p+i)->a[2],UDOT_HYDRO(p+i));
-            }
-#endif
         if(TYPEFilter( &p[i], TYPE_GAS|TYPE_ACTIVE, TYPE_GAS )) {
             p[i].fDensity = p[i].fDensity*(1 + dDelta*(dHubbFac - p[i].divv));
             }

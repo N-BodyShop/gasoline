@@ -35,11 +35,7 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	double idt2; /* reciprocal square of symmetric timestep */
 	int nFlop;
 	int nActive = 0;
-#ifdef COMPLETE_LOCAL
-	int nMultiFlop[5] = MEVAL_FLOP;
-#else
 	int nMultiFlop[5] = QEVAL_FLOP;
-#endif
 #if (NATIVE_SQRT)
 	double dir;
 #endif
@@ -194,11 +190,7 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 			gam[3] = 5*gam[2]*dir2;
 			gam[4] = 7*gam[3]*dir2;
 			gam[5] = 9*gam[4]*dir2;
-#ifdef COMPLETE_LOCAL
-			MEVAL(iOrder,ilcn[j],gam,dx,dy,dz,ax,ay,az,fPot);
-#else
 			QEVAL(iOrder,ilcn[j],gam,dx,dy,dz,ax,ay,az,fPot);
-#endif
 			idt2 = (p[i].fMass + ilcn[j].m)*gam[1];
 			if (idt2 > p[i].dtGrav) p[i].dtGrav = idt2;
 			}

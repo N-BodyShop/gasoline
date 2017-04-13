@@ -32,9 +32,6 @@ typedef unsigned int LABELTYPE;
 typedef struct {
 	tzkey k;
 	LABELTYPE label;
-#ifdef DEBUG
-	float pos[3];
-#endif
 	} tzparticle;
 
 /* should be multiple of nPerBucket */

@@ -933,9 +933,6 @@ void FDL_seek(FDL_CTX *CTX,FDL_NODE *p)
             el->curr_value = el->value;
             }
         }
-#ifdef DEBUG
-    printf("seek:%d\n",pdist-cdist);
-#endif
     }
 
 

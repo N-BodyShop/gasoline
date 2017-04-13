@@ -38,3 +38,8 @@ ALPHAMIN              #variable alpha: minimum AV coefficent
 BENCHMARK             #Turn on benchmarking
 CHECKSANITY           #Check the sanity of a newly read-in checkpoint
 COLORCODE             #Color the particles and keep track of them based on their tree position
+COMPLETE_LOCAL        #Use complete (rather than partial) multipole expansion
+CUBICTABLEINTERP      #Use a cubic order interpolation for the cooling table (rather than linear)
+DEBUG2                #Extra outputs to check treezip is working
+DEBUG                 #Generic debug mode (debug)
+DELTAACCELACTIVE      #Check that only active particles are used for updating a particles timestep

@@ -206,9 +206,6 @@ tzparticle *tzParticleAllocation( TZX *tz, int n) {
 
 void tzWriteBits( TZX *tz, int bits, int nbitwrite )
 {
-#ifdef DEBUG2
-	printf("Data to write: %i  %i\n",bits,nbitwrite);
-#endif
 	tz->bitstream <<= nbitwrite;
 	tz->bitstream |= bits;
 	tz->nbits += nbitwrite;
@@ -218,15 +215,6 @@ void tzWriteBits( TZX *tz, int bits, int nbitwrite )
 		tz->nbits -= 8;
 		tz->nWritebits += 8;
 		out = (tz->bitstream>>tz->nbits)&255;
-#ifdef DEBUG2
-		{
-		int j;
-		for (j=0;j<8;j++) {
-			printf("%1i",(out>>j)&1);
-			}
-		printf(" %8i\n",nWritebits-8);
-		}
-#endif
 		fwrite( &out, sizeof(TZ_UINT8), 1, tz->fpout );
 		}
     }
@@ -239,9 +227,6 @@ void tzWriteNode( TZX *tz, tznode *c, int l ) {
 		bits = 0;
 		if (c->child[0].n) bits |=1;
 		if (c->child[1].n) bits |=2;
-#ifdef DEBUG2
-		printf("bits %i\n",bits );
-#endif
 		tzWriteBits( tz, bits, 2 );
 		if (bits&1) tzWriteNode( tz, &c->child[0], l+1 );
 		if (bits&2) tzWriteNode( tz, &c->child[1], l+1 );
@@ -250,16 +235,10 @@ void tzWriteNode( TZX *tz, tznode *c, int l ) {
 	else {
 /* testing label compression */
 		bits = 0;
-#ifdef DEBUG2
-		printf("bits %i\n",bits );
-#endif
 		tzWriteBits( tz, bits, 2 );
 
 		assert(c->n <= tz->nPerBucket);
 		tz->nBucket--;
-#ifdef DEBUG2
-		printf("nBucket %i iMaskBucket %i\n",c->n,iMaskBucket );
-#endif
 	    tzWriteBits( tz, c->n&tz->iMaskBucket, tz->nBits_nPerBucket );
 		/* Min precision plays a role here 
 		   Need to know depth to determine if min precision not yet reached */
@@ -314,16 +293,6 @@ void tzWriteHeader( TZX *tz ) {
 
 	
 
-#ifdef DEBUG
-	fprintf(stderr,"HEADER: Version \"%4s\", Endian test float: %f\n"
-			"n %i dmin %f %f %f dmax %f %f %f\n"
-			"nBitsPosition %i nBitsPerBucket %i\n",
-			&version[0],endian,tz->nParticle,
-			tz->dmin[0],tz->dmin[1],tz->dmin[2],
-			tz->dmax[0],tz->dmax[1],tz->dmax[2],
-			tz->nBits_Position,
-			tz->nBits_nPerBucket );
-#endif
 
 	}
 
@@ -379,11 +348,6 @@ void tzAddPos( TZX *tz, double *r, LABELTYPE label ) {
 				/* Bucket isn't full -- add this particle to it and exit */
 				p.k = k;
 				p.label = label;
-#ifdef DEBUG
-				p.pos[0] = r[0];
-				p.pos[1] = r[1];
-				p.pos[2] = r[2];
-#endif
 				c->p[c->n] = p;
 				c->n++;
 				break;
