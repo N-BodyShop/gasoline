@@ -1,9 +1,5 @@
 AGGS                  #Include support for aggregates (like asteroids and rubble piles) See aggs.c
-ALPHACMUL             #variable alpha: AV coeffcient multiplier
-ALPHAMIN              #variable alpha: minimum AV coefficent
 BATEPOLY              #Use the default cooling polynomial COOLING_POLY
-BENCHMARK             #Turn on benchmarking
-CCC                   #Turn off stdout buffering
 CD_ALPHANOISE  
 CDCNOTVSIG
 CD_CNOTVSIG
@@ -19,10 +15,8 @@ CD_XIDVDS
 CD_XIRDVDSONSFULL
 CHABRIER              #Use the Chabrier 2003 IMF for starformation (See DOI:10.1086/376392)
 CHANGESOFT            #Allow gravitational softening lengths to vary with time
-CHECKSANITY           #Check the sanity of a newly read-in checkpoint
 CLOUDY                #Use CLOUDY version of line cooling
 COLLISIONS            #Use solid-body collisions (not compatible with -DGASOLINE)
-COLORCODE             #Color the particles and keep track of them (movie making?)
 COLUMNLENGTH          #Use the smoothing length for the correlation length in Charlotte Christensen's H2 code
 COMPLETE_LOCAL        #Use complete (rather than partial) multipole expansion
 CONFIG_BFLOAT_4

@@ -1673,13 +1673,6 @@ int pkdNodes(PKD pkd)
 
 void pkdDomainColor(PKD pkd)
 {
-#ifdef COLORCODE
-    int i;
-    
-    for (i=0;i<pkd->nLocal;++i) {
-        pkd->pStore[i].fColor = (FLOAT)pkd->idSelf;
-        }
-#endif
     }
 
 
@@ -3136,15 +3129,6 @@ void pkdBucketWeight(PKD pkd,int iBucket,FLOAT fWeight)
 
 void pkdColorCell(PKD pkd,int iCell,FLOAT fColor)
 {
-#ifdef COLORCODE
-    KDN *pkdn;
-    int pj;
-    
-    pkdn = &pkd->kdNodes[iCell];
-    for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
-        pkd->pStore[pj].fColor = fColor;
-        }
-#endif  
     }
 
 void

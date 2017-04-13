@@ -56,9 +56,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_DENSITYRFC_ARRAY:
 	    return(p->fDensity);
 	case OUT_COLOR_ARRAY:
-#ifdef COLORCODE
-	    return(p->fColor);
-#endif
 	case OUT_POT_ARRAY:
 	    return(p->fPot);
 	case OUT_AMAG_ARRAY:
@@ -419,9 +416,6 @@ void VecFilename(char *achFile, int iType)
 		strncat(achFile,"denRFC",256);
         break;
 	case OUT_COLOR_ARRAY:
-#ifdef COLORCODE
-	    strncat(achFile,"col",256);
-#endif
 	case OUT_POT_ARRAY:
         strncat(achFile,"pot",256);
         break;
@@ -1248,9 +1242,6 @@ void pkdInVector(PKD pkd,char *pszFileName,int nStart, int nLocal, int iDim,int 
     long LongIn;
     int i;
     char vecFileName[256];
-#ifdef CHECKSANITY
-    int nProb=0;
-#endif
 
     assert(pkd->nLocal == nLocal);
  
@@ -1522,11 +1513,6 @@ void pkdInVector(PKD pkd,char *pszFileName,int nStart, int nLocal, int iDim,int 
         exit(1);
         }
 
-#ifdef CHECKSANITY
-    if (nProb > 0) {
-        fprintf(stderr,"pkdInVector id %d: %d Inf/Nan Problem of %d Read\n",pkd->idSelf,nProb,pkd->nLocal);
-        }
-#endif
 
     }
 

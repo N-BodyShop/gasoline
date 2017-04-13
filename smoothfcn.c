@@ -4293,9 +4293,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	p->curlv[1] = fNorm1*(dvxdz - dvzdx);
 	p->curlv[2] = fNorm1*(dvydx - dvxdy);
 /* Prior: ALPHAMUL 10 on top -- make pre-factor for c instead then switch is limited to 1 or less */
-#ifndef ALPHACMUL 
 #define ALPHACMUL 0.1
-#endif
 #ifndef DODVDS
 	if (smf->iViscosityLimiter==2) 
 #endif
@@ -4636,9 +4634,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	p->curlv[2] = (dvydx - dvxdy);
 
 /* Prior: ALPHAMUL 10 on top -- make pre-factor for c instead then switch is limited to 1 or less */
-#ifndef ALPHACMUL 
 #define ALPHACMUL 0.1
-#endif
 #ifndef DODVDS
 	if (smf->iViscosityLimiter==2) 
 #endif
@@ -4759,9 +4755,7 @@ void SmoothBSw(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    break;
 	case VISCOSITYLIMITER_JW:
 /* Prior: ALPHAMUL 10 on top -- make pre-factor for c instead then switch is limited to 1 or less */
-#ifndef ALPHACMUL 
 #define ALPHACMUL 0.1
-#endif
 	    c = sqrt(smf->gamma*p->uPred*(smf->gamma-1));
 	    if (divv < 0 && dvds < 0 ) {         	 
 		p->BalsaraSwitch = -dvds/

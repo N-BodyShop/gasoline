@@ -1773,11 +1773,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 
 	(void) sprintf(msr->param.achDigitMask,"%%s.%%0%ii",nDigits);
 
-#ifndef BENCHMARK
 	if ( getenv("PKDGRAV_CHECKPOINT_FDL") == NULL ) {
           fprintf(stderr,"PKDGRAV_CHECKPOINT_FDL environment variable not set\n");
 	}
-#endif
 	/*
 	 ** Don't allow periodic BC's for Kepler orbital problems.
 	 ** It just doesn't make sense, does it?
@@ -2617,19 +2615,11 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	*/
 #ifdef GASOLINE
 
-#ifdef BENCHMARK
-	printf("GASOLINE (BENCHMARK) running on %d processor",msr->nThreads);
-#else
 	printf("GASOLINE running on %d processor",msr->nThreads);
-#endif
 
 #else
 
-#ifdef BENCHMARK
-	printf("PKDGRAV (BENCHMARK) running on %d processors",msr->nThreads);
-#else
 	printf("PKDGRAV running on %d processor",msr->nThreads);
-#endif
 
 #endif /* GASOLINE */
 	if (msr->nThreads>1) printf("s");

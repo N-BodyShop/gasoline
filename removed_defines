@@ -33,3 +33,8 @@ SHOCKTRACK            #Output additional data in order to more easily track shoc
 SINKFREEZE            #Don't update the positions of sink particles during Drifts.
 NOMETALCOOLING        #Just use H2, not metal lines (Requires -DCOOLING_MOLECULARH)
 AGGSCLEANUP           #Comments suggest this define includes incomplete code.
+ALPHACMUL             #variable alpha: AV coeffcient multiplier
+ALPHAMIN              #variable alpha: minimum AV coefficent
+BENCHMARK             #Turn on benchmarking
+CHECKSANITY           #Check the sanity of a newly read-in checkpoint
+COLORCODE             #Color the particles and keep track of them based on their tree position

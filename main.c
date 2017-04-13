@@ -595,7 +595,6 @@ int main(int argc,char **argv)
 			**           2) We are stopping
 			**           3) we're at an output interval
 			*/
-#ifndef BENCHMARK
 			if (msr->param.iTreeZipStep && (iStep % msr->param.iTreeZipStep)==0) msrTreeZip(msr,iStep);
 
 			if ((bOutTime=msrOutTime(msr,dTime)) || iStep == msr->param.iStopStep || iStop ||
@@ -630,7 +629,6 @@ int main(int argc,char **argv)
 				 */
 				while (msrOutTime(msr,dTime));
 				}
-#endif
 			if (!iStop && msr->param.iWallRunTime > 0) {
 			    if (msr->param.iWallRunTime*60 - (time(0)-lStart) < ((int) (lSec*1.5)) ) {
 					printf("RunTime limit exceeded.  Writing checkpoint and exiting.\n");
@@ -644,12 +642,10 @@ int main(int argc,char **argv)
 				/*
 				 ** Write a checkpoint.
 				 */
-#ifndef BENCHMARK
 				msrFlushStarLog(msr);
 				msrFlushSinkLog(msr);
 				msrWriteCheck(msr,dTime,iStep);
 				msrMassCheck(msr,dMass,"After msrWriteCheck");
-#endif
 			Restart:
 				;
 				}

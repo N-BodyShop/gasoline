@@ -37,10 +37,8 @@
 #define TYPE_MASK (~TYPE_RESMOOTHINNER & ~TYPE_MARK)
 
 /* SPH variable ALPHA */
-#ifndef ALPHAMIN
 #define ALPHAMIN 0.01
 #define ALPHAMAX 1
-#endif
 
 #ifdef RTF
 #define RTDENSITY
@@ -130,9 +128,6 @@ typedef struct particle {
 #endif
 #ifdef SUPERCOOL
     FLOAT vMean[3];
-#endif
-#ifdef COLORCODE
-    FLOAT fColor;
 #endif
     FLOAT fBallMax;         /* SPH 2h Max value */
 #ifdef GASOLINE
@@ -440,28 +435,10 @@ enum CheckSanityProblem {
     PROBLEM_ENDLIST
     }; 
 
-#ifdef CHECKSANITY
-/* Do detailed sanity check on contents of checkpoint */
-#define TESTFLAG(x,b) (x&(1<<b))
-#define SETFLAG(x,b) {x|=(1<<b);}
-#define ISFINITE(xx_) (!isnan(xx_) && !isinf(xx_))
-
-#define CHECKSANE(csd_,iFlag_,iVar_,iTest_) if (!(iTest_)) { \
-   SETFLAG(csd_.ipProblem,iFlag_); \
-   if (csd_.iProbCnt < csd_.nProbMax) \
-       fprintf(stderr,"%s  %d %g\n",#iFlag_,csd_.iProbCnt,(float) iVar_); }
-
-#define CHECKSANEFIX(nProb_,iVar_,iTest_) if (!(iTest_)) { \
-   nProb++; \
-   iVar_ = 0; }
-
-#define CHECKSANEALT(xxx_)
-#else
 /* Alternate if no detailed sanity check is done */
 #define CHECKSANEALT(xxx_) xxx_
 #define CHECKSANE(w_,x_,y_,z_)
 #define CHECKSANEFIX(nProb_,iVar_,iTest_)
-#endif
 
 #ifdef RUBBLE_ZML
 /* RUBBLE_ZML puts extra stuff in the checkpoint file, changes version to indicate this  ZML 01.08.04 */
