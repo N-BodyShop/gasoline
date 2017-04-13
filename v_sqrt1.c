@@ -100,7 +100,6 @@ void v_sqrt1(int n,double *r2,double *a)
 	g4 = sg4;
 	g5 = sg5;
 	bLittleEndian = sbLittleEndian;
-#ifndef UNROLLED_VSQRT
 	/*
 	 ** Actual Calculation. Rolled loop.
 	 */
@@ -111,64 +110,6 @@ void v_sqrt1(int n,double *r2,double *a)
 		s *= 1.5 - 0.5*x*s*s;
 		a[i] = s*t[it];
 		}
-#else
-	/*
-	 ** Actual Calculation. Loop unrooled 8 times.
-	 */
-	i = 0;
-	switch (n&7) {
-	loop:
-		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
-		x = r2[i]*u[it];
-		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
-		s *= 1.5 - 0.5*x*s*s;
-		a[i++] = s*t[it];
-	case 7:
-		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
-		x = r2[i]*u[it];
-		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
-		s *= 1.5 - 0.5*x*s*s;
-		a[i++] = s*t[it];
-	case 6:
-		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
-		x = r2[i]*u[it];
-		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
-		s *= 1.5 - 0.5*x*s*s;
-		a[i++] = s*t[it];
-	case 5:
-		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
-		x = r2[i]*u[it];
-		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
-		s *= 1.5 - 0.5*x*s*s;
-		a[i++] = s*t[it];
-	case 4:
-		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
-		x = r2[i]*u[it];
-		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
-		s *= 1.5 - 0.5*x*s*s;
-		a[i++] = s*t[it];
-	case 3:
-		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
-		x = r2[i]*u[it];
-		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
-		s *= 1.5 - 0.5*x*s*s;
-		a[i++] = s*t[it];
-	case 2:
-		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
-		x = r2[i]*u[it];
-		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
-		s *= 1.5 - 0.5*x*s*s;
-		a[i++] = s*t[it];
-	case 1:
-		it = (((int *)r2)[(i<<1)|bLittleEndian])>>20;
-		x = r2[i]*u[it];
-		s = g0 + x*(g1 + x*(g2 + x*(g3 + x*(g4 + x*g5))));
-		s *= 1.5 - 0.5*x*s*s;
-		a[i++] = s*t[it];
-	case 0:
-		if (i<n) goto loop;
-		}
-#endif
 	}
 
 

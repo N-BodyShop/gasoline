@@ -104,22 +104,17 @@ SINKINGOUTVPRED       #Write out the vpred values to the outputted tipsy file fo
 SLIDING_PATCH         #Alternative collision scheme (I don't really know what this does) (Requires -DCOLLISIONS)
 SMOOTHBSW             #Use a smoothed Balsara switch
 SPECIAL_PARTICLES     #Include support for weird special particles (not star, gas, or DM)
-SPH1D                 #Only allow forces in the x-direction
-SPINUP                #Use alternative rotating frame, just apply accelerations.
 STARCLUSTERFORM       #Make new stars using the clustered star formation recipe
 STARFORM              #Make new stars according to the starformation recipe
 STARSINK              #Star particles are also sink partikes. (Requires -DSINKING)
 SUPERBUBBLE			  #Use the Keller+ 2014 Superbubble feedback 
 SUPERCOOL             #Enable "Supercool" type particles (just gas particles with mean velocities?)
 SURFACEAREA           #Calculate and output the surface area of all the particles.
-TINY_PTHREAD_STACK    #Only used on a weird old SGI architecture. Probably can be removed.
 TOPHATFEEDBACK        #Use a tophat kernel to smooth feedback over
 TUMBLER               #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
 TWOSMOOTH             #Smooth twice rather than 3 times. This is defined by default in master.c
 TZKEY64               #Use 64 (instead of 128) bit keys for the tree. Faster, but allows less depth.
 UNONCOOL              #Enable noncooling energy for feedback
-UNROLLED_VSQRT        #Unroll the v_sqrt function for speed
-USEHMIN               #Use a floor to keep the integrator for stiff equations from blowing up
 USE_PNG               #Use PNG encoding for dumpframes
 USETABLE              #Grab the cooling rates from a table
 VARALPHA              #Allow a varying alpha artificial viscosity 

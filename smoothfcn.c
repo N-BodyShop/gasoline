@@ -105,16 +105,6 @@
 #else
 #ifdef WENDLAND
 /* Wendland C_2 Kernel */
-#ifdef SPH1D
-/* Need a new normalization for this Kernel for 1D */
-#define KERNEL(ak,ar2) 	{						\
-        double au = sqrt(ar2*0.25);					\
-	    ak = 1-au;							\
-	    ak = ak*ak;							\
-	    ak = ak*ak;							\
-	    ak = (21/16.)*ak*(1+4*au);					\
-	}
-#else
 #define KERNEL(ak,ar2) 	{						\
     if (ar2 <= 0) ak = smf->Wzero; /* Dehnen & Aly 2012 correction (1-0.0454684 at Ns=64) */ \
 	else {								\
@@ -125,7 +115,6 @@
 	    ak = (21/16.)*ak*(1+4*au);					\
 	    }								\
 	}
-#endif        
 #define DKERNEL(adk,ar2) {				\
 	double au = sqrt(ar2*0.25);			\
 	adk = 1-au;					\
@@ -265,11 +254,7 @@ void Density(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		KERNEL(rs,r2);
 		fDensity += rs*nnList[i].pPart->fMass;
 		}
-#ifdef SPH1D
-    fNorm = (2/3.)*sqrt(ih2);
-#else
     fNorm = M_1_PI*sqrt(ih2)*ih2;
-#endif
 	p->fDensity = fNorm*fDensity; 
 	}
 
@@ -280,11 +265,7 @@ void DensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	int i;
 
 	ih2 = 4.0/(BALL2(p));
-#ifdef SPH1D
-	fNorm = (1./3.)*sqrt(ih2);
-#else
 	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
-#endif
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2*ih2;
 		KERNEL(rs,r2);
@@ -326,11 +307,7 @@ void DensityTmp(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		fDensity += rs*nnList[i].pPart->fMass;
 		}
 
-#ifdef SPH1D
-	fNorm = (2./3.)*sqrt(ih2);
-#else
 	fNorm = M_1_PI*sqrt(ih2)*ih2;
-#endif
 #ifdef GASOLINE
 	p->curlv[0] = fNorm*fDensity; 
 #else
@@ -345,11 +322,7 @@ void DensityTmpSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	int i;
 
 	ih2 = 4.0/(BALL2(p));
-#ifdef SPH1D
-	fNorm = (1./3.)*sqrt(ih2);
-#else
 	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
-#endif
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2*ih2;
 		KERNEL(rs,r2);
@@ -438,11 +411,7 @@ void MarkDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	assert(TYPETest(p,TYPE_GAS));
 	ih2 = 4.0/(BALL2(p));
-#ifdef SPH1D
-	fNorm = (1./3.)*sqrt(ih2);
-#else
 	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
-#endif
 	if (TYPETest(p,TYPE_ACTIVE)) {
 		TYPESet(p,TYPE_NbrOfACTIVE);
 		for (i=0;i<nSmooth;++i) {
@@ -533,11 +502,7 @@ void MarkIIDensitySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     unsigned int qiActive;
 
     ih2 = 4.0/(BALL2(p));
-#ifdef SPH1D
-	fNorm = (1./3.)*sqrt(ih2);
-#else
 	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
-#endif
     if (TYPETest(p,TYPE_DensACTIVE)) {
 	qiActive = 0;
 	for (i=0;i<nSmooth;++i) {
@@ -2756,11 +2721,7 @@ void MeanVel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	int i,j;
 
 	ih2 = 4.0/BALL2(p);
-#ifdef SPH1D
-	fNorm = (2./3.)*sqrt(ih2);
-#else
 	fNorm = M_1_PI*sqrt(ih2)*ih2;
-#endif
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2*ih2;
 		KERNEL(rs,r2);
@@ -2779,11 +2740,7 @@ void MeanVelSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	int i,j;
 
 	ih2 = 4.0/BALL2(p);
-#ifdef SPH1D
-	fNorm = (1./3.)*sqrt(ih2);
-#else
 	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
-#endif
 	for (i=0;i<nSmooth;++i) {
 		r2 = nnList[i].fDist2*ih2;
 		KERNEL(rs,r2);
@@ -2922,11 +2879,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif /* ndef RTFORCE */
 	ph = sqrt(0.25*BALL2(p));
 	ih2 = 4.0/BALL2(p);
-#ifdef SPH1D
-	fNorm = (1./3.)/ph;
-#else
 	fNorm = 0.5*M_1_PI*ih2/ph;
-#endif
 	fNorm1 = fNorm*ih2;	/* converts to physical u */
 	aFac = (smf->a);        /* comoving acceleration factor */
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
@@ -3060,11 +3013,7 @@ void SphPressureTermsSymOld(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 
 	ph = sqrt(0.25*BALL2(p));
 	ih2 = 4.0/BALL2(p);
-#ifdef SPH1D
-	fNorm = (1./3.)/ph;
-#else
 	fNorm = 0.5*M_1_PI*ih2/ph;
-#endif
 	fNorm1 = fNorm*ih2;	/* converts to physical u */
 	aFac = (smf->a);    /* comoving acceleration factor */
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
@@ -3332,11 +3281,7 @@ void SphPressure(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	pmumax = p->mumax;
 	ph = sqrt(0.25*BALL2(p));
 	ih2 = 4.0/BALL2(p);
-#ifdef SPH1D
-	fNorm = (2./3.)/ph;
-#else
 	fNorm = M_1_PI*ih2/ph;
-#endif
 	fNorm1 = fNorm*ih2;	
 	fNorm2 = fNorm1*(smf->a);    /* Comoving accelerations */
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
@@ -3405,11 +3350,7 @@ void SphPressureSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	pPoverRho2 = p->PoverRho2;
 	ph = sqrt(0.25*BALL2(p));
 	ih2 = 4.0/BALL2(p);
-#ifdef SPH1D
-	fNorm = (1./3.)/ph;
-#else
 	fNorm = 0.5*M_1_PI*ih2/ph;
-#endif
 	fNorm1 = fNorm*ih2;	/* converts to physical u */
 	aFac = (smf->a);    /* comoving acceleration factor */
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
@@ -3552,11 +3493,7 @@ void SphViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	pMass = p->fMass;
 	ph = sqrt(0.25*BALL2(p));
 	ih2 = 4.0/BALL2(p);
-#ifdef SPH1D
-	fNorm = (1./3.)/ph;
-#else
 	fNorm = 0.5*M_1_PI*ih2/ph;
-#endif
 	fNorm1 = fNorm*ih2;	/* converts to physical u */
 	aFac = (smf->a);    /* comoving acceleration factor */
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
@@ -3730,11 +3667,7 @@ void DivVort(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	pDensity = p->fDensity;
 	ih2 = 4.0/BALL2(p);
 	a2 = (smf->a*smf->a);
-#ifdef SPH1D
-	fNorm = (2./3.)*ih2*sqrt(ih2);
-#else
 	fNorm = M_1_PI*ih2*ih2*sqrt(ih2);
-#endif
 	vFac = (smf->bCannonical ? 1./a2 : 1.0); /* converts v to xdot */
 
 	pdivv=0.0;
@@ -3780,11 +3713,7 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	pMass = p->fMass;
 	ih2 = 4.0/BALL2(p);
 	a2 = (smf->a*smf->a);
-#ifdef SPH1D
-	fNorm = (1./3.)*ih2*sqrt(ih2);
-#else
 	fNorm = 0.5*M_1_PI*ih2*ih2*sqrt(ih2);
-#endif
 	vFac = (smf->bCannonical ? 1./a2 : 1.0); /* converts v to xdot */
 
 #define QISACTIVE(q) (TYPEQueryACTIVE(q))
@@ -4079,11 +4008,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	ih2 = 4.0/BALL2(p);
 	ih = sqrt(ih2);
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
-#ifdef SPH1D
-	fNorm = (2./3.)*ih;
-#else
 	fNorm = M_1_PI*ih2*ih;
-#endif
 	fNorm1 = fNorm*ih2;	
 	fDensity = 0.0;
 	dvxdx = 0; dvxdy = 0; dvxdz= 0;
@@ -4572,11 +4497,7 @@ void HKPressureTerms(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	pQonRho2 = (p->divv>0.0 ? 0.0 : fabs(p->divv)*ph*smf->a
 				*(smf->alpha*pc + smf->beta*fabs(p->divv)*ph*smf->a)/pDensity);
 	ih2 = 4.0/BALL2(p);
-#ifdef SPH1D
-	fNorm = (2./3.)/ph;
-#else
 	fNorm = M_1_PI*ih2/ph;
-#endif
 	fNorm1 = fNorm*ih2;	/* converts to physical u */
 	aFac = (smf->a);        /* comoving acceleration factor */
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
@@ -4645,11 +4566,7 @@ void HKPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	pQonRho2 = (p->divv>0.0 ? 0.0 : fabs(p->divv)*ph*smf->a
 				*(smf->alpha*pc + smf->beta*fabs(p->divv)*ph*smf->a)/pDensity );
 	ih2 = 4.0/BALL2(p);
-#ifdef SPH1D
-	fNorm = (1./3.)/ph;
-#else
 	fNorm = 0.5*M_1_PI*ih2/ph;
-#endif
 	fNorm1 = fNorm*ih2;	/* converts to physical u */
 	aFac = (smf->a);        /* comoving acceleration factor */
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
@@ -4776,11 +4693,7 @@ void HKViscositySym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	pQonRho2 = (p->divv>0.0 ? 0.0 : fabs(p->divv)*ph*smf->a
 				*(smf->alpha*pc + smf->beta*fabs(p->divv)*ph*smf->a)/pDensity );
 	ih2 = 4.0/BALL2(p);
-#ifdef SPH1D
-	fNorm = (1./3.)/ph;
-#else
 	fNorm = 0.5*M_1_PI*ih2/ph;
-#endif
 	fNorm1 = fNorm*ih2;	/* converts to physical u */
 	aFac = (smf->a);        /* comoving acceleration factor */
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */

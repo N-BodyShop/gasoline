@@ -155,12 +155,7 @@ void StiffStep(STIFF *s, double y[], double dydx[], double *xx, double htry,
         err[km]=pow(errmax/SAFE1,1.0/(2*km+1));
       }
       if (k != 1 && (k >= s->kopt-1 || s->first)) {
-#ifdef USEHMIN
-        if (errmax < 1.0 || h < s->hMin) {
-	  if (h < s->hMin) h=s->hMin;
-#else 
         if (errmax < 1.0) {
-#endif
           exitflag=1;
           break;
         }

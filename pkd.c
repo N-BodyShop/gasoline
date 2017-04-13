@@ -3829,14 +3829,6 @@ pkdRotFrame(PKD pkd,double dOmega,double dOmegaDot)
 {
     /* WARNING: p[i].fPot not updated */
 
-#ifdef SPINUP
-    PARTICLE *p = pkd->pStore;
-    int i;
-    for (i=0;i<pkd->nLocal;i++) {
-        p[i].a[0] -= dOmegaDot*p[i].r[1];
-        p[i].a[1] += dOmegaDot*p[i].r[0];
-        }
-#else
     /* note Omega & dOmega/dt are assumed to be in the +z direction */
 
     PARTICLE *p;
@@ -3856,7 +3848,6 @@ pkdRotFrame(PKD pkd,double dOmega,double dOmegaDot)
         for (k=0;k<2;k++)
             p[i].a[k] -= (w2r[k] + 2*wxv[k] + dwxr[k]);
         }
-#endif
     }
 #endif
 
@@ -4225,9 +4216,6 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
         if (TYPEQueryACTIVE(p)) {
 #ifdef GASOLINE
             if (pkdIsGas(pkd, p)) {
-#ifdef SPH1D
-                p->a[1]=0; p->a[2]=0; 
-#endif                      
 #ifdef GLASSZ
                 p->a[0]=0; p->a[1]=0;
 #endif

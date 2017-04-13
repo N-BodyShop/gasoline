@@ -63,3 +63,8 @@ PCONST                #Use a constant pressure specified for all gas
 REDUCED_EWALD         #Used reduced Ewald Summation for faster multipole moment expansions
 RHOSF                 #Form stars linearly with density above 100 H cc^-3
 MOLECFRAC_SF_CUTOFF   #Add a molecular hydrogen threshold for starformation (10% H2)
+TINY_PTHREAD_STACK    #Only used on a weird old SGI architecture. Probably can be removed.
+USEHMIN               #Use a floor to keep the integrator for stiff equations from blowing up
+UNROLLED_VSQRT        #Unroll the v_sqrt function for speed
+SPINUP                #Use alternative rotating frame, just apply accelerations.
+SPH1D                 #Only allow forces in the x-direction
