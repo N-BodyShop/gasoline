@@ -27,11 +27,7 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 	int nFlop;
 	int nActive = 0;
 	int nLoop = 0;
-#ifdef REDUCED_EWALD
-	int nMultiFlop[5] = QEVAL_FLOP;
-#else
 	int nMultiFlop[5] = MEVAL_FLOP;
-#endif
 	
 #ifdef __crayx1
 	/* Optimization for vector processors */
@@ -138,11 +134,7 @@ int pkdBucketEwald(PKD pkd,int iBucket,int nReps,double fEwCut,int iOrder)
 					    alphan *= 2*alpha2;
 					    gam[5] = 9*gam[4]*dir2 + alphan*a;
 					    }
-#ifdef REDUCED_EWALD
-					QEVAL(iOrder,mom,gam,dxo,dyo,dzo,ax,ay,az,fPot);
-#else
 					MEVAL(iOrder,mom,gam,dxo,dyo,dzo,ax,ay,az,fPot);
-#endif
 					++nLoop;
 
 #ifndef __crayx1

@@ -265,21 +265,8 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
          dMProb = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
     else dMProb = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform*
          stfm->dStarFormEfficiencyH2*(2.0*p->CoolParticle.f_H2/yH));
-#ifdef MOLECFRAC_SF_CUTOFF /*Flag to limit star formation to particles with an H2 abundance greater than a threshold value (0.1 below) */
-    if (2.0*p->CoolParticle.f_H2/yH < 0.1) dMProb = 0;
-#endif /* MOLECULAR_SF_CUTOFF */
-#ifdef RHOSF
-    /* This is an implementation of SF in which it scales linearly with density above a certain threshold (100 amu/cc below)*/
-    if (p->fDensity/dCosmoFac > 100*MHYDR/stfm->dGmPerCcUnit) tform = 1.0/sqrt(4.0*M_PI*100.0*MHYDR/stfm->dGmPerCcUnit);
-    dMProb = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform*
-		       stfm->dStarFormEfficiencyH2*(2.0*p->CoolParticle.f_H2/yH));
-#endif /* RHOSF */
 #else  /* COOLING_MOLECULARH */  
     dMProb = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
-#ifdef RHOSF
-    tform = 1.0/sqrt(4.0*M_PI*stfm->dPhysDenMin);
-    dMProb = 1.0 - exp(-stfm->dCStar*stfm->dDeltaT/tform);
-#endif /* RHOSF */
 #endif /* COOLING_MOLECULARH */    
 
     return dMProb;

@@ -58,3 +58,8 @@ INELASTICCOLLAPSE     #Use the experimental inellastic collaspse strategy for co
 OLD_COMET_FORCE       #Enable the do_force for special rubble pile particles (ie comets).
 OLD_COMET_STUFF       #Initialize special particles (this is a huge kludge)
 OLD_KEPLER            #An ugly part of the collision code to stop hard scatterings 
+OLD_VERSION           #Change the way the comet force from OLD_COMET_FORCE is calculated
+PCONST                #Use a constant pressure specified for all gas
+REDUCED_EWALD         #Used reduced Ewald Summation for faster multipole moment expansions
+RHOSF                 #Form stars linearly with density above 100 H cc^-3
+MOLECFRAC_SF_CUTOFF   #Add a molecular hydrogen threshold for starformation (10% H2)

@@ -61,7 +61,6 @@ KROUPA                #Use the Kroupa IMF (from Kroupa et al 1993 Bibcode:1993MN
 M43D                  #Use a fancier 3D derived M4 Kernel
 MARK
 MODBATEPOLY           #Use a modified polytropic equation of state with COOLING_BATE
-MOLECFRAC_SF_CUTOFF   #Add a molecular hydrogen threshold for starformation (10% H2)
 NATIVE_SQRT
 N_DIM
 NEED_VPRED            #Calculate a predicted veloctiy (this is defined all over, I'm unsure as to its signifigance)
@@ -74,11 +73,9 @@ NODIFFUSIONTHERMAL    #Disable thermal diffusion
 NOFIT                 #Don't use any fitting for the cooling rates without H2 in cooling_metal_noH2.c
 NORMAL                #Calculate and output surface normals for particles (Needs -DSURFACEAREA)
 NSMOOTHINNER          #Ensure at least 18 neighbours inside 1.41 h
-OLD_VERSION           #Change the way the comet force from OLD_COMET_FORCE is calculated
 OUTURBDRIVER          #Drive turbulence as in Price & Federrath 2010 with OU variables
 PARTICLESPLIT         #Particles will now divide if they get too heavy
 PARTSHEAR             #Use particle shear for the correlation length in H2 cooling 
-PCONST                #Use a constant pressure specified for all gas
 PEAKEDKERNEL          #Use a modified Peaked M4 kernel as per Thomas and Couchman 92 (Bibcode:1992MNRAS.257...11T)
 PEXT                  #Allow non-zero external pressure 
 PONRHOFLOOR           #Minimum P/rho value, prevents floating point errors in some cases
@@ -87,8 +84,6 @@ PRES_HK               #Use the Euclidean mean of the both pOverRho values to cal
 PRES_MONAGHAN         #Use Monaghan's PdV work calculation (the average of both pOverRho values)
 QUINTIC               #Use a quintic spline kernel from Dehnen & Aly 2012 (Bibcode:2012MNRAS.425.1068D)
 RADIATIVEBOX          #Estimate Local Lyman-Werner radiation from the tree
-REDUCED_EWALD         #Used reduced Ewald Summation for faster multipole moment expansions
-RHOSF                 #Form stars linearly with density above 100 H cc^-3
 ROT_FRAME             #Use a rotating reference frame with rotation rate given by dOmega
 RTDENSITY             #Use an Ritchie & Thomas densities (DOI:10.1046/j.1365-8711.2001.04268.x)
 RTF                   #-DRTDENSITY and -DRTFORCE 

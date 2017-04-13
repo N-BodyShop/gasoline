@@ -4941,11 +4941,7 @@ void pkdCalcRoot(PKD pkd,struct ilCellNewt *pcc)
         dx = pkd->pStore[pj].r[0] - pkdn->r[0];
         dy = pkd->pStore[pj].r[1] - pkdn->r[1];
         dz = pkd->pStore[pj].r[2] - pkdn->r[2];
-#ifdef REDUCED_EWALD
-        d2 = dx*dx + dy*dy + dz*dz;
-#else
         d2 = 0.0;
-#endif
         pcc->xxxx += m*(dx*dx*dx*dx - 6.0/7.0*d2*(dx*dx - 0.1*d2));
         pcc->xyyy += m*(dx*dy*dy*dy - 3.0/7.0*d2*dx*dy);
         pcc->xxxy += m*(dx*dx*dx*dy - 3.0/7.0*d2*dx*dy);
@@ -4988,11 +4984,7 @@ void pkdDistribRoot(PKD pkd,struct ilCellNewt *pcc)
      ** Must set the quadrupole, mass and cm.
      */
     pkdn = &pkd->kdTop[ROOT];
-#ifdef REDUCED_EWALD
-    tr = pkdn->mom.Qxx + pkdn->mom.Qyy + pkdn->mom.Qzz;
-#else
     tr = 0.0;
-#endif
     pkd->ilcnRoot.m = pkdn->fMass;
     pkd->ilcnRoot.x = pkdn->r[0];
     pkd->ilcnRoot.y = pkdn->r[1];
@@ -6285,10 +6277,6 @@ double pkdPoverRhoFloorJeansParticle(PKD pkd, double dResolveJeans, PARTICLE *p)
 void pkdGasPressureParticle(PKD pkd, struct GasPressureContext *pgpc, PARTICLE *p, 
     double *pPoverRhoFloorJeans, double *pPoverRhoHot, double *pPoverRhoGas, double *pcGas ) 
     {
-#ifdef PCONST
-    p->u = PCONST/(pgpc->gammam1*p->fDensity);
-    p->uPred = p->u;
-#endif
 #ifdef TWOPHASE
     {
     double frac = p->fMassHot/p->fMass;
