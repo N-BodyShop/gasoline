@@ -3787,13 +3787,7 @@ void DivVortSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 	vFac = (smf->bCannonical ? 1./a2 : 1.0); /* converts v to xdot */
 
-//#define GRADWONESIDED
-#ifdef GRADWONESIDED
-    fNorm *= 2;
-#define QISACTIVE(q) (0)
-#else
 #define QISACTIVE(q) (TYPEQueryACTIVE(q))
-#endif    
 #define DXFUNC(d) (d)
 #define DYFUNC(d) (d)
 #define DZFUNC(d) (d)

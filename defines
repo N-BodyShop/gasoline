@@ -46,12 +46,10 @@ GASOLINE              #Do hydro
 GLASS                 #Use this to damp for glass initial conditions
 GLASSZ                #Use this to damp for glass IC in z direction
 GRACKLE_PRIMORDIAL_CHEMISTRY_MAX
-GRADWONESIDED         #Only use the primary particle for calculating the kernel gradient (one-sided)
 GR_DRAG               #Enable Frame dragging
 GROWMASS              #Allow collisional particles to grow
-GSS_DUMPFRAME         #Dumpframe that allows coloring by particle property
+GSS_DUMPFRAME         #Dumpframe that allows coloring by particle property (Greg's version)
 HSHRINK               #M4 kernel times (pi/6)^(1/3) for a tighter kernel
-INELASTICCOLLAPSE     #Use the experimental inellastic collaspse strategy for collisions
 INFLOWOUTFLOW         #Enable inflow/outflow boundary conditions
 INTERNAL_WARNINGS
 INTERNAL_WARNINGS_ONCE
@@ -60,7 +58,6 @@ JEANSSOFT             #Calculate presure floor to keep jeans length larger than 
 JEANSSOFTONLY         #Calculate presurre floor to keep jeans length larger than softening only
 KROUPA01              #Use the newer Kroupa 01 IMF (DOI:10.1046/j.1365-8711.2001.04022.x)
 KROUPA                #Use the Kroupa IMF (from Kroupa et al 1993 Bibcode:1993MNRAS.262..545K)
-LARGEFBALL
 M43D                  #Use a fancier 3D derived M4 Kernel
 MARK
 MODBATEPOLY           #Use a modified polytropic equation of state with COOLING_BATE
@@ -77,10 +74,6 @@ NODIFFUSIONTHERMAL    #Disable thermal diffusion
 NOFIT                 #Don't use any fitting for the cooling rates without H2 in cooling_metal_noH2.c
 NORMAL                #Calculate and output surface normals for particles (Needs -DSURFACEAREA)
 NSMOOTHINNER          #Ensure at least 18 neighbours inside 1.41 h
-NUMDIMS 
-OLD_COMET_FORCE       #Enable the do_force for special rubble pile particles (ie comets).
-OLD_COMET_STUFF       #Initialize special particles (this is a huge kludge)
-OLD_KEPLER            #An ugly part of the collision code to stop hard scatterings 
 OLD_VERSION           #Change the way the comet force from OLD_COMET_FORCE is calculated
 OUTURBDRIVER          #Drive turbulence as in Price & Federrath 2010 with OU variables
 PARTICLESPLIT         #Particles will now divide if they get too heavy

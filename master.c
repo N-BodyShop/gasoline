@@ -2410,12 +2410,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			puts("ERROR: must use cannonical momentum in FandG collision model");
 			_msrExit(msr,1);
 			}
-#ifdef OLD_KEPLER /* override for now */
-		if (msr->param.iMaxRung > 1) {
-			puts("ERROR: multistepping not currently supported in FandG collision model");
-			_msrExit(msr,1);
-			}
-#endif
 		if (msr->param.dSmallStep < 0) {
 			puts("ERROR: dSmallStep cannot be negative");
 			_msrExit(msr,1);
@@ -2703,9 +2697,6 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef VOLUMEFEEDBACK
 	fprintf(fp," VOLUMEFEEDBACK");
-#endif
-#ifdef LARGEFBALL
-	fprintf(fp," LARGEFBALL");
 #endif
 #ifdef VARALPHA
 	fprintf(fp," VARALPHA");
@@ -11377,54 +11368,6 @@ void msrDoCollisions(MSR msr,double dTime,double dDelta)
 		}
 	}
 
-#ifdef OLD_KEPLER
-void
-msrBuildQQTree(MSR msr,int bActiveOnly,double dMass)
-{
-	struct inBuildTree in;
-	struct outBuildTree out;
-	struct inColCells inc;
-	KDN *pkdn;
-	double sec,dsec;
-	int iDum,nCell;
-
-	if (msr->param.bVDetails) printf("Domain Decomposition...\n");
-	sec = msrTime();
-	pstQQDomainDecomp(msr->pst,NULL,0,NULL,NULL);
-	msrMassCheck(msr,dMass,"After pstDomainDecomp in msrBuildTree");
-	dsec = msrTime() - sec;
-	if (msr->param.bVDetails) {
-		printf("Domain Decomposition complete, Wallclock: %f secs\n\n",dsec);
-		}
-	LOGTIMINGUPDATE( dsec, TIMING_DD );
-	if (msr->param.bVDetails) printf("Building local trees...\n");
-	/*
-	 ** First make sure the particles are in Active/Inactive order.
-	 */
-	msrActiveOrder(msr);
-	in.nBucket = msr->param.nBucket;
-	msr->bGravityTree = 0;
-	msr->iTreeType = MSR_TREE_QQ;
-	in.bActiveOnly = bActiveOnly;
-	sec = msrTime();
-	pstQQBuildTree(msr->pst,&in,sizeof(in),&out,&iDum);
-	msrMassCheck(msr,dMass,"After pstBuildTree in msrBuildQQ");
-	dsec = msrTime() - sec;
-	if (msr->param.bVDetails) {
-		printf("Tree built, Wallclock: %f secs\n\n",dsec);
-		}
-	LOGTIMINGUPDATE( dsec, TIMING_GravTree );
-	nCell = 1<<(1+(int)ceil(log((double)msr->nThreads)/log(2.0)));
-	pkdn = malloc(nCell*sizeof(KDN));
-	assert(pkdn != NULL);
-	inc.iCell = ROOT;
-	inc.nCell = nCell;
-	pstColCells(msr->pst,&inc,sizeof(inc),pkdn,NULL);
-	pstDistribCells(msr->pst,pkdn,nCell*sizeof(KDN),NULL,NULL);
-	free(pkdn);
-	msrMassCheck(msr,dMass,"After pstDistribCells in msrBuildQQ");
-	}
-#endif
 
 #ifdef SLIDING_PATCH
 void

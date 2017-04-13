@@ -435,13 +435,6 @@ int main(int argc,char **argv)
 			if (msrKDK(msr)) {
 				dMultiEff = 0.0;
 				lSec = time(0);
-#ifdef OLD_KEPLER
-				if (msr->param.bFandG) {
-					msrPlanetsKDK(msr,iStep - 1,dTime,msrDelta(msr),
-								  &dWMax,&dIMax,&dEMax,&iSec);
-					continue;
-				}
-#endif
 #ifdef COLLISIONS
 				if (msr->param.iMinBinaryRung > 0 && 
 					msr->iCurrMaxRung >= msr->param.iMinBinaryRung) {
@@ -756,38 +749,6 @@ int main(int argc,char **argv)
                     msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);*/
                     msrMassCheck(msr,dMass,"After msrOutArray in OutSingle Density");
 
-#if OLD_KEPLER /*DEBUG*/
-                    {
-                    struct inSmooth smooth;
-                    int sec,dsec;
-
-                    sec = time(0);
-                    (void) printf("Building QQ tree...\n");
-                    msrBuildQQTree(msr, 0, dMass);
-                    dsec = time(0) - sec;
-                    (void) printf("QQ tree built, time = %i sec\n",dsec);
-                    smooth.nSmooth = 32;
-                    smooth.bPeriodic = 0;
-                    smooth.bSymmetric = 0;
-                    smooth.iSmoothType = SMX_ENCOUNTER;
-                    smooth.smf.pkd = NULL;
-                    smooth.smf.dTime = dTime;
-                    smooth.smf.dDelta = msrDelta(msr);
-                    smooth.smf.dCentMass = msr->param.dCentMass;
-                    sec = time(0);
-                    (void) printf("Beginning encounter search...\n");
-                    pstQQSmooth(msr->pst,&smooth,sizeof(smooth),NULL,NULL);
-                    dsec = time(0) - sec;
-                    (void) printf("Encounter search completed, time = %i sec\n",dsec);
-                    msrReorder(msr);
-                    nOutputList = 0;
-                    OutputList[nOutputList++]=OUT_DENSITY_ARRAY;
-                    msrWriteOutputs(msr, achFile, OutputList, nOutputList, dTime);
-    /*		sprintf(achFile,"%s.enc",msrOutName(msr));
-
-                    msrOutArray(msr,achFile,OUT_DENSITY_ARRAY);*/
-                    }
-#endif
                     }
 
             if (msrDoGravity(msr)) {

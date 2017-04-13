@@ -1126,12 +1126,7 @@ int pkdLowerPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
     /*
     int i0=i,j0=j,iold;
     */
-#ifdef OLD_KEPLER
-    mdlassert(pkd->mdl,d < 5);
-    if (d > 2) return pkdLowerQQPart(pkd,d,fSplit,i,j);
-#else
     mdlassert(pkd->mdl,d < 3);
-#endif
 
     if (i > j) goto done1;
     i--;
@@ -1182,12 +1177,7 @@ int pkdUpperPart(PKD pkd,int d,FLOAT fSplit,int i,int j)
     int i0=i,j0=j,iold;
     */
 
-#ifdef OLD_KEPLER
-    mdlassert(pkd->mdl,d < 5);
-    if (d > 2) return pkdUpperQQPart(pkd,d,fSplit,i,j);
-#else
     mdlassert(pkd->mdl,d < 3);
-#endif
 
     if (i > j) goto done1;
     i--;
@@ -1235,12 +1225,7 @@ int pkdLowerPartWrap(PKD pkd,int d,FLOAT fSplit1,FLOAT fSplit2,int i,int j)
 {
     PARTICLE pTemp;
 
-#ifdef OLD_KEPLER
-    mdlassert(pkd->mdl,d < 5);
-    if (d > 2) return pkdLowerQQPart(pkd,d,fSplit1,i,j);
-#else
     mdlassert(pkd->mdl,d < 3);
-#endif
 
     if (fSplit1 > fSplit2) {
          if (i > j) goto done1;
@@ -1292,12 +1277,7 @@ int pkdUpperPartWrap(PKD pkd,int d,FLOAT fSplit1,FLOAT fSplit2,int i,int j)
 {
     PARTICLE pTemp;
 
-#ifdef OLD_KEPLER
-    mdlassert(pkd->mdl,d < 5);
-    if (d > 2) return pkdUpperQQPart(pkd,d,fSplit1,i,j);
-#else
     mdlassert(pkd->mdl,d < 3);
-#endif
 
     if (fSplit1 > fSplit2) {
          if (i > j) goto done1;
@@ -4098,11 +4078,7 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
     for(j = 0; j < 3; j++)
         lfCenter[j] = fCenter[j];
     n = pkdLocal(pkd);
-#ifdef OLD_KEPLER
-    if (p->iDriftType == KEPLER) /*DEBUG a bit ugly...*/
-#else
     if (bFandG)
-#endif
         for (i=0;i<n;++i) {
             p = &pkd->pStore[i];
             fg(pkd->mdl,fCentMass + p->fMass,p->r,p->v,dDelta);

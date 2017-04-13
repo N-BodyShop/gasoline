@@ -442,18 +442,6 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         smx->fcnPost = NULL;
         smx->bUseBallMax = 0;
         break;
-#ifdef OLD_KEPLER
-    case SMX_ENCOUNTER:
-        assert(bSymmetric == 0);
-        smx->fcnSmooth = CheckForEncounter;
-        initParticle = NULL;
-        initTreeParticle = NULL;
-        init = NULL;
-        comb = NULL;
-        smx->fcnPost = NULL;
-        smx->bUseBallMax = 0;
-        break;
-#endif
     case SMX_COLLISION:
         assert(bSymmetric == 0);
         smx->fcnSmooth = CheckForCollision;
@@ -607,13 +595,6 @@ void smLargefBallCheck(SMX smx,PARTICLE *p,FLOAT lx, FLOAT ly, FLOAT lz) {
             }
         }
 #else /* SLIDING_PATCH && INTERNAL_WARNINGS */
-#define LARGEFBALL
-#ifndef LARGEFBALL
-    assert(!smx->bPeriodic ||
-            ((lx == FLOAT_MAXVAL || p->fBall2 < 0.25*lx*lx) &&
-            (ly == FLOAT_MAXVAL || p->fBall2 < 0.25*ly*ly) &&
-            (lz == FLOAT_MAXVAL || p->fBall2 < 0.25*lz*lz)));
-#endif
 #endif
     }
 

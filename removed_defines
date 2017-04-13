@@ -53,3 +53,8 @@ EXTRASINKDATA         #Store position and velocity of formed sink.  Appears to n
 FITDVDX               #Use a fitted version of the DenDVDX 
 GLASS_1               #Set the pressure in two different regions to be different
 GLASS_2               #Set the pressure based on the xy-radius
+GRADWONESIDED         #Only use the primary particle for calculating the kernel gradient (one-sided)
+INELASTICCOLLAPSE     #Use the experimental inellastic collaspse strategy for collisions
+OLD_COMET_FORCE       #Enable the do_force for special rubble pile particles (ie comets).
+OLD_COMET_STUFF       #Initialize special particles (this is a huge kludge)
+OLD_KEPLER            #An ugly part of the collision code to stop hard scatterings 

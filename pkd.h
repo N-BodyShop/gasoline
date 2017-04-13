@@ -1025,12 +1025,6 @@ void pkdMarkEncounters(PKD pkd, double dt);
 void pkdSimpleGasDrag(PKD pkd,int iFlowOpt,int bEpstein,double dGamma,
     double dTime);
 #endif
-#ifdef OLD_KEPLER /*DEBUG*/
-int pkdLowerQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);
-int pkdUpperQQPart(PKD pkd, int d, FLOAT fSplit, int i, int j);
-void pkdQQCalcBound(PKD pkd, BND *pbnd, BND *pbndActive);
-void pkdQQBuild(PKD pkd, int nBucket, int bActiveOnly, KDN *pRoot);
-#endif
 #endif /* COLLISIONS */
 
 void pkdMassInR(PKD pkd, double R, double *pdMass, FLOAT *com);

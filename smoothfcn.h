@@ -191,9 +191,6 @@ enum smx_smoothtype {
 #endif
 #ifdef COLLISIONS
   SMX_REJECTS,
-#ifdef OLD_KEPLER
-  SMX_ENCOUNTER,
-#endif
   SMX_COLLISION,
   SMX_FINDBINARY,
 #endif /* COLLISIONS */
@@ -428,10 +425,6 @@ void initFindRejects(void *p);
 void combFindRejects(void *p1,void *p2);
 void FindRejects(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf);
 
-#ifdef OLD_KEPLER
-/* SMX_ENCOUNTER */
-void CheckForEncounter(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf);
-#endif
 
 /* SMX_COLLISION */
 void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf);

@@ -24,9 +24,6 @@
 #define NORMAL 0	/* drift types */
 #define KEPLER 1
 
-#ifdef OLD_KEPLER
-#define HILL_SCALE 1.26 /* multiplies reduced Hill radius */
-#endif
 
 FLOAT RADIUS(PARTICLE *p);
 #define RADIUS(p) (2.0*(p)->fSoft) /* currently PARTICLE has no radius field;

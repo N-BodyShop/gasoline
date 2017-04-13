@@ -51,33 +51,6 @@ do_oblate(const FLOAT r0[3],struct oblate_s *oblate,
 	a[2] += cz*dz;
 	}
 
-#ifdef OLD_COMET_FORCE
-static void
-do_force(struct force_s *force,SPECIAL_PARTICLE_INFO *sInfo,FLOAT r[3],FLOAT a[3])
-{
-#ifdef OLD_VERSION
-	/*DEBUG for now, direct force on a line 135 deg cw from position vector*/
-	/*      ROTATION ASSUMED TO BE IN XY PLANE*/
-	double fx,fy,f;
-	fx = -sInfo->r[0] + sInfo->r[1];
-	fy = -sInfo->r[0] - sInfo->r[1];
-	f = sqrt(fx*fx + fy*fy);
-	fx *= force->dMag/f;
-	fy *= force->dMag/f;
-	a[0] += fx/sInfo->fMass;
-	a[1] += fy/sInfo->fMass;
-#endif
-	/*DEBUG */
-	double x,y,t;
-	x = sInfo->r[0] - r[0]; /* assume xy plane; r[0,1] = com of rubble pile */
-	y = sInfo->r[1] - r[1];
-	t = acos(x/sqrt(x*x + y*y))*180.0/M_PI;
-	if (y >= 0.0 && t <= 120.0) /* up to 120 deg counterclockwise from +x-axis */
-		a[1] -= force->dMag/sInfo->fMass;
-	else if (y <= 0.0 && t >= 60.0) /* up to 120 deg counterclockwise from -x-axis for symmetry (no net drift) */
-		a[1] += force->dMag/sInfo->fMass;
-	}
-#endif
 
 static void
 do_noghostpert(const FLOAT r0[3],SPECIAL_MASTER_INFO *mInfo,
@@ -206,51 +179,6 @@ pkdDoSpecialParticles(PKD pkd,int nSpecial,SPECIAL_MASTER_INFO *mInfo,
 	int i,j;
 	int nGhosts=0;
 	double **rGhosts=NULL;
-#ifdef OLD_COMET_STUFF
-	/*THIS STUFF #ifdef'D OUT TO SIMPLIFY MERGING OF RORY'S VERSION
-	  WITH UMD SVN VERSION 5/23/06*/
-	int nLocal=pkdLocal(pkd);
-
-	/*DEBUG some (all?) of this stuff is for the comet spin-up problem*/
-	/*DEBUG this first stuff is for do_force(): need to know COM position of rubble pile -- won't work in parallel!!*/
-	FLOAT r[3],rc[3];
-	int n,nn;
-	do {
-		r[0] = r[1] = r[2] = 0.0;
-		for (i=n=0;i<nLocal;i++) {
-			p = &pkd->pStore[i];
-			if (p->iColor != 2) {
-				r[0] += p->r[0]; /*DEBUG assumes equal-mass particles...*/
-				r[1] += p->r[1];
-				r[2] += p->r[2];
-				++n;
-			}
-		}
-		assert(n > 0);
-		rc[0] = r[0]/n;
-		rc[1] = r[1]/n;
-		rc[2] = r[2]/n;
-		/* loop again to remove any particles far from main clump */
-		for (i=nn=0;i<nLocal;i++) {
-			p = &pkd->pStore[i];
-			if (p->iColor == 2) continue;
-			if (sqrt((p->r[0] - rc[0])*(p->r[0] - rc[0]) +
-					 (p->r[1] - rc[1])*(p->r[1] - rc[1]) +
-					 (p->r[2] - rc[2])*(p->r[2] - rc[2])) > 4.0e-8) { /*DEBUG 8 km */
-				if (p->iColor != 3) {
-					(void) fprintf(stderr,"special particle %i escaped\n",p->iOrder);
-/*DEBUG					assert(0);*/
-				}
-				p->iColor = 2;
-				continue;
-			}
-			++nn;
-		}
-		assert(nn > 0);
-	} while (nn < n);
-
-	assert(nn == n);
-#endif /*OLD_COMET_STUFF*/
 
 	for (i=0;i<nSpecial;i++) {
 	  if (sData[i].iType & SPECIAL_NOGHOSTPERT) {
@@ -267,25 +195,7 @@ pkdDoSpecialParticles(PKD pkd,int nSpecial,SPECIAL_MASTER_INFO *mInfo,
 	  }
 	  for (j=0;j<pkdLocal(pkd);j++) {
 	    p = &pkd->pStore[j];
-#ifdef OLD_COMET_FORCE
-			if (p->iOrder == sInfo[i].iOrder) {
-				if (sData[i].iType & SPECIAL_FORCE) {
-					/* special case: force applies ONLY to special particle */
-					double z = sInfo[i].r[2] - rc[2];
-					if (fabs(z) > 3*sInfo[i].fRadius) {
-						(void) fprintf(stderr,"%i: Strong off-axis torque\n",p->iOrder);
-						sInfo[i].iOrder = -1;
-						p->iColor = 16;
-						continue;
-						}
-					do_force(&sData[i].force,&sInfo[i],rc,p->a);
-					}
-				else
-					continue;
-				}
-#else
 			continue;
-#endif
 			if (sData[i].iType & SPECIAL_OBLATE) {
 				do_oblate(p->r,&sData[i].oblate,&sInfo[i],p->a);
 				}

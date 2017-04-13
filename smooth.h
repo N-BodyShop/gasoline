@@ -639,8 +639,5 @@ void smMarkSmooth(SMX,SMF *, int);
 void smReSmooth(SMX,SMF *);
 void smDtSmooth(SMX,SMF *);
 
-#ifdef OLD_KEPLER
-void smQQSmooth(SMX smx, SMF *smf);
-#endif
 
 #endif

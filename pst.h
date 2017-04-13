@@ -196,12 +196,6 @@ enum pst_service {
       PST_FINDBINARY,
       PST_MERGEBINARY,
 	  /* following for OLD_KEPLER */
-#ifdef OLD_KEPLER
-      PST_QQCALCBOUND,
-      PST_QQDOMAINDECOMP,
-      PST_QQBUILDTREE,
-      PST_QQSMOOTH,
-#endif
 #ifdef SLIDING_PATCH
       PST_FINDLM,
       PST_GETNEIGHBORS,
@@ -1436,19 +1430,6 @@ void pstGetNeighborParticles(PST pst,void *vin,int nIn,void *vout,int *pnOut);
 
 #endif /* SLIDING_PATCH */
 
-#ifdef OLD_KEPLER
-/* PST_QQCALCBOUND */
-void pstQQCalcBound(PST,void *,int,void *,int *);
-
-/* PST_QQDOMAINDECOMP */
-void pstQQDomainDecomp(PST,void *,int,void *,int *);
-
-/* PST_QQBUILDTREE */
-void pstQQBuildTree(PST,void *,int,void *,int *);
-
-/* PST_QQSMOOTH */
-void pstQQSmooth(PST,void *,int,void *,int *);
-#endif
 
 #endif /* COLLISIONS */
 
