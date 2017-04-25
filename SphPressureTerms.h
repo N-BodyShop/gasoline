@@ -19,16 +19,7 @@
    All Macros and Variables not defined here are defined in smoothfcn.c
  */
 
-#ifdef DRHODT
-    #define DRHODTACTIVE(xxx) xxx
-    #ifdef RTFORCE
-        #define RHO_DIVV(a,b) (b)
-    #else
-        #define RHO_DIVV(a,b) (a)
-    #endif
-#else
     #define DRHODTACTIVE(xxx)
-#endif
 
 #ifdef DIFFUSION
 

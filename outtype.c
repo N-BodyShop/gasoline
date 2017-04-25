@@ -213,10 +213,8 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #endif
 	case OUT_DIVV_ARRAY:
 	    return(p->divv);
-#ifdef DODVDS
 	case OUT_DVDS_ARRAY:
 	    return(p->dvds);
-#endif
 	case OUT_CSOUND_ARRAY:
 	    return(p->c);
 	case OUT_MUMAX_ARRAY:
@@ -274,12 +272,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #ifdef SURFACEAREA
 	case OUT_SURFACEAREA_ARRAY:
 	    return(p->fArea);
-#endif
-#ifdef DRHODT
-	case OUT_DIVV_T_ARRAY:
-	    return(p->fDivv_t);
-	case OUT_DIVV_CORRECTOR_ARRAY:
-	    return(p->fDivv_Corrector);
 #endif
 	case OUT_IACTIVE_ARRAY:
 	    return((FLOAT) p->iActive);
@@ -532,14 +524,6 @@ void VecFilename(char *achFile, int iType)
 	case OUT_SURFACEAREA_ARRAY:
         strncat(achFile,"area",256);
         break;
-#ifdef DRHODT
-	case OUT_DIVV_T_ARRAY:
-        strncat(achFile,"divvt",256);
-        break;
-	case OUT_DIVV_CORRECTOR_ARRAY:
-        strncat(achFile,"divvcorr",256);
-        break;
-#endif
 	case OUT_IACTIVE_ARRAY:
         strncat(achFile,"ia",256);
         break;

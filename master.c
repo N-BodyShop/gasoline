@@ -52,19 +52,12 @@
 
 #define STOPFILE "STOP"			/* for user interrupt */
 
-#define NEWTIME
-#ifdef NEWTIME
 double msrTime(void) {
 	struct timeval tv;
 
 	gettimeofday(&tv,NULL);
 	return tv.tv_sec + tv.tv_usec*1e-6;
 	}
-#else
-double msrTime(void) {
-	return time(NULL);
-	}
-#endif
 
 static double dPreviousTime;
 #define DEN_CGS_SYS 1.6831e6 /* multiply density in cgs by this to get
@@ -2848,9 +2841,6 @@ void msrLogDefines(FILE *fp)
 #ifdef CULLENDEHNEN
         fprintf(fp," CULLENDEHNEN");
 #endif
-#ifdef DODVDS
-        fprintf(fp, " DODVDS");
-#endif
 #ifdef INFLOWOUTFLOW
 	fprintf(fp, " INFLOWOUTFLOW");
 #endif
@@ -4501,9 +4491,7 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
     if (!msr->param.bBulkViscosity){
         OutputList[(*nOutputList)++]=OUT_BALSARASWITCH_ARRAY;
         OutputList[(*nOutputList)++]=OUT_DIVV_ARRAY;
-#ifdef DODVDS
         OutputList[(*nOutputList)++]=OUT_DVDS_ARRAY;
-#endif
 #ifdef SURFACEAREA
         OutputList[(*nOutputList)++]=OUT_SURFACEAREA_ARRAY;
 #ifdef NORMAL
@@ -4683,9 +4671,7 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
 	if (msr->param.bDoBalsaraOutput) OutputList[(*nOutputList)++]=OUT_BALSARASWITCH_ARRAY;
 	if (msr->param.bDoDivvOutput) { 
         OutputList[(*nOutputList)++]=OUT_DIVV_ARRAY;
-#ifdef DODVDS
         OutputList[(*nOutputList)++]=OUT_DVDS_ARRAY;
-#endif
         }
 	if (msr->param.bDoCurlvOutput) OutputList[(*nOutputList)++]=OUT_CURLV_VECTOR;
 	if (msr->param.bDoCSoundOutput) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
@@ -8531,7 +8517,7 @@ void msrTopStepKDK(MSR msr,
 			}
 #endif
 		msrDtToRung(msr,iRung,dDelta,1);
-#if !defined(DRHODT) && !defined(DTADJUST) && !defined(UNONCOOL)
+#if !defined(DTADJUST) && !defined(UNONCOOL)
 		if (iRung == 0)
 #endif
 		    {
@@ -9283,9 +9269,7 @@ void msrInitSph(MSR msr,double dTime)
         msrBuildTree(msr,1,-1.0,1);
         printf("InitSph: Now doing Dendvdx\n");
         msrSmooth(msr,dTime,SMX_DENDVDX,1);
-//#ifdef DRHODT
         msrReSmooth(msr,dTime,SMX_DENDVDX,1); // needed for PdV corrector
-//#endif
         printf("InitSph: Done Dendvdx\n");
         }
 
@@ -9446,7 +9430,6 @@ void msrSphStep(MSR msr, double dTime, int iKickRung)
     in.bViscosityLimitdt = msr->param.bViscosityLimitdt;
     pstSphStep(msr->pst,&in,sizeof(in),&msr->dtMinGas,NULL);
 
-//#ifdef DRHODT
     if (!msr->param.bSphSingleStep && msr->param.bLongRangeStep) {
         if (msr->iTreeType != MSR_TREE_DENSITY) {
             msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
@@ -9457,7 +9440,6 @@ void msrSphStep(MSR msr, double dTime, int iKickRung)
         msrActiveTypeRung(msr,TYPE_GAS,TYPE_ACTIVE,iKickRung,1);
         msrDtSmooth(msr,dTime,0); /* Updates msr->dtMinGas */
         }
-//#endif
 
     if (msr->param.bSphSingleStep) {
         struct inSetSphStep inSetSph;
@@ -9518,9 +9500,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     if (msr->param.bVDetails)
 	printf("SPH: nActive %d nTreeActive %d nSmoothActive %d\n",msr->nActive,
 	       msr->nTreeActive,msr->nSmoothActive);
-#ifdef DRHODT
-    msrGetGasPressure(msr, dTime);  //Based on rho predicted from div.v -- needed for timestep setting
-#endif
     msrBuildTree(msr,1,-1.0,1);
 
 /*
@@ -9544,7 +9523,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
 #endif
         /* mark Scatter Neighbours */
         msrMarkSmooth(msr,dTime,1,TYPE_Scatter);
-//#ifndef DRHODT
         /* They need density, switches, correction factors... (density can be predicted) */
         msrActiveType(msr,TYPE_ACTIVE|TYPE_NbrOfACTIVE|TYPE_Scatter, TYPE_DensACTIVE );
         /* ...but don't redo Actives in smooth*/
@@ -9552,7 +9530,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
             TYPE_DensACTIVE,TYPE_SMOOTHACTIVE);
         /* Density for Neighbours and mark scatter neighbours of actives */
         msrSmooth(msr,dTime,SMX_DENDVDX,1);
-//#endif
 #else /* 3 SMOOTH */
         /* Density for Actives and mark Gather neighbours */
         msrSmooth(msr,dTime,SMX_MARKDENSITY,1);
@@ -9580,9 +9557,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
 	    printf("SPH: Neighbours: %d ",
             msrCountType(msr,TYPE_ACTIVE|TYPE_NbrOfACTIVE,TYPE_NbrOfACTIVE));
             }
-#ifdef DRHODT
-//	msrReSmooth(msr,dTime,SMX_DENDVDX,1);
-#endif
 	}
     else { /* Not FastGas -- Smooth everyone (more efficient for high active fraction) */
         msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE );
@@ -9603,9 +9577,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
             printf("SPH: Neighbours: %d ",
                 msrCountType(msr,TYPE_NbrOfACTIVE,TYPE_NbrOfACTIVE ) );
         msrActiveType(msr,TYPE_NbrOfACTIVE,TYPE_SMOOTHACTIVE);
-#ifdef DRHODT
-//	msrReSmooth(msr,dTime,SMX_DENDVDX,1);
-#endif
 	}
 /*
 ** Finalize switches (if necessary)
@@ -9622,7 +9593,7 @@ void msrSph(MSR msr, double dTime, int iKickRung)
         }
     msrSphViscosityLimiter(msr, dTime);
 #endif
-#if defined(DODVDS) && defined (SMOOTHBSW)
+#if defined (SMOOTHBSW)
     if (msr->param.bVDetails) printf("SPH: Resmooth BSw\n");
     msrReSmooth(msr,dTime,SMX_SMOOTHBSW,1);
 #endif

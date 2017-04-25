@@ -154,9 +154,7 @@ typedef struct particle {
     FLOAT uHotDotDiff;  /* Hot Energy diffusion */
 #endif
     FLOAT divv;             
-#ifdef DODVDS
     FLOAT dvds;
-#endif
 #ifdef VARALPHA
     FLOAT alpha;
     FLOAT alphaPred;
@@ -179,13 +177,6 @@ typedef struct particle {
 #endif
 #ifdef DENSITYU
     FLOAT fDensityU;
-#endif
-#ifdef DRHODT
-    FLOAT fDensity_t;
-    FLOAT fDensity_PdV;
-    FLOAT fDensity_PdVcorr;
-    FLOAT fDivv_PdV;
-    FLOAT fDivv_PdVcorr;
 #endif
     FLOAT fDivv_t;
     FLOAT fDivv_Corrector;

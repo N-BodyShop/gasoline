@@ -14,8 +14,6 @@
 #define EPSTEMP 1e-5
 #define ETAMINTIMESTEP 1e-4
 
-#define NEWINTEG
-#ifdef NEWINTEG
 #include "stiff.h"
 
 /* Integrator constants */
@@ -27,7 +25,6 @@
 /* Accuracy target for intergrators */
 #define EPSINTEG  1e-5
 #define MAXINTEGITS 20000
-#endif
 
 #if defined(COOLDEBUG) || defined(STARFORM)
 #include "pkd.h"
@@ -56,24 +53,18 @@ CL *clInit( )
   cl->nTable = 0;
   cl->RT = NULL;
 
-#ifdef NEWINTEG
   cl->DerivsData = malloc(sizeof(clDerivsData));
   assert(cl->DerivsData != NULL);
   ((clDerivsData *) (cl->DerivsData))->IntegratorContext = 
     StiffInit( EPSINTEG, 1, cl->DerivsData, clDerivs, clJacobn );
-#else
-  cl->DerivsData = NULL;
-#endif
   
   return cl;
 }
 
 void clFinalize(CL *cl ) 
 {
-#ifdef NEWINTEG
   StiffFinalize( ((clDerivsData *) (cl->DerivsData))->IntegratorContext );
   free(cl->DerivsData);
-#endif
   if (cl->UV != NULL) free(cl->UV);
   if (cl->RT != NULL) free(cl->RT);
   free(cl);
@@ -96,7 +87,6 @@ void clInitConstants( CL *cl, double dGmPerCcUnit, double dComovingGmPerCcUnit,
 
   cl->bUVTableUsesTime = bUVTableUsesTime;
   cl->bUVTableLinear = bUVTableUsesTime; /* Linear if using time */
-#ifdef NEWINTEG
   /* Derivs Data Struct */
   {
     clDerivsData *Data = cl->DerivsData;
@@ -108,7 +98,6 @@ void clInitConstants( CL *cl, double dGmPerCcUnit, double dComovingGmPerCcUnit,
     Data->Y_Total1 = (cl->Y_eMAX+cl->Y_H+cl->Y_He)*1.0001; /* Full Ionization */
     Data->dlnE = (log(EMUL)-log(1/EMUL));
   }
-#endif
 }
 
 void clInitUV(CL *cl, UVSPECTRUM *UV, int nUV)
@@ -988,7 +977,6 @@ double clEdotHarmonic( CL *cl, RATE *R1, RATE *R2, PERBARYON *Y1, PERBARYON *Y2,
   return Prod/(0.5*(Edot1+Edot2)); /* Second order Harmonic mean derivative */
 }
 
-#ifdef NEWINTEG
 
 double clfTemp( void *Data, double T ) 
 {
@@ -1113,187 +1101,6 @@ void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E,
   /*  printf("Abunds:  e %e HI %e HII %e\nHeI %e HeII %e HeIII %e\n",
   	 d->Y.e,d->Y.HI,d->Y.HII,d->Y.HeI,d->Y.HeII,d->Y.HeIII); */
 }
-#else  /* NEWINTEG */
-
-
-void clIntegrateEnergy(CL *cl, PERBARYON *Y, double *E, 
-		       double PdV, double rho, double dt ) {
-  BRENT a,b,c;
-  PERBARYON Yin = *Y, YY;
-  RATE Rate,Ratein;
-  double Ein = *E, dE, Tin, Ttmp;
-  int i;
-  /* brent */
-  int iter;
-  double d=0,e=0,min1,min2;
-  double p,q,r,s,tol1,xm;
-
-  /* debug */  /*
-  PARTICLE *part = cl->p;
-
-  char ach[256];
-  */
-
-  if (dt <= 0) return;
-
-  /* 
-   *  We recalculate Y based on the current table (rather than use Yin)
-   *  to take into account changes in photoionization for dE 
-   */
-  Tin = clTemperature( Yin.Total, Ein ); 
-  clRates( cl, &Ratein, Tin );
-  clAbunds( cl, &YY, &Ratein, rho );
-  Ttmp = clTemperature( YY.Total, Ein ); 
-  clRates( cl, &Rate, Ttmp );
-  clAbunds( cl, &YY, &Rate, rho );
-
-  dE  = dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &YY, rho, PdV, dt );
-  if (dE < -0.2*Ein) dE = -0.2*Ein;
-  /*
-  if (part->iOrder==880556) {
-     sprintf(ach,"%d: T: %e E %e dE: %e dt %e   %e %e %e\n",part->iOrder,Tin,Ein,dE,dt,
-	 -clCoolTotal( cl, &YY, &Ratein, rho ),clHeatTotal( cl, &YY ),PdV);
-     mdlDiag(cl->mdl, ach);
-  }
-  */
-  a.Y = Yin;
-  a.E = Ein;
-  a.T = Tin;
-  a.F = - dE;
-  
-  /* Bracket the root */
-  b.Y = YY;
-
-  for ( i = 1; i <= MAXBRACKET; i++) {
-    b.E = Ein + dE;
-    b.T = clTemperature( b.Y.Total, b.E );
-    if (b.T > cl->TMin) {
-      clRates( cl, &Rate, b.T );
-      clAbunds( cl, &b.Y, &Rate, rho );
-      b.T = clTemperature( b.Y.Total, b.E ); 
-    }
-    if (b.T <= cl->TMin) {
-      b.T = cl->TMin;
-      clRates( cl, &Rate, b.T );
-      clAbunds( cl, &b.Y, &Rate, rho );
-      b.E = clThermalEnergy( b.Y.Total, b.T );
-      b.F = b.E - Ein - dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt );
-      if ( b.F * a.F < 0 ) break;
-      /* Stick to the minimum Temperature */
-      /*
-      if (part->iOrder==880556) {
-	sprintf(ach,"Floored it after %i brackets %g %g %g %g\n   (%g %g %g %g %g)\n",i,a.T,a.F,b.T,b.F,b.E,Ein,
-	     dt*clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt ),
-	     dt*( clEdot( cl, &Yin, &Ratein, rho, &Yin, &b.Y, dt ) + PdV),
-	     dt*( clEdot( cl, &b.Y, &Rate, rho, &Yin, &b.Y, dt ) + PdV) );
-	mdlDiag(cl->mdl, ach);
-      }
-      */
-      *Y = b.Y;
-      *E = b.E;
-      return;
-    }
-    clRates( cl, &Rate, b.T ); 
-    clAbunds( cl, &b.Y, &Rate, rho );
-
-    b.F = b.E - Ein - dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt );
-    /*
-    if (part->iOrder==880556) {
-      sprintf(ach,"%d B %d T: %e E %e dE: %e dt %g Edot %g %e %e PdV %e F %g\n",part->iOrder,i,b.T,b.E,dE,dt,
-	      clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt ),
-	      -clCoolTotal( cl, &b.Y, &Rate, rho ),clHeatTotal( cl, &b.Y ),PdV,b.F);
-      mdlDiag(cl->mdl, ach);
-    }
-    */
-
-    if ( b.F * a.F < 0 ) break;
-    if (i<5 && Ein+2*dE > 0) dE *= 2;
-    else {
-      if (dE < 0) dE -= Ein*0.2;
-      else dE = dE*2 + Ein*0.2;
-    }
-  }
-
-  /*
-  if (i>MAXBRACKET) {
-    sprintf(ach,"COOL: %d %d MaxBracket Y %g %g %g E %g PdV %g rho %g dt %g\n", part->iOrder,part->iRung,Y->HI,Y->HeI,Y->HeII, *E, PdV, rho, dt);
-    mdlDiag(cl->mdl, ach);
-  }  
-  */
-  assert(i<=MAXBRACKET);
-  /*
-    printf("Bracket Iterations %i\n",i);
-  */
-
-  /* Brent it - Algorithm taken from Numerical Recipes */  
-  c = b;
-
-  for (iter=1;iter<=ITMAX;iter++) {
-    if ((b.F > 0.0 && c.F > 0.0) || (b.F < 0.0 && c.F < 0.0)) {
-      c = a;
-      e = d = b.E - a.E;
-    }
-    if (fabs(c.F) < fabs(b.F)) {
-      a = b;
-      b = c;
-      c = a;
-    }
-    tol1 = 2*BRENTEPS*fabs(b.E) + 0.5*BRENTTOL;
-    xm = 0.5 * (c.E - b.E);
-    
-    if (fabs(xm) <= tol1 || b.F == 0.0) {
-      /*
-      printf("Brent iterations: %i\n",iter);
-      */
-      /* finished -> b.E */
-      *E = b.E;
-      *Y = b.Y;
-      return;
-    }
-    if (fabs(e) >= tol1 && fabs(a.F) > fabs(b.F)) {
-      s=b.F/a.F;
-      if (a.E == c.E) {
-        p = 2*xm*s;
-        q = 1-s;
-      } else {
-        q = a.F/c.F;
-        r = b.F/c.F;
-        p = s*(2.0*xm*q*(q-r)-(b.E-a.E)*(r-1.0));
-        q = (q-1.0)*(r-1.0)*(s-1.0);
-      }
-      if (p > 0.0) q = -q;
-      p=fabs(p);
-      min1 = 3.0*xm*q - fabs(tol1*q);
-      min2 = fabs(e*q);
-      if (2.0*p < (min1 < min2 ? min1 : min2)) {
-        e=d;
-        d=p/q;
-      } else {
-        d=xm;
-        e=d;
-      }
-    } else {
-      d=xm;
-      e=d;
-    }
-    a=b;
-    if (fabs(d) > tol1)
-      b.E += d;
-    else
-      b.E += (xm > 0.0 ? fabs(tol1) : -fabs(tol1));
-
-    b.T = clTemperature( b.Y.Total, b.E ); 
-    clRates( cl, &Rate, b.T );
-    clAbunds( cl, &b.Y, &Rate, rho );
-    b.T = clTemperature( b.Y.Total, b.E ); 
-    clRates( cl, &Rate, b.T ); 
-    clAbunds( cl, &b.Y, &Rate, rho );
-
-    b.F = b.E - Ein - dt * clEdotHarmonic( cl, &Ratein, &Rate, &Yin, &b.Y, rho, PdV, dt );
-  }
-  assert( 0 ); /* Brent failed to converge */
-}
-#endif /* NEWINTEG */
 
 #endif /* NOCOOLING */
 #endif /* GASOLINE */

@@ -325,11 +325,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef DENSITYU
         p->fDensityU = 0.0;
 #endif
-#ifdef DRHODT
-        p->fDensity_t = 0.0;
-        p->fDensity_PdV = 0.0;
-        p->fDensity_PdVcorr = 0.0;
-#endif
         p->fBall2 = 0.0;
         p->fBallMax = 0.0;
 #ifdef GASOLINE
@@ -365,9 +360,7 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->alpha = ALPHAMIN;
         p->alphaPred = ALPHAMIN;
         p->divv = 0;
-#ifdef DODVDS
         p->dvds = 0;
-#endif
 #endif
 #ifdef CULLENDEHNEN
         p->alpha = 0;
@@ -1791,14 +1784,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
 #else
     fTmp = p->fSoft;
 #endif
-#ifdef DRHODT 
-    /* Horrible hack -- overwrite soft output */
-#ifdef DRHODTDIVOUT
-    fTmp = p->fDivv_PdV;
-#else
-    fTmp = p->fDensity_PdV;
-#endif
-#endif
     xdr_float(&xdrs,&fTmp);
 #ifdef SINKING
     if (TYPETest( p, TYPE_SINKING)) {
@@ -1814,14 +1799,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
         }
 #else
     fTmp = p->fMetals;
-#ifdef DRHODT 
-    /* Horrible hack -- overwrite metals output */
-#ifdef DRHODTDIVOUT
-    fTmp = p->fDivv_t;
-#else
-    fTmp = p->fDensity_t;
-#endif
-#endif
     xdr_float(&xdrs,&fTmp);
 #endif
 #else /* not gasoline */
@@ -1837,14 +1814,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
     xdr_float(&xdrs,&fTmp);
 #endif
     fTmp = p->fPot;
-#ifdef DRHODT 
-    /* Horrible hack -- overwrite pot output */
-#ifdef DRHODTDIVOUT
-    fTmp = p->fDivv_PdVcorr;
-#else
-    fTmp = p->fDensity_PdVcorr;
-#endif
-#endif
     xdr_float(&xdrs,&fTmp);
       }
       else if (pkdIsStar(pkd,p)) {
@@ -4123,16 +4092,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
 #endif
 
 #ifdef GASOLINE
-#ifdef DRHODT
-            if(pkdIsGas(pkd, p)) {
-                p->fDensity *= exp(-p->fDivv_t*dDelta); // Predictor for density
-                if(dDelta > 0.0)
-                   assert(p->fDensity > 0.0);
-                }
-            p->fDensity_t *= exp(-p->fDivv_t*dDelta);
-            p->fDensity_PdV *= exp(-p->fDivv_PdV*dDelta);
-            p->fDensity_PdVcorr *= exp(-p->fDivv_PdVcorr*dDelta);
-#endif
 #endif
             for (j=0;j<3;++j) {
                     p->r[j] += dDelta*p->v[j];
@@ -4227,11 +4186,7 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     {
                     double dalphadt;
                     dalphadt = - p->alphaPred*0.1*p->c/sqrt(0.25*p->fBall2);
-#ifdef DODVDS
                     if (p->dvds < 0) dalphadt -= p->dvds*1.5;
-#else
-                    if (p->divv < 0) dalphadt -= p->divv;
-#endif
                     p->alphaPred = p->alpha + dalphadt*duPredDelta;
                     if (p->alphaPred < ALPHAMIN) p->alphaPred = ALPHAMIN;
                     if (p->alphaPred > ALPHAMAX) p->alphaPred = ALPHAMAX;
@@ -4618,9 +4573,7 @@ void pkdCreateInflow(PKD pkd, int Ny, int iGasModel, double dTuFac, double pmass
         p.alpha = ALPHAMIN;
         p.alphaPred = ALPHAMIN;
         p.divv = 0;
-#ifdef DODVDS
         p.dvds = 0;
-#endif
 #ifdef CULLENDEHNEN
         p->alpha = 0;
         p->dTime_divv = FLT_MAX;
@@ -6497,7 +6450,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
         if(pkdIsGas(pkd, p)) {
 
             if (TYPEQueryACTIVE(p)) {
-#if defined(DIFFUSION) || !defined(DRHODT) && !defined(DTADJUST)
+#if defined(DIFFUSION) || !defined(DTADJUST)
                 double ph = sqrt(0.25*p->fBall2);
 #endif
 #ifdef SINKING
@@ -6510,7 +6463,7 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
                  * Courant condition goes here.
                  */
                 DTSAVE(p->dt,"0IN");
-#if defined(DRHODT) || defined(DTADJUST)
+#if defined(DTADJUST)
                 dT = p->dtNew; /* Start with estimate from prior Sph force calculations */ 
                 DTSAVE(dT,"SPH");
                 p->dtNew = FLT_MAX;
@@ -7136,11 +7089,7 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
                 {
                 double dalphadt;
                 dalphadt = - p->alphaPred*0.1*p->c/sqrt(0.25*p->fBall2);
-#ifdef DODVDS
                 if (p->dvds < 0) dalphadt -= p->dvds*1.5;
-#else
-                if (p->divv < 0) dalphadt -= p->divv;
-#endif
                 p->alphaPred = p->alpha + dalphadt*duDelta;
                 if (p->alphaPred < ALPHAMIN) p->alphaPred = ALPHAMIN;
                 if (p->alphaPred > ALPHAMAX) p->alphaPred = ALPHAMAX;

@@ -2768,10 +2768,6 @@ void initSphPressureTermsParticle(void *p)
 #ifdef UNONCOOL
         ((PARTICLE *)p)->uHotDotDiff = 0.0;
 #endif
-#ifdef DRHODT
-		((PARTICLE *)p)->fDivv_PdV = 0.0;
-		((PARTICLE *)p)->fDivv_PdVcorr = 0.0;
-#endif	    
 #ifdef DIFFUSION
 		((PARTICLE *)p)->fMetalsDot = 0.0;
 #ifdef STARFORM
@@ -2794,10 +2790,6 @@ void initSphPressureTerms(void *p)
 #ifdef UNONCOOL
         ((PARTICLE *)p)->uHotDotDiff = 0.0;
 #endif
-#ifdef DRHODT
-		((PARTICLE *)p)->fDivv_PdV = 0.0;
-		((PARTICLE *)p)->fDivv_PdVcorr = 0.0;
-#endif	    
 		ACCEL(p,0) = 0.0;
 		ACCEL(p,1) = 0.0;
 		ACCEL(p,2) = 0.0;
@@ -2820,10 +2812,6 @@ void combSphPressureTerms(void *p1,void *p2)
 #ifdef UNONCOOL
         ((PARTICLE *)p1)->uHotDotDiff += ((PARTICLE *)p2)->uHotDotDiff;
 #endif
-#ifdef DRHODT
- 	        ((PARTICLE *)p1)->fDivv_PdV += ((PARTICLE *)p2)->fDivv_PdV;
- 	        ((PARTICLE *)p1)->fDivv_PdVcorr += ((PARTICLE *)p2)->fDivv_PdVcorr;
-#endif	    
 		if (((PARTICLE *)p2)->mumax > ((PARTICLE *)p1)->mumax)
 			((PARTICLE *)p1)->mumax = ((PARTICLE *)p2)->mumax;
 		ACCEL(p1,0) += ACCEL(p2,0);
@@ -2884,7 +2872,6 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	aFac = (smf->a);        /* comoving acceleration factor */
 	vFac = (smf->bCannonical ? 1./(smf->a*smf->a) : 1.0); /* converts v to xdot */
 
-//#ifdef DRHODT
 	divvi = 0;
 	divvj = 0;
 	for (i=0;i<nSmooth;++i) {
@@ -2910,7 +2897,6 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #else
     p->fDivv_Corrector = 1;
 #endif
-//#endif
 
 	for (i=0;i<nSmooth;++i) {
 	    q = nnList[i].pPart;
@@ -2919,9 +2905,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    r2 = nnList[i].fDist2*ih2;
 	    DKERNEL(rs1,r2);
 	    rs1 *= fNorm1;
-//#ifdef DRHODT
 	    rs1 *= p->fDivv_Corrector;
-//#endif
 	    rp = rs1 * pMass;
 	    rq = rs1 * q->fMass;
 	    dx = nnList[i].dx;
@@ -3987,9 +3971,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #if defined (DENSITYU) || defined(RTDENSITY) || defined(THERMALCOND)
 	FLOAT fDensityU = 0;
 #endif
-//#ifdef DRHODT
 	FLOAT divvnorm = 0;//, divvbad = 0;
-//#endif
 	PARTICLE *q;
 	int i;
 	unsigned int qiActive;
@@ -4070,15 +4052,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		dvzdy += dvz*dy*rs1;
 		dvzdz += dvz*dz*rs1;
 
-//#ifdef DRHODT
 		divvnorm += (dx*dx+dy*dy+dz*dz)*rs1;
-//		divvbad += (dvx*dx+dvy*dy+dvz*dz)*rs1/q->fDensity;
-#ifdef RTFORCE
-//		divvbad += (dx*dx+dy*dy+dz*dz)*rs1/q->fDensity;
-#else
-//		divvbad += (dx*dx+dy*dy+dz*dz)*rs1/p->fDensity;
-#endif
-//#endif
 		/* grx += (-p->uPred + q->uPred)*dx*rs1;  Bad Grad P estimate ( use divvnorm now? ) -- actually rho grad u */
 		grx += (q->uPred)*dx*rs1; /* Grad P estimate */
 		gry += (q->uPred)*dy*rs1;
@@ -4150,12 +4124,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	/* This is a predictor for comoving density estimation */
 //        p->fDivv_Corrector = 3/(divvbad*fNorm1);
 	p->fDivv_t = fNorm1*trace; /* no H, comoving */
-#ifdef DRHODT
-	/* Hack to initialize */
-	if (p->fDensity_t <= 0) p->fDensity_t = p->fDensity;
-	if (p->fDensity_PdV <= 0) p->fDensity_PdV = p->fDensity;
-	if (p->fDensity_PdVcorr <= 0) p->fDensity_PdVcorr = p->fDensity;
-#endif
 
     pdivv_old = p->divv;
 	p->divv =  fNorm1*trace + 3*smf->H; /* include H, physical */
@@ -4164,9 +4132,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	p->curlv[2] = fNorm1*(dvydx - dvxdy);
 /* Prior: ALPHAMUL 10 on top -- make pre-factor for c instead then switch is limited to 1 or less */
 #define ALPHACMUL 0.1
-#ifndef DODVDS
-	if (smf->iViscosityLimiter==2) 
-#endif
 	    {
 	    double Hcorr = (fNorm1 != 0 ? smf->H/fNorm1 : 0);
 	    gnorm = (grx*grx+gry*gry+grz*grz);
@@ -4178,9 +4143,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		+  (dvydx*grx+(dvydy+Hcorr)*gry+dvydz*grz)*gry 
 		+  (dvzdx*grx+dvzdy*gry+(dvzdz+Hcorr)*grz)*grz)*fNorm1;
         pdvds_old = p->dvds;
-#ifdef DODVDS
 	    p->dvds = 
-#endif
             dvds = (p->divv < 0 ? 1.5*(dvdr -(1./3.)*p->divv) : dvdr );
 	    }
 
@@ -4292,7 +4255,6 @@ void combSmoothBSw(void *p1,void *p2)
 void SmoothBSw(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 {
 
-#ifdef DODVDS
     FLOAT ih2,ih,r2,rs,c;
 	FLOAT curlv[3],divv,fNorm,dvds;
 	int i;
@@ -4346,9 +4308,6 @@ void SmoothBSw(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		}
 	    break;
 	    }
-#else
-	assert(0);
-#endif /* DODVDS */
 
 	}
 

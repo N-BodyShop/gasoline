@@ -85,3 +85,7 @@ CONFIG_BFLOAT_4       #Precision for variables in Grackle.  Actually use 8
 CONFIG_BFLOAT_8       #Precision for variables in Grackle.  Actually use 8
 CONTROLYHII           #Make sure error in YHII and YHeIII is controlled (on by default)
 DIFFUSIONPRICE        #Daniel Price's Thermal Diffusion
+DODVDS                #Different estimate of Balsara switch instead of divv (on by default)
+DRHODT                #Use the change in density over time (dRho/dt) for timesteps
+NEWTIME               #Use a better time function (on by default)
+NEWINTEG              #Use the stiff integrator  (on by default)
