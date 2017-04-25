@@ -2704,39 +2704,6 @@ void msrLogDefines(FILE *fp)
 #ifdef CULLENDEHNEN
 	fprintf(fp," CULLENDEHNEN");
 #endif
-#ifdef CD_CNOTVSIG
-	fprintf(fp," CD_CNOTVSIG");
-#endif
-#ifdef CD_DVDS
-	fprintf(fp," CD_DVDS");
-#endif
-#ifdef CD_RALT
-	fprintf(fp," CD_RALT");
-#endif
-#ifdef CD_XIDVDS
-	fprintf(fp," CD_XIDVDS");
-#endif
-#ifdef CD_XIRDVDSONSFULL
-	fprintf(fp," CD_XIRDVDSONSFULL");
-#endif
-#ifdef CD_DVDXLIMIT
-    fprintf(fp," CD_DVDXLIMIT");
-#endif
-#ifdef CD_RDVDS
-	fprintf(fp," CD_RDVDS");
-#endif
-#ifdef CD_RDVDSONSFULL
-	fprintf(fp," CD_RDVDSONSFULL");
-#endif
-#ifdef CD_NODOT
-	fprintf(fp," CD_NODOT");
-#endif
-#ifdef CD_FULLS
-	fprintf(fp," CD_FULLS");
-#endif
-#ifdef CD_ALPHANOISE
-	fprintf(fp," CD_ALPHANOISE");
-#endif
 #ifdef PEAKEDKERNEL
 	fprintf(fp," PEAKEDKERNEL");
 #endif
@@ -4729,17 +4696,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
         OutputList[(*nOutputList)++]=OUT_DIVV_ARRAY;
 #ifdef DODVDS
         OutputList[(*nOutputList)++]=OUT_DVDS_ARRAY;
-#endif
-#ifdef CULLENDEHNEN
-        OutputList[(*nOutputList)++]=OUT_ALPHALOC_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_ALPHANOISE_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_VSIGMAX_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_R_CD_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_SNORM_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_SFULL_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_DVDSONSFULL_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_DIVV_DENS_ARRAY;
-        OutputList[(*nOutputList)++]=OUT_DIVVDOT_ARRAY;
 #endif
         }
 	if (msr->param.bDoCurlvOutput) OutputList[(*nOutputList)++]=OUT_CURLV_VECTOR;

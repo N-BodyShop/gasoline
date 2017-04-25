@@ -1,17 +1,5 @@
 AGGS                  #Include support for aggregates (like asteroids and rubble piles) See aggs.c
 BATEPOLY              #Use the default cooling polynomial COOLING_POLY
-CD_ALPHANOISE  
-CDCNOTVSIG
-CD_CNOTVSIG
-CD_DVDS
-CD_DVDXLIMIT
-CD_FULLS
-CD_NODOT
-CD_RALT
-CD_RDVDS
-CD_RDVDSONSFULL
-CD_XIDVDS
-CD_XIRDVDSONSFULL
 CHABRIER              #Use the Chabrier 2003 IMF for starformation (See DOI:10.1086/376392)
 CHANGESOFT            #Allow gravitational softening lengths to vary with time
 CLOUDY                #Use CLOUDY version of line cooling

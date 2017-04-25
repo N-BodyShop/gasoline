@@ -3970,15 +3970,7 @@ void combDenDVDX(void *p1,void *p2)
 
 void postDenDVDX(PARTICLE *p, SMF *smf) {
 #ifdef CULLENDEHNEN
-#ifdef CD_RDVDSONSFULL
     p->divv_old = p->dvdsonSFull;
-#else
-#ifdef CD_RDVDS
-    p->divv_old = p->dvds;
-#else
-    p->divv_old = p->divv;
-#endif
-#endif
 #endif
     }  
 
@@ -4048,35 +4040,18 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         // Convention here dvdx = vxq-vxp, dx = xp-xq so dvdotdr = -dvx*dx ...
         double dvdotdr = -(dvx*dx + dvy*dy + dvz*dz) + nnList[i].fDist2*smf->H; // vFac already in there
         double cavg = (p->c + q->c)*0.5;
-#ifdef CDCNOTVSIG
         double vSig = cavg;
-#else
-        double vSig = cavg - (dvdotdr < 0 ? dvdotdr/sqrt(nnList[i].fDist2) : 0);
-#endif
         if (vSig > vSigMax) vSigMax = vSig;
         // noise estimator
         vmx += dvx*rs*q->fMass;
         vmy += dvy*rs*q->fMass;
         vmz += dvz*rs*q->fMass;
-#ifdef CD_RDVDSONSFULL
             { double R_wt = (1-r2*r2*0.0625)*q->fMass;
               
         R_CD += q->divv_old*R_wt;
         R_CDA += fabs(q->divv_old)*R_wt;
         R_CDN += R_wt;
             }
-#else
-#ifdef CD_RALT
-            { double R_wt = (1-r2*r2*0.0625)*q->fMass;
-            R_CD += (q->divv_old < 0 ? -1 : 1)*R_wt;
-            R_CDA += R_wt;
-            R_CDN += R_wt;
-            }
-#else
-        R_CD += (q->divv_old < 0 ? -1 : 1)*rs*q->fMass;
-        R_CDA += rs*q->fMass;
-#endif
-#endif
         }
 #endif
 
@@ -4123,11 +4098,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #ifdef CULLENDEHNEN
     alphaNoise = (vmx*vmx+vmy*vmy+vmz*vmz)/(fDensity*fDensity)*smf->dNAlphaNoise;
     alphaNoise = alphaNoise/(alphaNoise+p->c*p->c);
-#if defined(CD_RALT) || defined(CD_RDVDSONSFULL)
     OneMinusR_CD = (R_CDN > 0 ? 1-(R_CD/R_CDN) : 0);  
-#else
-    OneMinusR_CD = 1 - (R_CD/fDensity);  //pre-normalized density
-#endif
 #endif
     // Anything using unnormalized density must go before here
 /*	printf("TEST %d  %g %g  %g %g %g\n",p->iOrder,p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2]);*/
@@ -4262,56 +4233,16 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         if (dDeltaTime > 0) {
             assert(!smf->bStepZero);
             double tau = 1/(smf->dTauAlpha*vSigMax*ih);
-#ifdef CD_DVDS
             double divvDot = (p->dvds - pdvds_old)/dDeltaTime, dvdx = p->dvds;
-#else
-            double divvDot = (p->divv - pdivv_old)/dDeltaTime, dvdx = p->divv;
-#endif
-            if (
-#ifdef CD_NODOT
-                dvdx < 0 
-#else 
-#ifdef CD_DVDXLIMIT
-                dvdx < 0  && 
-#endif
-                divvDot < 0
-#endif 
-                ) {
-
-#ifdef CD_XIRDVDSONSFULL
+            if (dvdx < 0  && divvDot < 0) {
                 double xi = (OneMinusR_CD < -1 ? 0 : 
                     (OneMinusR_CD > 2 ? 1 : 0.0625*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD));
-#else
- #ifdef CD_XIDVDS
-                double divvTerm = 2.0*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*p->dvds;
- #else
-                double divvTerm = 2.0*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*OneMinusR_CD*p->divv;
- #endif
-                divvTerm = divvTerm*divvTerm;
- #ifdef CD_FULLS
-                double Hcorr = (fNorm1 != 0 ? smf->H/fNorm1 : 0);
-                double sxxf = dvxdx+Hcorr, syyf = dvydy+Hcorr, szzf = dvzdz+Hcorr;
-                double SFull2 = fNorm1*fNorm1*(sxxf*sxxf+syyf*syyf+szzf*szzf 
-                        + 2*(sxy*sxy + sxz*sxz + syz*syz));
-                double xi = divvTerm/(divvTerm+SFull2);
- #else
-                double xi = divvTerm/(divvTerm + S2);
- #endif
-#endif
-#ifdef CD_NODOT
-                double ATerm = xi*p->fBall2*dvdx*dvdx*2*smf->dAFac;
-#else
                 double ATerm = xi*p->fBall2*fabs(divvDot)*smf->dAFac;
-#endif
                 alphaLoc = smf->dAlphaMax * ATerm/(vSigMax*vSigMax+ATerm);
                 }
             else alphaLoc = 0;
             if (alphaLoc < smf->dAlphaMin) alphaLoc=smf->dAlphaMin;
-#ifdef CD_ALPHANOISE  
-                if (alphaLoc < alphaNoise) alphaLoc=alphaNoise;
-#endif
             // decay
-
             if (alphaLoc > p->alpha) p->alpha = alphaLoc;
             else p->alpha = alphaLoc - (alphaLoc - p->alpha)*exp(-dDeltaTime/tau);
         }

@@ -68,3 +68,15 @@ USEHMIN               #Use a floor to keep the integrator for stiff equations fr
 UNROLLED_VSQRT        #Unroll the v_sqrt function for speed
 SPINUP                #Use alternative rotating frame, just apply accelerations.
 SPH1D                 #Only allow forces in the x-direction
+CD_ALPHANOISE         #Removed, used in CD initial testing
+CDCNOTVSIG            #Part of CULLENDEHNEN now
+CD_CNOTVSIG           #Part of CULLENDEHNEN now
+CD_DVDS               #Part of CULLENDEHNEN now
+CD_DVDXLIMIT          #Part of CULLENDEHNEN now
+CD_FULLS              #Removed, used in CD initial testing
+CD_NODOT              #Removed, used in CD initial testing
+CD_RALT               #Removed, used in CD initial testing
+CD_RDVDS              #Removed, used in CD initial testing
+CD_RDVDSONSFULL       #Part of CULLENDEHNEN now
+CD_XIDVDS             #Removed, used in CD initial testing
+CD_XIRDVDSONSFULL     #Part of CULLENDEHNEN now
