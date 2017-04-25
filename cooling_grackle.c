@@ -18,16 +18,7 @@ COOL *CoolInit( )
     COOL *cl;
     cl = (COOL *) malloc(sizeof(COOL));
     assert(cl!=NULL);
-#ifdef CONFIG_BFLOAT_8
     assert(sizeof(gr_float)==8);
-#else
-#ifdef CONFIG_BFLOAT_4
-    assert(sizeof(gr_float)==4);
-#else
-    fprintf(stderr,"Cooling Grackle: gr_float type not defined\n");
-    assert(0);
-#endif
-#endif
     
     cl->pgrackle_data = &grackle_data;
     return cl;

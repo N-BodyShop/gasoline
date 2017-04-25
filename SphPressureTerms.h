@@ -64,16 +64,6 @@
     #else
         #define DIFFUSIONThermaluHot()
     #endif
-    #ifdef DIFFUSIONPRICE
-        #define DIFFUSIONThermal(dt_) \
-            { double irhobar = 2/(p->fDensity+q->fDensity);     \
-             double vsig = sqrt(fabs(qPoverRho2*q->fDensity*q->fDensity - pPoverRho2*p->fDensity*p->fDensity)*irhobar); \
-             double diffTh = smf->dThermalDiffusionCoeff*0.5*(ph+sqrt(0.25*BALL2(q)))*irhobar*vsig; \
-             double diffu = diffTh*(p->uPred-q->uPred);             \
-             PACTIVE( p->uDotDiff += diffu*rq );                     \
-             QACTIVE( q->uDotDiff-= diffu*rp );                     \
-             DIFFUSIONThermaluHot(); }
-    #else
         #ifndef NODIFFUSIONTHERMAL
             /* Default -- thermal diffusion */
             #ifdef THERMALCOND
@@ -99,7 +89,6 @@
         #else
             #define DIFFUSIONThermal(dt_)
         #endif
-    #endif
 
     #define DIFFUSIONMetals() \
         { double diff = diffMetalsBase*(p->fMetals - q->fMetals); \

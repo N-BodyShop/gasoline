@@ -1236,11 +1236,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"dMetalDiffusionCoeff",2,&msr->param.dMetalDiffusionCoeff,
 				sizeof(double),"metaldiff",
 				"<Coefficient in Metal Diffusion> = 0.0");
-#ifdef DIFFUSIONPRICE
-	msr->param.dThermalDiffusionCoeff = 1;
-#else
 	msr->param.dThermalDiffusionCoeff = 0;
-#endif
 	prmAddParam(msr->prm,"dThermalDiffusionCoeff",2,&msr->param.dThermalDiffusionCoeff,
 				sizeof(double),"thermaldiff",
 				"<Coefficient in Thermal Diffusion> = 0.0");
@@ -2740,10 +2736,6 @@ void msrLogDefines(FILE *fp)
 #ifdef FUVSHIELD
  	fprintf(fp," FUVSHIELD");
 #endif
-#ifdef COLUMNLENGTH
- 	fprintf(fp," COLUMNLENGTH"); /* Use smoothing length for correlation length*/
-/*Made using the smoothing length the default, as it has been used that way in all production runs to Jun 4th, 2012, CC*/
-#endif
 #ifdef PARTSHEAR
  	fprintf(fp," PARTSHEAR"); /* Use the particle shear for correlation length*/
 #endif
@@ -2849,9 +2841,6 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef FEEDBACKDIFFLIMIT
 	fprintf(fp, " FEEDBACKDIFFLIMIT");
-#endif
-#ifdef DIFFUSIONPRICE
-	fprintf(fp, " DIFFUSIONPRICE");
 #endif
 #ifdef VARALPHA
         fprintf(fp, " VARALPHA");

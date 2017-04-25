@@ -16,9 +16,6 @@
 // needed for PST
 #define CL_NMAXBYTETABLE   56000
 
-// double for variables -- must be consistent with GRACKLE compile
-#define CONFIG_BFLOAT_8
-
 #include "grackle.h"
 
 // Default to tabular only version unless compiled in.  Max sensible value for this is 3

@@ -4,10 +4,6 @@ CHABRIER              #Use the Chabrier 2003 IMF for starformation (See DOI:10.1
 CHANGESOFT            #Allow gravitational softening lengths to vary with time
 CLOUDY                #Use CLOUDY version of line cooling
 COLLISIONS            #Use solid-body collisions (not compatible with -DGASOLINE)
-COLUMNLENGTH          #Use the smoothing length for the correlation length in Charlotte Christensen's H2 code
-CONFIG_BFLOAT_4
-CONFIG_BFLOAT_8
-CONTROLYHII           #Make sure error in YHII and YHeIII is controlled
 COOLING_BATE
 COOLING_BOLEY
 COOLING_COSMO
@@ -18,11 +14,10 @@ COOLING_MOLECULARH
 COOLING_PLANET
 COOLING_POLY
 CULLENDEHNEN          #Use the time-variable CD viscosity limit switch
-DENSITYU              Calculate modified energy-weighted density (used for cooling) (good for large density gradients)
-DENSITYUNOTP          More aggressive version of the energy-weighted density that ignores contribution from center
+DENSITYU              #Calculate modified energy-weighted density (used for cooling) (good for large density gradients)
+DENSITYUNOTP          #More aggressive version of the energy-weighted density that ignores contribution from center
 DENSSOFT              #Use the SPH density for gravity softening
 DIFFUSION             #Enable Diffusion (of metals and energy)
-DIFFUSIONPRICE        #Daniel Price's Thermal Diffusion
 DIVVOFF               #Remove the convergent flow requirement for starformation
 DODVDS                #Different estimate of Balsara switch instead of divv
 DRHODT                #Use the change in density over time (dRho/dt) 
