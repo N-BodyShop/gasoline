@@ -1,8 +1,7 @@
 CHANGESOFT            #Allow gravitational softening lengths to vary with time
 DTADJUST              #Readjust timesteps if near short timestep particles -- required for good energy conservation
 EPSACCH               #Use sph H not softening to calculate acceleration timestep, even if softening smaller
-NSMOOTHINNER          #Ensure at least 18 neighbours inside 1.41 h
-PEXT                  #Allow non-zero external pressure 
-RTFORCE               #Use an Ritchie & Thomas forces (DOI:10.1046/j.1365-8711.2001.04268.x)
+RTFORCE               #Use an Ritchie & Thomas forces (DOI:10.1046/j.1365-8711.2001.04268.x) (RENAME GDFORCE)
 VSIGVISC              #Alternate Artificial Viscous force calculation (due to Monaghan)
 SETTRAPFPE            #Enable Floating point exceptions
+DIFFUSION             #Enable Diffusion (of metals and energy)
