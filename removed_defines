@@ -83,3 +83,4 @@ PREDRHO               #Generate predicted rho values (if bPredRho == 2)
 MARK                  #Deprecated mark array method
 COOLING_BATE          #The code for this no longer exists.
 COOLING_BOLEY         #The code for this no longer exists.
+COOLING_DISK          #The code for this no longer exists.

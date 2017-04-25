@@ -1,7 +1,6 @@
 AGGS                  #Include support for aggregates (like asteroids and rubble piles) See aggs.c
 CHABRIER              #Use the Chabrier 2003 IMF for starformation (See DOI:10.1086/376392)
 COLLISIONS            #Use solid-body collisions (not compatible with -DGASOLINE)
-COOLING_DISK
 CULLENDEHNEN          #Use the time-variable CD viscosity limit switch
 DIFFUSION             #Enable Diffusion (of metals and energy)
 FEEDBACKDIFFLIMIT     #Disable thermal diffusion for particles that have their cooling shut off

@@ -5884,39 +5884,6 @@ pkdSoughtParticleList(PKD pkd, int iTypeSought, int nMax, int *n, struct SoughtP
 void
 pkdCoolUsingParticleList(PKD pkd, int nList, struct SoughtParticle *l)
     {
-#ifdef COOLING_DISK
-    int i,j;
-    double r2,r2min,dx,mass_min;
-    PARTICLE *p = pkd->pStore;
-
-    assert(nList > 0);
-    for(i=0;i<pkdLocal(pkd);++i) {
-      if (TYPEQueryACTIVE(&p[i]) && TYPETest(&p[i],TYPE_GAS)) {
-        dx = p[i].r[0]-l[0].x;
-        r2 = dx*dx;
-        dx = p[i].r[1]-l[0].y;
-        r2 += dx*dx;
-        dx = p[i].r[2]-l[0].z;
-        r2 += dx*dx;
-        r2min = r2;
-        mass_min = l[0].m;
-        for (j=1;j<nList;j++) {
-          dx = p[i].r[0]-l[j].x;
-          r2 = dx*dx;
-          dx = p[i].r[1]-l[j].y;
-          r2 += dx*dx;
-          dx = p[i].r[2]-l[j].z;
-          r2 += dx*dx;
-          if (r2 < r2min) { 
-              r2min = r2;
-              mass_min = l[0].m;
-              }
-        }
-        p[i].CoolParticle.r = sqrt(r2min);
-        p[i].CoolParticle.StarMass = mass_min;
-      }
-    }
-#endif
 }
 
 void pkdGrowMass(PKD pkd,int nGrowMass, int iGrowType, double dDeltaM, double dMinM, double dMaxM)

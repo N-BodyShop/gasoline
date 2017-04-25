@@ -2740,9 +2740,6 @@ void msrLogDefines(FILE *fp)
 #ifdef COOLING_PLANET
  	fprintf(fp," COOLING_PLANET");
 #endif
-#ifdef COOLING_DISK
- 	fprintf(fp," COOLING_DISK");
-#endif
 #ifdef GLASS
 	fprintf(fp," GLASS");
 #endif
@@ -9194,13 +9191,6 @@ void msrUpdateuDot(MSR msr,double dTime,double dDelta,int bUpdateState)
 	struct outUpdateuDot out;
 	double a;
 
-#if defined(COOLING_DISK)
-	switch (msr->param.iGasModel) {
-	case GASMODEL_COOLING:
-	  msrCoolUsingParticleList( msr );
-	  break;
-	}
-#endif
 
 	in.duDelta = dDelta;
 	dTime += dDelta/2.0;
