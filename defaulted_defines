@@ -1,0 +1,14 @@
+NEWTIME               #Use a better time function (on by default)
+NEWINTEG              #Use the stiff integrator  (on by default)
+DODVDS                #Different estimate of Balsara switch instead of divv (on by default)
+CONTROLYHII           #Make sure error in YHII and YHeIII is controlled (on by default)
+CDCNOTVSIG            #Part of CULLENDEHNEN now
+CD_CNOTVSIG           #Part of CULLENDEHNEN now
+CD_DVDS               #Part of CULLENDEHNEN now
+CD_DVDXLIMIT          #Part of CULLENDEHNEN now
+CD_RDVDSONSFULL       #Part of CULLENDEHNEN now
+CD_XIRDVDSONSFULL     #Part of CULLENDEHNEN now
+CONFIG_BFLOAT_8       #Precision for variables in Grackle.  Actually use 8
+LARGEFBALL
+GLASS_3               #Using any other version required hand-commenting code.
+COLUMNLENGTH          #Use the smoothing length for the correlation length in Charlotte Christensen's H2 code (All commented out)

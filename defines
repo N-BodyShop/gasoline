@@ -41,11 +41,9 @@ KROUPA                #Use the Kroupa IMF (from Kroupa et al 1993 Bibcode:1993MN
 M43D                  #Use a fancier 3D derived M4 Kernel
 MARK
 MODBATEPOLY           #Use a modified polytropic equation of state with COOLING_BATE
-NATIVE_SQRT
 N_DIM
 NEED_VPRED            #Calculate a predicted veloctiy (this is defined all over, I'm unsure as to its signifigance)
 NEWSHEAR              #Use the diffusion length for the correlation length in the H2 code from Charlotte Christensen
-NIORDERGASBUFFER
 NOCOOLING             #What it says on the package, no radiative cooling 
 NODIFFUSIONTHERMAL    #Disable thermal diffusion
 NOFIT                 #Don't use any fitting for the cooling rates without H2 in cooling_metal_noH2.c
