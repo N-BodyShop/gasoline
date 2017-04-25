@@ -46,7 +46,6 @@ typedef struct smContext {
     FLOAT lx,ly,lz;
 	void (*fcnSmooth)(PARTICLE *,int,NN *,SMF *);
 	void (*fcnPost)(PARTICLE *,SMF *);
-	int *piMark; /* deprecated MARK code */
 	int nListSize;
 	NN *nnList;
 	int *pbRelease;

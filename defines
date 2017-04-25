@@ -1,8 +1,6 @@
 AGGS                  #Include support for aggregates (like asteroids and rubble piles) See aggs.c
 CHABRIER              #Use the Chabrier 2003 IMF for starformation (See DOI:10.1086/376392)
 COLLISIONS            #Use solid-body collisions (not compatible with -DGASOLINE)
-COOLING_BATE
-COOLING_BOLEY
 COOLING_DISK
 CULLENDEHNEN          #Use the time-variable CD viscosity limit switch
 DIFFUSION             #Enable Diffusion (of metals and energy)
@@ -13,15 +11,11 @@ GLASSZ                #Use this to damp for glass IC in z direction
 GROWMASS              #Allow collisional particles to grow
 GSS_DUMPFRAME         #Dumpframe that allows coloring by particle property (Greg's version)
 INFLOWOUTFLOW         #Enable inflow/outflow boundary conditions
-INTERNAL_WARNINGS
-INTERNAL_WARNINGS_ONCE
 JEANSSOFT             #Calculate presure floor to keep jeans length larger than softening or sph h (default is just sph h)
 JEANSSOFTONLY         #Calculate presure floor to keep jeans length larger than softening only
 KROUPA01              #Use the newer Kroupa 01 IMF (DOI:10.1046/j.1365-8711.2001.04022.x)
 KROUPA                #Use the Kroupa IMF (from Kroupa et al 1993 Bibcode:1993MNRAS.262..545K)
-MARK
-N_DIM
-NOCOOLING             #What it says on the package, no radiative cooling 
+N_DIM                 #Number of dimensions to use for solar system calculations (Defaults to 3)
 NORMAL                #Calculate and output surface normals for particles (Needs -DSURFACEAREA)
 OUTURBDRIVER          #Drive turbulence as in Price & Federrath 2010 with OU variables
 PARTICLESPLIT         #Particles will now divide if they get too heavy

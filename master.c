@@ -2501,8 +2501,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 			puts("to push back particles that have overlapped slightly.");
 			puts("Often an overlap is an indication of a problem, but");
 			puts("with the fix collapse option turned on you will only");
-			puts("receive a warning (if INTERNAL_WARNINGS has been");
-			puts("compiled with a non-zero value).  Sometimes, usually");
+			puts("receive a warning.  SOmetimes, usually");
 			puts("when there are many bouncing particles confined to a");
 			puts("small space, a \"real\" collapse will occur that can");
 			puts("only be avoided be tweaking dDelta, nSmooth, dEpsN,");
@@ -2740,9 +2739,6 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef COOLING_PLANET
  	fprintf(fp," COOLING_PLANET");
-#endif
-#ifdef COOLING_BATE
- 	fprintf(fp," COOLING_BATE");
 #endif
 #ifdef COOLING_DISK
  	fprintf(fp," COOLING_DISK");

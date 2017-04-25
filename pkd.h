@@ -82,8 +82,6 @@
 #define StarClusterFormiOrder(p) (p->curlv[1])
 
 /* (note bVWarnings still applies) */
-#define INTERNAL_WARNINGS 1 /* 0=none,1=once,2=always */
-#define INTERNAL_WARNINGS_ONCE (INTERNAL_WARNINGS == 1)
 
 #define CID_TOP                 0
 #define CID_PARTICLE    0

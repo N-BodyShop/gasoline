@@ -80,3 +80,6 @@ DRHODT                #Use the change in density over time (dRho/dt) for timeste
 SINKINGOUTVPRED       #Write out the vpred values to the outputted tipsy file for sink particles.
 SINKEXTRADATA         #Also store the position and velocity of newly formed sink particles.
 PREDRHO               #Generate predicted rho values (if bPredRho == 2)
+MARK                  #Deprecated mark array method
+COOLING_BATE          #The code for this no longer exists.
+COOLING_BOLEY         #The code for this no longer exists.

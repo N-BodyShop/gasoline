@@ -6157,9 +6157,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
                 CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse, correL); /* If doing H2, send the correlation length to calculate the shielding*/
 #else /* !COOLING_MOLECULARH */
                 
-#ifdef COOLING_BOLEY
-                cp.mrho = pow(p->fMass/p->fDensity, 1./3.);
-#endif
                 CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse);
 #endif /* !COOLING_MOLECULARH */
                 

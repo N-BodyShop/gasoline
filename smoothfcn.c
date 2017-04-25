@@ -5703,17 +5703,13 @@ _CheckForCollapse(PARTICLE *p,double dt,double rdotv,double r2,SMF *smf)
 	if (!smf->bFixCollapse)
 		assert(dRatio > 0.0);
 	if (dRatio < smf->dCollapseLimit) {
-#if (INTERNAL_WARNINGS)
 		static int bGiveWarning = 1;
 		if (bGiveWarning) {
 			(void) fprintf(stderr,"WARNING [T=%e]: Tiny step %i & %i "
 						   "(dt=%.16e, dRatio=%.16e)\n",smf->dTime,
 						   p->iOrder,p->iOrderCol,dt,dRatio);
-#if (INTERNAL_WARNINGS_ONCE)
 			bGiveWarning = 0;
-#endif
 			}
-#endif /* INTERNAL_WARNINGS */
 		p->bTinyStep = 1;
 		}
 }
@@ -5890,26 +5886,20 @@ void CheckForCollision(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		 */
 		if (smf->dStart == 0.0 && dt <= 0.0) {
 			if (smf->bFixCollapse) {
-#if (INTERNAL_WARNINGS)
 				static int bGiveWarning1 = 1,bGiveWarning2 = 1;
 				FLOAT fOverlap = 1.0 - sqrt(nnList[i].fDist2)/sr;
 				if (bGiveWarning1 && p->iOrder < pn->iOrder) {
 					(void) fprintf(stderr,"WARNING [T=%e]: "
 								   "POSITION FIX %i & %i D=%e dt=%e\n",
 								   smf->dTime,p->iOrder,pn->iOrder,D,dt);
-#if (INTERNAL_WARNINGS_ONCE)
 					bGiveWarning1 = 0;
-#endif
 					}
 				if (bGiveWarning2 && p->iOrder < pn->iOrder && fOverlap > 0.01) {
 					(void) fprintf(stderr,"WARNING [T=%e]: "
 								   "LARGE OVERLAP %i & %i (%g%%)\n",
 								   smf->dTime,p->iOrder,pn->iOrder,100*fOverlap);
-#if (INTERNAL_WARNINGS_ONCE)
 					bGiveWarning2 = 0;
-#endif
 					}
-#endif /* INTERNAL_WARNINGS */
 				if (dt < p->dtCol) { /* take most negative */
 					p->dtCol = dt;
 					p->iOrderCol = pn->iOrder;

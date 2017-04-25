@@ -566,16 +566,12 @@ int pkdBounce(PKD pkd,const COLLIDER *c1,const COLLIDER *c2,
 
 	a = u[0]*n[0] + u[1]*n[1] + u[2]*n[2];
 	if (a >= 0) {
-#if (INTERNAL_WARNINGS)
 		static int bGiveWarning = 1;
 		if (bGiveWarning) {
 			(void) fprintf(stderr,"WARNING: %i & %i -- near miss? (a = %g)\n",
 						   c1->id.iOrder,c2->id.iOrder,a);
-#if (INTERNAL_WARNINGS_ONCE)
 			bGiveWarning = 0;
-#endif
 			}
-#endif /* INTERNAL WARNINGS */
 
 		if (bFixCollapse)
 			return NEAR_MISS; /* particles remain unchanged */

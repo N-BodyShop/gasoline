@@ -12,15 +12,9 @@
 /* Mark is for indicating which local particles are already in the PQ 
    This is needed because nbr search uses multiple approaches that re-find same nbr 
    INQUEUE does same thing for non-local nbrs using a hash approach */
-#ifdef MARK
-#define smTestMARK(pi__) smx->piMark[pi__]
-#define smSetMARK(pi__) smx->piMark[pi__]=1
-#define smResetMARK(pi__) smx->piMark[pi__]=0
-#else
 #define smTestMARK(pi__) TYPETest( (&p[pi__]), TYPE_MARK ) 
 #define smSetMARK(pi__) TYPESet( (&p[pi__]), TYPE_MARK )
 #define smResetMARK(pi__) TYPEReset( (&p[pi__]), TYPE_MARK )
-#endif 
 
 //#define NSI_DEBUG(xxx) xxx
 #define NSI_DEBUG(xxx) 
@@ -511,13 +505,6 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
     /*
     ** Allocate mark array.
     */
-#ifdef MARK
-    if(pkdLocal(pkd) == 0)
-        smx->piMark = (int *)malloc(sizeof(int));
-    else
-        smx->piMark = (int *)malloc(pkdLocal(pkd)*sizeof(int));
-    assert(smx->piMark != NULL);
-#endif
     smInitList(smx,nSmooth);
 
     *psmx = smx;        
@@ -560,15 +547,12 @@ void smFinish(SMX smx,SMF *smf, CASTAT *pcs)
     /*
     ** Free up context storage.
     */
-#ifdef MARK
-    free(smx->piMark);
-#endif
     smFinishList(smx);
     free(smx);
     }
 
 void smLargefBallCheck(SMX smx,PARTICLE *p,FLOAT lx, FLOAT ly, FLOAT lz) {
-#if (defined(SLIDING_PATCH) && INTERNAL_WARNINGS)
+#ifdef SLIDING_PATCH
     /*
     ** For periodic boundary conditions, make sure search ball has not
     ** exceeded half the spatial period. If it has, this probably means
@@ -589,14 +573,11 @@ void smLargefBallCheck(SMX smx,PARTICLE *p,FLOAT lx, FLOAT ly, FLOAT lz) {
             (void) fprintf(stderr,"WARNING: Large search ball (iOrder = %i)..."
                 "lx = %g ly = %g lz = %g fBall = %g x = %g y = %g z = %g\n",
                 p->iOrder,lx,ly,lz,sqrt(p->fBall2),p->r[0],p->r[1],p->r[2]);
-#if (INTERNAL_WARNINGS_ONCE)
             bGiveWarning = 0;
-#endif
             }
         }
-#else /* SLIDING_PATCH && INTERNAL_WARNINGS */
-#endif
-    }
+#endif /* SLIDING_PATCH */
+}
 
 
 PQ *smBallSearch(SMX smx,PQ *pq,FLOAT *ri,int *cpStart)

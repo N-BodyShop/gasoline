@@ -13,10 +13,6 @@
 #include "cooling_planet.h"
 #else
 
-#ifdef COOLING_BOLEY
-#include "cooling_boley.h"
-#else
-
 #ifdef COOLING_COSMO
 #include "cooling_cosmo.h"
 #else
