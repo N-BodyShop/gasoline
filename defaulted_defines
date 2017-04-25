@@ -12,3 +12,5 @@ CONFIG_BFLOAT_8       #Precision for variables in Grackle.  Actually use 8
 LARGEFBALL
 GLASS_3               #Using any other version required hand-commenting code.
 COLUMNLENGTH          #Use the smoothing length for the correlation length in Charlotte Christensen's H2 code (All commented out)
+TWOSMOOTH             #Smooth twice rather than 3 times. This is defined by default in master.c
+SPECIAL_PARTICLES     #Include support for weird special particles (not star, gas, or DM) (This is defaulted in COLLISIONS)

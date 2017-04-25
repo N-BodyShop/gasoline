@@ -235,10 +235,8 @@ typedef struct particle {
     int iPrevCol;           /* iOrder of previous collider */
     int bTinyStep;          /* flag for imminent collapse */
     FLOAT mindist2;         /* record min dist for all encounters */
-#endif /* COLLISIONS */
-#ifdef SPECIAL_PARTICLES
     int bGhostExclude;      /* particle not included in ghost cells */
-#endif /* SPECIAL_PARTICLES */ 
+#endif /* COLLISIONS */
 #ifdef SLIDING_PATCH
     int bAzWrap;        /* flag set on azimuthal boundary wrap */
 #endif

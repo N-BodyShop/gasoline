@@ -77,3 +77,6 @@ CD_XIDVDS             #Removed, used in CD initial testing
 CONFIG_BFLOAT_4       #Precision for variables in Grackle.  Actually use 8
 DIFFUSIONPRICE        #Daniel Price's Thermal Diffusion
 DRHODT                #Use the change in density over time (dRho/dt) for timesteps
+SINKINGOUTVPRED       #Write out the vpred values to the outputted tipsy file for sink particles.
+SINKEXTRADATA         #Also store the position and velocity of newly formed sink particles.
+PREDRHO               #Generate predicted rho values (if bPredRho == 2)

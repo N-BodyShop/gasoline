@@ -395,12 +395,10 @@ struct parameters {
     int iNextRandomization;
 #endif
 	COLLISION_PARAMS CP;
-#endif /* COLLISIONS */
-#ifdef SPECIAL_PARTICLES
 	int nSpecial;
 	int iSpecialId[MAX_NUM_SPECIAL_PARTICLES];
 	SPECIAL_PARTICLE_DATA sSpecialData[MAX_NUM_SPECIAL_PARTICLES];
-#endif /* SPECIAL_PARTICLES */
+#endif /* COLLISIONS */
 #ifdef RUBBLE_ZML
 	int bRubbleStep; /* at the moment, this cannot be changed by user */
 #endif

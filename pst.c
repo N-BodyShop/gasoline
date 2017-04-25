@@ -362,15 +362,13 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_SETNPARTS,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetNParts,
 				  sizeof(struct inSetNParts),0);
-#ifdef SPECIAL_PARTICLES
+#ifdef COLLISIONS
 	mdlAddService(mdl,PST_GETSPECIALPARTICLES,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstGetSpecialParticles,
 				  sizeof(struct inGetSpecial),sizeof(struct outGetSpecial));
 	mdlAddService(mdl,PST_DOSPECIALPARTICLES,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstDoSpecialParticles,
 				  sizeof(struct inDoSpecial),sizeof(struct outDoSpecial));
-#endif
-#ifdef COLLISIONS
 	mdlAddService(mdl,PST_SETBALL,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetBall,
 				  sizeof(struct inSetBall),0);

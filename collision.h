@@ -7,11 +7,8 @@
 #include "pkd.h" /* for PARTICLE struct */
 #include "ssio.h" /* for SSDATA struct */
 
-#define SPECIAL_PARTICLES /*DEBUG replace this ifdef with param?*/
 
-#ifdef SPECIAL_PARTICLES
 #include "special.h"
-#endif
 
 #ifdef AGGS
 #include "aggs.h" /* for Aggregate struct */

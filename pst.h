@@ -1227,7 +1227,7 @@ struct inRandomVelocities {
 void pstRandomVelocities(PST,void *,int,void *,int *);
 #endif
 
-#ifdef SPECIAL_PARTICLES
+#ifdef COLLISIONS
 
 #include "special.h"
 
@@ -1253,10 +1253,6 @@ struct outDoSpecial {
 	FLOAT aFrame[3];
 	};
 void pstDoSpecialParticles(PST,void *,int,void *,int *);
-
-#endif
-
-#ifdef COLLISIONS
 
 struct inSetBall {
   double dDelta;

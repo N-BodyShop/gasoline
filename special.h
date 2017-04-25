@@ -2,7 +2,6 @@
 #ifndef SPECIAL_HINCLUDED
 #define SPECIAL_HINCLUDED
 
-#ifdef SPECIAL_PARTICLES
 
 #define MAX_NUM_SPECIAL_PARTICLES 3
 
@@ -52,6 +51,5 @@ void pkdDoSpecialParticles(PKD pkd, int nSpecial, SPECIAL_MASTER_INFO *mInfo,
 						   SPECIAL_PARTICLE_DATA sData[],
 						   SPECIAL_PARTICLE_INFO sInfo[], FLOAT aFrame[]);
 
-#endif /* SPECIAL_PARTICLES */
 
 #endif

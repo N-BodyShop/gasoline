@@ -225,7 +225,7 @@ _msrGetWallData(MSR msr,const char achFilenameWithQuotes[])
 
 #endif /* SAND_PILE */
 
-#ifdef SPECIAL_PARTICLES
+#ifdef COLLISIONS
 
 void
 _msrGetSpecialData(MSR msr,const char achFilenameWithQuotes[])
@@ -321,7 +321,7 @@ _msrGetSpecialData(MSR msr,const char achFilenameWithQuotes[])
 	_msrExit(msr,1);
 	}
 
-#endif /* SPECIAL_PARTICLES */
+#endif /* COLLISIONS */
 
 void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 {
@@ -2542,7 +2542,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 #ifdef SAND_PILE
 	_msrGetWallData(msr,achWallFile);
 #endif
-#ifdef SPECIAL_PARTICLES
+#ifdef COLLISIONS
 	_msrGetSpecialData(msr,achSpecialFile);
 #endif
 
@@ -2767,9 +2767,6 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef AGGS
 	fprintf(fp," AGGS");
-#endif
-#ifdef SPECIAL_PARTICLES
-	fprintf(fp," SPECIAL_PARTICLES");
 #endif
 #ifdef SLIDING_PATCH
 	fprintf(fp," SLIDING_PATCH");
@@ -3360,28 +3357,24 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "COLLISIONS","dCrushEpsN: %g",msr->param.CP.dCrushEpsN);
     LogParams(lgr, "COLLISIONS","dCrushEpsT: %g",msr->param.CP.dCrushEpsT);
     LogParams(lgr, "COLLISIONS","bFixCollapse: %d",msr->param.CP.bFixCollapse);
-#endif
-#ifdef SPECIAL_PARTICLES
-    {
-        LogParams(lgr, "SPECIAL PARTICLES","achSpecialFile: %s",msr->param.achSpecialFile);
-        SPECIAL_PARTICLE_DATA *s;
-        int i;
-        LogParams(lgr, "SPECIAL PARTICLES","nSpecial: %i",msr->param.nSpecial);
-        for (i=0;i<msr->param.nSpecial;i++) {
-            s = &msr->param.sSpecialData[i];
-            LogParams(lgr, "SPECIAL PARTICLES","Special %i: org_idx: %i type: %i ",i,
-                    msr->param.iSpecialId[i],s->iType);
-            if (s->iType & SPECIAL_OBLATE)
-                LogParams(lgr, "SPECIAL PARTICLES","dRadEq: %g J2: %g J4: %g p[0]: %g p[1]: %g p[2]: %g",
-                        s->oblate.dRadEq,s->oblate.J2,s->oblate.J4,
-                        s->oblate.p[0],s->oblate.p[1],s->oblate.p[2]);
-            if (s->iType & SPECIAL_GR)
-                LogParams(lgr, "SPECIAL PARTICLES","UNSUPPORTED");
-            if (s->iType & SPECIAL_FORCE)
-                LogParams(lgr, "SPECIAL PARTICLES", "dMag: %g",s->force.dMag);
-            if (s->iType & SPECIAL_NOGHOSTPERT)
-                LogParams(lgr, "SPECIAL PARTICLES","Excluded from ghost cell gravity calculations");
-        }
+    LogParams(lgr, "SPECIAL PARTICLES","achSpecialFile: %s",msr->param.achSpecialFile);
+    SPECIAL_PARTICLE_DATA *s;
+    int i;
+    LogParams(lgr, "SPECIAL PARTICLES","nSpecial: %i",msr->param.nSpecial);
+    for (i=0;i<msr->param.nSpecial;i++) {
+        s = &msr->param.sSpecialData[i];
+        LogParams(lgr, "SPECIAL PARTICLES","Special %i: org_idx: %i type: %i ",i,
+                msr->param.iSpecialId[i],s->iType);
+        if (s->iType & SPECIAL_OBLATE)
+            LogParams(lgr, "SPECIAL PARTICLES","dRadEq: %g J2: %g J4: %g p[0]: %g p[1]: %g p[2]: %g",
+                    s->oblate.dRadEq,s->oblate.J2,s->oblate.J4,
+                    s->oblate.p[0],s->oblate.p[1],s->oblate.p[2]);
+        if (s->iType & SPECIAL_GR)
+            LogParams(lgr, "SPECIAL PARTICLES","UNSUPPORTED");
+        if (s->iType & SPECIAL_FORCE)
+            LogParams(lgr, "SPECIAL PARTICLES", "dMag: %g",s->force.dMag);
+        if (s->iType & SPECIAL_NOGHOSTPERT)
+            LogParams(lgr, "SPECIAL PARTICLES","Excluded from ghost cell gravity calculations");
     }
 #endif
 #ifdef SAND_PILE
@@ -6521,18 +6514,6 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 	    }
 #ifdef NEED_VPRED
 
-#ifdef PREDRHO
-	if (msr->param.bPredRho == 2) {
-		struct inKickRhopred inRhop;
-		if (msrComove(msr))
-			inRhop.dHubbFac = 3*csmTime2Hub(msr->param.csm, dTime + dDelta/2.0);
-		else
-			inRhop.dHubbFac = 0.0;
-		inRhop.dDelta = dDelta;
-		/* Non Active Gas particles need to have updated densities */
-		pstKickRhopred(msr->pst,&inRhop,sizeof(inRhop),NULL,NULL);
-		}
-#endif
 
 	if (msr->param.bCannonical) {
 #ifdef GLASS
@@ -9513,8 +9494,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
         if (msr->param.bVDetails)
             printf("Dens Active Particles: %d\n",msr->nSmoothActive );
 
-#define TWOSMOOTH
-#ifdef TWOSMOOTH
         /* Density for Actives and mark Gather neighbours */
         msrSmooth(msr,dTime,SMX_DENDVDX,1);
 #ifdef SURFACEAREA
@@ -9530,25 +9509,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
             TYPE_DensACTIVE,TYPE_SMOOTHACTIVE);
         /* Density for Neighbours and mark scatter neighbours of actives */
         msrSmooth(msr,dTime,SMX_DENDVDX,1);
-#else /* 3 SMOOTH */
-        /* Density for Actives and mark Gather neighbours */
-        msrSmooth(msr,dTime,SMX_MARKDENSITY,1);
-        /* mark Scatter Neighbours */
-        msrMarkSmooth(msr,dTime,1,TYPE_Scatter);
-        /* They need density too... */
-        msrActiveType(msr,TYPE_ACTIVE|TYPE_NbrOfACTIVE|TYPE_Scatter, TYPE_DensACTIVE );
-        /* ...but don't redo Actives in smooth*/
-        msrActiveExactType(msr,TYPE_DensACTIVE|TYPE_ACTIVE,
-            TYPE_DensACTIVE,TYPE_SMOOTHACTIVE);
-        /* Density for Neighbours and mark scatter neighbours of actives */
-        msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1);
-        /* mark Scatter Neighbours of Neighbours */
-        msrMarkSmooth(msr,dTime,1,TYPE_Scatter);
-        /* Scatter Density contribution from those particles... */
-        msrActiveExactType(msr,TYPE_Scatter|TYPE_DensACTIVE,
-            TYPE_Scatter,TYPE_SMOOTHACTIVE);
-        msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1);
-#endif
         /* We want gather and scatter neighbours of actives for resmooth (includes actives themselves) */
         msrActiveType(msr,TYPE_NbrOfACTIVE,TYPE_SMOOTHACTIVE);
         if (msr->param.bVDetails >= 2) {
@@ -9564,11 +9524,7 @@ void msrSph(MSR msr, double dTime, int iKickRung)
         if (msr->param.bVDetails)
             printf("SPH: Dens Active Particles: %d\n",msr->nSmoothActive );
         msrActiveType(msr,TYPE_GAS,TYPE_SMOOTHACTIVE );
-#ifdef TWOSMOOTH
         msrSmooth(msr,dTime,SMX_DENDVDX,1);
-#else /* 3 SMOOTH */
-        msrSmooth(msr,dTime,SMX_MARKDENSITY,1);
-#endif
 #ifdef SURFACEAREA
         msrReSmooth(msr,dTime,SMX_SURFACENORMAL,1);
         msrReSmooth(msr,dTime,SMX_SURFACEAREA,1);
@@ -9584,15 +9540,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     if (msr->param.bVDetails)
 	printf("SPH: Smooth Active Particles: %d\n",msr->nSmoothActive);
 
-#ifndef TWOSMOOTH
-    if (msr->param.iViscosityLimiter
-        || msr->param.bBulkViscosity
-        || msr->param.bShockTracker
-        || msr->param.bStarForm) {
-        msrReSmooth(msr,dTime,SMX_DIVVORT,1);
-        }
-    msrSphViscosityLimiter(msr, dTime);
-#endif
 #if defined (SMOOTHBSW)
     if (msr->param.bVDetails) printf("SPH: Resmooth BSw\n");
     msrReSmooth(msr,dTime,SMX_SMOOTHBSW,1);

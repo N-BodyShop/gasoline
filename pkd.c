@@ -1742,17 +1742,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
       fTmp = p->r[j];
       xdr_float(&xdrs,&fTmp);
     }
-#ifdef SINKINGOUTVPRED
-    if (TYPETest(p,TYPE_SINKING)) {
-      for (j=0;j<3;++j) {
-        vTemp = dvFac*p->vPred[j];          
-        fTmp = vTemp;
-        xdr_float(&xdrs,&fTmp);
-      }
-    }
-    else 
-#endif
-      {
         for (j=0;j<3;++j) {
           vTemp = dvFac*p->v[j];            
           fTmp = vTemp;

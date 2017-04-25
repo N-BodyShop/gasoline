@@ -8,7 +8,6 @@
 #include "pkd.h"
 #include "collision.h" /*DEBUG not the nicest way of doing this*/
 
-#ifdef SPECIAL_PARTICLES
 
 static void
 do_oblate(const FLOAT r0[3],struct oblate_s *oblate,
@@ -229,6 +228,5 @@ pkdDoSpecialParticles(PKD pkd,int nSpecial,SPECIAL_MASTER_INFO *mInfo,
 	  }
 	}
 
-#endif /* SPECIAL_PARTICLES */
 
 #endif /* COLLISION */

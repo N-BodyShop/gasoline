@@ -25,23 +25,18 @@ NOCOOLING             #What it says on the package, no radiative cooling
 NORMAL                #Calculate and output surface normals for particles (Needs -DSURFACEAREA)
 OUTURBDRIVER          #Drive turbulence as in Price & Federrath 2010 with OU variables
 PARTICLESPLIT         #Particles will now divide if they get too heavy
-PREDRHO               #Generate predicted rho values (if bPredRho == 2)
 ROT_FRAME             #Use a rotating reference frame with rotation rate given by dOmega
 RUBBLE_ZML            #Use "Rubble Pile" collision model (Requires -DCOLLISION)
 SAND_PILE             #Use the "Sand Pile" collision model (Requires -DCOLLISION)
 SIMPLE_GAS_DRAG       #Apply a drag to the gas velocities using either the Epstein regime, or stopping time
-SINKEXTRADATA         #Also store the position and velocity of newly formed sink particles.
 SINKINGAVERAGE        #I believe this prevents sink particles from evolving with time? (Requires -DSINKING)
 SINKING               #Include support for sink particles
-SINKINGOUTVPRED       #Write out the vpred values to the outputted tipsy file for sink particles.
 SLIDING_PATCH         #Alternative collision scheme (I don't really know what this does) (Requires -DCOLLISIONS)
-SPECIAL_PARTICLES     #Include support for weird special particles (not star, gas, or DM)
 STARFORM              #Make new stars according to the starformation recipe
 SUPERBUBBLE			  #Use the Keller+ 2014 Superbubble feedback 
 SURFACEAREA           #Calculate and output the surface area of all the particles.
 TOPHATFEEDBACK        #Use a tophat kernel to smooth feedback over
 TUMBLER               #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
-TWOSMOOTH             #Smooth twice rather than 3 times. This is defined by default in master.c
 UNONCOOL              #Enable noncooling energy for feedback
 VOLUMEFEEDBACK        #Smooth FB energy over a volume rather than mass
 VOXEL                 #Dump voxels for volume imaging.

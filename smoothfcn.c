@@ -2665,12 +2665,6 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    TYPEClear(&sinkp);
 	    TYPESet(&sinkp,TYPE_SINK|TYPE_STAR|TYPE_ACTIVE);
 	    sinkp.fTimeForm = -smf->dTime; /* -ve time is sink indicator */
-#ifdef SINKEXTRADATA
-	    for(j = 0; j < 3; j++) {
-		sinkp.rForm[j] = sinkp.r[j];
-		sinkp.vForm[j] = sinkp.v[j];
-		}
-#endif
 	    printf("Sink Formed %d %g: np (%d) %d Mass (%g) %g Ek %g Eth %g Eg %g, %g %g\n",p->iOrder,p->fDensity,nEaten,nEatNow,mtot,sinkp.fMass,Ek,Eth,Eg,4/3.*pow(M_PI,2.5)/50.*sqrt((p->c*p->c*p->c*p->c*p->c*p->c)/(p->fMass*p->fMass*p->fDensity)),pow(Eth/fabs(Eg),1.5) );
 #ifndef SINKING
 	    assert(fabs(sinkp.fMass/mtot-1) < 1e-4);
