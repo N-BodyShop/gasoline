@@ -1,36 +1,48 @@
+## COLLISIONS AND PLANET FORMATION
 AGGS                  #Include support for aggregates (like asteroids and rubble piles) See aggs.c
-CHABRIER              #Use the Chabrier 2003 IMF for starformation (See DOI:10.1086/376392)
 COLLISIONS            #Use solid-body collisions (not compatible with -DGASOLINE)
-CULLENDEHNEN          #Use the time-variable CD viscosity limit switch
-DIFFUSION             #Enable Diffusion (of metals and energy)
-FEEDBACKDIFFLIMIT     #Disable thermal diffusion for particles that have their cooling shut off
-GASOLINE              #Do hydro 
-GLASS                 #Use this to damp for glass initial conditions
-GLASSZ                #Use this to damp for glass IC in z direction
 GROWMASS              #Allow collisional particles to grow
-GSS_DUMPFRAME         #Dumpframe that allows coloring by particle property (Greg's version)
-INFLOWOUTFLOW         #Enable inflow/outflow boundary conditions
-JEANSSOFT             #Calculate presure floor to keep jeans length larger than softening or sph h (default is just sph h)
-JEANSSOFTONLY         #Calculate presure floor to keep jeans length larger than softening only
-KROUPA01              #Use the newer Kroupa 01 IMF (DOI:10.1046/j.1365-8711.2001.04022.x)
-KROUPA                #Use the Kroupa IMF (from Kroupa et al 1993 Bibcode:1993MNRAS.262..545K)
 N_DIM                 #Number of dimensions to use for solar system calculations (Defaults to 3)
+SURFACEAREA           #Calculate and output the surface area of all the particles.
 NORMAL                #Calculate and output surface normals for particles (Needs -DSURFACEAREA)
-OUTURBDRIVER          #Drive turbulence as in Price & Federrath 2010 with OU variables
-PARTICLESPLIT         #Particles will now divide if they get too heavy
-ROT_FRAME             #Use a rotating reference frame with rotation rate given by dOmega
 RUBBLE_ZML            #Use "Rubble Pile" collision model (Requires -DCOLLISION)
 SAND_PILE             #Use the "Sand Pile" collision model (Requires -DCOLLISION)
+SLIDING_PATCH         #Alternative collision scheme (I don't really know what this does) (Requires -DCOLLISIONS)
+TUMBLER               #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
+
+## STAR FORMATION AND FEEDBACK
+STARFORM              #Make new stars according to the starformation recipe
+CHABRIER              #Use the Chabrier 2003 IMF for starformation (See DOI:10.1086/376392)
+KROUPA01              #Use the newer Kroupa 01 IMF (DOI:10.1046/j.1365-8711.2001.04022.x)
+KROUPA                #Use the Kroupa IMF (from Kroupa et al 1993 Bibcode:1993MNRAS.262..545K)
+FEEDBACKDIFFLIMIT     #Disable thermal diffusion for particles that have their cooling shut off
+TOPHATFEEDBACK        #Use a tophat kernel to smooth feedback over
+VOLUMEFEEDBACK        #Smooth FB energy over a volume rather than mass
+UNONCOOL              #Enable noncooling energy for feedback
+SUPERBUBBLE			  #Use the Keller+ 2014 Superbubble feedback 
+
+## GRAVITY AND HYDRODYNAMICS
+GASOLINE              #Do hydro 
+CULLENDEHNEN          #Use the time-variable CD viscosity limit switch
+DIFFUSION             #Enable Diffusion (of metals and energy)
+JEANSSOFT             #Calculate presure floor to keep jeans length larger than softening or sph h (default is just sph h)
+JEANSSOFTONLY         #Calculate presure floor to keep jeans length larger than softening only
+INFLOWOUTFLOW         #Enable inflow/outflow boundary conditions
+PARTICLESPLIT         #Particles will now divide if they get too heavy
+OUTURBDRIVER          #Drive turbulence as in Price & Federrath 2010 with OU variables
+WENDLANDC4            #Use the Wendland C_4 Kernel (See Dehnen & Aly 2012)
+ROT_FRAME             #Use a rotating reference frame with rotation rate given by dOmega
 SIMPLE_GAS_DRAG       #Apply a drag to the gas velocities using either the Epstein regime, or stopping time
+
+## INITIAL CONDITION BUILDING
+GLASS                 #Use this to damp for glass initial conditions
+GLASSZ                #Use this to damp for glass IC in z direction
+
+## OUTPUT VISUALIZATION
+GSS_DUMPFRAME         #Dumpframe that allows coloring by particle property (Greg's version)
+VOXEL                 #Dump voxels for volume imaging.
+
+## SINK PARTICLES
 SINKINGAVERAGE        #I believe this prevents sink particles from evolving with time? (Requires -DSINKING)
 SINKING               #Include support for sink particles
-SLIDING_PATCH         #Alternative collision scheme (I don't really know what this does) (Requires -DCOLLISIONS)
-STARFORM              #Make new stars according to the starformation recipe
-SUPERBUBBLE			  #Use the Keller+ 2014 Superbubble feedback 
-SURFACEAREA           #Calculate and output the surface area of all the particles.
-TOPHATFEEDBACK        #Use a tophat kernel to smooth feedback over
-TUMBLER               #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
-UNONCOOL              #Enable noncooling energy for feedback
-VOLUMEFEEDBACK        #Smooth FB energy over a volume rather than mass
-VOXEL                 #Dump voxels for volume imaging.
-WENDLANDC4            #Use the Wendland C_4 Kernel (See Dehnen & Aly 2012)
+
