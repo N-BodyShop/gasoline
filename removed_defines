@@ -114,3 +114,5 @@ RTF                   #-DRTDENSITY and -DRTFORCE
 PONRHOFLOOR           #Minimum P/rho value, prevents floating point errors in some cases
 NODIFFUSIONTHERMAL    #Disable thermal diffusion
 DENSSOFT              #Use the SPH density for gravity softening
+TZKEY64               #Use 64 (instead of 128) bit keys for the tree. Faster, but allows less depth.
+SINGLE                #Use single precision floats where possible

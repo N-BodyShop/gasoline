@@ -9,63 +9,6 @@
 */
 
 /* 64 bit key (default is 128 bit -- slower but more precision possible) */
-#ifdef TZKEY64
-
-/* bits precision for each direction <= 63 
-   Has to be 1/3 bits in key
-   21 is equivalent to 2.09e6 cells across 
-*/
-#define TZNBITS_PER_DIRECTION  21
-
-/* key is 64 bit unsigned int 
-   We use only 63 = 21*3 of them 
-*/
-#define TZNBITS_IN_KEY     (TZNBITS_PER_DIRECTION*3)
-
-typedef TZ_UINT64 tzkey;
-
-#define TZKEY_AND(a,b) { a&=b; }
-#define TZKEY_RET_LOW64(a) (a)
-#define TZKEY_RET_AND1(a) (a&((TZ_UINT64) 1))
-#define TZKEY_RET_ANDINT(a,i) (a&i)
-
-#define TZKEY_ZERO(a) { a=0; }
-#define TZKEY_SETINT(a,i) { a=i; }
-
-#define TZKEY_SETBIT(a,n) { a=(((TZ_UINT64) 1)<<n); }
-#define TZKEY_TESTBIT(a,n) { a&=(((TZ_UINT64) 1)<<n); }
-#define TZKEY_ORBIT(a,n) { a|=(((TZ_UINT64) 1)<<n); } 
-
-#define TZKEY_ORINT(a,i) { a|=i; }
-#define TZKEY_OR(a,b) { a|=b; }
-#define TZKEY_INTOR(i,a) { i|=a; }
-
-#define TZKEY_RSHIFT1(a) { a>>=1; }
-#define TZKEY_LSHIFT1(a) { a<<=1; }
-
-/* n must be < 64 */
-#define TZKEY_RSHIFT_LT64(a,n) { a>>=n; }
-#define TZKEY_LSHIFT_LT64(a,n) { a<<=n; }
-#define TZKEY_RSHIFT(a,n) { a>>=n; }
-#define TZKEY_LSHIFT(a,n) { a<<=n; }
-
-#define TZKEY_PRINTRULER( out ) { int j; \
-				   for (j=63;j>=0;j--) fprintf(out,"%1i",(j/10)%10 ); \
-                   fprintf(out,"\n"); \
-				   for (j=63;j>=0;j--) fprintf(out,"%1i",j%10 ); \
-                   fprintf(out,"\n"); \
-                }
-#define TZKEY_PRINTKEY( out, a ) { int j; \
-				   for (j=63;j>=0;j--) fprintf(out,"%1i",(a>>j)&1); \
-                }
-
-#define TZKEY_ASSERT_CORRECT_SHIFTING() { \
-	assert( sizeof(TZ_UINT16) == 2 ); \
-	assert( sizeof(TZ_UINT32) == 4 ); \
-	assert( sizeof(TZ_UINT64) == 8 ); \
-										  }
-
-#else 
 
 /* bits precision for each direction <= 63 
    Has to be 1/3 bits in key
@@ -139,6 +82,5 @@ typedef struct tzKeyStruct {
 								  }
 
 
-#endif
 
 #endif
