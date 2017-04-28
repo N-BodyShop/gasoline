@@ -21,7 +21,7 @@
 
 #ifdef DRHODT
     #define DRHODTACTIVE(xxx) xxx
-    #ifdef RTFORCE
+    #ifdef GDFORCE
         #define RHO_DIVV(a,b) (b)
     #else
         #define RHO_DIVV(a,b) (a)

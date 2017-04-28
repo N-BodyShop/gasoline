@@ -2743,8 +2743,8 @@ void msrLogDefines(FILE *fp)
 #ifdef RTDENSITY
 	fprintf(fp," RTDENSITY");
 #endif
-#ifdef RTFORCE
-	fprintf(fp," RTFORCE");
+#ifdef GDFORCE
+	fprintf(fp," GDFORCE");
 #endif
 #ifdef TWOPHASE
     fprintf(fp," TWOPHASE");

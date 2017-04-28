@@ -3034,12 +3034,12 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #define PEXTCORR 0
 #endif
 
-#ifndef RTFORCE
+#ifndef GDFORCE
 	pPoverRho2 = p->PoverRho2;
   { FLOAT pd2 = p->fDensity*p->fDensity;
     pPoverRho2f = (pPoverRho2*pd2+PEXTCORR)/pd2;     
     }
-#endif /* ndef RTFORCE */
+#endif /* ndef GDFORCE */
 	ph = sqrt(0.25*BALL2(p));
 	ih2 = 4.0/BALL2(p);
 #ifdef SPH1D
@@ -3070,13 +3070,13 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     else TYPEReset(p,TYPE_DENMAX);
 #endif
 
-#ifdef RTFORCE
+#ifdef GDFORCE
 /* The DIVVCORRBAD corrector is better on average but is pathological with very
    uneven particle distributions (very large density gradients) */
 #ifdef DIVVCORRBAD
     p->fDivv_Corrector = (divvbad != 0 ? -(3/2.)/(divvbad*fNorm1) : 1); /* fNorm1 normalization includes 0.5 */
 #else
-    p->fDivv_Corrector = (divvj != 0 ? divvi/divvj : 1); /* RTFORCE CORR */
+    p->fDivv_Corrector = (divvj != 0 ? divvi/divvj : 1); /* GDFORCE CORR */
 #endif
 #else
 #ifdef DIVVCORRBAD
@@ -3108,7 +3108,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz)
 		+ nnList[i].fDist2*smf->H;
 
-#ifdef RTFORCE
+#ifdef GDFORCE
         {  
        double pP = p->PoverRho2*pDensity*pDensity;
 	    double qP = q->PoverRho2*q->fDensity*q->fDensity;
@@ -3118,12 +3118,12 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    pPoverRho2 = pP*igDensity2;
 	    qPoverRho2 = qP*igDensity2;
       }
-#else /* now not RTFORCE */
+#else /* now not GDFORCE */
 	    qPoverRho2 = q->PoverRho2;
 	{   FLOAT qd2 = q->fDensity*q->fDensity;
 	    qPoverRho2f = (qPoverRho2*qd2+PEXTCORR)/qd2; 
     }
-#endif /* RTFORCE */    
+#endif /* GDFORCE */    
 
 	    if (TYPEQueryACTIVE(p)) {
 		if (TYPEQueryACTIVE(q)) {
@@ -4406,7 +4406,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 //#ifdef DRHODT
 		divvnorm += (dx*dx+dy*dy+dz*dz)*rs1;
 //		divvbad += (dvx*dx+dvy*dy+dvz*dz)*rs1/q->fDensity;
-#ifdef RTFORCE
+#ifdef GDFORCE
 //		divvbad += (dx*dx+dy*dy+dz*dz)*rs1/q->fDensity;
 #else
 //		divvbad += (dx*dx+dy*dy+dz*dz)*rs1/p->fDensity;

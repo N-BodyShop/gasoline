@@ -44,7 +44,7 @@
 
 #ifdef RTF
 #define RTDENSITY
-#define RTFORCE
+#define GDFORCE
 #endif
 
 #ifdef SUPERBUBBLE
