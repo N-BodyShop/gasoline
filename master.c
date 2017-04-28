@@ -2717,12 +2717,6 @@ void msrLogDefines(FILE *fp)
 #ifdef OUTURBDRIVER
  	fprintf(fp," OUTURBDRIVER");
 #endif
-#ifdef PARTSHEAR
- 	fprintf(fp," PARTSHEAR"); /* Use the particle shear for correlation length*/
-#endif
-#ifdef NEWSHEAR
- 	fprintf(fp," NEWSHEAR"); /* Use diffusion length for correlation length*/
-#endif
 #ifdef RADIATIVEBOX
  	fprintf(fp," RADIATIVEBOX");/* Estimate local LW radiation from the tree*/
 #endif

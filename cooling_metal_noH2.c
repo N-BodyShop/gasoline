@@ -34,15 +34,9 @@
 /* #define CUBICTABLEINTERP   */
 /* #define USETABLE */
 
-#ifdef USETABLE
-#define CLRATES( _cl, _Rate, _T, _rho, _ZMetal, _mach)                clRates_Table( _cl, _Rate, _T, _rho, _ZMetal, mach)
-#define CLEDOTINSTANT( _cl, _Y, _Rate, _rho, _ZMetal ) clEdotInstant_Table( _cl, _Y, _Rate, _rho, _ZMetal)
-
-#else
 #define CLRATES( _cl, _Rate, _T, _rho, _ZMetal, _mach)   clRates( _cl, _Rate, _T, _rho, _ZMetal, mach)
 #define CLEDOTINSTANT( _cl, _Y, _Rate, _rho, _ZMetal ) clEdotInstant( _cl, _Y, _Rate, _rho, _ZMetal)
 
-#endif
 
 #define TABLEFACTOR 1
 
@@ -862,7 +856,6 @@ void clRateMetalTable(COOL *cl, RATE *Rate, double T, double rho, double Y_H, do
   Rate->Cool_Metal = exp(Cool)*nH*Y_H/M_H * ZMetal/ZSOLAR; 
   Rate->Heat_Metal = exp(Heat)*nH*Y_H/M_H * ZMetal/ZSOLAR;   
 
-#ifndef NOFIT
   if (T < cl->MetalTMin || nH >= cl->MetalnHMax) {
     Rate->Cool_Metal = -12.5920 + 5.25788*Tlog -0.949444*nHlog +      1.02849*Tlog*nHlog -    0.647718*pow(Tlog,2) - 0.137914*pow(Tlog,2)*nHlog
       + 0.000204617*pow(Tlog,2)*pow(nHlog,2) - 0.0751646*Tlog*pow(nHlog,2)   + 0.247727*pow(nHlog,2);
@@ -871,7 +864,6 @@ void clRateMetalTable(COOL *cl, RATE *Rate, double T, double rho, double Y_H, do
       + 7.33096e-12*pow(Tlog,2)*pow(nHlog,2) - 3.80744e-11*Tlog*pow(nHlog,2) + 2.65849e-08*pow(nHlog,2);
     Rate->Heat_Metal = pow(10,Rate->Heat_Metal);
   }
-#endif
   
 }
 
@@ -1494,24 +1486,6 @@ double clCoolRadrHeIII( double T ) {
  *      HIGH T LIMIT FOR PROCESSES INVOLVING A FREE EL INTERACTING 
  *      WITH AN ORBITAL ELECTRON ?? */
 
-#ifdef CLOUDY 
-#define CL_aHI   -1275.29
-#define CL_bHI   374.535
-#define CL_cHI   -42.8662
-#define CL_dHI   2.19186
-#define CL_fHI   -0.0422634
-#define CL_bHI_old  1.18348e05
-
-double clCoolLineHI( double T ) {
-  double lnT, ln_cool, arg;
-  arg = -CL_bHI_old/T;
-  lnT = log(T); 
-  if (arg < CL_MAX_NEG_EXP_ARG) return 0;
-  ln_cool = CL_aHI +  CL_bHI*lnT +  CL_cHI * pow(lnT, 2.0) +  CL_dHI * pow(lnT, 3.0) +  CL_fHI*pow(lnT, 4.0); 
-  return CL_B_gm*exp(ln_cool);
-}
-
-#else 
 #define CL_aHI  7.5e-19
 #define CL_bHI  1.18348e05
 
@@ -1524,24 +1498,7 @@ double clCoolLineHI( double T ) {
   if (arg < CL_MAX_NEG_EXP_ARG) return 0;
   return CL_B_gm*CL_aHI*exp( arg )*Cen_correctn;
 }
-#endif 
 
-#ifdef CLOUDY
-#define CL_aHeI   -3133.67
-#define CL_bHeI   980.557
-#define CL_cHeI   -117.344
-#define CL_dHeI   6.26898
-#define CL_fHeI   -0.125976
-#define CL_bHeI_old  1.3179e04
-double clCoolLineHeI( double T ) {
-  double lnT, ln_cool, arg;
-  arg = -CL_bHeI_old/T;
-  lnT = log(T); 
-  if (arg < CL_MAX_NEG_EXP_ARG) return 0;
-  ln_cool = CL_aHeI +  CL_bHeI*lnT +  CL_cHeI * pow(lnT, 2.0) +  CL_dHeI * pow(lnT, 3.0) +  CL_fHeI*pow(lnT, 4.0); 
-  return CL_B_gm*exp(ln_cool);
-}
-#else
 #define CL_aHeI   9.10e-27
 #define CL_bHeI   1.3179e04
 #define CL_p_HeI  0.1687
@@ -1555,27 +1512,7 @@ double clCoolLineHeI( double T ) {
   if (arg < CL_MAX_NEG_EXP_ARG) return 0;
   return CL_B_gm*CL_aHeI*exp(-CL_bHeI*T_inv)*pow(T_inv,CL_p_HeI)*Cen_correctn;
 }
-#endif
 
-#ifdef CLOUDY 
-
-#define CL_aHeII  -4002.63
-#define CL_bHeII  1197.95 
-#define CL_cHeII  -136.703 
-#define CL_dHeII  6.96923 
-#define CL_fHeII  -0.133835
-#define CL_bHeII_old  4.73638e05
-
- double clCoolLineHeII( double T ) {
-  double lnT, ln_cool, arg;
-  arg = -CL_bHeII_old/T;
-  lnT = log(T); 
-  if (arg < CL_MAX_NEG_EXP_ARG) return 0;
-  ln_cool = CL_aHeII +  CL_bHeII*lnT +  CL_cHeII * pow(lnT, 2.0) +  CL_dHeII * pow(lnT, 3.0) +  CL_fHeII*pow(lnT, 4.0); 
-  return CL_B_gm*exp(ln_cool);
-}    
-
-#else 
 #define CL_aHeII   5.54e-17
 #define CL_bHeII   4.73638e05
 #define CL_p_HeII  0.397
@@ -1590,7 +1527,6 @@ double clCoolLineHeII( double T ) {
   if (arg < CL_MAX_NEG_EXP_ARG) return 0;
   return CL_B_gm*CL_aHeII*exp(-CL_bHeII*T_inv)*pow(T_inv,CL_p_HeII)*Cen_correctn;
 }
-#endif
 
 double clCoolLowT( double T ) {
     double x;

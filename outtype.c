@@ -28,16 +28,9 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 #ifdef COOLING_MOLECULARH
     /*Define the correlation length used for shielding in H2 calculation from the gas shear CC*/
     double correL = 1.0;
-#ifdef NEWSHEAR
-    /* Calculated same way as for diffusion*/
-    if (p->diff != 0) correL = 0.25*p->fBall2*p->c/p->diff;
-    /*Minimum correlation length is the smoothing*/
-    if (correL > sqrt(0.25*p->fBall2) || p->diff == 0) correL = sqrt(0.25*p->fBall2);
-#else /*NEWSHEAR*/
     /* Shear from curl */
     double shear = sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2]);
     if (shear != 0) correL = p->c/shear;
-#endif /*NEWSHEAR*/
 #endif  /*COOLING_MOLECULARH */
 #endif
 

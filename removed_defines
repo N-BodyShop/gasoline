@@ -89,3 +89,8 @@ DENSITYUNOTP          #More aggressive version of the energy-weighted density th
 FUVSHIELD             #Alter the amount of FUV shielding?
 WOLFIRE_NOTWOPHASE    #Use an imposed cooling rate without a two-phase instability
 WOLFIRE               #Use the Wolfire values for the metal cooling rate with UV heating
+USETABLE              #Grab the cooling rates from a table
+NOFIT                 #Don't use any fitting for the cooling rates without H2 in cooling_metal_noH2.c
+PARTSHEAR             #Use particle shear for the correlation length in H2 cooling 
+NEWSHEAR              #Use the diffusion length for the correlation length in the H2 code from Charlotte Christensen
+CLOUDY                #Use CLOUDY version of line cooling

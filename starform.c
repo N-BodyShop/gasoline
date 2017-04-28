@@ -178,23 +178,9 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
 #endif
 
 #ifdef  COOLING_MOLECULARH
-#ifdef NEWSHEAR
-    /***** particle diffusion method ******/
-    if (p->diff != 0) 
-      correL = p->c * (0.25*p->fBall2)/p->diff; 
-    if (correL > sqrt(0.25*p->fBall2) || p->diff == 0) 
-      correL = sqrt(0.25*p->fBall2);
-#else/*NEWSHEAR*/
-#ifdef PARTSHEAR
-    /***** particle shear method********/ 
-    if ((p->curlv[0] != 0) && (p->curlv[1] != 0) && (p->curlv[2] != 0)) 
-      correL = p->c/sqrt(p->curlv[0]*p->curlv[0] + p->curlv[1]*p->curlv[1] + p->curlv[2]*p->curlv[2]);    
-#else/*PARTSHEAR*/
     /*Made using the smoothing length the default, as it has been used that way in all production runs to Jun 4th, 2012, CC*/
     /***** From particle smoothing.  This works best for determining the correlation length.  CC 7/20/11 ******/
     correL = sqrt(0.25*p->fBall2);
-#endif/*PARTSHEAR*/
-#endif/*NEWSHEAR*/
 #endif/* COOLING_MOLECULARH */
 
 
