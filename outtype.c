@@ -190,10 +190,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return(p->uDotAV);
 	case OUT_UDOTDIFF_ARRAY:
 	    return(p->uDotDiff);
-#ifdef SFBOUND
-	case OUT_SIGMA2_ARRAY:
-	    return(p->fSigma2);
-#endif
 #ifdef STARFORM
 	case OUT_IGASORDER_ARRAY:
 	    return((FLOAT) p->iGasOrder);

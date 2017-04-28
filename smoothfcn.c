@@ -878,12 +878,6 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 	SinkEvent.time= smf->dTime;
 
-#ifdef STARSINK
-	/* Convert to total angular momentum for additions */
-	SINK_Lx(p) += TRUEMASS(p)*(p->r[1]*p->v[2] - p->r[2]*p->v[1]); 
-	SINK_Ly(p) += TRUEMASS(p)*(p->r[2]*p->v[0] - p->r[0]*p->v[2]);
-	SINK_Lz(p) += TRUEMASS(p)*(p->r[0]*p->v[1] - p->r[1]*p->v[0]);
-#endif
 	for (i=0;i<nSmooth;++i) {
 	    q = nnList[i].pPart;
 	    if ( iOrderSink(q) == p->iOrder) {
@@ -896,11 +890,6 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		    p->v[j] = ifMass*(mp*p->v[j]+mq*q->v[j]);
 		    p->a[j] = ifMass*(mp*p->a[j]+mq*q->a[j]);
 		    }
-#ifdef STARSINK
-		SINK_Lz(p) += mq*(q->r[1]*q->v[2] - q->r[2]*q->v[1]); /* add to total L */
-        SINK_Ly(p) += mq*(q->r[2]*q->v[0] - q->r[0]*q->v[2]);
-		SINK_Lz(p) += mq*(q->r[0]*q->v[1] - q->r[1]*q->v[0]);
-#endif
 		p->u += ifMass*(mp*p->u+mq*q->u);
 		p->fMass += mq;
 		assert(q->fMass != 0);
@@ -929,11 +918,6 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			    p->v[j] = ifMass*(mp*p->v[j]+mq*q->v[j]);
 			    p->a[j] = ifMass*(mp*p->a[j]+mq*q->a[j]);
 			    }
-#ifdef STARSINK
-			SINK_Lx(p) += mq*(q->r[1]*q->v[2] - q->r[2]*q->v[1]); /* add to total L */
-			SINK_Ly(p) += mq*(q->r[2]*q->v[0] - q->r[0]*q->v[2]);
-			SINK_Lz(p) += mq*(q->r[0]*q->v[1] - q->r[1]*q->v[0]);
-#endif
 			p->u += ifMass*(mp*p->u+mq*q->u);
 			p->fMass += mq;
 			p->fTrueMass += q->fMass;
@@ -984,11 +968,6 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			p->v[j] = ifMass*(mp*p->v[j]+q->fMass*q->v[j]);
 			p->a[j] = ifMass*(mp*p->a[j]+q->fMass*q->a[j]);
 			}
-#ifdef STARSINK
-			SINK_Lx(p) += mq*(q->r[1]*q->v[2] - q->r[2]*q->v[1]); /* add to total L */
-			SINK_Ly(p) += mq*(q->r[2]*q->v[0] - q->r[0]*q->v[2]);
-			SINK_Lz(p) += mq*(q->r[0]*q->v[1] - q->r[1]*q->v[0]);
-#endif
 		    p->u += ifMass*(mp*p->u+mq*q->u);
 		    p->fTrueMass += q->fMass;
 		    p->iSinkingOnto++; /* One more sinking onto this sink */
@@ -1012,12 +991,6 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif /*SINKING*/
 		}
 	    }
-#ifdef STARSINK
-	/* Store Internal angular momentum only as it is invariant under motions  */
-	SINK_Lx(p) -= TRUEMASS(p)*(p->r[1]*p->v[2] - p->r[2]*p->v[1]); 
-	SINK_Ly(p) -= TRUEMASS(p)*(p->r[2]*p->v[0] - p->r[0]*p->v[2]);
-	SINK_Lz(p) -= TRUEMASS(p)*(p->r[0]*p->v[1] - p->r[1]*p->v[0]);
-#endif
 	if (iSinkEventType != SINK_EVENT_NULL) {
 	    iSinkEventType = SINK_EVENT_ACCRETE_UPDATE;  /* Final particle includes full Sink update */
 	    SinkEvent.mass = TRUEMASS(p);
@@ -2099,15 +2072,6 @@ void SinkMerge(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	      && p->iOrder < q->iOrder) {
 	      FLOAT mp,mq;
 	      mp = p->fMass; mq = q->fMass;
-#ifdef STARSINK
-	/* Convert to total angular momentum for additions */
-	      SINK_Lx(p) += TRUEMASS(p)*(p->r[1]*p->v[2] - p->r[2]*p->v[1]); 
-	      SINK_Ly(p) += TRUEMASS(p)*(p->r[2]*p->v[0] - p->r[0]*p->v[2]);
-	      SINK_Lz(p) += TRUEMASS(p)*(p->r[0]*p->v[1] - p->r[1]*p->v[0]);
-        SINK_Lx(p) += mq*(q->r[1]*q->v[2] - q->r[2]*q->v[1]); /* add to total L */
-        SINK_Ly(p) += mq*(q->r[2]*q->v[0] - q->r[0]*q->v[2]);
-        SINK_Lz(p) += mq*(q->r[0]*q->v[1] - q->r[1]*q->v[0]);
-#endif
 	      ifMass = 1./(mp+mq);
 	      for (j=0;j<3;j++) {
 		  p->r[j] = ifMass*(mp*p->r[j]+q->fMass*q->r[j]);
@@ -2116,13 +2080,6 @@ void SinkMerge(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		  }
 	      p->u += ifMass*(mp*p->u+mq*q->u);
 	      p->fMass += mq;
-#ifdef STARSINK
-	      /* After mass increased:
-		 Store Internal angular momentum only as it is invariant under motions  */
-	      SINK_Lx(p) -= TRUEMASS(p)*(p->r[1]*p->v[2] - p->r[2]*p->v[1]); 
-	      SINK_Ly(p) -= TRUEMASS(p)*(p->r[2]*p->v[0] - p->r[0]*p->v[2]);
-	      SINK_Lz(p) -= TRUEMASS(p)*(p->r[0]*p->v[1] - p->r[1]*p->v[0]);
-#endif
 	      assert(q->fMass != 0);
 	      assert(!(TYPETest( ((PARTICLE *) q), TYPE_DELETED )));
 	      SinkEvent.time= smf->dTime;
@@ -2588,11 +2545,6 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    sinkp.a[1] = 0;
 	    sinkp.a[2] = 0;
 	    sinkp.u = 0;
-#ifdef STARSINK
-	    SINK_Lx(&sinkp) = 0;
-	    SINK_Ly(&sinkp) = 0;
-	    SINK_Lz(&sinkp) = 0;
-#endif
 	    sinkp.fMass = 0;
 #ifdef SINKING
 	    sinkp.fTrueMass = 0;
@@ -2626,11 +2578,6 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 			sinkp.a[1] += mq*q->a[1];
 			sinkp.a[2] += mq*q->a[2];
 			sinkp.u += q->fMass*q->u;
-#ifdef STARSINK
-			SINK_Lx(&sinkp) += mq*(ry*vz - rz*vy); /* Add to total L */
-			SINK_Ly(&sinkp) += mq*(rz*vx - rx*vz);
-			SINK_Lz(&sinkp) += mq*(rx*vy - ry*vx);
-#endif
 			sinkp.fMass += mq; 
 #ifdef SINKING
 			sinkp.fTrueMass += mq;
@@ -2656,12 +2603,6 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    sinkp.a[1] *= im;
 	    sinkp.a[2] *= im;
 	    sinkp.u *= im;
-#ifdef STARSINK
-            /* Store Internal angular momentum only */
-	    SINK_Lx(&sinkp) -= sinkp.fMass*(sinkp.r[1]*sinkp.v[2] - sinkp.r[2]*sinkp.v[1]); 
-	    SINK_Ly(&sinkp) -= sinkp.fMass*(sinkp.r[2]*sinkp.v[0] - sinkp.r[0]*sinkp.v[2]);
-	    SINK_Lz(&sinkp) -= sinkp.fMass*(sinkp.r[0]*sinkp.v[1] - sinkp.r[1]*sinkp.v[0]);
-#endif
 	    TYPEClear(&sinkp);
 	    TYPESet(&sinkp,TYPE_SINK|TYPE_STAR|TYPE_ACTIVE);
 	    sinkp.fTimeForm = -smf->dTime; /* -ve time is sink indicator */
@@ -3911,9 +3852,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	PARTICLE *q;
 	int i;
 	unsigned int qiActive;
-#ifdef SFBOUND
-    double fSigma2 = 0;
-#endif
 
 	ih2 = 4.0/BALL2(p);
 	ih = sqrt(ih2);
@@ -3973,10 +3911,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         }
 #endif
 
-#ifdef SFBOUND
-        /* Note: No correction for expansion (e.g. Hubble or vfac) */
-	    fSigma2 += (dvx*dvx+dvy*dvy+dvz*dvz)*rs*q->fMass;
-#endif
         // Convention here dvdx = vxq-vxp, dx = xp-xq  but rs < 0 so dvdx correct sign
 		dvxdx += dvx*dx*rs1;
 		dvxdy += dvx*dy*rs1;
@@ -4002,9 +3936,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	if (qiActive & TYPE_ACTIVE) TYPESet(p,TYPE_NbrOfACTIVE);
 
 
-#ifdef SFBOUND
-    p->fSigma2 = fSigma2/fDensity;
-#endif
 #ifdef CULLENDEHNEN
     alphaNoise = (vmx*vmx+vmy*vmy+vmz*vmz)/(fDensity*fDensity)*smf->dNAlphaNoise;
     alphaNoise = alphaNoise/(alphaNoise+p->c*p->c);
@@ -5495,13 +5426,7 @@ void StarClusterForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     Mass = 0;
 	for (i=0;i<nSmooth;++i) {
 		q = nnList[i].pPart;
-#if SCFSMOOTHED
-		double r2 = nnList[i].fDist2*ih2;
-		KERNEL(rs,r2);
-		rs *= q->fMass;
-#else
         rs = q->fMass;
-#endif
 
 		dvx = (-p->vPred[0] + q->vPred[0])*vFac; 
 		dvy = (-p->vPred[1] + q->vPred[1])*vFac;

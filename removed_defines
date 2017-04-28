@@ -99,3 +99,8 @@ MODBATEPOLY           #Use a modified polytropic equation of state with COOLING_
 SUPERCOOL             #Enable "Supercool" type particles (just gas particles with mean velocities?)
 RADIATIVEBOX          #Estimate Local Lyman-Werner radiation from the tree
 GR_DRAG               #Enable Frame dragging
+SCFSMOOTHED           #Use smoothed masses for star cluster formation (-DSTARCLUSTFORM)
+SFBOUND               #Use a virial criterion (boundedness) for allowing star formation.
+SFCONDITIONS          #Use additional conditions for deciding if you form stars (Jeans length vs. h)
+SFEVENTCRIT           #Log additional star formation criteria
+STARSINK              #Star particles are also sink partikes. (Requires -DSINKING)

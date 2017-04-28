@@ -92,10 +92,6 @@ void pkdStarLogFlush(PKD pkd, char *pszFileName)
 	xdr_double(&xdrs, &(pSfEv->massForm));
 	xdr_double(&xdrs, &(pSfEv->rhoForm));
 	xdr_double(&xdrs, &(pSfEv->TForm));
-#ifdef SFEVENTCRIT
-	xdr_double(&xdrs, &(pSfEv->tcool));
-	xdr_double(&xdrs, &(pSfEv->tdyn));
-#endif
 #ifdef COOLING_MOLECULARH
 	xdr_double(&xdrs, &(pSfEv->H2fracForm));
 #endif
@@ -173,9 +169,6 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
         return 0;
     }
 #endif
-#ifdef SFEVENTCRIT
-    stfm->Tgas = T;
-#endif
 
 #ifdef  COOLING_MOLECULARH
     /*Made using the smoothing length the default, as it has been used that way in all production runs to Jun 4th, 2012, CC*/
@@ -191,26 +184,7 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
 		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals,  p->r)
 #endif
           -UDOT_HYDRO(p) );
-#ifdef SFCONDITIONS
-    double tsound;
-    if(tcool < 0.0 && T > stfm->dTempMax) return 0;
-    /*
-     * Determine sound crossing time.
-     */
-    tsound = sqrt(0.25*p->fBall2)/p->c;
-
-    /* 
-     * criteria that stars form if the Jean's length is less than the
-     * softening
-     */
-    l_jeans2 = M_PI*p->c*p->c/p->fDensity*dCosmoFac;
-/* New code: physical L_J vs. physics smoothing length (with multiplier) */
-    if (l_jeans2 >= 0.25*p->fBall2*stfm->dExp*stfm->dExp*stfm->dSoftMin*stfm->dSoftMin) return 0;
-
-
-#else /* CHECKSF */
     if(T > stfm->dTempMax) return 0;
-#endif /*SFCONDITIONS*/
 
     /*
      * Determine if this particle satisfies all conditions.
@@ -224,14 +198,7 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
     else
         tform = tcool;
 
-#ifdef SFEVENTCRIT
-    stfm->tcool = tcool;
-    stfm->tdyn = tdyn;
-#endif
 
-#ifdef SFBOUND
-    if (p->fDensity < (p->fSigma2+1.8*p->c*p->c)/(p->fBall2*0.25) ) return 0;
-#endif
 
 #ifdef COOLING_MOLECULARH
     if (p->fMetals <= 0.1) yH = 1.0 - 4.0*((0.236 + 2.1*p->fMetals)/4.0) - p->fMetals;
@@ -336,10 +303,6 @@ void stfmFormStarParticle(STFM stfm, PKD pkd, PARTICLE *p,
 	pSfEv->massForm = starp.fMassForm;
 	pSfEv->rhoForm = starp.fDensity/stfm->dCosmoFac;
     pSfEv->TForm = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
-#ifdef SFEVENTCRIT
-    pSfEv->tcool = stfm->tcool;
-    pSfEv->tdyn = stfm->tdyn;
-#endif
 #ifdef COOLING_MOLECULARH /* Output the H2 fractional abundance in the gas particle*/
 	pSfEv->H2fracForm = 2.0*p->CoolParticle.f_H2/yH;
 #endif
@@ -383,9 +346,6 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 #else
     /* probability of converting all gas to star in this step */
     dMProb = stfmFormStarProb(stfm, pkd, p, dTime);
-#ifdef SFEVENTCRIT
-    fprintf(stfm->fpout,"%d: %g %g %g %g %g %g %g\n",p->iOrder,stfm->tcool,stfm->tdyn,stfm->Tgas,p->fDensity,p->divv,p->fMass,dMProb);
-#endif
     if (dMProb > 0) {
         /* mass of star particle. */
         if (stfm->dInitStarMass > 0) 
@@ -398,9 +358,6 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
         /* Reduce probability for just dDeltaM/p->fMass becoming star */
         if(dMProb*p->fMass < dDeltaM*(rand()/((double) RAND_MAX))) return; /* no star */
 
-#ifdef SFEVENTCRIT
-        fprintf(stfm->fpout,"STARMADE %d: %g\n",p->iOrder,dDeltaM);
-#endif
         stfmFormStarParticle(stfm, pkd, p, dDeltaM, dTime, nFormed,dMassFormed,nDeleted);
     }
 #endif
@@ -414,13 +371,6 @@ void pkdFormStars(PKD pkd, STFM stfm, double dTime, int *nFormed,
     PARTICLE *p;
     int n = pkdLocal(pkd);
     
-#ifdef SFEVENTCRIT
-    char fileout[50];
-    sprintf(fileout,"sfcrit.%5.5d",pkd->idSelf);
-    stfm->fpout = fopen( fileout, "a" );
-    assert(stfm->fpout!=NULL);
-    fprintf(stfm->fpout,"SFSTART t=%g dt=%g\n",dTime,stfm->dDeltaT);
-#endif
     
     *nFormed = 0;
     *nDeleted = 0;
@@ -435,10 +385,6 @@ void pkdFormStars(PKD pkd, STFM stfm, double dTime, int *nFormed,
         assert(p->fMass >= 0);
         }
 
-#ifdef SFEVENTCRIT
-    fprintf(stfm->fpout,"SFEND %d %g %d\n",*nFormed,*dMassFormed,*nDeleted);
-    fclose(stfm->fpout);
-#endif
     }
 
 void pkdStarClusterFormPrecondition(PKD pkd, struct inStarClusterFormPrecondition in) {

@@ -337,11 +337,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->uHotPred = 0.;
         p->uHotDot = 0.;
 #endif
-#ifdef STARSINK
-        SINK_Lx(p) = 0.0;
-        SINK_Ly(p) = 0.0;
-        SINK_Lz(p) = 0.0;
-#endif
 #ifdef STARFORM
         p->uDotFB = 0.0;
         p->uDotESF = 0.0;
@@ -2222,10 +2217,6 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
         d2 = dx*dx + dy*dy + dz*dz;
         d1 = sqrt(d2);
         if (d1 > cc.Bmax) cc.Bmax = d1;
-#ifdef STARSINK
-        int bSinkCell=0;
-        if (TYPETest(&(pkd->pStore[pj]),TYPE_STAR)) bSinkCell=1;
-#endif
         cc.B2 += m*d2;
         cc.B3 += m*d2*d1;
         cc.B4 += m*d2*d2;
@@ -2277,12 +2268,6 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
             cc.Qyz += m*dy*dz;
             }
         }
-#ifdef STARSINK
-    if (bSinkCell) {
-        cc.Bmax*=2;
-        bSinkCell=0;
-        }
-#endif
     *pcc = cc;
     }
 
@@ -4461,11 +4446,6 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
         assert(p->uHot >= 0);
         p->uHotDot = 0;
 #endif
-#ifdef STARSINK
-        SINK_Lx(p) = cp.Lx;
-        SINK_Ly(p) = cp.Ly;
-        SINK_Lz(p) = cp.Lz;
-#endif
 
 #ifdef VARALPHA
         p->alpha = cp.alpha;
@@ -4578,11 +4558,6 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
 #endif
 #ifdef UNONCOOL
         cp.uHot = p->uHot;
-#endif
-#ifdef STARSINK
-        cp.Lx = SINK_Lx(p);
-        cp.Ly = SINK_Ly(p);
-        cp.Lz = SINK_Lz(p);
 #endif
 #ifdef VARALPHA
         cp.alpha = p->alpha;
@@ -5655,15 +5630,6 @@ void pkdSetParticleTypes(PKD pkd, int nSuperCool)
         if (pkdIsDarkByOrder(pkd,p)) iSetMask |= TYPE_DARK;
         if (pkdIsStarByOrder(pkd,p)) iSetMask |= TYPE_STAR;
         if (p->iOrder < nSuperCool) iSetMask |= TYPE_SUPERCOOL;
-#ifdef STARSINK
-        if (iSetMask & TYPE_STAR) {
-            iSetMask |= TYPE_SINK;
-#ifdef SINKING
-            if (p->iSinkingOnto < 0) p->iSinkingOnto=0;
-            
-#endif
-            }
-#endif
 #ifdef SINKING
         if ((iSetMask&TYPE_GAS) && p->iSinkingOnto >= 0) iSetMask |= TYPE_SINKING;
 #endif
@@ -6995,11 +6961,7 @@ int pkdSetSink(PKD pkd, double dSinkMassMin)
 
     for(i=0;i<nLocal;++i) { 
         p = &pkd->pStore[i];
-#ifdef STARSINK
-                if ((TYPETest(p,TYPE_STAR))) {
-#else
         if ((TYPETest(p,TYPE_STAR) && p->fTimeForm < 0)) {
-#endif
             TYPESet(p,TYPE_SINK);
             nSink++;
             }

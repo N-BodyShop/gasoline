@@ -2649,9 +2649,6 @@ void msrLogDefines(FILE *fp)
 	fprintf(fp," KROUPA");
 #endif
 #endif
-#ifdef SFCONDITIONS
-	fprintf(fp," SFCONDITIONS");
-#endif
 #ifdef VSIGVISC
 	fprintf(fp," VSIGVISC");
 #endif
@@ -2811,9 +2808,6 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef PARTICLESPLIT
 	fprintf(fp, " PARTICLESPLIT");
-#endif
-#ifdef STARSINK
-	fprintf(fp, " STARSINK");
 #endif
 #ifdef SINKING
 	fprintf(fp, " SINKING");
@@ -4447,9 +4441,6 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
         OutputList[(*nOutputList)++]=OUT_NORMAL_VECTOR;
 #endif
 #endif
-#ifdef SFBOUND
-        OutputList[(*nOutputList)++]=OUT_SIGMA2_ARRAY;
-#endif
         OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
         OutputList[(*nOutputList)++]=OUT_MUMAX_ARRAY;
         if (msr->param.bShockTracker) {
@@ -4620,9 +4611,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
 	if (msr->param.bDoCSoundOutput) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
 	
     if (msr->param.bDoCSound) {
-#ifdef SFBOUND
-        OutputList[(*nOutputList)++]=OUT_SIGMA2_ARRAY;
-#endif
         OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
         }
 #ifdef TWOPHASE
@@ -4646,10 +4634,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
         OutputList[(*nOutputList)++]=OUT_DIVRHOV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_GRADRHO_VECTOR;
     }
-#ifdef STARSINK
-    if (msr->param.bSinkAngMomOutput)
-        OutputList[(*nOutputList)++]=OUT_ANGMOM_VECTOR;
-#endif
 #ifndef NOCOOLING
     {
     int ArrayCnt = 0;
@@ -4726,9 +4710,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
 	if (msr->param.bDoCurlvOutput) OutputList[(*nOutputList)++]=OUT_CURLV_VECTOR;
 	if (msr->param.bDoCSoundOutput) OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
     if (msr->param.bDoCSound) {
-#ifdef SFBOUND
-        OutputList[(*nOutputList)++]=OUT_SIGMA2_ARRAY;
-#endif
         OutputList[(*nOutputList)++]=OUT_CSOUND_ARRAY;
         }
     if (msr->param.bDoHydroOutput) {
@@ -4744,10 +4725,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
         OutputList[(*nOutputList)++]=OUT_DIVRHOV_ARRAY;
         OutputList[(*nOutputList)++]=OUT_GRADRHO_VECTOR;
     }
-#ifdef STARSINK
-    if (msr->param.bSinkAngMomOutput)
-        OutputList[(*nOutputList)++]=OUT_ANGMOM_VECTOR;
-#endif
 #ifndef NOCOOLING
     {
     int ArrayCnt = 0;

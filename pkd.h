@@ -188,9 +188,6 @@ typedef struct particle {
 /*      FLOAT fDensSave;*/      /* Used by diagnostic DensCheck funcs */
     FLOAT fMetals;  /* mass fraction in metals, a.k.a, Z */
     FLOAT fTimeForm;
-#ifdef SFBOUND
-    FLOAT fSigma2;
-#endif
 #ifdef STARFORM
     FLOAT uDotFB;
     FLOAT uDotESF;
@@ -425,9 +422,6 @@ typedef struct chkParticle {
 #ifdef UNONCOOL
     FLOAT uHot;
 #endif
-#ifdef STARSINK
-    FLOAT Lx,Ly,Lz;
-#endif
 #ifdef VARALPHA
     FLOAT alpha;
 #endif
@@ -554,10 +548,6 @@ typedef struct sfEvent 		/* Holds statistics of the star
     double massForm;
     double rhoForm;
     double TForm;
-#ifdef SFEVENTCRIT
-    double tcool;
-    double tdyn;
-#endif
 #ifdef COOLING_MOLECULARH
     double H2fracForm;
 #endif
