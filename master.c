@@ -2652,8 +2652,8 @@ void msrLogDefines(FILE *fp)
 #ifdef VSIGVISC
 	fprintf(fp," VSIGVISC");
 #endif
-#ifdef RTFORCE
-	fprintf(fp," RTFORCE");
+#ifdef GDFORCE
+	fprintf(fp," GDFORCE");
 #endif
 #ifdef TWOPHASE
     fprintf(fp," TWOPHASE");

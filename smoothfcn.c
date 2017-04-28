@@ -2725,12 +2725,12 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #define PEXTCORR 0
 #endif
 
-#ifndef RTFORCE
+#ifndef GDFORCE
 	pPoverRho2 = p->PoverRho2;
   { FLOAT pd2 = p->fDensity*p->fDensity;
     pPoverRho2f = (pPoverRho2*pd2+PEXTCORR)/pd2;     
     }
-#endif /* ndef RTFORCE */
+#endif /* ndef GDFORCE */
 	ph = sqrt(0.25*BALL2(p));
 	ih2 = 4.0/BALL2(p);
 	fNorm = 0.5*M_1_PI*ih2/ph;
@@ -2749,7 +2749,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    divvj += rs1/q->fDensity;
 	    }
 
-#ifdef RTFORCE
+#ifdef GDFORCE
 /* The DIVVCORRBAD corrector is better on average but is pathological with very
    uneven particle distributions (very large density gradients) */
     p->fDivv_Corrector = (divvj != 0 ? divvi/divvj : 1); /* RTFORCE CORR */
@@ -2776,7 +2776,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    dvdotdr = vFac*(dvx*dx + dvy*dy + dvz*dz)
 		+ nnList[i].fDist2*smf->H;
 
-#ifdef RTFORCE
+#ifdef GDFORCE
         {  
        double pP = p->PoverRho2*pDensity*pDensity;
 	    double qP = q->PoverRho2*q->fDensity*q->fDensity;
@@ -2786,12 +2786,12 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    pPoverRho2 = pP*igDensity2;
 	    qPoverRho2 = qP*igDensity2;
       }
-#else /* now not RTFORCE */
+#else /* now not GDFORCE */
 	    qPoverRho2 = q->PoverRho2;
 	{   FLOAT qd2 = q->fDensity*q->fDensity;
 	    qPoverRho2f = (qPoverRho2*qd2+PEXTCORR)/qd2; 
     }
-#endif /* RTFORCE */    
+#endif /* GDFORCE */    
 
 	    if (TYPEQueryACTIVE(p)) {
 		if (TYPEQueryACTIVE(q)) {
