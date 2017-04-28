@@ -40,10 +40,6 @@
 #define ALPHAMIN 0.01
 #define ALPHAMAX 1
 
-#ifdef RTF
-#define RTDENSITY
-#define RTFORCE
-#endif
 
 #ifdef SUPERBUBBLE
 #define PROMOTE
@@ -71,9 +67,7 @@
 
 /* Note: UDOT_HYDRO is only correct if there is only thermal pressure (no UNONCOOL or Jeans Floor) */
 #define UDOT_HYDRO(p_)   ((p_)->uDotPdV+(p_)->uDotAV+(p_)->uDotDiff)
-#ifndef PONRHOFLOOR
 #define PONRHOFLOOR 0
-#endif
 
 #define StarClusterFormfBall2Save(p) (p->curlv[0])
 #define StarClusterFormiOrder(p) (p->curlv[1])

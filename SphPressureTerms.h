@@ -55,7 +55,6 @@
     #else
         #define DIFFUSIONThermaluHot()
     #endif
-        #ifndef NODIFFUSIONTHERMAL
             /* Default -- thermal diffusion */
             #ifdef THERMALCOND
                     /* Harmonic average coeff */
@@ -77,9 +76,6 @@
                       PACTIVE( p->uDotDiff += diffu*rq*MASSDIFFFAC(q) );                \
                       QACTIVE( q->uDotDiff -= diffu*rp*MASSDIFFFAC(p) );                \
                       DIFFUSIONThermaluHot(); }
-        #else
-            #define DIFFUSIONThermal(dt_)
-        #endif
 
     #define DIFFUSIONMetals() \
         { double diff = diffMetalsBase*(p->fMetals - q->fMetals); \

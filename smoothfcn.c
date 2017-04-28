@@ -3931,11 +3931,7 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #endif
 
     fDensity_old = p->fDensity;
-#ifdef RTDENSITY	
-	p->fDensity = fDensityU/p->uPred; 
-#else
 	p->fDensity = fDensity; 
-#endif
 #ifdef THERMALCOND
     {
     double rhogradu=sqrt(rgux*rgux+rguy*rguy+rguz*rguz)*fNorm1;

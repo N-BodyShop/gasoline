@@ -2652,9 +2652,6 @@ void msrLogDefines(FILE *fp)
 #ifdef VSIGVISC
 	fprintf(fp," VSIGVISC");
 #endif
-#ifdef RTDENSITY
-	fprintf(fp," RTDENSITY");
-#endif
 #ifdef RTFORCE
 	fprintf(fp," RTFORCE");
 #endif
@@ -2760,9 +2757,6 @@ void msrLogDefines(FILE *fp)
 #ifdef JEANSSOFTONLY
 	fprintf(fp, " JEANSSOFTONLY");
 #endif
-#ifdef PONRHOFLOOR
-    if (PONRHOFLOOR > 0) fprintf(fp, " PONRHOFLOOR=%g",(double) PONRHOFLOOR);
-#endif
 #ifdef DTADJUST
 	fprintf(fp, " DTADJUST");
 #endif
@@ -2775,9 +2769,6 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef DIFFUSION
 	fprintf(fp, " DIFFUSION");
-#endif
-#ifdef NODIFFUSIONTHERMAL
-	fprintf(fp, " NODIFFUSIONTHERMAL");
 #endif
 #ifdef PROMOTE
 	fprintf(fp, " PROMOTE");
@@ -5886,18 +5877,10 @@ void msrUpdateSoft(MSR msr,double dTime) {
 
 		   }
 		   if (msr->nGas && msr->param.bVariableSoftGas) {
-#ifdef DENSSOFT
-			 msrResetType(msr,TYPE_GAS,TYPE_SMOOTHDONE|TYPE_NbrOfACTIVE|TYPE_DensZeroed);
-			 msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-			 msrBuildTree(msr,1,-1.0,1);
-			 msrActiveType(msr,TYPE_ACTIVE,TYPE_DensACTIVE );
-			 msrSmooth(msr,dTime,SMX_MARKIIDENSITY,1);
-#else
 			 msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE);
 			 msrBuildTree(msr,1,-1.0,1);
 			 msrActiveExactType(msr,TYPE_ACTIVE|TYPE_GAS,TYPE_ACTIVE|TYPE_GAS,TYPE_SMOOTHACTIVE);
 			 msrSmooth(msr,dTime,SMX_NULL,0);
-#endif
 		   }
 		   if (msr->nStar && msr->param.bVariableSoftStar) {
 			 msrActiveType(msr,TYPE_STAR,TYPE_TREEACTIVE);

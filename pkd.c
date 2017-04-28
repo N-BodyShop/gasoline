@@ -2060,13 +2060,11 @@ void pkdPreVariableSoft(PKD pkd,int iVariableSoftType)
     p = pkd->pStore;
     n = pkdLocal(pkd);
 
-#ifndef DENSSOFT
     for (i=0;i<n;++i) {
             if (TYPETest(&(p[i]),iVariableSoftType) && TYPEQueryACTIVE(&(p[i]))) {
               p[i].fSoft = p[i].fBall2;
               }
             }
-#endif
     }
 
 void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSoftType)
@@ -2081,26 +2079,18 @@ void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSo
     if (bSoftMaxMul) {
             for (i=0;i<n;++i) {
                     if (TYPETest(&(p[i]),iVariableSoftType) && TYPEQueryACTIVE(&(p[i]))) {
-#ifdef DENSSOFT
-                              p[i].fSoft = pow((p[i].fMass*1.90986/p[i].fDensity),.3333333333);
-#else
                           dTmp = sqrt(p[i].fBall2*.25);
                               p[i].fBall2 = p[i].fSoft;
                               p[i].fSoft = (dTmp <= p[i].fSoft0*dSoftMax ? dTmp : p[i].fSoft0*dSoftMax);
-#endif
                                   }
                 }
             }
     else {
             for (i=0;i<n;++i) {
               if (TYPETest(&(p[i]),iVariableSoftType) && TYPEQueryACTIVE(&(p[i]))) {
-#ifdef DENSSOFT
-                  p[i].fSoft = pow((p[i].fMass*1.90986/p[i].fDensity),.3333333333);
-#else
                   dTmp = sqrt(p[i].fBall2*.25);
                   p[i].fBall2 = p[i].fSoft;
                   p[i].fSoft = (dTmp <= dSoftMax ? dTmp : dSoftMax);
-#endif
                       }
                 }
             }

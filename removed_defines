@@ -109,3 +109,8 @@ JEANSSF               #Use a simple Jeans length criteria for starformation
 PRES_HK               #Use the Euclidean mean of the both pOverRho values to calculate PdV work
 PRES_MONAGHAN         #Use Monaghan's PdV work calculation (the average of both pOverRho values)
 SMOOTHBSW             #Use a smoothed Balsara switch
+RTDENSITY             #Use an Ritchie & Thomas densities (DOI:10.1046/j.1365-8711.2001.04268.x)
+RTF                   #-DRTDENSITY and -DRTFORCE 
+PONRHOFLOOR           #Minimum P/rho value, prevents floating point errors in some cases
+NODIFFUSIONTHERMAL    #Disable thermal diffusion
+DENSSOFT              #Use the SPH density for gravity softening
