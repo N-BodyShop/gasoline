@@ -1123,11 +1123,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	prmAddParam(msr->prm,"bDoCorreL",0,&msr->param.bDoCorreL,sizeof(int),
 				"correL","enable/disable correlation length outputs = -correL");
 #endif
-#ifdef  RADIATIVEBOX
-	msr->param.bDoStellarLW = 0; /* Output LW radiation from each star and flux at each gas particle */
-	prmAddParam(msr->prm,"bDoStellarLW",0,&msr->param.bDoStellarLW,sizeof(int),
-				"stellarLW","enable/disable stellar Lyman Werner outputs = -stellarLW");
-#endif
 	msr->param.bGasCooling = 0;
 	prmAddParam(msr->prm,"bGasCooling",0,&msr->param.bGasCooling,
 				sizeof(int),"GasCooling",
@@ -2717,9 +2712,6 @@ void msrLogDefines(FILE *fp)
 #ifdef OUTURBDRIVER
  	fprintf(fp," OUTURBDRIVER");
 #endif
-#ifdef RADIATIVEBOX
- 	fprintf(fp," RADIATIVEBOX");/* Estimate local LW radiation from the tree*/
-#endif
 #ifdef COOLING_PLANET
  	fprintf(fp," COOLING_PLANET");
 #endif
@@ -2731,9 +2723,6 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef HSHRINK
 	fprintf(fp," HSHRINK");
-#endif
-#ifdef SUPERCOOL
-	fprintf(fp," SUPERCOOL");
 #endif
 #ifdef ROT_FRAME
 	fprintf(fp," ROT_FRAME");
@@ -4378,9 +4367,6 @@ void msrBuildTree(MSR msr,int bTreeActiveOnly, double dMass,int bSmooth)
 		msrMassCheck(msr,dMass,"After pstCalcRoot in msrBuildTree");
 		pstDistribRoot(msr->pst,&root,sizeof(struct ioCalcRoot),NULL,NULL);
 		msrMassCheck(msr,dMass,"After pstDistribRoot in msrBuildTree");
-#ifdef RADIATIVEBOX
-		pstFinishLWTree(msr->pst,NULL,0,NULL,NULL);
-#endif
 	    }
     }
 
@@ -4494,9 +4480,6 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
         OutputList[(*nOutputList)++]=OutType;
         ArrayCnt++;
         }
-#ifdef  RADIATIVEBOX
-    if (&msr->param.bDoStellarLW) OutputList[(*nOutputList)++]=OUT_COOL_LYMANWERNER_ARRAY;
-#endif
 #ifdef  COOLING_MOLECULARH
     if (&msr->param.bDoCorreL) OutputList[(*nOutputList)++]=OUT_CORREL_ARRAY;
 #endif
@@ -4778,9 +4761,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
         ArrayCnt++;
         }
     }
-#ifdef  RADIATIVEBOX
-    if (msr->param.bDoStellarLW) OutputList[(*nOutputList)++]=OUT_COOL_LYMANWERNER_ARRAY;
-#endif
 #ifdef COOLING_MOLECULARH
     if (msr->param.bDoCorreL) OutputList[(*nOutputList)++]=OUT_CORREL_ARRAY;
 #endif
@@ -4929,9 +4909,6 @@ void msrWriteNCOutputs(MSR msr, char *achFile, int OutputList[], int nOutputList
 #ifdef COOLING_MOLECULARH
 	    case OUT_COOL_ARRAY3: /* H2*/
 	    case OUT_CORREL_ARRAY:/*correlation length, used when calculating shielding*/
-#endif
-#ifdef  RADIATIVEBOX
-	    case OUT_COOL_LYMANWERNER_ARRAY:
 #endif
         case OUT_SPHH_ARRAY:
         case OUT_TEMP_ARRAY:
@@ -6550,49 +6527,6 @@ void msrDrift(MSR msr,double dTime,double dDelta)
 /* Untested */
 void msrCoolVelocity(MSR msr,double dTime,double dMass)
 {
-#ifdef SUPERCOOL
-	struct inCoolVelocity in;
-
-	if (msr->param.nSuperCool > 0) {
-		/*
-		 ** Activate all for densities if bSymCool == 0
-		 */
-		if (msr->param.bSymCool) {
-			msrActiveType(msr,TYPE_SUPERCOOL,TYPE_ACTIVE);
-			msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-			msrDomainDecomp(msr,0,1);
-			msrActiveType(msr,TYPE_SUPERCOOL,TYPE_ACTIVE);
-			/* Unsure what is desired here -- assuming all particles are in tree
-			   as per above setting of TREEACTIVE-- JW */
-			msrBuildTree(msr,0,dMass,1);
-			msrSmooth(msr,dTime,SMX_DENSITY,1);
-			msrReSmooth(msr,dTime,SMX_MEANVEL,1);
-			}
-		else {
-			/*
-			 ** Note, here we need to calculate the densities of all
-			 ** the particles so that the mean velocity can be
-			 ** calculated.
-			 */
-			/* activate all */
-			msrActiveTypeRung(msr,TYPE_SUPERCOOL,TYPE_ACTIVE,0,1);
-			msrActiveType(msr,TYPE_ALL,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-			msrDomainDecomp(msr,0,1);
-			msrActiveTypeRung(msr,TYPE_SUPERCOOL,TYPE_ACTIVE,0,1);
-			msrBuildTree(msr,0,SMX_DENSITY,1);
-			msrSmooth(msr,dTime,SMX_DENSITY,0);
-			msrReSmooth(msr,dTime,SMX_MEANVEL,0);
-			}
-		/*
-		 ** Now cool them.
-		 */
-		in.nSuperCool = msr->param.nSuperCool;
-		in.dCoolFac = msr->param.dCoolFac;
-		in.dCoolDens = msr->param.dCoolDens;
-		in.dCoolMaxDens = msr->param.dCoolMaxDens;
-		pstCoolVelocity(msr->pst,&in,sizeof(in),NULL,NULL);
-		}
-#endif
 	}
 
 void msrGrowMass(MSR msr, double dTime, double dDelta)
@@ -9258,11 +9192,7 @@ void msrInitCooling(MSR msr)
   in.dKpcUnit = msr->param.dKpcUnit;
 #ifdef COOLING_MOLECULARH
   in.dMsolUnit = msr->param.dMsolUnit;
-#ifdef RADIATIVEBOX
-  in.dInitStarMass = msr->param.stfm->dInitStarMass;
-#else
   in.dInitStarMass = 1.0;
-#endif
 #endif
   in.z = 60.0; /*dummy value*/
   in.dTime = 0.0; /* dummy value */

@@ -43,11 +43,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 	double *d2a; 
 	double *sqrttmp; 
 
-#ifdef GR_DRAG
-	const double prefac = -5.163e-21; /* c = 1.006e4 in pkdgrav units */
-	FLOAT vx,vy,vz;
-	double ct2,e;
-#endif
 
 	/*
 	 ** Now process the two interaction lists for each active particle.
@@ -228,24 +223,12 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 #endif
 			twoh = p[i].fSoft + p[j].fSoft;
 			SPLINE(d2,twoh,a,b);
-#ifdef GR_DRAG
-			vx = p[j].v[0] - p[i].v[0];
-			vy = p[j].v[1] - p[i].v[1];
-			vz = p[j].v[2] - p[i].v[2];
-			ct2 = (dx*vx + dy*vy + dz*vz)*(dx*vx + dy*vy + dz*vz)/(d2*(vx*vx + vy*vy + vz*vz)); /* cos^2(theta) */
-			e = prefac*(p[i].fMass + p[j].fMass)*p[i].fMass*p[j].fMass*(12 - 11*ct2)/(d2*d2);
-#endif
 			idt2 = (p[i].fMass + p[j].fMass)*b;
 			if (TYPEQueryACTIVE(&(p[j]))) {
 				p[j].fPot -= a*p[i].fMass;
 				p[j].a[0] -= dx*b*p[i].fMass;
 				p[j].a[1] -= dy*b*p[i].fMass;
 				p[j].a[2] -= dz*b*p[i].fMass;
-#ifdef GR_DRAG
-				p[j].a[0] += vx*e;
-				p[j].a[1] += vy*e;
-				p[j].a[2] += vz*e;
-#endif
 				if (idt2 > p[j].dtGrav) p[j].dtGrav = idt2;
 				}
 			if (TYPEQueryACTIVE(&(p[i]))) {
@@ -253,11 +236,6 @@ int pkdBucketInteract(PKD pkd,int iBucket,int iOrder)
 				p[i].a[0] += dx*b*p[j].fMass;
 				p[i].a[1] += dy*b*p[j].fMass;
 				p[i].a[2] += dz*b*p[j].fMass;
-#ifdef GR_DRAG
-				p[i].a[0] -= vx*e;
-				p[i].a[1] -= vy*e;
-				p[i].a[2] -= vz*e;
-#endif
 				if (idt2 > p[i].dtGrav) p[i].dtGrav = idt2;
 				}
 			}

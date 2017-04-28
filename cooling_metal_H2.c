@@ -131,10 +131,6 @@ void clInitConstants( COOL *cl, double dGmPerCcUnit, double dComovingGmPerCcUnit
     cl->bMetal = CoolParam.bMetal; 
     cl->bShieldHI = CoolParam.bShieldHI;
     cl->dClump = CoolParam.dClump;
-#ifdef  RADIATIVEBOX
-    cl->bAgeFromMass = CoolParam.bAgeFromMass;
-    cl->dLymanWernerFrac = CoolParam.dLymanWernerFrac;
-#endif
 
         {
         clDerivsData *Data = cl->DerivsData;
@@ -730,14 +726,8 @@ void clRates( COOL *cl, RATE *Rate, double T, double rho, double ZMetal, double 
     Rate->Phot_HeII = cl->R.Rate_Phot_HeII;
 
     Rate->Phot_H2 = cl->R.Rate_Phot_H2_cosmo
-#ifdef  RADIATIVEBOX
-        + Rate_Phot_H2_stellar*cl->dLymanWernerFrac/cl->dKpcUnit/cl->dKpcUnit/cl->dExpand/cl->dExpand*1.2363437e-29
-#endif
         ;
     Rate->CorreLength = correL * cl->dKpcUnit * 3.08568025e21 * cl->dExpand; /* From system units to cm*/
-#ifdef RADIATIVEBOX
-    Rate->LymanWernerCode = Rate_Phot_H2_stellar;
-#endif
     if (cl->bSelfShield) {
         double logen_B;
         logen_B = log10(rho*CL_B_gm);
@@ -803,14 +793,8 @@ void clRates_Table_Lin( COOL *cl, RATE *Rate, double T, double rho, double ZMeta
     Rate->Phot_HeI = cl->R.Rate_Phot_HeI;
     Rate->Phot_HeII = cl->R.Rate_Phot_HeII;
     Rate->Phot_H2 = cl->R.Rate_Phot_H2_cosmo 
-#ifdef  RADIATIVEBOX
-        + Rate_Phot_H2_stellar*cl->dLymanWernerFrac/cl->dKpcUnit/cl->dKpcUnit/cl->dExpand/cl->dExpand*1.2363437e-29
-#endif
         ; 
     Rate->CorreLength = correL * cl->dKpcUnit * 3.08568025e21 * cl->dExpand; /* From system units to cm*/
-#ifdef RADIATIVEBOX
-    Rate->LymanWernerCode = Rate_Phot_H2_stellar;
-#endif
     if (cl->bSelfShield) {
         double logen_B;
         logen_B = log10(rho*CL_B_gm);
@@ -882,14 +866,8 @@ void clRates_Table( COOL *cl, RATE *Rate, double T, double rho, double ZMetal, d
     Rate->Phot_HeI = cl->R.Rate_Phot_HeI;
     Rate->Phot_HeII = cl->R.Rate_Phot_HeII;
     Rate->Phot_H2 = cl->R.Rate_Phot_H2_cosmo
-#ifdef  RADIATIVEBOX
-        + Rate_Phot_H2_stellar*cl->dLymanWernerFrac/cl->dKpcUnit/cl->dKpcUnit/cl->dExpand/cl->dExpand*1.2363437e-29
-#endif
         ;
     Rate->CorreLength = correL * cl->dKpcUnit*3.08568025e21 * cl->dExpand; /* From system units to cm*/
-#ifdef RADIATIVEBOX
-    Rate->LymanWernerCode = Rate_Phot_H2_stellar;
-#endif
     if (cl->bSelfShield) {
         double logen_B;
         logen_B = log10(rho*CL_B_gm);
@@ -2156,48 +2134,6 @@ double clCoolLowT( double T ) {
     }
 
 /*----  Lyman-Warner Radiation from young stars ------gasoline.metal.mh.rad.gdb*/
-#ifdef  RADIATIVEBOX
-/*---- If the ages of stars are not already set, this will estimate them from the mass */
-double CoolAgeFromMass(COOL *cl, double fMassStar){
-  double dAlog10, dLogMassFrac;
-  dLogMassFrac = log10(fMassStar/cl->dInitStarMass);
-  if (dLogMassFrac > 0) dLogMassFrac = 0;
-  dAlog10 = 6.53429 - 
-    49.4558*dLogMassFrac - 
-    475.707*dLogMassFrac*dLogMassFrac - 
-    3145.14*dLogMassFrac*dLogMassFrac*dLogMassFrac -
-    7936.82*dLogMassFrac*dLogMassFrac*dLogMassFrac*dLogMassFrac;
- 
-  return pow(10,dAlog10);
-}
-
-
-double CoolLymanWerner(COOL *cl, double dAge){
-    double  a0 = -84550.812,
-        a1 =  54346.066,
-        a2 = -13934.144,
-        a3 =  1782.1741,
-        a4 = -113.68717,
-        a5 =  2.8930795;
-
-    double dA0old =  70.908586,
-      dA1old = -4.0643123;
-
-    double temp, dAlog10;
-
-    if (dAge < 1e7)  dAlog10 = 7.0; /*used 1e6 as the minimum at one point*/
-    else dAlog10 = log10(dAge);
-    if (dAlog10 < 9.0) temp = pow(10,a0
-	       + a1*dAlog10
-	       + a2*dAlog10*dAlog10
-	       + a3*dAlog10*dAlog10*dAlog10
-	       + a4*dAlog10*dAlog10*dAlog10*dAlog10
-	       + a5*dAlog10*dAlog10*dAlog10*dAlog10*dAlog10 - 30.0); /*Divide by 1e30 to keep things in bounds*/
-
-    else temp = pow(10,dA0old + dA1old*dAlog10 - 30.0); /*Close to zero*/
-    return cl->dMsolUnit*cl->dInitStarMass*temp;
-    }
-#endif
 
 /* Returns Heating - Cooling excluding External Heating, units of ergs s^-1 g^-1 
    Public interface CoolEdotInstantCode */
@@ -2728,14 +2664,6 @@ void CoolAddParams( COOLPARAM *CoolParam, PRM prm ) {
 	prmAddParam(prm,"dClump",2,&CoolParam->dClump, /* Sub-grid clumping factor used to calculate H2 formation on dust */
         sizeof(double),"clump",
         "<Clumping Factor for H2 Formation>  = 10");
-#ifdef  RADIATIVEBOX
-	CoolParam->bAgeFromMass = 0;
-	prmAddParam(prm,"bAgeFromMass",0,&CoolParam->bAgeFromMass,sizeof(int),
-        "afm","enable/disable Stellar Age from Mass = -afm"); /*Whether the mass is used to find the stellar age for the purpose of calculating LW photons */
-	CoolParam->dLymanWernerFrac = 0.5; /* Multipler for the H2 photo-dissociation by stellar LW photons (i.e., what fraction of the LW radiation escapes the birth cloud) */
-	prmAddParam(prm,"dLymanWernerFrac",2,&CoolParam->dLymanWernerFrac,sizeof(double),
-        "lwf","coeff times stellar lyman-werner photons");
-#endif
 	strcpy(CoolParam->CoolInFile,"cooltable_xdr\0");
 	prmAddParam(prm,"CoolInFile",3,&CoolParam->CoolInFile,256,"coolin",
         "<cooling table file> (file in xdr binary format)"); 
@@ -2755,10 +2683,6 @@ void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr) {
     LogParams(lgr, "COOLING", "bMetal: %d",CoolParam->bMetal); 
     LogParams(lgr, "COOLING", "bShieldHI: %d",CoolParam->bShieldHI); 
     LogParams(lgr, "COOLING", "dClump: %g",CoolParam->dClump); 
-#ifdef  RADIATIVEBOX
-    LogParams(lgr, "COOLING", " bAgeFromMass: %d",CoolParam->bAgeFromMass); 
-    LogParams(lgr, "COOLING", " dLymanWernerFrac: %g",CoolParam->dLymanWernerFrac); 
-#endif
 
     }
 
@@ -2843,9 +2767,6 @@ void CoolDefaultParticleData( COOLPARTICLE *cp )
 	cp->f_HeI = 0.06;
 	cp->f_HeII = 0.0;
 	cp->f_H2 = 0.0;
-#ifdef  RADIATIVEBOX
-	cp->dLymanWerner = 0.0;
-#endif
     }
 
 void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, double dDensity, double dTemp, double ZMetal)
@@ -2858,11 +2779,7 @@ void CoolInitEnergyAndParticleData( COOL *cl, COOLPARTICLE *cp, double *E, doubl
 	cp->f_HeI = 1.0;
 	cp->f_HeII = 0.0;
 	cp->f_H2 = 0.0;
-#ifdef  RADIATIVEBOX
-	double dLymanWerner = cp->dLymanWerner;
-#else
 	double dLymanWerner = 0;
-#endif 
 	CoolPARTICLEtoPERBARYON(cl, &Y, cp, ZMetal);
 	CLRATES(cl,&r,dTemp,CodeDensityToComovingGmPerCc(cl,dDensity), ZMetal, correL, dLymanWerner);
 	clAbunds(cl,&Y,&r,CodeDensityToComovingGmPerCc(cl,dDensity), ZMetal);
@@ -2887,11 +2804,7 @@ void CoolSetTime( COOL *cl, double dTime, double z ) {
 void CoolIntegrateEnergy(COOL *cl, COOLPARTICLE *cp, double *E,
     double ExternalHeating, double rho, double ZMetal, double tStep, double correL  ) {
     PERBARYON Y;
-#ifdef  RADIATIVEBOX
-	double dLymanWerner = cp->dLymanWerner;
-#else
 	double dLymanWerner = 0;
-#endif       
     CoolPARTICLEtoPERBARYON(cl, &Y,cp, ZMetal);
     clIntegrateEnergy(cl, &Y, E, ExternalHeating, rho, ZMetal, tStep, correL, dLymanWerner);
     CoolPERBARYONtoPARTICLE(cl, &Y, cp, ZMetal);
@@ -2903,11 +2816,7 @@ void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *ECode,
 	PERBARYON Y;
 	double T,E,rho;
 
-#ifdef  RADIATIVEBOX
-	double dLymanWerner = cp->dLymanWerner;
-#else
 	double dLymanWerner = 0;
-#endif
 
 	E = CoolCodeEnergyToErgPerGm( cl, *ECode );
 	rho = CodeDensityToComovingGmPerCc(cl,rhoCode );
@@ -2924,11 +2833,7 @@ double CoolHeatingRate( COOL *cl, COOLPARTICLE *cp, double T, double dDensity, d
     PERBARYON Y;
     RATE Rate;
     double Y_H, Y_He, Y_eMax;
-#ifdef  RADIATIVEBOX
-    double dLymanWerner = cp->dLymanWerner;
-#else
     double dLymanWerner= 0;
-#endif
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
     CoolPARTICLEtoPERBARYON(cl, &Y, cp, ZMetal);
     CLRATES(cl, &Rate, T, dDensity, ZMetal, correL, dLymanWerner);
@@ -2944,11 +2849,7 @@ double CoolEdotInstantCode(COOL *cl, COOLPARTICLE *cp, double ECode,
     double T,E,rho,Edot;
     double Y_H, Y_He, Y_eMax;
     double dHeat, dCool;
-#ifdef  RADIATIVEBOX
-    double dLymanWerner = cp->dLymanWerner;
-#else
     double dLymanWerner = 0;
-#endif
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
 
     E = CoolCodeEnergyToErgPerGm( cl, ECode );
@@ -2969,11 +2870,7 @@ double CoolCoolingCode(COOL *cl, COOLPARTICLE *cp, double ECode,
     RATE Rate;
     double T,E,rho,Edot;
     double Y_H, Y_He, Y_eMax;
-#ifdef  RADIATIVEBOX
-    double dLymanWerner = cp->dLymanWerner;
-#else
     double dLymanWerner = 0;
-#endif
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
 
     E = CoolCodeEnergyToErgPerGm( cl, ECode );
@@ -2995,11 +2892,7 @@ double CoolHeatingCode(COOL *cl, COOLPARTICLE *cp, double ECode,
     RATE Rate;
     double T,E,rho,Edot;
     double Y_H, Y_He, Y_eMax;
-#ifdef  RADIATIVEBOX
-    double dLymanWerner = cp->dLymanWerner;
-#else
     double dLymanWerner = 0;
-#endif
     clSetAbundanceTotals(cl,ZMetal,&Y_H,&Y_He,&Y_eMax);
 
     E = CoolCodeEnergyToErgPerGm( cl, ECode );

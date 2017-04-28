@@ -121,9 +121,6 @@ typedef struct particle {
 #ifdef SLIDING_PATCH
     FLOAT dPy;              /* Canonical momentum for Hill eqn. */
 #endif
-#ifdef SUPERCOOL
-    FLOAT vMean[3];
-#endif
     FLOAT fBallMax;         /* SPH 2h Max value */
 #ifdef GASOLINE
     FLOAT c;                /* sound speed */
@@ -493,12 +490,6 @@ struct pkdCalcCellStruct {
     double Hxxxx,Hxyyy,Hxxxy,Hyyyy,Hxxxz,Hyyyz,Hxxyy,Hxxyz,Hxyyz;
     double Hxxzz, Hxyzz, Hxzzz, Hyyzz, Hyzzz, Hzzzz;
     double Bmax,B2,B3,B4,B5,B6;
-#ifdef  RADIATIVEBOX
-    double fLW;
-    double gmass;
-    double gmom;
-    FLOAT cLumLW[3];
-#endif
     };
 
 
@@ -1018,10 +1009,6 @@ void pkdKickVpred(PKD pkd, double dvFacOne, double dvFacTwo);
 #endif
 #endif
 
-#ifdef RADIATIVEBOX
-void pkdLocalFinishLWTree(PKD pkd,int iCell, double fPrevLW, FLOAT *PrevcLumLW);
-void pkdFinishLWTree(PKD pkd);
-#endif
 
 void pkdInitRotBar(PKD pkd, ROTBAR rotbar);
 void pkdRotatingBar(PKD pkd, double amp, /* relative amplitude of bar */

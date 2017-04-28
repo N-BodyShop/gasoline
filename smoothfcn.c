@@ -2689,64 +2689,6 @@ void SinkForm(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 }
 
 
-#ifdef SUPERCOOL
-void initMeanVel(void *p)
-{
-	int j;
-
-	for (j=0;j<3;++j) {
-		((PARTICLE *)p)->vMean[j] = 0.0;
-		}
-	}
-
-void combMeanVel(void *p1,void *p2)
-{
-	int j;
-
-	for (j=0;j<3;++j) {
-		((PARTICLE *)p1)->vMean[j] += ((PARTICLE *)p2)->vMean[j];
-		}
-	}
-
-void MeanVel(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
-{
-	PARTICLE *q;
-	FLOAT fNorm,ih2,r2,rs;
-	int i,j;
-
-	ih2 = 4.0/BALL2(p);
-	fNorm = M_1_PI*sqrt(ih2)*ih2;
-	for (i=0;i<nSmooth;++i) {
-		r2 = nnList[i].fDist2*ih2;
-		KERNEL(rs,r2);
-		rs *= fNorm;
-		q = nnList[i].pPart;
-		for (j=0;j<3;++j) {
-			p->vMean[j] += rs*q->fMass/q->fDensity*q->v[j];
-			}
-		}
-	}
-
-void MeanVelSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
-{
-	PARTICLE *q;
-	FLOAT fNorm,ih2,r2,rs;
-	int i,j;
-
-	ih2 = 4.0/BALL2(p);
-	fNorm = 0.5*M_1_PI*sqrt(ih2)*ih2;
-	for (i=0;i<nSmooth;++i) {
-		r2 = nnList[i].fDist2*ih2;
-		KERNEL(rs,r2);
-		rs *= fNorm;
-		q = nnList[i].pPart;
-		for (j=0;j<3;++j) {
-			p->vMean[j] += rs*q->fMass/q->fDensity*q->v[j];
-			q->vMean[j] += rs*p->fMass/p->fDensity*p->v[j];
-			}
-		}
-	}
-#endif /* SUPER_COOL */
 
 
 #ifdef GASOLINE

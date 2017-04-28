@@ -54,18 +54,11 @@ typedef struct CoolingParametersStruct {
   double dCoolingTmin;     
   double dCoolingTmax;
   double dClump;
-#ifdef  RADIATIVEBOX       
-  double dLymanWernerFrac; /* Fraction of Lyman Werner radiation that escapes birth cloud.  0.5 is a good value.*/
-  int bAgeFromMass; /*  Set to true to determine age of star particle from mass compared to formation mass when calculating LW radiation.  Useful in running ICs which already have stars*/
-#endif        
 } COOLPARAM;
 
 typedef struct CoolingParticleStruct {
   FLOAT f_HI,f_HeI,f_HeII;
   FLOAT f_H2;	/* Abundance of ions */
-#ifdef  RADIATIVEBOX
-  double     dLymanWerner; /* Flux of Lyman Werner radiation at the gas particle */
-#endif
 } COOLPARTICLE;
 
 typedef struct { 
@@ -195,10 +188,6 @@ typedef struct CoolingPKDStruct {
   
   int        bShieldHI;
   double     dClump; /* Subgrid clumping factor for determining rate of H2 formation on dust.  10 is a good value*/
-#ifdef  RADIATIVEBOX
-  int        bAgeFromMass; /*Set to true to determine age of star particle from mass compared to formation mass when calculating LW radiation.  Useful in running ICs which already have stars*/
-  double     dLymanWernerFrac; /*  Set to true to determine age of star particle from mass compared to formation mass when calculating LW radiation.  Useful in running ICs which already have stars*/
-#endif
   double     dGmPerCcUnit;
   double     dComovingGmPerCcUnit;
   double     dExpand; /*cosmological expansion factor*/

@@ -1669,9 +1669,6 @@ struct inSphViscosityLimiter {
     };
 void pstSphViscosityLimiter(PST,void *,int,void *,int *);
 
-#ifdef RADIATIVEBOX
-void pstFinishLWTree(PST,void *,int,void *,int *);
-#endif
 
 struct inUpdateShockTracker {
     double dDelta;

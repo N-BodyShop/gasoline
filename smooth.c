@@ -260,16 +260,6 @@ int smInitialize(SMX *psmx,PKD pkd,SMF *smf,int nSmooth,int bPeriodic,
         comb = combSinkMerge;
         smx->fcnPost = NULL;
         break;
-#ifdef SUPERCOOL
-    case SMX_MEANVEL:
-        smx->fcnSmooth = bSymmetric?MeanVelSym:MeanVel;
-        initParticle = initMeanVel;
-        initTreeParticle = NULL;
-        init = initMeanVel;
-        comb = combMeanVel;
-        smx->fcnPost = NULL;
-        break;
-#endif
 #ifdef GASOLINE
     case SMX_SPHPRESSURETERMS:
         smx->fcnSmooth = bSymmetric?SphPressureTermsSym:SphPressureTerms;

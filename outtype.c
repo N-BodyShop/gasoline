@@ -140,10 +140,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 /*Gas shear in terms of mach number, used when calculating column density*/
 
 
-#ifdef  RADIATIVEBOX
-	case OUT_COOL_LYMANWERNER_ARRAY:
-        return(p->CoolParticle.dLymanWerner); /* Lyman Werner Radiation output array*/
-#endif /*RADIATIVEBOX*/
 
 #ifdef COOLING_MOLECULARH
 	case OUT_COOL_EDOT_ARRAY:
@@ -445,11 +441,6 @@ void VecFilename(char *achFile, int iType)
 		strncat(achFile,"correL",256);
 		break;
 #endif
-#ifdef  RADIATIVEBOX
-	case OUT_COOL_LYMANWERNER_ARRAY:
-		strncat(achFile,"lw",256);
-		break;	
-#endif 
 	case OUT_COOL_EDOT_ARRAY:
 		strncat(achFile,"eDot",256);
 		break;
@@ -634,9 +625,6 @@ void pkdOutNChilada(PKD pkd,char *pszFileName,int nGasStart, int nDarkStart, int
     case OUT_COOL_ARRAY15:
 #ifdef COOLING_MOLECULARH
     case OUT_CORREL_ARRAY: 
-#endif
-#ifdef RADIATIVEBOX
-    case OUT_COOL_LYMANWERNER_ARRAY:
 #endif
     case OUT_SPHH_ARRAY:
     case OUT_TEMP_ARRAY:

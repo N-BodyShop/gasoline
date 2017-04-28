@@ -71,9 +71,6 @@ struct parameters {
     int bDoCorreL; /* Output the correlation length used for calculating H2 shielding*/
 #endif
     int bDoCSound;
-#ifdef  RADIATIVEBOX
-    int bDoStellarLW; /*Turn this on to have the LW radiation outputted*/
-#endif
 #ifdef PARTICLESPLIT
     double dInitGasMass;
 #endif

@@ -268,9 +268,6 @@ void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr) {
     LogParams(lgr, "COOLING", "Y_Total: %g",CoolParam->Y_Total); 
     LogParams(lgr, "COOLING", "dCoolingTmin: %g",CoolParam->dCoolingTmin); 
     LogParams(lgr, "COOLING", "dCoolingTmax: %g",CoolParam->dCoolingTmax); 
-#ifdef MODBATEPOLY
-    LogParams(lgr, "COOLING", " Polytrope RHOMIN %g",RHOMIN); 
-#endif
 	}
 
 void CoolOutputArray( COOLPARAM *CoolParam, int cnt, int *type, char *suffix ) {
@@ -323,74 +320,7 @@ double CoolCodeEnergyToTemperature( COOL *Cool, COOLPARTICLE *cp, double E, doub
 	return CoolEnergyToTemperature( Cool, cp, E*Cool->dErgPerGmUnit, rho*Cool->dGmPerCcUnit );
 	}
 
-#ifdef MODBATEPOLY
-/* Taken from Bate, ApJ, 508, L95 (1998) 
-   rho = powerlaw with 4 gamma values 
-   PoverRho has units of ergs per gm (same as speed squared)
-*/
-/* close to "opacity limit" of Bate et al. -- corrected up to actual T when used */
-//#define RHOMIN 1e-16
-//#define RHOMIN 3.5e-19
-#define RHOMIN 1.5e-15
-  /* mu=2.33, T=1 K  P/rho = kT/(mu*mH) */
-#define PONRHOMIN (1.38066e-16/(2.33*1.67e-24)*1)
-#define GetGammaEff(rho__,gammaEff__, PonRho__) { \
-  if ( rho__ <= RHOMIN ) { \
-     gammaEff__ = 1.0; \
-     PonRho__  = PONRHOMIN; \
-  } else if ( rho__ <= RHOMIN*10 ) { \
-     double x_ = log10(rho__/RHOMIN); \
-     if (x_ < 0.5) { \
-       gammaEff__ = 1+2*x_*x_; \
-       PonRho__  = PONRHOMIN*pow(10.,2/3.*x_*x_*x_); \
-       } \
-     else { \
-       gammaEff__ = 4*x_-2*x_*x_; \
-       PonRho__  = PONRHOMIN*pow(10.,2*x_*x_-2./3.*x_*x_*x_+4./24.-x_); \
-       } \
-  } else { \
-     gammaEff__ = 2; \
-     PonRho__  = rho__*PONRHOMIN/RHOMIN*0.316228; \
-  } \
-}
-
-#define CoolCodePressureOnDensitySoundSpeed( cl__, cp__, uPred__, fDensity__, gamma__, gammam1__, PoverRho__, c__ ) { \
-  double rho__ = (fDensity__)*(cl__)->dGmPerCcUnit; \
-  double gammaEff__, PonRhoCGS__; \
-  GetGammaEff(rho__,gammaEff__, PonRhoCGS__); \
-  PonRhoCGS__ *= cl->BaseT; \
-  *(PoverRho__) = PonRhoCGS__*(cl__)->diErgPerGmUnit; \
-  *(c__) = sqrt((gammaEff__)*(*(PoverRho__))); } 
-
-#endif
 /*default*/
-#ifdef BATEPOLY
-#define GetGammaEff(rho__,gammaEff__, KEff__) { \
-  double coeff__ = 0.1*18321.359*18321.359; /* mu=2.46, T=1 K, gamma=7/5   2.0e4*2.0e4; */ \
-  if ( rho__ <= 1e-13 ) { \
-     gammaEff__ = 1.0; \
-     KEff__  = coeff__; \
-  } else if ( rho__ <= 5.7e-8 ) { \
-     gammaEff__ = 1.4; \
-     KEff__  = coeff__*158489.; \
-  } else if ( rho__ <= 1e-3 ) { \
-     gammaEff__ = 1.15; \
-     KEff__  = coeff__*158489.*0.0154514; \
-  } else { \
-     gammaEff__ = 5./3.; \
-     KEff__  = coeff__*158489.*0.0154514*35.4813; \
-  } \
-}
-
-#define CoolCodePressureOnDensitySoundSpeed( cl__, cp__, uPred__, fDensity__, gamma__, gammam1__, PoverRho__, c__ ) { \
-  double rho__ = (fDensity__)*(cl__)->dGmPerCcUnit; \
-  double gammaEff__, KEff__; \
-  GetGammaEff(rho__,gammaEff__, KEff__); \
-  KEff__ *= cl->BaseT; \
-  *(PoverRho__) = KEff__*pow(rho__,gammaEff__-1.)*(cl__)->diErgPerGmUnit; \
-  *(c__) = sqrt((gammaEff__)*(*(PoverRho__))); } 
-
-#endif
 
 /* Integration Routines */
 
@@ -402,28 +332,6 @@ void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *ECode,
 
 	double rho = rhoCode*cl->dGmPerCcUnit, Ephys; 
 	double gammaEffco; 
-#ifdef MODBATEPOLY
-	double PonRho; 
-	GetGammaEff(rho,gammaEff,PonRho);
-	PonRho *= cl->BaseT;
-	
-	Ephys = PonRho*(7./5.-1); /* cgs Erg per g */
-
-	*ECode = CoolErgPerGmToCodeEnergy(cl, Ephys);
-#endif
-#ifdef BATEPOLY
-	double KEff,gammaEff;
-	GetGammaEff(rho,gammaEff,KEff);
-	KEff *= cl->BaseT;
-	
-/* Bate specifies P(rho),  e = P/rho /(gamma-1) */
-	if (gammaEff < 1.66) 
-	    Ephys = KEff*pow(rho,gammaEff-1.)/(7./5.-1);
-	else
-	    Ephys = KEff*pow(rho,gammaEff-1.)/(5./3.-1);
-
-	*ECode = CoolErgPerGmToCodeEnergy(cl, Ephys);
-#endif
 	/*
 	radius= sqrt(posCode[0]*posCode[0]+posCode[1]*posCode[1]+posCode[2]*posCode[2])
 		*cl->dKpcUnit*CONVERT_CMPERKPC;

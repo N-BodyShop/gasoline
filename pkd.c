@@ -2163,10 +2163,6 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
     int pj;
     double m,dx,dy,dz,d2,d1;
     struct pkdCalcCellStruct cc;
-#ifdef  RADIATIVEBOX
-    double dAge,dxg,dyg,dzg,d2g,mg;
-    int j;
-#endif
 
     /*
      ** Initialize moments.
@@ -2214,12 +2210,6 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
         cc.B4 = 0.0;
         }
     cc.Bmax = 0.0;
-#ifdef  RADIATIVEBOX
-    cc.fLW = 0.0; /* total LW radiation in box*/
-    cc.gmass = 0.0; /* total mass of gas*/
-    cc.gmom = 0.0; /* moment of gas*/
-    for (j=0;j<3;++j) cc.cLumLW[j] = 0; /* luminosity weighted center of LW radiation */
-#endif
     /*
      ** Calculate moments and B numbers about center-of-mass.
      */
@@ -2241,28 +2231,6 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
         cc.B4 += m*d2*d2;
         cc.B5 += m*d2*d2*d1;
         cc.B6 += m*d2*d2*d2;
-#ifdef  RADIATIVEBOX
-        if (TYPETest(&(pkd->pStore[pj]),TYPE_GAS)) { /*find the moment of the gas -- this will be used to determine average distance of the gas from the average source of radiation for the purposes of combining boxes*/
-          mg = pkd->pStore[pj].fMass;
-          dxg = pkd->pStore[pj].r[0] - rcm[0];
-          dyg = pkd->pStore[pj].r[1] - rcm[1];
-          dzg = pkd->pStore[pj].r[2] - rcm[2];
-          d2g = dxg*dxg + dyg*dyg + dzg*dzg;
-          cc.gmom += mg*d2g;
-          cc.gmass += mg;
-        }
-        
-        if (TYPETest(&(pkd->pStore[pj]),TYPE_STAR)) {
-          if (pkd->pStore[pj].fTimeForm >= 0 && pkd->Cool->bAgeFromMass && pkd->pStore[pj].CoolParticle.dLymanWerner == 0) { 
-                    /*If the ages of stars are not already set, this will estimate them from the mass */
-            dAge = CoolAgeFromMass(pkd->Cool, pkd->pStore[pj].fMassForm); 
-            pkd->pStore[pj].CoolParticle.dLymanWerner = CoolLymanWerner(pkd->Cool, dAge);
-          }
-          for (j=0;j<3;++j) cc.cLumLW[j] += pkd->pStore[pj].CoolParticle.dLymanWerner*pkd->pStore[pj].r[j]; /*average location of LW source*/
-          cc.fLW += pkd->pStore[pj].CoolParticle.dLymanWerner; /*Total LW radiation*/
-        }
- /* Sums the LW flux emitted from the star particles in the bucket*/
-#endif
         switch (iOrder) {
         case 4:
             /*
@@ -2314,14 +2282,6 @@ void pkdCalcCell(PKD pkd,KDN *pkdn,FLOAT *rcm,int iOrder,
         cc.Bmax*=2;
         bSinkCell=0;
         }
-#endif
-#ifdef  RADIATIVEBOX
-    if (cc.gmass > 0) cc.gmom /= cc.gmass; /*Finish determining the moment of the gas*/
-    if (cc.fLW > 0) {
-      for (j=0;j<3;++j) {
-        cc.cLumLW[j] /= cc.fLW; /*Finish average center of LW radiation*/
-      }
-    }
 #endif
     *pcc = cc;
     }
@@ -3251,134 +3211,6 @@ pkdGravAll(PKD pkd,int nReps,int bPeriodic,int iOrder,int bEwald,int iEwOrder,
     mdlDiag(pkd->mdl, achDiag);
     }
 
-#ifdef  RADIATIVEBOX
-/* Walk down the tree within a node setting the LW flux in each cell equal to the maximum of the typical flux in that cell of the typical flux in its parent cell, CC*/
-void pkdLocalFinishLWTree(PKD pkd, int iCell,
-              double fPrevLW, /* Total LW luminosity in parent cell*/
-              FLOAT *PrevcLumLW /* Luminosity-weighted center in parent cell*/
-              )        
-{
-    PARTICLE *p;
-    KDN *pkdn,*pkdnL;
-    int nPart,pj,iRight,iLeft,j;
-    double fDistanceCell2 = 0, fDistance2 = 0, fPrevAveLW, fDistance2min, smooth2;
-    nPart = pkd->nPart;
-    p = pkd->pStore;
-    pkdn = &pkd->kdNodes[iCell];
-
-    /*  Determine flux at center of mass of cell from average source of in the parent cell */
-    for (j = 0; j<3; ++j){
-      fDistanceCell2 =+ (PrevcLumLW[j] - pkdn->r[j])*(PrevcLumLW[j] - pkdn->r[j]);
-    }
-    if (fDistanceCell2 < pkdn->mom.gmom) fDistanceCell2 = pkdn->mom.gmom; /* At minimum, this average distance between gas mass center of child cell and flux center of parent cell should be the moment of the gas in the child cell*/
-    if (fDistanceCell2 != 0) fPrevAveLW = fPrevLW/fDistanceCell2; /* Calculated typical flux with radiative source being in the parent cell*/
-    else fPrevAveLW = 0;
-    if (pkdn->mom.gmom == 0 || fPrevAveLW > pkdn->mom.fLW/pkdn->mom.gmom){
-      /* If using the radiation from the parent cell would typically provide more flux, set total luminosity and average source position equal to that in parent cell */
-      pkdn->mom.fLW = fPrevLW;
-      for (j=0;j<3;++j) {
-        pkdn->mom.cLumLW[j] = PrevcLumLW[j];
-      }
-    } 
-    if (pkdn->iLower != -1) {
-      pkdnL =  &pkd->kdNodes[pkdn->iLower];
-      iLeft = pkdn->iLower;
-      pkdLocalFinishLWTree(pkd,pkdn->iLower,pkdn->mom.fLW,pkdn->mom.cLumLW);
-      if (pkdnL->iUpper != -1){
-        iRight = pkdnL->iUpper;
-        pkdLocalFinishLWTree(pkd,pkdnL->iUpper,pkdn->mom.fLW,pkdn->mom.cLumLW);       
-      }
-    }
-    else {
-      /* If you are in a bucket, calculate the flux at each gas particle from the total luminosity at the average position of the source */
-      for (pj=pkdn->pLower;pj<=pkdn->pUpper;++pj) {
-        if (TYPETest(&(p[pj]),TYPE_GAS))
-          {
-        fDistance2 = 0;
-        for (j=0;j<3;++j) {
-          fDistance2 += pow((p[pj].r[j] - pkdn->mom.cLumLW[j]),2);
-        }       
-        fDistance2min = p[pj].fSoft*p[pj].fSoft*0.25;
-        if (fDistance2 < fDistance2min) {
-          fDistance2 = fDistance2min;
-        }
-        assert(fDistance2 > 0);
-        p[pj].CoolParticle.dLymanWerner =  pkdn->mom.fLW/(4.0*M_PI*fDistance2);
-          }     
-      }
-    }
-}
-
-/* Walk down the top level of the tree setting the LW flux in each cell equal to the maximum of the typical flux in that cell of the typical flux in its parent cell, CC*/
-void pkdFinishLWTree(PKD pkd)
-{
-       KDN *pbuc,*pkdn,*pkdnL, *pkdnR;
-       int iCell,iLeft,iRight,id,idLL,idLU,idRL,idRU,j;
-       double fDistanceCell2, fPrevAveLW;
-
-    /*
-    ** Walk the top tree first, finding local trees to
-    ** continue walking.
-    */
-    iCell = ROOT;
-    pkdn = &pkd->kdTop[iCell];
-    while (1) {
-      id = pkd->kdTop[iCell].pLower;
-      if (id == pkd->idSelf) {
-        /* Start parallel tree traversal*/
-        pkdLocalFinishLWTree(pkd,pkd->iRoot,pkdn->mom.fLW,pkdn->mom.cLumLW);
-        SETNEXT(iCell);
-          if (iCell == ROOT)   break;
-      }
-      else if (id >= 0) {
-        /*Ignore, other processors will take care of */
-        SETNEXT(iCell);
-          if (iCell == ROOT) break;
-       }
-      else {    
-        pkdn = &pkd->kdTop[iCell];   
-        iLeft = LOWER(iCell);
-        iRight = UPPER(iCell);
-
-        pkdnL = &pkd->kdTop[iLeft];
-        idLL = pkd->kdTop[iLeft].pLower;
-        idLU = pkd->kdTop[iLeft].pUpper;
-        /*  Determine flux at center of mass of cell from average source of in the parent cell */
-        fDistanceCell2 = 0;
-        for (j = 0; j<3; ++j){
-          fDistanceCell2 =+ (pkdn->mom.cLumLW[j] - pkdnL->r[j])*(pkdn->mom.cLumLW[j] - pkdnL->r[j]);
-        }
-        if (fDistanceCell2 < pkdnL->mom.gmom) fDistanceCell2 = pkdnL->mom.gmom;/* At minimum, this average distance between gas mass center of child cell and flux center of parent cell should be the moment of the gas in the child cell*/
-        fPrevAveLW = pkdn->mom.fLW/fDistanceCell2;
-        if (pkdnL->mom.gmom == 0 || fPrevAveLW > pkdnL->mom.fLW/pkdnL->mom.gmom) {
-          /* If using the radiation from the parent cell would typically provide more flux, set total luminosity and average source position equal to that in parent cell */
-          pkdnL->mom.fLW = pkdn->mom.fLW;
-          for (j=0;j<3;++j) {
-        pkdnL->mom.cLumLW[j] = pkdn->mom.cLumLW[j];
-          }       
-        }
-        /* As above for right node*/
-        pkdnR = &pkd->kdTop[iRight];
-        idRL = pkd->kdTop[iRight].pLower;
-        idRU = pkd->kdTop[iRight].pUpper;
-        fDistanceCell2 = 0;
-        for (j = 0; j<3; ++j){
-          fDistanceCell2 =+ (pkdn->mom.cLumLW[j] - pkdnR->r[j])*(pkdn->mom.cLumLW[j] - pkdnR->r[j]);
-        }
-        if (fDistanceCell2 < pkdnR->mom.gmom) fDistanceCell2 = pkdnR->mom.gmom;
-        fPrevAveLW = pkdn->mom.fLW/fDistanceCell2;
-        if (pkdnR->mom.gmom == 0 || fPrevAveLW > pkdnR->mom.fLW/pkdnR->mom.gmom){
-          pkdnR->mom.fLW = pkdn->mom.fLW;
-          for (j=0;j<3;++j) {
-        pkdnR->mom.cLumLW[j] = pkdn->mom.cLumLW[j];
-          }       
-        }
-        iCell = LOWER(iCell);
-        if (iCell == ROOT) break; /* If you are at the top of the tree, (make like a tree and) leave*/
-      }
-    }
-}
-#endif
 
 void pkdSunIndirect(PKD pkd,double *aSun,int bDoSun,double dSunMass,double dSunSoft)
 {
@@ -5541,11 +5373,7 @@ void pkdCoolVelocity(PKD pkd,int nSuperCool,double dCoolFac,
         if (p[i].iOrder < nSuperCool && p[i].fDensity >= dCoolDens &&
             p[i].fDensity < dCoolMaxDens) {
             for (j=0;j<3;++j) {
-#ifdef SUPERCOOL
-                p[i].v[j] = p[i].vMean[j] + (p[i].v[j]-p[i].vMean[j])*dCoolFac;
-#else
                 p[i].v[j] *= dCoolFac;
-#endif
                 }
             }
         }

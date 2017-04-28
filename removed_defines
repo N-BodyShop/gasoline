@@ -94,3 +94,8 @@ NOFIT                 #Don't use any fitting for the cooling rates without H2 in
 PARTSHEAR             #Use particle shear for the correlation length in H2 cooling 
 NEWSHEAR              #Use the diffusion length for the correlation length in the H2 code from Charlotte Christensen
 CLOUDY                #Use CLOUDY version of line cooling
+BATEPOLY              #Use the default cooling polynomial COOLING_POLY
+MODBATEPOLY           #Use a modified polytropic equation of state with COOLING_BATE
+SUPERCOOL             #Enable "Supercool" type particles (just gas particles with mean velocities?)
+RADIATIVEBOX          #Estimate Local Lyman-Werner radiation from the tree
+GR_DRAG               #Enable Frame dragging
