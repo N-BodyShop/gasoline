@@ -2751,12 +2751,6 @@ void msrLogDefines(FILE *fp)
 #ifdef CRAY_T3D
 	fprintf(fp," CRAY_T3D");
 #endif
-#ifdef PRES_MONAGHAN
-	fprintf(fp," PRES_MONAGHAN");
-#endif
-#ifdef PRES_HK
-	fprintf(fp," PRES_HK");
-#endif
 #ifdef PEXT
 	fprintf(fp, " PEXT");
 #endif
@@ -3146,10 +3140,6 @@ void msrLogHeader(MSR msr,FILE *fp)
 #endif
 #if defined(UNONCOOL) && !defined(TWOPHASE)
     LogParams(lgr, "STAR FORMATION","dHotConvTimeMul: %g",msr->param.dHotConvTimeMul);
-#endif
-#ifdef STARCLUSTERFORM
-    LogParams(lgr, "STAR FORMATION","dStarClusterMass: %g",msr->param.stfm->dStarClusterMass);
-    LogParams(lgr, "STAR FORMATION","dStarClusterRatio: %g",msr->param.stfm->dStarClusterRatio);
 #endif
 #ifdef COOLING_MOLECULARH
     LogParams(lgr, "STAR FORMATION","dStarFormEfficiencyH2: %g",msr->param.stfm->dStarFormEfficiencyH2);
@@ -9404,10 +9394,6 @@ void msrSph(MSR msr, double dTime, int iKickRung)
     if (msr->param.bVDetails)
 	printf("SPH: Smooth Active Particles: %d\n",msr->nSmoothActive);
 
-#if defined (SMOOTHBSW)
-    if (msr->param.bVDetails) printf("SPH: Resmooth BSw\n");
-    msrReSmooth(msr,dTime,SMX_SMOOTHBSW,1);
-#endif
 
 /*
 ** Calculate Pressure
@@ -9700,22 +9686,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
             */
 
         msrBuildTree(msr,1,dTotMass,1);
-#ifdef STARCLUSTERFORM
-        /* Set density maxima as active (could also filter on density/temp) */
-        msrActiveExactType(msr,TYPE_GAS|TYPE_DENMAX,TYPE_GAS|TYPE_DENMAX,TYPE_SMOOTHACTIVE|TYPE_ACTIVE);
-        msrSmooth(msr,dTime,SMX_DENSITY,0);
-        {
-        struct inStarClusterFormPrecondition in;
-        struct outStarClusterFormPrecondition out;
-        in.dTime = dTime;
-        msr->param.stfm->dDeltaT = dDelta;
-        in.stfm = *msr->param.stfm;
-        pstStarClusterFormPrecondition(msr->pst, &in, sizeof(in), &out, NULL);
-        }
-        msrReSmooth(msr,dTime,SMX_STARCLUSTERFORM,1);
-#else
         msrSmooth(msr,dTime,SMX_DENSITY,1);
-#endif
 #ifdef FBPARTICLE
         msrActiveType(msr,TYPE_STAR|TYPE_GAS,TYPE_SMOOTHACTIVE); /* Density for star */
 #endif

@@ -137,18 +137,10 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
      * Is particle in convergent part of flow?
      */
 
-#ifdef STARCLUSTERFORM
-#define DIVVOFF
-#endif
 
 #ifndef DIVVOFF
     if(p->divv >= 0.0) return 0;
 #endif /*DIVVOFF*/
-#ifdef JEANSSF
-    double l_jeans2;
-    T = CoolCodeEnergyToTemperature( cl, &p->CoolParticle, p->u, p->fMetals );
-    l_jeans2 = M_PI*p->c*p->c/p->fDensity*stfm->dCosmoFac;
-#endif
     /*
      * Determine dynamical time.
      */
@@ -333,17 +325,6 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 {
     double dDeltaM,dMProb;
 
-#ifdef STARCLUSTERFORM
-    if (TYPETest(p, TYPE_STARFORM)) {
-        dMProb = stfmFormStarProb(stfm, pkd, p, dTime);
-        if (dMProb > 0) {
-            dDeltaM = p->fMass;
-            printf("SCF Clus: %8d %12g %12g STAR from %d\n",p->iOrder,p->fDensity,dMProb,(int) StarClusterFormiOrder(p));
-            stfmFormStarParticle(stfm, pkd, p, dDeltaM, dTime, nFormed,dMassFormed,nDeleted);
-            }
-        else printf("SCF Clus: %8d %12g %12g NO from %d\n",p->iOrder,p->fDensity,dMProb,(int) StarClusterFormiOrder(p));
-        }      
-#else
     /* probability of converting all gas to star in this step */
     dMProb = stfmFormStarProb(stfm, pkd, p, dTime);
     if (dMProb > 0) {
@@ -360,7 +341,6 @@ void stfmFormStars(STFM stfm, PKD pkd, PARTICLE *p,
 
         stfmFormStarParticle(stfm, pkd, p, dDeltaM, dTime, nFormed,dMassFormed,nDeleted);
     }
-#endif
 
 }
 

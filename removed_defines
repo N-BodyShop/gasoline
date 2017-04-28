@@ -104,3 +104,8 @@ SFBOUND               #Use a virial criterion (boundedness) for allowing star fo
 SFCONDITIONS          #Use additional conditions for deciding if you form stars (Jeans length vs. h)
 SFEVENTCRIT           #Log additional star formation criteria
 STARSINK              #Star particles are also sink partikes. (Requires -DSINKING)
+STARCLUSTERFORM       #Make new stars using the clustered star formation recipe
+JEANSSF               #Use a simple Jeans length criteria for starformation
+PRES_HK               #Use the Euclidean mean of the both pOverRho values to calculate PdV work
+PRES_MONAGHAN         #Use Monaghan's PdV work calculation (the average of both pOverRho values)
+SMOOTHBSW             #Use a smoothed Balsara switch

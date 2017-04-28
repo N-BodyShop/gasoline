@@ -23,16 +23,8 @@
 #endif
 
 /* Monaghan Method */
-#ifdef PRES_MONAGHAN
-#define PRES_PDV(a,b) ((a+b)*0.5)
-#define PRES_ACC(a,b) (a+b)
-#endif
 
 /* HK */
-#ifdef PRES_HK
-#define PRES_PDV(a,b) sqrt(a*b)
-#define PRES_ACC(a,b) (sqrt(a*b)*2)
-#endif
 /*
  Change the way the Balsara Switch is applied:
 */
@@ -2723,9 +2715,6 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	FLOAT fNorm,fNorm1,aFac,vFac,divvi,divvj;
     double pDensity = p->fDensity;
 	int i;
-#ifdef STARCLUSTERFORM
-    int iDenMax=1;
-#endif
 
 	pc = p->c;
 	pMass = p->fMass;
@@ -2758,14 +2747,7 @@ void SphPressureTermsSym(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    rs1 *= nnList[i].fDist2*q->fMass;
 	    divvi += rs1/p->fDensity;
 	    divvj += rs1/q->fDensity;
-#ifdef STARCLUSTERFORM
-        iDenMax &= (q->fDensity <= p->fDensity);
-#endif
 	    }
-#ifdef STARCLUSTERFORM
-    if (iDenMax) TYPESet(p,TYPE_DENMAX);
-    else TYPEReset(p,TYPE_DENMAX);
-#endif
 
 #ifdef RTFORCE
 /* The DIVVCORRBAD corrector is better on average but is pathological with very
