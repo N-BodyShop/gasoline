@@ -4074,28 +4074,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 #if defined(DENSITYU) || defined(RTDENSITY) || defined(THERMALCOND)
 	fDensityU*=fNorm;
 #endif
-#ifdef DENSITYU
-  #ifdef DENSITYUNOTP
-        if (fDensityU > 0) {
-            KERNEL(rs,0.0);
-    #ifdef TWOPHASE
-            double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
-            p->fDensityU = (fDensityU-rs*p->fMass*uMean*fNorm)/uMean*fDensity/(fDensity-rs*p->fMass*fNorm);
-    #else
-            p->fDensityU = (fDensityU-rs*p->fMass*p->uPred*fNorm)/p->uPred*fDensity/(fDensity-rs*p->fMass*fNorm);
-    #endif
-        }
-  #else
-            {
-    #ifdef TWOPHASE
-            double uMean = (p->fMassHot*p->uHotPred+(p->fMass-p->fMassHot)*p->uPred)/p->fMass;
-            p->fDensityU = fDensityU/uMean;
-    #else
-            p->fDensityU = fDensityU/p->uPred;
-    #endif
-            }
-  #endif
-#endif
 
     fDensity_old = p->fDensity;
 #ifdef RTDENSITY	
@@ -4230,9 +4208,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
         }    
 #endif
 	
-#ifdef DENSITYU
-    assert(p->fDensityU > 0);
-#endif
 	}
 
 

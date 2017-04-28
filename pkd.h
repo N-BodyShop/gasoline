@@ -56,9 +56,6 @@
 #define UNONCOOL
 #endif
 
-#if defined(DENSITYUNOTP) && !defined(DENSITYU)
-#define DENSITYU
-#endif
 
 #ifdef DIFFUSION
 
@@ -172,9 +169,6 @@ typedef struct particle {
     FLOAT diff;
     FLOAT fMetalsDot;
     FLOAT fMetalsPred;
-#endif
-#ifdef DENSITYU
-    FLOAT fDensityU;
 #endif
     FLOAT fDivv_t;
     FLOAT fDivv_Corrector;

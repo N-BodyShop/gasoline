@@ -2137,12 +2137,10 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    assert(0);
 	    }
 #endif
-#ifndef DENSITYU
 	if (prmSpecified(msr->prm,"dvturb")) {
 	    fprintf(stderr,"ERROR: Turbulent v  specified but not compiled for\nUse -DDENSITYU during compilation\n");
 	    assert(0);
 	    }
-#endif
 	if (!prmSpecified(msr->prm, "nSinkFormMin")) msr->param.nSinkFormMin = msr->param.nSmooth;
 
 	if (msr->param.bBHSink) {
@@ -2659,12 +2657,6 @@ void msrLogDefines(FILE *fp)
 #ifdef SFCONDITIONS
 	fprintf(fp," SFCONDITIONS");
 #endif
-#ifdef DENSITYU
-	fprintf(fp," DENSITYU");
-#endif
-#ifdef DENSITYUNOTP
-	fprintf(fp," DENSITYUNOTP");
-#endif
 #ifdef VSIGVISC
 	fprintf(fp," VSIGVISC");
 #endif
@@ -2724,9 +2716,6 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef OUTURBDRIVER
  	fprintf(fp," OUTURBDRIVER");
-#endif
-#ifdef FUVSHIELD
- 	fprintf(fp," FUVSHIELD");
 #endif
 #ifdef PARTSHEAR
  	fprintf(fp," PARTSHEAR"); /* Use the particle shear for correlation length*/
@@ -3107,9 +3096,6 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "GAS PHYSICS","dThermalCond2Coeff: %g",msr->param.dThermalCond2Coeff);
     LogParams(lgr, "GAS PHYSICS","dThermalCond2SatCoeff: %g",msr->param.dThermalCond2SatCoeff);
     LogParams(lgr, "GAS PHYSICS","dEtaDiffusion: %g",msr->param.dEtaDiffusion);
-#ifdef DENSITYU
-    LogParams(lgr, "GAS PHYSICS","dvturb: %g",msr->param.dvturb);
-#endif
     if(prmSpecified(msr->prm, "dMsolUnit") &&
             prmSpecified(msr->prm, "dKpcUnit")) {
         LogParams(lgr, "UNITS","dErgPerGmUnit: %g", msr->param.dErgPerGmUnit );
@@ -4457,9 +4443,6 @@ void msrCreateGasStepZeroOutputList(MSR msr, int *nOutputList, int OutputList[])
     *nOutputList = 0;
 #ifdef GASOLINE
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
-#ifdef DENSITYU
-    OutputList[(*nOutputList)++]=OUT_DENSITYU_ARRAY;
-#endif
 #ifndef CULLENDEHNEN
     if (msr->param.bVariableAlpha) 
 #endif
@@ -4645,9 +4628,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDodtOutput) OutputList[(*nOutputList)++]=OUT_DT_ARRAY;
 #ifdef GASOLINE
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
-#ifdef DENSITYU
-    OutputList[(*nOutputList)++]=OUT_DENSITYU_ARRAY;
-#endif
     if (msr->param.bDoPressureOutput) OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
 #ifndef CULLENDEHNEN
     if (msr->param.bVariableAlpha) 
@@ -4762,9 +4742,6 @@ void msrCreateOutputList(MSR msr, int (*nOutputList), int OutputList[])
     if (msr->param.bDodtOutput) OutputList[(*nOutputList)++]=OUT_DT_ARRAY;
 #ifdef GASOLINE
     if (msr->param.bDoSphhOutput) OutputList[(*nOutputList)++]=OUT_SPHH_ARRAY;
-#ifdef DENSITYU
-    OutputList[(*nOutputList)++]=OUT_DENSITYU_ARRAY;
-#endif
     if (msr->param.bDoPressureOutput) OutputList[(*nOutputList)++]=OUT_PRES_ARRAY;
     if (msr->param.bVariableAlpha) OutputList[(*nOutputList)++]=OUT_ALPHA_ARRAY;
 	if (msr->param.bDoBalsaraOutput) OutputList[(*nOutputList)++]=OUT_BALSARASWITCH_ARRAY;

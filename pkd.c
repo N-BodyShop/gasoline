@@ -322,9 +322,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->iRung = 0;
         p->fWeight = 1.0;
         p->fDensity = 0.0;
-#ifdef DENSITYU
-        p->fDensityU = 0.0;
-#endif
         p->fBall2 = 0.0;
         p->fBallMax = 0.0;
 #ifdef GASOLINE
@@ -520,9 +517,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
 #ifdef GASOLINE
                 xdr_float(&xdrs,&fTmp);
                 p->fDensity = fTmp;
-#ifdef DENSITYU
-                p->fDensityU = fTmp;
-#endif
                 /*
                 ** Convert Temperature to Thermal energy.
                 */
@@ -710,9 +704,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->fPot = gp.phi;
 #ifdef GASOLINE
                 p->fDensity = gp.rho;
-#ifdef DENSITYU
-                p->fDensityU = gp.rho;
-#endif
                 p->u = dTuFac*gp.temp;
                 p->uPred = dTuFac*gp.temp;
                 p->fMetals = gp.metals;
@@ -6042,9 +6033,6 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
                     E = p->uHot;
                     dtUse = dt;
                     fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uHot); /* Density of bubble part of particle */
-#ifdef DENSITYU
-                    if (p->fDensityU < p->fDensity) fDensity = p->fDensityU*PoverRhoGas/(uhc.gpc.gammam1*p->uHot); 
-#endif
                     cp = p->CoolParticleHot;
                     CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse);
                     p->uHotDot = (E - p->uHot)/duDelta;
@@ -6061,18 +6049,12 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
 
             assert(p->uPred >= 0);
             fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uPred); /* Density of non-bubble part of particle */
-#ifdef DENSITYU
-            if (p->fDensityU < p->fDensity) fDensity = p->fDensityU*PoverRhoGas/(uhc.gpc.gammam1*p->uPred); 
-#endif
 
             uDotSansCooling = (uDotPdVNJ+p->uDotAV)*p->uPred/uMean// Fraction of PdV related to u thermal
                     + p->uDotDiff + uDotFBThermal + p->uDotESF;
 #else /* !TWOPHASE */
 
             fDensity = p->fDensity; /* Density for cooling */
-#ifdef DENSITYU
-            if (p->fDensityU < fDensity) fDensity = p->fDensityU;
-#endif
 #ifndef TWOPHASE
 #ifdef UNONCOOL
             double uHotDotConv=0, uHotPredTmp;
@@ -6268,17 +6250,6 @@ void pkdGasPressure(PKD pkd, struct GasPressureContext *pgpc)
 
 void pkdGetDensityU(PKD pkd, double uMin)
 {
-#ifdef DENSITYU
-    PARTICLE *p;
-    int i;
-
-    p = pkd->pStore;
-    for(i=0;i<pkdLocal(pkd);++i,++p) {
-        if (pkdIsGas(pkd,p) && TYPEQueryACTIVE(p)) {
-            p->fDensityU /= (p->uPred + uMin);
-        }
-    }
-#endif
 }
 
 void pkdLowerSoundSpeed(PKD pkd, double dhMinOverSoft)

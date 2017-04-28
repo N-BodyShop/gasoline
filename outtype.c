@@ -68,10 +68,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	case OUT_SOFT_ARRAY:
 	    return(p->fSoft);
 #ifdef GASOLINE
-#ifdef DENSITYU
-	case OUT_DENSITYU_ARRAY:
-	    return(p->fDensityU);
-#endif
 	case OUT_PRES_ARRAY:
 	    return(p->fDensity*p->fDensity*p->PoverRho2);	
 	case OUT_U_ARRAY:
@@ -156,38 +152,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
         return(p->CoolParticle.dLymanWerner); /* Lyman Werner Radiation output array*/
 #endif /*RADIATIVEBOX*/
 
-#ifdef DENSITYU
-#ifdef COOLING_MOLECULARH
-	case OUT_COOL_EDOT_ARRAY: /* Cooling array with H2*/
-        return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, correL) );
-	case OUT_COOL_COOLING_ARRAY:
-        return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, correL) );
-	case OUT_COOL_HEATING_ARRAY:
-        return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r, correL) );
-#else
-	case OUT_COOL_EDOT_ARRAY:
-        if(pkdIsGas(pkd, p)) {
-            return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
-            }
-        else {
-            return 0;
-            }
-	case OUT_COOL_COOLING_ARRAY:
-        if(pkdIsGas(pkd, p)) {
-            return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
-            }
-        else {
-            return 0;
-            }
-	case OUT_COOL_HEATING_ARRAY:
-        if(pkdIsGas(pkd, p)) {
-            return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensityU, p->fMetals, p->r) );
-            }
-        else {
-            return 0;
-            }
-#endif
-#else
 #ifdef COOLING_MOLECULARH
 	case OUT_COOL_EDOT_ARRAY:
         return( COOL_EDOT( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r, correL) );
@@ -202,7 +166,6 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return( COOL_COOLING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
 	case OUT_COOL_HEATING_ARRAY:
 	    return( COOL_HEATING( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r) );
-#endif
 #endif
 #endif
 	case OUT_BALSARASWITCH_ARRAY:
@@ -411,11 +374,6 @@ void VecFilename(char *achFile, int iType)
         strncat(achFile,"soft",256);
         break;
 #ifdef GASOLINE	
-#ifdef DENSITYU
-    case OUT_DENSITYU_ARRAY:
-	    strncat(achFile,"denu",256);
-	    break;
-#endif
     case OUT_PRES_ARRAY:
 	    strncat(achFile,"pres",256);
 	    break;

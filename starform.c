@@ -199,18 +199,10 @@ double stfmFormStarProb(STFM stfm, PKD pkd, PARTICLE *p,
 
 
     tcool = p->u/(
-#ifdef DENSITYU
-#ifdef COOLING_MOLECULARH
-		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensityU, p->fMetals,  p->r, correL )
-#else
-		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensityU, p->fMetals,  p->r)
-#endif
-#else
 #ifdef  COOLING_MOLECULARH
 		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals, p->r, correL )
 #else
 		  -CoolEdotInstantCode( cl, &p->CoolParticle, p->u, p->fDensity, p->fMetals,  p->r)
-#endif
 #endif
           -UDOT_HYDRO(p) );
 #ifdef SFCONDITIONS

@@ -1745,11 +1745,6 @@ double clEdotInstant( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMe
       cl->dPhotoelectricFactor / (1+cl->R.nMin_Photoelectric/en_B) * Y->HI * (
           cl->R.Heat_CosmicRay +  /* sets a heating floor independent of optical depth */
           cl->R.Heat_Photoelectric * ZMetal/ZSOLAR
-#ifdef FUVSHIELD
-#define PHOTOE_POW 2.0
-/* r0 = 10 pc, n0 = 100 Baryon/cc, alpha=1.7e-21 (Wolfire 2003) */
-      * (en_B < 0.3 ? 1 : exp(-3e21*1.7e-21*(1/(PHOTOE_POW-1.))*(pow(en_B/100,(PHOTOE_POW-1.)/PHOTOE_POW)-pow(0.3/100,(PHOTOE_POW-1.)/PHOTOE_POW)))) 
-#endif
       )
     +
       Y->HI   * cl->R.Heat_Phot_HI * Rate->Phot_HI +

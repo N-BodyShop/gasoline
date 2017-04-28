@@ -671,9 +671,6 @@ int main(int argc,char **argv)
             if (msr->nGas > 0) {
 		msrInitSph(msr,dTime);
         msrCreateGasStepZeroOutputList(msr, &nOutputList,OutputList);
-#ifdef DENSITYU
-		OutputList[(nOutputList)++]=OUT_DENSITYU_ARRAY;
-#endif
 #ifdef DIFFUSION
 		OutputList[(nOutputList)++]=OUT_METALSDOT_ARRAY;
 #endif

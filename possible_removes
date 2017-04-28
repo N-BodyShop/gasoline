@@ -1,11 +1,4 @@
-## DENSITYU
-DENSITYU              #Calculate modified energy-weighted density (used for cooling) (good for large density gradients)
-DENSITYUNOTP          #More aggressive version of the energy-weighted density that ignores contribution from center
-
 ## VARIOUS COOLING HACKS
-FUVSHIELD             #Alter the amount of FUV shielding?
-WOLFIRE_NOTWOPHASE    #Use an imposed cooling rate without a two-phase instability
-WOLFIRE               #Use the Wolfire values for the metal cooling rate with UV heating
 USETABLE              #Grab the cooling rates from a table
 NOFIT                 #Don't use any fitting for the cooling rates without H2 in cooling_metal_noH2.c
 PARTSHEAR             #Use particle shear for the correlation length in H2 cooling 
