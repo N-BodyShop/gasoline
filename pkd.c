@@ -1709,7 +1709,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
           fTmp = vTemp;
           xdr_float(&xdrs,&fTmp);
         }
-      }
     fTmp = p->fDensity;
     xdr_float(&xdrs,&fTmp);
 #ifdef GASOLINE
@@ -6962,7 +6961,7 @@ void pkdSplitGas(PKD pkd, double dInitGasMass)
         continue; //Don't split particles that are too small FOOL
 
         PARTICLE daughter;
-        FLOAT norm, vvar, uvar;
+        FLOAT norm, vvar, uvar, ux, uy, uz;
         norm = 666; // \m/
         while (norm>1.0){ //unit sphere point picking (Marsaglia 1972)
             uvar=2.0*(rand()/(double)RAND_MAX)-1.0;  //#random number on [-1,1]
