@@ -6,9 +6,6 @@
 
 #include "runge.h"
 
-#ifdef CRAY_T3D
-#include "hyperlib.h"
-#endif
 
 #include "cosmo.h"
 

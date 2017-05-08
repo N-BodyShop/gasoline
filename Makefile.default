@@ -2,7 +2,7 @@
 # Then type make <platform>
 # <platform> should be one of:
 # null, sgi, pvm, pthread, pthread_dec, pthread_sgi, ampi, lam_mpi, qmpi, mpi,
-# spx, t3d, t3dmpi, t3empi, ksr, charm
+# spx, charm
 #
 
 # Which C compiler should I use?
@@ -100,16 +100,6 @@ DBG_XOBJ		= erf.o v_sqrt1.o
 DBG_LIBMDL		= $(NULL_MDL)/mdl.o -lm
 
 #
-#       SGI defines
-#
-SGI_MDL			= ../mdl/mpi
-SGI_CFLAGS		= -O2 -I$(SGI_MDL) $(BASE_DEF) -mips4 -64 -r10000
-SGI_LD_FLAGS	= -mips4 -64 -r10000 $(BASE_LD_FLAGS)
-SGI_XOBJ		=
-SGI_LIBMDL		= $(SGI_MDL)/mdl.o -lmpi -lm
-SGI_MDL_CFLAGS	= -g2 -O2 -mips4 -64 -r10000
-
-#
 #       LINUX AMPI (Charm MPI) defines
 #
 CHARM=../charm/net-linux/bin/charmc
@@ -173,51 +163,6 @@ PTHREAD_XOBJ		= erf.o v_sqrt1.o
 PTHREAD_LIBMDL 		= $(PTHREAD_MDL)/mdl.o -lm -lpthread
 
 #
-#       PTHREAD_SGI defines
-#
-PTHREAD_SGI_MDL			= ../mdl/pthread
-PTHREAD_SGI_CFLAGS		= -O2 -D_REENTRANT -I$(PTHREAD_SGI_MDL) $(BASE_DEF) -mips4 -64 -r10000
-PTHREAD_SGI_LD_FLAGS 	= -mips4 -64 -r10000 $(BASE_LD_FLAGS)
-PTHREAD_SGI_XOBJ		=
-PTHREAD_SGI_LIBMDL 		= $(PTHREAD_SGI_MDL)/mdl.o -lm -lpthread
-PTHREAD_SGI_MDL_CFLAGS	= -O2 -mips4 -64 -r10000
-
-#
-#       T3D MPP defines
-#
-T3D_MDL	= ../mdl/mpp
-V_SQRT	= ../v_sqrt/lib
-V_SQRT1	= ../v_sqrt1/lib
-RPC		= ../rpc
-T3D_CFLAGS		= -O3 -g -DCRAY_T3D -I$(T3D_MDL) -I$(V_SQRT) -I$(RPC) $(BASE_DEF)
-T3D_XOBJ		= hyperlib.o
-T3D_LIBMDL		= -O3 -g-L $(V_SQRT) -L $(V_SQRT1) -L $(RPC) \
-					$(T3D_MDL)/mdl.o -lv_sqrtc -lv_sqrtc1 -lmpi -lrpc -lm
-T3D_LD_FLAGS	= $(BASE_LD_FLAGS)
-
-#
-#       T3DMPI MPP defines
-#
-T3DMPI_MDL	= ../mdl/t3dmpi
-V_SQRT		= ../v_sqrt/lib
-V_SQRT1		= ../v_sqrt1/lib
-RPC			= ../rpc
-T3DMPI_CFLAGS	= -O3 -DCRAY_T3D -I$(T3DMPI_MDL) -I$(V_SQRT) -I$(RPC) $(BASE_DEF)
-T3DMPI_XOBJ		= hyperlib.o
-T3DMPI_LIBMDL	= -O3 -L $(V_SQRT) -L $(V_SQRT1) -L $(RPC) \
-					$(T3DMPI_MDL)/mdl.o -lv_sqrtc -lv_sqrtc1 -lmpi -lrpc -lm
-T3DMPI_LD_FLAGS	= $(BASE_LD_FLAGS)
-
-#
-#       T3EMPI MPP defines
-#
-T3EMPI_MDL		= ../mdl/t3empi
-T3EMPI_CFLAGS	= -O3 -DCRAY_T3D -I$(T3EMPI_MDL) -I$(RPC) $(BASE_DEF)
-T3EMPI_XOBJ		= hyperlib.o v_sqrt1.t3x.o
-T3EMPI_LIBMDL	= $(T3EMPI_MDL)/mdl.o -lmpi -lm
-T3DMPI_LD_FLAGS	= $(BASE_LD_FLAGS)
-
-#
 #       LINUX Charm  defines
 #
 CHARM=../charm/net-linux/bin/charmc
@@ -229,29 +174,20 @@ CHARM_LD_FLAGS		=  $(BASE_LD_FLAGS) -language charm++ -memory os
 CHARM_XOBJ                = erf.o v_sqrt1.o
 CHARM_LIBMDL              = $(CHARM_MDL)/mdl.o $(CHARMLINK) -lm
 
-#
-#       KSR1 defines
-#
-KSR_MDL			= ../mdl/ksr
-KSR_CFLAGS		= -O2 -w2 -I$(KSR_MDL) $(BASE_DEF)
-KSR_LD_FLAGS	= -para $(BASE_LD_FLAGS)
-KSR_XOBJ		= erf.o v_sqrt1.ksr.o
-KSR_LIBMDL		= $(KSR_MDL)/mdl.o -lm -lrpc
-
 OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
-	  ewald.o walk.o eccanom.o hypanom.o fdl.o htable.o smooth.o \
+	  ewald.o walk.o eccanom.o fdl.o htable.o smooth.o \
 	  smoothfcn.o collision.o qqsmooth.o $(COOLING_OBJ) cosmo.o romberg.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
 	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o \
 	  rotbar.o special.o ssio.o $(PNG_OBJ) $(TURB_OBJ) \
 	  treezip.o log.o
 
-EXTRA_OBJ = erf.o hyperlib.o v_sqrt1.o v_sqrt1.ksr.o v_sqrt1.t3x.o
+EXTRA_OBJ = erf.o v_sqrt1.o 
 
 
 default:
 	@echo "Please tell me what architecture to make."
-	@echo "Choices are null, sgi, pvm, pthread, pthread_dec, pthread_sgi, ampi, lam_mpi, qmpi, mpi, spx, t3d, t3dmpi, t3empi, ksr, charm"
+	@echo "Choices are null, pvm, pthread, pthread_dec, ampi, lam_mpi, qmpi, mpi, spx, charm"
 
 install:
 	@echo "No installation rules."
@@ -280,11 +216,6 @@ dbg:
 	make $(EXE) "CFLAGS=$(DBG_CFLAGS)" "LD_FLAGS=$(DBG_LD_FLAGS)"\
 		"MDL=$(DBG_MDL)" "XOBJ=$(DBG_XOBJ)" "LIBMDL=$(DBG_LIBMDL)"
 
-sgi:
-	cd $(SGI_MDL); make CC=cc "CC_FLAGS=$(SGI_MDL_CFLAGS)"
-	make $(EXE) CC=cc "CFLAGS=$(SGI_CFLAGS)" "LD_FLAGS=$(SGI_LD_FLAGS)"\
-		"MDL=$(SGI_MDL)" "XOBJ=$(SGI_XOBJ)" "LIBMDL=$(SGI_LIBMDL)"
-
 pvm:
 	cd $(PVM_MDL); aimk
 	make $(EXE) "CFLAGS=$(PVM_CFLAGS)" "LD_FLAGS=$(PVM_LD_FLAGS)"\
@@ -300,11 +231,6 @@ pthread_dec:
 	cd $(PTHREAD_MDL); make CC=ccc
 	make $(EXE) CC=ccc "CFLAGS=$(PTHREAD_CFLAGS) -fast -arch ev6" "LD_FLAGS=$(PTHREAD_LD_FLAGS)"\
 		"MDL=$(PTHREAD_MDL)" "XOBJ=$(PTHREAD_XOBJ)" "LIBMDL=$(PTHREAD_LIBMDL)"
-
-pthread_sgi:
-	cd $(PTHREAD_MDL); make CC=cc "CC_FLAGS=$(PTHREAD_SGI_MDL_CFLAGS)"
-	make $(EXE) "CFLAGS=$(PTHREAD_SGI_CFLAGS)" "LD_FLAGS=$(PTHREAD_SGI_LD_FLAGS)"\
-		"MDL=$(PTHREAD_SGI_MDL)" "XOBJ=$(PTHREAD_SGI_XOBJ)" "LIBMDL=$(PTHREAD_SGI_LIBMDL)"
 
 ampi:
 	cd $(AMPI_MDL); make CC=$(CHARM) "CFLAGS=$(AMPI_MDL_CFLAGS)"
@@ -327,26 +253,6 @@ spx:
 	cd $(SPX_MDL); make CC=mpicc "CC_FLAGS=$(SPX_MDL_CFLAGS)"
 	make $(EXE) CC=mpicc "CFLAGS=$(SPX_CFLAGS)" "LD_FLAGS=$(SPX_LD_FLAGS)"\
 		"MDL=$(SPX_MDL)" "XOBJ=$(SPX_XOBJ)" "LIBMDL=$(SPX_LIBMDL)"
-
-t3d:
-	cd $(T3D_MDL); make
-	make $(EXE) "CFLAGS=$(T3D_CFLAGS)" "LD_FLAGS=$(T3D_LD_FLAGS)"\
-		"MDL=$(T3D_MDL)" "XOBJ=$(T3D_XOBJ)" "LIBMDL=$(T3D_LIBMDL)"
-
-t3dmpi:
-	cd $(T3DMPI_MDL); make
-	make $(EXE) "CFLAGS=$(T3DMPI_CFLAGS)" "LD_FLAGS=$(T3DMPI_LD_FLAGS)"\
-		"MDL=$(T3DMPI_MDL)" "XOBJ=$(T3DMPI_XOBJ)" "LIBMDL=$(T3DMPI_LIBMDL)"
-
-t3empi:
-	cd $(T3EMPI_MDL); make
-	make $(EXE) "CFLAGS=$(T3EMPI_CFLAGS)" "LD_FLAGS=$(T3EMPI_LD_FLAGS)"\
-		"MDL=$(T3EMPI_MDL)" "XOBJ=$(T3EMPI_XOBJ)" "LIBMDL=$(T3EMPI_LIBMDL)"
-
-ksr:
-	cd $(KSR_MDL); make
-	make $(EXE) "CFLAGS=$(KSR_CFLAGS)" "LD_FLAGS=$(KSR_LD_FLAGS)"\
-		"MDL=$(KSR_MDL)" "XOBJ=$(KSR_XOBJ)" "LIBMDL=$(KSR_LIBMDL)"
 
 charm:
 	cd $(CHARM_MDL); make CC=$(CHARM) "CFLAGS=$(CHARM_MDL_CFLAGS)"

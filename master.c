@@ -25,9 +25,6 @@
 #include <rpc/xdr.h>
 #endif
 
-#ifdef CRAY_T3D
-#include "hyperlib.h"
-#endif
 
 #include "master.h"
 #include "tipsydefs.h"
@@ -2730,9 +2727,6 @@ void msrLogDefines(FILE *fp)
 #endif
 #ifdef _REENTRANT
 	fprintf(fp," _REENTRANT");
-#endif
-#ifdef CRAY_T3D
-	fprintf(fp," CRAY_T3D");
 #endif
 #ifdef PEXT
 	fprintf(fp, " PEXT");
