@@ -1,29 +1,4 @@
-## COLLISIONS AND PLANET FORMATION
-AGGS                  #Include support for aggregates (like asteroids and rubble piles) See aggs.c
-COLLISIONS            #Use solid-body collisions (not compatible with -DGASOLINE)
-GROWMASS              #Allow collisional particles to grow
-N_DIM                 #Number of dimensions to use for solar system calculations (Defaults to 3)
-SURFACEAREA           #Calculate and output the surface area of all the particles.
-NORMAL                #Calculate and output surface normals for particles (Needs -DSURFACEAREA)
-RUBBLE_ZML            #Use "Rubble Pile" collision model (Requires -DCOLLISION)
-SAND_PILE             #Use the "Sand Pile" collision model (Requires -DCOLLISION)
-SLIDING_PATCH         #Alternative collision scheme (I don't really know what this does) (Requires -DCOLLISIONS)
-TUMBLER               #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
-
-## STAR FORMATION AND FEEDBACK
-DIVVOFF               #Remove the convergent flow requirement for starformation
-STARFORM              #Make new stars according to the starformation recipe
-CHABRIER              #Use the Chabrier 2003 IMF for starformation (See DOI:10.1086/376392)  (SHOULD BE DEFAULT)
-KROUPA01              #Use the newer Kroupa 01 IMF (DOI:10.1046/j.1365-8711.2001.04022.x)
-KROUPA                #Use the Kroupa IMF (from Kroupa et al 1993 Bibcode:1993MNRAS.262..545K)
-FEEDBACKDIFFLIMIT     #Disable thermal diffusion for particles that have their cooling shut off
-TOPHATFEEDBACK        #Use a tophat kernel to smooth feedback over
-VOLUMEFEEDBACK        #Smooth FB energy over a volume rather than mass
-UNONCOOL              #Enable noncooling energy for feedback
-SUPERBUBBLE	          #Use the Keller+ 2014 Superbubble feedback 
-
 ## GRAVITY AND HYDRODYNAMICS
-GASOLINE              #Do hydro 
 CULLENDEHNEN          #Use the time-variable CD viscosity limit switch
 VARALPHA              #Allow a varying alpha artificial viscosity 
 NSMOOTHINNER          #Ensure at least 18 neighbours inside 1.41 h
@@ -31,29 +6,10 @@ PEXT                  #Allow non-zero external pressure
 JEANSSOFT             #Calculate presure floor to keep jeans length larger than softening or sph h (default is just sph h)
 JEANSSOFTONLY         #Calculate presure floor to keep jeans length larger than softening only
 INFLOWOUTFLOW         #Enable inflow/outflow boundary conditions
-PARTICLESPLIT         #Particles will now divide if they get too heavy
 OUTURBDRIVER          #Drive turbulence as in Price & Federrath 2010 with OU variables
 ROT_FRAME             #Use a rotating reference frame with rotation rate given by dOmega
 SIMPLE_GAS_DRAG       #Apply a drag to the gas velocities using either the Epstein regime, or stopping time
 
-## INITIAL CONDITION BUILDING
-GLASS                 #Use this to damp for glass initial conditions
-GLASSZ                #Use this to damp for glass IC in z direction
-
-## OUTPUT VISUALIZATION
-GSS_DUMPFRAME         #Dumpframe that allows coloring by particle property (Greg's version)
-VOXEL                 #Dump voxels for volume imaging.
-
 ## SINK PARTICLES
 SINKINGAVERAGE        #I believe this prevents sink particles from evolving with time? (Requires -DSINKING)
 SINKING               #Include support for sink particles
-
-## SPH KERNELS
-#WENDLAND              #Use the Wendland C_2 Kernel (See Dehnen & Aly 2012)
-#WENDLANDC4            #Use the Wendland C_4 Kernel (See Dehnen & Aly 2012)
-#HSHRINK               #M4 kernel times (pi/6)^(1/3) for a tighter kernel
-#M43D                  #Use a fancier 3D derived M4 Kernel
-#PEAKEDKERNEL          #Use a modified Peaked M4 kernel as per Thomas and Couchman 92 (Bibcode:1992MNRAS.257...11T)
-#QUINTIC               #Use a quintic spline kernel from Dehnen & Aly 2012 (Bibcode:2012MNRAS.425.1068D)
-
-SETTRAPFPE            #Enable Floating point exceptions

@@ -1,21 +1,44 @@
+#	 _______    ________   ______   ______   __        ________  ___   __    ______      
+#	/______/\  /_______/\ /_____/\ /_____/\ /_/\      /_______/\/__/\ /__/\ /_____/\     
+#	\::::__\/__\::: _  \ \\::::_\/_\:::_ \ \\:\ \     \__.::._\/\::\_\\  \ \\::::_\/_    
+#	 \:\ /____/\\::(_)  \ \\:\/___/\\:\ \ \ \\:\ \       \::\ \  \:. `-\  \ \\:\/___/\   
+#	  \:\\_  _\/ \:: __  \ \\_::._\:\\:\ \ \ \\:\ \____  _\::\ \__\:. _    \ \\::___\/_  
+#	   \:\_\ \ \  \:.\ \  \ \ /____\:\\:\_\ \ \\:\/___/\/__\::\__/\\. \`-\  \ \\:\____/\ 
+#	    \_____\/   \__\/\__\/ \_____\/ \_____\/ \_____\/\________\/ \__\/ \__\/ \_____\/ 
+                                                                                     
 # Makefile for Gasoline (specify below)
 # Then type make <platform>
 # <platform> should be one of:
 # null, sgi, pvm, pthread, pthread_dec, pthread_sgi, ampi, lam_mpi, qmpi, mpi,
-# spx, charm
+# charm
 #
 
 # Which C compiler should I use?
 CC = gcc
 
+#	 ___ __ __   ______   ______   ______      
+#	/__//_//_/\ /_____/\ /_____/\ /_____/\     
+#	\::\| \| \ \\:::_ \ \\:::_ \ \\::::_\/_    
+#	 \:.      \ \\:\ \ \ \\:\ \ \ \\:\/___/\   
+#	  \:.\-/\  \ \\:\ \ \ \\:\ \ \ \\::___\/_  
+#	   \. \  \  \ \\:\_\ \ \\:\/.:| |\:\____/\ 
+#	    \__\/ \__\/ \_____\/ \____/_/ \_____\/ 
+#	                                           
 # What kind of problem are we running?  This will enable a default set of code components
 # appropriate for different kinds of problems.  Select only one.
 MODE_DEF = -DGALAXY 			#Default mode: includes SPH, star formation, and feedback.
 #MODE_DEF = -DCOLLISIONAL		#Collisional mode for simulating asteroids & planets
 #MODE_DEF = -DNBODY 			#N-body only mode: gravity with nothing else.
-#MODE_DEF = -DTURBULENT 		#Drive Turbulence, as per Price & Fedderath 2008
 #MODE_DEF = -DGLASS_IC 			#Generate a gravity glass (useful for making ICS)
 
+#	 ___   ___   ______   ______    ___   __    ______   __          
+#	/___/\/__/\ /_____/\ /_____/\  /__/\ /__/\ /_____/\ /_/\         
+#	\::.\ \\ \ \\::::_\/_\:::_ \ \ \::\_\\  \ \\::::_\/_\:\ \        
+#	 \:: \/_) \ \\:\/___/\\:(_) ) )_\:. `-\  \ \\:\/___/\\:\ \       
+#	  \:. __  ( ( \::___\/_\: __ `\ \\:. _    \ \\::___\/_\:\ \____  
+#	   \: \ )  \ \ \:\____/\\ \ `\ \ \\. \`-\  \ \\:\____/\\:\/___/\ 
+#	    \__\/\__\/  \_____\/ \_\/ \_\/ \__\/ \__\/ \_____\/ \_____\/ 
+#
 # Which SPH Kernel should we use?
 KERNEL_DEF = -DWENDLANDC4            #Use the Wendland C_4 Kernel (See Dehnen & Aly 2012)
 #KERNEL_DEF = -DWENDLAND              #Use the Wendland C_2 Kernel (See Dehnen & Aly 2012)
@@ -25,24 +48,15 @@ KERNEL_DEF = -DWENDLANDC4            #Use the Wendland C_4 Kernel (See Dehnen & 
 #KERNEL_DEF = -DPEAKEDKERNEL          #Use a modified Peaked M4 kernel as per Thomas and Couchman 92 (Bibcode:1992MNRAS.257...11T)
 #KERNEL_DEF = -DQUINTIC               #Use a quintic spline kernel from Dehnen & Aly 2012 (Bibcode:2012MNRAS.425.1068D)
 
-PNG_INCL =
-PNG_LIB =
-PNG_OBJ =
-PNG_DEF =
 
-# If you do dump frame stuff with png you need these libs ( -DUSE_PNG )
-#PNG_INCL = -I/usr/include
-#PNG_LIB = -L/usr/lib -lpng -lz
-#PNG_LIB = -lpng -lz
-#PNG_OBJ = writepng.o
-#PNG_DEF = $(PNG_INCL) -DUSE_PNG
-
-# if you use OUTURBDRIVER or TURBULENT you need libgsl
-#TURB_OBJ = outurb.o
-#GSL_LIB = -lgsl -lgslcblas
-TURB_OBJ =
-GSL_LIB =
-
+#	 ______   ______   ______   __        ________  ___   __    _______     
+#	/_____/\ /_____/\ /_____/\ /_/\      /_______/\/__/\ /__/\ /______/\    
+#	\:::__\/ \:::_ \ \\:::_ \ \\:\ \     \__.::._\/\::\_\\  \ \\::::__\/__  
+#	 \:\ \  __\:\ \ \ \\:\ \ \ \\:\ \       \::\ \  \:. `-\  \ \\:\ /____/\ 
+#	  \:\ \/_/\\:\ \ \ \\:\ \ \ \\:\ \____  _\::\ \__\:. _    \ \\:\\_  _\/ 
+#	   \:\_\ \ \\:\_\ \ \\:\_\ \ \\:\/___/\/__\::\__/\\. \`-\  \ \\:\_\ \ \ 
+#	    \_____\/ \_____\/ \_____\/ \_____\/\________\/ \__\/ \__\/ \_____\/ 
+#
 # The following pairs of lines define which cooling method to use.  Uncomment
 # only one pair
 
@@ -71,12 +85,76 @@ COOLING_DEF = -DCOOLING_METAL
 #COOLING_OBJ =
 #COOLING_DEF = -DNOCOOLING
 
+#	 __        ________   _______   ______    ________   ______     ________  ______   ______      
+#	/_/\      /_______/\/_______/\ /_____/\  /_______/\ /_____/\   /_______/\/_____/\ /_____/\     
+#	\:\ \     \__.::._\/\::: _  \ \\:::_ \ \ \::: _  \ \\:::_ \ \  \__.::._\/\::::_\/_\::::_\/_    
+#	 \:\ \       \::\ \  \::(_)  \/_\:(_) ) )_\::(_)  \ \\:(_) ) )_   \::\ \  \:\/___/\\:\/___/\   
+#	  \:\ \____  _\::\ \__\::  _  \ \\: __ `\ \\:: __  \ \\: __ `\ \  _\::\ \__\::___\/_\_::._\:\  
+#	   \:\/___/\/__\::\__/\\::(_)  \ \\ \ `\ \ \\:.\ \  \ \\ \ `\ \ \/__\::\__/\\:\____/\ /____\:\ 
+#	    \_____\/\________\/ \_______\/ \_\/ \_\/ \__\/\__\/ \_\/ \_\/\________\/ \_____\/ \_____\/
+#
+# If you do dump frame stuff with png you need these libs ( -DUSE_PNG )
+#PNG_INCL = -I/usr/include
+#PNG_LIB = -L/usr/lib -lpng -lz
+#PNG_LIB = -lpng -lz
+#PNG_OBJ = writepng.o
+#PNG_DEF = $(PNG_INCL) -DUSE_PNG
+PNG_INCL =
+PNG_LIB =
+PNG_OBJ =
+PNG_DEF =
+
+# if you use OUTURBDRIVER or TURBULENT you need libgsl
+#TURB_OBJ = outurb.o
+#GSL_LIB = -lgsl -lgslcblas
+TURB_OBJ =
+GSL_LIB =
+
 BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
 BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB) $(COOLING_LIB)
 
+#	 ______   __     __   _________  ______    ________   ______      
+#	/_____/\ /__/\ /__/\ /________/\/_____/\  /_______/\ /_____/\     
+#	\::::_\/_\ \::\\:.\ \\__.::.__\/\:::_ \ \ \::: _  \ \\::::_\/_    
+#	 \:\/___/\\_\::_\:_\/   \::\ \   \:(_) ) )_\::(_)  \ \\:\/___/\   
+#	  \::___\/_ _\/__\_\_/\  \::\ \   \: __ `\ \\:: __  \ \\_::._\:\  
+#	   \:\____/\\ \ \ \::\ \  \::\ \   \ \ `\ \ \\:.\ \  \ \ /____\:\ 
+#	    \_____\/ \_\/  \__\/   \__\/    \_\/ \_\/ \__\/\__\/ \_____\/ 
+EXTRA_DEF =                                                                  
+## COLLISIONS AND PLANET FORMATION
+#EXTRA_DEF += -DAGGS                  #Include support for aggregates (like asteroids and rubble piles) See aggs.c
+#EXTRA_DEF += -DGROWMASS              #Allow collisional particles to grow
+#EXTRA_DEF += -DN_DIM                 #Number of dimensions to use for solar system calculations (Defaults to 3)
+#EXTRA_DEF += -DSURFACEAREA           #Calculate and output the surface area of all the particles.
+#EXTRA_DEF += -DNORMAL                #Calculate and output surface normals for particles (Needs -DSURFACEAREA)
+#EXTRA_DEF += -DRUBBLE_ZML            #Use "Rubble Pile" collision model (Requires -DCOLLISION)
+#EXTRA_DEF += -DSAND_PILE             #Use the "Sand Pile" collision model (Requires -DCOLLISION)
+#EXTRA_DEF += -DSLIDING_PATCH         #Alternative collision scheme (I don't really know what this does) (Requires -DCOLLISIONS)
+#EXTRA_DEF += -DTUMBLER               #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
+
+## STAR FORMATION AND FEEDBACK
+#EXTRA_DEF += -DBLASTWAVE			  #Use the Stinson+ 2006 Blastwave feedback 
+#EXTRA_DEF += -DNONTHERMAL			  #Use an Agertz+ 2013/Teyssier+ 2013 non-thermal pressure feedback
+#EXTRA_DEF += -DKROUPA01              #Use the newer Kroupa 01 IMF (DOI:10.1046/j.1365-8711.2001.04022.x)
+#EXTRA_DEF += -DKROUPA                #Use the Kroupa IMF (from Kroupa et al 1993 Bibcode:1993MNRAS.262..545K)
+#EXTRA_DEF += -DMILLERSCALO			  #Use the old-school Miller & Scalo 1979 IMF (DOI:10.1086/190629)
+#EXTRA_DEF += -DFEEDBACKDIFFLIMIT     #Disable thermal diffusion for particles that have their cooling shut off (requires -DBLASTWAVE)
+#EXTRA_DEF += -DTOPHATFEEDBACK        #Use a tophat kernel to smooth feedback over (default with superbubble feedback)
+#EXTRA_DEF += -DVOLUMEFEEDBACK        #Smooth FB energy with a volume-weighted kernel
+#EXTRA_DEF += -DMASSFEEDBACK          #Smooth FB energy over mass-weighted kernel (default with blastwave feedback)
+
+## OUTPUT VISUALIZATION
+#EXTRA_DEF += -DGSS_DUMPFRAME         #Dumpframe that allows coloring by particle property (Greg's version)
+#EXTRA_DEF += -DVOXEL                 #Dump voxels for volume imaging.
+
+## INITIAL CONDITION BUILDING
+#EXTRA_DEF += -DGLASSZ                #Build a glass only in the z-direction, useful for building disc initial conditions
+
+## DEBUG
+#EXTRA_DEF += -DSETTRAPFPE            #Enable Floating point exceptions
 
 
-BASE_DEF = $(PNG_DEF) $(COOLING_DEF) $(MODE_DEF) $(KERNEL_DEF)
+BASE_DEF = $(PNG_DEF) $(COOLING_DEF) $(MODE_DEF) $(KERNEL_DEF) $(EXTRA_DEF)
 
 # The filename of the compiled executable
 EXE = gasoline
@@ -85,7 +163,6 @@ EXE = gasoline
 #       NULL defines
 #
 NULL_MDL		= ../mdl/null
-#NULL_CFLAGS		= -g -I$(NULL_MDL) $(BASE_DEF)
 NULL_CFLAGS		= -O3 -I$(NULL_MDL) $(BASE_DEF)
 NULL_LD_FLAGS	= $(BASE_LD_FLAGS) #-L/usr/lib -L/lib
 NULL_XOBJ		= erf.o v_sqrt1.o
@@ -132,14 +209,14 @@ QMPI_LIBMDL              = $(QMPI_MDL)/mdl.o -lmpi -lm
 QMPI_MDL_CFLAGS  = -I$(QMPI_MDL) $(BASE_DEF) -DMPI_LINUX
 
 
-#       SP1/2 defines
+#       Basic MPI defines
 #
-SPX_MDL			= ../mdl/mpi
-SPX_CFLAGS		= -O3 -I$(SPX_MDL) $(BASE_DEF)
-SPX_LD_FLAGS	= $(BASE_LD_FLAGS)
-SPX_XOBJ		= v_sqrt1.o
-SPX_LIBMDL		= $(SPX_MDL)/mdl.o -lm
-SPX_MDL_CFLAGS	= -O3
+MPI_MDL			= ../mdl/mpi
+MPI_CFLAGS		= -O3 -I$(MPI_MDL) $(BASE_DEF)
+MPI_LD_FLAGS	= $(BASE_LD_FLAGS)
+MPI_XOBJ		= v_sqrt1.o
+MPI_LIBMDL		= $(MPI_MDL)/mdl.o -lm
+MPI_MDL_CFLAGS	= -O3
 
 #
 #		PVM defines
@@ -188,7 +265,7 @@ EXTRA_OBJ = erf.o v_sqrt1.o
 
 default:
 	@echo "Please tell me what architecture to make."
-	@echo "Choices are null, pvm, pthread, pthread_dec, ampi, lam_mpi, qmpi, mpi, spx, charm"
+	@echo "Choices are null, pvm, pthread, pthread_dec, ampi, lam_mpi, qmpi, mpi, charm"
 
 install:
 	@echo "No installation rules."
@@ -248,12 +325,10 @@ qmpi:
 	make $(EXE) "CFLAGS=$(QMPI_CFLAGS)" "LD_FLAGS=$(QMPI_LD_FLAGS)"\
 		"MDL=$(QMPI_MDL)" "XOBJ=$(QMPI_XOBJ)" "LIBMDL=$(QMPI_LIBMDL)"
 
-mpi: spx
-
-spx:
-	cd $(SPX_MDL); make CC=mpicc "CC_FLAGS=$(SPX_MDL_CFLAGS)"
-	make $(EXE) CC=mpicc "CFLAGS=$(SPX_CFLAGS)" "LD_FLAGS=$(SPX_LD_FLAGS)"\
-		"MDL=$(SPX_MDL)" "XOBJ=$(SPX_XOBJ)" "LIBMDL=$(SPX_LIBMDL)"
+mpi:
+	cd $(MPI_MDL); make CC=mpicc "CC_FLAGS=$(MPI_MDL_CFLAGS)"
+	make $(EXE) CC=mpicc "CFLAGS=$(MPI_CFLAGS)" "LD_FLAGS=$(MPI_LD_FLAGS)"\
+		"MDL=$(MPI_MDL)" "XOBJ=$(MPI_XOBJ)" "LIBMDL=$(MPI_LIBMDL)"
 
 charm:
 	cd $(CHARM_MDL); make CC=$(CHARM) "CFLAGS=$(CHARM_MDL_CFLAGS)"

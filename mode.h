@@ -3,6 +3,7 @@
 
 #ifdef GALAXY
 #define GASOLINE              //Do hydro 
+#define DIVVOFF               //Remove the convergent flow requirement for starformation
 #define JEANSSOFT             //Calculate presure floor to keep jeans length larger than softening or sph h (default is just sph h)
 #define PARTICLESPLIT         //Particles will now divide if they get too heavy
 #define SUPERBUBBLE	          //Use the Keller+ 2014 Superbubble feedback 
@@ -19,14 +20,29 @@
 #define GLASS                 //Use this to damp for glass initial conditions
 #endif 
 
-#ifdef TURBULENT
-#define GASOLINE              //Do hydro 
-#define OUTURBDRIVER          //Drive turbulence as in Price & Federrath 2010 with OU variables
-#endif 
-
 #ifdef NBODY
 #undef GASOLINE               //Disable SPH
 #endif
 
+#ifdef BLASTWAVE
+#undef SUPERBUBBLE
+#endif
+
+#ifdef KROUPA
+#undef CHABRIER
+#endif
+
+#ifdef KROUPA01
+#undef CHABRIER
+#endif
+
+#ifdef MILLERSCALO
+#undef CHABRIER
+#endif
+
+#ifdef NONTHERMAL
+#undef SUPERBUBBLE
+#define UNONCOOL
+#endif
 
 #endif
