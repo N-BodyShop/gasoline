@@ -4,6 +4,7 @@
 
 #include <sys/time.h>
 #include <sys/resource.h>
+#include "mode.h"
 #include "mdl.h"
 #include "floattype.h"
 #include "treezip.h"
