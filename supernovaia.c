@@ -1,11 +1,10 @@
-
-#ifdef STARFORM
 #include <stdio.h>
 #include <math.h>
 #include <assert.h>
 #include "supernova.h"
 #include "millerscalo.h"
 #include "supernovaia.h"
+#ifdef STARFORM
 
 /* Calculation of number and mass of stars that go SN Type Ia in a
    given stellar mass range.  Must be in separate file from

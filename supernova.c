@@ -1,5 +1,4 @@
 
-#ifdef STARFORM
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -9,6 +8,7 @@
 #include "feedback.h"
 #include "supernova.h"
 #include "supernovaia.h"
+#ifdef STARFORM
 
 #define max(A,B) ((A) > (B) ? (A) : (B))
 #define min(A,B) ((A) < (B) ? (A) : (B))

@@ -1,5 +1,4 @@
-
-/*#define ASSERTENEG*/
+#include "mode.h"
 
 #ifdef GASOLINE
 #ifndef NOCOOLING

@@ -1,3 +1,4 @@
+#include "mode.h"
 
 #ifdef GASOLINE
 #ifndef NOCOOLING

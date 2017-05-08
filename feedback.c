@@ -1,5 +1,3 @@
-
-#ifdef STARFORM
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -8,6 +6,7 @@
 #include "pkd.h"
 #include "feedback.h"
 #include "supernova.h"
+#ifdef STARFORM
 
 void snCalcWindFeedback(SN sn, SFEvent sfEvent,
                         double dTimeYr, /* current time in years */

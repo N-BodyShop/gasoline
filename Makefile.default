@@ -10,8 +10,8 @@ CC = gcc
 
 # What kind of problem are we running?  This will enable a default set of code components
 # appropriate for different kinds of problems.  Select only one.
-#MODE_DEF = -DGALAXY 			#Default mode: includes SPH, star formation, and feedback.
-MODE_DEF = -DCOLLISIONAL		#Collisional mode for simulating asteroids & planets
+MODE_DEF = -DGALAXY 			#Default mode: includes SPH, star formation, and feedback.
+#MODE_DEF = -DCOLLISIONAL		#Collisional mode for simulating asteroids & planets
 #MODE_DEF = -DNBODY 			#N-body only mode: gravity with nothing else.
 #MODE_DEF = -DTURBULENT 		#Drive Turbulence, as per Price & Fedderath 2008
 #MODE_DEF = -DGLASS_IC 			#Generate a gravity glass (useful for making ICS)
@@ -45,14 +45,15 @@ GSL_LIB =
 
 # The following pairs of lines define which cooling method to use.  Uncomment
 # only one pair
+
+COOLING_OBJ = cooling_metal.o
+COOLING_DEF = -DCOOLING_METAL
+
 #COOLING_OBJ = cooling_cosmo.o
 #COOLING_DEF = -DCOOLING_COSMO
 
 #COOLING_OBJ = cooling_poly.o
 #COOLING_DEF = -DCOOLING_POLY
-
-#COOLING_OBJ = cooling_metal.o
-#COOLING_DEF = -DCOOLING_METAL
 
 #COOLING_OBJ = cooling_grackle.o
 #COOLING_DEF = -DCOOLING_GRACKLE
@@ -67,8 +68,8 @@ GSL_LIB =
 #COOLING_OBJ = cooling_planet.o
 #COOLING_DEF = -DCOOLING_PLANET
 
-COOLING_OBJ =
-COOLING_DEF = -DNOCOOLING
+#COOLING_OBJ =
+#COOLING_DEF = -DNOCOOLING
 
 BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
 BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB) $(COOLING_LIB)
