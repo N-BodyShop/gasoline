@@ -3265,7 +3265,6 @@ void msrLogHeader(MSR msr,FILE *fp)
     LogParams(lgr, "COLLISIONS","bFixCollapse: %d",msr->param.CP.bFixCollapse);
     LogParams(lgr, "SPECIAL PARTICLES","achSpecialFile: %s",msr->param.achSpecialFile);
     SPECIAL_PARTICLE_DATA *s;
-    int i;
     LogParams(lgr, "SPECIAL PARTICLES","nSpecial: %i",msr->param.nSpecial);
     for (i=0;i<msr->param.nSpecial;i++) {
         s = &msr->param.sSpecialData[i];
@@ -3286,7 +3285,6 @@ void msrLogHeader(MSR msr,FILE *fp)
 #ifdef SAND_PILE
     {
         WALLS *w = &msr->param.CP.walls;
-        int i;
         LogParams(lgr, "SAND PILE","nWalls: %i",w->nWalls);
         for (i=0;i<w->nWalls;i++) {
 #ifdef TUMBLER

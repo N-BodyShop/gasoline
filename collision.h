@@ -2,10 +2,10 @@
 #ifndef COLLISION_HINCLUDED
 #define COLLISION_HINCLUDED
 
-#ifdef COLLISIONS
 
 #include "pkd.h" /* for PARTICLE struct */
 #include "ssio.h" /* for SSDATA struct */
+#ifdef COLLISIONS
 
 
 #include "special.h"

@@ -33,10 +33,11 @@
 #ifndef __AGGS_H
 #define __AGGS_H
 
+#include "pkd.h" /* for PARTICLE struct */
+
 #ifdef AGGS
 
 #include "linalg.h"
-#include "pkd.h" /* for PARTICLE struct */
 
 #define AGGS_INIT_BUFF_SIZE 16 /* allocate this many aggs minimum */
 

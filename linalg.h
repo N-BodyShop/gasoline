@@ -25,6 +25,7 @@
 #define __LINALG_H
  
 #include "floattype.h"
+#include "mode.h"
  
 /* maximum number of Jacobi sweeps for routine jacobi() */
 #define MAX_JACOBI_SWEEPS 50

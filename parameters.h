@@ -219,6 +219,8 @@ struct parameters {
     int bBHAccreteAll;
 	char achDigitMask[MAXPATHLEN];
 	char achInFile[MAXPATHLEN];
+	char achWallFile[MAXPATHLEN];
+	char achSpecialFile[MAXPATHLEN];
 	char achOutName[MAXPATHLEN];
 	char achDataSubPath[MAXPATHLEN];
     char achOutputListGasRed[MAXLISTLEN];

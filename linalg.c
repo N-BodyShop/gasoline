@@ -10,11 +10,12 @@
  *          [3-D hardwired for speed]
  */
 
-#ifdef AGGS /*DEBUG for now*/
 
 #include <math.h>
 #include <assert.h>
 #include "linalg.h"
+
+#ifdef AGGS /*DEBUG for now*/
 
 void vectorCopy(const Vector u,Vector v)
 {

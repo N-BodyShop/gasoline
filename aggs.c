@@ -11,7 +11,6 @@
  * Modified: 01/28/01; DCR: 07/10/02, 5/29/03, 7/14/05
  */
  
-#ifdef AGGS
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +18,8 @@
 
 #include "aggs.h"
 #include "collision.h" /* for COLLIDER struct */
+
+#ifdef AGGS
 
 void pkdAggsFind(PKD pkd,int *iMaxIdx)
 {

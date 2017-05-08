@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <sys/param.h>	/* for MAXPATHLEN */
 #include <rpc/rpc.h>	/* for XDR routines */
+#include "mode.h"
 
 #ifndef MAXPATHLEN
 #define MAXPATHLEN 256

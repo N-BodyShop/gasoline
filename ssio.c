@@ -1,4 +1,4 @@
-
+#include "ssio.h" /* also defines MAXPATHLEN */
 #ifdef COLLISIONS /* pkdgrav version should otherwise match with ss version */
 
 /*
@@ -7,7 +7,6 @@
  ** Solar System data I/O routines.
  */
 
-#include "ssio.h" /* also defines MAXPATHLEN */
 #include <string.h>
 #include <assert.h>
 

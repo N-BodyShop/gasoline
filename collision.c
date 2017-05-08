@@ -1,12 +1,11 @@
-
-#ifdef COLLISIONS
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
 
 #include "collision.h"
+
+#ifdef COLLISIONS
 
 #ifdef RUBBLE_ZML
 #include "rubble.h"

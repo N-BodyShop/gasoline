@@ -10,8 +10,7 @@
 #define CHABRIER              //Use the Chabrier 2003 IMF for starformation (See DOI:10.1086/376392)  (SHOULD BE DEFAULT)
 #endif 
 
-#ifdef COLLISIONS
-#define AGGS                  //Include support for aggregates (like asteroids and rubble piles) See aggs.c
+#ifdef COLLISIONAL
 #define COLLISIONS            //Use solid-body collisions (not compatible with -DGASOLINE)
 #endif 
 

@@ -10,11 +10,11 @@ CC = gcc
 
 # What kind of problem are we running?  This will enable a default set of code components
 # appropriate for different kinds of problems.  Select only one.
-MODE_DEF = -DGALAXY 		#Default mode: includes SPH, star formation, and feedback.
-#MODE_DEF = -DCOLLISIONS		#Collisional mode for simulating asteroids & planets
+#MODE_DEF = -DGALAXY 			#Default mode: includes SPH, star formation, and feedback.
+MODE_DEF = -DCOLLISIONAL		#Collisional mode for simulating asteroids & planets
 #MODE_DEF = -DNBODY 			#N-body only mode: gravity with nothing else.
 #MODE_DEF = -DTURBULENT 		#Drive Turbulence, as per Price & Fedderath 2008
-#MODE_DEF = -DGLASS_IC 		#Generate a gravity glass (useful for making ICS)
+#MODE_DEF = -DGLASS_IC 			#Generate a gravity glass (useful for making ICS)
 
 # Which SPH Kernel should we use?
 KERNEL_DEF = -DWENDLANDC4            #Use the Wendland C_4 Kernel (See Dehnen & Aly 2012)
@@ -51,8 +51,8 @@ GSL_LIB =
 #COOLING_OBJ = cooling_poly.o
 #COOLING_DEF = -DCOOLING_POLY
 
-COOLING_OBJ = cooling_metal.o
-COOLING_DEF = -DCOOLING_METAL
+#COOLING_OBJ = cooling_metal.o
+#COOLING_DEF = -DCOOLING_METAL
 
 #COOLING_OBJ = cooling_grackle.o
 #COOLING_DEF = -DCOOLING_GRACKLE
@@ -67,15 +67,15 @@ COOLING_DEF = -DCOOLING_METAL
 #COOLING_OBJ = cooling_planet.o
 #COOLING_DEF = -DCOOLING_PLANET
 
-#COOLING_OBJ =
-#COOLING_DEF = -DNOCOOLING
+COOLING_OBJ =
+COOLING_DEF = -DNOCOOLING
 
 BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
 BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB) $(COOLING_LIB)
 
 
 
-BASE_DEF = $(PNG_DEF) $(MODE_DEF) $(COOLING_DEF) $(KERNEL_DEF)
+BASE_DEF = $(PNG_DEF) $(COOLING_DEF) $(MODE_DEF) $(KERNEL_DEF)
 
 # The filename of the compiled executable
 EXE = gasoline
@@ -180,7 +180,7 @@ OBJ	= main.o master.o param.o outtype.o pkd.o pst.o grav.o \
 	  starform.o feedback.o millerscalo.o supernova.o supernovaia.o \
 	  startime.o stiff.o runge.o dumpframe.o dffuncs.o dumpvoxel.o \
 	  rotbar.o special.o ssio.o $(PNG_OBJ) $(TURB_OBJ) \
-	  treezip.o log.o
+	  treezip.o log.o linalg.o aggs.o
 
 EXTRA_OBJ = erf.o v_sqrt1.o 
 
@@ -271,6 +271,7 @@ fdl.o: htable.h fdl.h
 grav.o: pkd.h floattype.h cooling.h grav.h meval.h qeval.h
 htable.o: htable.h
 integration.o: linalg.h floattype.h integration.h
+aggs.o: aggs.c aggs.h
 linalg.o: linalg.h floattype.h
 main.o: master.h param.h pst.h pkd.h floattype.h cooling.h smoothfcn.h
 main.o: parameters.h cosmo.h outtype.h
