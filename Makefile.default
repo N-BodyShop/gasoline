@@ -85,34 +85,6 @@ COOLING_DEF = -DCOOLING_METAL
 #COOLING_OBJ =
 #COOLING_DEF = -DNOCOOLING
 
-#	 __        ________   _______   ______    ________   ______     ________  ______   ______      
-#	/_/\      /_______/\/_______/\ /_____/\  /_______/\ /_____/\   /_______/\/_____/\ /_____/\     
-#	\:\ \     \__.::._\/\::: _  \ \\:::_ \ \ \::: _  \ \\:::_ \ \  \__.::._\/\::::_\/_\::::_\/_    
-#	 \:\ \       \::\ \  \::(_)  \/_\:(_) ) )_\::(_)  \ \\:(_) ) )_   \::\ \  \:\/___/\\:\/___/\   
-#	  \:\ \____  _\::\ \__\::  _  \ \\: __ `\ \\:: __  \ \\: __ `\ \  _\::\ \__\::___\/_\_::._\:\  
-#	   \:\/___/\/__\::\__/\\::(_)  \ \\ \ `\ \ \\:.\ \  \ \\ \ `\ \ \/__\::\__/\\:\____/\ /____\:\ 
-#	    \_____\/\________\/ \_______\/ \_\/ \_\/ \__\/\__\/ \_\/ \_\/\________\/ \_____\/ \_____\/
-#
-# If you do dump frame stuff with png you need these libs ( -DUSE_PNG )
-#PNG_INCL = -I/usr/include
-#PNG_LIB = -L/usr/lib -lpng -lz
-#PNG_LIB = -lpng -lz
-#PNG_OBJ = writepng.o
-#PNG_DEF = $(PNG_INCL) -DUSE_PNG
-PNG_INCL =
-PNG_LIB =
-PNG_OBJ =
-PNG_DEF =
-
-# if you use OUTURBDRIVER or TURBULENT you need libgsl
-#TURB_OBJ = outurb.o
-#GSL_LIB = -lgsl -lgslcblas
-TURB_OBJ =
-GSL_LIB =
-
-BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
-BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB) $(COOLING_LIB)
-
 #	 ______   __     __   _________  ______    ________   ______      
 #	/_____/\ /__/\ /__/\ /________/\/_____/\  /_______/\ /_____/\     
 #	\::::_\/_\ \::\\:.\ \\__.::.__\/\:::_ \ \ \::: _  \ \\::::_\/_    
@@ -164,6 +136,34 @@ EXTRA_DEF =
 
 ## DEBUG
 #EXTRA_DEF += -DSETTRAPFPE            #Enable Floating point exceptions
+
+#	 __        ________   _______   ______    ________   ______     ________  ______   ______      
+#	/_/\      /_______/\/_______/\ /_____/\  /_______/\ /_____/\   /_______/\/_____/\ /_____/\     
+#	\:\ \     \__.::._\/\::: _  \ \\:::_ \ \ \::: _  \ \\:::_ \ \  \__.::._\/\::::_\/_\::::_\/_    
+#	 \:\ \       \::\ \  \::(_)  \/_\:(_) ) )_\::(_)  \ \\:(_) ) )_   \::\ \  \:\/___/\\:\/___/\   
+#	  \:\ \____  _\::\ \__\::  _  \ \\: __ `\ \\:: __  \ \\: __ `\ \  _\::\ \__\::___\/_\_::._\:\  
+#	   \:\/___/\/__\::\__/\\::(_)  \ \\ \ `\ \ \\:.\ \  \ \\ \ `\ \ \/__\::\__/\\:\____/\ /____\:\ 
+#	    \_____\/\________\/ \_______\/ \_\/ \_\/ \__\/\__\/ \_\/ \_\/\________\/ \_____\/ \_____\/
+#
+# If you do dump frame stuff with png you need these libs ( -DUSE_PNG )
+#PNG_INCL = -I/usr/include
+#PNG_LIB = -L/usr/lib -lpng -lz
+#PNG_LIB = -lpng -lz
+#PNG_OBJ = writepng.o
+#PNG_DEF = $(PNG_INCL) -DUSE_PNG
+PNG_INCL =
+PNG_LIB =
+PNG_OBJ =
+PNG_DEF =
+
+# if you use OUTURBDRIVER or TURBULENT you need libgsl
+#TURB_OBJ = outurb.o
+#GSL_LIB = -lgsl -lgslcblas
+TURB_OBJ =
+GSL_LIB =
+
+BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
+BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB) $(COOLING_LIB)
 
 
 BASE_DEF = $(PNG_DEF) $(COOLING_DEF) $(MODE_DEF) $(KERNEL_DEF) $(EXTRA_DEF)
