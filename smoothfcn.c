@@ -196,6 +196,7 @@
                 }
 
 #else
+#ifdef M4
 /* Standard M_4 Kernel */
 #define KERNEL(ak,ar2) { \
 		ak = 2.0 - sqrt(ar2); \
@@ -211,6 +212,10 @@
 			adk = -0.75*(2.0-adk)*(2.0-adk)/adk; \
 			} \
                 }
+#else
+    fprintf(stderr, "ERROR: No Kernel Specified!");
+    assert(0);
+#endif 
 #endif
 #endif
 #endif
@@ -2637,13 +2642,11 @@ void initSphPressureTermsParticle(void *p)
 #ifdef UNONCOOL
         ((PARTICLE *)p)->uHotDotDiff = 0.0;
 #endif
-#ifdef DIFFUSION
 		((PARTICLE *)p)->fMetalsDot = 0.0;
 #ifdef STARFORM
 		((PARTICLE *)p)->fMFracOxygenDot = 0.0;
 		((PARTICLE *)p)->fMFracIronDot = 0.0;
 #endif /* STARFORM */
-#endif /* DIFFUSION */
 		}
 	}
 
@@ -2662,13 +2665,11 @@ void initSphPressureTerms(void *p)
 		ACCEL(p,0) = 0.0;
 		ACCEL(p,1) = 0.0;
 		ACCEL(p,2) = 0.0;
-#ifdef DIFFUSION
 		((PARTICLE *)p)->fMetalsDot = 0.0;
 #ifdef STARFORM
 		((PARTICLE *)p)->fMFracOxygenDot = 0.0;
 		((PARTICLE *)p)->fMFracIronDot = 0.0;
 #endif /* STARFORM */
-#endif /* DIFFUSION */
 		}
 	}
 
@@ -2686,13 +2687,11 @@ void combSphPressureTerms(void *p1,void *p2)
 		ACCEL(p1,0) += ACCEL(p2,0);
 		ACCEL(p1,1) += ACCEL(p2,1);
 		ACCEL(p1,2) += ACCEL(p2,2);
-#ifdef DIFFUSION
 		((PARTICLE *)p1)->fMetalsDot += ((PARTICLE *)p2)->fMetalsDot;
 #ifdef STARFORM
 		((PARTICLE *)p1)->fMFracOxygenDot += ((PARTICLE *)p2)->fMFracOxygenDot;
 		((PARTICLE *)p1)->fMFracIronDot += ((PARTICLE *)p2)->fMFracIronDot;
 #endif /* STARFORM */
-#endif /* DIFFUSION */
 		}
 		if (((PARTICLE *)p2)->dtNew < ((PARTICLE *)p1)->dtNew)
 			((PARTICLE *)p1)->dtNew = ((PARTICLE *)p2)->dtNew;
@@ -3998,7 +3997,6 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             }
 	    break;
 	    }
-#if defined(DIFFUSION) || defined(CULLENDEHNEN)
         {
         double onethirdtrace = (1./3.)*trace;
         /* Build Traceless Strain Tensor (not yet normalized) */
@@ -4050,14 +4048,11 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
             p->alpha = alphaLoc;
             }
 #endif
-#ifdef DIFFUSION
         /* diff coeff., nu ~ C L^2 S (add C via dMetalDiffusionConstant, assume L ~ h) */
         if (smf->bConstantDiffusion) p->diff = 1;
         else p->diff = 0.25*BALL2(p)*sqrt(2*S2);
-#endif
 /*	printf(" %g %g   %g %g %g  %g\n",p->fDensity,p->divv,p->curlv[0],p->curlv[1],p->curlv[2],fNorm1*sqrt(2*(sxx*sxx + syy*syy + szz*szz + 2*(sxy*sxy + sxz*sxz + syz*syz))) );*/
         }    
-#endif
 	
 	}
 

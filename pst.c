@@ -132,7 +132,6 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_SETSOFT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetSoft,
 				  sizeof(struct inSetSoft),0);
-#ifdef CHANGESOFT
 	mdlAddService(mdl,PST_PHYSICALSOFT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstPhysicalSoft,
 				  sizeof(struct inPhysicalSoft),0);
@@ -142,7 +141,6 @@ pstAddServices(PST pst,MDL mdl)
 	mdlAddService(mdl,PST_POSTVARIABLESOFT,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstPostVariableSoft,
 				  sizeof(struct inPostVariableSoft),0);
-#endif
 	mdlAddService(mdl,PST_SETTOTAL,pst,
 				  (void (*)(void *,void *,int,void *,int *)) pstSetTotal,
 				  0,sizeof(struct outSetTotal));
@@ -2851,7 +2849,6 @@ void pstSetSoft(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 	if (pnOut) *pnOut = 0;
 	}
 
-#ifdef CHANGESOFT
 void pstPhysicalSoft(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {
 	LCL *plcl = pst->plcl;
@@ -2903,7 +2900,6 @@ void pstPostVariableSoft(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 		}
 	if (pnOut) *pnOut = 0;
 	}
-#endif
 
 void pstBuildTree(PST pst,void *vin,int nIn,void *vout,int *pnOut)
 {

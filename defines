@@ -20,7 +20,7 @@ FEEDBACKDIFFLIMIT     #Disable thermal diffusion for particles that have their c
 TOPHATFEEDBACK        #Use a tophat kernel to smooth feedback over
 VOLUMEFEEDBACK        #Smooth FB energy over a volume rather than mass
 UNONCOOL              #Enable noncooling energy for feedback
-SUPERBUBBLE	      #Use the Keller+ 2014 Superbubble feedback 
+SUPERBUBBLE	          #Use the Keller+ 2014 Superbubble feedback 
 
 ## GRAVITY AND HYDRODYNAMICS
 GASOLINE              #Do hydro 
@@ -49,9 +49,11 @@ SINKINGAVERAGE        #I believe this prevents sink particles from evolving with
 SINKING               #Include support for sink particles
 
 ## SPH KERNELS
-WENDLAND              #Use the Wendland C_2 Kernel (See Dehnen & Aly 2012)
-WENDLANDC4            #Use the Wendland C_4 Kernel (See Dehnen & Aly 2012)
-HSHRINK               #M4 kernel times (pi/6)^(1/3) for a tighter kernel
-M43D                  #Use a fancier 3D derived M4 Kernel
-PEAKEDKERNEL          #Use a modified Peaked M4 kernel as per Thomas and Couchman 92 (Bibcode:1992MNRAS.257...11T)
-QUINTIC               #Use a quintic spline kernel from Dehnen & Aly 2012 (Bibcode:2012MNRAS.425.1068D)
+#WENDLAND              #Use the Wendland C_2 Kernel (See Dehnen & Aly 2012)
+#WENDLANDC4            #Use the Wendland C_4 Kernel (See Dehnen & Aly 2012)
+#HSHRINK               #M4 kernel times (pi/6)^(1/3) for a tighter kernel
+#M43D                  #Use a fancier 3D derived M4 Kernel
+#PEAKEDKERNEL          #Use a modified Peaked M4 kernel as per Thomas and Couchman 92 (Bibcode:1992MNRAS.257...11T)
+#QUINTIC               #Use a quintic spline kernel from Dehnen & Aly 2012 (Bibcode:2012MNRAS.425.1068D)
+
+SETTRAPFPE            #Enable Floating point exceptions

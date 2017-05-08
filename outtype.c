@@ -180,10 +180,8 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
         return(UDOT_HYDRO(p));
 	case OUT_METALS_ARRAY:
 	    return(p->fMetals);
-#ifdef DIFFUSION
 	case OUT_METALSDOT_ARRAY:
 	    return(p->fMetalsDot);
-#endif
 	case OUT_UDOTPDV_ARRAY:
 	    return(p->uDotPdV);
 	case OUT_UDOTAV_ARRAY:
@@ -203,12 +201,10 @@ FLOAT VecType(PKD pkd, PARTICLE *p,int iDim,int iType)
 	    return((FLOAT) p->fMFracOxygen);
 	case OUT_IRONMASSFRAC_ARRAY:
 	    return((FLOAT) p->fMFracIron);
-#ifdef DIFFUSION
 	case OUT_OXYGENMASSFRACDOT_ARRAY:
 	    return((FLOAT) p->fMFracOxygenDot);
 	case OUT_IRONMASSFRACDOT_ARRAY:
 	    return((FLOAT) p->fMFracIronDot);
-#endif
 	case OUT_UDOTFB_ARRAY:
 	    return((FLOAT) p->uDotFB);
 #endif
@@ -495,11 +491,9 @@ void VecFilename(char *achFile, int iType)
     case OUT_METALS_ARRAY:
 	    strncat(achFile,"Metals",256);
         break;
-#ifdef DIFFUSION
 	case OUT_METALSDOT_ARRAY:
 	    strncat(achFile,"Metalsdot",256);
         break;
-#endif
 	case OUT_SIGMA2_ARRAY:
 	    strncat(achFile,"sigma2",256);
         break;
@@ -522,14 +516,12 @@ void VecFilename(char *achFile, int iType)
 	case OUT_IRONMASSFRAC_ARRAY:
 	    strncat(achFile,"FeMassFrac",256);
         break;
-#ifdef DIFFUSION
 	case OUT_OXYGENMASSFRACDOT_ARRAY:
 	    strncat(achFile,"OxMassFracdot",256);
         break;
 	case OUT_IRONMASSFRACDOT_ARRAY:
 	    strncat(achFile,"FeMassFracdot",256);
         break;
-#endif
 	case OUT_UDOTFB_ARRAY:
 	    strncat(achFile,"uDotFB",256);
 	    break;

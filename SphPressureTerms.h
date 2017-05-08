@@ -21,7 +21,6 @@
 
     #define DRHODTACTIVE(xxx)
 
-#ifdef DIFFUSION
 
     #ifdef FEEDBACKDIFFLIMIT
         #define DIFFUSIONLimitTest() (diffSum == 0 || smf->dTime < p->fTimeCoolIsOffUntil || smf->dTime < q->fTimeCoolIsOffUntil)
@@ -37,15 +36,8 @@
              /(p->fDensity+q->fDensity);
         #define DIFFUSIONMass()
         #define DIFFUSIONVelocity()
-#else
-    #define DIFFUSIONBase()
-    #define DIFFUSIONMetalsBase()
-    #define DIFFUSIONMass()
-    #define DIFFUSIONVelocity()
-#endif
 
 
-#ifdef DIFFUSION
     #if defined(UNONCOOL) && !defined(TWOPHASE)
         #define DIFFUSIONThermaluHot() \
                 { double diffuNc = diffTh*(p->uHotPred-q->uHotPred); \
@@ -94,14 +86,6 @@
         #define DIFFUSIONMetalsOxygen()
         #define DIFFUSIONMetalsIron()
     #endif /* STARFORM */
-#else /* No diffusion */
-    #define DIFFUSIONShockCondBase()
-    #define DIFFUSIONShockCond()
-    #define DIFFUSIONThermal(dt_)
-    #define DIFFUSIONMetals()
-    #define DIFFUSIONMetalsOxygen()
-    #define DIFFUSIONMetalsIron()
-#endif
 
 #if defined(VARALPHA) || defined(CULLENDEHNEN)
     #define ALPHA (smf->alpha*0.5*(p->alpha+q->alpha))
@@ -115,7 +99,6 @@
                             if (4*q->dt < p->dtNew) p->dtNew = 4*q->dt; \
                             if (4*p->dt < q->dtNew) q->dtNew = 4*p->dt; }
 
-#ifdef VSIGVISC
     #define ARTIFICIALVISCOSITY(visc_,dt_) { absmu = -dvdotdr*smf->a            \
                 /sqrt(nnList[i].fDist2); /* mu multiply by a to be consistent with physical c */ \
             if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
@@ -124,17 +107,6 @@
     		dt_ = smf->dtFacCourant*ph/(0.625*(pc + q->c)+0.375*visc_);     \
     		visc_ = SWITCHCOMBINE(p,q)*visc_ \
     		    *absmu/(pDensity + q->fDensity); }
-#else
-    #define ARTIFICIALVISCOSITY(visc_,dt_) { double hav=0.5*(ph+sqrt(0.25*BALL2(q)));  /* h mean */ \
-    		absmu = -hav*dvdotdr*smf->a  \
-    		    /(nnList[i].fDist2+0.01*hav*hav); /* mu multiply by a to be consistent with physical c */ \
-    		if (absmu>p->mumax) p->mumax=absmu; /* mu terms for gas time step */ \
-    		if (absmu>q->mumax) q->mumax=absmu; \
-    		visc_ = (ALPHA*(pc + q->c) + BETA*2*absmu);	\
-    		dt_ = smf->dtFacCourant*hav/(0.625*(pc + q->c)+0.375*visc_); \
-    		visc_ = SWITCHCOMBINE(p,q)*visc_ \
-    		    *absmu/(pDensity + q->fDensity); }
-#endif
 
     /* Force Calculation between particles p and q */
 DRHODTACTIVE( PACTIVE( p->fDivv_PdV -= rq/p->fDivv_Corrector/RHO_DIVV(pDensity,q->fDensity)*dvdotdr; ));

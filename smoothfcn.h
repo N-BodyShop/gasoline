@@ -80,11 +80,9 @@ typedef struct smfParameters {
     double dTime;
     double dEvapCoeffCode;
     double dEvapMinTemp;
-#ifdef DIFFUSION
     double dMetalDiffusionCoeff;
     double dThermalDiffusionCoeff;
     int bConstantDiffusion;
-#endif
 #ifdef TWOPHASE
     double dFBInitialMassLoad;
     double dMultiPhaseMinTemp;

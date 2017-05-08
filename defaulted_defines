@@ -16,3 +16,9 @@ TWOSMOOTH             #Smooth twice rather than 3 times. This is defined by defa
 SPECIAL_PARTICLES     #Include support for weird special particles (not star, gas, or DM) (This is defaulted in COLLISIONS)
 INTERNAL_WARNINGS     #Already defaulted to 1 in pkd.h
 INTERNAL_WARNINGS_ONCE #Equivalent to above
+CHANGESOFT            #Allow gravitational softening lengths to vary with time
+DTADJUST              #Readjust timesteps if near short timestep particles -- required for good energy conservation
+EPSACCH               #Use sph H not softening to calculate acceleration timestep, even if softening smaller
+RTFORCE               #Use an Ritchie & Thomas forces (DOI:10.1046/j.1365-8711.2001.04268.x) (RENAME GDFORCE)
+VSIGVISC              #Alternate Artificial Viscous force calculation (due to Monaghan)
+DIFFUSION             #Enable Diffusion (of metals and energy)

@@ -671,14 +671,10 @@ int main(int argc,char **argv)
             if (msr->nGas > 0) {
 		msrInitSph(msr,dTime);
         msrCreateGasStepZeroOutputList(msr, &nOutputList,OutputList);
-#ifdef DIFFUSION
 		OutputList[(nOutputList)++]=OUT_METALSDOT_ARRAY;
-#endif
 #ifdef STARFORM
-#ifdef DIFFUSION
 		OutputList[(nOutputList)++]=OUT_OXYGENMASSFRACDOT_ARRAY;
 		OutputList[(nOutputList)++]=OUT_IRONMASSFRACDOT_ARRAY;
-#endif
 #endif
 #ifndef NOCOOLING
 

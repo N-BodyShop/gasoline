@@ -1818,10 +1818,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    printf("WARNING: bPhysicalSoft reset to 0 for non-comoving (bComove == 0)\n");
 	    msr->param.bPhysicalSoft = 0;
 	  }
-#ifndef CHANGESOFT
-	  fprintf(stderr,"ERROR: You must compile with -DCHANGESOFT to use changing softening options\n");
-	  _msrExit(msr,1);
-#endif
 	  if (msr->param.bVariableSoft && !prmSpecified(msr->prm,"bDoSoftOutput")) msr->param.bDoSoftOutput=1;
 
 	  if (msr->param.bPhysicalSoft && msr->param.bVariableSoft) {
@@ -2114,12 +2110,6 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	    fprintf(stderr,"ERROR: bLongRangeStep requires -DLONGRANGESTEP.\n");
 	    assert(0);
 	    }
-#ifndef DIFFUSION
-	if (prmSpecified(msr->prm,"dMetalDiffusionCoeff")) {
-	    fprintf(stderr,"ERROR: Metal Diffusion Rate specified but not compiled for\nUse -DDIFFUSION during compilation\n");
-	    assert(0);
-	    }
-#endif
 #if !defined(DIFFUSION) || !defined(THERMALCOND)
 	if (prmSpecified(msr->prm,"dThermalCondCoeff")) {
 	    fprintf(stderr,"ERROR: Thermal Conductivity specified but not compiled for.\nUse -DDIFFUSION and -DTHERMALCOND during compilation\n");
@@ -2649,9 +2639,7 @@ void msrLogDefines(FILE *fp)
 	fprintf(fp," KROUPA");
 #endif
 #endif
-#ifdef VSIGVISC
 	fprintf(fp," VSIGVISC");
-#endif
 #ifdef GDFORCE
 	fprintf(fp," GDFORCE");
 #endif
@@ -2688,9 +2676,7 @@ void msrLogDefines(FILE *fp)
 #ifdef NSMOOTHINNER
 	fprintf(fp," NSMOOTHINNER");
 #endif
-#ifdef CHANGESOFT
  	fprintf(fp," CHANGESOFT");
-#endif
 #ifdef NOCOOLING
  	fprintf(fp," NOCOOLING");
 #endif
@@ -2757,19 +2743,13 @@ void msrLogDefines(FILE *fp)
 #ifdef JEANSSOFTONLY
 	fprintf(fp, " JEANSSOFTONLY");
 #endif
-#ifdef DTADJUST
 	fprintf(fp, " DTADJUST");
-#endif
 #ifdef TTEST
     fprintf(stderr,"TTEST is not a valid macro\n");
     assert(0);
 #endif
-#ifdef EPSACCH
         fprintf(fp, " ESPACCH");
-#endif
-#ifdef DIFFUSION
 	fprintf(fp, " DIFFUSION");
-#endif
 #ifdef PROMOTE
 	fprintf(fp, " PROMOTE");
 #endif
@@ -5632,11 +5612,9 @@ void msrSmoothFcnParam(MSR msr, double dTime, SMF *psmf)
         psmf->dHotInitCodeDensity = 1.67e-24/1e3/dComovingGmPerCcUnit;
         }
 #endif
-#ifdef DIFFUSION
     psmf->dMetalDiffusionCoeff = msr->param.dMetalDiffusionCoeff;
     psmf->dThermalDiffusionCoeff = msr->param.dThermalDiffusionCoeff;
     psmf->bConstantDiffusion = msr->param.bConstantDiffusion;
-#endif
     psmf->dTauAlpha = msr->param.dTauAlpha;
     psmf->dAlphaMax = msr->param.dAlphaMax;
     psmf->dAlphaMin = msr->param.dAlphaMin;
@@ -5844,7 +5822,6 @@ void msrDtSmooth(MSR msr,double dTime,int bSymmetric)
 	}
 
 void msrUpdateSoft(MSR msr,double dTime) {
-#ifdef CHANGESOFT
        if (!(msr->param.bPhysicalSoft || msr->param.bVariableSoft)) return;
        if (msr->param.bPhysicalSoft) {
 	 struct inPhysicalSoft in;
@@ -5901,7 +5878,6 @@ void msrUpdateSoft(MSR msr,double dTime) {
 		 inPost.iVariableSoftType = type;
 		 pstPostVariableSoft(msr->pst,&inPost,sizeof(inPost),NULL,NULL);
        }
-#endif
 }
 
 
@@ -8297,13 +8273,11 @@ void msrTopStepKDK(MSR msr,
 
     printf("TopstepKDK %g %g %g\n",dStep,dTime,dDelta); //DEBUG dTime for SF
     LogTimingSetRung( msr, iKickRung );
-#ifdef DTADJUST
     if(iAdjust) {
 		if (msr->param.bVDetails) printf("Check for Emergency Adjust, iRung: %d\n",iRung);
 		msrActiveRung(msr, iRung, 1);
         msrEmergencyAdjust(msr, iRung, dDelta);
         }
-#endif
     if(iAdjust && (iRung < msrMaxRung(msr)-1)) {
 		if (msr->param.bVDetails) printf("Adjust, iRung: %d\n",iRung);
 		msrActiveRung(msr, iRung, 1);
@@ -8346,9 +8320,6 @@ void msrTopStepKDK(MSR msr,
 			}
 #endif
 		msrDtToRung(msr,iRung,dDelta,1);
-#if !defined(DTADJUST) && !defined(UNONCOOL)
-		if (iRung == 0)
-#endif
 		    {
             /*
               msrReorder(msr);

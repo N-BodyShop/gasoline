@@ -53,17 +53,12 @@
 #endif
 
 
-#ifdef DIFFUSION
 
 #if defined(FEEDBACKDIFFLIMIT) && !defined(DIFFUSIONHARMONIC)
 #define DIFFUSIONHARMONIC
 #endif
 
 #define DIFFRATE(p_) ((p_)->diff)
-#else
-#define DIFFRATE(p_) (1e-30)
-
-#endif
 
 /* Note: UDOT_HYDRO is only correct if there is only thermal pressure (no UNONCOOL or Jeans Floor) */
 #define UDOT_HYDRO(p_)   ((p_)->uDotPdV+(p_)->uDotAV+(p_)->uDotDiff)
@@ -99,9 +94,7 @@ typedef struct particle {
     FLOAT fWeight;
     FLOAT fMass;
     FLOAT fSoft;
-#ifdef CHANGESOFT
     FLOAT fSoft0;
-#endif
     FLOAT r[3];
     FLOAT v[3];
     FLOAT a[3];
@@ -156,11 +149,9 @@ typedef struct particle {
     FLOAT fThermalCond;
     FLOAT fThermalLength;
 #endif
-#ifdef DIFFUSION
     FLOAT diff;
     FLOAT fMetalsDot;
     FLOAT fMetalsPred;
-#endif
     FLOAT fDivv_t;
     FLOAT fDivv_Corrector;
 #ifdef SINKING
@@ -191,12 +182,10 @@ typedef struct particle {
     FLOAT fMIronOut;
     FLOAT fMFracOxygen;
     FLOAT fMFracIron;
-#ifdef DIFFUSION
     FLOAT fMFracOxygenDot;
     FLOAT fMFracIronDot;
     FLOAT fMFracOxygenPred;
     FLOAT fMFracIronPred;
-#endif
     FLOAT fSNMetals;
     FLOAT fNSNtot;
     FLOAT fTimeCoolIsOffUntil;
@@ -786,11 +775,9 @@ void pkdFinish(PKD);
 void pkdReadTipsy(PKD,char *,int,int,int,int,double,double);
 void pkdOutputBlackHoles(PKD pkd,char *pszFileName, double dvFac);
 void pkdSetSoft(PKD pkd,double dSoft);
-#ifdef CHANGESOFT
 void pkdPhysicalSoft(PKD pkd,double, double, int);
 void pkdPreVariableSoft(PKD pkd,int iVariableSoftType);
 void pkdPostVariableSoft(PKD pkd,double dSoftMax,int bSoftMaxMul,int iVariableSoftType);
-#endif
 void pkdCalcBound(PKD,BND *,BND *,BND *,BND *, BNDDT *);
 void pkdGasWeight(PKD);
 void pkdRungDDWeight(PKD, int, double);

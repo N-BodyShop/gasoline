@@ -778,7 +778,6 @@ struct inSetSoft {
 	};
 void pstSetSoft(PST,void *,int,void *,int *);
 
-#ifdef CHANGESOFT
 /* PST_PHYSICALSOFT */
 struct inPhysicalSoft {
         double dSoftMax;
@@ -800,7 +799,6 @@ struct inPostVariableSoft {
         int iVariableSoftType;
         };
 void pstPostVariableSoft(PST,void *,int,void *,int *);
-#endif
 
 /* PST_SETTOTAL */
 struct outSetTotal {
