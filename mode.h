@@ -3,12 +3,14 @@
 
 #ifdef GALAXY
 #define GASOLINE              //Do hydro 
+#define NSMOOTHINNER          //Ensure at least 18 neighbours inside 1.41 h
 #define DIVVOFF               //Remove the convergent flow requirement for starformation
 #define JEANSSOFT             //Calculate presure floor to keep jeans length larger than softening or sph h (default is just sph h)
 #define PARTICLESPLIT         //Particles will now divide if they get too heavy
 #define SUPERBUBBLE	          //Use the Keller+ 2014 Superbubble feedback 
 #define STARFORM              //Make new stars according to the starformation recipe
 #define CHABRIER              //Use the Chabrier 2003 IMF for starformation (See DOI:10.1086/376392)  (SHOULD BE DEFAULT)
+#define SINKING               //Include support for sink particles
 #endif 
 
 #ifdef COLLISIONAL
@@ -43,6 +45,11 @@
 #ifdef NONTHERMAL
 #undef SUPERBUBBLE
 #define UNONCOOL
+#endif
+
+#ifdef JEANSSMOOTH
+#undef JEANSSOFT
+#undef JEANSSOFTONLY
 #endif
 
 #endif

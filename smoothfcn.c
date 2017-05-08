@@ -868,6 +868,7 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	int iSinkEventType = SINK_EVENT_NULL;
 	SINKEVENT SinkEvent;
 #ifdef SINKING
+    int bEat;
 	double drSink[3];
 	double r2;
 
@@ -898,7 +899,7 @@ void SinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		pkdDeleteParticle(smf->pkd, q);
 #endif
 #ifdef SINKING
-        int bEat = 0;
+        bEat = 0;
 		assert(TYPETest(q, TYPE_GAS));
 		assert(!TYPETest(q, TYPE_SINK));
 		r2 = nnList[i].fDist2;

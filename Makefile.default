@@ -121,18 +121,19 @@ BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB) $(COOLING_LIB)
 #	   \:\____/\\ \ \ \::\ \  \::\ \   \ \ `\ \ \\:.\ \  \ \ /____\:\ 
 #	    \_____\/ \_\/  \__\/   \__\/    \_\/ \_\/ \__\/\__\/ \_____\/ 
 EXTRA_DEF =                                                                  
-## COLLISIONS AND PLANET FORMATION
-#EXTRA_DEF += -DAGGS                  #Include support for aggregates (like asteroids and rubble piles) See aggs.c
-#EXTRA_DEF += -DGROWMASS              #Allow collisional particles to grow
-#EXTRA_DEF += -DN_DIM                 #Number of dimensions to use for solar system calculations (Defaults to 3)
-#EXTRA_DEF += -DSURFACEAREA           #Calculate and output the surface area of all the particles.
-#EXTRA_DEF += -DNORMAL                #Calculate and output surface normals for particles (Needs -DSURFACEAREA)
-#EXTRA_DEF += -DRUBBLE_ZML            #Use "Rubble Pile" collision model (Requires -DCOLLISION)
-#EXTRA_DEF += -DSAND_PILE             #Use the "Sand Pile" collision model (Requires -DCOLLISION)
-#EXTRA_DEF += -DSLIDING_PATCH         #Alternative collision scheme (I don't really know what this does) (Requires -DCOLLISIONS)
-#EXTRA_DEF += -DTUMBLER               #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
+## GRAVITY AND HYDRODYNAMICS (REQUIRE -DGASOLINE)
+#EXTRA_DEF += -DCULLENDEHNEN          #Use the time-variable Cullen & Dehnen 2010 viscosity limit switch
+#EXTRA_DEF += -DVARALPHA              #Use a Morris & Monaghan-style time variable viscosity
+#EXTRA_DEF += -DINFLOWOUTFLOW         #Enable inflow/outflow boundary conditions
+#EXTRA_DEF += -DOUTURBDRIVER          #Drive turbulence as in Price & Federrath 2010 with OU variables
+#EXTRA_DEF += -DROT_FRAME             #Use a rotating reference frame with rotation rate given by dOmega
+#EXTRA_DEF += -DSIMPLE_GAS_DRAG       #Apply a drag to the gas velocities using either the Epstein regime, or stopping time
+#EXTRA_DEF += -DPEXT                  #Allow non-zero external pressure 
+#EXTRA_DEF += -DJEANSSMOOTH 		  #Calculate presure floor to keep jeans length larger than SPH h only (default is larger of SPH h or eps)
+#EXTRA_DEF += -DJEANSSOFTONLY         #Calculate presure floor to keep jeans length larger than eps only
+#EXTRA_DEF += -DSINKINGAVERAGE        #Use a smoothed relative velocity rather than per-particle for SMBH accretion rates
 
-## STAR FORMATION AND FEEDBACK
+## STAR FORMATION AND FEEDBACK (REQUIRE -DSTARFORM)
 #EXTRA_DEF += -DBLASTWAVE			  #Use the Stinson+ 2006 Blastwave feedback 
 #EXTRA_DEF += -DNONTHERMAL			  #Use an Agertz+ 2013/Teyssier+ 2013 non-thermal pressure feedback
 #EXTRA_DEF += -DKROUPA01              #Use the newer Kroupa 01 IMF (DOI:10.1046/j.1365-8711.2001.04022.x)
@@ -142,6 +143,17 @@ EXTRA_DEF =
 #EXTRA_DEF += -DTOPHATFEEDBACK        #Use a tophat kernel to smooth feedback over (default with superbubble feedback)
 #EXTRA_DEF += -DVOLUMEFEEDBACK        #Smooth FB energy with a volume-weighted kernel
 #EXTRA_DEF += -DMASSFEEDBACK          #Smooth FB energy over mass-weighted kernel (default with blastwave feedback)
+
+## COLLISIONS AND PLANET FORMATION (REQUIRE -DCOLLISIONS)
+#EXTRA_DEF += -DAGGS                  #Include support for aggregates (like asteroids and rubble piles) See aggs.c
+#EXTRA_DEF += -DGROWMASS              #Allow collisional particles to grow
+#EXTRA_DEF += -DN_DIM                 #Number of dimensions to use for solar system calculations (Defaults to 3)
+#EXTRA_DEF += -DSURFACEAREA           #Calculate and output the surface area of all the particles.
+#EXTRA_DEF += -DNORMAL                #Calculate and output surface normals for particles (Needs -DSURFACEAREA)
+#EXTRA_DEF += -DRUBBLE_ZML            #Use "Rubble Pile" collision model 
+#EXTRA_DEF += -DSAND_PILE             #Use the "Sand Pile" collision model 
+#EXTRA_DEF += -DSLIDING_PATCH         #Alternative collision scheme (I don't really know what this does) 
+#EXTRA_DEF += -DTUMBLER               #Generate a hard-walled cylinder boundary (for use with collisions and sand piles)
 
 ## OUTPUT VISUALIZATION
 #EXTRA_DEF += -DGSS_DUMPFRAME         #Dumpframe that allows coloring by particle property (Greg's version)
