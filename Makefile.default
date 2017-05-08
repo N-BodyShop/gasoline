@@ -9,10 +9,12 @@
 CC = gcc
 
 # What kind of problem are we running?  This will enable a default set of code components
-# appropriate for different kinds of problems.
-MODE_DEF = -DGALAXY
-MODE_DEF = -DCOLLISIONS
-MODE_DEF = -DNBODY #N-body only mode: gravity with nothing else.
+# appropriate for different kinds of problems.  Select only one.
+MODE_DEF = -DGALAXY 		#Default mode: includes SPH, star formation, and feedback.
+#MODE_DEF = -DCOLLISIONS		#Collisional mode for simulating asteroids & planets
+#MODE_DEF = -DNBODY 			#N-body only mode: gravity with nothing else.
+#MODE_DEF = -DTURBULENT 		#Drive Turbulence, as per Price & Fedderath 2008
+#MODE_DEF = -DGLASS_IC 		#Generate a gravity glass (useful for making ICS)
 
 # Which SPH Kernel should we use?
 KERNEL_DEF = -DWENDLANDC4            #Use the Wendland C_4 Kernel (See Dehnen & Aly 2012)
