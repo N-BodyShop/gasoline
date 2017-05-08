@@ -17,13 +17,8 @@
 #define MAXPATHLEN 256
 #endif
 
-#ifdef CRAY_XT3
-#include "../xdr/types.h"
-#include "../xdr/xdr.h"
-#else
 #include <rpc/types.h>
 #include <rpc/xdr.h>
-#endif
 
 
 #include "master.h"
