@@ -5686,6 +5686,7 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
     rstot = 0;
     xc = 0; yc = 0; zc = 0; 
     nCold = 0;
+    assert(nSmooth > 0);
 	for (i=0;i<nSmooth;++i) {
         q = nnList[i].pPart;
         if (p->iOrder == q->iOrder) continue;
@@ -5702,12 +5703,8 @@ void PromoteToHotGas(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		zc += rs*nnList[i].dz;
         nCold++;
         }
-    if (nCold >= nSmooth) {
-        printf("PROMOTION DEBUG (p): iOrder %d iGasOrder %d Temp %g\n", p->iOrder, p->iGasOrder, Tp);
-        for (i=0;i<nSmooth;++i) {
-            q = nnList[i].pPart;
-            printf("PROMOTION DEBUG (q): iOrder %d dist2 %5.4e\n", q->iOrder, nnList[i].fDist2);
-        }
+    if (nSmooth <= nCold) {
+        printf("PROMOTION ERROR: nSmooth %d nCold %d\n", nSmooth, nCold);
         assert(0);
     }
 

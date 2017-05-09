@@ -10387,7 +10387,7 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
             }
         msrResetType(msr,TYPE_FEEDBACK,TYPE_SMOOTHDONE);
         msrActiveType(msr, TYPE_FEEDBACK, TYPE_SMOOTHACTIVE);
-		msrReSmooth(msr, dTime, SMX_PROMOTE_TO_HOT_GAS, 1);
+		msrSmooth(msr, dTime, SMX_PROMOTE_TO_HOT_GAS, 1);
 		msrReSmooth(msr, dTime, SMX_SHARE_WITH_HOT_GAS, 1);
 #endif
 
