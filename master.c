@@ -10385,8 +10385,8 @@ void msrFormStars(MSR msr, double dTime, double dDelta)
             msrActiveType(msr, TYPE_GAS, TYPE_ACTIVE|TYPE_TREEACTIVE);
             msrBuildTree(msr,1,-1.0,1);
             }
-        msrResetType(msr,TYPE_FEEDBACK,TYPE_SMOOTHDONE);
-        msrActiveType(msr, TYPE_FEEDBACK, TYPE_SMOOTHACTIVE);
+        msrResetType(msr,TYPE_GAS|TYPE_FEEDBACK,TYPE_SMOOTHDONE);
+        msrActiveType(msr, TYPE_GAS|TYPE_FEEDBACK, TYPE_SMOOTHACTIVE);
 		msrSmooth(msr, dTime, SMX_PROMOTE_TO_HOT_GAS, 1);
 		msrReSmooth(msr, dTime, SMX_SHARE_WITH_HOT_GAS, 1);
 #endif
