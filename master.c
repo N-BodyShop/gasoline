@@ -426,7 +426,7 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 				"binout","<array outputs 0 ascii, 1 float, 2 double, 3 FLOAT(internal)> = 0, 6 NChilada");
 	msr->param.bNoReOrder = 0;
 	prmAddParam(msr->prm,"bNoReOrder",0,&msr->param.bNoReOrder,sizeof(int),
-				"Reorder output?","default yes, need iOrder if not");
+				"noreorder","default yes, need iOrder if not");
 	msr->param.bPackedVector = 0;
 	prmAddParam(msr->prm,"bPackedVector",0,&msr->param.bPackedVector,sizeof(int),
 				"pvec","enable/disable packed vector outputs = +pvec");
