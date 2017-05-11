@@ -393,9 +393,9 @@ void msrInitialize(MSR *pmsr,MDL mdl,int argc,char **argv)
 	msr->param.bLogTimingSubStepTot = 0;
 	prmAddParam(msr->prm,"bLogTimingSubStepTot",0,&msr->param.bLogTimingSubStepTot,sizeof(int),
 				"logtimingstep","log of total timing data per substep = +timingsst");
-	nDigits = 5;
+	nDigits = 6;
 	prmAddParam(msr->prm,"nDigits",1,&nDigits,sizeof(int),"nd",
-				"<number of digits to use in output filenames> = 5");
+				"<number of digits to use in output filenames> = 6");
 	msr->param.bPeriodic = 0;
 	prmAddParam(msr->prm,"bPeriodic",0,&msr->param.bPeriodic,sizeof(int),"p",
 				"periodic/non-periodic = -p");
