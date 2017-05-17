@@ -4516,8 +4516,8 @@ void DenDVDX(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 	    dvdr = (((dvxdx+Hcorr)*grx+dvxdy*gry+dvxdz*grz)*grx 
 		+  (dvydx*grx+(dvydy+Hcorr)*gry+dvydz*grz)*gry 
 		+  (dvzdx*grx+dvzdy*gry+(dvzdz+Hcorr)*grz)*grz)*fNorm1;
-        pdvds_old = p->dvds;
 #ifdef DODVDS
+        pdvds_old = p->dvds;
 	    p->dvds = 
 #endif
             dvds = (p->divv < 0 ? 1.5*(dvdr -(1./3.)*p->divv) : dvdr );
