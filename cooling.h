@@ -1,6 +1,7 @@
-
 #ifndef COOLING_HINCLUDED
 #define COOLING_HINCLUDED
+
+#include "mode.h"
 
 #ifdef GASOLINE
 #ifndef NOCOOLING
