@@ -1,3 +1,5 @@
+
+
 #ifndef COOLING_METAL_HINCLUDED
 #define COOLING_METAL_HINCLUDED
 
@@ -55,11 +57,10 @@ typedef struct CoolingParametersStruct {
   double dMassFracHelium;
   double dCoolingTmin;     
   double dCoolingTmax;     
-  double dCosmicRayHeating;
   double dPhotoelectricHeating;
+  double dPhotoelectricnMin;
   double dPhotoelectricScaleLength;
   double dPhotoelectricInnerRadius;
-  double dPhotoelectricnMin;
   double dzTimeClampUV;
   double dMetalCoolFactor;
 } COOLPARAM;
@@ -94,7 +95,6 @@ typedef struct {
   double   Heat_Phot_HeI;
   double   Heat_Phot_HeII;
 
-  double   Heat_CosmicRay;
   double   Heat_Photoelectric;
   double   nMin_Photoelectric;
 
@@ -174,10 +174,11 @@ typedef struct CoolingPKDStruct {
   int        bUVTableUsesTime;
   int        bUVTableLinear;
   int        bLowTCool;
-  int        bSelfShield;
+  int        bSelfShield; 
   double     dPhotoelectricFactor;
   double     dPhotoelectricScaleLength;
   double     dPhotoelectricInnerRadius;
+
   double     dzTimeClampUV;
   double     dMetalCoolFactor;
 
@@ -193,6 +194,10 @@ typedef struct CoolingPKDStruct {
 
 /* Diagnostic */
   int       its;
+#if defined(COOLDEBUG)
+  MDL        mdl; /* For diag/debug outputs */
+  struct particle *p; /* particle pointer NEVER TO BE USED EXCEPT FOR DEBUG */
+#endif 
 } COOL;
 
 typedef struct {
@@ -245,7 +250,6 @@ typedef struct clDerivsDataStruct {
   PERBARYON Y;
   double     Y_H, Y_He, Y_eMax;
   double     Y_Total0, Y_Total1;
-  double     dlnE;
   int        its;  /* Debug */
   int        bCool;
 } clDerivsData;
@@ -291,20 +295,21 @@ double clCoolLineHI( double T );
 double clCoolLineHeI( double T );
 double clCoolLineHeII( double T );
 double clCoolLowT( double T );
-double clEdotInstant ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho, double ZMetal );
+double clEdotInstant ( COOL *cl, PERBARYON *Y, RATE *Rate, double rho,
+		       double ZMetal, double *dEdotHeat, double *EdotCool );
+
 void clSetPhotoelectricFactor(COOL *cl, double rkpc);
 void clIntegrateEnergy(COOL *cl, PERBARYON *Y, double *E, 
-		       double ExternalHeating, double rho, double ZMetal, double rkpc, double dt );
+    double ExternalHeating, double rho, double ZMetal, double rkpc, double dt );
 void clIntegrateEnergyDEBUG(COOL *cl, PERBARYON *Y, double *E, 
 		       double ExternalHeating, double rho, double ZMetal,  double dt );
 
 
-void clDerivs(void *Data, double x, double *y, double *dydx) ;
+void clDerivs(void *Data, double x, const double *y, double *yheat,
+	      double *ycool) ;
 
-void clJacobn(void *Data, double x, double y[], double dfdx[], double **dfdy) ;
-  
 void CoolAddParams( COOLPARAM *CoolParam, PRM );
-void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr );
+void CoolLogParams( COOLPARAM *CoolParam, LOGGER *lgr);
 void CoolOutputArray( COOLPARAM *CoolParam, int, int *, char * );
 
 #define COOL_ARRAY0_EXT  "HI"
@@ -319,9 +324,9 @@ void COOL_IN_ARRAY1(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data);
 FLOAT COOL_ARRAY2(COOL *cl, COOLPARTICLE *cp, double ZMetal);
 void COOL_IN_ARRAY2(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data);
 
-#define COOL_ARRAY3_EXT  "H2"
-FLOAT COOL_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal);
-void COOL_IN_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data);
+#define COOL_ARRAY3_EXT  "dummy"
+#define COOL_ARRAY3(x,y,z)  0
+#define COOL_IN_ARRAY3(w,x,y,z)  
 
 #define COOL_ARRAY4_EXT  "dummy"
 #define COOL_ARRAY4(x,y,z)  0
@@ -370,7 +375,6 @@ void COOL_IN_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal, double Data);
 #define COOL_ARRAY15_EXT  "dummy"
 #define COOL_ARRAY15(x,y,z)  0
 #define COOL_IN_ARRAY15(w,x,y,z)  
-
 
 FLOAT COOL_EDOT( COOL *cl_, COOLPARTICLE *cp_, double ECode_, double rhoCode_, double ZMetal_, double *posCode_ );
 #define COOL_EDOT( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_) (CoolCodeWorkToErgPerGmPerSec( cl_, CoolEdotInstantCode( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_ )))
@@ -421,10 +425,10 @@ double CodeDensityToComovingGmPerCc( COOL *Cool, double dCodeDensity );
 #define CodeDensityToComovingGmPerCc( Cool, dCodeDensity )  ((Cool)->dComovingGmPerCcUnit*(dCodeDensity))
 
 void CoolIntegrateEnergy(COOL *cl, COOLPARTICLE *cp, double *E, 
-			 double ExternalHeating, double rho, double ZMetal, double *rp,  double tStep );
+    double ExternalHeating, double rho, double ZMetal, double *rp, double tStep );
 
 void CoolIntegrateEnergyCode(COOL *cl, COOLPARTICLE *cp, double *E, 
-			     double ExternalHeating, double rho, double ZMetal, double *r, double tStep );
+    double ExternalHeating, double rho, double ZMetal, double *r, double tStep );
 
 void CoolDefaultParticleData( COOLPARTICLE *cp );
 
