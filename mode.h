@@ -11,6 +11,7 @@
 #define STARFORM              //Make new stars according to the starformation recipe
 #define CHABRIER              //Use the Chabrier 2003 IMF for starformation (See DOI:10.1086/376392)  (SHOULD BE DEFAULT)
 #define SINKING               //Include support for sink particles
+#define DIFFUSION             //Enable Thermal Diffusion
 #endif 
 
 #ifdef COLLISIONAL
