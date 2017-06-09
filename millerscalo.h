@@ -1,4 +1,4 @@
-
+#include "mode.h"
 #ifndef MILLERSCALO_HINCLUDED
 #define MILLERSCALO_HINCLUDED
 #ifdef CHABRIER
