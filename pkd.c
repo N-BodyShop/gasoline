@@ -366,11 +366,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
         p->c = 0.0;
         p->fMetals = 0.0;
         p->fTimeForm = 1e37;
-#ifdef SINKING
-        p->fTrueMass = 0;
-        p->fSinkingTime = 1e37;  
-        p->iSinkingOnto = -1;
-#endif
 #endif
 #ifdef NEED_VPRED
         for (j=0;j<3;++j) {
@@ -494,9 +489,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 assert(p->fMassHot < p->fMass);
 #endif
                 assert(p->fMass > 0.0);
-#ifdef SINKING
-                p->fTrueMass = fTmp;
-#endif
                 for (j=0;j<3;++j) {
                     xdr_float(&xdrs,&fTmp);
                     p->r[j] = fTmp;
@@ -550,9 +542,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 xdr_float(&xdrs,&fTmp);
                 p->fMass = fTmp;
                 assert(p->fMass >= 0.0);
-#ifdef SINKING
-                p->fTrueMass = fTmp;
-#endif
                 for (j=0;j<3;++j) {
                     xdr_float(&xdrs,&fTmp);
                     p->r[j] = fTmp;
@@ -576,9 +565,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->fMassForm = fTmp;
 #endif
                 assert(p->fMass >= 0.0);
-#ifdef SINKING
-                p->fTrueMass = fTmp;
-#endif
                 for (j=0;j<3;++j) {
                     xdr_float(&xdrs,&fTmp);
                     p->r[j] = fTmp;
@@ -677,9 +663,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                     }
                 p->fMass = gp.mass;
                 assert(p->fMass >= 0.0);
-#ifdef SINKING
-                p->fTrueMass = gp.mass;
-#endif
                 p->fSoft = gp.eps;
                 p->fSoft0 = gp.eps;
                 p->fPot = gp.phi;
@@ -707,9 +690,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                     }
                 p->fMass = dp.mass;
                 assert(p->fMass >= 0.0);
-#ifdef SINKING
-                p->fTrueMass = dp.mass;
-#endif
                 p->fSoft = dp.eps;
                 p->fSoft0 = dp.eps;
                 p->fPot = dp.phi;
@@ -726,9 +706,6 @@ void pkdReadTipsy(PKD pkd,char *pszFileName,int nStart,int nLocal,
                 p->fMassForm = sp.mass;
 #endif
                 assert(p->fMass >= 0.0);
-#ifdef SINKING
-                p->fTrueMass = sp.mass;
-#endif
                 p->fSoft = sp.eps;
                 p->fSoft0 = sp.eps;
                 p->fPot = sp.phi;
@@ -1693,11 +1670,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
     xdr_float(&xdrs,&fTmp);
       }
       else if (pkdIsGas(pkd,p)) {
-#ifdef SINKING
-    if (TYPETest(p,TYPE_SINK)) 
-        fTmp = p->fTrueMass;
-    else
-#endif
         fTmp = p->fMass;
     xdr_float(&xdrs,&fTmp);
     for (j=0;j<3;++j) {
@@ -1731,22 +1703,8 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
     /* fTmp = sqrt(0.25*p->fBall2);  Write softening in tipsy outputs */
     fTmp = p->fSoft0;
     xdr_float(&xdrs,&fTmp);
-#ifdef SINKING
-    if (TYPETest( p, TYPE_SINKING)) {
-        xdr_int(&xdrs,&p->iSinkingOnto); /* output sinkingonto integer in place of metals */
-        }
-    else if (TYPETest( p, TYPE_SINK)) {
-        fTmp = p->fMass;
-        xdr_float(&xdrs,&fTmp);
-        }
-    else {
-        fTmp = p->fMetals;
-        xdr_float(&xdrs,&fTmp);
-        }
-#else
     fTmp = p->fMetals;
     xdr_float(&xdrs,&fTmp);
-#endif
 #else /* not gasoline */
     fTmp = 0.0;
     xdr_float(&xdrs,&fTmp);
@@ -1759,11 +1717,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
     xdr_float(&xdrs,&fTmp);
       }
       else if (pkdIsStar(pkd,p)) {
-#ifdef SINKING
-    if (TYPETest(p,TYPE_SINK)) 
-        fTmp = p->fTrueMass;
-    else
-#endif
         fTmp = p->fMass;
     xdr_float(&xdrs,&fTmp);
     for (j=0;j<3;++j) {
@@ -1776,11 +1729,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
       xdr_float(&xdrs,&fTmp);
     }
 #ifdef GASOLINE
-#ifdef SINKING
-    if (TYPETest( p, TYPE_SINK)) 
-        fTmp = p->fMass;
-    else
-#endif
         fTmp = p->fMetals;
     xdr_float(&xdrs,&fTmp);
     fTmp = p->fTimeForm;
@@ -1821,11 +1769,6 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
       gp.pos[j] = p->r[j];
       gp.vel[j] = dvFac*p->v[j];
     }
-#ifdef SINKING
-    if (TYPETest(p,TYPE_SINK)) 
-        gp.mass = p->fTrueMass;
-    else
-#endif
         gp.mass = p->fMass;
     gp.eps = p->fSoft0;
     gp.phi = p->fPot;
@@ -1845,14 +1788,7 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
     default:
         gp.temp = duTFac*p->u;
         }
-#ifdef SINKING
-    if (TYPETest( p, TYPE_SINK)) 
-        gp.metals = p->fMass;
-    else 
-        *((int *) (&gp.metals)) = p->iSinkingOnto;
-#else
     gp.metals = p->fMetals;
-#endif
 #else
     gp.temp = 0.0;
     gp.metals = 0.0;
@@ -1865,20 +1801,10 @@ void pkdWriteTipsy(PKD pkd,char *pszFileName,int nStart,
       sp.pos[j] = p->r[j];
       sp.vel[j] = dvFac*p->v[j];
     }
-#ifdef SINKING
-    if (TYPETest(p,TYPE_SINK)) 
-        sp.mass = p->fTrueMass;
-    else
-#endif
         sp.mass = p->fMass;
     sp.eps = p->fSoft0;
     sp.phi = p->fPot;
 #ifdef GASOLINE
-#ifdef SINKING
-    if (TYPETest(p,TYPE_SINK)) 
-        sp.metals = p->fMass;
-    else
-#endif
         sp.metals = p->fMetals;
 
     sp.tform = p->fTimeForm;
@@ -3788,36 +3714,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
             fShear = 0.0;
             p->bAzWrap = 0; /* reset azimuthal wrap flag */
 #endif
-#ifdef SINKING
-            if (TYPETest( p, TYPE_SINKING)) {
-                FLOAT r0 = p->rSinking0Mag;
-                FLOAT r1 = r0 + p->vSinkingr0*(dTime-p->fSinkingTime);
-                FLOAT r2 = r1 + p->vSinkingr0*dDelta;
-                FLOAT thfac, th1, th2, costh1, sinth1, costh2, sinth2, sqr01, sqr02;
-                if (r2 < 0.1*r0) r2 = 0.1*r0; /* HACK */
-                if (r1 < 0.1*r0) r1 = 0.1*r0; /* HACK */
-                thfac = p->vSinkingTang0Mag*2/(p->vSinkingr0);
-                sqr01 = sqrt(r0/r1);
-                sqr02 = sqrt(r0/r2);
-                th1 = thfac*(1-sqr01);
-                th2 = thfac*(1-sqr02);
-                costh1 = cos(th1);
-                sinth1 = sin(th1);
-                costh2 = cos(th2);
-                sinth2 = sin(th2);
-/*#define SINKFREEZE*/
-                for (j=0;j<3;j++) {
-                p->r[j] += (r2*costh2-r1*costh1)*p->rSinking0Unit[j]+(r2*sinth2-r1*sinth1)*p->vSinkingTang0Unit[j];
-/* Do vpred adjustment here -- no need to do it in kickvpred */
-                p->vPred[j] += p->vSinkingTang0Mag*(
-                    (-sinth2*sqr02+sinth1*sqr01)*p->rSinking0Unit[j]
-                    +(costh2*sqr02-costh1*sqr01)*p->vSinkingTang0Unit[j])
-                    +p->vSinkingr0*((costh2-costh1)*p->rSinking0Unit[j]
-                            +(sinth2-sinth1)*p->vSinkingTang0Unit[j]);
-                }
-                }
-            
-#endif
 #ifdef INFLOWOUTFLOW
             if (bInflowOutflow) {
 /*              if (p->r[0] < pkd->dxInflow) TYPESet(p,TYPE_INFLOW);*/
@@ -3870,8 +3766,6 @@ pkdDrift(PKD pkd,double dDelta,FLOAT fCenter[3],int bPeriodic,int bInflowOutflow
                 }
 #endif
 
-#ifdef SINKING
-#endif
 #ifdef SLIDING_PATCH
             p->v[1] += fShear;
             p->dPy -= fShear/3.0; /* Angular momentum is
@@ -3929,24 +3823,6 @@ void pkdKick(PKD pkd, double dvFacOne, double dvFacTwo, double dvPredFacOne,
                     if (p->alpha > ALPHAMAX) p->alpha = ALPHAMAX;
                     }
 #endif
-#ifdef SINKING
-                if (TYPETest( p, TYPE_SINKING)) {
-                    FLOAT r0 = p->rSinking0Mag;
-                    /* For kick std dTime is midpoint of kick period, put dTime to end for this exact calc */
-                    FLOAT r2 = r0 + p->vSinkingr0*(dTimeEnd-p->fSinkingTime);
-                    FLOAT thfac, sqr02, th2, costh2, sinth2;
-                    if (r2 < 0.1*r0) r2 = 0.1*r0; /* HACK */
-                    thfac = p->vSinkingTang0Mag*2/(p->vSinkingr0);
-                    sqr02 = sqrt(r0/r2);
-                    th2 = thfac*(1-sqr02);
-                    costh2 = cos(th2);
-                    sinth2 = sin(th2);
-                    /* v does not include motion around sink -- add it back */
-                    for (j=0;j<3;j++) {
-                    p->vPred[j] += p->vSinkingTang0Mag*sqr02*(-sinth2*p->rSinking0Unit[j]+costh2*p->vSinkingTang0Unit[j])+p->vSinkingr0*(costh2*p->rSinking0Unit[j]+sinth2*p->vSinkingTang0Unit[j]);
-                    }
-                    }
-#endif /* SINKING */
                 if (iGasModel != GASMODEL_ISOTHERMAL && iGasModel != GASMODEL_GLASS) {
 #ifndef NOCOOLING               
                     p->uPred = p->u + p->uDot*duPredDelta;
@@ -4404,20 +4280,6 @@ void pkdReadCheck(PKD pkd,char *pszFileName,int iVersion,int iOffset,
 #ifndef NOCOOLING       
         p->CoolParticle = cp.CoolParticle;
 #endif
-#ifdef SINKING
-        p->rSinking0Unit[0] = cp.rSinking0Unit[0];
-        p->rSinking0Unit[1] = cp.rSinking0Unit[1];
-        p->rSinking0Unit[2] = cp.rSinking0Unit[2];
-        p->rSinking0Mag = cp.rSinking0Mag;
-        p->vSinkingTang0Unit[0] = cp.vSinkingTang0Unit[0];
-        p->vSinkingTang0Unit[1] = cp.vSinkingTang0Unit[1];
-        p->vSinkingTang0Unit[2] = cp.vSinkingTang0Unit[2];
-        p->vSinkingTang0Mag = cp.vSinkingTang0Mag;
-        p->vSinkingr0 = cp.vSinkingr0;
-        p->fSinkingTime = cp.fSinkingTime;  
-        p->iSinkingOnto = cp.iSinkingOnto;
-        p->fTrueMass = cp.fTrueMass;
-#endif
 #endif
 #ifdef COLLISIONS
         p->iOrgIdx = cp.iOrgIdx;
@@ -4495,20 +4357,6 @@ void pkdWriteCheck(PKD pkd,char *pszFileName,int iOffset,int nStart)
         cp.fTimeCoolIsOffUntil = p->fTimeCoolIsOffUntil;
         cp.fMFracOxygen = p->fMFracOxygen;
         cp.fMFracIron = p->fMFracIron;
-#endif
-#ifdef SINKING
-        cp.rSinking0Unit[0] = p->rSinking0Unit[0];
-        cp.rSinking0Unit[1] = p->rSinking0Unit[1];
-        cp.rSinking0Unit[2] = p->rSinking0Unit[2];
-        cp.rSinking0Mag = p->rSinking0Mag;
-        cp.vSinkingTang0Unit[0] = p->vSinkingTang0Unit[0];
-        cp.vSinkingTang0Unit[1] = p->vSinkingTang0Unit[1];
-        cp.vSinkingTang0Unit[2] = p->vSinkingTang0Unit[2];
-        cp.vSinkingTang0Mag = p->vSinkingTang0Mag;
-        cp.vSinkingr0 = p->vSinkingr0;
-        cp.fSinkingTime = p->fSinkingTime;  
-        cp.iSinkingOnto = p->iSinkingOnto;
-        cp.fTrueMass = p->fTrueMass;
 #endif
 #endif
 #ifdef COLLISIONS
@@ -5539,9 +5387,6 @@ void pkdSetParticleTypes(PKD pkd, int nSuperCool)
         if (pkdIsDarkByOrder(pkd,p)) iSetMask |= TYPE_DARK;
         if (pkdIsStarByOrder(pkd,p)) iSetMask |= TYPE_STAR;
         if (p->iOrder < nSuperCool) iSetMask |= TYPE_SUPERCOOL;
-#ifdef SINKING
-        if ((iSetMask&TYPE_GAS) && p->iSinkingOnto >= 0) iSetMask |= TYPE_SINKING;
-#endif
         TYPESet(p,iSetMask);
         }
     } 
@@ -6062,12 +5907,6 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
 
             if (TYPEQueryACTIVE(p)) {
                 double ph = sqrt(0.25*p->fBall2);
-#ifdef SINKING
-                if (TYPETest( p, TYPE_SINKING)) {
-                    p->dt = FLT_MAX; /* reset later to min gas step */
-                    continue;
-                    }
-#endif
                 /*
                  * Courant condition goes here.
                  */
@@ -6136,11 +5975,6 @@ pkdSphStep(PKD pkd, double dCosmoFac, double dEtaCourant, double dEtauDot, doubl
             /* This code relies on SPH step being done last -- not good */
             if (p->dt < *pdtMinGas) { *pdtMinGas = p->dt; }
             }
-#ifdef SINKING
-        else if (TYPETest( p, TYPE_SINK )) {
-            if (p->dt < *pdtMinGas) { *pdtMinGas = p->dt; }
-            }
-#endif
         }
     }
 
@@ -6679,8 +6513,6 @@ pkdKickVpred(PKD pkd,double dvFacOne,double dvFacTwo,double duDelta,
                 if (p->alphaPred > ALPHAMAX) p->alphaPred = ALPHAMAX;
                 }
 #endif
-#ifdef SINKING
-#endif
             if (iGasModel != GASMODEL_ISOTHERMAL && iGasModel != GASMODEL_GLASS) {
 #ifndef NOCOOLING
               p->uPred = p->uPred + p->uDot*duDelta;
@@ -6868,9 +6700,6 @@ void pkdFormSinks(PKD pkd, int bJeans, double dJConst2, int bDensity, double dDe
         p = &pkd->pStore[i];
     
         if(TYPETest( p, TYPE_GAS ) && p->iRung >= iKickRung) {
-#ifdef SINKING
-        if (TYPETest( p, TYPE_SINKING )) continue;
-#endif
 /* Jeans Mass compared to nJeans particle masses */
         Jval =  dJConst2*(p->c*p->c*p->c*p->c*p->c*p->c)/(p->fMass*p->fMass*p->fDensity);
         if (Jval < Jvalmin) Jvalmin = Jval;

@@ -8,9 +8,6 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
-#ifdef SINKING
-#include <fenv.h>
-#endif
 #include "mdl.h"
 #include "master.h"
 #include "outtype.h"
@@ -193,9 +190,6 @@ int main(int argc,char **argv)
 				}
 			}
 #endif
-#ifdef SINKING
-		msrDrift(msr,dTime,0); /* Need to set up vPred for sinking particles on restarts */
-#endif
 		if(msrKDK(msr) || msr->param.bGravStep || msr->param.bAccelStep) {
 			msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE);
 			msrDomainDecomp(msr,0,1);
@@ -371,9 +365,6 @@ int main(int argc,char **argv)
 		msrInitAccel(msr);
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
 		msrUpdateSoft(msr,dTime);
-#ifdef SINKING
-		msrDrift(msr,dTime,0); /* Need to set up vPred for sinking particles on restarts */
-#endif
 		msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE);
 		msrBuildTree(msr,0,dMass,0);
 		msrMassCheck(msr,dMass,"After msrBuildTree");
@@ -648,9 +639,6 @@ int main(int argc,char **argv)
 #endif
                 }
 
-#ifdef SINKING
-	    msrDrift(msr,dTime,0); /* Need to set up vPred for sinking particles on restarts */
-#endif
             if (msrDoGravity(msr)) {
                 msrActiveType(msr,TYPE_ALL,TYPE_ACTIVE|TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE );
                 msrDomainDecomp(msr,0,1);

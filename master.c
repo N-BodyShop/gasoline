@@ -2763,9 +2763,6 @@ void msrLogDefines(FILE *fp)
 #ifdef PARTICLESPLIT
 	fprintf(fp, " PARTICLESPLIT");
 #endif
-#ifdef SINKING
-	fprintf(fp, " SINKING");
-#endif
 #ifdef SINKINGAVERAGE
 	fprintf(fp, " SINKINGAVERAGE");
 #endif
@@ -8430,19 +8427,6 @@ void msrTopStepKDK(MSR msr,
 				printf("SPH: iRung %d to %d\n",iRung,iKickRung);
 			    msrSph(msr, dTime, iKickRung);
 			    }
-#ifdef SINKING
-			if (msr->param.bDoSinks) {
-/* This must be done after all forces */
-			    if (!(msrDoGas(msr) && msrSphCurrRung(msr,iKickRung,1))) {
-                    msrActiveType(msr,TYPE_GAS,TYPE_TREEACTIVE|TYPE_SMOOTHACTIVE);
-                    msrBuildTree(msr,1,-1.0,1);
-                    }
-			    msrSetType(msr, TYPE_SINKING, TYPE_INFLOW);
-			    msrResetType(msr,TYPE_SINK,TYPE_SMOOTHDONE);
-			    msrActiveTypeRung(msr,TYPE_SINK,TYPE_ACTIVE|TYPE_SMOOTHACTIVE,iKickRung,1);
-			    msrSmooth(msr,dTime,SMX_SINKINGFORCESHARE,1);
-			    }
-#endif
 #endif
 
 #ifdef INFLOWOUTFLOW

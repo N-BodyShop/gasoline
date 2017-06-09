@@ -155,16 +155,6 @@ typedef struct particle {
     FLOAT fMetalsPred;
     FLOAT fDivv_t;
     FLOAT fDivv_Corrector;
-#ifdef SINKING
-    FLOAT rSinking0Unit[3];
-    FLOAT rSinking0Mag;
-    FLOAT vSinkingTang0Unit[3];
-    FLOAT vSinkingTang0Mag;
-    FLOAT vSinkingr0;
-    FLOAT fSinkingTime;  
-    FLOAT fTrueMass;
-    int iSinkingOnto;
-#endif
 #ifdef SURFACEAREA
     FLOAT fArea; 
 #ifdef NORMAL
@@ -421,16 +411,6 @@ typedef struct chkParticle {
     FLOAT fMFracOxygen;
     FLOAT fMFracIron;
     int iGasOrder;
-#endif
-#ifdef SINKING
-    FLOAT rSinking0Unit[3];
-    FLOAT rSinking0Mag;
-    FLOAT vSinkingTang0Unit[3];
-    FLOAT vSinkingTang0Mag;
-    FLOAT vSinkingr0;
-    FLOAT fSinkingTime;  
-    FLOAT fTrueMass;
-    int iSinkingOnto; /* used for nSinkingOnto for sink itself */
 #endif
 #endif
 #ifdef COLLISIONS
