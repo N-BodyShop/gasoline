@@ -92,6 +92,7 @@ typedef struct smfParameters {
 #ifdef STARFORM
     double dMinMassFrac;
     double dMaxGasMass;
+    double dMinGasMass;
     int bShortCoolShutoff;
     int bSNTurnOffCooling;
     int bSmallSNSmooth;
