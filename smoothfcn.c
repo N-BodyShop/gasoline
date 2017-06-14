@@ -1800,14 +1800,23 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		p->a[1] = ifMass*(p->fMass*p->a[1]+dmq*q->a[1]);
 		p->a[2] = ifMass*(p->fMass*p->a[2]+dmq*q->a[2]);
 		p->fMetals = ifMass*(p->fMass*p->fMetals+dmq*q->fMetals);
-		p->fMass += dmq;
-		dm += dmq;
-		q->fMass -= dmq;
-		/*assert(q->fMass >= 0.0);*/
+        if (dmq > q->fMass) //PRC: this if-else added to avoid negative mass particles
+        {
+            p->fMass += q->fMass;
+            dm += q->fMass;
+            q->fMass = 0.;
+        }
+        else
+        {
+            q->fMass -= dmq;
+            p->fMass += dmq;
+            dm += dmq;
+            assert(q->fMass >= 0.0);
+        }
 		naccreted += 1;  /* running tally of how many are accreted JMB 10/23/08 */
 		printf("BHSink %d:  Time %g dist2: %d %g gas smooth: %g eatenmass %g \n",p->iOrder,smf->dTime,q->iOrder,r2min,q->fBall2,dmq);
-		if (q->fMass <= 1e-3*dmq) { /* = added 8/21/08 */
-		    q->fMass = 0;
+		if (q->fMass <= 1e-3*dmq || q->fMass <= smf->dMinGasMass) { /* = added 8/21/08 */
+		    // q->fMass = 0;
 		    if(!(TYPETest(q,TYPE_DELETED))) pkdDeleteParticle(smf->pkd, q);
 		    /* Particles are getting deleted twice, which is messing
 		      up the bookkeeping.  I think this will make them only be 
@@ -1904,13 +1913,23 @@ void BHSinkAccrete(PARTICLE *p,int nSmooth,NN *nnList,SMF *smf)
 		p->a[1] = ifMass*(p->fMass*p->a[1]+dmq*q->a[1]);
 		p->a[2] = ifMass*(p->fMass*p->a[2]+dmq*q->a[2]);
 		p->fMetals = ifMass*(p->fMass*p->fMetals+dmq*q->fMetals);
-		p->fMass += dmq;
-		dm += dmq;
-		q->fMass -= dmq;		   
+        if (dmq > q->fMass) //PRC: this if-else added to avoid negative mass particles
+        {
+            p->fMass += q->fMass;
+            dm += q->fMass;
+            q->fMass = 0.;
+        }
+        else
+        {
+            q->fMass -= dmq;
+            p->fMass += dmq;
+            dm += dmq;
+            assert(q->fMass >= 0.0);
+        }
 		naccreted += 1;  /* running tally of how many are accreted JMB 10/23/08 */
 		printf("BHSink %d:  Time %g dist2 %d %g gas smooth: %g eatenmass %g\n",p->iOrder,smf->dTime,q->iOrder,r2min,q->fBall2,dmq);
-		if (q->fMass <= 1e-3*dmq) { /* = added 8/21/08 */
-		    q->fMass = 0;
+		if (q->fMass <= 1e-3*dmq || q->fMass <= smf->dMinGasMass) { /* = added 8/21/08 */
+		    // q->fMass = 0;
 		    if(!(TYPETest(q,TYPE_DELETED))) pkdDeleteParticle(smf->pkd, q);
 		    /* Particles are getting deleted twice, which is messing
 		      up the bookkeeping.  I think this will make them only be 
