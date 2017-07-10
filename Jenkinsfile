@@ -13,11 +13,13 @@ pipeline {
 
     stage('Build') {
       steps {
+
         echo 'building gasoline with pthreads...'
         sh 'make EXE="gasoline_pthread" pthread'
         sh 'make clean'
 
         echo 'building gasoline with mpi...'
+        sh 'module load mpi'
         sh 'make EXE="gasoline_mpi" mpi'
         sh 'make clean'
 
