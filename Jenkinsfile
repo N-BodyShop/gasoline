@@ -11,29 +11,39 @@ pipeline {
       }
     }
 
-    stage('Build') {
+    stage('Build pthread') {
       steps {
-
         echo 'building gasoline with pthreads...'
         sh 'make EXE="gasoline_pthread" pthread'
         sh 'make clean'
-
-        echo 'building gasoline with mpi...'
-        sh 'module load mpi'
-        sh 'make EXE="gasoline_mpi" mpi'
-        sh 'make clean'
-
-        sh 'rm Makefile'
       }
     }
+
+    stage('Build mpi') {
+      steps {
+        echo 'building gasoline with mpi...'
+        sh ". /etc/profile.d/modules.sh \n" +
+           "module load mpi \n" +
+           "make EXE=\"gasoline_mpi\" mpi"
+        sh 'make clean'
+      }
+    }
+
   }
 
   post {
+    always {
+      deleteDir()
+    }
     success {
       echo 'build success'
     }
     failure {
       echo 'build failure'
     }
+  }
+
+  options {
+    timeout(time: 60, unit: 'MINUTES')
   }
 }
