@@ -1,8 +1,8 @@
 ```
- 	  ▄████  ▄▄▄        ██████  ▒█████   ██▓     ██▓ ███▄    █ ▓█████ 
-	 ██▒ ▀█▒▒████▄    ▒██    ▒ ▒██▒  ██▒▓██▒    ▓██▒ ██ ▀█   █ ▓█   ▀ 
+ 	  ▄████  ▄▄▄        ██████  ▒█████   ██▓     ██▓ ███▄    █ ▓█████
+	 ██▒ ▀█▒▒████▄    ▒██    ▒ ▒██▒  ██▒▓██▒    ▓██▒ ██ ▀█   █ ▓█   ▀
 	▒██░▄▄▄░▒██  ▀█▄  ░ ▓██▄   ▒██░  ██▒▒██░    ▒██▒▓██  ▀█ ██▒▒███   
-	░▓█  ██▓░██▄▄▄▄██   ▒   ██▒▒██   ██░▒██░    ░██░▓██▒  ▐▌██▒▒▓█  ▄ 
+	░▓█  ██▓░██▄▄▄▄██   ▒   ██▒▒██   ██░▒██░    ░██░▓██▒  ▐▌██▒▒▓█  ▄
 	░▒▓███▀▒ ▓█   ▓██▒▒██████▒▒░ ████▓▒░░██████▒░██░▒██░   ▓██░░▒████▒
 	 ░▒   ▒  ▒▒   ▓▒█░▒ ▒▓▒ ▒ ░░ ▒░▒░▒░ ░ ▒░▓  ░░▓  ░ ▒░   ▒ ▒ ░░ ▒░ ░
 	  ░   ░   ▒   ▒▒ ░░ ░▒  ░ ░  ░ ▒ ▒░ ░ ░ ▒  ░ ▒ ░░ ░░   ░ ▒░ ░ ░  ░
@@ -11,6 +11,8 @@
 ```                                                                  
 
 #  Gasoline:  Particle Hydrodynamics Have Never Been Smoother
+
+[![Build Status](http://imp.mcmaster.ca:8080/buildStatus/icon?job=gasoline-n-bodyshop/master)](http://imp.mcmaster.ca:8080/job/gasoline-n-bodyshop/job/master/)
 
 Gasoline is a modern TREESPH code for solving the equations of gravity and
 hydrodynamics in astrophysical problems.  To use the code, please check out the
