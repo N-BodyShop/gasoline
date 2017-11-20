@@ -24,6 +24,13 @@
 
 #ifdef NBODY
 #undef GASOLINE               //Disable SPH
+#define NOCOOLING             //Disable Cooling
+#undef COOLING_METAL          
+#undef COOLING_COSMO
+#undef COOLING_POLY
+#undef COOLING_GRACKLE
+#undef COOLING_MOLECULARH
+#undef COOLING_PLANET
 #endif
 
 #ifdef BLASTWAVE

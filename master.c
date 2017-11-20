@@ -8643,6 +8643,7 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
    This call is timed for just after those particles have completed a full KDK
 */
 {
+#ifdef GASOLINE
    double sec,sec1,dsec,dMass;
    int nAccreted,nSmoothTemp;
 
@@ -8758,6 +8759,7 @@ msrDoSinks(MSR msr, double dTime, double dDelta, int iKickRung)
     dsec = sec1 - sec;
     printf("Sinks Done (%d accreted) Calculated, Wallclock: %f secs\n\n",nAccreted,dsec);
     LOGTIMINGUPDATE( dsec, TIMING_Sink );
+#endif
 }
 
 void msrInitSinkLog(MSR msr)
