@@ -5582,7 +5582,11 @@ void pkdUpdateuDot(PKD pkd, double duDelta, double dTime, double z, UHC uhc, int
                     dtUse = dt;
                     fDensity = p->fDensity*PoverRhoGas/(uhc.gpc.gammam1*p->uHot); /* Density of bubble part of particle */
                     cp = p->CoolParticleHot;
+#ifdef COOLING_MOLECULARH
+                    CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse, correL);
+#else
                     CoolIntegrateEnergyCode(cl, &cp, &E, uDotSansCooling, fDensity, p->fMetals, p->r, dtUse);
+#endif
                     p->uHotDot = (E - p->uHot)/duDelta;
                     if (bUpdateState ) p->CoolParticleHot = cp;
                     }

@@ -254,18 +254,70 @@ void CoolOutputArray( COOLPARAM *CoolParam, int, int *, char * );
 #define COOL_ARRAY0_EXT  "HI"
 FLOAT COOL_ARRAY0(COOL *cl_, COOLPARTICLE *cp,double aa);
 #define COOL_ARRAY0( cl_, cp, aa ) ((cp)->Y_HI)
+#define COOL_IN_ARRAY0( cl_, cp, Z, aa ) ((cp)->Y_HI)
 
 #define COOL_ARRAY1_EXT  "HeI"
 FLOAT COOL_ARRAY1(COOL *cl_, COOLPARTICLE *cp,double aa);
 #define COOL_ARRAY1( cl_, cp, aa ) ((cp)->Y_HeI)
+#define COOL_IN_ARRAY1( cl_, cp, Z, aa ) ((cp)->Y_HeI)
 
 #define COOL_ARRAY2_EXT  "HeII"
 FLOAT COOL_ARRAY2(COOL *cl_, COOLPARTICLE *cp,double aa);
 #define COOL_ARRAY2( cl_, cp, aa ) ((cp)->Y_HeII)
+#define COOL_IN_ARRAY2( cl_, cp, Z, aa ) ((cp)->Y_HeII)
 
 #define COOL_ARRAY3_EXT  "H2"
 FLOAT COOL_ARRAY3(COOL *cl, COOLPARTICLE *cp, double ZMetal);
 #define COOL_ARRAY3(cl_, cp, aa ) (0)
+#define COOL_IN_ARRAY3(cl_, cp, Z, aa ) (0)
+
+#define COOL_ARRAY4_EXT  "dummy"
+#define COOL_ARRAY4(x,y,z)  0
+#define COOL_IN_ARRAY4(w,x,y,z)  
+
+#define COOL_ARRAY5_EXT  "dummy"
+#define COOL_ARRAY5(x,y,z)  0
+#define COOL_IN_ARRAY5(w,x,y,z)  
+
+#define COOL_ARRAY6_EXT  "dummy"
+#define COOL_ARRAY6(x,y,z)  0
+#define COOL_IN_ARRAY6(w,x,y,z)  
+
+#define COOL_ARRAY7_EXT  "dummy"
+#define COOL_ARRAY7(x,y,z)  0
+#define COOL_IN_ARRAY7(w,x,y,z)  
+
+#define COOL_ARRAY8_EXT  "dummy"
+#define COOL_ARRAY8(x,y,z)  0
+#define COOL_IN_ARRAY8(w,x,y,z)  
+
+#define COOL_ARRAY9_EXT  "dummy"
+#define COOL_ARRAY9(x,y,z)  0
+#define COOL_IN_ARRAY9(w,x,y,z)  
+
+#define COOL_ARRAY10_EXT  "dummy"
+#define COOL_ARRAY10(x,y,z)  0
+#define COOL_IN_ARRAY10(w,x,y,z)  
+
+#define COOL_ARRAY11_EXT  "dummy"
+#define COOL_ARRAY11(x,y,z)  0
+#define COOL_IN_ARRAY11(w,x,y,z)  
+
+#define COOL_ARRAY12_EXT  "dummy"
+#define COOL_ARRAY12(x,y,z)  0
+#define COOL_IN_ARRAY12(w,x,y,z)  
+
+#define COOL_ARRAY13_EXT  "dummy"
+#define COOL_ARRAY13(x,y,z)  0
+#define COOL_IN_ARRAY13(w,x,y,z)  
+
+#define COOL_ARRAY14_EXT  "dummy"
+#define COOL_ARRAY14(x,y,z)  0
+#define COOL_IN_ARRAY14(w,x,y,z)  
+
+#define COOL_ARRAY15_EXT  "dummy"
+#define COOL_ARRAY15(x,y,z)  0
+#define COOL_IN_ARRAY15(w,x,y,z)  
 
 FLOAT COOL_EDOT( COOL *cl_, COOLPARTICLE *cp_, double ECode_, double rhoCode_, double ZMetal_, double *posCode_ );
 #define COOL_EDOT( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_) (CoolCodeWorkToErgPerGmPerSec( cl_, CoolEdotInstantCode( cl_, cp_, ECode_, rhoCode_, ZMetal_, posCode_ )))

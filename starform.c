@@ -296,6 +296,9 @@ void stfmFormStarParticle(STFM stfm, PKD pkd, PARTICLE *p,
 	pSfEv->rhoForm = starp.fDensity/stfm->dCosmoFac;
     pSfEv->TForm = CoolCodeEnergyToTemperature( pkd->Cool, &p->CoolParticle, p->u, p->fDensity, p->fMetals );
 #ifdef COOLING_MOLECULARH /* Output the H2 fractional abundance in the gas particle*/
+    double yH;
+    if (p->fMetals <= 0.1) yH = 1.0 - 4.0*((0.236 + 2.1*p->fMetals)/4.0) - p->fMetals;
+    else yH = 1.0 - 4.0*((-0.446*(p->fMetals - 0.1)/0.9 + 0.446)/4.0) - p->fMetals;
 	pSfEv->H2fracForm = 2.0*p->CoolParticle.f_H2/yH;
 #endif
 	pStarLog->nLog++;
