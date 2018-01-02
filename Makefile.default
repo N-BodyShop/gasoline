@@ -28,7 +28,7 @@ CC = gcc
 	                                           
 # What kind of problem are we running?  This will enable a default set of code components
 # appropriate for different kinds of problems.  Select only one.
-MODE_DEF = -DGALAXY 			#Default mode: includes SPH, star formation, and feedback.
+MODE_DEF = -DGALAXY            #Default mode: includes SPH, star formation, and feedback.
 #MODE_DEF = -DCOLLISIONAL		#Collisional mode for simulating asteroids & planets
 #MODE_DEF = -DNBODY 			#N-body only mode: gravity with nothing else.
 #MODE_DEF = -DGLASS_IC 			#Generate a gravity glass (useful for making ICS)
@@ -84,9 +84,6 @@ COOLING_DEF = -DCOOLING_METAL
 
 #COOLING_OBJ = cooling_planet.o
 #COOLING_DEF = -DCOOLING_PLANET
-
-#COOLING_OBJ =
-#COOLING_DEF = -DNOCOOLING
 
 #	 /$$$$$$$$             /$$                       
 #	| $$_____/            | $$                       
@@ -181,6 +178,10 @@ GSL_LIB =
 BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB)
 BASE_LD_FLAGS = $(PNG_LIB) $(GSL_LIB) $(COOLING_LIB)
 
+# Remove the object for NBODY runs
+ifeq ($(strip $(MODE_DEF)),-DNBODY)
+COOLING_OBJ =
+endif
 
 BASE_DEF = $(PNG_DEF) $(COOLING_DEF) $(MODE_DEF) $(KERNEL_DEF) $(EXTRA_DEF)
 
