@@ -44,6 +44,7 @@ MODE_DEF = -DGALAXY            #Default mode: includes SPH, star formation, and 
 
 # Which SPH Kernel should we use?
 KERNEL_DEF = -DWENDLANDC4            #Use the Wendland C_4 Kernel (See Dehnen & Aly 2012)
+#KERNEL_DEF = -DM4                    #The "classic" M4 Kernel
 #KERNEL_DEF = -DWENDLAND              #Use the Wendland C_2 Kernel (See Dehnen & Aly 2012)
 #KERNEL_DEF = -DHSHRINK               #M4 kernel times (pi/6)^(1/3) for a tighter kernel
 #KERNEL_DEF = -DM43D                  #Use a fancier 3D derived M4 Kernel
