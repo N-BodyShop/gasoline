@@ -1,0 +1,34 @@
+##
+# AGORA Isolated Disc Example parameter file
+# Initial conditions can be found at 
+# http://www.gasoline-code.com/ICs/AGORA.bin
+############### Run and Output Related
+achInFile       = AGORA.bin
+achOutName	    = agora 
+iCheckInterval  = 5
+iOutInterval    = 10
+iLogInterval    = 1
+
+################Timesteps
+nSteps          = 500
+dDelta 		    = 0.1
+iMaxRung        = 20
+
+################Gas Options
+dMsolUnit       = 1e9
+dKpcUnit        = 1
+dMeanMolWeight  = 0.59259
+nSmooth         = 200
+bGasCooling     = 1
+dThermalDiffusionCoeff = 0.03 
+
+################Gravity Options
+dhMinOverSoft   = 0.143 
+dSoft           = 1.12e-1
+dResolveJeans   = 3.06
+
+################SF Parameters
+bStarForm = 0
+
+################SN Feedback parameters
+bFeedBack       = 0
