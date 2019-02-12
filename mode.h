@@ -11,7 +11,15 @@
 #define STARFORM              //Make new stars according to the starformation recipe
 #define CHABRIER              //Use the Chabrier 2003 IMF for starformation (See DOI:10.1086/376392)  (SHOULD BE DEFAULT)
 #define DIFFUSION             //Enable Thermal Diffusion
+#define GDFORCE               //Use the geometric density force expression
 #endif 
+
+#ifdef JUSTHYDRO
+#define GASOLINE              //Do hydro 
+#define DIFFUSION             //Enable Thermal Diffusion
+#define NSMOOTHINNER          //Ensure at least 18 neighbours inside 1.41 h
+#define GDFORCE               //Use the geometric density force expression
+#endif
 
 #ifdef COLLISIONAL
 #define COLLISIONS            //Use solid-body collisions (not compatible with -DGASOLINE)
